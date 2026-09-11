@@ -12,6 +12,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { getDefaultStore } from "jotai";
 import { withContributionActivation } from "../state/contribution-activation";
 import { isTauri } from "../../../platform/environment";
+import { withPluginDataUpdate, type PluginDataUpdate } from "../../../platform/plugin-data-access";
 import { localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { PluginManifestError, parseManifestJson, versionSatisfies } from "../lib/manifest";
@@ -201,6 +202,7 @@ async function startPluginInstance(
   manifest: PluginManifest,
   options: StartPluginWorkerOptions & { deferPromotion?: boolean } = {},
   candidateToken?: string,
+  dataUpdate?: PluginDataUpdate,
 ): Promise<ActivePlugin> {
   assertManifestCanActivate(manifest);
   const disposables: PluginDisposable[] = [];
@@ -210,7 +212,7 @@ async function startPluginInstance(
     sandbox = await startPluginWorker(manifest, appVersion, disposables, workerOptions);
     await sandbox.checkHealth();
     const instance = { manifest, sandbox, disposables, candidateToken, promoted: false };
-    if (!deferPromotion) {
+    if (!deferPromotion) await withPluginDataUpdate(manifest.id, async () => {
       const storedSchema = getPluginDataSchemaVersion(manifest.id);
       const snapshot =
         storedSchema === manifest.schemaVersion ? undefined : await snapshotPluginData(manifest.id);
@@ -218,13 +220,12 @@ async function startPluginInstance(
         await migratePluginInstance(instance, snapshot ? pluginDataSchemaVersion(snapshot.schema) : storedSchema);
         promotePluginInstance(instance);
       } catch (error) {
-        await sandbox.terminate().catch(terminateError => {
-          log.error(`failed migration teardown for "${manifest.id}"`, terminateError);
-        });
+        // A teardown failure must not restore under a possibly live writer.
+        await instance.sandbox.terminate();
         if (snapshot) await restorePluginData(manifest.id, snapshot);
         throw error;
       }
-    }
+    }, dataUpdate);
     return instance;
   } catch (error) {
     // Quiesce the Worker before closing the scope's write gate: messages
@@ -368,8 +369,8 @@ async function migratePluginInstance(
   await setPluginDataSchemaVersion(instance.manifest.id, target);
 }
 
-async function restartPreviousInstance(previous: ActivePlugin): Promise<void> {
-  const restored = await startPluginInstance(previous.manifest);
+async function restartPreviousInstance(previous: ActivePlugin, dataUpdate: PluginDataUpdate): Promise<void> {
+  const restored = await startPluginInstance(previous.manifest, {}, undefined, dataUpdate);
   active.set(previous.manifest.id, restored);
 }
 
@@ -401,7 +402,7 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
   let previousQuiesced = false;
   const plugin: InstalledPlugin = { manifest, enabled: true };
 
-  await runPluginUpdateTransaction<ActivePlugin>({
+  await withPluginDataUpdate(manifest.id, dataUpdate => runPluginUpdateTransaction<ActivePlugin>({
     startCandidate: () =>
       startPluginInstance(
         manifest,
@@ -468,9 +469,9 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
       return restorePluginData(manifest.id, dataSnapshot);
     },
     restartPrevious: async () => {
-      if (previous && previousQuiesced) await restartPreviousInstance(previous);
+      if (previous && previousQuiesced) await restartPreviousInstance(previous, dataUpdate);
     },
-  });
+  }));
 
   return plugin;
 }

@@ -59,6 +59,8 @@
     "memoryForbidden": "この記憶は許可された範囲外です。",
     "memoryInvalidQuery": "有効な記憶範囲、名前、または章番号を指定してください。",
     "settingsObserverLimit": "設定の購読数が上限に達しました。",
+    "pluginDataBusy": "プラグインを更新中です。更新が完了してから保存を再試行してください。",
+    "pluginSettingsStale": "プラグインが変更されました。設定を閉じて開き直してから保存してください。",
     "settingsUnavailable": "設定を読み取れませんでした。もう一度お試しください。",
     "workspaceInvalid": "移動先または選択が無効です。",
     "workspaceMissing": "ページ、コレクション、または選択した本は利用できません。",

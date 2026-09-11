@@ -59,6 +59,8 @@
     "memoryForbidden": "Ce souvenir est hors du périmètre autorisé.",
     "memoryInvalidQuery": "Choisissez des portées de mémoire, des noms ou un numéro de chapitre valides.",
     "settingsObserverLimit": "Trop d'abonnements aux paramètres sont actifs.",
+    "pluginDataBusy": "Ce plugin est en cours de mise à jour. Réessayez d’enregistrer une fois la mise à jour terminée.",
+    "pluginSettingsStale": "Ce plugin a changé. Fermez puis rouvrez ses paramètres avant d’enregistrer.",
     "settingsUnavailable": "Impossible de lire les paramètres. Réessayez.",
     "workspaceInvalid": "La destination ou la sélection est invalide.",
     "workspaceMissing": "Cette page, collection ou sélection n'est plus disponible.",

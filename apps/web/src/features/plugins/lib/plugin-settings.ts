@@ -4,6 +4,7 @@
  * (plugins read `ctx.services.storage.get("settings")`). The Plugins panel opens this
  * as a Dialog via the standard view pipeline.
  */
+import { pluginDataRevision, withPluginDataWrites } from "../../../platform/plugin-data-access";
 import { emitAppEvent } from "../../../platform/app-events";
 import { localKV, onLocalKVChange } from "../../../platform/local-store";
 import {
@@ -58,6 +59,7 @@ export function buildPluginSettingsView(
   const fields = manifest.settings;
   if (!fields || fields.length === 0) return null;
   const stored = readPluginSettingsValues(manifest.id);
+  const expected = new Map([[manifest.id, pluginDataRevision(manifest.id)]]);
   return {
     kind: "form",
     title: manifest.name,
@@ -75,7 +77,8 @@ export function buildPluginSettingsView(
       }
       return { ...field, value: typeof value === "string" ? value : field.value };
     }),
-    onSubmit: (values) => writePluginSettingsValues(manifest.id, values),
+    onSubmit: (values) => withPluginDataWrites([manifest.id],
+      () => localKV.setItemAsync(pluginSettingsKey(manifest.id), JSON.stringify(values)), expected),
     // Dynamic selects resolve through the source the plugin bound at
     // activate() (ctx.contributions.settingsOptions.register); an unbound field resolves
     // empty and renders as free text input.
@@ -88,8 +91,8 @@ export function buildPluginSettingsView(
         const value = await getPluginSecret(manifest.id, id);
         return value != null && value !== "";
       },
-      set: (id, value) => setPluginSecret(manifest.id, id, value),
-      remove: (id) => deletePluginSecret(manifest.id, id),
+      set: (id, value) => withPluginDataWrites([manifest.id], () => setPluginSecret(manifest.id, id, value), expected),
+      remove: (id) => withPluginDataWrites([manifest.id], () => deletePluginSecret(manifest.id, id), expected),
     },
   };
 }
@@ -99,7 +102,7 @@ export function writePluginSettingsValues(
   pluginId: string,
   values: PluginFormValues,
 ): Promise<void> {
-  return localKV.setItemAsync(pluginSettingsKey(pluginId), JSON.stringify(values));
+  return withPluginDataWrites([pluginId], () => localKV.setItemAsync(pluginSettingsKey(pluginId), JSON.stringify(values)));
 }
 
 export type AgentPluginSettings = {

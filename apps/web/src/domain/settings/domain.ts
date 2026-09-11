@@ -50,6 +50,7 @@ import {
   textUnitReaderModeAtom,
 } from "../../features/plugins/state/plugin-store";
 import { getAIConfig } from "../../features/ai/lib/ai-config";
+import { withPluginDataWrites } from "../../platform/plugin-data-access";
 import { commitSettingsDraft } from "./persistence";
 import { afterSettingsWrites, initializeSettingsObservation, settingsObservation } from "./observation-sources";
 import { getDefaultMarkColor } from "../../features/annotations/lib/annotation-prefs";
@@ -225,11 +226,14 @@ async function commitResult(origin: EventOrigin, before: SettingsDraft, result: 
 let updateTail: Promise<unknown> = Promise.resolve();
 function enqueueSettingsChanges(origin: EventOrigin, changes: SettingChange[], policy: SettingsAccessPolicy, signal?: AbortSignal): Promise<SettingsUpdateResult> {
   const accepted = structuredClone(changes);
-  const result = updateTail.then(() => afterSettingsWrites(() => {
+  const pluginIds = accepted.flatMap(change => /^plugins\.([a-z0-9-]+)\./.exec(change.path)?.[1] ?? []);
+  const previous = updateTail;
+  const result = withPluginDataWrites(pluginIds, () => previous.then(() => afterSettingsWrites(() => {
     signal?.throwIfAborted();
     return applySettingsChanges(origin, accepted, policy, signal);
-  }));
-  updateTail = result.then(() => {}, () => {});
+  })));
+  // A rejected admission must not sever the ordering of an earlier command.
+  updateTail = Promise.allSettled([previous, result]);
   return result;
 }
 

@@ -19,11 +19,13 @@
  * language. Credentials DO roam, but only sealed — see "Roaming secrets"
  * below: plaintext never enters the log or any queryable table.
  */
+import { errorCode } from "@read-aware/core";
+import { waitForPluginDataUpdates, withPluginDataWrites } from "./plugin-data-access";
 import { invoke } from "./ipc";
 import { emitAppEvent } from "./app-events";
 import { commitDomainEvents } from "./domain-events";
 import { isTauri } from "./environment";
-import { localKV, onLocalKVWrite } from "./local-store";
+import { localKV, onLocalKVWrite, flushLocalKV } from "./local-store";
 import { createLogger } from "./logger";
 import {
   afterSecretWrites,
@@ -308,6 +310,35 @@ async function overlayRows(rows: PreferenceRow[]): Promise<string[]> {
   return changed;
 }
 
+/** A concurrent plugin migration must not consume a remote settings save into
+ * its rollback baseline halfway through. Retry from the current projection once
+ * the update settles, and keep admission until queued remote KV writes settle. */
+async function loadAndOverlayRows(): Promise<{ rows: PreferenceRow[]; changed: string[] }> {
+  while (true) {
+    const rows = await invoke<PreferenceRow[]>("preferences_load_all");
+    const ids = rows.flatMap(row => /^read-aware-plugin\.([a-z0-9-]+)\./.exec(row.key)?.[1] ?? []);
+    try {
+      return await withPluginDataWrites(ids, async () => {
+        let failed = false;
+        try { return { rows, changed: await overlayRows(rows) }; }
+        catch (error) { failed = true; throw error; }
+        finally {
+          // Even a later overlay failure must drain every earlier native write.
+          const results = await Promise.allSettled([...new Set(ids)].map(id => flushLocalKV(`read-aware-plugin.${id}.`)));
+          const failure = results.find(result => result.status === "rejected");
+          if (failure?.status === "rejected") {
+            if (!failed) throw failure.reason;
+            log.warn("Plugin preference drain also failed", failure.reason);
+          }
+        }
+      });
+    } catch (error) {
+      if (errorCode(error) !== "plugin/data-busy") throw error;
+      await waitForPluginDataUpdates(ids);
+    }
+  }
+}
+
 /**
  * Backfill: local state the log has never seen gets its event. A namespace
  * saved BEFORE roaming existed (or before this build) has a KV value but no
@@ -352,8 +383,7 @@ function reconcileUnpublished(rows: PreferenceRow[]): void {
 export async function hydrateRoamingPreferences(): Promise<void> {
   if (!isTauri()) return;
   try {
-    const rows = await invoke<PreferenceRow[]>("preferences_load_all");
-    await overlayRows(rows);
+    const { rows } = await loadAndOverlayRows();
     reconcileUnpublished(rows);
   } catch (error) {
     log.error("boot overlay failed; using device-local values", error);
@@ -369,8 +399,7 @@ export async function hydrateRoamingPreferences(): Promise<void> {
 export async function refreshRoamingPreferences(): Promise<void> {
   if (!isTauri()) return;
   try {
-    const rows = await invoke<PreferenceRow[]>("preferences_load_all");
-    const changed = await overlayRows(rows);
+    const { rows, changed } = await loadAndOverlayRows();
     reconcileUnpublished(rows);
     if (changed.length > 0) {
       emitAppEvent("roaming-preferences-changed", { keys: changed });

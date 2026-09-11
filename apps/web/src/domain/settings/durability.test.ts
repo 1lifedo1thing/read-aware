@@ -9,6 +9,8 @@ import { DEFAULT_SHELF_VIEW, SHELF_VIEW_KEY } from "../../features/shelf/lib/she
 import { APP_SETTINGS_KEY, DEFAULT_APP_SETTINGS } from "../../features/settings/lib/app-settings";
 import { GENERAL_SETTINGS_KEY, DEFAULT_GENERAL_SETTINGS } from "../../features/settings/lib/general-settings";
 import { buildPluginSettingsView } from "../../features/plugins/lib/plugin-settings";
+import { withPluginDataUpdate } from "../../platform/plugin-data-access";
+import { installedPluginsAtom } from "../../features/plugins/state/plugin-store";
 import type { SettingsObservation } from "@read-aware/core";
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -53,6 +55,52 @@ afterEach(async () => {
 });
 
 describe("settings durable command boundary", () => {
+  test("migration waits for a form durability receipt; busy and stale forms never dispatch", async () => {
+    const manifest = { id: "migration-form", name: "Migration", version: "1.0.0", schemaVersion: 1, requires: {},
+      settings: [{ id: "enabled", kind: "toggle" as const, label: "Enabled", value: false }] };
+    const form = buildPluginSettingsView(manifest)!;
+    const write = form.onSubmit({ enabled: true });
+    let snapshot: string | null = null; let finish!: () => void;
+    const update = withPluginDataUpdate(manifest.id, async () => {
+      snapshot = disk.get(`read-aware-plugin.${manifest.id}.settings`)!;
+      await new Promise<void>(resolve => { finish = resolve; });
+    });
+    await tick(); expect(snapshot).toBeNull(); expect(pending).toHaveLength(1);
+    await expect(Promise.resolve(form.onSubmit({ enabled: false }))).rejects.toMatchObject({ code: "plugin/data-busy" });
+    pending.shift()!.resolve(); await write; await tick();
+    expect(snapshot as string | null).toBe('{"enabled":true}');
+    const during = buildPluginSettingsView(manifest)!;
+    finish(); await update;
+    for (const stale of [form, during]) await expect(Promise.resolve(stale.onSubmit({ enabled: false }))).rejects.toMatchObject({ code: "plugin/settings-stale" });
+    expect(pending).toHaveLength(0);
+    const save = buildPluginSettingsView(manifest)!.onSubmit({ enabled: false });
+    await tick(); pending.shift()!.resolve(); await save;
+  });
+
+  test("Agent and granted-plugin settings batches cannot enter a migrating namespace", async () => {
+    const store = getDefaultStore(); const before = store.get(installedPluginsAtom);
+    store.set(installedPluginsAtom, [{ enabled: true, manifest: { id: "migration-domain", name: "Migration", version: "1.0.0", schemaVersion: 1, requires: {},
+      settings: [{ id: "enabled", kind: "toggle", label: "Enabled", value: false }] } }]);
+    try {
+      const actors = [createSettingsDomain("agent"), createSettingsDomain("plugin:settings-writer", { write: ["plugins.migration-domain.enabled", "appearance.theme"] })];
+      let entered = false;
+      const write = actors[0]!.commands.update([{ path: "plugins.migration-domain.enabled", value: true }]);
+      let finish!: () => void;
+      const update = withPluginDataUpdate("migration-domain", async () => { entered = true; await new Promise<void>(resolve => { finish = resolve; }); });
+      await tick(); expect(entered).toBe(false); expect(pending).toHaveLength(1);
+      for (const actor of actors) await expect(actor.commands.update([
+        { path: "appearance.theme", value: "dark" }, { path: "plugins.migration-domain.enabled", value: false },
+      ])).rejects.toMatchObject({ code: "plugin/data-busy" });
+      pending.shift()!.resolve(); await write; await tick(); expect(entered).toBe(true);
+      expect(getDefaultStore().get(appSettingsAtom).theme).toBe("system");
+      const unrelated = actors[0]!.commands.update([{ path: "appearance.theme", value: "light" }]);
+      await tick(); pending.shift()!.resolve(); await unrelated;
+      finish(); await update;
+      const after = actors[1]!.commands.update([{ path: "plugins.migration-domain.enabled", value: false }]);
+      await tick(); pending.shift()!.resolve(); await after;
+    } finally { store.set(installedPluginsAtom, before); }
+  });
+
   test("a retired actor cannot dispatch its queued settings write after another write settles", async () => {
     const first = createSettingsDomain("agent").commands.update([{ path: "appearance.theme", value: "dark" }]);
     const controller = new AbortController();
@@ -252,6 +300,6 @@ describe("settings durable command boundary", () => {
     });
     const output = await new Response(child.stderr).text();
     expect(await child.exited, output).toBe(0);
-    expect(output).toContain("11 pass");
+    expect(output).toContain("13 pass");
   }, 30_000);
 }

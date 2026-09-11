@@ -124,6 +124,8 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "library/range-unsupported": { key: "bookRangeUnsupported", retryable: false },
   "library/range-forbidden": { key: "bookRangeForbidden", retryable: false },
   "library/book-not-found": { key: "bookNotFound", retryable: false },
+  "plugin/data-busy": { key: "pluginDataBusy", retryable: true },
+  "plugin/settings-stale": { key: "pluginSettingsStale", retryable: false },
   "plugin/action-disabled": { key: "pluginActionDisabled", retryable: false },
   [ERR_PLUGIN_INVALID_ARGUMENT]: { key: "pluginInvalidArgument", retryable: false },
   [ERR_PLUGIN_QUOTA_EXCEEDED]: { key: "pluginQuotaExceeded", retryable: false },

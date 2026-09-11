@@ -59,6 +59,8 @@
     "memoryForbidden": "This memory is outside the allowed scope.",
     "memoryInvalidQuery": "Choose valid memory scopes, names, or a chapter number.",
     "settingsObserverLimit": "Too many settings subscriptions are active.",
+    "pluginDataBusy": "This plugin is being updated. Try saving again when the update finishes.",
+    "pluginSettingsStale": "This plugin has changed. Close and reopen its settings before saving.",
     "settingsUnavailable": "Settings could not be read. Try again.",
     "workspaceInvalid": "The navigation target or selection is invalid.",
     "workspaceMissing": "That page, collection, or selection is no longer available.",
