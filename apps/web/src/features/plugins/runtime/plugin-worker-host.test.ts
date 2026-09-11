@@ -223,6 +223,28 @@ async function hostFixture(permissions: PluginPermission[] = [], promote = true)
 }
 
 describe("plugin worker capability bridge", () => {
+  test("event notifications release returned callbacks even after the subscription is disposed", async () => {
+    const storage = spyOn(localKV, "entries").mockReturnValue({});
+    const { worker, close } = await hostFixture();
+    try {
+      await worker.deliver({ t: "call", id: 920, method: "services.storage.onChange", args: worker.callbacks.encode([() => {}]) });
+      const disposable = worker.sent.find(message => message.t === "result" && message.id === 920)?.disposable;
+      const notify = () => emitAppEvent("plugin-storage-changed", { pluginId: "callback-host-test" });
+      const invokes = () => worker.sent.filter(message => message.t === "invoke");
+      for (const retired of [false, true]) {
+        notify();
+        const invocation = invokes().at(-1)!;
+        if (retired) await worker.deliver({ t: "dispose", handle: disposable });
+        const baseline = worker.callbacks.size;
+        await worker.deliver({ t: "result", id: invocation.id, ok: true, value: worker.callbacks.encode({ extra: () => {} }) });
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(worker.callbacks.size).toBe(baseline);
+      }
+      expect(invokes()).toHaveLength(2);
+      notify(); expect(invokes()).toHaveLength(2);
+      expect(worker.callbacks.size).toBe(0);
+    } finally { await close(); storage.mockRestore(); }
+  });
   test("voice discovery serializes across Worker replies and releases callbacks in stale results", async () => {
     const storage = spyOn(localKV, "entries").mockReturnValue({});
     const { worker, close } = await hostFixture();

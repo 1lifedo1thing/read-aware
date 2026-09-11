@@ -32,6 +32,7 @@ import { invalidateSyncTransportSessions } from "../../../platform/sync/transpor
 import { updateInstalledPlugin } from "../state/plugin-store";
 import { flattenPluginRequest, flattenPluginResponse } from "./plugin-network-wire";
 import { PluginRpcPending } from "./plugin-rpc-pending";
+import { pluginCallbackInvoker } from "./plugin-callback-results";
 import { decodePluginCallbacks, retainPluginCallbacks, type PluginCallbackWire } from "./plugin-callback-wire";
 import type { PluginActionRegistration } from "../lib/plugin-types";
 import { parsePluginWorkerMessage, PLUGIN_PROTOCOL_VERSION, rejectedPluginCallbackHandles, validPluginCallId, type WorkerMessage } from "./plugin-worker-protocol";
@@ -524,7 +525,8 @@ export function startPluginWorker(
             if (!method) throw new AppError("plugin/unavailable", `"${message.method}" is not granted to plugin "${manifest.id}"`);
             const callbackLease = callbackBudget.acquire(message.args);
             releaseArguments = () => { callbackLease.dispose(); releaseCallbacks(message.args); };
-            const args = decodePluginCallbacks(message.args, invokeHandle, handles => {
+            const invokeCallback = pluginCallbackInvoker(message.method, invokeHandle);
+            const args = decodePluginCallbacks(message.args, invokeCallback, handles => {
               callbackLease.release(handles);
               if (!terminated) post({ t: "release", handles });
             }, runtime.lifecycle.signal);
