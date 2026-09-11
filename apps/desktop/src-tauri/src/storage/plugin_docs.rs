@@ -238,6 +238,15 @@ pub(crate) fn plugin_docs_restore_inner(
     rows: Vec<PluginDocumentSnapshotRow>,
 ) -> Result<(), CommandError> {
     let tx = conn.transaction()?;
+    replace_plugin_documents(&tx, plugin_id, rows)?;
+    Ok(tx.commit()?)
+}
+
+pub(crate) fn replace_plugin_documents(
+    tx: &Transaction<'_>,
+    plugin_id: &str,
+    rows: Vec<PluginDocumentSnapshotRow>,
+) -> Result<(), CommandError> {
     tx.execute(
         "DELETE FROM plugin_documents WHERE plugin_id = ?1",
         params![plugin_id],
@@ -260,7 +269,7 @@ pub(crate) fn plugin_docs_restore_inner(
         )
         ?;
     }
-    Ok(tx.commit()?)
+    Ok(())
 }
 
 /// One-time migration: the retired core vocabulary projection moves into the

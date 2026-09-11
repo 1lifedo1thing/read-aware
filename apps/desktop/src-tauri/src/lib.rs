@@ -1039,6 +1039,8 @@ pub fn run() {
             storage::plugin_docs_clear,
             storage::plugin_docs_snapshot,
             storage::plugin_docs_restore,
+            storage::plugin_data_snapshot,
+            storage::plugin_data_restore,
             storage::vocabulary_migrate_to_plugin_documents,
             storage::reading_time_genesis,
             storage::reading_time_load,

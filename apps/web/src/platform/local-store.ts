@@ -19,7 +19,7 @@
  * atoms synchronously) is imported — see main.tsx. Until it resolves under
  * Tauri, the snapshot is empty and reads fall back to defaults.
  */
-import { errorCode, type EventOrigin } from "@read-aware/core";
+import { AppError, errorCode, type EventOrigin } from "@read-aware/core";
 import { invoke } from "./ipc";
 import { emitAppEvent } from "./app-events";
 import { isTauri } from "./environment";
@@ -314,6 +314,25 @@ export async function dumpLocalKV(): Promise<Record<string, string>> {
 /** Merge a backup atomically before reload, retaining the existing roaming-publication policy. */
 export async function restoreLocalKV(entries: Record<string, string>): Promise<void> {
   await setLocalKVBatch(new Map(Object.entries(entries)), null, "restore");
+}
+
+/** Host rollback spanning KV and other SQLite tables, with the same queue/mirror contract. */
+export function restoreLocalKVTransaction(
+  prefix: string,
+  entries: Record<string, string>,
+  exact: ReadonlyMap<string, string | null>,
+  persist: () => Promise<void>,
+): Promise<void> {
+  if (!isTauri()) return Promise.reject(new AppError("plugin/unavailable", "Native rollback requires desktop storage"));
+  const replacement = { ...entries };
+  const extra = new Map(exact);
+  return writes.afterPending(() => {
+    const previous = localKV.entries(prefix);
+    const values = new Map([...new Set([...Object.keys(previous), ...Object.keys(replacement)])]
+      .map(suffix => [prefix + suffix, Object.prototype.hasOwnProperty.call(replacement, suffix) ? replacement[suffix]! : null] as const));
+    for (const [key, value] of extra) values.set(key, value);
+    return writes.replace(values, persist);
+  });
 }
 
 /** Atomically replace a namespace, ordered with all accepted KV writes. */

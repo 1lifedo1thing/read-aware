@@ -60,7 +60,7 @@ describe("plugin update transaction", () => {
     ]);
   });
 
-  test("a post-commit failure attempts every recovery step", async () => {
+  test("failed candidate teardown prevents rollback underneath a possibly live writer", async () => {
     const log: string[] = [];
     const value = transaction(log, "verify-commit");
     value.cleanupCandidate = async () => {
@@ -79,8 +79,6 @@ describe("plugin update transaction", () => {
       "commit",
       "verify-commit",
       "cleanup",
-      "rollback-files",
-      "restart-previous",
     ]);
   });
 
@@ -140,4 +138,16 @@ describe("plugin update transaction", () => {
     release(); await update;
     expect(log.indexOf("snapshot")).toBeGreaterThan(log.indexOf("quiesce-pending"));
   });
+
+  for (const failure of ["rollback-files", "restore-data"]) {
+    test(`${failure} failure never restarts old code against unrecovered state`, async () => {
+      const log: string[] = [];
+      const value = transaction(log, failure);
+      value.migrateCandidate = async () => { log.push("migrate"); throw new Error("migration failed"); };
+      await expect(runPluginUpdateTransaction(value)).rejects.toThrow(`${failure} failed`);
+      expect(log).toContain("rollback-files");
+      expect(log).toContain("restore-data");
+      expect(log).not.toContain("restart-previous");
+    });
+  }
 });

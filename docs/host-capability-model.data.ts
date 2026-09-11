@@ -85,7 +85,7 @@ export const units: Unit[] = [
     "无通用私有 KV/文档工具；通过相应插件工具消费，权限不会因调用方是模型而扩大。",
     "按 plugin ID 隔离；KV、docs、secrets、blob 各自标注本地/漫游/备份/卸载保留政策；书籍索引并不自动意味着随书删除。",
     "不是插件业务 schema 搬到宿主，也不是开放 SQL/transaction handle；取消不回滚已持久写。自有二进制数据引用由 S4，密钥由 S2。",
-    "GAP01–03 的更新时序、持久确认、镜像失败回滚通过故障注入；保存失败不能成功 toast；大数据导出不要求一次把全部内容装进 Worker。"),
+    "GAP01–03 的更新时序、持久确认、镜像失败回滚通过故障注入；SYS03 已将 KV/docs/schema 基线读取与恢复分别统一为一个原生事务，联合恢复失败全回滚，候选未停或恢复失败不启动旧代码。恢复共享 KV 队列、镜像失败回滚及 restore 通知；不重发漫游事件，不代表迁移期间外部写隔离或跨进程崩溃恢复。保存失败不能成功 toast；大数据导出不要求一次把全部内容装进 Worker。"),
   unit("S2", "Service", "secrets", "隔离凭据", "SYS04 CFG07", "services.secrets",
     "plugin-owned secret get/set/remove；敏感设置 UI 由宿主管理；提供 configured 状态而非向普通 settings/catalog 返回明文。",
     "不读密钥，不把 key 交给模型；配置意图打开用户流程。",

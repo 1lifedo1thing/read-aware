@@ -1,3 +1,5 @@
+import { AppError, errorCode } from "@read-aware/core";
+
 export type PluginUpdateTransaction<TCandidate> = {
   startCandidate(): Promise<TCandidate>;
   verifyCandidate(candidate: TCandidate): void | Promise<void>;
@@ -18,7 +20,7 @@ export type PluginUpdateTransaction<TCandidate> = {
   restartPrevious(): void | Promise<void>;
 };
 
-export class PluginUpdateError extends Error {
+export class PluginUpdateError extends AppError {
   readonly cause: unknown;
   readonly recoveryErrors: Error[];
 
@@ -27,7 +29,7 @@ export class PluginUpdateError extends Error {
     const recovery = recoveryErrors.length
       ? ` Recovery also failed: ${recoveryErrors.map((error) => error.message).join("; ")}`
       : "";
-    super(message + recovery);
+    super(errorCode(cause) ?? "plugin/error", message + recovery, { cause });
     this.name = "PluginUpdateError";
     this.cause = cause;
     this.recoveryErrors = recoveryErrors;
@@ -62,18 +64,24 @@ export async function runPluginUpdateTransaction<TCandidate>(
     return candidate;
   } catch (cause) {
     const recoveryErrors: Error[] = [];
-    const recover = async (step: () => void | Promise<void>) => {
+    const recover = async (step: () => void | Promise<void>): Promise<boolean> => {
       try {
         await step();
+        return true;
       } catch (error) {
         recoveryErrors.push(error instanceof Error ? error : new Error(String(error)));
+        return false;
       }
     };
 
-    await recover(() => transaction.cleanupCandidate(candidate));
-    if (committed) await recover(transaction.rollbackFiles);
-    if (dataMayHaveChanged) await recover(transaction.restoreData);
-    if (quiescenceAttempted) await recover(transaction.restartPrevious);
+    const stopped = await recover(() => transaction.cleanupCandidate(candidate));
+    // Never restore underneath a candidate that may still write, or restart old
+    // code against a failed file/data rollback. Leave it inert for honest recovery.
+    if (stopped) {
+      if (committed) await recover(transaction.rollbackFiles);
+      if (dataMayHaveChanged) await recover(transaction.restoreData);
+      if (quiescenceAttempted && recoveryErrors.length === 0) await recover(transaction.restartPrevious);
+    }
     throw new PluginUpdateError(cause, recoveryErrors);
   }
 }

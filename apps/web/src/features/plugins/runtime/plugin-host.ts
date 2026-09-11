@@ -11,7 +11,7 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { getDefaultStore } from "jotai";
 import { isTauri } from "../../../platform/environment";
-import { flushLocalKV, localKV, replaceLocalKVPrefix } from "../../../platform/local-store";
+import { localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { PluginManifestError, parseManifestJson, versionSatisfies } from "../lib/manifest";
 import type {
@@ -38,15 +38,12 @@ import {
   listPluginEntries,
   pluginCandidateModuleUrl,
   pluginDocsClear,
-  pluginDocsRestore,
-  pluginDocsSnapshot,
   rollbackPluginFiles,
   stagePluginFiles,
   stagePluginFromDir,
   stagePluginFromZip,
   uninstallPluginFiles,
   type PluginCandidateDiskEntry,
-  type PluginDocumentSnapshotRow,
   type PluginFilePayload,
 } from "./plugin-backend";
 import {
@@ -59,6 +56,7 @@ import { unbindVirtualBook } from "../lib/virtual-books";
 import { runPluginUpdateTransaction } from "./plugin-update-transaction";
 import { assertPluginCapabilityRequirements } from "./plugin-capabilities";
 import { planPluginDataMigration } from "./plugin-data-migration";
+import { PLUGIN_SCHEMA_KEY_PREFIX, pluginDataSchemaVersion, snapshotPluginData, restorePluginData, type PluginDataSnapshot } from "./plugin-data-snapshot";
 
 const log = createLogger("plugins");
 
@@ -71,7 +69,6 @@ type ActivePlugin = {
 };
 
 const active = new Map<string, ActivePlugin>();
-const PLUGIN_SCHEMA_KEY_PREFIX = "read-aware-plugin-host.schema.";
 let appVersion = "0.0.0";
 let initialized = false;
 
@@ -216,7 +213,7 @@ async function startPluginInstance(
       const snapshot =
         storedSchema === manifest.schemaVersion ? undefined : await snapshotPluginData(manifest.id);
       try {
-        await migratePluginInstance(instance, storedSchema);
+        await migratePluginInstance(instance, snapshot ? pluginDataSchemaVersion(snapshot.schema) : storedSchema);
         promotePluginInstance(instance);
       } catch (error) {
         await sandbox.terminate().catch(terminateError => {
@@ -343,17 +340,8 @@ function parseCandidate(entry: PluginCandidateDiskEntry): PluginManifest {
   return manifest;
 }
 
-type PluginDataSnapshot = {
-  kv: Record<string, string>;
-  documents: PluginDocumentSnapshotRow[];
-  schemaVersion: number | null;
-};
-
 function getPluginDataSchemaVersion(id: string): number | null {
-  const raw = localKV.getItem(PLUGIN_SCHEMA_KEY_PREFIX + id);
-  if (raw == null) return null;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : null;
+  return pluginDataSchemaVersion(localKV.getItem(PLUGIN_SCHEMA_KEY_PREFIX + id));
 }
 
 async function setPluginDataSchemaVersion(id: string, version: number | null): Promise<void> {
@@ -374,25 +362,6 @@ async function migratePluginInstance(
   });
   if (migration) await instance.sandbox.migrate(migration);
   await setPluginDataSchemaVersion(instance.manifest.id, target);
-}
-
-async function snapshotPluginData(id: string): Promise<PluginDataSnapshot> {
-  await flushLocalKV(`read-aware-plugin.${id}.`);
-  await flushLocalKV(PLUGIN_SCHEMA_KEY_PREFIX + id);
-  return {
-    kv: localKV.entries(`read-aware-plugin.${id}.`),
-    documents: await pluginDocsSnapshot(id),
-    schemaVersion: getPluginDataSchemaVersion(id),
-  };
-}
-
-async function restorePluginData(id: string, snapshot: PluginDataSnapshot): Promise<void> {
-  const prefix = `read-aware-plugin.${id}.`;
-  await Promise.all([
-    replaceLocalKVPrefix(prefix, snapshot.kv),
-    pluginDocsRestore(id, snapshot.documents),
-  ]);
-  await setPluginDataSchemaVersion(id, snapshot.schemaVersion);
 }
 
 async function restartPreviousInstance(previous: ActivePlugin): Promise<void> {
@@ -466,7 +435,7 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
     snapshotData: async () => { dataSnapshot = await snapshotPluginData(manifest.id); },
     migrateCandidate: (next) => {
       if (!dataSnapshot) throw new Error("plugin update has no rollback baseline");
-      return migratePluginInstance(next, dataSnapshot.schemaVersion);
+      return migratePluginInstance(next, pluginDataSchemaVersion(dataSnapshot.schema));
     },
     promoteCandidate: (next) => promotePluginInstance(next),
     accept: (next) => {

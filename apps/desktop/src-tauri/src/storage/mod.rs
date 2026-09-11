@@ -66,6 +66,8 @@ mod chat;
 pub use chat::*;
 mod plugin_docs;
 pub use plugin_docs::*;
+mod plugin_data;
+pub use plugin_data::*;
 mod plugin_document_operations;
 mod plugin_document_search;
 pub use plugin_document_operations::*;
