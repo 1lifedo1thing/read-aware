@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { AppError, type BackupAction } from "@read-aware/core";
 import { useToast } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
+import { describeError } from "../../../i18n/describe-error";
 import { createLogger } from "../../../platform/logger";
 import { hostBackupFlows, hostMaintenance } from "../../../services/maintenance";
 import { backupFileActions } from "../lib/backup-file-actions";
@@ -53,7 +54,7 @@ export function useBackupActions(blocked = false) {
     } catch (error) {
       log.error(`Backup ${action} failed`, error);
       if (!owner?.signal.aborted && !operationSignal?.aborted) toast({ variant: "destructive", title: t("dataSync.noticeError"),
-        description: t(action === "export" ? "dataSync.exportError" : "dataSync.importError") });
+        description: describeError(error, { fallback: t(action === "export" ? "dataSync.exportError" : "dataSync.importError") }).body });
     } finally {
       active.current = restarting; pending.current = null;
       if (!owner?.signal.aborted) { setBusy(restarting); setRequested(null); }

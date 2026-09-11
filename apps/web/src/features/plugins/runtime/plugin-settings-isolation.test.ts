@@ -9,7 +9,7 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
   const { localKV } = await import("../../../platform/local-store");
   const { buildPluginSettingsView } = await import("../lib/plugin-settings");
   const { createSettingsDomain } = await import("../../../domain/settings/domain");
-  const { withPluginDataUpdate } = await import("../../../platform/plugin-data-access");
+  const { withPluginDataBackup, withPluginDataUpdate } = await import("../../../platform/plugin-data-access");
   const { describeError } = await import("../../../i18n/describe-error");
   const { initI18n } = await import("../../../i18n");
   const { AppError } = await import("@read-aware/core");
@@ -173,6 +173,20 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
     await host.setPluginEnabled(id, false);
   });
 
+  test("production installation during backup rejects before runtime or file mutation and discards its candidate", async () => {
+    const host = await import("./plugin-host");
+    const start = spyOn(worker, "startPluginWorker");
+    const starts = start.mock.calls.length;
+    const commits = commands.filter(command => command === "plugins_commit_candidate").length;
+    const discards = commands.filter(command => command === "plugins_discard_candidate").length;
+    await withPluginDataBackup("export", async () => {
+      await expect(host.installPluginFiles(id, [])).rejects.toMatchObject({ code: "plugin/data-busy" });
+      expect(start.mock.calls.length).toBe(starts);
+      expect(commands.filter(command => command === "plugins_commit_candidate")).toHaveLength(commits);
+      expect(commands.filter(command => command === "plugins_discard_candidate")).toHaveLength(discards + 1);
+    });
+  });
+
   test("activation teardown failure never restores a snapshot under the failed runtime", async () => {
     const restoresBefore = commands.filter(command => command === "plugins_update_rollback").length;
     spyOn(worker, "startPluginWorker").mockImplementation(async () => ({
@@ -245,6 +259,6 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
   test("isolated host settings migration and roaming boundary", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], { env: { ...process.env, PLUGIN_SETTINGS_ISOLATION: "1" }, stdout: "ignore", stderr: "pipe" });
     const output = await new Response(child.stderr).text();
-    expect(await child.exited, output).toBe(0); expect(output).toContain("7 pass");
+    expect(await child.exited, output).toBe(0); expect(output).toContain("8 pass");
   }, 30_000);
 }

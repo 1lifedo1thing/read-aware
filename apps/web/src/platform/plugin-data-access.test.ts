@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { pluginDataRevision, waitForPluginDataUpdates, withPluginDataUpdate, withPluginDataWrites } from "./plugin-data-access";
+import { pluginDataRevision, waitForPluginDataUpdates, withPluginDataBackup, withPluginDataUpdate, withPluginDataWrites } from "./plugin-data-access";
 import { runPluginUpdateTransaction } from "../features/plugins/runtime/plugin-update-transaction";
 const gate = () => { let resolve!: () => void; return { promise: new Promise<void>(r => { resolve = r; }), release: () => resolve() }; };
 const tick = () => Bun.sleep(0);
@@ -49,4 +49,49 @@ test("update rollback and old-runtime restart retain the external write barrier 
   cleanup.release(); await tick(); expect(data).toBe("saved"); expect(finished).toBe(false);
   recovery.release(); expect((await run).message).toContain("migration failed"); await wait;
   expect(log).toEqual(["restarted"]); expect(data).toBe("saved");
+});
+
+
+test("backup reservation excludes all update owners and drains admitted saves before IO", async () => {
+  const save = gate(), io = gate(); const events: string[] = [];
+  const writer = withPluginDataWrites(["backup-save"], async () => { await save.promise; events.push("saved"); });
+  const operation = withPluginDataBackup("export", async () => { events.push("snapshot"); await io.promise; });
+  await expect(withPluginDataUpdate("never-seen-before", async () => {})).rejects.toMatchObject({ code: "plugin/data-busy" });
+  await expect(withPluginDataWrites(["also-new"], () => {})).rejects.toMatchObject({ code: "plugin/data-busy" });
+  await expect(withPluginDataBackup("import", async () => {})).rejects.toMatchObject({ code: "plugin/data-busy" });
+  await withPluginDataWrites([], () => events.push("ordinary settings"));
+  let roaming = false;
+  const waiting = waitForPluginDataUpdates(["backup-save"]).then(() => { roaming = true; });
+  expect(events).toEqual(["ordinary settings"]);
+  save.release(); await writer; await tick(); expect(events.at(-1)).toBe("snapshot"); expect(roaming).toBe(false);
+  io.release(); await operation; await waiting; expect(roaming).toBe(true);
+  await withPluginDataUpdate("never-seen-before", async () => {});
+});
+
+test("backup cannot enter a live migration and failed import invalidates both generations of forms", async () => {
+  const migration = gate(); let calls = 0;
+  const update = withPluginDataUpdate("backup-migration", () => migration.promise);
+  await expect(withPluginDataBackup("export", async () => { calls++; })).rejects.toMatchObject({ code: "plugin/data-busy" });
+  migration.release(); await update; expect(calls).toBe(0);
+  const before = new Map([["backup-form", pluginDataRevision("backup-form")]]);
+  let during!: Map<string, object>;
+  await expect(withPluginDataBackup("import", async () => {
+    during = new Map([["backup-form", pluginDataRevision("backup-form")]]);
+    throw new Error("partial import failure");
+  })).rejects.toThrow("partial import failure");
+  for (const revision of [before, during]) await expect(withPluginDataWrites(["backup-form"], () => {}, revision)).rejects.toMatchObject({ code: "plugin/settings-stale" });
+  const fresh = new Map([["backup-form", pluginDataRevision("backup-form")]]);
+  await withPluginDataBackup("export", async () => {});
+  await withPluginDataWrites(["backup-form"], () => {}, fresh);
+});
+
+test("cancelled backup admission drains accepted writes but never begins data IO", async () => {
+  const saved = gate(); const controller = new AbortController(); let calls = 0;
+  const writer = withPluginDataWrites(["backup-cancel"], () => saved.promise);
+  const result = withPluginDataBackup("import", async () => { calls++; }, controller.signal).catch(error => error);
+  controller.abort();
+  await expect(withPluginDataUpdate("backup-cancel", async () => {})).rejects.toMatchObject({ code: "plugin/data-busy" });
+  saved.release(); await writer;
+  expect(await result).toBeInstanceOf(Error); expect(calls).toBe(0);
+  await withPluginDataUpdate("backup-cancel", async () => {});
 });

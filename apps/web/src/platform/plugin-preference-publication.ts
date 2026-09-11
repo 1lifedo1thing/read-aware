@@ -27,6 +27,12 @@ export class PluginPreferencePublication {
     if (scope) throw new AppError(scope.quarantined ? "plugin/recovery-required" : "plugin/data-busy", "Plugin preference recovery is still pending");
   }
 
+  /** Whole-store backup must not capture or overwrite any speculative or
+   * unrecovered namespace, including owners not loaded in the plugin catalog. */
+  static assertBackupAvailable(): void {
+    for (const id of this.pending.keys()) this.assertAvailable(id);
+  }
+
   static assertWritable(pluginId: string): void {
     const scope = this.pending.get(pluginId);
     if (scope && !scope.publisher) this.assertAvailable(pluginId);

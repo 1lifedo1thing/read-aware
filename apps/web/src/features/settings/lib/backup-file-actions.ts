@@ -6,8 +6,8 @@ import { exportBackup, importBackup, type BackupImportResult } from "./backup-io
 export const BACKUP_FILENAME = "readaware-backup.json";
 type Reader = Pick<ResourcePort, "pick" | "read"> & { dispose(): Promise<void> };
 type Dependencies = {
-  serialize(): Promise<string>;
-  merge(json: string): Promise<BackupImportResult>;
+  serialize(signal?: AbortSignal): Promise<string>;
+  merge(json: string, signal?: AbortSignal): Promise<BackupImportResult>;
   save(json: string, signal?: AbortSignal): Promise<boolean>;
   reader(): Reader;
 };
@@ -17,7 +17,7 @@ export function createBackupFileActions(deps: Dependencies) {
   return {
     async export(signal?: AbortSignal): Promise<boolean> {
       signal?.throwIfAborted();
-      const json = await deps.serialize();
+      const json = await deps.serialize(signal);
       signal?.throwIfAborted();
       return deps.save(json, signal);
     },
@@ -44,7 +44,7 @@ export function createBackupFileActions(deps: Dependencies) {
         signal?.throwIfAborted();
         // The existing v1 merge is not transactional. Once begun, finish its
         // writes rather than treating cancellation as a rollback.
-        return await deps.merge(parts.join(""));
+        return await deps.merge(parts.join(""), signal);
       } finally { await reader.dispose(); }
     },
   };

@@ -10,6 +10,7 @@
  * remains in memory; native file transport does not make this a streamed archive.
  */
 import { dumpLocalKV, restoreLocalKV } from "../../../platform/local-store";
+import { withPluginDataBackup } from "../../../platform/plugin-data-access";
 import { LEGACY_PROFILE_KEY, readUserProfileSnapshot, restoreUserProfile } from "../../../domain/user-profile";
 import {
   getStoredBookBlob,
@@ -64,15 +65,31 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
+function settledValue<T>(result: PromiseSettledResult<T>): T {
+  if (result.status === "rejected") throw result.reason;
+  return result.value;
+}
+
 /** Serialize the v1 backup subset into one portable JSON string. */
-export async function exportBackup(): Promise<string> {
-  const [kvAll, books, collections, annotations, profile] = await Promise.all([
+export async function exportBackup(signal?: AbortSignal): Promise<string> {
+  return withPluginDataBackup("export", exportBackupContents, signal);
+}
+
+async function exportBackupContents(): Promise<string> {
+  // Retain the backup boundary until every dispatched read settles, even when
+  // one fails. A rejected export must not release still-running native work.
+  const results = await Promise.allSettled([
     dumpLocalKV(),
     listLibraryBooks(),
     listCollections(),
     listAnnotations(),
     readUserProfileSnapshot(),
   ]);
+  const kvAll = settledValue(results[0]);
+  const books = settledValue(results[1]);
+  const collections = settledValue(results[2]);
+  const annotations = settledValue(results[3]);
+  const profile = settledValue(results[4]);
 
   const kv: Record<string, string> = {};
   for (const [key, value] of Object.entries(kvAll)) {
@@ -105,7 +122,13 @@ export async function exportBackup(): Promise<string> {
  * (existing rows can be overwritten; a later failure does not roll back prior writes).
  * Returns how many of each were restored.
  */
-export async function importBackup(json: string): Promise<BackupImportResult> {
+export async function importBackup(json: string, signal?: AbortSignal): Promise<BackupImportResult> {
+  // Cancellation can stop admission/draining, but does not revoke a merge
+  // which has begun writing. Its legacy partial-write behavior is unchanged.
+  return withPluginDataBackup("import", () => importBackupContents(json), signal);
+}
+
+async function importBackupContents(json: string): Promise<BackupImportResult> {
   const parsed = JSON.parse(json) as Partial<Backup>;
   if (!parsed || parsed.kind !== "backup" || !Array.isArray(parsed.books)) {
     throw new Error("This file is not a ReadAware backup.");
