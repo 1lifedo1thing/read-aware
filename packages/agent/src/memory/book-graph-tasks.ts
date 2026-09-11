@@ -19,6 +19,7 @@ const cancelled = () => new AppError("memory/cancelled", "Graph task cancelled")
 /** Actor-generation ownership; execution and book serialization belong to the host. */
 export class BookGraphTaskOwner implements BookGraphTaskPort {
   private readonly tasks = new Map<string, Task>();
+  private readonly executions = new Set<Promise<void>>();
   private stopped = false;
   constructor(private readonly execute: (input: BookGraphTaskExecution) => Promise<DigestReport>,
     private readonly warn: (message: string, error: unknown) => void, lifetime?: AbortSignal) {
@@ -56,11 +57,15 @@ export class BookGraphTaskOwner implements BookGraphTaskPort {
     this.tasks.set(task.state.taskId, task);
     signal?.addEventListener("abort", abort, { once: true });
     const initial = structuredClone(task.state);
-    void this.run(task, targets);
+    // Register completion before execution can call back into host shutdown.
+    const work = Promise.resolve().then(() => this.run(task, targets));
+    this.executions.add(work);
+    void work.then(() => this.executions.delete(work), () => this.executions.delete(work));
     return initial;
   }
   private async run(task: Task, targets?: number[]) {
     try {
+      task.controller.signal.throwIfAborted();
       const report = await this.execute({ bookId: task.state.bookId, rebuild: task.state.mode === "rebuild", maxChapters: task.state.maxChapters, targets,
         signal: task.controller.signal,
         onStarted: () => { if (!task.controller.signal.aborted) this.update(task, { status: "running" }); },
@@ -104,5 +109,10 @@ export class BookGraphTaskOwner implements BookGraphTaskPort {
     this.stopped = true;
     for (const task of this.tasks.values()) { task.detach(); this.abort(task); }
     this.tasks.clear();
+  }
+
+  /** Cancellation retires handles immediately; physical execution settles separately. */
+  async drain(): Promise<void> {
+    while (this.executions.size) await Promise.all([...this.executions]);
   }
 }

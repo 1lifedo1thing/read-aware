@@ -9,6 +9,41 @@ import { runMemoryBuild } from "./build-policy";
 const empty: DigestReport = { status: "complete", eligible: 0, attempted: 0, digested: 0, remaining: 0, emptyChapters: [], failures: [] };
 const next = () => new Promise(resolve => setTimeout(resolve, 0));
 function deferred() { let resolve!: () => void; const promise = new Promise<void>(r => { resolve = r; }); return { promise, resolve }; }
+
+test("retirement drains every execution after handles disappear, including a failed cancelled source", async () => {
+  const first = deferred(), second = deferred(), lifetime = new AbortController();
+  const signals: AbortSignal[] = [];
+  const owner = new BookGraphTaskOwner(async input => {
+    signals.push(input.signal);
+    if (input.bookId === "first") { await first.promise; return empty; }
+    await second.promise; throw new AppError("db/locked", "Pending write failed");
+  }, () => {}, lifetime.signal);
+  await owner.start("first", "catch-up"); await owner.start("second", "rebuild");
+  lifetime.abort(); expect(signals.every(signal => signal.aborted)).toBe(true);
+  await expect(owner.list("first")).rejects.toMatchObject({ code: "memory/cancelled" });
+  let drained = false;
+  const draining = owner.drain().then(() => { drained = true; });
+  await next(); expect(drained).toBe(false);
+  first.resolve(); await next(); expect(drained).toBe(false);
+  second.resolve(); await draining; expect(drained).toBe(true);
+});
+
+test("retirement before dispatch prevents execution; reentrant retirement still tracks completion", async () => {
+  let calls = 0;
+  const owner = new BookGraphTaskOwner(async () => { calls++; return empty; }, () => {});
+  const started = owner.start("b", "catch-up"); owner.dispose();
+  await started; await owner.drain(); expect(calls).toBe(0);
+
+  const gate = deferred(); let drained = false, draining!: Promise<void>;
+  const reentrant = new BookGraphTaskOwner(async () => {
+    reentrant.dispose(); draining = reentrant.drain().then(() => { drained = true; });
+    await gate.promise; return empty;
+  }, () => {});
+  await reentrant.start("b", "catch-up");
+  await next(); expect(drained).toBe(false);
+  gate.resolve(); await draining; expect(drained).toBe(true);
+});
+
 async function done(owner: BookGraphTaskOwner, id: string) {
   for (let i = 0; i < 100; i++) { const task = await owner.get("b", id); if (!["queued", "running", "cancelling"].includes(task.status)) return task; await next(); }
   throw Error("Task did not settle");

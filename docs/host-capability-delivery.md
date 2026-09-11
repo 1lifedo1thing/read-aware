@@ -3,6 +3,16 @@
 目标：实现统一模型中 Agent / 插件尚未接通或只部分接通的应开放能力，完成遗漏重扫，使用真实组合插件和 Tauri 桌面端到端验收。此文件是执行账本，不替代[统一模型](./host-capability-model.md)或[当前矩阵](./host-capability-matrix.md)。
 
 
+## 2026-09-12：CON03 图谱后台任务退出排空
+
+[缺口] startGraphTask返回queued回执后RPC已结算；BookGraphTaskOwner原dispose只发取消并清除句柄，没有向插件退出流程提供运行完成凭证。原生持久写或底层执行仍未结算时，插件可能提前完成退出。
+
+[实现] 图谱任务owner以独立执行集合保存完成promise，先登记再异步派发，dispose清除公开句柄但保留执行集合供drain等待。派发前退休会跳过execute；执行期间重入退出也能看到自己的完成凭证。memory领域将既有trackCleanup接入图谱任务工厂，生命周期取消后等待owner.drain；正常退出和Worker崩溃共用此清理路径。实际Agent执行继续走runMemoryBuild的受保护写生命周期，不新建执行器或持久任务系统。
+
+[验证] owner测试覆盖多任务逐个结算、已取消源失败、派发前退休、执行中重入退出，以及已有隔离/容量/重试/预算/写边界。生产Worker桥在已收到queued回执后分别停用/崩溃，确认底层信号取消而退出仍等执行完成。测试fixture最初缺service:llm被现有权限层正确拒绝，补齐权限后通过。Agent/Web/desktop类型检查通过。执行源是受控模拟，本轮未作真实推理/SQLite/Tauri验收，也未重复无关检查。
+
+[状态] 关闭图谱任务回执后的退出排空缺口。正文准备另有共享BookTextRepository，取消仅释放本actor租约，底层是否继续由剩余消费者决定，写入按bookId串行并复验source；封面/元数据retry返回的是宿主enrichmentQueue的接收回执。这些共享任务不能照搬独占图谱任务的退出逻辑，其余后台来源继续按现有矩阵核对。CON03仍部分，集中组合插件和Tauri验收后置，总目标active，未推送。
+
 ## 2026-09-12：CON03 宿主在途调用退出屏障
 
 [缺口] Worker quiesced只说明Worker侧等待已结束；调用方取消可以让它先回报静默，宿主方法仍在等待原生写入。原退出流程只等lifecycle显式登记的source cleanup/storageWrites，library等直接领域命令没有统一在途屏障，可能在升级snapshot/restore之后继续写入。

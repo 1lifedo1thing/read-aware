@@ -15,8 +15,8 @@ async function resolveBoundary(bookId: string): Promise<number | undefined> {
   return boundary.kind === "all" ? chapters?.length : boundary.kind === "before" ? boundary.chapterIndex : undefined;
 }
 
-export function createBookGraphTasks(lifetime?: AbortSignal) {
-  return new BookGraphTaskOwner(async input => {
+export function createBookGraphTasks(lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void) {
+  const owner = new BookGraphTaskOwner(async input => {
     // Lazy runtime access avoids constructing a second Agent or a registry import cycle.
     const { getAgentRuntime } = await import("../features/ai/agent/agent-runtime");
     input.signal.throwIfAborted();
@@ -24,6 +24,12 @@ export function createBookGraphTasks(lifetime?: AbortSignal) {
     if (!runtime) throw new AppError("ai/not-configured", "Graph tasks require a configured model");
     return runtime.runBookGraphTask({ ...input, resolveBoundary: () => resolveBoundary(input.bookId) });
   }, (message, error) => log.warn(message, error), lifetime);
+  // The owner's abort listener runs first, cancelling admission and execution.
+  // Its task receipt may already have left the RPC bridge, so drain it here.
+  if (lifetime && !lifetime.aborted && trackCleanup) {
+    lifetime.addEventListener("abort", () => trackCleanup(owner.drain()), { once: true });
+  }
+  return owner;
 }
 
 /** Agent handles survive model configuration changes, not an app restart. */

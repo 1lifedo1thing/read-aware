@@ -34,7 +34,7 @@ export function createMemoryDomain(origin: EventOrigin, lifetime?: AbortSignal, 
   const memory = createMemoryPort(), bookMemory = createBookMemoryPort();
   const profile = (query?: import("@read-aware/core").UserProfileQuery) => createProfilePort().readProfile(query, lifetime);
   const profileContext = (query?: import("@read-aware/core").ProfileInspectionQuery, signal?: AbortSignal) => inspectProfileContext(query, entitySignal(signal));
-  const tasks = createBookGraphTasks(lifetime);
+  const tasks = createBookGraphTasks(lifetime, trackCleanup);
   const queries = createMemoryQueries({ search: memory.searchMemories, page: memory.pageMemories, graph: async bookId => {
     const digests = await bookMemory.listDigests(bookId);
     const chapters = await getPersistedBookText(bookId);

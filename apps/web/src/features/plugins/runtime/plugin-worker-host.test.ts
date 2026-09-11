@@ -224,6 +224,30 @@ async function hostFixture(permissions: PluginPermission[] = [], promote = true)
 }
 
 describe("plugin worker capability bridge", () => {
+  test.each(["stop", "crash"])("%s drains graph execution after its task receipt has returned", async mode => {
+    const entered = deferred(), finish = deferred(); let executionSignal!: AbortSignal;
+    const runtime = { runBookGraphTask: async (input: { signal: AbortSignal }) => {
+      executionSignal = input.signal; entered.resolve(); await finish.promise;
+      return { status: "complete", eligible: 0, attempted: 0, digested: 0, remaining: 0, emptyChapters: [], failures: [] };
+    } } as unknown as AgentRuntime;
+    const source = spyOn(runtimeModule, "getAgentRuntime").mockReturnValue(runtime);
+    const { worker, close } = await hostFixture(["memory:write", "service:llm"]);
+    let closing: Promise<void> | undefined;
+    try {
+      await worker.deliver({ t: "call", id: 932, method: "domains.memory.commands.startGraphTask",
+        args: worker.callbacks.encode(["book", "catch-up"]) });
+      expect(worker.sent.find(message => message.t === "result" && message.id === 932))
+        .toMatchObject({ ok: true, value: { status: "queued", bookId: "book" } });
+      await entered.promise;
+      if (mode === "crash") worker.onerror?.({ message: "Crash after graph task receipt" } as ErrorEvent);
+      let retired = false;
+      closing = close().then(() => { retired = true; });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(executionSignal.aborted).toBe(true); expect(retired).toBe(false);
+      finish.resolve(); await closing;
+      expect(retired).toBe(true); expect(worker.terminated).toBe(true);
+    } finally { finish.resolve(); await (closing ?? close()); source.mockRestore(); }
+  });
   test.each(["stop", "crash", "write-failure"])("%s waits for cancelled but still running host writes before completing retirement", async mode => {
     const entered = deferred(), finish = deferred();
     let committed = false;
