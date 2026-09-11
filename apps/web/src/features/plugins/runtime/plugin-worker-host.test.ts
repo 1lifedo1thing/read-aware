@@ -17,6 +17,7 @@ import * as contextAccess from "../../../domain/context-bundle-access";
 import { AppError } from "@read-aware/core";
 import { identityHost } from "../../../../tests/helpers/identity-host";
 import { deferred, entityHost, entityRevision } from "../../../../tests/helpers/entity-host";
+import { PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
 
 test.each(["read", "before-write", "committed", "conflict"])("entity Worker RPC %s keeps cancellation and native receipt boundaries", async mode => {
   const host = entityHost(), entered = deferred(), gate = deferred();
@@ -102,7 +103,7 @@ class FaultWorker {
     if (message.t === "quiesce") queueMicrotask(() => { void this.deliver({ t: "quiesced" }); });
     if (message.t === "release") this.callbacks.release(message.handles!);
   }
-  async deliver(message: WireMessage) { await this.onmessage?.({ data: message } as MessageEvent); }
+  async deliver(message: unknown) { await this.onmessage?.({ data: message } as MessageEvent); }
   terminate() { this.terminated = true; this.callbacks.clear(); }
 }
 
@@ -142,6 +143,39 @@ async function hostFixture(permissions: PluginPermission[] = []) {
 }
 
 describe("plugin worker capability bridge", () => {
+  test("retained disposable quota rejects before replacement effects and recovers after release", async () => {
+    const { worker, close } = await hostFixture();
+    try {
+      for (let id = 1; id <= PLUGIN_WIRE_LIMITS.disposables + 1; id++) {
+        await worker.deliver({ t: "call", id, method: "contributions.commands.register",
+          args: worker.callbacks.encode([{ id: "capacity", title: `Command ${id}`, run: () => null }]) });
+      }
+      expect(worker.sent.find(message => message.t === "result" && message.id === PLUGIN_WIRE_LIMITS.disposables + 1))
+        .toMatchObject({ ok: false, code: "plugin/busy" });
+      expect(getDefaultStore().get(pluginCommandsAtom).find(command => command.id === "capacity")?.title).toBe(`Command ${PLUGIN_WIRE_LIMITS.disposables}`);
+      await worker.deliver({ t: "dispose", handle: "d1" });
+      await worker.deliver({ t: "call", id: 5000, method: "contributions.commands.register",
+        args: worker.callbacks.encode([{ id: "capacity", title: "Recovered", run: () => null }]) });
+      expect(worker.sent.find(message => message.t === "result" && message.id === 5000)).toMatchObject({ ok: true });
+      expect(getDefaultStore().get(pluginCommandsAtom).find(command => command.id === "capacity")?.title).toBe("Recovered");
+    } finally { await close(); }
+  });
+
+  test("direct malformed messages cannot dispatch and the next valid call remains usable", async () => {
+    const { worker, close } = await hostFixture();
+    try {
+      for (const message of [null, [], "invalid", { t: "call", id: 901, method: {}, args: {} },
+        { t: "call", id: 902, method: "services.session.environment", args: { data: [], callbacks: [] }, extra: true },
+        { t: "cancel", id: NaN }, { t: "dispose", handle: "__proto__" }]) await worker.deliver(message);
+      expect(worker.sent.filter(message => message.t === "result")).toEqual([
+        { t: "result", id: 901, ok: false, code: "plugin/invalid-input", error: "Plugin message rejected" },
+        { t: "result", id: 902, ok: false, code: "plugin/invalid-input", error: "Plugin message rejected" },
+      ]);
+      await worker.deliver({ t: "call", id: 903, method: "services.session.environment", args: worker.callbacks.encode([]) });
+      expect(worker.sent.find(message => message.t === "result" && message.id === 903)).toMatchObject({ ok: true });
+    } finally { await close(); }
+  });
+
   test("derives deeply nested domain and contribution methods from the actor view", () => {
     const context = {
       domains: {

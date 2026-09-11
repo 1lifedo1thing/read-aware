@@ -34,24 +34,14 @@ import { flattenPluginRequest, flattenPluginResponse } from "./plugin-network-wi
 import { PluginRpcPending } from "./plugin-rpc-pending";
 import { decodePluginCallbacks, retainPluginCallbacks, type PluginCallbackWire } from "./plugin-callback-wire";
 import type { PluginActionRegistration } from "../lib/plugin-types";
+import { parsePluginWorkerMessage, rejectedPluginCallbackHandles, validPluginCallId, type WorkerMessage } from "./plugin-worker-protocol";
+import { PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
+import { PluginCallbackBudget } from "./plugin-callback-budget";
 
 type HeldRegistration = PluginDisposable & Partial<Pick<PluginActionRegistration, "updateState">>;
 const actionRegistrations = new Set(["selectionActions", "headerActions", "contextActions", "commands", "agentTools"].map(point => `contributions.${point}.register`));
 
 const log = createLogger("plugins");
-
-type WorkerMessage =
-  | { t: "ready"; hasMigration: boolean }
-  | { t: "failed"; error: string }
-  | { t: "dispose"; handle: string }
-  | { t: "call"; id: number; method: string; args: PluginCallbackWire }
-  | { t: "cancel"; id: number }
-  | { t: "result"; id: number; ok: true; value: PluginCallbackWire }
-  | { t: "result"; id: number; ok: false; error: string; code?: string }
-  | { t: "healthy"; id: number }
-  | { t: "migrated"; id: number; ok: true }
-  | { t: "migrated"; id: number; ok: false; error: string }
-  | { t: "quiesced"; error?: string };
 
 export type SandboxedPlugin = {
   manifest: PluginManifest;
@@ -218,9 +208,11 @@ export function startPluginWorker(
   let terminated = false;
   let quiescing = false;
   let termination: Promise<void> | undefined;
+  let invalidMessageReported = false;
   let acknowledgeQuiescence: ((error?: string) => void) | undefined;
 
   const pendingInvokes = new PluginRpcPending();
+  const callbackBudget = new PluginCallbackBudget();
   const incomingCalls = new Map<number, AbortController>();
   const abortIncomingCalls = () => {
     for (const controller of incomingCalls.values()) controller.abort(new AppError("plugin/cancelled", "Plugin runtime stopped"));
@@ -306,9 +298,23 @@ export function startPluginWorker(
       reject(new Error(event.message || "plugin worker failed to start"));
     };
 
-    worker.onmessage = async (event: MessageEvent<WorkerMessage>) => {
+    worker.onmessage = async (event: MessageEvent<unknown>) => {
       if (terminated) return;
-      const message = event.data;
+      let message: WorkerMessage;
+      try { message = parsePluginWorkerMessage(event.data); }
+      catch (error) {
+        // Correlate only the envelope, never invoke methods or inspect arbitrary
+        // callback graphs after failed admission. Rate-limit diagnostics per realm.
+        if (!invalidMessageReported) { invalidMessageReported = true; log.warn(`Invalid Worker message from "${manifest.id}"`, error); }
+        const handles = rejectedPluginCallbackHandles(event.data);
+        if (handles.length) worker.postMessage({ t: "release", handles });
+        const raw = event.data as { t?: unknown; id?: unknown } | null;
+        if (raw && validPluginCallId(raw.id)) {
+          if (raw.t === "call") worker.postMessage({ t: "result", id: raw.id, ok: false, code: errorCode(error), error: "Plugin message rejected" });
+          else if (raw.t === "result") pendingInvokes.settle(raw.id, false, error);
+        }
+        return;
+      }
       switch (message.t) {
         case "ready":
           if (!settled) {
@@ -396,6 +402,7 @@ export function startPluginWorker(
                     if (live?.worker === worker) liveWorkers.delete(instanceId);
                     worker.terminate();
                     heldDisposables.clear();
+                    callbackBudget.close();
                     failAllInvokes(`plugin "${manifest.id}" was deactivated`);
                     failAllHealthChecks(`plugin "${manifest.id}" was deactivated`);
                     failAllMigrations(`plugin "${manifest.id}" was deactivated`);
@@ -450,6 +457,11 @@ export function startPluginWorker(
           const timeout = setTimeout(() => controller.abort(new AppError("plugin/timeout", "Plugin call timed out")), 120_000);
           controller.signal.addEventListener("abort", () => clearTimeout(timeout), { once: true });
           try {
+            // Reserve for every in-flight call before invoking anything: a rejected
+            // replacement registration must not displace the currently live one.
+            if (heldDisposables.size + incomingCalls.size > PLUGIN_WIRE_LIMITS.disposables) {
+              throw new AppError("plugin/busy", "Plugin disposable capacity exceeded");
+            }
             if (quiescing && !message.method.startsWith("services.storage.")) {
               throw new AppError("plugin/cancelled", "Plugin runtime is stopping");
             }
@@ -465,7 +477,10 @@ export function startPluginWorker(
               }
               : resolveMethod(ctx, message.method);
             if (!method) throw new AppError("plugin/unavailable", `"${message.method}" is not granted to plugin "${manifest.id}"`);
+            const callbackLease = callbackBudget.acquire(message.args);
+            releaseArguments = () => { callbackLease.dispose(); releaseCallbacks(message.args); };
             const args = decodePluginCallbacks(message.args, invokeHandle, handles => {
+              callbackLease.release(handles);
               if (!terminated) worker.postMessage({ t: "release", handles });
             }, runtime.lifecycle.signal);
             // Ordinary consumers may retain a normalized subgraph (live view updates).
@@ -492,6 +507,10 @@ export function startPluginWorker(
               typeof value === "object" &&
               typeof (value as PluginDisposable).dispose === "function"
             ) {
+              if (heldDisposables.size >= PLUGIN_WIRE_LIMITS.disposables) {
+                (value as PluginDisposable).dispose();
+                throw new AppError("plugin/busy", "Plugin disposable capacity exceeded");
+              }
               if (terminated || controller.signal.aborted) {
                 (value as PluginDisposable).dispose();
                 throw controller.signal.reason ?? new AppError("plugin/unavailable", "Plugin runtime stopped");
@@ -549,16 +568,21 @@ export function startPluginWorker(
 
         case "result": {
           if (message.ok) {
+            let callbackLease: ReturnType<PluginCallbackBudget["acquire"]> | undefined;
             try {
               if (!pendingInvokes.has(message.id)) {
                 releaseCallbacks(message.value);
                 return;
               }
+              callbackLease = callbackBudget.acquire(message.value);
+              const acceptedLease = callbackLease;
               const value = decodePluginCallbacks(message.value, invokeHandle, handles => {
+                acceptedLease.release(handles);
                 if (!terminated) worker.postMessage({ t: "release", handles });
               }, runtime.lifecycle.signal);
               pendingInvokes.settle(message.id, true, value);
             } catch (error) {
+              callbackLease?.dispose();
               releaseCallbacks(message.value);
               pendingInvokes.settle(message.id, false, error);
             }

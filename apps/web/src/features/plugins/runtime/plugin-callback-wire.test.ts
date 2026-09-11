@@ -138,6 +138,6 @@ test("graph depth and callback quotas fail deterministically without partial ret
   for (let i = 0; i < 150; i++) nested = { nested };
   expect(() => registry.encode({ run: () => 1, nested })).toThrow();
   expect(registry.size).toBe(0);
-  expect(() => registry.encode(Array.from({ length: 100_001 }, (_, index) => () => index))).toThrow("Too many callbacks");
+  expect(() => registry.encode(Array.from({ length: 100_001 }, (_, index) => () => index))).toThrow("callback capacity");
   expect(registry.size).toBe(0);
 });

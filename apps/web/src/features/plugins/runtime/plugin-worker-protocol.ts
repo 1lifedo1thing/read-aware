@@ -1,0 +1,60 @@
+import { AppError } from "@read-aware/core";
+import type { PluginCallbackWire } from "./plugin-callback-wire";
+import { assertPluginWireBudget, PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
+
+export type WorkerMessage =
+  | { t: "ready"; hasMigration: boolean }
+  | { t: "failed"; error: string }
+  | { t: "dispose"; handle: string }
+  | { t: "call"; id: number; method: string; args: PluginCallbackWire }
+  | { t: "cancel"; id: number }
+  | { t: "result"; id: number; ok: true; value: PluginCallbackWire }
+  | { t: "result"; id: number; ok: false; error: string; code?: string }
+  | { t: "healthy"; id: number }
+  | { t: "migrated"; id: number; ok: true }
+  | { t: "migrated"; id: number; ok: false; error: string }
+  | { t: "quiesced"; error?: string };
+
+const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object"
+  && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+const string = (value: unknown, max: number): value is string => typeof value === "string" && value.length <= max;
+export const validPluginCallId = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) > 0;
+/** Failure cleanup reads only bounded handle metadata, never the rejected data graph. */
+export function rejectedPluginCallbackHandles(value: unknown): string[] {
+  if (!record(value)) return [];
+  const payload = value.t === "call" ? value.args : value.t === "result" ? value.value : undefined;
+  if (!record(payload) || !Array.isArray(payload.callbacks) || payload.callbacks.length > PLUGIN_WIRE_LIMITS.callbacksPerMessage) return [];
+  return payload.callbacks.flatMap(entry => record(entry) && typeof entry.handle === "string"
+    && entry.handle.length <= 17 && /^h[1-9][0-9]{0,15}$/.test(entry.handle) ? [entry.handle] : []);
+}
+const keys = (value: Record<string, unknown>, allowed: string[]) => Object.keys(value).every(key => allowed.includes(key));
+const failure = (value: Record<string, unknown>) => string(value.error, 4096) && (value.code === undefined || string(value.code, 256));
+function wire(value: unknown): value is PluginCallbackWire {
+  if (!record(value) || !keys(value, ["data", "callbacks"]) || !Object.prototype.hasOwnProperty.call(value, "data")
+    || !Array.isArray(value.callbacks) || value.callbacks.length > PLUGIN_WIRE_LIMITS.callbacksPerMessage) return false;
+  return value.callbacks.every(entry => record(entry) && keys(entry, ["ref", "handle"]) && record(entry.ref)
+    && Object.keys(entry.ref).length === 0 && typeof entry.handle === "string" && /^h[1-9][0-9]{0,15}$/.test(entry.handle));
+}
+
+/** The real host checks even messages posted directly, outside the friendly Worker proxy. */
+export function parsePluginWorkerMessage(value: unknown): WorkerMessage {
+  assertPluginWireBudget(value);
+  let valid = false;
+  if (record(value)) switch (value.t) {
+    case "ready": valid = keys(value, ["t", "hasMigration"]) && typeof value.hasMigration === "boolean"; break;
+    case "failed": valid = keys(value, ["t", "error"]) && string(value.error, 4096); break;
+    case "dispose": valid = keys(value, ["t", "handle"]) && string(value.handle, 128) && value.handle.length > 0; break;
+    case "cancel": case "healthy": valid = keys(value, ["t", "id"]) && validPluginCallId(value.id); break;
+    case "call": valid = keys(value, ["t", "id", "method", "args"]) && validPluginCallId(value.id)
+      && string(value.method, 256) && value.method.length > 0 && wire(value.args) && Array.isArray(value.args.data); break;
+    case "result": valid = validPluginCallId(value.id) && (value.ok === true
+      ? keys(value, ["t", "id", "ok", "value"]) && wire(value.value)
+      : value.ok === false && keys(value, ["t", "id", "ok", "error", "code"]) && failure(value)); break;
+    case "migrated": valid = validPluginCallId(value.id) && (value.ok === true
+      ? keys(value, ["t", "id", "ok"])
+      : value.ok === false && keys(value, ["t", "id", "ok", "error"]) && string(value.error, 4096)); break;
+    case "quiesced": valid = keys(value, ["t", "error"]) && (value.error === undefined || string(value.error, 4096)); break;
+  }
+  if (!valid) throw new AppError("plugin/invalid-input", "Invalid plugin Worker message");
+  return value as WorkerMessage;
+}

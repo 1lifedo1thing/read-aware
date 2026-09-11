@@ -1,4 +1,5 @@
 import { AppError } from "@read-aware/core";
+import { PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
 
 type Callback = (...args: unknown[]) => unknown;
 export type PluginCallbackWire = {
@@ -85,8 +86,8 @@ export class PluginCallbackRegistry {
       const fn = value as Callback;
       let entry = staged.get(fn);
       if (!entry) {
-        if (staged.size >= MAX_CALLBACKS) {
-          throw new AppError("plugin/busy", "Too many callbacks in one plugin payload");
+        if (staged.size >= MAX_CALLBACKS || this.handlers.size + staged.size >= PLUGIN_WIRE_LIMITS.retainedCallbacks) {
+          throw new AppError("plugin/busy", "Plugin callback capacity exceeded");
         }
         entry = { ref: {}, handle: `h${this.nextHandle++}` };
         staged.set(fn, entry);

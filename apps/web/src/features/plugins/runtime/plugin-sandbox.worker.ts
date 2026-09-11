@@ -38,7 +38,8 @@ import { PluginStorageMirror } from "./plugin-storage-mirror";
 import { flattenPluginRequest, restorePluginResponse, type PluginNetworkResponse } from "./plugin-network-wire";
 import { pluginNetworkAbort, pluginNetworkError } from "./plugin-network-error";
 import { PluginRpcPending } from "./plugin-rpc-pending";
-import { PluginCallbackRegistry, type PluginCallbackWire } from "./plugin-callback-wire";
+import { PluginCallbackRegistry } from "./plugin-callback-wire";
+import { parsePluginWorkerMessage, type WorkerMessage } from "./plugin-worker-protocol";
 
 // ─── Wire protocol ───────────────────────────────────────────────────────────
 
@@ -71,20 +72,10 @@ type HostMessage =
   | { t: "quiesce" }
   | { t: "deactivate" };
 
-type WorkerMessage =
-  | { t: "ready"; hasMigration: boolean }
-  | { t: "failed"; error: string }
-  | { t: "dispose"; handle: string }
-  | { t: "call"; id: number; method: string; args: PluginCallbackWire }
-  | { t: "cancel"; id: number }
-  | { t: "result"; id: number; ok: true; value: PluginCallbackWire }
-  | { t: "result"; id: number; ok: false; error: string; code?: string }
-  | { t: "healthy"; id: number }
-  | { t: "migrated"; id: number; ok: true }
-  | { t: "migrated"; id: number; ok: false; error: string }
-  | { t: "quiesced"; error?: string };
-
-const post = (message: WorkerMessage) => self.postMessage(message);
+const post = (input: WorkerMessage) => {
+  const message = "error" in input && typeof input.error === "string" ? { ...input, error: input.error.slice(0, 4096) } : input;
+  self.postMessage(parsePluginWorkerMessage(message));
+};
 
 /**
  * Stable error codes (see @read-aware/core errors.ts) survive the boundary as
@@ -94,7 +85,7 @@ const post = (message: WorkerMessage) => self.postMessage(message);
 const codeOf = (error: unknown): string | undefined => {
   if (typeof error === "object" && error !== null && "code" in error) {
     const code = (error as { code: unknown }).code;
-    if (typeof code === "string" && code.length > 0) return code;
+    if (typeof code === "string" && code.length > 0 && code.length <= 256) return code;
   }
   return undefined;
 };

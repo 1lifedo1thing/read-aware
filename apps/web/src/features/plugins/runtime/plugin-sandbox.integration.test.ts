@@ -44,6 +44,21 @@ async function command(scenario: string, fixture?: string) {
   return s;
 }
 
+test("real Worker rejects oversized results before transport and remains callable with bounded errors", async () => {
+  const s = sandbox("wire-budget", "wire-budget-probe.ts");
+  const registration = await s.next(message => message.method === "contributions.commands.register");
+  const handle = (data(registration.args!) as { run: () => string }[])[0]!.run();
+  s.worker.postMessage({ t: "result", id: registration.id, ok: true, value: null, disposable: "d1" });
+  await s.next(message => message.t === "ready");
+  for (const id of [901, 902, 903]) {
+    s.worker.postMessage({ t: "invoke", id, handle, args: [] });
+    const result = await s.next(message => message.t === "result" && message.id === id);
+    if (id === 901) expect(result).toMatchObject({ ok: false, code: "plugin/quota-exceeded" });
+    if (id === 902) expect(resultData(result)).toMatchObject({ ok: true, value: { toast: "recovered" } });
+    if (id === 903) { expect(result.ok).toBe(false); expect(result.error).toHaveLength(4096); }
+  }
+});
+
 test("Worker durable KV bypasses its mirror and Reading Goals nested source callbacks use real RPC", async () => {
   const durable = await command("durable-storage");
   const call = await durable.next(message => message.method === "services.storage.getDurable");

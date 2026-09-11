@@ -2,6 +2,14 @@
 
 目标：实现统一模型中 Agent / 插件尚未接通或只部分接通的应开放能力，完成遗漏重扫，使用真实组合插件和 Tauri 桌面端到端验收。此文件是执行账本，不替代[统一模型](./host-capability-model.md)或[当前矩阵](./host-capability-matrix.md)。
 
+## 2026-09-11：第一段 CON04 Worker 消息准入与存活配额
+
+[实现] Worker→host 消息统一为 plugin-worker-protocol；Worker 发出前与宿主接收后都检查全部 envelope 类型/字段、ID 和回调元数据。字节核算80MiB、100万项/128层；完整 backing buffer、字符串/键、Blob/File、Map/Set/Error 均计入，循环与别名去重。回调每消息10万/每激活20万，宿主独立按解码图 lease 计数并幂等释放，不能靠伪造 Worker 或复用 handle 绕过。4096 个宿主 disposable 包含在途预留，超限在调用前拒绝，释放后恢复。错误消息有界，非法消息不派发，关联请求稳定拒绝，有限回调元数据释放；每激活只记一次协议错误日志。
+
+[验证] 原有和新增真实 Bun Worker 21 项通过，覆盖超限结果不发送、后续正常调用和长错误有界；受控 transport 验证 malformed 消息、实际4096注册耗尽前拒绝替换和释放后恢复；图/回调生命周期及独立权威预算定向测试通过。不是 Tauri/packaged 验收。
+
+[剩余] host→Worker 镜像/结果全量准入、协议版本协商、跨激活全App配额/消息洪泛、完整崩溃撤权路径仍待实现/验收；本轮不将 CON04 整行关闭。
+
 ## 2026-09-11：第一段 SYS03 联合恢复
 
 [实现] plugin_data_snapshot 在同一 SQLite 读事务取得插件 KV、documents 和原始 schema；plugin_data_restore 在一个 IMMEDIATE 事务恢复三者，基线绑定插件 ID。宿主恢复复用 KV 写队列与镜像失败回滚，只在提交后发一次 restore 通知，不重发漫游事件。候选清理失败不在潜在写者下恢复，文件或数据恢复失败不重启旧代码；PluginUpdateError 保留原因的稳定 code。普通启动迁移与更新迁移都消费同一原生基线。
