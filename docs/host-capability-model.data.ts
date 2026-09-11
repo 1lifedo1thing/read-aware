@@ -192,7 +192,7 @@ export const units: Unit[] = [
     "新增宿主行为必须映射到 Domain/Contribution/Service + schema，并列 Agent/插件 disposition、实际消费者、失败路径和验收；库存新增/旧映射失效/来源丢失使生成检查失败。",
     "shape 测试以外还查工具参数是否被 adapter 丢失、批准是否执行、结果是否真实。",
     "测试同时覆盖注册、Worker wire、host 消费、卸载/撤权和用户入口；源码存在不等于部署/启用。",
-    "本轮文档与生成器是人工审计的可追踪门禁，不会自动证明所有 React 闭包行为已经被发现；新产品行为仍需评审。",
+    "check:capabilities 已统一文档/库存、core/Agent/domain/runtime、真实Bun Worker与类型检查，分进程隔离且失败即退出。capabilities CI 已配置 main push/PR 只读运行及三桌面平台原生契约，本地 macOS 门禁与原生测试通过；首次远端执行尚未验证。这仍是人工审计的可追踪门禁，不会自动证明所有 React 闭包行为已经被发现；新产品行为仍需评审。",
     "本模型每条证据行/每个现有 catalog 成员/旧 129 基线均有归属；真实场景成功、失败、并发和撤权四条路径完成后才能关闭相应缺口。"),
   unit("B1", "Boundary", "future/internal", "明确排除与宿主尚未建成部分", "CON11-12 SYS18 MEM07-08 MEM13 OPS09-11", "",
     "禁止任意 SQL/FS/shell/DOM、宿主秘密、原始事件 append、伪造历史、静默付款/授权；新格式/OCR/任意编辑/实时协作/新平台在宿主能力更新时再纳入。",

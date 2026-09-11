@@ -13,6 +13,9 @@ export const cap = (id: string, name: string, host: HostState, agent: Actor, plu
   ({ id, name, host, agent, plugin, sources, consumers, gap, baseline: [] });
 
 export const sources: Record<string, string> = {
+  CAPABILITYCHECK: "scripts/check-capabilities.ts",
+  CAPABILITYCHECKPROOF: "scripts/check-capabilities.test.ts",
+  CAPABILITYCI: ".github/workflows/capabilities.yml",
   WORKERPROTOCOL: "apps/web/src/features/plugins/runtime/plugin-worker-protocol.ts",
   WORKERPROTOCOLPROOF: "apps/web/src/features/plugins/runtime/plugin-worker-protocol.test.ts",
   WIREBUDGET: "apps/web/src/features/plugins/runtime/plugin-wire-budget.ts",
@@ -877,7 +880,7 @@ groups.push(
     cap("CON07", "领域事件的本地/远端/外部变化一致性", "部分", actor("自动", "端口每轮读；runtime 配置失效", "有版本快照/读后写"), actor("部分", "domain subscribe；library/conversations observeInvalidation", "业务事件与失效通知分开"), ["EVENTROSTER","APPEVENTS","CTX","SYNC","PROJECTIONINVALIDATION","PROJECTIONINVALIDATIONPROOF","SYNCSTORE"], "本地domain broadcasts；授权投影失效", "library1.18/conversations1.3读授权初始及变化通知已接，来源initial/local/host/remote/restore/mixed，无业务payload/actor；订阅序号非CAS或数据库版本。串行合并与每领域64观察，失败callback日志隔离、后续仍可交付，退休不取消已经开始的callback。sync投影提交即发而非等待整轮成功，备份书籍/集合行恢复同样通知；保留旧subscribe本地语义，不能当远端可重放事件流或自动重做写操作。基础授权/IPC/生命周期检查通过，外部原始DB修改、所有历史恢复入口和GAP09/11其余项、真实组合Tauri仍缺。"),
     cap("CON08", "事务/CAS/撤销/跨对象一致回执", "部分", actor("部分", "单工具领域写/批准，无跨工具事务", "受控批量/预览/回执"), actor("部分", "单域命令 Promise；无通用事务/CAS", "声明式批次，不给 DB transaction handle"), ["EVENTS","APPLY","LIB","ANNOT","API"], "底层 commit_events 单 SQLite 事务", "数据库事务存在不等于业务跨调用事务；undo 与导航 back 是两类能力"),
     cap("CON09", "沙箱、权限撤销和 packaged CSP 验证", "部分", actor("扩展", "插件工具间接承受同样沙箱风险", "统一信任边界"), actor("部分", "Worker 响应独立 CSP + API gate", "可测试的最小出口"), ["WORKER","WIRE","RUST","HOST","DESKRELEASE","SANDBOXPOLICY","SANDBOXNATIVE","SANDBOXBUILD","SANDBOXPROOF"], "安装信任边界；全部插件及插件 Agent 工具", "macOS release 复现零权限插件经原型 fetch、子 blob Worker、HTTP 动态模块直接联网；已修复为 Worker 响应独立 CSP，三路复测均失败且服务器零新增请求，已授权宿主网络仍 200。开发响应共享策略，构建拒绝保护入口缺失/重复。Annotation Desk 正向安装/导出/卸载证据保留；直接消息/其余平台绕行、执行中撤权与 Windows/Linux 实机仍未验收，不宣称完整沙箱证明"),
-    cap("CON10", "宿主-工具-插件覆盖门禁/契约测试", "部分", actor("部分", "registry/tool-surface 测试覆盖当前工具", "host 行为映射门禁"), actor("部分", "capability catalog/ctx shape/marketplace checks", "双端一致性/失败时序测试"), ["CATALOG","REGISTRY","API","WIRE"], "现有测试；本次矩阵库存检查", "GAP18：形状匹配不能证明语义/消费者/交付；本表盘点也不替代 E2E"),
+    cap("CON10", "宿主-工具-插件覆盖门禁/契约测试", "部分", actor("部分", "registry/tool-surface + check:capabilities", "host 行为映射门禁"), actor("部分", "catalog/ctx/Worker + check:capabilities", "双端一致性/失败时序测试"), ["CATALOG","REGISTRY","API","WIRE","CAPABILITYCHECK","CAPABILITYCHECKPROOF","CAPABILITYCI"], "本地统一门禁；main push/PR CI 配置", "bun run check:capabilities 串行隔离运行矩阵/模型 --check、库存防遗漏、core/Agent/domain/runtime、真实Bun Worker及原生迁移桥契约和双端类型；任一步失败即非零退出，不重写文档掩盖漂移。CI 只读权限、锁文件安装、无 continue-on-error，main push/PR 均触发；三桌面平台另跑 cargo test --locked --lib。macOS 本地统一门禁在 Bun1.3.13/1.4 通过，原生312通过/1个显式压力测试忽略；尚未推送、首次远端CI未验，不称跨平台通过。GAP18仍需全部用户流程语义证据；库存不自动发现任意React闭包行为，CI成功不替代Tauri/真实模型/消费者验收"),
     cap("CON11", "任意 SQL/FS/shell/DOM、密钥、伪造历史", "实装", actor("未接", "未注册这些工具", "不开放：越过领域/用户授权"), actor("未接", "不属于 public API", "不开放：越过隔离/宿主所有权"), ["API","REGISTRY","CTX","RUST"], "宿主内部可能需要底层权力", "拒绝原始权力不等于拒绝语义需求：用 ResourceRef/审批/领域命令替代"),
     cap("CON12", "新格式/OCR/实时协作/向量/任意编辑与新平台", "待建", absent("宿主能力更新后再建模"), absent("宿主能力更新后再建模"), ["API","RUNTIME","ENGINE"], "不计当前宿主对等开放率", "不能承诺未来所有插件永不需要新 host；只能承诺当前能力闭包及其可组合范围"),
   ] },

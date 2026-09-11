@@ -2,6 +2,14 @@
 
 目标：实现统一模型中 Agent / 插件尚未接通或只部分接通的应开放能力，完成遗漏重扫，使用真实组合插件和 Tauri 桌面端到端验收。此文件是执行账本，不替代[统一模型](./host-capability-model.md)或[当前矩阵](./host-capability-matrix.md)。
 
+## 2026-09-11：第一段 CON10 可重复契约门禁与 CI
+
+[实现] bun run check:capabilities 在固定仓库 cwd 依次运行 Foliate 生成、矩阵/模型只读检查、库存门禁、core、Agent、domain、插件 runtime、真实 Worker 和宿主 bridge、KV/迁移桥及双端类型；测试模块 mock/浏览器全局按组分进程隔离，任一步失败立即停止。capabilities.yml 对 main push/所有 PR 配置只读任务，锁文件安装，固定仓库 Bun1.3.13；三桌面 OS 单独编译并跑原生契约，Linux 原生依赖沿用现有 workflow。不自动部署、安装插件、推送或启动桌面，不把生成后的覆盖写回文档作为通过。
+
+[验证] 完整统一命令在本机 Bun1.4 和 Bun1.3.13 均通过；macOS cargo test --locked --lib 为312通过/0失败/1忽略（原有大事件日志压力测试）。workflow YAML、触发/权限、平台矩阵和失败策略有两项回归。未推送，不能声称远端CI或Linux/Windows运行通过。
+
+[剩余] CON10 的CI配置与统一命令落地；全部能力的语义/Tauri/模型/正式插件验收仍缺，保持部分。当前本轮推进 SYS03/CON04/CON10 子项，并未完成全部剩余能力。
+
 ## 2026-09-11：第一段 CON04 Worker 消息准入与存活配额
 
 [实现] Worker→host 消息统一为 plugin-worker-protocol；Worker 发出前与宿主接收后都检查全部 envelope 类型/字段、ID 和回调元数据。字节核算80MiB、100万项/128层；完整 backing buffer、字符串/键、Blob/File、Map/Set/Error 均计入，循环与别名去重。回调每消息10万/每激活20万，宿主独立按解码图 lease 计数并幂等释放，不能靠伪造 Worker 或复用 handle 绕过。4096 个宿主 disposable 包含在途预留，超限在调用前拒绝，释放后恢复。错误消息有界，非法消息不派发，关联请求稳定拒绝，有限回调元数据释放；每激活只记一次协议错误日志。
