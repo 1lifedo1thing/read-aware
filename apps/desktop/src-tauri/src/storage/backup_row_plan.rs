@@ -8,8 +8,11 @@ use std::collections::{BTreeMap, BTreeSet};
 #[path = "backup_row_policy.rs"]
 mod policy;
 pub(crate) use policy::RowPolicy;
+#[path = "backup_file_plan.rs"]
+mod files;
 #[path = "backup_row_scan.rs"]
 mod scan;
+pub(crate) use files::FilePlan;
 
 #[derive(Debug, Default)]
 pub(crate) struct RowCounts {
@@ -54,6 +57,14 @@ pub(crate) struct RowPlan {
     pub tables: BTreeMap<String, TablePlan>,
 }
 impl RowPlan {
+    pub(crate) fn plan_files(
+        self,
+        target: &mut Connection,
+        data_dir: &std::path::Path,
+        check: impl FnMut() -> Result<(), CommandError>,
+    ) -> Result<FilePlan, CommandError> {
+        files::plan(self, target, data_dir, check)
+    }
     pub(crate) fn events(&self) -> &EventPlan {
         &self.events
     }

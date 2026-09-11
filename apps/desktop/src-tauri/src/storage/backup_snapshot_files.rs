@@ -38,12 +38,18 @@ fn owned_path(root: &Path, relative: &str) -> Result<PathBuf, CommandError> {
     Ok(absolute)
 }
 
-pub(super) fn verify_file(
+pub(in crate::storage) fn verify_file(
     root: &Path,
     entry: &CapturedFile,
     check: &mut impl FnMut() -> Result<(), CommandError>,
 ) -> Result<(), CommandError> {
     let path = owned_path(root, &entry.path)?;
+    if !fs::symlink_metadata(&path)?.file_type().is_file() {
+        return Err(CommandError::new(
+            CODE_CHANGED,
+            "backup member is not a regular file",
+        ));
+    }
     let mut file = fs::File::open(path)?;
     if !file.metadata()?.is_file() || file.metadata()?.len() != entry.byte_size {
         return Err(CommandError::new(
@@ -53,15 +59,23 @@ pub(super) fn verify_file(
     }
     let mut buffer = vec![0; CHUNK];
     let mut hash = Sha256::new();
+    let mut length = 0u64;
     loop {
         check()?;
         let read = file.read(&mut buffer)?;
         if read == 0 {
             break;
         }
+        length += read as u64;
+        if length > entry.byte_size {
+            return Err(CommandError::new(
+                CODE_CHANGED,
+                "backup member grew during verification",
+            ));
+        }
         hash.update(&buffer[..read]);
     }
-    if format!("{:x}", hash.finalize()) != entry.sha256 {
+    if length != entry.byte_size || format!("{:x}", hash.finalize()) != entry.sha256 {
         return Err(CommandError::new(
             CODE_CHANGED,
             "backup member content changed",
@@ -70,11 +84,12 @@ pub(super) fn verify_file(
     Ok(())
 }
 
-pub(super) struct FileCollector<'a, F> {
+pub(in crate::storage) struct FileCollector<'a, F> {
     source: &'a Path,
     destination: &'a Path,
     progress: &'a mut F,
     copied_bytes: u64,
+    copy_files: bool,
     files: BTreeMap<String, CapturedFile>,
     visited_entries: usize,
 }
@@ -85,9 +100,43 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
             destination,
             progress,
             copied_bytes: 0,
+            copy_files: true,
             files: BTreeMap::new(),
             visited_entries: 0,
         }
+    }
+    /// Inspect the same owned files without creating a second copy. Restore
+    /// planning must account for actual target bytes, including orphan blobs.
+    pub fn inspect(source: &'a Path, progress: &'a mut F) -> Self {
+        let mut collector = Self::new(source, source, progress);
+        collector.copy_files = false;
+        collector
+    }
+    pub fn blobs(&mut self) -> Result<(), CommandError> {
+        let path = self.source.join("blobs");
+        match fs::symlink_metadata(&path) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(error) => return Err(error.into()),
+            Ok(_) => {}
+        }
+        owned_path(self.source, "blobs")?;
+        for entry in self.children(&path)? {
+            (self.progress)(CaptureProgress::Files {
+                copied_bytes: self.copied_bytes,
+            })?;
+            if !entry.file_type()?.is_file() {
+                return Err(CommandError::new(
+                    CODE_INCOMPLETE,
+                    "non-regular managed blob",
+                ));
+            }
+            let name = entry
+                .file_name()
+                .into_string()
+                .map_err(|_| CommandError::new(CODE_INCOMPLETE, "non-UTF8 managed blob"))?;
+            self.copy(&format!("blobs/{name}"), None, None)?;
+        }
+        Ok(())
     }
     fn children(&mut self, path: &Path) -> Result<Vec<fs::DirEntry>, CommandError> {
         let available = MAX_FILES.saturating_sub(self.visited_entries);
@@ -128,6 +177,12 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
         .map_err(|error| {
             CommandError::context_coded(CODE_INCOMPLETE, "backup source unavailable", error)
         })?;
+        if !fs::symlink_metadata(&path)?.file_type().is_file() {
+            return Err(CommandError::new(
+                CODE_INCOMPLETE,
+                "backup source is not a regular file",
+            ));
+        }
         let mut input = fs::File::open(&path)?;
         let metadata = input.metadata()?;
         if !metadata.is_file() || size.is_some_and(|size| size != metadata.len()) {
@@ -142,7 +197,7 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
                 "backup exceeds the native 512 GiB capture limit",
             ));
         }
-        let mut output = if created {
+        let mut output = if created || !self.copy_files {
             None
         } else {
             let destination = self.destination.join(relative);
@@ -214,12 +269,17 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
     }
     pub fn plugins(&mut self, folder: &str) -> Result<(), CommandError> {
         let path = self.source.join(folder);
-        if !path.try_exists()? {
-            return Ok(());
+        match fs::symlink_metadata(&path) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(error) => return Err(error.into()),
+            Ok(_) => {}
         }
         owned_path(self.source, folder)?;
         let roots = self.children(&path)?;
         for entry in roots {
+            (self.progress)(CaptureProgress::Files {
+                copied_bytes: self.copied_bytes,
+            })?;
             let id = entry
                 .file_name()
                 .into_string()
@@ -235,14 +295,24 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
             }
             let relative = format!("{folder}/{id}");
             let manifest_path = owned_path(self.source, &format!("{relative}/manifest.json"))?;
-            if fs::metadata(&manifest_path)?.len() > CHUNK as u64 {
+            let metadata = fs::symlink_metadata(&manifest_path)?;
+            if !metadata.file_type().is_file() || metadata.len() > CHUNK as u64 {
                 return Err(CommandError::new(
                     CODE_INCOMPLETE,
                     "installed plugin manifest is too large",
                 ));
             }
-            let manifest: serde_json::Value =
-                serde_json::from_reader(fs::File::open(manifest_path)?)?;
+            let mut bytes = Vec::new();
+            fs::File::open(manifest_path)?
+                .take(CHUNK as u64 + 1)
+                .read_to_end(&mut bytes)?;
+            if bytes.len() > CHUNK {
+                return Err(CommandError::new(
+                    CODE_CHANGED,
+                    "plugin manifest grew during capture",
+                ));
+            }
+            let manifest: serde_json::Value = serde_json::from_slice(&bytes)?;
             if manifest.get("id").and_then(serde_json::Value::as_str) != Some(&id) {
                 return Err(CommandError::new(
                     CODE_INCOMPLETE,
@@ -263,6 +333,9 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
         let path = owned_path(self.source, relative)?;
         let children = self.children(&path)?;
         for entry in children {
+            (self.progress)(CaptureProgress::Files {
+                copied_bytes: self.copied_bytes,
+            })?;
             let name = entry
                 .file_name()
                 .into_string()

@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use tempfile::TempDir;
 
 #[path = "backup_snapshot_files.rs"]
-mod files;
+pub(super) mod files;
 use files::FileCollector;
 
 pub(crate) const FORMAT: u32 = 1;
