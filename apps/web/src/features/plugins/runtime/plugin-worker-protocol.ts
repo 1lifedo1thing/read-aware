@@ -2,8 +2,11 @@ import { AppError } from "@read-aware/core";
 import type { PluginCallbackWire } from "./plugin-callback-wire";
 import { assertPluginWireBudget, PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
 
+/** Host and bundled sandbox ship together; incompatible transports fail closed. */
+export const PLUGIN_PROTOCOL_VERSION = 1;
 export type WorkerMessage =
-  | { t: "ready"; hasMigration: boolean }
+  | { t: "hello"; protocolVersion: typeof PLUGIN_PROTOCOL_VERSION }
+  | { t: "ready"; protocolVersion: typeof PLUGIN_PROTOCOL_VERSION; hasMigration: boolean }
   | { t: "failed"; error: string }
   | { t: "dispose"; handle: string }
   | { t: "call"; id: number; method: string; args: PluginCallbackWire }
@@ -41,7 +44,8 @@ export function parsePluginWorkerMessage(value: unknown): WorkerMessage {
   assertPluginWireBudget(value);
   let valid = false;
   if (record(value)) switch (value.t) {
-    case "ready": valid = keys(value, ["t", "hasMigration"]) && typeof value.hasMigration === "boolean"; break;
+    case "hello": valid = keys(value, ["t", "protocolVersion"]) && value.protocolVersion === PLUGIN_PROTOCOL_VERSION; break;
+    case "ready": valid = keys(value, ["t", "protocolVersion", "hasMigration"]) && value.protocolVersion === PLUGIN_PROTOCOL_VERSION && typeof value.hasMigration === "boolean"; break;
     case "failed": valid = keys(value, ["t", "error"]) && string(value.error, 4096); break;
     case "dispose": valid = keys(value, ["t", "handle"]) && string(value.handle, 128) && value.handle.length > 0; break;
     case "cancel": case "healthy": valid = keys(value, ["t", "id"]) && validPluginCallId(value.id); break;

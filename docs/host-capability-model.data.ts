@@ -181,7 +181,7 @@ export const units: Unit[] = [
     "工具结束必须有真实业务结果；插件 worker 崩溃不让模型轮次无限等待。",
     "owner = plugin generation + view/session/task lease；停用后拒绝新调用、取消在途并清理回调/连接/临时资源；迟到 effect 在 host 提交边界再验 generation。",
     "cancel 不等于 undo/远端回滚；不强制所有任务耐久恢复。stable AppError code 复用项目错误契约，本文不发明与现有 code 冲突的第二套错误枚举。",
-    "GAP06–08/10/12–14/17 的超时、callback、协议碰撞、旧结果/host effect、连接释放逐个故障注入；任务资源数回到基线。CON04 已接 Worker→host 全 envelope 双侧准入、每条80MiB核算/100万项/128层、每激活20万存活回调与4096 disposable（含在途预留）；宿主按解码图 lease 计数，不以插件发送端自律代替权威预算。不是克隆峰值/消息洪泛/全App预算，host→Worker全量镜像及协议版本协商仍缺；真实Bun Worker与故障transport不冒充Tauri证据。"),
+    "GAP06–08/10/12–14/17 的超时、callback、协议碰撞、旧结果/host effect、连接释放逐个故障注入；任务资源数回到基线。CON04 已接双向全 envelope 发送/接收准入、boot/hello/ready协议握手、每条80MiB核算/100万项/128层、每激活20万存活回调与4096 disposable（含在途预留）；宿主按解码图lease计数，不以插件发送端自律代替权威预算。非法镜像/启动失败关闭，关联调用拒绝后可恢复，健康/退出发送故障排空。不是克隆峰值/消息洪泛/全App预算；真实Bun Worker与故障transport不冒充Tauri/packaged跨平台证据。"),
   unit("Q3", "Contract", "consistency/observation", "快照、变更和业务写入", "CON07-08 OPS05 OPS11 STAT04-05 CFG10", "",
     "授权 snapshot + revision + invalidation/订阅后重读，覆盖本地、同步和外部写；持久命令在 commit_events 事务完成后确认。CAS/批次只加在会丢用户编辑或部分成功的业务操作。",
     "每轮快照可满足多数查询，不需要让模型订阅所有事件。导航历史与业务撤销不可混用。",

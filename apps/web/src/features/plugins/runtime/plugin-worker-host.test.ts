@@ -91,20 +91,26 @@ test.each(["read", "cancel", "denied"])("context bundle Worker RPC %s resolves t
 /** Deterministic transport faults, with the real host context and registration path. */
 class FaultWorker {
   static current: FaultWorker;
-  static bootFault: "failed" | "clone" | undefined;
+  static bootFault: "failed" | "clone" | "version" | "early-call" | undefined;
   onmessage: ((event: MessageEvent) => Promise<void>) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
   onmessageerror: (() => void) | null = null;
   readonly sent: WireMessage[] = [];
   readonly callbacks = new PluginCallbackRegistry();
   terminated = false;
+  throwOn?: string;
   constructor() { FaultWorker.current = this; }
   postMessage(message: WireMessage) {
+    if (message.t === this.throwOn) throw new DOMException("Could not clone message", "DataCloneError");
     this.sent.push(message);
     if (message.t === "boot") {
       if (FaultWorker.bootFault === "clone") throw new DOMException("Could not clone boot", "DataCloneError");
-      const response = FaultWorker.bootFault === "failed" ? { t: "failed", error: "activation rejected" } : { t: "ready", hasMigration: false };
-      queueMicrotask(() => { void this.deliver(response); });
+      const response = FaultWorker.bootFault === "failed" ? { t: "failed", error: "activation rejected" } : { t: "ready", protocolVersion: 1, hasMigration: false };
+      queueMicrotask(async () => {
+        if (FaultWorker.bootFault === "early-call") await this.deliver({ t: "call", id: 1, method: "contributions.commands.register", args: this.callbacks.encode([]) });
+        await this.deliver({ t: "hello", protocolVersion: FaultWorker.bootFault === "version" ? 2 : 1 });
+        await this.deliver(response);
+      });
     }
     if (message.t === "quiesce") queueMicrotask(() => { void this.deliver({ t: "quiesced" }); });
     if (message.t === "release") this.callbacks.release(message.handles!);
@@ -150,7 +156,7 @@ async function hostFixture(permissions: PluginPermission[] = []) {
 }
 
 describe("plugin worker capability bridge", () => {
-  test.each(["failed", "clone"] as const)("startup %s drains the lifecycle before rejecting", async fault => {
+  test.each(["failed", "clone", "version", "early-call"] as const)("startup %s drains the lifecycle before rejecting", async fault => {
     const gate = deferred();
     const drain = spyOn(PluginLifecycleController.prototype, "drainStorageWrites").mockImplementation(() => gate.promise);
     FaultWorker.bootFault = fault;
@@ -164,6 +170,43 @@ describe("plugin worker capability bridge", () => {
       expect(await starting).toMatchObject({ code: "plugin/unavailable" });
       expect(drain).toHaveBeenCalledTimes(1);
     } finally { gate.resolve(); drain.mockRestore(); FaultWorker.bootFault = undefined; }
+  });
+
+  test("host result preflight rejects oversized payloads, bounds failures and recovers", async () => {
+    const spy = spyOn(identityDomain, "inspectProfileContext").mockResolvedValue(new Array(1_000_001) as never);
+    const { worker, close } = await hostFixture(["memory:read"]);
+    try {
+      const call = (id: number) => worker.deliver({ t: "call", id, method: "domains.memory.queries.profileContext", args: worker.callbacks.encode([{ kind: "summary" }]) });
+      await call(701);
+      expect(worker.sent.find(message => message.id === 701)).toMatchObject({ t: "result", ok: false, code: "plugin/quota-exceeded" });
+      spy.mockRejectedValue(new AppError("db/locked", "x".repeat(5000)));
+      await call(702);
+      expect(worker.sent.find(message => message.id === 702)?.error).toHaveLength(4096);
+      spy.mockResolvedValue(null as never);
+      await call(703);
+      expect(worker.sent.find(message => message.id === 703)).toMatchObject({ t: "result", ok: true, value: null });
+      expect(worker.terminated).toBe(false);
+    } finally { await close(); spy.mockRestore(); }
+  });
+
+  test("health send failure retires its pending receipt and runtime immediately", async () => {
+    const { worker, runtime, close } = await hostFixture();
+    try {
+      worker.throwOn = "health";
+      await expect(runtime.checkHealth()).rejects.toMatchObject({ code: "plugin/unavailable" });
+      expect(worker.terminated).toBe(true);
+    } finally { await close(); }
+  });
+
+  test.each(["quiesce", "deactivate"])("shutdown %s send failure still drains and terminates the realm", async kind => {
+    const { worker, runtime, close } = await hostFixture();
+    const drain = spyOn(PluginLifecycleController.prototype, "drainStorageWrites");
+    try {
+      worker.throwOn = kind;
+      await expect(runtime.terminate()).rejects.toThrow();
+      expect(drain).toHaveBeenCalledTimes(1);
+      expect(worker.terminated).toBe(true);
+    } finally { await close().catch(() => { /* The expected shutdown failure is retained on repeat calls. */ }); drain.mockRestore(); }
   });
 
   test("an old realm crash cannot remove its replacement registrations", async () => {

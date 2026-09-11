@@ -34,7 +34,9 @@ import { flattenPluginRequest, flattenPluginResponse } from "./plugin-network-wi
 import { PluginRpcPending } from "./plugin-rpc-pending";
 import { decodePluginCallbacks, retainPluginCallbacks, type PluginCallbackWire } from "./plugin-callback-wire";
 import type { PluginActionRegistration } from "../lib/plugin-types";
-import { parsePluginWorkerMessage, rejectedPluginCallbackHandles, validPluginCallId, type WorkerMessage } from "./plugin-worker-protocol";
+import { parsePluginWorkerMessage, PLUGIN_PROTOCOL_VERSION, rejectedPluginCallbackHandles, validPluginCallId, type WorkerMessage } from "./plugin-worker-protocol";
+import { parsePluginHostMessage, type ContextShape, type HostMessage } from "./plugin-host-protocol";
+export type { ContextShape } from "./plugin-host-protocol";
 import { PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
 import { PluginCallbackBudget } from "./plugin-callback-budget";
 
@@ -69,7 +71,7 @@ export type StartPluginWorkerOptions = {
 // the app language switching), every live sandbox gets a `sync` patch, or
 // its mirror silently serves boot-time values forever.
 
-const liveWorkers = new Map<string, { pluginId: string; worker: Worker }>();
+const liveWorkers = new Map<string, { pluginId: string; worker: Worker; sync: (patch: Extract<HostMessage, { t: "sync" }>["patch"]) => void }>();
 let syncWired = false;
 
 function wireHostSync(): void {
@@ -77,9 +79,9 @@ function wireHostSync(): void {
   syncWired = true;
   onLocalKVChange((key) => {
     const changed = new Set<string>();
-    for (const { pluginId, worker } of liveWorkers.values()) {
+    for (const { pluginId, sync } of liveWorkers.values()) {
       const prefix = pluginStoragePrefix(pluginId);
-      if (key.startsWith(prefix)) worker.postMessage({ t: "sync", patch: { storage: localKV.entries(prefix) } });
+      if (key.startsWith(prefix)) sync({ storage: localKV.entries(prefix) });
       if (key === `${prefix}settings`) changed.add(pluginId);
     }
     for (const pluginId of changed) invalidateSyncTransportSessions(pluginId);
@@ -87,17 +89,14 @@ function wireHostSync(): void {
   onAppEvent("plugin-storage-changed", ({ pluginId }) => {
     for (const live of liveWorkers.values()) {
       if (live.pluginId !== pluginId) continue;
-      live.worker.postMessage({
-        t: "sync",
-        patch: { storage: localKV.entries(pluginStoragePrefix(pluginId)) },
-      });
+      live.sync({ storage: localKV.entries(pluginStoragePrefix(pluginId)) });
     }
     invalidateSyncTransportSessions(pluginId);
   });
   i18n.on("languageChanged", () => {
     const locale = currentAppLocale();
-    for (const { worker } of liveWorkers.values()) {
-      worker.postMessage({ t: "sync", patch: { locale } });
+    for (const { sync } of liveWorkers.values()) {
+      sync({ locale });
     }
   });
 }
@@ -155,8 +154,6 @@ function resolveMethod(
  * that fails its own capability check. Deriving it means the sandbox exposes
  * exactly what `buildPluginContext` decided to grant, no more and no less.
  */
-export type ContextShape = { [key: string]: "fn" | ContextShape };
-
 /** Data (not callables) the Worker mirrors locally to keep sync reads sync. */
 const SHAPE_SKIP = new Set(["manifest", "appVersion", "locale", "lifecycle", "capabilities"]);
 
@@ -204,13 +201,16 @@ export function startPluginWorker(
   });
   const instanceId = options.instanceId ?? manifest.id;
   wireHostSync();
-  liveWorkers.set(instanceId, { pluginId: manifest.id, worker });
   let terminated = false;
   let quiescing = false;
   let termination: Promise<void> | undefined;
   let invalidMessageReported = false;
   let acknowledgeQuiescence: ((error?: string) => void) | undefined;
-  const post = (message: unknown) => { if (!terminated) worker.postMessage(message); };
+  const post = (input: HostMessage) => {
+    if (terminated) return;
+    const message = "error" in input ? { ...input, error: input.error.slice(0, 4096) } : input;
+    worker.postMessage(parsePluginHostMessage(message));
+  };
 
   const pendingInvokes = new PluginRpcPending();
   const callbackBudget = new PluginCallbackBudget();
@@ -294,6 +294,7 @@ export function startPluginWorker(
 
   return new Promise<SandboxedPlugin>((resolve, reject) => {
     let settled = false;
+    let handshaken = false;
     const failRuntime = (reason: string) => {
       const starting = !settled;
       const currentInstance = liveWorkers.get(instanceId)?.worker === worker;
@@ -318,6 +319,10 @@ export function startPluginWorker(
       if (settled) return;
       failRuntime("plugin activation timed out");
     }, 10_000);
+    liveWorkers.set(instanceId, { pluginId: manifest.id, worker, sync(patch) {
+      try { post({ t: "sync", patch }); }
+      catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
+    } });
 
     worker.onerror = (event) => {
       if (!terminated) failRuntime(event.message || "plugin worker failed");
@@ -335,10 +340,23 @@ export function startPluginWorker(
         const handles = rejectedPluginCallbackHandles(event.data);
         if (handles.length) post({ t: "release", handles });
         const raw = event.data as { t?: unknown; id?: unknown } | null;
+        if (!handshaken || raw?.t === "hello" || raw?.t === "ready") {
+          failRuntime("Plugin transport handshake rejected");
+          return;
+        }
         if (raw && validPluginCallId(raw.id)) {
           if (raw.t === "call") post({ t: "result", id: raw.id, ok: false, code: errorCode(error), error: "Plugin message rejected" });
           else if (raw.t === "result") pendingInvokes.settle(raw.id, false, error);
         }
+        return;
+      }
+      if (message.t === "hello") {
+        if (handshaken) failRuntime("Duplicate plugin transport handshake");
+        else handshaken = true;
+        return;
+      }
+      if (!handshaken && message.t !== "failed") {
+        failRuntime("Plugin called host before transport handshake");
         return;
       }
       switch (message.t) {
@@ -362,19 +380,24 @@ export function startPluginWorker(
                     reject: healthReject,
                     timeout,
                   });
-                  post({ t: "health", id });
+                  try { post({ t: "health", id }); }
+                  catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
                 });
               },
               migrate(migration) {
                 try { assertRunning(); } catch (error) { return Promise.reject(error); }
-                runtime.lifecycle.beginMigration();
-                post({ t: "sync", patch: { phase: "migrating", storage: localKV.entries(pluginStoragePrefix(manifest.id)) } });
                 const id = nextMigrationId++;
+                try { parsePluginHostMessage({ t: "migrate", id, migration }); }
+                catch (error) { return Promise.reject(error); }
+                runtime.lifecycle.beginMigration();
+                try { post({ t: "sync", patch: { phase: "migrating", storage: localKV.entries(pluginStoragePrefix(manifest.id)) } }); }
+                catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); return Promise.reject(error); }
                 return new Promise<void>((migrationResolve, migrationReject) => {
                   const timeout = setTimeout(() => {
                     pendingMigrations.delete(id);
                     runtime.lifecycle.finishMigration();
-                    post({ t: "sync", patch: { phase: "activating" } });
+                    try { post({ t: "sync", patch: { phase: "activating" } }); }
+                    catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
                     migrationReject(new Error("plugin data migration timed out"));
                   }, 30_000);
                   pendingMigrations.set(id, {
@@ -382,7 +405,8 @@ export function startPluginWorker(
                     reject: migrationReject,
                     timeout,
                   });
-                  post({ t: "migrate", id, migration });
+                  try { post({ t: "migrate", id, migration }); }
+                  catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
                 });
               },
               promote() {
@@ -405,7 +429,8 @@ export function startPluginWorker(
                   const quiescenceError = await new Promise<string | undefined>(done => {
                     const timeout = setTimeout(() => done("plugin quiescence timed out"), 2_000);
                     acknowledgeQuiescence = error => { clearTimeout(timeout); done(error); };
-                    post({ t: "quiesce" });
+                    try { post({ t: "quiesce" }); }
+                    catch (error) { acknowledgeQuiescence?.(error instanceof Error ? error.message : String(error)); }
                   });
                   acknowledgeQuiescence = undefined;
                   // Retire migration timers/results before closing the lifecycle:
@@ -415,9 +440,10 @@ export function startPluginWorker(
                     await drainRuntime();
                     if (quiescenceError) throw new AppError("plugin/unavailable", quiescenceError);
                   } finally {
-                    post({ t: "deactivate" });
-                    await new Promise(done => setTimeout(done, 50));
-                    closeTransport(`plugin "${manifest.id}" was deactivated`);
+                    try {
+                      post({ t: "deactivate" });
+                      await new Promise(done => setTimeout(done, 50));
+                    } finally { closeTransport(`plugin "${manifest.id}" was deactivated`); }
                   }
                 })();
               },
@@ -615,7 +641,12 @@ export function startPluginWorker(
           pendingMigrations.delete(message.id);
           clearTimeout(pending.timeout);
           runtime.lifecycle.finishMigration();
-          post({ t: "sync", patch: { phase: "activating" } });
+          try { post({ t: "sync", patch: { phase: "activating" } }); }
+          catch (error) {
+            pending.reject(error instanceof Error ? error : new Error(String(error)));
+            failRuntime(error instanceof Error ? error.message : String(error));
+            return;
+          }
           if (message.ok) pending.resolve();
           else pending.reject(new Error(message.error));
           return;
@@ -625,6 +656,7 @@ export function startPluginWorker(
 
     try { post({
       t: "boot",
+      protocolVersion: PLUGIN_PROTOCOL_VERSION,
       url: options.moduleUrl ?? pluginModuleUrl(manifest.id, manifest.main ?? "main.js"),
       manifest,
       appVersion,

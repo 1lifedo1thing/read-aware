@@ -6,7 +6,7 @@ import { PluginCallbackRegistry } from "./plugin-callback-wire";
 test("every Worker envelope is explicit, bounded, and rejects extra authority fields", () => {
   const registry = new PluginCallbackRegistry();
   const valid: WorkerMessage[] = [
-    { t: "ready", hasMigration: false }, { t: "failed", error: "failed" }, { t: "dispose", handle: "d1" },
+    { t: "hello", protocolVersion: 1 }, { t: "ready", protocolVersion: 1, hasMigration: false }, { t: "failed", error: "failed" }, { t: "dispose", handle: "d1" },
     { t: "call", id: 1, method: "domains.library.queries.books.list", args: registry.encode([]) },
     { t: "cancel", id: 1 }, { t: "healthy", id: 1 }, { t: "migrated", id: 1, ok: true },
     { t: "migrated", id: 1, ok: false, error: "failed" }, { t: "quiesced" }, { t: "quiesced", error: "failed" },

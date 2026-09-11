@@ -2,6 +2,14 @@
 
 目标：实现统一模型中 Agent / 插件尚未接通或只部分接通的应开放能力，完成遗漏重扫，使用真实组合插件和 Tauri 桌面端到端验收。此文件是执行账本，不替代[统一模型](./host-capability-model.md)或[当前矩阵](./host-capability-matrix.md)。
 
+## 2026-09-11：CON04 双向协议和启动握手
+
+[实现] 新增 host→Worker 全 envelope 验证，与反向共用80MiB/100万项/128层预算；boot沿用安装manifest校验，能力目录、函数shape、KV镜像、阶段和迁移版本分别检查，保留业务数据的循环/二进制/普通标记。两端发送前和接收后检查，所有全局镜像同步进入统一发送口。boot/hello/ready显式绑定协议1，插件import/activate前完成握手；旧版本、重复启动、握手前调用及非法镜像失败关闭，不能静默留下旧镜像。超限调用/结果稳定拒绝且可恢复，拒绝结果回收有限disposable元数据；宿主错误截为4096字符。健康和关闭发送故障也释放等待项、排空持久写并终止实例。
+
+[验证] 完整 check:capabilities 通过，含宿主36项、真实Bun Worker28项、双向协议5项；纠正了旧迁移测试错误的 from/to 字段，它以前没有被验证。隔离macOS debug Tauri实际宿主启动→握手→读权Worker命令→健康→退出通过；直接Worker的协议2在激活前拒绝，1000001项invoke稳定返回plugin/quota-exceeded，随后正常invoke经getDurable返回recovered。不是packaged跨平台或全App洪泛试验。
+
+[剩余] CON04 全App/时间窗口总量、完整撤权/崩溃组合及跨平台实机验收仍保留，不把每消息预算误报成峰值内存或吞吐控制。
+
 ## 2026-09-11：MEM07 完整访谈和原子播种
 
 [实现] 全局 onboard_reader 将四项可选表单、完整画像/种子确认和单次持久提交连成一个工具；拒绝/跳过不写，已有画像转现有纠正工具。八语言确认文案包含同步影响和完整种子，非破坏性保存按钮。memory 2.5 completeOnboarding 将相同命令接给有写权插件，调用者负责完整候选确认，不能把插件权限当宿主票据。schema38 profile.onboarded 在同一个原生事务里投影画像、最多4条种子、持久幂等回执和outbox；插入失败全回滚，profile2 CAS拒绝并发，owner+submissionId绑定完整候选，重复提交回原ID不播种，改候选复用拒绝。回执参加replay/checkpoint/wipe，genesis认识复合种子。设计见 onboarding.md。

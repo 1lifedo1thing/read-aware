@@ -30,7 +30,6 @@ import type {
   PluginActionStateReceipt,
   PluginContext,
   PluginManifest,
-  PluginMigration,
   PluginMigrationContext,
   PluginModule,
 } from "@read-aware/plugin-types";
@@ -39,40 +38,13 @@ import { flattenPluginRequest, restorePluginResponse, type PluginNetworkResponse
 import { pluginNetworkAbort, pluginNetworkError } from "./plugin-network-error";
 import { PluginRpcPending } from "./plugin-rpc-pending";
 import { PluginCallbackRegistry } from "./plugin-callback-wire";
-import { parsePluginWorkerMessage, type WorkerMessage } from "./plugin-worker-protocol";
+import { parsePluginWorkerMessage, PLUGIN_PROTOCOL_VERSION, validPluginCallId, type WorkerMessage } from "./plugin-worker-protocol";
+import { parsePluginHostMessage, type HostMessage, type ContextShape } from "./plugin-host-protocol";
 
 // ─── Wire protocol ───────────────────────────────────────────────────────────
 
-type HostMessage =
-  | {
-      t: "boot";
-      url: string;
-      manifest: PluginManifest;
-      appVersion: string;
-      capabilities: PluginContext["capabilities"];
-      shape: ContextShape;
-      storage: Record<string, string>;
-      locale: string;
-      phase: PluginContext["lifecycle"]["phase"];
-    }
-  | { t: "invoke"; id: number; handle: string; args: unknown[] }
-  | {
-      t: "sync";
-      patch: {
-        storage?: Record<string, string>;
-        locale?: string;
-        phase?: PluginContext["lifecycle"]["phase"];
-      };
-    }
-  | { t: "result"; id: number; ok: true; value: unknown; disposable?: string }
-  | { t: "release"; handles: string[] }
-  | { t: "result"; id: number; ok: false; error: string; code?: string }
-  | { t: "health"; id: number }
-  | { t: "migrate"; id: number; migration: PluginMigration }
-  | { t: "quiesce" }
-  | { t: "deactivate" };
-
 const post = (input: WorkerMessage) => {
+  if (stopped && input.t !== "failed") throw codedError("Plugin runtime stopped", "plugin/unavailable");
   const message = "error" in input && typeof input.error === "string" ? { ...input, error: input.error.slice(0, 4096) } : input;
   self.postMessage(parsePluginWorkerMessage(message));
 };
@@ -124,9 +96,6 @@ for (const name of [
 const pendingCalls = new PluginRpcPending();
 const inFlightHostCalls = new Set<Promise<unknown>>();
 const lifecycleCallErrors: unknown[] = [];
-
-/** Mirrors the host's `describeContext` output. */
-type ContextShape = { [key: string]: "fn" | ContextShape };
 
 // ─── Crossing the boundary with functions in tow ─────────────────────────────
 
@@ -347,12 +316,42 @@ function buildContext(
 
 let plugin: PluginModule | null = null;
 let pluginContext: PluginContext | null = null;
+let booted = false;
+let stopped = false;
+const failProtocol = () => {
+  stopped = true;
+  pendingCalls.close(codedError("Host protocol failed", "plugin/unavailable"));
+  callbacks.clear();
+  post({ t: "failed", error: "Host protocol or transport version rejected" });
+};
+self.onmessageerror = () => { if (!stopped) failProtocol(); };
 
-self.onmessage = async (event: MessageEvent<HostMessage>) => {
-  const message = event.data;
+self.onmessage = async (event: MessageEvent<unknown>) => {
+  if (stopped) return;
+  let message: HostMessage;
+  try {
+    message = parsePluginHostMessage(event.data);
+    if ((!booted && message.t !== "boot") || (booted && message.t === "boot")) {
+      throw codedError("Invalid plugin bootstrap sequence", "plugin/invalid-input");
+    }
+  } catch (error) {
+    const raw = event.data as { t?: unknown; id?: unknown; disposable?: unknown } | null;
+    if (booted && raw && validPluginCallId(raw.id) && raw.t === "invoke") {
+      post({ t: "result", id: raw.id, ok: false, code: codeOf(error), error: "Host message rejected" });
+    } else if (booted && raw && validPluginCallId(raw.id) && raw.t === "result") {
+      pendingCalls.settle(raw.id, false, error);
+      // Rejected results must not strand a registration on the authoritative host.
+      if (typeof raw.disposable === "string" && raw.disposable.length > 0 && raw.disposable.length <= 128) post({ t: "dispose", handle: raw.disposable });
+    } else {
+      failProtocol();
+    }
+    return;
+  }
 
   switch (message.t) {
     case "boot": {
+      booted = true;
+      post({ t: "hello", protocolVersion: PLUGIN_PROTOCOL_VERSION });
       try {
         storageSnapshot.replace(message.storage);
         appLocale = message.locale;
@@ -372,9 +371,9 @@ self.onmessage = async (event: MessageEvent<HostMessage>) => {
           );
         await plugin.activate(pluginContext);
         await drainActivationCalls();
-        post({ t: "ready", hasMigration: typeof plugin.migrate === "function" });
+        if (!stopped) post({ t: "ready", protocolVersion: PLUGIN_PROTOCOL_VERSION, hasMigration: typeof plugin.migrate === "function" });
       } catch (error) {
-        post({ t: "failed", error: error instanceof Error ? error.message : String(error) });
+        if (!stopped) post({ t: "failed", error: error instanceof Error ? error.message : String(error) });
       }
       return;
     }
@@ -382,8 +381,10 @@ self.onmessage = async (event: MessageEvent<HostMessage>) => {
     case "invoke": {
       try {
         const value = await callbacks.invoke(message.handle, message.args);
+        if (stopped) return;
         callbacks.send(value ?? null, wire => post({ t: "result", id: message.id, ok: true, value: wire }));
       } catch (error) {
+        if (stopped) return;
         post({
           t: "result",
           id: message.id,
@@ -426,9 +427,9 @@ self.onmessage = async (event: MessageEvent<HostMessage>) => {
       lifecyclePhase = "activating";
       try {
         await drainActivationCalls();
-        post({ t: "quiesced" });
+        if (!stopped) post({ t: "quiesced" });
       } catch (error) {
-        post({ t: "quiesced", error: error instanceof Error ? error.message : String(error) });
+        if (!stopped) post({ t: "quiesced", error: error instanceof Error ? error.message : String(error) });
       }
       return;
     }
@@ -457,8 +458,9 @@ self.onmessage = async (event: MessageEvent<HostMessage>) => {
         };
         await plugin.migrate(migrationContext, message.migration);
         await drainActivationCalls();
-        post({ t: "migrated", id: message.id, ok: true });
+        if (!stopped) post({ t: "migrated", id: message.id, ok: true });
       } catch (error) {
+        if (stopped) return;
         post({
           t: "migrated",
           id: message.id,
@@ -470,6 +472,7 @@ self.onmessage = async (event: MessageEvent<HostMessage>) => {
     }
 
     case "deactivate": {
+      stopped = true;
       pendingCalls.close(codedError("Plugin runtime stopped", "plugin/unavailable"));
       try {
         await plugin?.deactivate?.();

@@ -7,7 +7,7 @@ const resultData = (message: Message) => ({ ...message, value: message.value && 
 const workers: Worker[] = [];
 afterEach(() => { for (const worker of workers.splice(0)) worker.terminate(); });
 
-function sandbox(scenario: string, fixture = "wire-probe.ts") {
+function sandbox(scenario: string, fixture = "wire-probe.ts", bootPatch: Record<string, unknown> = {}) {
   const worker = new Worker(new URL("./plugin-sandbox.worker.ts", import.meta.url), { type: "module" });
   workers.push(worker);
   const messages: Message[] = [];
@@ -17,7 +17,7 @@ function sandbox(scenario: string, fixture = "wire-probe.ts") {
     const timeout = setTimeout(() => { listeners.delete(check); reject(new Error(`No matching sandbox message: ${JSON.stringify(messages)}`)); }, 3000);
     const check = () => {
       const failed = messages.find(message => message.t === "failed");
-      if (failed) { clearTimeout(timeout); listeners.delete(check); reject(new Error(failed.error)); return; }
+      if (failed && !predicate(failed)) { clearTimeout(timeout); listeners.delete(check); reject(new Error(failed.error)); return; }
       const index = messages.findIndex(predicate);
       if (index < 0) return;
       clearTimeout(timeout); listeners.delete(check); resolve(messages.splice(index, 1)[0]);
@@ -25,10 +25,11 @@ function sandbox(scenario: string, fixture = "wire-probe.ts") {
     listeners.add(check); check();
   });
   worker.postMessage({
-    t: "boot", url: new URL(`../../../../tests/desktop/${fixture}`, import.meta.url).href,
-    manifest: { id: "wire-test", name: "Wire test", description: scenario, version: "1.0.0", schemaVersion: 1 },
-    appVersion: "1.0.0", capabilities: {}, locale: "en", phase: "activating", storage: {},
+    t: "boot", protocolVersion: 1, url: new URL(`../../../../tests/desktop/${fixture}`, import.meta.url).href,
+    manifest: { id: "wire-test", name: "Wire test", description: scenario, version: "1.0.0", schemaVersion: 1, requires: {} },
+    appVersion: "1.0.0", capabilities: { domains: {}, services: {}, contributions: {}, schemas: {} }, locale: "en", phase: "activating", storage: {},
     shape: { domains: { library: { queries: { books: { searchLocations: "fn" } } }, reading: { commands: { step: "fn" } } }, services: { llm: { ask: "fn", askDetailed: "fn", policy: "fn", getRequest: "fn", listRequests: "fn", cancelRequest: "fn" }, logging: { write: "fn", policy: "fn" }, network: { fetch: "fn", openStream: "fn", readStream: "fn", closeStream: "fn" } }, contributions: { commands: { register: "fn" }, agentContextProviders: { register: "fn" } }, __collection: { put: "fn", get: "fn", page: "fn" } },
+    ...bootPatch,
   });
   return { worker, messages, next };
 }
@@ -43,6 +44,43 @@ async function command(scenario: string, fixture?: string) {
   s.worker.postMessage({ t: "invoke", id: 900, handle, args: [] });
   return s;
 }
+
+test.each([undefined, 0, 2, "1"])("real Worker rejects incompatible boot version %s before loading plugin code", async protocolVersion => {
+  const s = sandbox("must-not-activate", "wire-probe.ts", { protocolVersion });
+  expect(await s.next(message => message.t === "failed")).toMatchObject({ error: "Host protocol or transport version rejected" });
+  expect(s.messages.some(message => message.t === "call" || message.t === "hello" || message.t === "ready")).toBe(false);
+});
+
+test("real Worker rejects malformed host invocations and results without losing the next call", async () => {
+  const s = sandbox("durable-storage");
+  expect(await s.next(message => message.t === "hello")).toMatchObject({ protocolVersion: 1 });
+  const registration = await s.next(message => message.method === "contributions.commands.register");
+  const handle = (data(registration.args!) as { run: () => string }[])[0]!.run();
+  s.worker.postMessage({ t: "result", id: registration.id, ok: true, value: null, disposable: "d1" });
+  await s.next(message => message.t === "ready");
+  s.worker.postMessage({ t: "sync", patch: { phase: "active" } });
+  s.worker.postMessage({ t: "invoke", id: 910, handle, args: new Array(1_000_001) });
+  expect(await s.next(message => message.t === "result" && message.id === 910)).toMatchObject({ ok: false, code: "plugin/quota-exceeded" });
+  expect(s.messages.some(message => message.method === "services.storage.getDurable")).toBe(false);
+  s.worker.postMessage({ t: "invoke", id: 911, handle, args: [] });
+  const call = await s.next(message => message.method === "services.storage.getDurable");
+  s.worker.postMessage({ t: "result", id: call.id, ok: true, value: new Array(1_000_001), disposable: "d2" });
+  expect(await s.next(message => message.t === "dispose")).toMatchObject({ handle: "d2" });
+  expect(await s.next(message => message.t === "result" && message.id === 911)).toMatchObject({ ok: false, code: "plugin/quota-exceeded" });
+  s.worker.postMessage({ t: "invoke", id: 912, handle, args: [] });
+  const retry = await s.next(message => message.method === "services.storage.getDurable");
+  s.worker.postMessage({ t: "result", id: retry.id, ok: true, value: "recovered" });
+  expect(resultData(await s.next(message => message.t === "result" && message.id === 912))).toMatchObject({ ok: true, value: { toast: "recovered" } });
+});
+
+test.each(["sync", "boot"])("real Worker fails closed on an invalid %s rather than serving a stale mirror or reactivating", async kind => {
+  const s = await command("durable-storage");
+  const call = await s.next(message => message.method === "services.storage.getDurable");
+  s.worker.postMessage(kind === "sync" ? { t: "sync", patch: { storage: { x: false } } } : { t: "boot", protocolVersion: 1 });
+  await s.next(message => message.t === "failed");
+  expect(s.messages.some(message => message.t === "ready")).toBe(false);
+  expect(call.id).toBeGreaterThan(0);
+});
 
 test("real Worker rejects oversized results before transport and remains callable with bounded errors", async () => {
   const s = sandbox("wire-budget", "wire-budget-probe.ts");
@@ -307,7 +345,7 @@ test("real Worker migration drains unawaited storage calls before returning migr
   s.worker.postMessage({ t: "result", id: registration.id, ok: true, value: null, disposable: "registration" });
   await s.next(message => message.t === "ready");
   s.worker.postMessage({ t: "sync", patch: { phase: "migrating" } });
-  s.worker.postMessage({ t: "migrate", id: 903, migration: { from: 1, to: 2, direction: "upgrade" } });
+  s.worker.postMessage({ t: "migrate", id: 903, migration: { fromVersion: 1, toVersion: 2, direction: "upgrade" } });
   const write = await s.next(message => message.method === "services.storage.set");
   s.worker.postMessage({ t: "health", id: 904 }); await s.next(message => message.t === "healthy");
   expect(s.messages.some(message => message.t === "migrated")).toBe(false);
