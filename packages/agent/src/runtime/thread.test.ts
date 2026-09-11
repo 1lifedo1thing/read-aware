@@ -260,6 +260,32 @@ describe("AgentThread", () => {
     });
   });
 
+  test("extension context receives the turn cancellation signal before inference", async () => {
+    const { faux, model } = makeFaux();
+    let inferred = false;
+    faux.setResponses([() => { inferred = true; return fauxAssistantMessage("Unexpected"); }]);
+    const { deps } = createInMemoryDeps({ books: BOOKS });
+    let entered!: () => void, finish!: () => void;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const source = new Promise<void>(resolve => { finish = resolve; });
+    let observed: AbortSignal | undefined;
+    deps.extraContext = async request => {
+      observed = request.signal;
+      entered(); await source;
+      return [{ source: "Plugin", content: "Late context" }];
+    };
+    const controller = new AbortController();
+    const thread = makeThread(deps, model);
+    const result = collect(thread.sendTurn({ text: "Question", signal: controller.signal })).catch(error => error);
+    await started;
+    expect(observed).toBeInstanceOf(AbortSignal);
+    expect(observed!.aborted).toBe(false);
+    controller.abort(new Error("Turn cancelled"));
+    expect(observed!.aborted).toBe(true);
+    finish(); await result;
+    expect(inferred).toBe(false);
+  });
+
   test("memory opt-out keeps chat and ask history but skips legacy adoption, extraction, candidates and insights", async () => {
     const { faux, model } = makeFaux();
     faux.setResponses([fauxAssistantMessage("Still answering.")]);

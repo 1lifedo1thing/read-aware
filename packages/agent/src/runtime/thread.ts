@@ -476,6 +476,7 @@ export class AgentThread {
       const extensionContext = await call.wait(Promise.resolve(this.deps.extraContext?.({
         scope: this.scope,
         userText: input.text,
+        signal: call.signal,
       }).then(renderExtensionContext).catch((error) => {
         this.deps.log?.warn("plugin context providers failed", error);
         return undefined;

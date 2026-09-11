@@ -17,6 +17,7 @@ import type {
   RegisteredReaderMode,
 } from "../../plugins/lib/plugin-types";
 import { normalizeReaderTextSegments } from "../../plugins/lib/reader-mode";
+import { consumePluginResult } from "../../plugins/runtime/plugin-result";
 
 /** Opaque unit id declared by the active plugin mode. */
 export type TextUnitId = string;
@@ -175,10 +176,11 @@ export async function buildTextUnitRanges(
       if (!nodes.length || !text.trim()) continue;
       const index = ordinal++;
       try {
-        const segmented = await segmentText({ text, language, unitId });
-        if (signal?.aborted) throw signal.reason;
-        if (failed) return;
-        results[index] = segmentsToRanges(nodes, normalizeReaderTextSegments(segmented, text.length));
+        await consumePluginResult(segmentText({ text, language, unitId }), segmented => {
+          if (signal?.aborted) throw signal.reason;
+          if (failed) return;
+          results[index] = segmentsToRanges(nodes, normalizeReaderTextSegments(segmented, text.length));
+        });
       } catch (error) {
         failed = true;
         if (signal?.aborted) throw signal.reason;

@@ -1,6 +1,7 @@
 import { AppError, pageSettingOptions, type SettingOption, type SettingsOptionsQuery } from "@read-aware/core";
 import type { PluginSelectOption } from "@read-aware/plugin-types";
 import { contributionText } from "../../features/plugins/lib/plugin-i18n";
+import { consumePluginResult } from "../../features/plugins/runtime/plugin-result";
 
 type Source = {
   identity: object;
@@ -50,8 +51,8 @@ export class DynamicOptionsCache {
       const work = Promise.resolve().then(() => {
         signal?.throwIfAborted();
         if (!source.current()) throw stale();
-        return source.load();
-      }).then(options => normalizeOptions(options, source.pluginName));
+        return consumePluginResult(source.load(), options => normalizeOptions(options, source.pluginName));
+      });
       // A deadline stops waiting, not an already-dispatched callback/network request.
       void work.then(() => { this.active--; }, error => { this.active--; this.report(error); });
       const pending = Promise.race([work, new Promise<never>((_, reject) => {

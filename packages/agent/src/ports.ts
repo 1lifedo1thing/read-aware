@@ -410,6 +410,8 @@ export interface AgentExtensionContextBlock {
 export interface AgentExtensionContextRequest {
   scope: ThreadScope;
   userText: string;
+  /** Host-only turn lifetime; never forwarded as plugin-authored authority. */
+  signal?: AbortSignal;
 }
 
 export interface ExternalMemoryCandidate {

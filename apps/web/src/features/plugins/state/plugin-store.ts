@@ -201,7 +201,7 @@ export const contentProvidersAtom = contentProvidersRegistry.atom;
 
 export function registerContentProviderContribution(
   provider: RegisteredContentProvider,
-): PluginDisposable {
+) {
   return contentProvidersRegistry.register(provider);
 }
 

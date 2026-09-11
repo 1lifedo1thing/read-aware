@@ -33,6 +33,9 @@ import { confirmPluginTool } from "./plugin-tool-confirmation";
 import { pluginBookCardResult } from "./plugin-book-cards";
 import { proposePluginMemories } from "./plugin-memory-candidates";
 import { createLogger } from "../../../platform/logger";
+import { consumePluginResult } from "./plugin-result";
+import { clonePluginJsonResult } from "../lib/plugin-json-result";
+import { pluginCallbackOwner } from "./plugin-callback-wire";
 
 /**
  * A card-carrying tool result (PluginToolWordCards in the contract): the
@@ -90,6 +93,7 @@ const MAX_PROVIDER_CONTEXT_BLOCKS = 3;
 const MAX_RETRIEVAL_ITEMS = 10;
 const MAX_RETRIEVAL_CONTENT = 2_000;
 const memoryLog = createLogger("plugin-memory-candidates");
+const contextLog = createLogger("plugin-context");
 
 function pluginScope(scope: ThreadScope): PluginAgentScope {
   return scope.kind === "book"
@@ -110,34 +114,41 @@ function retrievalTool(provider: RegisteredAgentRetrievalProvider, scope: Thread
     label: provider.label,
     description: `[Plugin: ${provider.pluginName}] ${provider.description}`,
     parameters: RETRIEVAL_PARAMETERS as AgentTool["parameters"],
-    execute: async (_toolCallId, raw) => {
-      if (!getRegisteredAgentRetrievalProviders().includes(provider)) {
-        throw new AppError("plugin/unavailable", "Retrieval registration has retired");
-      }
+    execute: async (_toolCallId, raw, signal) => {
+      const check = () => {
+        signal?.throwIfAborted();
+        if (pluginCallbackOwner(provider.retrieve)?.aborted || !getRegisteredAgentRetrievalProviders().includes(provider)) {
+          throw new AppError("plugin/unavailable", "Retrieval registration has retired");
+        }
+      };
+      check();
       const params = (raw ?? {}) as { query?: unknown; limit?: unknown };
       const query = typeof params.query === "string" ? params.query.trim() : "";
       if (!query) throw new Error("query is required");
       const requested = typeof params.limit === "number" ? Math.floor(params.limit) : 5;
       const limit = Math.max(1, Math.min(MAX_RETRIEVAL_ITEMS, requested));
-      const result = await provider.retrieve({ scope: pluginScope(scope), query, limit });
-      const items = (Array.isArray(result) ? result : [])
-        .slice(0, limit)
-        .flatMap((item) => {
-          const content = typeof item?.content === "string"
-            ? item.content.trim().slice(0, MAX_RETRIEVAL_CONTENT)
-            : "";
-          if (!content) return [];
-          return [{
-            title: typeof item.title === "string" ? item.title.trim().slice(0, 160) : undefined,
-            location:
-              typeof item.location === "string" ? item.location.trim().slice(0, 240) : undefined,
-            content,
-          }];
-        });
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify({ source: provider.pluginName, items }) }],
-        details: undefined,
-      };
+      return consumePluginResult(provider.retrieve({ scope: pluginScope(scope), query, limit }), result => {
+        check();
+        if (!Array.isArray(result)) throw new AppError("plugin/invalid-input", "Retrieval provider did not return a list");
+        const items = result
+          .slice(0, limit)
+          .flatMap((item) => {
+            const content = typeof item?.content === "string"
+              ? item.content.trim().slice(0, MAX_RETRIEVAL_CONTENT)
+              : "";
+            if (!content) return [];
+            return [{
+              title: typeof item.title === "string" ? item.title.trim().slice(0, 160) : undefined,
+              location:
+                typeof item.location === "string" ? item.location.trim().slice(0, 240) : undefined,
+              content,
+            }];
+          });
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify({ source: provider.pluginName, items }) }],
+          details: undefined,
+        };
+      });
     },
   };
 }
@@ -164,7 +175,7 @@ export function getPluginAgentTools(scope: ThreadScope, interactions?: UserInter
         content: [{ type: "text" as const, text: JSON.stringify({ executed: false, reason: "declined" }) }], details: confirmation.details,
       };
       signal?.throwIfAborted();
-      const result = await tool.execute(confirmation?.params ?? (params ?? {}) as Record<string, unknown>);
+      const result = await consumePluginResult(tool.execute(confirmation?.params ?? (params ?? {}) as Record<string, unknown>), clonePluginJsonResult);
       const bookCards = await pluginBookCardResult(result, scope, tool.resolveBookCards, signal);
       if (bookCards) return {
         content: [{ type: "text" as const, text: JSON.stringify(bookCards.ack) }],
@@ -198,20 +209,39 @@ export async function getPluginAgentContext(
   );
   const settled = await Promise.allSettled(
     providers.map(async (provider) => {
-      const blocks = await provider.provide({
+      const active = () => !request.signal?.aborted && !pluginCallbackOwner(provider.provide)?.aborted
+        && getRegisteredAgentContextProviders().includes(provider);
+      if (!active()) return [];
+      return consumePluginResult(provider.provide({
         scope: pluginScope(request.scope),
         userText: request.userText,
+      }), blocks => {
+        if (!active()) return [];
+        if (!Array.isArray(blocks)) throw new AppError("plugin/invalid-input", "Context provider did not return a list");
+        return blocks
+          .slice(0, MAX_PROVIDER_CONTEXT_BLOCKS)
+          .map((block) => {
+            if (!block || typeof block.content !== "string" || (block.title !== undefined && typeof block.title !== "string")) {
+              throw new AppError("plugin/invalid-input", "Context provider returned an invalid block");
+            }
+            return {
+              source: `${provider.pluginName} (${provider.pluginId}/${provider.id})`,
+              title: block.title,
+              content: block.content,
+            };
+          });
       });
-      return (Array.isArray(blocks) ? blocks : [])
-        .slice(0, MAX_PROVIDER_CONTEXT_BLOCKS)
-        .map((block) => ({
-          source: `${provider.pluginName} (${provider.pluginId}/${provider.id})`,
-          title: block.title,
-          content: block.content,
-        }));
     }),
   );
-  return settled.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+  return settled.flatMap((result, index) => {
+    if (result.status === "fulfilled") {
+      const provider = providers[index]!;
+      return !request.signal?.aborted && !pluginCallbackOwner(provider.provide)?.aborted
+        && getRegisteredAgentContextProviders().includes(provider) ? result.value : [];
+    }
+    contextLog.warn("Plugin context provider failed", result.reason);
+    return [];
+  });
 }
 
 export async function getPluginMemoryCandidates(

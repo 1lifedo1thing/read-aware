@@ -89,7 +89,6 @@ import {
   registerContextActionContribution,
   registerAgentContextProviderContribution,
   registerAgentRetrievalProviderContribution,
-  registerContentProviderContribution,
   registerHeaderActionContribution,
   registerReaderModeContribution,
   registerSelectionActionContribution,
@@ -99,6 +98,7 @@ import {
 } from "../state/plugin-store";
 import { PluginLifecycleController } from "./plugin-lifecycle";
 import { registerPluginVoiceProvider } from "./plugin-voice-provider";
+import { registerPluginContentProvider } from "./plugin-content-provider";
 
 const log = createLogger("plugins");
 
@@ -383,15 +383,7 @@ export function buildPluginContext(
         register: provider => track(() => registerPluginVoiceProvider(provider, brand, lifecycle)),
       },
       contentProviders: {
-        register: (provider) =>
-          track(() =>
-            registerContentProviderContribution({
-              key: `${manifest.id}:${provider.id}`,
-              pluginId: manifest.id,
-              providerId: String(provider.id),
-              load: (bookKey: string) => Promise.resolve(provider.load(bookKey)),
-            }),
-          ),
+        register: provider => track(() => registerPluginContentProvider(manifest.id, provider, lifecycle.signal)),
       },
       readerModes: canUseContribution("readerModes", permissions)
         ? {

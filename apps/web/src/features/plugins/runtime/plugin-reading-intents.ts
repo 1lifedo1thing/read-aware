@@ -6,6 +6,7 @@ import { getRegisteredAgentContextProviders } from "../state/plugin-store";
 import { subscribeContributions } from "../state/contribution-registry";
 import { getBookRecord } from "../../library/lib/library-db";
 import { createLogger } from "../../../platform/logger";
+import { consumePluginResult } from "./plugin-result";
 
 const log = createLogger("reading-intention-sources");
 function waitForSource<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -39,13 +40,13 @@ export function wrapReadingIntent(source: PluginAgentContextProvider["readingInt
   return { scopes,
     prepare: (input: ReadingIntentScope) => {
       const scope = check(input);
-      return lifecycle.read("readingIntent.prepare", async () => { await prepare(scope); check(scope); });
+      return lifecycle.read("readingIntent.prepare", () => consumePluginResult(prepare(scope), () => { check(scope); }));
     },
     read: (input: ReadingIntentScope) => {
       const scope = check(input);
-      return lifecycle.read("readingIntent.read", async () => {
-        const value = await read(scope); check(scope); return normalizeReadingIntentSnapshot(value);
-      });
+      return lifecycle.read("readingIntent.read", () => consumePluginResult(read(scope), value => {
+        check(scope); return normalizeReadingIntentSnapshot(value);
+      }));
     },
   };
 }

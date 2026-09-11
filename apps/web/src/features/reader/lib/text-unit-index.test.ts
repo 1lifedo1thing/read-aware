@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { JSDOM } from "jsdom";
 import { buildTextUnitRanges } from "./text-unit-index";
+import { decodePluginCallbacks, PluginCallbackRegistry } from "../../plugins/runtime/plugin-callback-wire";
 
 const dom = new JSDOM();
 const saved = new Map(["Node", "NodeFilter", "Range"].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -16,6 +17,21 @@ afterAll(() => {
 });
 const documentWith = (html: string) => new dom.window.DOMParser().parseFromString(html, "text/html");
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+
+test.each(["accepted", "invalid", "cancelled"])("%s segmentation releases all returned callback handles", async mode => {
+  const doc = documentWith("<p>Text.</p>");
+  const controller = new AbortController(), callbacks = new PluginCallbackRegistry();
+  const pending = Promise.withResolvers<Array<{ start: number; end: number }>>();
+  const build = buildTextUnitRanges(doc, "sentence", () => pending.promise, controller.signal).catch(error => error);
+  if (mode === "cancelled") controller.abort(new Error("Cancelled"));
+  const result = decodePluginCallbacks(callbacks.encode([{ start: 0, end: mode === "invalid" ? 99 : 5, extra: () => {} }]),
+    (handle, args) => callbacks.invoke(handle, args), handles => callbacks.release(handles));
+  pending.resolve(result as Array<{ start: number; end: number }>);
+  const outcome = await build;
+  if (mode === "accepted") expect(outcome.map((range: Range) => range.toString())).toEqual(["Text."]);
+  else expect(outcome).toBeInstanceOf(Error);
+  expect(callbacks.size).toBe(0);
+});
 
 test("bounded concurrent segmentation preserves document order and inline node offsets", async () => {
   const doc = documentWith(Array.from({ length: 19 }, (_, i) => `<p>Block <em>${i}</em>.</p>`).join(""));
