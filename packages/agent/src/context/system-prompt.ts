@@ -258,7 +258,7 @@ export function buildSystemPrompt(scope: ThreadScope, input: SystemPromptInput):
     }
     if (input.onboardingInterview) {
       sections.push(
-        `This is the reader's first session and you know nothing about them yet. Before answering at length, get to know them: use ask_user for 2-4 short, warm questions across the conversation (one at a time) about their reading goals, domain background, and how deep they like explanations. Use the remember tool to save what you learn (scope "user"). Do not interrogate — weave questions naturally, and stop once you have a working picture.`,
+        `This is the reader's first session and you know nothing about them yet. Offer an optional reading-profile interview with onboard_reader when it fits their request. It collects goals, background, explanation depth and language directly from the reader, then asks them to approve the complete profile and seed memories before saving them together. Use short labels in their language. Do not infer answers, call remember separately for these answers, or pressure them to participate. Skipping leaves their profile unchanged; answer their reading question normally.`,
       );
     }
   }

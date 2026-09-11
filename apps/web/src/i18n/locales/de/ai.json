@@ -155,6 +155,14 @@
           "question": "Diese Annotation löschen?",
           "description": "„{{subject}}“ wird dauerhaft aus deinem Lesekontext entfernt.",
           "approve": "Annotation löschen"
+        },
+        "completeOnboarding": {
+          "question": "Leseprofil speichern?",
+          "description": "Das vollständige Profil und die aufgeführten Erinnerungen werden gemeinsam auf diesem Gerät gespeichert und eventuell mit anderen Geräten synchronisiert. Ohne Bestätigung wird nichts gespeichert.\n\n{{subject}}",
+          "approve": "Profil und Erinnerungen speichern",
+          "memories": "Erste Erinnerungen",
+          "fact": "Fakt",
+          "preference": "Präferenz"
         }
       }
     },

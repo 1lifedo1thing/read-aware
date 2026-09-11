@@ -56,7 +56,8 @@ export async function runMemoryBuild<T>(
           reinforceMemory: commit(snapshot => original.memory.reinforceMemory(snapshot, call.signal)),
           applyMemoryChanges: commit((changes, snapshots) => original.memory.applyMemoryChanges(changes, snapshots, call.signal)) },
         conversations: { ...original.conversations, putInsights: commit(original.conversations.putInsights) },
-        profile: { ...original.profile, putProfileSummary: commit(original.profile.putProfileSummary) },
+        profile: { ...original.profile, putProfileSummary: commit(original.profile.putProfileSummary),
+          completeOnboarding: commit(input => original.profile.completeOnboarding(input, call.signal)) },
         identityConsolidation: {
           snapshot: guard(() => original.identityConsolidation.snapshot(call.signal)),
           commit: commit(input => original.identityConsolidation.commit(input, call.signal)),

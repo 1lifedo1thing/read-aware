@@ -2,6 +2,7 @@
 import type { ProfilePort } from "@read-aware/agent";
 import { changeUserProfile, putUserProfile, readUserProfile, readUserProfilePage } from "../../../../domain/user-profile";
 import { readProfileContext, inspectProfileContext } from "../../../../domain/identity-consolidation";
+import { completeOnboarding } from "../../../../domain/onboarding";
 
 export function createProfilePort(): ProfilePort {
   return {
@@ -11,5 +12,6 @@ export function createProfilePort(): ProfilePort {
     readProfile: readUserProfilePage,
     putProfileSummary: putUserProfile,
     updateProfile: (input, signal) => changeUserProfile(input, "agent", signal),
+    completeOnboarding: (input, signal) => completeOnboarding(input, "agent", signal),
   };
 }

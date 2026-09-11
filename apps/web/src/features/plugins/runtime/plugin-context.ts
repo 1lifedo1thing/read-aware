@@ -960,6 +960,9 @@ export function buildPluginContext(
     } }, updateProfile: input => {
       lifecycle.assertActive("domains.memory.commands.updateProfile");
       return memory.commands!.updateProfile(input);
+    }, completeOnboarding: (input, options) => {
+      lifecycle.assertActive("domains.memory.commands.completeOnboarding");
+      return memory.commands!.completeOnboarding(input, callSignal(options));
     }, decideEntity: (input, options) => {
       lifecycle.assertActive("domains.memory.commands.decideEntity");
       return memory.commands!.decideEntity(input, callSignal(options));

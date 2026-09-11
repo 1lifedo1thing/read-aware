@@ -196,7 +196,7 @@ export interface UserInteractionOption {
 }
 
 export type UserPermissionAction =
-  "delete-book" | "delete-books" | "delete-collection" | "delete-annotation" | "manage-memory" | "classify-book" | "generate-book-graph" | "clear-conversation" | "sync-now" | "manage-schedule" | "access-book-file" | "import-resource" | "merge-books" | "plugin-tool" | "download-resource" | "update-profile" | "manage-entity";
+  "delete-book" | "delete-books" | "delete-collection" | "delete-annotation" | "manage-memory" | "classify-book" | "generate-book-graph" | "clear-conversation" | "sync-now" | "manage-schedule" | "access-book-file" | "import-resource" | "merge-books" | "plugin-tool" | "download-resource" | "complete-onboarding" | "update-profile" | "manage-entity";
 
 type UserInteractionBase = {
   /** Globally unique for the lifetime of the tool call. */
@@ -220,6 +220,7 @@ export type UserInteractionRequest = UserInteractionBase &
         /** Human-readable object name; the host localizes the surrounding warning. */
         subject: string;
         maxChapters?: number;
+        onboardingSeeds?: import("@read-aware/core").OnboardingSeed[];
       }
   );
 
@@ -313,6 +314,7 @@ export interface ProfilePort {
   getProfileContext(): Promise<import("@read-aware/core").ProfileContext>;
   inspectProfileContext(query?: import("@read-aware/core").ProfileInspectionQuery, signal?: AbortSignal): Promise<import("@read-aware/core").ProfileInspectionPage>;
   updateProfile(input: import("@read-aware/core").UserProfileChange, signal?: AbortSignal): Promise<import("@read-aware/core").UserProfileReceipt>;
+  completeOnboarding(input: import("@read-aware/core").OnboardingChange, signal?: AbortSignal): Promise<import("@read-aware/core").OnboardingReceipt>;
   getProfileSummary(): Promise<string | undefined>;
   readProfile(query?: import("@read-aware/core").UserProfileQuery, signal?: AbortSignal): Promise<import("@read-aware/core").UserProfilePage>;
   /** Internal onboarding write to the curated event-backed summary. */

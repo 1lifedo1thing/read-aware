@@ -28,6 +28,10 @@ test("all graph approval translations disclose the subject and resolved chapter 
     expect(json.chat.interaction.permission.downloadResource.description).toContain("64 MiB");
     expect(json.chat.interaction.permission.updateProfile.description).toContain("{{subject}}");
     expect(json.chat.interaction.permission.updateProfile.approve.length).toBeGreaterThan(0);
+    expect(json.chat.interaction.permission.completeOnboarding.description).toContain("{{subject}}");
+    expect(json.chat.interaction.permission.completeOnboarding.memories.length).toBeGreaterThan(0);
+    expect(json.chat.interaction.permission.completeOnboarding.fact.length).toBeGreaterThan(0);
+    expect(json.chat.interaction.permission.completeOnboarding.preference.length).toBeGreaterThan(0);
   }
 });
 

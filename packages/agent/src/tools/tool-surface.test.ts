@@ -178,6 +178,7 @@ const SURFACE_CASES: Record<string, Record<string, unknown>> = {
   set_reader_panel_width: { panel: "toc", width: 320 },
   focus_reader: { target: "content" },
   ask_user_form: { title: "Reading plan", fields: [{ id: "pace", kind: "text", label: "Pages per day" }] },
+  onboard_reader: { title: "Reading profile", labels: { goals: "Goals", background: "Background", explanationDepth: "Depth", language: "Language" } },
   capture_context_bundle: { kind: "user_profile_context" },
   list_context_bundles: { kind: "user_profile_context" },
   read_context_bundle: { kind: "user_profile_context", version: `cb1:${"0".repeat(64)}` },

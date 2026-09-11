@@ -642,7 +642,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
         stores.insights.delete(key);
       },
     },
-    profile: createProfileFixture(stores.profile),
+    profile: createProfileFixture(stores.profile, stores.memories),
     entityRegistry,
     identityConsolidation,
     memory: {

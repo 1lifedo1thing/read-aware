@@ -155,6 +155,14 @@
           "question": "Delete this annotation?",
           "description": "“{{subject}}” will be permanently removed from your reading context.",
           "approve": "Delete annotation"
+        },
+        "completeOnboarding": {
+          "question": "Save your reading profile?",
+          "description": "The complete profile below and the listed memories will be saved together on this device and may sync to your other devices. Nothing is saved until you approve.\n\n{{subject}}",
+          "approve": "Save profile and memories",
+          "memories": "Seed memories",
+          "fact": "Fact",
+          "preference": "Preference"
         }
       }
     },

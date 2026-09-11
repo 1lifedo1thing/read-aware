@@ -20,8 +20,8 @@ function manifest(patch: Partial<PluginManifest> = {}): PluginManifest {
 describe("plugin capability negotiation", () => {
   test("memory 2 rejects profile1 clients rather than silently changing their persistence contract", () => {
     for (const permission of ["memory:read", "memory:write"] as const) {
-      expect(resolvePluginCapabilities(manifest({ permissions: [permission] })).domains.memory).toBe("2.4.0");
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^1.8.0" } } }))).toThrow(/host provides 2.4.0/);
+      expect(resolvePluginCapabilities(manifest({ permissions: [permission] })).domains.memory).toBe("2.5.0");
+      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^1.8.0" } } }))).toThrow(/host provides 2.5.0/);
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.0.0" } } }))).not.toThrow();
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.1.0" } } }))).not.toThrow();
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.2.0" } } }))).not.toThrow();

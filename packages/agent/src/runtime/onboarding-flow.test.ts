@@ -26,11 +26,11 @@ describe("onboarding", () => {
       goals: "系统理解货币史",
       background: "工程背景",
       explanationDepth: "第一性原理，别怕长",
-    });
+    }, { submissionId: "interview", expectedRevision: (await deps.profile.readProfile()).revision });
 
     expect(stores.profile.summary).toContain("工程背景");
     expect(stores.profile.summary).toContain("货币史");
-    const seeds = stores.savedMemoryInputs.filter((input) => input.origin === "onboarding");
+    const seeds = stores.memories;
     expect(seeds).toHaveLength(3);
     expect(seeds.every((seed) => seed.scope === "user")).toBe(true);
   });

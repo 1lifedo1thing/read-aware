@@ -64,6 +64,7 @@ export * from "./settings-options";
 export * from "./book-content-state";
 export * from "./sync";
 export * from "./user-profile";
+export * from "./onboarding";
 export * from "./entity-registry";
 export * from "./identity-consolidation";
 export * from "./profile-inspection";

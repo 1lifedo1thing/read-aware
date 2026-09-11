@@ -1011,6 +1011,7 @@ pub fn run() {
             storage::context_bundle_read,
             storage::profile_initialize,
             storage::profile_commit,
+            storage::onboarding_commit,
             storage::profile_restore,
             storage::entity_query,
             storage::entity_commit,

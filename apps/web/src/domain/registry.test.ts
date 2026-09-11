@@ -55,7 +55,7 @@ describe("domain registry", () => {
     expect(Object.keys(granted.memory!.queries.context)).toEqual(["history", "read", "export"]);
     expect(granted.memory!.commands).toBeUndefined();
     const writer = createActorDomainView("plugin:test", { memory: "write" }).memory!.commands!;
-    expect(Object.keys(writer)).toEqual(["mutate", "context", "updateProfile", "decideEntity", "classify", "startGraphTask", "cancelGraphTask", "retryGraphTask"]);
+    expect(Object.keys(writer)).toEqual(["mutate", "context", "updateProfile", "completeOnboarding", "decideEntity", "classify", "startGraphTask", "cancelGraphTask", "retryGraphTask"]);
     expect(Object.keys(writer.context)).toEqual(["capture"]);
   });
 });

@@ -556,6 +556,13 @@ pub async fn list_event_aggregate_ids(
         for r in iter {
             out.push(r?);
         }
+        if types.iter().any(|kind| kind == "memory.promoted") {
+            // Onboarding seeds have one compound creation event. Their receipt
+            // survives checkpoints and prevents genesis from minting them again.
+            let mut seeds = conn.prepare("SELECT DISTINCT value FROM onboarding_receipts, json_each(memory_ids_json)")?;
+            let rows = seeds.query_map([], |row| row.get::<_, String>(0))?;
+            for id in rows { out.push(id?); }
+        }
         Ok(out)
     })
     .await

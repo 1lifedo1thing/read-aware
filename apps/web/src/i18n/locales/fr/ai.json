@@ -155,6 +155,14 @@
           "question": "Supprimer cette annotation ?",
           "description": "« {{subject}} » sera définitivement retiré de votre contexte de lecture.",
           "approve": "Supprimer l’annotation"
+        },
+        "completeOnboarding": {
+          "question": "Enregistrer votre profil de lecture ?",
+          "description": "Le profil complet ci-dessous et les souvenirs indiqués seront enregistrés ensemble sur cet appareil et pourront être synchronisés avec vos autres appareils. Rien ne sera enregistré sans votre accord.\n\n{{subject}}",
+          "approve": "Enregistrer le profil et les souvenirs",
+          "memories": "Souvenirs initiaux",
+          "fact": "Fait",
+          "preference": "Préférence"
         }
       }
     },

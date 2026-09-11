@@ -1707,6 +1707,10 @@ export type PluginDomains = {
      * Present the complete candidate for user confirmation before calling.
      * Empty text clears the summary, not memories or historical copies. */
     updateProfile(input: import("@read-aware/core").UserProfileChange): Promise<import("@read-aware/core").UserProfileReceipt>;
+    /** Memory 2.5: confirm the full summary AND seeds before calling. Reuse the same
+     * owner-local submissionId and exact candidate after a lost receipt; a different
+     * candidate requires a new id and renewed confirmation. Atomic, event-backed. */
+    completeOnboarding(input: import("@read-aware/core").OnboardingChange, options?: PluginCallOptions): Promise<import("@read-aware/core").OnboardingReceipt>;
     mutate(input: import("@read-aware/core").MemoryMutation): Promise<import("@read-aware/core").MemoryMutationReceipt>;
     classify(input: import("@read-aware/core").BookClassificationChange): Promise<import("@read-aware/core").BookClassificationReceipt>;
     startGraphTask(bookId: string, mode: "catch-up" | "rebuild", options?: import("@read-aware/core").BookGraphTaskOptions): Promise<import("@read-aware/core").BookGraphTaskSnapshot>;

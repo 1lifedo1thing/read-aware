@@ -176,7 +176,7 @@ fn v37_installs_blob_guards_on_existing_databases_atomically() {
     }
     assert_eq!(
         scalar::<i64>(&conn, "SELECT MAX(version) FROM schema_migrations"),
-        37
+        super::super::schema::SCHEMA_VERSION
     );
     let mut broken = test_conn();
     super::super::schema::run_migrations_up_to(&mut broken, 36).unwrap();

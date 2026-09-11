@@ -142,7 +142,7 @@ pub(crate) fn profile_initialize_inner(
         // A null summary event is an explicit clear, not an absent decision.
         let decided: bool = tx.query_row(
             "SELECT EXISTS(SELECT 1 FROM domain_events
-                WHERE type='profile.updated' AND json_type(payload_json,'$.summary') IS NOT NULL)",
+                WHERE type IN ('profile.updated','profile.onboarded') AND json_type(payload_json,'$.summary') IS NOT NULL)",
             [],
             |row| row.get(0),
         )?;

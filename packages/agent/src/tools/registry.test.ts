@@ -100,7 +100,8 @@ describe("agent tool registry", () => {
 
     const tools = names(buildAgentTools(global, deps));
 
-    expect(tools).toHaveLength(124);
+    expect(tools).toHaveLength(125);
+    expect(tools).toContain("onboard_reader");
     expect(tools).toContain("read_context_bundle");
     expect(tools).toContain("list_context_bundles");
     expect(tools).toContain("inspect_user_profile");

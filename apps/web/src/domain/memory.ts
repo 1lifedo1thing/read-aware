@@ -13,6 +13,7 @@ import { MemoryObserver } from "./memory-observer";
 import { createLogger } from "../platform/logger";
 import { createBookGraphTasks } from "./book-graph-tasks";
 import { changeUserProfile } from "./user-profile";
+import { completeOnboarding } from "./onboarding";
 import { decideEntity, queryEntities } from "./entity-registry";
 import { inspectProfileContext } from "./identity-consolidation";
 import { contextBundleAccess } from "./context-bundle-access";
@@ -71,6 +72,11 @@ export function createMemoryDomain(origin: EventOrigin, lifetime?: AbortSignal, 
       } },
       updateProfile: (input: import("@read-aware/core").UserProfileChange) => {
         const work = changeUserProfile(input, origin, lifetime);
+        trackCleanup?.(work.then(() => {}, () => {}));
+        return work;
+      },
+      completeOnboarding: (input: import("@read-aware/core").OnboardingChange, signal?: AbortSignal) => {
+        const work = completeOnboarding(input, origin, entitySignal(signal));
         trackCleanup?.(work.then(() => {}, () => {}));
         return work;
       },

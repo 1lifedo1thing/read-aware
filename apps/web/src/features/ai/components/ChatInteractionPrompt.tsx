@@ -18,11 +18,16 @@ const CUSTOM_CHOICE = "__read_aware_custom_answer__";
 const permissionKeys: Record<
   ChatPermissionAction,
   {
-    question: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "downloadResource" | "updateProfile" | "manageEntity"}.question`;
-    description: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "downloadResource" | "updateProfile" | "manageEntity"}.description`;
-    approve: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "downloadResource" | "updateProfile" | "manageEntity"}.approve`;
+    question: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "downloadResource" | "updateProfile" | "manageEntity" | "completeOnboarding"}.question`;
+    description: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "downloadResource" | "updateProfile" | "manageEntity" | "completeOnboarding"}.description`;
+    approve: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "downloadResource" | "updateProfile" | "manageEntity" | "completeOnboarding"}.approve`;
   }
 > = {
+  "complete-onboarding": {
+    question: "chat.interaction.permission.completeOnboarding.question",
+    description: "chat.interaction.permission.completeOnboarding.description",
+    approve: "chat.interaction.permission.completeOnboarding.approve",
+  },
   "download-resource": {
     question: "chat.interaction.permission.downloadResource.question",
     description: "chat.interaction.permission.downloadResource.description",
@@ -284,10 +289,20 @@ function PermissionPrompt({
       <Caption as="p" className="whitespace-pre-wrap break-words leading-5 text-fg-muted">
         {t(keys.description, { subject: request.subject, maxChapters: request.maxChapters ?? "?" })}
       </Caption>
+      {request.action === "complete-onboarding" && request.onboardingSeeds && (
+        <div className="space-y-2">
+          <Caption>{t("chat.interaction.permission.completeOnboarding.memories")}</Caption>
+          {request.onboardingSeeds.map((seed, index) => (
+            <Caption as="p" key={index} className="whitespace-pre-wrap break-words leading-5 text-fg-muted">
+              {t(seed.kind === "fact" ? "chat.interaction.permission.completeOnboarding.fact" : "chat.interaction.permission.completeOnboarding.preference")}: {seed.content}
+            </Caption>
+          ))}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Button
           size="sm"
-          variant="danger"
+          variant={request.action === "complete-onboarding" ? "solid" : "danger"}
           disabled={submitting}
           onClick={() => settle({ optionId: "approve", text: "Approved" })}
         >
@@ -299,7 +314,7 @@ function PermissionPrompt({
           disabled={submitting}
           onClick={() => settle({ optionId: "decline", text: "Declined" })}
         >
-          {t("chat.interaction.permission.decline")}
+          {t(request.action === "complete-onboarding" ? "chat.interaction.skip" : "chat.interaction.permission.decline")}
         </Button>
       </div>
     </div>

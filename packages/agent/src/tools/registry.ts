@@ -34,6 +34,7 @@ import { buildScheduleTools } from "./schedule-tools";
 import { buildShelfTools } from "./shelf-tools";
 import { buildReadingAiTools } from "./reading-ai-tools";
 import { buildContextBundleTools } from "./context-bundle-tools";
+import { buildOnboardingTool } from "./onboarding-tool";
 import type { AgentTurnState } from "./turn-state";
 
 export type { AgentTurnState, SpoilerFence } from "./turn-state";
@@ -46,6 +47,7 @@ export function buildAgentTools(
   turnState?: AgentTurnState,
 ): AgentTool[] {
   const hostTools: AgentTool[] = [
+    ...(scope.kind === "global" ? [buildOnboardingTool(scope, deps)] : []),
     ...buildReadingAiTools(scope, deps),
     ...buildEnvironmentTools(deps),
     ...buildWindowTools(deps),

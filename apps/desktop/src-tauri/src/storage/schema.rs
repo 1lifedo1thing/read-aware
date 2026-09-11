@@ -763,6 +763,11 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
     (35, "context_bundle_versions", include_str!("context_bundles_v35.sql")),
     (36, "context_bundle_source_clock", ""),
     (37, "context_bundle_blob_source_clock", ""),
+    (38, "onboarding_receipts", "CREATE TABLE onboarding_receipts (
+        owner TEXT NOT NULL, submission_id TEXT NOT NULL, request_hash TEXT NOT NULL,
+        revision TEXT NOT NULL, memory_ids_json TEXT NOT NULL,
+        PRIMARY KEY (owner, submission_id)
+    );"),
 ];
 
 /// Rebuild the annotation FTS index from the table. Required after any VACUUM
@@ -781,7 +786,7 @@ pub(crate) fn rebuild_annotations_fts(conn: &Connection) -> Result<(), CommandEr
 /// The schema version a projection checkpoint is stamped with. Restoring one
 /// is only sound when the derived tables' shapes match exactly, so a
 /// checkpoint from a different version is ignored in favour of the log.
-pub(crate) const SCHEMA_VERSION: i64 = 37;
+pub(crate) const SCHEMA_VERSION: i64 = 38;
 
 /// The migration after which `materialize_legacy_covers` must run: the cover
 /// projection columns exist, the inline data-URL column still does.
@@ -811,6 +816,11 @@ pub(crate) fn run_migrations_up_to(conn: &mut Connection, max_version: i64) -> R
             tx.execute_batch(sql)?;
             if *version == 36 { super::context_bundle_publication::install_source_clock(&tx)?; }
             if *version == 37 { super::context_bundle_publication::install_blob_source_clock(&tx)?; }
+            if *version == 38 {
+                // An older client could retain an unknown onboarding event.
+                // Replay all decisions in order, not just its profile overwrite.
+                tx.execute("UPDATE sync_profile SET projections_stale=1 WHERE log_complete=0 OR EXISTS(SELECT 1 FROM domain_events WHERE type='profile.onboarded')", [])?;
+            }
             if *version == 33 {
                 // Recover formerly ignored facts without rewriting unrelated
                 // legacy projections. An incomplete bootstrap must finish replay.

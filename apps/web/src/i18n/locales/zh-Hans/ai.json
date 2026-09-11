@@ -155,6 +155,14 @@
           "question": "要删除这条标注吗？",
           "description": "“{{subject}}”会从你的阅读上下文中永久移除。",
           "approve": "删除标注"
+        },
+        "completeOnboarding": {
+          "question": "保存阅读画像？",
+          "description": "以下完整画像和列出的记忆将一起保存在本机，并可能同步到其他设备。确认之前不会保存。\n\n{{subject}}",
+          "approve": "保存画像和记忆",
+          "memories": "种子记忆",
+          "fact": "事实",
+          "preference": "偏好"
         }
       }
     },

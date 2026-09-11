@@ -9,5 +9,6 @@ export function toChatInteractionRequest(request: UserInteractionRequest): ChatI
     ? { ...identity, kind: "question", question: request.question, allowCustom: request.allowCustom,
       options: request.options.map(option => ({ id: option.id, label: option.label, description: option.description })) }
     : { ...identity, kind: "permission", action: request.action, subject: request.subject,
-      ...(request.maxChapters === undefined ? {} : { maxChapters: request.maxChapters }) };
+      ...(request.maxChapters === undefined ? {} : { maxChapters: request.maxChapters }),
+      ...(request.onboardingSeeds === undefined ? {} : { onboardingSeeds: structuredClone(request.onboardingSeeds) }) };
 }

@@ -18,7 +18,7 @@ describe("memory build policy", () => {
     await remember.execute("test", params);
     state.set(false);
     await expect(remember.execute("test", params)).rejects.toMatchObject({ code: "ai/memory-disabled", retryable: false });
-    await expect(applyOnboarding(deps, { goals: "do not save" })).rejects.toMatchObject({ code: "ai/memory-disabled" });
+    await expect(applyOnboarding(deps, { goals: "do not save" }, { submissionId: "disabled", expectedRevision: (await deps.profile.readProfile()).revision })).rejects.toMatchObject({ code: "ai/memory-disabled" });
     const read = await tools.find(tool => tool.name === "search_memory")!.execute("test", {});
     expect(JSON.stringify(read)).toContain("A retained preference");
     expect(stores.memories).toHaveLength(1);
