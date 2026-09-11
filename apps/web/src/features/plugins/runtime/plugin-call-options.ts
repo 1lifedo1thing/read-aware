@@ -23,6 +23,8 @@ export const PLUGIN_CALL_OPTIONS = {
   "domains.library.queries.books.inspectResource": 1,
   "domains.library.commands.books.importBook": 1,
   "domains.library.commands.books.importResource": 1,
+  "domains.library.commands.books.startImport": 1,
+  "domains.library.queries.books.getImportTask": 2,
   "domains.library.queries.books.getNavigationToc": 1,
   "domains.library.queries.books.listNavigationTargets": 1,
   "domains.library.queries.books.searchLocations": 1,
@@ -55,7 +57,8 @@ export const PLUGIN_CALL_OPTIONS = {
 export function pluginCallDrainsCancellation(method: string): boolean {
   return method === "domains.memory.commands.decideEntity" || method === "domains.memory.commands.context.capture" || method === "domains.memory.commands.completeOnboarding"
     || method === "services.schedules.defer" || method === "services.schedules.cancelDeferred"
-    || method === "domains.library.commands.books.importBook" || method === "domains.library.commands.books.importResource";
+    || method === "domains.library.commands.books.importBook" || method === "domains.library.commands.books.importResource"
+    || method === "domains.library.commands.books.startImport";
 }
 
 function position(method: string): number | undefined {

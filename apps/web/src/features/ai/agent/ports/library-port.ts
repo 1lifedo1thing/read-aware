@@ -7,7 +7,7 @@ import type { BookOverview, LibraryPort } from "@read-aware/agent";
 import type { BookStats, BookSummary, Id } from "@read-aware/core";
 import { createDomainApi } from "../../../../domain";
 import { classifyBookIfUnclassified } from "../../../../domain/book-classification";
-import { importResourceBook } from "../../../../domain/library-resource-import";
+import { agentBookImportTasks } from "../../../../domain/library-import-tasks";
 import { inspectResourceBook } from "../../../../domain/book-inspection";
 import { agentResources } from "../../../../services/resources";
 
@@ -51,7 +51,10 @@ export function createLibraryPort(): LibraryPort {
     getEnrichment: library.queries.books.getEnrichment,
     getContentState: library.queries.books.getContentState,
     retryEnrichment: library.commands.books.retryEnrichment,
-    importResource: (threadKey, id, signal) => importResourceBook(agentResources(threadKey), id, "agent", signal),
+    startImportResource: (threadKey, id, signal) => agentBookImportTasks(threadKey).start({ kind: "resource", resourceId: id }, signal),
+    getImportTask: (threadKey, id, waitMs, signal) => agentBookImportTasks(threadKey).wait(id, waitMs, signal),
+    listImportTasks: async threadKey => agentBookImportTasks(threadKey).list(),
+    cancelImportTask: async (threadKey, id) => agentBookImportTasks(threadKey).cancel(id),
     listBookRemovalCleanup: query => library.queries.books.listRemovalCleanup(query),
     getBook: async (bookId) =>
       (await listOverviews()).find((book) => book.id === String(bookId)),

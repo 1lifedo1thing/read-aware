@@ -1,4 +1,4 @@
-import type { EventOrigin } from "@read-aware/core";
+import type { EventOrigin, BookImportPhase } from "@read-aware/core";
 import type { TFunction } from "i18next";
 import { invoke } from "../../../platform/ipc";
 import { putDesktopBlob } from "../../../platform/blob-store";
@@ -79,6 +79,7 @@ export type ImportBookOptions = {
   signal?: AbortSignal;
   /** Host resource lease/admission recheck immediately before that first write. */
   beforeWrite?: () => void;
+  onProgress?: (phase: BookImportPhase) => void;
   /**
    * Called once the format is known and the id reserved, before the (possibly
    * long) copy — the UI can show the placeholder in its final slot.
@@ -103,6 +104,11 @@ export async function importBook(
     throw new Error("Importing a book is desktop-only — the browser build is a UI shell without storage.");
   }
   const file = sourceFileInfo(source);
+  const progress = (phase: BookImportPhase) => {
+    try { options.onProgress?.(phase); }
+    catch (error) { log.warn("Import progress observer failed", error); }
+  };
+  progress("preparing");
 
   // Cheap pass: the identical file (same name + size) is already imported.
   const byFile = options.knownBooks.find(
@@ -124,6 +130,7 @@ export async function importBook(
     const bytes = new Uint8Array(await source.file.arrayBuffer());
     options.signal?.throwIfAborted();
     options.beforeWrite?.();
+    progress("staging");
     await putDesktopBlob(
       bookFileKey(bookId),
       bytes,
@@ -132,6 +139,7 @@ export async function importBook(
   } else {
     options.signal?.throwIfAborted();
     options.beforeWrite?.();
+    progress("staging");
   }
   const stagingAt = performance.now();
   const staged = await invoke<StagedImport>("library_stage_import", {
@@ -163,6 +171,7 @@ export async function importBook(
 
   const title = staged.title?.trim() || placeholder.title;
   const author = staged.author?.trim() || placeholder.author;
+  progress("committing");
   await commitDomainEvents(
     {
       type: "book.imported",

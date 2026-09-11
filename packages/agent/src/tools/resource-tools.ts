@@ -91,7 +91,7 @@ export function buildResourceTools(scope: ThreadScope, deps: RuntimeDeps): Agent
     execute: async (_id, params, signal) => textResult(await deps.library.inspectResource(threadScopeKey(scope), (params as { id: string }).id, signal)),
   }, {
     name: "import_resource_book", label: "Import selected book", executionMode: "sequential",
-    description: "After user approval, import this conversation's sealed file resource into the shelf using the host's normal format detection, content-hash deduplication, metadata and event pipeline. No whole-file bytes enter the model or Worker. Returns imported or duplicate with the actual book. Unsupported or missing resources fail. Accepted native staging is finalized even if this tool is later cancelled; recheck the shelf rather than assuming rollback. Does not open the reader, delete the selected original or release the resource. Library data follows the user's existing sync settings.",
+    description: "After user approval, start this conversation's import task over a sealed file resource using the normal format/deduplication/event pipeline. Returns queued, NOT a completed import. Use get_book_import_tasks to follow preparing/staging/committing and read the final imported/duplicate receipt or errorCode; never claim success from a task ID. cancel_book_import_task cancels before the first durable write; accepted writes still finalize. Start-call cancellation only controls admission. At most 2 physical task executions per owner and 4 across task owners (direct/picker imports use their own path); keep at most 64 in-memory task handles, lost at app restart or owner retirement. No bytes enter the model. Does not open the reader, delete the original or release the resource. Library data follows existing sync settings.",
     parameters: Type.Object({ id: Type.String({ minLength: 1, maxLength: 256 }) }, { additionalProperties: false }),
     execute: async (toolCallId, params, signal, onUpdate) => {
       const id = (params as { id: string }).id, resource = await port().stat(id, signal);
@@ -99,8 +99,23 @@ export function buildResourceTools(scope: ThreadScope, deps: RuntimeDeps): Agent
       const { answer, details } = await requestUserInteraction({ deps, toolCallId, threadKey: threadScopeKey(scope), signal, onUpdate,
         request: { kind: "permission", action: "import-resource", subject: resource.name } });
       if (answer.cancelled || answer.optionId !== "approve") return { ...textResult({ imported: false }), details };
-      return { ...textResult(await deps.library.importResource(threadScopeKey(scope), id, signal)), details };
+      return { ...textResult(await deps.library.startImportResource(threadScopeKey(scope), id, signal)), details };
     },
+  }, {
+    name: "get_book_import_tasks", label: "Inspect book imports",
+    description: "Get one import task by taskId, or list this conversation's retained import tasks. With taskId, waitMs (0..30000) waits for completion or returns current progress at the deadline. Cancelling observation does not cancel the job. Only completed with a receipt proves imported/duplicate. Preparing is cancellable; staging/committing may finish despite cancelRequested. Phases are milestones, not byte percentages. Missing handles fail; tasks do not resume after restart. Use bounded waiting rather than tight polling.",
+    parameters: Type.Object({ taskId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
+      waitMs: Type.Optional(Type.Integer({ minimum: 0, maximum: 30_000 })) }, { additionalProperties: false }),
+    execute: async (_id, params, signal) => {
+      const { taskId, waitMs } = params as { taskId?: string; waitMs?: number }, thread = threadScopeKey(scope);
+      if (!taskId && waitMs !== undefined) throw new AppError("ui/invalid-target", "Waiting requires one task ID");
+      return textResult(taskId ? await deps.library.getImportTask(thread, taskId, waitMs, signal) : await deps.library.listImportTasks(thread));
+    },
+  }, {
+    name: "cancel_book_import_task", label: "Cancel book import", executionMode: "sequential",
+    description: "Request cancellation of one import task owned by this conversation. The response is a current snapshot, not proof nothing was written. Before durable admission the task can cancel; after staging begins it keeps its real imported/duplicate receipt or failure. Inspect get_book_import_tasks for the final state. Does not delete an imported book or release the input resource. Terminal tasks are unchanged.",
+    parameters: Type.Object({ taskId: Type.String({ minLength: 1, maxLength: 256 }) }, { additionalProperties: false }),
+    execute: async (_id, params) => textResult(await deps.library.cancelImportTask(threadScopeKey(scope), (params as { taskId: string }).taskId)),
   });
   return tools;
 }

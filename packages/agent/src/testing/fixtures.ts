@@ -451,7 +451,10 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
         return { bookId, source: "file", availability: "local", sourceRevision: "fixture", contentVersion: "fixture" };
       },
       retryEnrichment: async () => { throw new AppError("ui/unavailable", "Attach an enrichment fixture"); },
-      importResource: async () => { throw new AppError("ui/unavailable", "Attach an import resource fixture"); },
+      startImportResource: async () => { throw new AppError("ui/unavailable", "Attach an import resource fixture"); },
+      getImportTask: async () => { throw new AppError("ui/invalid-target", "Attach an import task fixture"); },
+      listImportTasks: async () => [],
+      cancelImportTask: async () => { throw new AppError("ui/invalid-target", "Attach an import task fixture"); },
       listBookFormats: async () => [],
       inspectResource: async () => { throw new AppError("ui/unavailable", "Attach an inspection fixture"); },
       getReadingTime: async (query = {}) => ({ bookId: query.bookId ?? null, localDay: query.localDay ?? null,

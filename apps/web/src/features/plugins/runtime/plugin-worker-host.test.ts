@@ -225,6 +225,64 @@ async function hostFixture(permissions: PluginPermission[] = [], promote = true,
 }
 
 describe("plugin worker capability bridge", () => {
+  test("import task RPC exposes progress, actor isolation, cancellation and the eventual receipt", async () => {
+    const gate = deferred(), entered = deferred();
+    const list = spyOn(libraryDb, "listLibraryBooks").mockResolvedValue([]);
+    const book = bookImport.pendingImportPlaceholder("imported-task", { kind: "file", file: new File(["text"], "book.txt") }, "txt");
+    const source = spyOn(bookImport, "importBook").mockImplementation(async (_input, options) => {
+      options.onProgress?.("staging"); entered.resolve(); await gate.promise; return { status: "imported", book };
+    });
+    const { worker, close } = await hostFixture(["library:write"]), foreign = await hostFixture(["library:read"]);
+    try {
+      await worker.deliver({ t: "call", id: 955, method: "domains.library.commands.books.startImport",
+        args: worker.callbacks.encode([{ kind: "file", fileName: "book.txt", data: new TextEncoder().encode("text") }]) });
+      const task = worker.sent.find(message => message.t === "result" && message.id === 955)!.value as { taskId: string; phase: string };
+      expect(task.phase).toBe("queued"); await entered.promise;
+      await foreign.worker.deliver({ t: "call", id: 956, method: "domains.library.queries.books.getImportTask", args: foreign.worker.callbacks.encode([task.taskId]) });
+      expect(foreign.worker.sent.find(message => message.t === "result" && message.id === 956)).toMatchObject({ ok: false, code: "ui/invalid-target" });
+      await foreign.worker.deliver({ t: "call", id: 957, method: "domains.library.commands.books.startImport", args: foreign.worker.callbacks.encode([{ kind: "resource", resourceId: "unknown" }]) });
+      expect(foreign.worker.sent.find(message => message.t === "result" && message.id === 957)).toMatchObject({ ok: false });
+      await worker.deliver({ t: "call", id: 958, method: "domains.library.events.observeImportTask", args: worker.callbacks.encode([task.taskId, () => undefined]) });
+      const observation = worker.sent.find(message => message.t === "invoke")!;
+      expect(observation).toBeDefined();
+      await worker.deliver({ t: "result", id: observation.id, ok: true, value: worker.callbacks.encode({ extra: () => "release" }) });
+      await Bun.sleep(0);
+      expect(worker.sent.some(message => message.t === "release")).toBe(true);
+      expect(worker.callbacks.size).toBe(1);
+      await worker.deliver({ t: "dispose", handle: worker.sent.find(message => message.t === "result" && message.id === 958)!.disposable });
+      expect(worker.callbacks.size).toBe(0);
+      await worker.deliver({ t: "call", id: 959, method: "domains.library.commands.books.cancelImportTask", args: worker.callbacks.encode([task.taskId]) });
+      expect(worker.sent.find(message => message.t === "result" && message.id === 959))
+        .toMatchObject({ ok: true, value: { phase: "staging", cancellable: false, cancelRequested: true } });
+      const finished = worker.deliver({ t: "call", id: 960, method: "domains.library.queries.books.getImportTask", args: worker.callbacks.encode([task.taskId, 30_000]) });
+      gate.resolve(); await finished;
+      expect(worker.sent.find(message => message.t === "result" && message.id === 960))
+        .toMatchObject({ ok: true, value: { phase: "completed", cancelRequested: true, receipt: { status: "imported", book: { id: book.id } } } });
+    } finally {
+      gate.resolve();
+      for (const message of worker.sent.filter(message => message.t === "invoke")) {
+        await worker.deliver({ t: "result", id: message.id, ok: true, value: worker.callbacks.encode(null) });
+      }
+      await foreign.close(); await close(); source.mockRestore(); list.mockRestore();
+    }
+  });
+  test("retiring a plugin drains byte-import tasks even after the start RPC has completed", async () => {
+    const gate = deferred(), entered = deferred(); let signal!: AbortSignal;
+    const list = spyOn(libraryDb, "listLibraryBooks").mockResolvedValue([]);
+    const book = bookImport.pendingImportPlaceholder("draining-task", { kind: "file", file: new File(["text"], "book.txt") }, "txt");
+    const source = spyOn(bookImport, "importBook").mockImplementation(async (_input, options) => {
+      signal = options.signal!; options.onProgress?.("staging"); entered.resolve(); await gate.promise; return { status: "imported", book };
+    });
+    const { worker, close } = await hostFixture(["library:write"]);
+    let closing: Promise<void> | undefined;
+    try {
+      await worker.deliver({ t: "call", id: 961, method: "domains.library.commands.books.startImport",
+        args: worker.callbacks.encode([{ kind: "file", fileName: "book.txt", data: new Uint8Array([1]) }]) });
+      await entered.promise; let retired = false; closing = close().then(() => { retired = true; });
+      await Bun.sleep(0); expect(signal.aborted).toBe(true); expect(retired).toBe(false);
+      gate.resolve(); await closing; expect(retired).toBe(true);
+    } finally { gate.resolve(); await (closing ?? close()); source.mockRestore(); list.mockRestore(); }
+  });
   test.each(["before-write", "accepted"])("import RPC %s forwards cancellation and preserves the accepted result", async mode => {
     const gate = deferred(), entered = deferred(); let signal!: AbortSignal;
     const list = spyOn(libraryDb, "listLibraryBooks").mockResolvedValue([]);

@@ -96,6 +96,7 @@ import type {
 // Re-exported so plugin authors can name the underlying vocabulary without
 // depending on @read-aware/core directly.
 export type { BookTextSearch, BookTextHit } from "@read-aware/core";
+export type { BookImportPhase, BookImportReceipt, BookImportRequest, BookImportTaskSnapshot } from "@read-aware/core";
 export type { BookTextRange, BookRangeQuery, BookRangePage, BookTextSnapshot, BookTextTaskSnapshot, BookTextPrepareOptions, AnnotationSnapshot, AnnotationMutation, AnnotationCommitResult, AnnotationPage, AnnotationPageQuery, BookTocEntry, BookNavigationToc, BookLocationSearch, BookLocationSearchPage, BookLocationHit,
   ReadingLocation, ReadingTarget, ReadingSessionSnapshot, ReadingPaginationSnapshot, ReadingSelectionSnapshot, ReadingSelectionReceipt, ReadingSessionGuard, ReadingNavigationReceipt, ReadingPlaybackSnapshot, ReadingPlaybackReceipt, ReadingModeConfiguration, ReadingModeDescriptor, ReadingModeSnapshot, ReadingModeReceipt, ReadingModePosition, ReadingModeStepOutcome, ReadingModeStepReceipt } from "@read-aware/core";
 export type {
@@ -1391,6 +1392,11 @@ export type PluginLibraryDomain = {
       getContentState(bookId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").BookContentState>;
       getTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       listTextTasks(bookId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot[]>;
+      /** Library 1.20: this activation's in-memory import handles (64 retained). */
+      /** waitMs (0..30000) waits for terminal state or returns current progress at the deadline.
+       * Cancelling this query stops observation only. */
+      getImportTask(taskId: string, waitMs?: number, options?: PluginCallOptions): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
+      listImportTasks(): Promise<import("@read-aware/core").BookImportTaskSnapshot[]>;
     getChapterText(bookId: string, chapterIndex: number): Promise<string | null>;
     getNavigationToc(bookId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").BookNavigationToc>;
     /** Library 1.14: bounded source-section or author-supplied page-label catalog; not screen page counts. */
@@ -1431,6 +1437,13 @@ export type PluginLibraryDomain = {
        * cancellation prevents admission; afterward await the actual imported/duplicate
        * receipt or failure. No whole-file transfer, opening or resource release. */
       importResource(id: string, options?: PluginCallOptions): Promise<import("@read-aware/core").BookImportReceipt>;
+      /** Start a task over owned sealed resources or <=64 MiB file bytes (wire limits still apply).
+       * Queued is not imported. options.signal cancels admission only; use cancelImportTask
+       * after the receipt. At most 2 physical task executions per activation, 4 in the app;
+       * direct imports/picker jobs are outside this task quota.
+       * Tasks do not resume after restart. Accepted writes finish despite cancellation. */
+      startImport(input: import("@read-aware/core").BookImportRequest, options?: PluginCallOptions): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
+      cancelImportTask(taskId: string): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
       editMetadata(bookId: string, patch: { title?: string; author?: string }): Promise<void>;
       setStarred(bookId: string, starred: boolean): Promise<void>;
       remove(bookId: string): Promise<void>;
@@ -1459,6 +1472,8 @@ export type PluginLibraryDomain = {
   events: {
     subscribe: DomainSubscribe<LibraryDomainEventType>;
     observeTextTask(bookId: string, taskId: string, handler: (snapshot: import("@read-aware/core").BookTextTaskSnapshot) => void | Promise<void>): PluginDisposable;
+    /** Initial snapshot and coalesced monotonic revisions, including terminal failures. */
+    observeImportTask(taskId: string, handler: (snapshot: import("@read-aware/core").BookImportTaskSnapshot) => void | Promise<void>): PluginDisposable;
     observeEnrichment(bookId: string, handler: (event: import("@read-aware/core").BookEnrichmentObservation) => unknown): PluginDisposable;
     observeContentState(bookId: string, handler: (event: import("@read-aware/core").BookContentObservation) => unknown): PluginDisposable;
     /** Initial and coalesced reload hints, including remote projection changes.

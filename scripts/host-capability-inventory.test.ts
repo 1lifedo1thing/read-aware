@@ -8,6 +8,18 @@ test("source evidence keys cannot silently overwrite an unrelated capability sou
   expect(() => assertUniqueSourceKeys('const sources = { ...other };')).toThrow("Expected static source key");
 });
 
+test("import task controls have explicit actor mappings and are absent from book-scoped Agent tools", () => {
+  const inventory = collectInventory();
+  for (const name of ["get_book_import_tasks", "cancel_book_import_task"]) {
+    expect(inventory.find(item => item.family === "Agent global" && item.name.endsWith(name))?.rows).toEqual(["LIB06", "CON06"]);
+    expect(inventory.some(item => item.family === "Agent book" && item.name.endsWith(name))).toBe(false);
+  }
+  for (const name of ["domains.library.commands.books.startImport", "domains.library.commands.books.cancelImportTask",
+    "domains.library.queries.books.getImportTask", "domains.library.queries.books.listImportTasks", "domains.library.events.observeImportTask"]) {
+    expect(inventory.find(item => item.family === "Plugin ctx" && item.name === name)?.rows).toEqual(["LIB06", "CON06"]);
+  }
+});
+
 test("maintenance composition is a source consumer, not a new Agent tool or bundled plugin", () => {
   const inventory = collectInventory();
   expect(inventory.find(item => item.family === "First-party source plugin" && item.name === "maintenance-desk")?.rows)

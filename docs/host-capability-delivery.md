@@ -3,6 +3,18 @@
 目标：实现统一模型中 Agent / 插件尚未接通或只部分接通的应开放能力，完成遗漏重扫，使用真实组合插件和 Tauri 桌面端到端验收。此文件是执行账本，不替代[统一模型](./host-capability-model.md)或[当前矩阵](./host-capability-matrix.md)。
 
 
+## 2026-09-12：LIB06 导入任务双端接线
+
+[实现] 在原有导入/去重/事件管线之上接BookImportTaskOwner与共享领域工厂，未另造导入器。Library1.20暴露startImport、get/listImportTask、observeImportTask、cancelImportTask；接受自有封口资源或最多64MiB字节快照（wire限额仍生效）。queued仅受理任务，随后公开preparing/staging/committing及completed/cancelled/failed。首次写前取消不派发；已受理时cancellable=false，cancelRequested只记录请求，最终仍保留真实imported/duplicate或原始失败。资源在消费期间保有租约，插件退出还排空已离开start RPC的字节任务。
+
+[所有权/界限] 任务句柄限插件代际或Agent会话的资源owner，2个每owner/4个任务池物理执行，取消后不提前释放容量；最多64个保留句柄，逐出旧终态时停止观察。每任务16个观察，先送当前状态、慢回调合并到最新revision，返回图沿Worker通知策略释放。get可等终态至30秒，截止返回当前进度，取消等待不取消任务；失败/退出清理等待的timer和订阅。内存句柄不跨重启，不能把未知结果当未执行。额度只涵盖新任务池，旧直接导入和picker沿既有路径；stage内部仍是原生一次调用，不虚构百分比。
+
+[Agent] 原import_resource_book仍逐次批准，但现在只返回启动任务快照；新增get_book_import_tasks和cancel_book_import_task，只有全局会话拥有，读/取消均绑定同一会话。描述明确queued不是导入成功，最终必须检查receipt；支持有限等待避免紧密轮询，取消不暗示删书或回滚。原插件直接导入API仍保留。公共类型、版本、信号方法表及库存映射同步。
+
+[验证] 控制器定向覆盖任务隔离、容量直到物理结算、终态历史、取消时机、受理后原始失败/去重回执、单调观察/复制、退休排空和有限等待/观察取消。生产领域工厂结合受控native阶段验证真实管线origin、资源保有、阶段、字节快照及未授权/未封口拒绝；Worker消息验证跨owner拒绝、缺写权拒绝、观察回调结果释放、取消后的终态以及退出等待字节任务。Agent工具测试证明批准、queued/最终回执分离、会话绑定、有限等待透传和缺任务错误，工具表面/显式库存映射通过。Agent/Web/desktop类型通过。一次测试筛选未命中后改跑实际工具表面文件；Worker观察结果需等待异步消费后断言，修正测试时序后通过。未运行全量check-capabilities或真实桌面，未把受控native源当SQLite/模型语义证据。
+
+[状态] LIB06双端改接通（待E2E），第一段导入任务进度/取消/可查询结果缺口关闭，集中验收项目已登记stage-three。CON06仍保留其他任务契约缺口，MORE02异步事件防环未改；继续其余能力接线，总目标active，未推送。
+
 ## 2026-09-12：LIB06 导入受理与取消回执边界
 
 [缺口] 导入任务协议前置检查发现：importBook已在原生stage受理后继续提交，但ResourceOwner.use在消费返回后再guard，导致已落库/去重成功的结果被调用方取消或owner退出覆盖。文件输入在arrayBuffer等待期间取消也未在首次blob写前复查。插件两个导入入口未接单次调用信号，无法按调用取消。

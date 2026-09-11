@@ -83,7 +83,10 @@ export interface LibraryPort {
   getEnrichment(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookEnrichmentSnapshot>;
   getContentState(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookContentState>;
   retryEnrichment(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookEnrichmentReceipt>;
-  importResource(threadKey: string, id: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookImportReceipt>;
+  startImportResource(threadKey: string, id: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
+  getImportTask(threadKey: string, taskId: string, waitMs?: number, signal?: AbortSignal): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
+  listImportTasks(threadKey: string): Promise<import("@read-aware/core").BookImportTaskSnapshot[]>;
+  cancelImportTask(threadKey: string, taskId: string): Promise<import("@read-aware/core").BookImportTaskSnapshot>;
   listBookFormats(): Promise<import("@read-aware/core").BookFormatCapability[]>;
   inspectResource(threadKey: string, id: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookInspection>;
   listBooks(): Promise<BookOverview[]>;

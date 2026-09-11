@@ -17,6 +17,7 @@ type NotificationPaths<T> = T extends object ? {
 export const PLUGIN_CALLBACK_RESULT_SINKS = [
   "domains.library.events.subscribe",
   "domains.library.events.observeTextTask",
+  "domains.library.events.observeImportTask",
   "domains.library.events.observeEnrichment",
   "domains.library.events.observeContentState",
   "domains.library.events.observeInvalidation",

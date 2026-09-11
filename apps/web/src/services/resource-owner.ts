@@ -40,6 +40,8 @@ export class ResourceOwner implements ResourcePort {
   private tail: Promise<unknown> = Promise.resolve();
   private queued = 0;
   private disposed = false;
+  private readonly lifetime = new AbortController();
+  get signal(): AbortSignal { return this.lifetime.signal; }
   constructor(private adapter: ResourceAdapter, private report: (error: unknown) => void,
     private authorizeBook: (id: string) => void = () => {}, private now = Date.now,
     private authorizeRead: (ref: ResourceRef) => void = () => {}) {}
@@ -234,6 +236,7 @@ export class ResourceOwner implements ResourcePort {
   }
   async dispose(): Promise<void> {
     this.disposed = true;
+    this.lifetime.abort(new AppError("ui/superseded", "Resource owner retired"));
     for (const entry of this.entries.values()) entry.stopObserving?.();
     // Rejected queued work is already owned by its caller; cleanup must still run.
     await this.tail.catch(() => {});

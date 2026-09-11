@@ -50,6 +50,7 @@ import { hostDiagnostics } from "../../../services/diagnostics";
 import { createResourceOwner } from "../../../services/resources";
 import { registerPluginImageOwner } from "../lib/plugin-image-owner";
 import { importResourceBook } from "../../../domain/library-resource-import";
+import { createBookImportTasks } from "../../../domain/library-import-tasks";
 import { inspectResourceBook } from "../../../domain/book-inspection";
 import {
   deletePluginSecret,
@@ -183,6 +184,7 @@ export function buildPluginContext(
     if (!permissions.has("library:read") && !permissions.has("library:write")) throw new AppError("memory/forbidden", "Book resources require library access");
   });
   lifecycle.signal.addEventListener("abort", () => lifecycle.trackCleanup(resources.dispose()), { once: true });
+  const importTasks = createBookImportTasks(resources, selfOrigin, lifecycle.signal, work => lifecycle.trackCleanup(work));
   registerPluginImageOwner(lifecycle.signal, (id, signal) => {
     lifecycle.assertActive("views.image");
     return resources.imagePreview(id, signal);
@@ -680,6 +682,8 @@ export function buildPluginContext(
         ...library.queries,
         books: {
           ...library.queries.books,
+          getImportTask: (taskId, waitMs, options) => importTasks.wait(taskId, waitMs, callSignal(options)),
+          listImportTasks: async () => importTasks.list(),
           inspectResource: (id, options) => lifecycle.read("library.inspectResource", signal => inspectResourceBook(resources, id, signal), callSignal(options)),
           getNavigationToc: (bookId, options) => lifecycle.read("library.getNavigationToc", signal => library.queries.books.getNavigationToc(bookId, signal), callSignal(options)),
           listNavigationTargets: (input, options) => lifecycle.read("library.listNavigationTargets", signal => library.queries.books.listNavigationTargets(input, signal), callSignal(options)),
@@ -698,6 +702,7 @@ export function buildPluginContext(
         subscribe: trackedOn(library.events.subscribe),
         observeInvalidation: handler => track(() => ({ dispose: library.events.observeInvalidation(handler) })),
         observeTextTask: (bookId, taskId, listener) => track(() => ({ dispose: library.events.observeTextTask(bookId, taskId, listener) })),
+        observeImportTask: (taskId, listener) => track(() => ({ dispose: importTasks.observe(taskId, listener) })),
         observeEnrichment: (bookId, listener) => track(() => ({ dispose: library.events.observeEnrichment(bookId, listener) })),
         observeContentState: (bookId, listener) => track(() => ({ dispose: library.events.observeContentState(bookId, listener) })),
       },
@@ -712,6 +717,8 @@ export function buildPluginContext(
           importBook: (input: { fileName: string; data: ArrayBuffer | Uint8Array }, options?: PluginCallOptions) =>
             library.commands!.books.importBook(input, callSignal(options)),
           importResource: (id: string, options?: PluginCallOptions) => importResourceBook(resources, id, selfOrigin, callSignal(options)),
+          startImport: (input: import("@read-aware/core").BookImportRequest, options?: PluginCallOptions) => importTasks.start(input, callSignal(options)),
+          cancelImportTask: async (id: string) => importTasks.cancel(id),
           editMetadata: library.commands.books.editMetadata,
           setStarred: library.commands.books.setStarred,
           remove: library.commands.books.remove,

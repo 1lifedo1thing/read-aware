@@ -15,7 +15,7 @@ function unit(id: string, family: Family, owner: string, title: string, refs: st
 }
 export const units: Unit[] = [
   unit("D1", "Domain", "library", "书库、集合与可寻址内容", "LIB01-18 TXT01-08 TXT11-13", "domains.library",
-    "书籍/集合 list、get、查询、元数据修改、收藏、导入、删除、合并预览/提交、成员调整；TOC 树、章节正文、文本可用性、准备/重试、带位置的精确搜索、链接目标/图片资源解析。查询返回稳定对象引用与内容版本，搜索返回 snippet + Range，目录条目返回标题、层级、目标及可用编号元数据。",
+    "书籍/集合 list、get、查询、元数据修改、收藏、导入、删除、合并预览/提交、成员调整；Library1.20导入任务提供start/get/list/observe/cancel、阶段和真实终态，Agent批准启动后查询/有限等待完成回执；TOC 树、章节正文、文本可用性、准备/重试、带位置的精确搜索、链接目标/图片资源解析。查询返回稳定对象引用与内容版本，搜索返回 snippet + Range，目录条目返回标题、层级、目标及可用编号元数据。",
     "沿用书库/正文工具；find_book_locations 已返回版本化 Range，read_book_range 双 scope 消费同一 library 1.7 读取，正文与同分节上下文有界、支持续读。当前书剧透 fence 在目标分节加载前检查，确认参数不能自授权限；保持全局/其他书既有政策。意图级工具可组合读取，不能绕过删除批准。",
     "library 1.7 searchLocations.range/readRange 已连接 Worker 与 Text Desk 0.6，组合精确搜索、选区/句段范围详情和实际导航。DOM CFI 与 PDF 页 CFI+quote 同源校验，歧义/缺失/过期明确失败，不把原生路径交给插件。内容查询取消立即结束调用等待，底层资源仍由宿主 drain 释放；真实超过两秒的持有加载已验，无退出假成功。library 1.9 getEnrichment/retryEnrichment/observeEnrichment 已共享本地封面/源可用性、后台任务状态和缺失重试；Agent 双域工具同源、书内限本书。查询不解析，受理不冒充完成，失败不再当无封面；256 进程任务记录/64 每 actor 观察，非耐久任务或跨设备 CAS。原书/封面引用已接 resources，插件资源呈现、持久标注身份与 Range 写入仍未完整；虚拟书受 provider 所有权约束。",
     "library 1.10 已接同源重复候选/预览/条件合并/ID 重定向，global Agent 逐次批准、插件需书库写权限；事务重验展示组版本，沿用确定 keeper 与宿主归并规则，不合并聊天线程。唯一原文件保留，alias 资产在 keeper 存活期间不清理，不承诺即时空间回收；真实组合待集中验收。章节编号解析、匹配排序、导出格式、RSS 订阅属于插件算法。章节 ordinal、书上印刷编号和 sectionIndex 不能混用。缺文件重导入目前只是普通导入流程，不承诺原 ID 原子替换。",
@@ -177,7 +177,7 @@ export const units: Unit[] = [
     "不复制第二份能力 registry；不把所有内部行为都变成公开工具。当前对象级授权/metadata policy/packaged CSP 尚未全部验收。",
     "无权限、撤权、过期批准、跨 scope、恶意插件输出和真实打包 CSP 分别测；只测类型不算通过。"),
   unit("Q2", "Contract", "execution/lifecycle", "完成、取消和资源释放", "CON03-06 READ20 AI07", "",
-    "短操作Promise直接给完成结果；Library1.17/Reading2.18的10正文查询/16阅读控制共享PluginCallOptions末参数signal与Worker/host位置表，保留原guard，预取消不派发，宿主注入权威信号，按id取消不影响兄弟请求。读等待先结束但源/lease排空，每realm32个未结算源读，不因取消早退槽；非全App预算。searchLocations的DOM取文/DOM与PDF匹配及searchText共享章节匹配已接协作扫描，按节点/片段/子串分块，约8ms到期让出真实定时器后检查signal，无命中也可取消；不是8ms硬截止/总内存额度，不强杀文档/PDF解析或单次原生操作。基础对拍与定时器取消通过。Agent继续传既有工具signal/权限，不添模型工具。长操作request/task ID + progress + cancellation + deadline + terminal result仍为目标，非所有API支持options，资源获取/持久写另有契约。accepted只表示受理，不是完成。跨Worker envelope有版本/类型/长度/并发界限，真实新链路Tauri组合后置。",
+    "短操作Promise直接给完成结果；Library1.17/Reading2.18的10正文查询/16阅读控制共享PluginCallOptions末参数signal与Worker/host位置表，保留原guard，预取消不派发，宿主注入权威信号，按id取消不影响兄弟请求。读等待先结束但源/lease排空，每realm32个未结算源读，不因取消早退槽；非全App预算。searchLocations的DOM取文/DOM与PDF匹配及searchText共享章节匹配已接协作扫描，按节点/片段/子串分块，约8ms到期让出真实定时器后检查signal，无命中也可取消；不是8ms硬截止/总内存额度，不强杀文档/PDF解析或单次原生操作。基础对拍与定时器取消通过。Agent继续传既有工具signal/权限，不添模型工具。Library1.20导入已接actor任务ID、阶段/单调观察、取消、0..30秒终态等待及真实回执；每owner2个/任务池全App4个物理执行，64个内存句柄，不跨进程恢复，也不占有所有原生picker/直接导入。其他长操作request/task ID + progress + cancellation + deadline + terminal result仍为目标，非所有API支持options，资源获取/持久写另有契约。accepted只表示受理，不是完成。跨Worker envelope有版本/类型/长度/并发界限，真实新链路Tauri组合后置。",
     "工具结束必须有真实业务结果；插件 worker 崩溃不让模型轮次无限等待。",
     "owner = plugin generation + view/session/task lease；停用后拒绝新调用、取消在途并清理回调/连接/临时资源；迟到 effect 在 host 提交边界再验 generation。",
     "cancel 不等于 undo/远端回滚；不强制所有任务耐久恢复。stable AppError code 复用项目错误契约，本文不发明与现有 code 冲突的第二套错误枚举。",

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { Id, ResourceRef } from "@read-aware/core";
+import { AppError, type Id, type ResourceRef, type BookImportTaskSnapshot } from "@read-aware/core";
 import { createInMemoryDeps } from "../testing/fixtures";
 import { buildResourceTools } from "./resource-tools";
 
@@ -67,17 +67,41 @@ test("inspection uses the global conversation resource owner and does not import
   expect(stores.interactions).toHaveLength(0);
 });
 
-test("resource import is global-only, requires approval and preserves duplicate receipts", async () => {
+test("resource import is global-only, requires approval and reports task admission separately from completion", async () => {
   const { deps, stores } = createInMemoryDeps(); let imported = 0;
-  deps.library.importResource = async (thread, id) => {
+  const snapshot: BookImportTaskSnapshot = { taskId: "task", sourceName: "fixture.txt", phase: "queued", revision: 0,
+    createdAt: "2026-09-12", updatedAt: "2026-09-12", cancellable: true, cancelRequested: false, receipt: null, errorCode: null };
+  deps.library.startImportResource = async (thread, id) => {
     expect([thread, id]).toEqual(["global:thread", "selected"]); imported++;
-    return { status: "duplicate", book: { id: "book" as Id, title: "Existing", format: "txt", starred: false,
-      collectionId: null, addedAt: "2026-09-10T00:00:00Z", updatedAt: "2026-09-10T00:00:00Z" } };
+    return structuredClone(snapshot);
   };
-  const tool = buildResourceTools({ kind: "global", threadId: "thread" }, deps).find(t => t.name === "import_resource_book")!;
+  const tools = buildResourceTools({ kind: "global", threadId: "thread" }, deps), tool = tools.find(t => t.name === "import_resource_book")!;
   expect(buildResourceTools({ kind: "book", bookId: "book" as Id }, deps).some(t => t.name === tool.name)).toBe(false);
-  expect(JSON.stringify(await tool.execute("import", { id: "selected" }, new AbortController().signal))).toContain("duplicate");
+  const admitted = JSON.stringify(await tool.execute("import", { id: "selected" }, new AbortController().signal));
+  expect(admitted).toContain("queued"); expect(admitted).not.toContain("duplicate");
   expect(stores.interactions[0]).toMatchObject({ action: "import-resource", subject: "fixture.txt" });
+  const waiter = new AbortController();
+  deps.library.getImportTask = async (thread, id, waitMs, signal) => {
+    expect([thread, id, waitMs]).toEqual(["global:thread", "task", 5000]); expect(signal).toBe(waiter.signal); return structuredClone(snapshot);
+  };
+  snapshot.phase = "completed"; snapshot.cancellable = false;
+  snapshot.receipt = { status: "duplicate", book: { id: "book" as Id, title: "Existing", format: "txt", starred: false,
+    collectionId: null, addedAt: "2026-09-10", updatedAt: "2026-09-10" } };
+  const inspect = tools.find(t => t.name === "get_book_import_tasks")!;
+  expect(JSON.stringify(await inspect.execute("inspect", { taskId: "task", waitMs: 5000 }, waiter.signal))).toContain("duplicate");
   deps.interactions.request = async () => ({ cancelled: false, optionId: "decline" });
   await tool.execute("decline", { id: "selected" }, new AbortController().signal); expect(imported).toBe(1);
+});
+
+test("import task inspection and cancellation stay in their conversation and propagate missing-handle failures", async () => {
+  const { deps } = createInMemoryDeps(), calls: unknown[] = [], signal = new AbortController().signal;
+  deps.library.listImportTasks = async thread => { calls.push(thread); return []; };
+  deps.library.cancelImportTask = async (thread, id) => { calls.push([thread, id]); throw new AppError("ui/invalid-target", "Missing task"); };
+  const tools = buildResourceTools({ kind: "global", threadId: "mine" }, deps);
+  await tools.find(tool => tool.name === "get_book_import_tasks")!.execute("list", {}, signal);
+  await expect(tools.find(tool => tool.name === "get_book_import_tasks")!.execute("invalid-wait", { waitMs: 10 }, signal)).rejects.toMatchObject({ code: "ui/invalid-target" });
+  await expect(tools.find(tool => tool.name === "cancel_book_import_task")!.execute("cancel", { taskId: "unknown" }, signal)).rejects.toMatchObject({ code: "ui/invalid-target" });
+  expect(calls).toEqual(["global:mine", ["global:mine", "unknown"]]);
+  const bookTools = buildResourceTools({ kind: "book", bookId: "book" as Id }, deps);
+  expect(bookTools.some(tool => ["get_book_import_tasks", "cancel_book_import_task"].includes(tool.name))).toBe(false);
 });

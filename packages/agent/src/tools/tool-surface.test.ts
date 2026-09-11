@@ -79,6 +79,8 @@ const SURFACE_CASES: Record<string, Record<string, unknown>> = {
   pick_resource_files: {},
   download_resource: { url: "https://example.com/book.txt", name: "book.txt" },
   import_resource_book: { id: "resource-fixture" },
+  get_book_import_tasks: { taskId: "import-task" },
+  cancel_book_import_task: { taskId: "import-task" },
   open_book_resource: { bookId: BOOK_ID },
   open_book_cover: { bookId: BOOK_ID },
   list_book_formats: {},
@@ -268,8 +270,14 @@ describe("tool surface contract", () => {
         deps.resources = () => ({ ...resources, copyImage: async () => ({ copied: true, width: 2, height: 3 }) });
         deps.library.inspectResource = async () => ({ status: "parsed", coverage: "initialization", formatHint: "epub", sectionCount: 3, errorCode: null });
         deps.settings.resetReading = async () => ({ changed: [], settings: await deps.settings.getSettings({ section: "reading" }) });
-        deps.library.importResource = async () => ({ status: "duplicate", book: { id: BOOK_ID, title: "The Locked Room", format: "epub", starred: false,
-          collectionId: null, addedAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z" } });
+        const importTask: import("@read-aware/core").BookImportTaskSnapshot = { taskId: "import-task", sourceName: "book.epub", phase: "completed", revision: 3,
+          createdAt: "2026-09-12", updatedAt: "2026-09-12", cancellable: false, cancelRequested: false, errorCode: null,
+          receipt: { status: "duplicate", book: { id: BOOK_ID, title: "The Locked Room", format: "epub", starred: false,
+            collectionId: null, addedAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z" } } };
+        deps.library.startImportResource = async () => importTask;
+        deps.library.getImportTask = async () => importTask;
+        deps.library.listImportTasks = async () => [importTask];
+        deps.library.cancelImportTask = async () => importTask;
         deps.hostIO.openExternal = async () => {};
         deps.diagnostics.requestReport = async action => ({ action, status: "cancelled" });
         deps.diagnostics.verifyProjections = async () => ({ scope: "event-projections", checkedAt: "2026-09-11T00:00:00Z",
