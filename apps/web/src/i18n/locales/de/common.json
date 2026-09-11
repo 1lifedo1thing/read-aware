@@ -12,6 +12,7 @@
     "copied": "Kopiert"
   },
   "errors": {
+    "pluginNetworkRateLimited": "Das Limit für Netzwerkanfragen oder Übertragungen wurde erreicht. Versuchen Sie es in einer Minute erneut.",
     "pluginNetworkFailed": "Die Netzwerkanfrage ist fehlgeschlagen. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     "pluginHttpAuth": "Der Server hat den Zugriff verweigert. Prüfen Sie die Adresse und die Zugriffsanforderungen.",
     "pluginHttpNotFound": "Die angeforderte Adresse wurde nicht gefunden oder ist nicht mehr verfügbar.",

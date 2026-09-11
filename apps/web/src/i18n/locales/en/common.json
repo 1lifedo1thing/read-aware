@@ -12,6 +12,7 @@
     "copied": "Copied"
   },
   "errors": {
+    "pluginNetworkRateLimited": "The network request or transfer limit was reached. Try again in a minute.",
     "pluginNetworkFailed": "The network request failed. Check your connection and try again.",
     "pluginHttpAuth": "The server denied access. Check the address and access requirements.",
     "pluginHttpNotFound": "The requested address was not found or is no longer available.",

@@ -12,6 +12,7 @@
     "copied": "Copié"
   },
   "errors": {
+    "pluginNetworkRateLimited": "La limite de requêtes réseau ou de transfert a été atteinte. Réessayez dans une minute.",
     "pluginNetworkFailed": "La requête réseau a échoué. Vérifiez votre connexion et réessayez.",
     "pluginHttpAuth": "Le serveur a refusé l’accès. Vérifiez l’adresse et les conditions d’accès.",
     "pluginHttpNotFound": "L’adresse demandée est introuvable ou n’est plus disponible.",

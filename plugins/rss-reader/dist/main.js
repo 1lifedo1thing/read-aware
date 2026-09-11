@@ -3644,7 +3644,7 @@ async function parseFeed(xmlText, feedUrl, limit = MAX_ARTICLES) {
   };
 }
 async function fetchFeed(ctx, url) {
-  const response = await ctx.services.network.fetch(url, { signal: AbortSignal.timeout(15000) });
+  const response = await ctx.services.network.fetch(url, { signal: AbortSignal.timeout(15000) }, { retry: "safe" });
   if (!response.ok) {
     const status = response.status;
     const code = status === 401 || status === 403 ? "plugin/http-auth" : status === 404 || status === 410 ? "plugin/http-not-found" : status === 429 ? "plugin/http-rate-limited" : status >= 500 ? "plugin/http-server" : "plugin/http-rejected";

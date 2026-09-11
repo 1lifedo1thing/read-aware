@@ -18,6 +18,19 @@ function files() {
 }
 const request = { url: "https://example.com/book.txt", name: "book.txt" };
 
+test("approved downloads retry the same credential-free URL before creating a resource", async () => {
+  const f = files(); let calls = 0; const retries: unknown[] = [];
+  const service = new ResourceDownloadService(async (url, init) => {
+    expect(url).toBe(request.url); expect(init?.maxRedirections).toBe(0); expect(init?.credentials).toBe("omit");
+    expect(f.data.size).toBe(0);
+    return ++calls === 1 ? new Response(null, { status: 503 }) : new Response("retried");
+  }, () => f.owner, reason => retries.push(reason));
+  try {
+    expect((await service.download("global:retry", request)).status).toBe("downloaded");
+    expect(calls).toBe(2); expect(retries).toHaveLength(1);
+  } finally { await f.owner.dispose(); }
+});
+
 test("download uses credential-free manual GET, streams into the existing resource owner and seals", async () => {
   const f = files(); const errors: unknown[] = [];
   const service = new ResourceDownloadService(async (input, init) => {

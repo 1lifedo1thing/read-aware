@@ -289,10 +289,11 @@ function buildContext(
   const network = services.network as Record<string, unknown> | undefined;
   for (const operation of ["fetch", "openStream"] as const) {
     if (!network || typeof network[operation] !== "function") continue;
-    network[operation] = async (input: RequestInfo | URL, init?: RequestInit) => {
+    network[operation] = async (input: RequestInfo | URL, init?: RequestInit, options?: { retry?: "none" | "safe" }) => {
+      const acceptedOptions = options === undefined ? undefined : structuredClone(options);
       const request = await flattenPluginRequest(input, init);
       try {
-        const result = await callHost(`services.network.${operation}`, [request.url, request.init], request.signal);
+        const result = await callHost(`services.network.${operation}`, [request.url, request.init, acceptedOptions], request.signal);
         return operation === "fetch" ? restorePluginResponse(result as PluginNetworkResponse) : result;
       } catch (error) {
         throw request.signal.aborted ? pluginNetworkAbort(request.signal.reason) : pluginNetworkError(error);

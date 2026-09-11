@@ -1,6 +1,8 @@
 import { AppError, resourceDownloadInput, RESOURCE_DOWNLOAD_MAX_BYTES, type ResourceDownloadInput, type ResourceDownloadReceipt, type ResourcePort } from "@read-aware/core";
 import type { fetch as NativeFetch } from "@tauri-apps/plugin-http";
 import { PLUGIN_NETWORK_LIMITS, PluginNetworkRequests } from "../features/plugins/runtime/plugin-network-requests";
+import { networkTransferBudget } from "./network-transfer-budget";
+import { NetworkRetry } from "./network-retry";
 
 const redirects = new Set([301, 302, 303, 307, 308]);
 
@@ -21,10 +23,15 @@ export class ResourceDownloadService {
     signal?.addEventListener("abort", cancel, { once: true });
     const timer = setTimeout(() => controller.abort(new AppError("plugin/network-timeout", "Download deadline exceeded")), 120_000);
     const cleanups: Promise<void>[] = [];
-    const requests = new PluginNetworkRequests((_request, init) => this.fetch(input.url, {
-      method: "GET", credentials: "omit", redirect: "manual", headers: new Headers(), signal: init.signal, maxRedirections: 0,
-    }), controller.signal,
-      cleanup => { cleanups.push(cleanup); }, { ...PLUGIN_NETWORK_LIMITS, maxConcurrentRequests: 1, maxStreamBytes: RESOURCE_DOWNLOAD_MAX_BYTES });
+    const retries = new NetworkRetry(controller.signal, this.report);
+    const requests = new PluginNetworkRequests((_request, init) => retries.run(() => {
+      networkTransferBudget.charge("agent", 1, 0);
+      return this.fetch(input.url, {
+        method: "GET", credentials: "omit", redirect: "manual", headers: new Headers(), signal: init.signal, maxRedirections: 0,
+      });
+    }, true), controller.signal,
+      cleanup => { cleanups.push(cleanup); }, { ...PLUGIN_NETWORK_LIMITS, maxConcurrentRequests: 1, maxStreamBytes: RESOURCE_DOWNLOAD_MAX_BYTES },
+      bytes => networkTransferBudget.charge("agent", 0, bytes, true));
     let streamId: string | undefined, resourceId: string | undefined;
     let completed = false;
     let port: ResourcePort | undefined;

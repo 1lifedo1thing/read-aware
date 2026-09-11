@@ -2261,6 +2261,8 @@ export type PluginHostServices = {
       maxRedirects: number; maxBodyBytes: number; timeoutMs: number;
       maxStreamBytes: number; maxChunkBytes: number;
       maxConcurrentRequests: number; maxHostConcurrentRequests: number;
+      cumulative: { windowMs: number; maxOwnerRequests: number; maxHostRequests: number; maxOwnerBytes: number; maxHostBytes: number; maxOwners: number };
+      retry: { maxRetries: number; baseDelayMs: number; maxDelayMs: number; statuses: readonly number[] };
     }>;
     /** Native HTTP; Request/init semantics and cancellation survive the Worker bridge.
      * Bodies are buffered up to 64 MiB per direction. Calls have a 120s deadline;
@@ -2271,18 +2273,25 @@ export type PluginHostServices = {
      * proxy-authorization, cookie and referer; custom secret headers are the
      * plugin's responsibility (use redirect:error for authenticated endpoints).
      * Host/content-length are transport-owned. No implicit retry or cookie jar.
+     * Network 2.2: options.retry="safe" opts GET/HEAD without a body into at most
+     * two retries across the whole redirect chain, before response headers are
+     * returned. Other methods and all body reads are never replayed. The original
+     * deadline includes backoff; Retry-After above 30s returns the HTTP response.
+     * Attempts/uploads/read chunks share per-owner and host cumulative quotas;
+     * reactivation does not reset owner debt. policy() reports exact limits.
      * Transport failures carry plugin/network-failed; explicit deadlines carry
      * plugin/network-timeout, aborts plugin/cancelled. Existing structured codes
      * survive unchanged. Unclassified native errors are not guessed from prose.
      * HTTP error statuses still return Response; the consumer decides success. */
-    fetch(input: string | URL | Request, init?: RequestInit): Promise<Response>;
+    fetch(input: string | URL | Request, init?: RequestInit, options?: { retry?: "none" | "safe" }): Promise<Response>;
     /** Network 2.1: headers first; download at most 1 GiB without buffering the
      * whole response. Uploads remain capped at 64 MiB. 8 active requests per
-     * activation / 32 host-wide, shared with fetch; no hidden queue or retry.
+     * activation / 32 host-wide, shared with fetch; no hidden durable queue.
+     * Optional safe retry applies only before this opening receipt, as in fetch.
      * init.signal cancels OPENING only; after receipt use closeStream to cancel.
      * Close in finally if not reading to EOF. 120s absolute lifetime, including
      * headers/redirects/reads; unload cancels and drains native resources. */
-    openStream(input: string | URL | Request, init?: RequestInit): Promise<PluginNetworkStream>;
+    openStream(input: string | URL | Request, init?: RequestInit, options?: { retry?: "none" | "safe" }): Promise<PluginNetworkStream>;
     /** Sequential, non-replayable reads. offset must equal bytes already delivered.
      * One outstanding read per stream; maxBytes defaults to 64 KiB, max 1 MiB.
      * A lost read receipt is not safely retryable: close and restart explicitly. */

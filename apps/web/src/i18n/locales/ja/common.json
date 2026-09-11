@@ -12,6 +12,7 @@
     "copied": "コピーしました"
   },
   "errors": {
+    "pluginNetworkRateLimited": "ネットワーク要求または転送量の上限に達しました。1分後に再試行してください。",
     "pluginNetworkFailed": "ネットワークリクエストに失敗しました。接続を確認して再試行してください。",
     "pluginHttpAuth": "サーバーがアクセスを拒否しました。アドレスとアクセス条件を確認してください。",
     "pluginHttpNotFound": "指定されたアドレスが見つからないか、利用できなくなっています。",

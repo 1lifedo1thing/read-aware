@@ -130,6 +130,7 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "plugin/network-denied": { key: "pluginNetworkDenied", retryable: false },
   "plugin/network-redirect": { key: "pluginNetworkRedirect", retryable: false },
   "plugin/network-busy": { key: "pluginNetworkBusy", retryable: true },
+  "plugin/network-rate-limited": { key: "pluginNetworkRateLimited", retryable: true },
   "plugin/network-failed": { key: "pluginNetworkFailed", retryable: true },
   "plugin/http-auth": { key: "pluginHttpAuth", retryable: false },
   "plugin/http-not-found": { key: "pluginHttpNotFound", retryable: false },

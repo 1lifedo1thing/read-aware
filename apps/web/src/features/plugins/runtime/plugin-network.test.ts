@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, spyOn, test } from "bun:test";
 import type { fetch as nativeFetch } from "@tauri-apps/plugin-http";
 import { validateManifest } from "../lib/manifest";
 import { parsePluginNetworkAccess } from "../lib/plugin-network-policy";
@@ -7,6 +7,8 @@ import { createPluginNetworkService } from "./plugin-network";
 import { flattenPluginResponse, restorePluginResponse } from "./plugin-network-wire";
 import { buildPluginContext } from "./plugin-context";
 import { PLUGIN_NETWORK_LIMITS } from "./plugin-network-requests";
+import { NETWORK_TRANSFER_LIMITS, NetworkTransferBudget, networkTransferBudget } from "../../../services/network-transfer-budget";
+import { NETWORK_RETRY_POLICY } from "../../../services/network-retry";
 
 const lifecycles: PluginLifecycleController[] = [];
 afterEach(async () => {
@@ -23,11 +25,11 @@ test("native transport has no shared cookie feature and shipped network manifest
   for (const id of ["rss-reader", "tts", "webdav-sync"]) {
     const manifest = validateManifest(await Bun.file(new URL(`../../../../../../plugins/${id}/manifest.json`, import.meta.url)).json());
     expect(manifest.networkAccess?.origins).toEqual(["*"]);
-    expect(manifest.requires.services?.network).toBe("^2.0.0");
+    expect(manifest.requires.services?.network).toBe(id === "rss-reader" ? "^2.2.0" : "^2.0.0");
   }
 });
 
-function harness(origins = ["https://a.test"], respond: (url: string, init: Parameters<typeof nativeFetch>[1], index: number) => Response | Promise<Response> = () => new Response("ok")) {
+function harness(origins = ["https://a.test"], respond: (url: string, init: Parameters<typeof nativeFetch>[1], index: number) => Response | Promise<Response> = () => new Response("ok"), owner = `plugin:test-${crypto.randomUUID()}`) {
   const calls: { url: string; init: Parameters<typeof nativeFetch>[1] }[] = [];
   const lifecycle = new PluginLifecycleController([]);
   lifecycles.push(lifecycle);
@@ -36,9 +38,58 @@ function harness(origins = ["https://a.test"], respond: (url: string, init: Para
     const index = calls.length;
     calls.push({ url: String(input), init: { ...init, headers: new Headers(init?.headers) } });
     return respond(String(input), init, index);
-  });
+  }, owner);
   return { service, calls, lifecycle };
 }
+
+test("upload and streamed-byte quotas run in the real request owner and survive reactivation", async () => {
+  const budget = new NetworkTransferBudget({ ...NETWORK_TRANSFER_LIMITS, maxOwnerBytes: 4, maxHostBytes: 8 });
+  const charge = spyOn(networkTransferBudget, "charge").mockImplementation((...args) => budget.charge(...args));
+  const first = harness(undefined, () => new Response("12345"), "plugin:stable");
+  try {
+    await expect(first.service.fetch("https://a.test", { method: "POST", body: "12345" })).rejects.toMatchObject({ code: "plugin/network-rate-limited" });
+    expect(first.calls).toHaveLength(0);
+    const stream = await first.service.openStream("https://a.test");
+    await expect(first.service.readStream(stream.id, 0)).rejects.toMatchObject({ code: "plugin/network-rate-limited" });
+    await first.service.closeStream(stream.id); first.lifecycle.stop();
+    const replacement = harness(undefined, () => new Response(null), "plugin:stable");
+    await expect(replacement.service.fetch("https://a.test")).rejects.toMatchObject({ code: "plugin/network-rate-limited" });
+    expect(replacement.calls).toHaveLength(0);
+    const peer = harness(undefined, () => new Response("1234"), "plugin:peer");
+    const response = await peer.service.fetch("https://a.test");
+    await expect(response.text()).rejects.toMatchObject({ code: "plugin/network-rate-limited" });
+  } finally { charge.mockRestore(); }
+});
+
+test("retry is explicit, safe-method-only and bounded across redirects while denied origins never dispatch", async () => {
+  const defaultRequest = harness(undefined, () => new Response(null, { status: 503 }));
+  expect((await defaultRequest.service.fetch("https://a.test")).status).toBe(503);
+  expect(defaultRequest.calls).toHaveLength(1);
+  const retry = harness(undefined, (_url, _init, index) => new Response(index ? "done" : null, { status: index ? 200 : 503 }));
+  expect(await (await retry.service.fetch("https://a.test", undefined, { retry: "safe" })).text()).toBe("done");
+  expect(retry.calls).toHaveLength(2);
+  const post = harness(undefined, () => new Response(null, { status: 503 }));
+  expect((await post.service.fetch("https://a.test", { method: "POST", body: "write" }, { retry: "safe" })).status).toBe(503);
+  expect(post.calls).toHaveLength(1);
+  const denied = harness(undefined, (_url, _init, index) => index === 0 ? new Response(null, { status: 503 })
+    : new Response(null, { status: 302, headers: { location: "https://denied.test" } }));
+  await expect(denied.service.fetch("https://a.test", undefined, { retry: "safe" })).rejects.toMatchObject({ code: "plugin/network-denied" });
+  expect(denied.calls).toHaveLength(2);
+  expect(() => denied.service.fetch("https://a.test", undefined, { retry: "unsafe" } as never)).toThrow();
+  expect(() => denied.service.fetch("https://a.test", undefined, new Date() as never)).toThrow();
+});
+
+test("retirement aborts backoff without retrying and stream read failures never replay the request", async () => {
+  const h = harness(undefined, () => new Response(null, { status: 503 }));
+  const pending = h.service.fetch("https://a.test", undefined, { retry: "safe" });
+  await new Promise(resolve => setTimeout(resolve, 10)); h.lifecycle.stop();
+  await expect(pending).rejects.toMatchObject({ code: "plugin/cancelled" });
+  expect(h.calls).toHaveLength(1);
+  const read = harness(undefined, () => new Response(new ReadableStream({ pull() { throw Error("Body failed"); } })));
+  const opened = await read.service.openStream("https://a.test", undefined, { retry: "safe" });
+  await expect(read.service.readStream(opened.id, 0)).rejects.toMatchObject({ code: "plugin/network-failed" });
+  expect(read.calls).toHaveLength(1);
+});
 
 test("manifest scopes are explicit, bounded, canonical and incompatible with pre-policy hosts", () => {
   const base = { id: "network-test", name: "Network", version: "1", schemaVersion: 1,
@@ -74,7 +125,8 @@ test("permission does not imply destinations; policy and manifest cannot widen a
   const h = harness(origins);
   origins.push("https://b.test");
   const snapshot = await h.service.policy(); snapshot.origins.push("https://c.test");
-  expect(await h.service.policy()).toEqual({ origins: ["https://a.test"], maxRedirects: 10, maxBodyBytes: 64 * 1024 * 1024, ...PLUGIN_NETWORK_LIMITS });
+  expect(await h.service.policy()).toEqual({ origins: ["https://a.test"], maxRedirects: 10, maxBodyBytes: 64 * 1024 * 1024, ...PLUGIN_NETWORK_LIMITS,
+    cumulative: NETWORK_TRANSFER_LIMITS, retry: NETWORK_RETRY_POLICY });
   for (const url of ["https://b.test", "https://c.test", "http://a.test", "https://a.test:8080", "https://sub.a.test", "file:///tmp/a"]) {
     await expect(h.service.fetch(url)).rejects.toMatchObject({ code: "plugin/network-denied" });
   }

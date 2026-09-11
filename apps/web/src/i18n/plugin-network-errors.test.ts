@@ -4,6 +4,7 @@ import { describeError } from "./describe-error";
 import { i18n, initI18n } from "./index";
 
 const cases = [
+  ["plugin/network-rate-limited", "pluginNetworkRateLimited", true],
   ["plugin/network-failed", "pluginNetworkFailed", true],
   ["plugin/network-timeout", "pluginNetworkTimeout", false],
   ["plugin/http-auth", "pluginHttpAuth", false],

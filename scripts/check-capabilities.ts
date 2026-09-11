@@ -9,6 +9,8 @@ export const capabilityChecks = [
   { name: "Core contracts", args: ["test", "packages/core/src"] },
   { name: "Agent contracts", args: ["test", "packages/agent/src"] },
   { name: "Host domains", args: ["test", "apps/web/src/domain"] },
+  { name: "Network transfer and approved download contracts", args: ["test", "apps/web/src/services/network-transfer-budget.test.ts",
+    "apps/web/src/services/network-retry.test.ts", "apps/web/src/services/resource-download.test.ts"] },
   { name: "Plugin runtime contracts", args: ["test", "apps/web/src/features/plugins/runtime"] },
   { name: "Worker boundary and actual Worker transport", args: ["test",
     "apps/web/src/features/plugins/runtime/plugin-worker-host.test.ts",

@@ -1013,7 +1013,7 @@ export function buildPluginContext(
   }
 
   if (canUseHostService("network", permissions)) {
-    ctx.services.network = createPluginNetworkService(manifest.networkAccess, lifecycle, corsFreeFetch);
+    ctx.services.network = createPluginNetworkService(manifest.networkAccess, lifecycle, corsFreeFetch, selfOrigin);
   }
 
   if (canUseHostService("llm", permissions)) {

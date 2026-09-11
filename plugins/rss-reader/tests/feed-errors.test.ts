@@ -2,6 +2,14 @@ import { expect, test } from "bun:test";
 import type { RssPluginContext } from "../src/types";
 import { fetchFeed } from "../src/feed";
 
+test("RSS opts into host safe retry within its existing 15-second deadline", async () => {
+  const ctx = { services: { network: { fetch: async (_url: string, init: RequestInit, options: unknown) => {
+    expect(options).toEqual({ retry: "safe" }); expect(init.signal).toBeInstanceOf(AbortSignal);
+    return new Response(null, { status: 404 });
+  } } } } as unknown as RssPluginContext;
+  await expect(fetchFeed(ctx, "https://example.test/feed")).rejects.toMatchObject({ code: "plugin/http-not-found" });
+});
+
 test("HTTP errors retain status-specific codes and dispose the rejected response", async () => {
   const cases = [[401, "auth"], [403, "auth"], [404, "not-found"], [410, "not-found"],
     [429, "rate-limited"], [500, "server"], [503, "server"], [400, "rejected"], [302, "rejected"]] as const;

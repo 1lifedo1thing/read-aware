@@ -12,6 +12,7 @@
     "copied": "已复制"
   },
   "errors": {
+    "pluginNetworkRateLimited": "已达到网络请求或传输额度，请在一分钟后重试。",
     "pluginNetworkFailed": "网络请求失败，请检查连接后重试。",
     "pluginHttpAuth": "服务器拒绝访问，请检查地址和访问要求。",
     "pluginHttpNotFound": "请求的地址不存在或已不再提供服务。",

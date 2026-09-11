@@ -41,17 +41,18 @@ export class PluginNetworkRequests {
   private readonly entries = new Map<string, Entry>();
 
   constructor(
-    private readonly request: (input: RequestInfo | URL, init: RequestInit) => Promise<Response>,
+    private readonly request: (input: RequestInfo | URL, init: RequestInit, retry: boolean) => Promise<Response>,
     private readonly signal: AbortSignal,
     private readonly trackCleanup: (pending: Promise<void>) => void,
     private readonly limits = PLUGIN_NETWORK_LIMITS,
+    private readonly received: (bytes: number) => void = () => {},
   ) {
     signal.addEventListener("abort", () => {
       for (const entry of this.entries.values()) this.retire(entry, pluginNetworkAbort(signal.reason));
     }, { once: true });
   }
 
-  async open(input: RequestInfo | URL, init?: RequestInit, limit = this.limits.maxStreamBytes): Promise<PluginNetworkStream> {
+  async open(input: RequestInfo | URL, init?: RequestInit, limit = this.limits.maxStreamBytes, retry = false): Promise<PluginNetworkStream> {
     if (this.signal.aborted) throw pluginNetworkAbort(this.signal.reason);
     const initial = new Request(input, init);
     if (initial.signal.aborted) throw pluginNetworkAbort(initial.signal.reason);
@@ -64,7 +65,7 @@ export class PluginNetworkRequests {
       id: crypto.randomUUID(), controller,
       opening: Promise.resolve().then(() => {
         controller.signal.throwIfAborted();
-        return this.request(initial, { signal: controller.signal });
+        return this.request(initial, { signal: controller.signal }, retry);
       }),
       timer: setTimeout(() => this.retire(entry, new AppError("plugin/network-timeout", "Network response lifetime expired")), this.limits.timeoutMs),
       expiresAt, closed: false, offset: 0, received: 0, limit, buffered: new Uint8Array(0), detach: () => {},
@@ -97,9 +98,9 @@ export class PluginNetworkRequests {
     }
   }
 
-  async fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  async fetch(input: RequestInfo | URL, init?: RequestInit, retry = false): Promise<Response> {
     const initial = new Request(input, init);
-    const info = await this.open(initial, undefined, MAX_PLUGIN_NETWORK_BODY_BYTES);
+    const info = await this.open(initial, undefined, MAX_PLUGIN_NETWORK_BODY_BYTES, retry);
     const entry = this.entries.get(info.id);
     if (!entry) throw new AppError("plugin/network-closed", "Network response has already closed");
     const abort = () => this.retire(entry, pluginNetworkAbort(initial.signal.reason));
@@ -145,6 +146,7 @@ export class PluginNetworkRequests {
     try {
       while (entry.buffered.byteLength === 0) {
         const next: ReadableStreamReadResult<Uint8Array> = entry.reader ? await entry.reader.read() : { done: true, value: undefined };
+        if (!next.done) this.received(next.value.byteLength);
         this.assertOpen(entry);
         if (next.done) {
           this.retire(entry, undefined, true);

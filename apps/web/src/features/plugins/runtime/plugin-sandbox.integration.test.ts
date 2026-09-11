@@ -45,6 +45,14 @@ async function command(scenario: string, fixture?: string) {
   return s;
 }
 
+test("real Worker preserves and snapshots explicit safe retry options across request flattening", async () => {
+  const s = await command("network-retry", "network-retry-probe.ts");
+  const call = await s.next(message => message.method === "services.network.fetch");
+  expect((data(call.args!) as unknown[])[2]).toEqual({ retry: "safe" });
+  s.worker.postMessage({ t: "result", id: call.id, ok: true, value: { status: 200, statusText: "OK", url: "https://a.test/retry", headers: [], body: new TextEncoder().encode("retried").buffer } });
+  expect(resultData(await s.next(message => message.t === "result" && message.id === 900))).toMatchObject({ ok: true, value: { toast: "retried" } });
+});
+
 test.each([undefined, 0, 2, "1"])("real Worker rejects incompatible boot version %s before loading plugin code", async protocolVersion => {
   const s = sandbox("must-not-activate", "wire-probe.ts", { protocolVersion });
   expect(await s.next(message => message.t === "failed")).toMatchObject({ error: "Host protocol or transport version rejected" });

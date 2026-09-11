@@ -198,7 +198,7 @@ export async function parseFeed(
 }
 
 export async function fetchFeed(ctx: RssPluginContext, url: string): Promise<FeedResult> {
-  const response = await ctx.services.network.fetch(url, { signal: AbortSignal.timeout(15_000) });
+  const response = await ctx.services.network.fetch(url, { signal: AbortSignal.timeout(15_000) }, { retry: "safe" });
   if (!response.ok) {
     const status = response.status;
     const code = status === 401 || status === 403 ? "plugin/http-auth"
