@@ -18,7 +18,7 @@ pub(super) fn bytes(
     }
     Ok(())
 }
-fn scalar(
+pub(super) fn scalar(
     hash: &mut Sha256,
     value: ValueRef<'_>,
     check: &mut impl FnMut() -> Result<(), CommandError>,

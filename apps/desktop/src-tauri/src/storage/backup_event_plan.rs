@@ -10,6 +10,9 @@ use tempfile::TempDir;
 mod events;
 #[path = "backup_plan_revision.rs"]
 mod revision;
+#[path = "backup_row_plan.rs"]
+mod rows;
+pub(crate) use rows::RowPlan;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EventMatchKind {
@@ -76,6 +79,13 @@ pub(crate) struct EventPlan {
     pub report: EventPlanReport,
 }
 impl EventPlan {
+    pub(crate) fn plan_rows(
+        self,
+        target: &mut Connection,
+        check: impl FnMut() -> Result<(), CommandError>,
+    ) -> Result<RowPlan, CommandError> {
+        rows::plan(self, target, check)
+    }
     pub(crate) fn source(&self) -> &PreflightedBackup {
         &self.source
     }
