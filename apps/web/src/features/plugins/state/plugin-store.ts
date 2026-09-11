@@ -152,7 +152,7 @@ export function registerFontContribution(item: RegisteredPluginFont): PluginDisp
 
 export function registerVoiceProviderContribution(
   item: RegisteredVoiceProvider,
-): PluginDisposable {
+) {
   return voiceProvidersRegistry.register(item);
 }
 

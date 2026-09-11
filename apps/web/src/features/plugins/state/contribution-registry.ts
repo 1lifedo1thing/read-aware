@@ -11,6 +11,8 @@ export type ContributionIdentity = {
 
 export type ContributionPoint = ContributionId;
 
+export type ContributionRegistration = PluginDisposable & { isCurrent(): boolean };
+
 export type ContributionSnapshot = {
   point: ContributionPoint;
   key: ContributionKey;
@@ -20,7 +22,7 @@ export type ContributionSnapshot = {
 export type ContributionRegistry<T extends ContributionIdentity> = {
   readonly point: ContributionPoint;
   readonly atom: PrimitiveAtom<T[]>;
-  register(item: T): PluginDisposable;
+  register(item: T): ContributionRegistration;
   list(): T[];
   find(predicate: (item: T) => boolean): T | null;
   update(key: ContributionKey, update: (item: T) => T): T | null;
@@ -94,6 +96,7 @@ export function createContributionRegistry<T extends ContributionIdentity>(
       ];
       publish();
       return {
+        isCurrent: () => !owner.disposed && owners.get(item.key) === owner,
         dispose: () => {
           if (owner.disposed) return;
           owner.disposed = true;

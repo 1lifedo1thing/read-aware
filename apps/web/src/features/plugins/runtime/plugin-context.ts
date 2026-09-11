@@ -96,10 +96,9 @@ import {
   registerSettingsOptionsContribution,
   registerToolContribution,
   registerMemoryCandidateProviderContribution,
-  registerVoiceProviderContribution,
-  updateVoiceProviderVoices,
 } from "../state/plugin-store";
 import { PluginLifecycleController } from "./plugin-lifecycle";
+import { registerPluginVoiceProvider } from "./plugin-voice-provider";
 
 const log = createLogger("plugins");
 
@@ -381,42 +380,7 @@ export function buildPluginContext(
         },
       },
       voiceProviders: {
-        register: (provider) => {
-          return track(() => {
-            const key = contributionKey(manifest.id, provider.id);
-            let registeredProvider: Parameters<typeof registerVoiceProviderContribution>[0] = {
-              ...provider,
-              ...brand,
-              key,
-              voices: [],
-            };
-            const registration = registerVoiceProviderContribution(registeredProvider);
-            const refreshVoices = () => {
-              Promise.resolve(provider.listVoices())
-                .then((voices) => {
-                  const replacement = updateVoiceProviderVoices(
-                    key,
-                    Array.isArray(voices) ? voices : [],
-                    registeredProvider,
-                  );
-                  if (replacement) registeredProvider = replacement;
-                })
-                .catch((error) =>
-                  log.warn(`listVoices from "${manifest.id}" failed`, error),
-                );
-            };
-            refreshVoices();
-            const offStorage = onAppEvent("plugin-storage-changed", ({ pluginId }) => {
-              if (pluginId === manifest.id) refreshVoices();
-            });
-            return {
-              dispose: () => {
-                offStorage();
-                registration.dispose();
-              },
-            };
-          });
-        },
+        register: provider => track(() => registerPluginVoiceProvider(provider, brand, lifecycle)),
       },
       contentProviders: {
         register: (provider) =>

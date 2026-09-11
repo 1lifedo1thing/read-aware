@@ -1,7 +1,9 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import type { PluginContext, PluginDisposable } from "../lib/plugin-types";
 import { getDefaultStore } from "jotai";
-import { contextActionsAtom, pluginCommandsAtom } from "../state/plugin-store";
+import { contextActionsAtom, pluginCommandsAtom, voiceProvidersAtom } from "../state/plugin-store";
+import { emitAppEvent } from "../../../platform/app-events";
+import { localKV } from "../../../platform/local-store";
 import { describeContext, startPluginWorker } from "./plugin-worker-host";
 import { PluginCallbackRegistry, pluginCallbackOwner, retainPluginCallbacks } from "./plugin-callback-wire";
 import { openPluginViewChannel } from "../lib/plugin-view-channels";
@@ -221,6 +223,40 @@ async function hostFixture(permissions: PluginPermission[] = [], promote = true)
 }
 
 describe("plugin worker capability bridge", () => {
+  test("voice discovery serializes across Worker replies and releases callbacks in stale results", async () => {
+    const storage = spyOn(localKV, "entries").mockReturnValue({});
+    const { worker, close } = await hostFixture();
+    try {
+      await worker.deliver({ t: "call", id: 910, method: "contributions.voiceProviders.register", args: worker.callbacks.encode([{
+        id: "voice", label: "Voice", listVoices: () => [], synthesize: async () => new Uint8Array(),
+      }]) });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const invokes = () => worker.sent.filter(message => message.t === "invoke");
+      expect(invokes()).toHaveLength(1);
+      const baseline = worker.callbacks.size;
+      for (let index = 0; index < 20; index++) emitAppEvent("plugin-storage-changed", { pluginId: "callback-host-test" });
+      expect(invokes()).toHaveLength(1);
+      await worker.deliver({ t: "result", id: invokes()[0].id, ok: true,
+        value: worker.callbacks.encode([{ id: "stale", label: "Stale", extra: () => {} }]) });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(invokes()).toHaveLength(2);
+      expect(worker.callbacks.size).toBe(baseline);
+      const current = () => getDefaultStore().get(voiceProvidersAtom).find(provider => provider.pluginId === "callback-host-test");
+      expect(current()?.voices).toEqual([]);
+      await worker.deliver({ t: "result", id: invokes()[1].id, ok: true,
+        value: worker.callbacks.encode([{ id: "current", label: "Current" }]) });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(current()?.voices[0].id).toBe("current");
+      const audio = current()!.synthesize({ text: "A sentence", voiceId: "current" });
+      expect(invokes()).toHaveLength(3);
+      await worker.deliver({ t: "result", id: invokes()[2].id, ok: true, value: worker.callbacks.encode(new Uint8Array([1, 2, 3])) });
+      expect(await audio).toEqual(new Uint8Array([1, 2, 3]));
+      await worker.deliver({ t: "dispose", handle: worker.sent.find(message => message.t === "result" && message.id === 910)?.disposable });
+      emitAppEvent("plugin-storage-changed", { pluginId: "callback-host-test" });
+      expect(current()).toBeUndefined();
+      expect(invokes()).toHaveLength(3);
+    } finally { await close(); storage.mockRestore(); }
+  });
   test("failed candidate promotion restores the previous realm command and its RPC state authority", async () => {
     const old = await hostFixture();
     const candidate = await hostFixture([], false);
