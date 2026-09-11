@@ -34,3 +34,22 @@ test("work rejects invalid and pre-dispatch input; source errors and late reads 
   host.controls.beforeCommit = async () => { throw new AppError("db/locked", "Write failed"); };
   await expect(host.service.work.append({ expectedRevision: identityRevision, index: 0, json: "{}" })).rejects.toMatchObject({ code: "db/locked" });
 });
+
+
+test("compaction freezes its tail and checkpoint, drains shutdown, and preserves native errors", async () => {
+  const host = identityHost(), entered = deferred(), release = deferred(), controller = new AbortController();
+  host.controls.beforeCommit = () => { entered.resolve(); return release.promise; };
+  const input = { expectedRevision: identityRevision, expectedPageCount: 1, json: '{"cursor":1}' };
+  const pending = host.service.work.compact(input, controller.signal);
+  input.expectedPageCount = 2; input.json = "{}";
+  await entered.promise; controller.abort();
+  let done = false; const drain = durableWrites.settle().then(() => { done = true; });
+  await Promise.resolve(); expect(done).toBe(false);
+  expect(host.calls).toEqual([{ command: "identity_work_compact", args: { expectedRevision: identityRevision, expectedPageCount: 1, json: '{"cursor":1}' } }]);
+  release.resolve(); expect(await pending).toMatchObject({ status: "compacted" }); await drain;
+  expect(host.minted).toHaveLength(0); expect(host.broadcasts).toHaveLength(0);
+  await expect(host.service.work.compact(input, controller.signal)).rejects.toBeDefined();
+  expect(host.calls).toHaveLength(1);
+  host.controls.beforeCommit = async () => { throw new AppError("memory/conflict", "Tail changed"); };
+  await expect(host.service.work.compact(input)).rejects.toMatchObject({ code: "memory/conflict" });
+});

@@ -6,10 +6,9 @@ Native snapshot/conditional commit, the v34 local checkpoint, typed host service
 bounded automatic inference/idle production and evidence-validated prompt
 consumption are implemented. Public inspection now uses `inspect_user_profile`
 and memory 2.3 `queries.profileContext` / `events.observe(kind=profileContext)`.
-The producer ports remain internal. Schema 39 adds durable intermediate pages
-for oversized memory evidence. MEM08 still has capacity gaps for an oversized
-entity registry and work exceeding the journal limit; no partial pass is labelled
-complete. Existing curated profile APIs retain their meaning.
+The producer ports remain internal. Schemas 39–40 add durable intermediate pages
+and a compact resume frontier for oversized memory evidence. MEM08 still has a
+capacity gap for an oversized entity registry; no partial pass is labelled complete. Existing curated profile APIs retain their meaning.
 
 ## Ownership
 
@@ -92,11 +91,27 @@ Shutdown settlement and automatic-building revocation drain dispatched appends;
 revocation prevents further calls and writes. These ports are not plugin APIs;
 plugins and Agent inspection consume the existing profileContext projection.
 
-The journal allows 4096 pages of at most 48000 bytes each. A full journal, a model
-too small for a leaf, or a registry too large for final resolution remains pending
-with a logged reason. Registry partitioning and journal compaction remain required
-capacity work. The native snapshot still loads the full eligible source set;
-bounded model payloads do not imply bounded total process memory.
+Schema 40 retains at most 4096 uncompressed pages of 48000 bytes each, plus one
+256000-byte checkpoint. The producer compacts each consumed node: it stores the
+exact next source/UTF-16 cursor, binary carry levels, current reduction and final
+fold position. Pure cursor/state validation is separate from async orchestration.
+At most 53 levels are needed within JavaScript's safe integer index range.
+Normal operation retains only an in-flight page; old schema39 pages are reused in
+order and compacted after their suffix is consumed. Restart resumes directly at
+the cursor without scanning or re-inferring previously compacted source text.
+
+Compaction atomically checks the complete source revision and exact monotonic
+page tail, persists the frontier and removes the consumed pages. Indices never
+reset within that source revision: a stale append or compactor cannot replace a
+newer checkpoint, including after reopen. Identical compaction retries are
+idempotent. A failed compact leaves its inference page reusable, so retrying does
+not repeat the model call. Index zero reads the header/frontier even after page
+zero has been pruned; other pruned reads conflict. Compaction emits no domain
+events, obeys the same cancellation/drain policy and clears on final publication
+or data wipe. A model too small for a leaf or a registry too large for final
+resolution still remains pending with a logged reason; registry partitioning is
+required. The native snapshot still loads the full eligible source set, so bounded
+model payloads do not imply bounded total process memory.
 
 The strict model result contains summary, complete, resolutions and merges.
 Existing resolution IDs and merge roots must occur in the captured registry;
@@ -136,7 +151,7 @@ The runtime now uses the production identity port under the same automatic-memor
 policy as extraction/digests. Explicit inference output caps and source-tracking
 options survive the policy wrapper, and its signal combines caller cancellation.
 The source, validation and execution modules are separate from runtime scheduling.
-Remaining capacity work covers oversized registries and journal exhaustion.
+Remaining capacity work covers oversized registries.
 Incomplete model work stays pending with logged diagnostics, not a successful pass.
 Curated profile edits win by separation and read-set conflict checks. Forgotten
 or superseded evidence invalidates the derived layer before regeneration.

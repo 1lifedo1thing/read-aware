@@ -1019,6 +1019,7 @@ pub fn run() {
             storage::identity_consolidation_commit,
             storage::identity_work_read,
             storage::identity_work_append,
+            storage::identity_work_compact,
             storage::book_classification_inspect,
             storage::book_classification_commit,
             storage::book_digest_inspect,

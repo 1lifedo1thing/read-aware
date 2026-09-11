@@ -95,7 +95,11 @@ test("oversized evidence resumes a bounded tree, visits every fragment, and publ
     expect(passCalls).toBeLessThanOrEqual(4);
     if (result.status === "complete") { completed = true; break; }
     expect(result).toEqual({ status: "pending", emitted: 0 });
-    expect((await deps.identityConsolidation.snapshot()).derived).toBeNull();
+    const snapshot = await deps.identityConsolidation.snapshot();
+    expect(snapshot.derived).toBeNull();
+    const saved = await deps.identityConsolidation.work.read({ expectedRevision: snapshot.revision, index: 0 });
+    expect(saved.baseIndex).toBe(saved.pageCount); expect(saved.json).toBeNull();
+    expect(JSON.parse(saved.checkpoint!).version).toBe(2);
   }
   expect(completed).toBe(true); expect(finalCalls).toBe(1);
   expect(inputs).toHaveLength(2 * leafCalls - 1);
@@ -177,4 +181,58 @@ test("an oversized registry is not truncated or falsely settled by the memory ba
   let calls = 0;
   expect(await run(deps, async () => { calls++; return answer({}); })).toMatchObject({ status: "pending" });
   expect(calls).toBe(0); expect((await deps.identityConsolidation.snapshot()).settled).toBe(false);
+});
+
+
+test("a failed compaction keeps its inference page and retries persistence without repeating the model call", async () => {
+  const { deps } = fixture(), compact = deps.identityConsolidation.work.compact;
+  let calls = 0;
+  const complete: CompleteFn = async (_model, context) => { calls++; return answer(JSON.parse(context.messages[0]!.content as string)); };
+  deps.identityConsolidation.work.compact = async () => { throw new AppError("db/locked", "Injected compact failure"); };
+  expect(await run(deps, complete)).toMatchObject({ status: "pending" });
+  expect(calls).toBe(1);
+  const snapshot = await deps.identityConsolidation.snapshot();
+  expect(await deps.identityConsolidation.work.read({ expectedRevision: snapshot.revision, index: 0 })).toMatchObject({ baseIndex: 0, pageCount: 1, checkpoint: null });
+  let callsAtRetry = -1;
+  deps.identityConsolidation.work.compact = async (...args) => { if (callsAtRetry < 0) callsAtRetry = calls; return compact(...args); };
+  await run(deps, complete);
+  expect(callsAtRetry).toBe(1);
+  const work = await deps.identityConsolidation.work.read({ expectedRevision: snapshot.revision, index: 0 });
+  expect(work.baseIndex).toBe(work.pageCount); expect(work.baseIndex).toBeGreaterThan(1);
+});
+
+test("legacy node pages are reused before the checkpoint frontier replaces them", async () => {
+  const { deps } = fixture(), compact = deps.identityConsolidation.work.compact;
+  // Emulate a v1 producer: its append-only journal has no frontier, so each read reports the caller's logical base.
+  const read = deps.identityConsolidation.work.read;
+  let logicalBase = 0;
+  deps.identityConsolidation.work.compact = async input => { logicalBase = input.expectedPageCount; return { revision: input.expectedRevision, pageCount: logicalBase, status: "compacted" }; };
+  deps.identityConsolidation.work.read = async (...args) => ({ ...await read(...args), baseIndex: logicalBase });
+  await run(deps, async (_model, context) => answer(JSON.parse(context.messages[0]!.content as string)));
+  deps.identityConsolidation.work.read = read; deps.identityConsolidation.work.compact = compact;
+  const snapshot = await deps.identityConsolidation.snapshot();
+  expect(await read({ expectedRevision: snapshot.revision, index: 0 })).toMatchObject({ baseIndex: 0, pageCount: 4, checkpoint: null });
+  let modelCalls = 0, firstCompactCalls = -1;
+  deps.identityConsolidation.work.compact = async (...args) => { if (firstCompactCalls < 0) firstCompactCalls = modelCalls; return compact(...args); };
+  await run(deps, async (_model, context) => { modelCalls++; return answer(JSON.parse(context.messages[0]!.content as string)); });
+  expect(firstCompactCalls).toBe(0);
+  expect((await read({ expectedRevision: snapshot.revision, index: 0 })).baseIndex).toBe(8);
+});
+
+
+test("a corrupted persisted frontier cannot skip sources or inject uncaptured evidence", async () => {
+  for (const corrupt of ["cursor", "evidence"] as const) {
+    const { deps } = fixture();
+    await run(deps, async (_model, context) => answer(JSON.parse(context.messages[0]!.content as string)));
+    const read = deps.identityConsolidation.work.read;
+    deps.identityConsolidation.work.read = async (...args) => {
+      const page = await read(...args), state = JSON.parse(page.checkpoint!);
+      if (corrupt === "cursor") state.cursor.sourceIndex = 9999;
+      else state.current = { level: 0, digest: { summary: "Injected", memoryIds: ["unknown"] } };
+      return { ...page, checkpoint: JSON.stringify(state) };
+    };
+    let calls = 0;
+    expect(await run(deps, async () => { calls++; return answer({}); })).toMatchObject({ status: "pending" });
+    expect(calls).toBe(0); expect((await deps.identityConsolidation.snapshot()).derived).toBeNull();
+  }
 });

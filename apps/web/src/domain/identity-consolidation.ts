@@ -1,4 +1,4 @@
-import { identityProfileContext, normalizeIdentityConsolidationPlan, normalizeIdentityWorkQuery, normalizeIdentityWorkAppend, normalizeProfileInspectionQuery, profileInspectionPage, type ProfileInspectionQuery,
+import { identityProfileContext, normalizeIdentityConsolidationPlan, normalizeIdentityWorkQuery, normalizeIdentityWorkAppend, normalizeIdentityWorkCompact, normalizeProfileInspectionQuery, profileInspectionPage, type ProfileInspectionQuery,
   type IdentityWorkPort, type IdentityWorkPage, type IdentityWorkReceipt,
   type IdentityConsolidationPort, type IdentityConsolidationReceipt, type IdentityConsolidationSnapshot, type ProfileContextSnapshot } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
@@ -13,6 +13,11 @@ type IdentityHost = { invoke: typeof invoke; mint: typeof mintEventRows; broadca
 /** Internal production port; neither model output nor a plugin chooses event authority. */
 export function createIdentityConsolidationService(host: IdentityHost) {
   const work: IdentityWorkPort = {
+    compact: async (raw, signal) => {
+      const input = normalizeIdentityWorkCompact(raw);
+      signal?.throwIfAborted(); await host.initialize(); signal?.throwIfAborted();
+      return durableWrites.track(host.invoke<IdentityWorkReceipt>("identity_work_compact", input));
+    },
     read: async (raw, signal) => {
       const input = normalizeIdentityWorkQuery(raw);
       signal?.throwIfAborted(); await host.initialize(); signal?.throwIfAborted();

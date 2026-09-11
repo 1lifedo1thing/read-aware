@@ -5,6 +5,8 @@ use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use serde::Serialize;
 
 const MAX_PAGES: i64 = 4096;
+const MAX_INDEX: i64 = 9_007_199_254_740_991;
+const MAX_CHECKPOINT_BYTES: usize = 256_000;
 const MAX_PAGE_BYTES: usize = 48_000;
 
 #[derive(Debug, Serialize)]
@@ -13,6 +15,8 @@ pub struct IdentityWorkPage {
     pub revision: String,
     pub index: i64,
     pub page_count: i64,
+    pub base_index: i64,
+    pub checkpoint: Option<String>,
     pub json: Option<String>,
 }
 #[derive(Debug, Serialize)]
@@ -34,7 +38,7 @@ fn validate(revision: &str, index: i64) -> Result<(), CommandError> {
         || !revision[5..]
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-        || !(0..MAX_PAGES).contains(&index)
+        || !(0..MAX_INDEX).contains(&index)
     {
         return Err(invalid());
     }
@@ -46,12 +50,12 @@ fn current(conn: &Connection, revision: &str) -> Result<(), CommandError> {
     }
     Ok(())
 }
-fn header(conn: &Connection) -> Result<Option<(String, i64)>, CommandError> {
+fn header(conn: &Connection) -> Result<Option<(String, i64, i64, Option<String>)>, CommandError> {
     Ok(conn
         .query_row(
-            "SELECT revision,page_count FROM identity_consolidation_work WHERE id=1",
+            "SELECT revision,page_count,base_index,checkpoint FROM identity_consolidation_work WHERE id=1",
             [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
         .optional()?)
 }
@@ -64,11 +68,14 @@ pub(crate) fn identity_work_read_inner(
     validate(revision, index)?;
     let tx = conn.transaction()?;
     current(&tx, revision)?;
-    let count = header(&tx)?
-        .filter(|(stored, _)| stored == revision)
-        .map(|(_, count)| count)
-        .unwrap_or(0);
-    let json = if index < count {
+    let (_, count, base_index, checkpoint) = header(&tx)?
+        .filter(|(stored, _, _, _)| stored == revision)
+        .unwrap_or((revision.into(), 0, 0, None));
+    // Index zero is also the atomic resume/header read. Other pruned reads are stale.
+    if index != 0 && index < base_index {
+        return Err(conflict());
+    }
+    let json = if index >= base_index && index < count {
         Some(tx.query_row(
             "SELECT json FROM identity_consolidation_pages WHERE page_index=?1",
             [index],
@@ -82,6 +89,8 @@ pub(crate) fn identity_work_read_inner(
         revision: revision.into(),
         index,
         page_count: count,
+        base_index,
+        checkpoint,
         json,
     })
 }
@@ -103,16 +112,21 @@ pub(crate) fn identity_work_append_inner(
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
     current(&tx, revision)?;
     let stored = header(&tx)?;
-    let count = if let Some((_, count)) = stored.filter(|(stored, _)| stored == revision) {
-        count
+    let (count, base_index) = if let Some((_, count, base, _)) =
+        stored.filter(|(stored, _, _, _)| stored == revision)
+    {
+        (count, base)
     } else {
         if index != 0 {
             return Err(conflict());
         }
         tx.execute("DELETE FROM identity_consolidation_pages", [])?;
-        tx.execute("INSERT INTO identity_consolidation_work(id,revision,page_count) VALUES(1,?1,0) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,page_count=0", [revision])?;
-        0
+        tx.execute("INSERT INTO identity_consolidation_work(id,revision,page_count) VALUES(1,?1,0) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,page_count=0,base_index=0,checkpoint=NULL", [revision])?;
+        (0, 0)
     };
+    if index < base_index {
+        return Err(conflict());
+    }
     if index < count {
         let existing: String = tx.query_row(
             "SELECT json FROM identity_consolidation_pages WHERE page_index=?1",
@@ -131,6 +145,12 @@ pub(crate) fn identity_work_append_inner(
     }
     if index != count {
         return Err(conflict());
+    }
+    if count - base_index >= MAX_PAGES {
+        return Err(CommandError::new(
+            "memory/invalid-input",
+            "Compact identity work before appending more pages",
+        ));
     }
     tx.execute(
         "INSERT INTO identity_consolidation_pages(page_index,json) VALUES(?1,?2)",
@@ -172,6 +192,69 @@ pub async fn identity_work_append(
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
         identity_work_append_inner(&mut conn, &expected_revision, index, &json)
+    })
+    .await
+}
+
+/// Tail comparison prevents a stale compactor from deleting a newer page. The monotonic
+/// index is never reset within a source revision, so old append retries cannot cause ABA.
+pub(crate) fn identity_work_compact_inner(
+    conn: &mut Connection,
+    revision: &str,
+    expected_page_count: i64,
+    json: &str,
+) -> Result<IdentityWorkReceipt, CommandError> {
+    if expected_page_count < 1 {
+        return Err(invalid());
+    }
+    validate(revision, expected_page_count - 1)?;
+    if json.len() > MAX_CHECKPOINT_BYTES
+        || !serde_json::from_str::<serde_json::Value>(json)
+            .map_err(|_| invalid())?
+            .is_object()
+    {
+        return Err(invalid());
+    }
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    current(&tx, revision)?;
+    let (stored, count, base, checkpoint) = header(&tx)?.ok_or_else(conflict)?;
+    if stored != revision || count != expected_page_count {
+        return Err(conflict());
+    }
+    if base == count {
+        if checkpoint.as_deref() != Some(json) {
+            return Err(conflict());
+        }
+        return Ok(IdentityWorkReceipt {
+            revision: revision.into(),
+            page_count: count,
+            status: "retained",
+        });
+    }
+    tx.execute("DELETE FROM identity_consolidation_pages", [])?;
+    tx.execute(
+        "UPDATE identity_consolidation_work SET base_index=page_count,checkpoint=?1 WHERE id=1",
+        [json],
+    )?;
+    tx.commit()?;
+    Ok(IdentityWorkReceipt {
+        revision: revision.into(),
+        page_count: count,
+        status: "compacted",
+    })
+}
+
+#[tauri::command]
+pub async fn identity_work_compact(
+    expected_revision: String,
+    expected_page_count: i64,
+    json: String,
+    app: tauri::AppHandle,
+) -> Result<IdentityWorkReceipt, CommandError> {
+    super::blocking("identity_work_compact", move || {
+        let db = tauri::Manager::state::<Db>(&app);
+        let mut conn = db.0.lock()?;
+        identity_work_compact_inner(&mut conn, &expected_revision, expected_page_count, &json)
     })
     .await
 }
