@@ -62,6 +62,10 @@ tauri-plugin-fs = "2"
 # Staging ground for content-URI picks: extractors and the blob copy read a
 # real path, the temp file vanishes with its guard (also used by tests).
 tempfile = "3"
+# Full backups use standard age passphrase encryption over a streaming tar.
+# No armor, SSH, plugin recipients or home-grown encryption envelope.
+age = { version = "0.12.1", default-features = false }
+tar = { version = "0.4", default-features = false }
 # Explicit auth headers belong to each caller; never share a native cookie jar
 # between plugin activations and the host's own HTTP traffic.
 tauri-plugin-http = { version = "2.5.9", default-features = false, features = ["rustls-tls", "http2", "charset", "macos-system-configuration"] }
@@ -141,6 +145,13 @@ debug = 0
 # only sha2 keeps normal debug compilation fast while avoiding a 10x+ debug-mode
 # penalty that made an 88 MB import take seconds instead of milliseconds.
 [profile.dev.package.sha2]
+opt-level = 3
+
+# The backup KDF keeps its production work factor in dev builds. Optimize the
+# CPU-heavy scrypt/Salsa20 loops so debug compilation does not multiply its cost.
+[profile.dev.package.scrypt]
+opt-level = 3
+[profile.dev.package.salsa20]
 opt-level = 3
 
 # Same reasoning for cover normalization (covers.rs): decoding a

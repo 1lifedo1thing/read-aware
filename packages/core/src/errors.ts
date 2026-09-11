@@ -31,6 +31,9 @@ export const ERR_SECRETS_UNAVAILABLE = "secrets/unavailable";
 export const ERR_BACKUP_INCOMPLETE = "backup/incomplete";
 export const ERR_BACKUP_CHANGED = "backup/changed";
 export const ERR_BACKUP_CANCELLED = "backup/cancelled";
+export const ERR_BACKUP_INVALID_ARCHIVE = "backup/invalid-archive";
+export const ERR_BACKUP_UNLOCK_FAILED = "backup/unlock-failed";
+export const ERR_BACKUP_PASSWORD_POLICY = "backup/password-policy";
 /** Invalid plugin service arguments or a bounded service payload over quota. */
 export const ERR_PLUGIN_INVALID_ARGUMENT = "plugin/invalid-argument";
 export const ERR_PLUGIN_QUOTA_EXCEEDED = "plugin/quota-exceeded";

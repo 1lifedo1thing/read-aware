@@ -1,6 +1,6 @@
 //! Private, native preparation for the full-backup pipeline. This is deliberately
 //! not an IPC/export API: the directory contains the credential key and must only
-//! leave the host through the forthcoming authenticated encrypted archive writer.
+//! leave the host only through the authenticated encrypted archive writer.
 //! It preserves the actual DB (including legacy projection drift), not just replay.
 use super::*;
 use rusqlite::backup::{Backup, StepResult};
