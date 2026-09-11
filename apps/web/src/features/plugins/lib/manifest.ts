@@ -274,23 +274,23 @@ export function validateManifest(raw: unknown): PluginManifest {
 
   let schedules: PluginManifest["schedules"];
   if (record.schedules != null) {
-    if (!Array.isArray(record.schedules)) {
-      throw new PluginManifestError("manifest.schedules must be an array");
+    if (!Array.isArray(record.schedules) || record.schedules.length > 64) {
+      throw new PluginManifestError("manifest.schedules must be an array of at most 64 entries");
     }
     const seen = new Set<string>();
     for (const entry of record.schedules as Record<string, unknown>[]) {
       if (
         typeof entry !== "object" || entry === null ||
-        typeof entry.id !== "string" || !/^[a-z][a-z0-9-]*$/.test(entry.id) ||
-        typeof entry.label !== "string" || entry.label.trim() === "" ||
-        typeof entry.everyMinutes !== "number" ||
-        !Number.isFinite(entry.everyMinutes)
+        typeof entry.id !== "string" || !/^[a-z][a-z0-9-]{0,63}$/.test(entry.id) ||
+        typeof entry.label !== "string" || entry.label.trim() === "" || entry.label.length > 256 ||
+        (entry.mode === "deferred" ? entry.everyMinutes !== undefined
+          : entry.mode !== undefined || typeof entry.everyMinutes !== "number" || !Number.isFinite(entry.everyMinutes))
       ) {
         throw new PluginManifestError(
-          "manifest.schedules entries need an id (lowercase/digits/hyphens), a label, and everyMinutes",
+          "manifest.schedules entries need an id, label, and everyMinutes or mode: deferred",
         );
       }
-      if (entry.everyMinutes < MIN_SCHEDULE_MINUTES) {
+      if (typeof entry.everyMinutes === "number" && entry.everyMinutes < MIN_SCHEDULE_MINUTES) {
         throw new PluginManifestError(
           `manifest.schedules cadence floor is ${MIN_SCHEDULE_MINUTES} minutes`,
         );

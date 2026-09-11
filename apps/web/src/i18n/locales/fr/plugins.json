@@ -64,6 +64,7 @@
     "permissions": "Autorisations",
     "noPermissions": "Aucune autorisation supplémentaire",
     "scheduleLine": "Planifié : {{label}} — au moins toutes les {{minutes}} min quand l'app est ouverte",
+    "deferredScheduleLine": "Tâche différée : {{label}} (quand l'app est ouverte)",
     "permissionName": {
       "service_diagnostics": "Diagnostic des données",
       "service_sync": "Synchronisation",

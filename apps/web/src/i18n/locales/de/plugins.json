@@ -64,6 +64,7 @@
     "permissions": "Berechtigungen",
     "noPermissions": "Keine zusätzlichen Berechtigungen",
     "scheduleLine": "Geplant: {{label}} — mindestens alle {{minutes}} Min. bei geöffneter App",
+    "deferredScheduleLine": "Verzögerte Aufgabe: {{label}} (bei geöffneter App)",
     "permissionName": {
       "service_diagnostics": "Datendiagnose",
       "service_sync": "Synchronisierung",

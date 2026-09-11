@@ -64,6 +64,7 @@
     "permissions": "権限",
     "noPermissions": "追加の権限なし",
     "scheduleLine": "スケジュール: {{label}} — アプリ起動中は{{minutes}}分ごとに実行",
+    "deferredScheduleLine": "遅延タスク: {{label}}（アプリ起動中に実行）",
     "permissionName": {
       "service_diagnostics": "データ診断",
       "service_sync": "同期",

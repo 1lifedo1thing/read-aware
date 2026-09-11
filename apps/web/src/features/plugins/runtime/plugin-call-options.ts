@@ -4,6 +4,8 @@ import type { PluginCallOptions } from "@read-aware/plugin-types";
 /** Final options argument positions shared by the Worker proxy and host RPC.
  * Transport metadata is not authority: the host still resolves the actor's method. */
 export const PLUGIN_CALL_OPTIONS = {
+  "services.schedules.defer": 2,
+  "services.schedules.cancelDeferred": 2,
   "domains.memory.queries.entities": 1,
   "domains.memory.queries.profileContext": 1,
   "domains.memory.commands.decideEntity": 1,
@@ -49,7 +51,8 @@ export const PLUGIN_CALL_OPTIONS = {
 /** These conditional writes arbitrate cancellation at dispatch, not in the proxy.
  * A deadline or lost realm still leaves the outcome unknown; never retry blindly. */
 export function pluginCallDrainsCancellation(method: string): boolean {
-  return method === "domains.memory.commands.decideEntity" || method === "domains.memory.commands.context.capture" || method === "domains.memory.commands.completeOnboarding";
+  return method === "domains.memory.commands.decideEntity" || method === "domains.memory.commands.context.capture" || method === "domains.memory.commands.completeOnboarding"
+    || method === "services.schedules.defer" || method === "services.schedules.cancelDeferred";
 }
 
 function position(method: string): number | undefined {

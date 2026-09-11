@@ -1,10 +1,11 @@
-import { AppError, errorCode, type PluginScheduleControl, type PluginSchedulePage, type PluginScheduleQuery,
+import { AppError, errorCode, normalizeDeferredRequest, type PluginDeferredRequest, type PluginDeferredReceipt,
+  type PluginScheduleRun, type PluginDeferredState, type PluginScheduleControl, type PluginSchedulePage, type PluginScheduleQuery,
   type PluginScheduleReceipt, type PluginScheduleState } from "@read-aware/core";
 import { MIN_SCHEDULE_MINUTES, type PluginScheduleDeclaration } from "@read-aware/plugin-types";
 
-export type ScheduleRecord = Pick<PluginScheduleState, "paused" | "lastStartedAt" | "lastFinishedAt" | "lastSuccessAt" | "lastOutcome" | "lastErrorCode">;
-type Task = { pluginId: string; declaration: PluginScheduleDeclaration; token: object;
-  run(): void | Promise<void>; record: ScheduleRecord; active: boolean; writes?: number; flight?: Promise<PluginScheduleReceipt> };
+export type ScheduleRecord = Pick<PluginScheduleState, "paused" | "lastStartedAt" | "lastFinishedAt" | "lastSuccessAt" | "lastOutcome" | "lastErrorCode" | "deferred">;
+type Task = { pluginId: string; version: string; declaration: PluginScheduleDeclaration; token: object;
+  run(context: PluginScheduleRun): void | Promise<void>; record: ScheduleRecord; active: boolean; writes?: number; flight?: Promise<PluginScheduleReceipt> };
 type Storage = { read(pluginId: string): Record<string, ScheduleRecord>; write(pluginId: string, records: Record<string, ScheduleRecord>): Promise<void> };
 const empty = (): ScheduleRecord => ({ paused: false, lastStartedAt: null, lastFinishedAt: null, lastSuccessAt: null, lastOutcome: null, lastErrorCode: null });
 const validId = (id: unknown): id is string => typeof id === "string" && id.length > 0 && id.length <= 256;
@@ -19,6 +20,7 @@ export class PluginScheduleController {
   private tasks = new Map<string, Task>();
   private queues = new Map<string, Promise<unknown>>();
   private listeners = new Set<() => void>();
+  private sweepCursor?: string;
   constructor(private storage: Storage, private report: (error: unknown) => void, private now = Date.now) {}
   get size() { return [...this.tasks.values()].filter(task => task.active).length; }
   inspect() { return [...this.tasks].filter(([, task]) => task.active).map(([key]) => key).sort(); }
@@ -30,13 +32,16 @@ export class PluginScheduleController {
   }
   subscribe(handler: () => void) { this.listeners.add(handler); return () => { this.listeners.delete(handler); }; }
   private changed() { for (const handler of this.listeners) { try { handler(); } catch (error) { this.report(error); } } }
-  register(pluginId: string, input: PluginScheduleDeclaration, run: () => void | Promise<void>) {
-    if (!validId(pluginId) || !validId(input.id) || typeof input.label !== "string" || input.label.length > 256
-      || !Number.isFinite(input.everyMinutes) || input.everyMinutes <= 0 || typeof run !== "function") throw new AppError("ui/invalid-target", "Invalid schedule declaration");
+  register(pluginId: string, input: PluginScheduleDeclaration, run: Task["run"], version = "1.0.0") {
+    if (typeof pluginId !== "string" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(pluginId) || !input || typeof input.id !== "string" || !/^[a-z][a-z0-9-]{0,63}$/.test(input.id)
+      || typeof version !== "string" || !version || version.length > 128 || typeof input.label !== "string" || !input.label.trim() || input.label.length > 256
+      || (input.mode === "deferred" ? input.everyMinutes !== undefined : input.mode !== undefined || !Number.isFinite(input.everyMinutes) || input.everyMinutes <= 0)
+      || typeof run !== "function") throw new AppError("ui/invalid-target", "Invalid schedule declaration");
     const key = `${pluginId}:${input.id}`, old = this.tasks.get(key), token = {};
+    if (!old && this.tasks.size >= 1024) throw new AppError("plugin/busy", "Host schedule capacity is occupied");
     if (!old && [...this.tasks.values()].filter(task => task.pluginId === pluginId).length >= 64) throw new AppError("ui/unavailable", "Too many schedules for this plugin");
-    const task: Task = old ?? { pluginId, declaration: input, token, run, record: structuredClone(this.storage.read(pluginId)[input.id] ?? empty()), active: true };
-    Object.assign(task, { declaration: { ...input, everyMinutes: Math.max(input.everyMinutes, MIN_SCHEDULE_MINUTES) }, token, run, active: true });
+    const task: Task = old ?? { pluginId, version, declaration: input, token, run, record: structuredClone(this.storage.read(pluginId)[input.id] ?? empty()), active: true };
+    Object.assign(task, { declaration: input.mode === "deferred" ? { ...input } : { ...input, everyMinutes: Math.max(input.everyMinutes, MIN_SCHEDULE_MINUTES) }, version, token, run, active: true });
     this.tasks.set(key, task); this.changed();
     return { dispose: () => {
       if (task.token !== token) return;
@@ -44,6 +49,41 @@ export class PluginScheduleController {
       if (!task.flight && !task.writes) this.tasks.delete(key);
       this.changed();
     } };
+  }
+  async defer(pluginId: string, id: string, raw: PluginDeferredRequest, signal?: AbortSignal): Promise<PluginDeferredReceipt> {
+    const input = normalizeDeferredRequest(raw), task = this.deferredTask(pluginId, id), token = task.token;
+    let result!: PluginDeferredReceipt;
+    await this.save(task, () => {
+      const previous = this.deferredSnapshot(task);
+      if (previous?.requestId === input.requestId) {
+        if (previous.delayMs !== input.delayMs || previous.when !== input.when) throw new AppError("ui/superseded", "Deferred request ID was reused with different input");
+        result = { status: "retained", request: this.deferredSnapshot(task) }; return undefined;
+      }
+      if (previous?.state === "queued") throw new AppError("plugin/busy", "A deferred request is already queued");
+      const request: PluginDeferredState = { ...input, ownerVersion: task.version, dueAt: this.now() + input.delayMs, state: "queued", errorCode: null };
+      result = { status: "queued", request: { ...request } };
+      return { deferred: request };
+    }, () => { signal?.throwIfAborted(); this.assertCurrent(task, token); });
+    return result;
+  }
+  async cancelDeferred(pluginId: string, id: string, requestId: string, signal?: AbortSignal): Promise<PluginDeferredReceipt> {
+    if (typeof requestId !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(requestId)) throw new AppError("ui/invalid-target", "Invalid deferred request ID");
+    const task = this.deferredTask(pluginId, id), token = task.token;
+    let result!: PluginDeferredReceipt;
+    await this.save(task, record => {
+      if (record.deferred?.requestId !== requestId || record.deferred.state !== "queued") {
+        result = { status: "not-queued", request: this.deferredSnapshot(task) }; return undefined;
+      }
+      const request: PluginDeferredState = { ...record.deferred, state: "cancelled", errorCode: "plugin/cancelled" };
+      result = { status: "cancelled", request: { ...request } }; return { deferred: request };
+    }, () => { signal?.throwIfAborted(); this.assertCurrent(task, token); });
+    return result;
+  }
+  private deferredTask(pluginId: string, id: string): Task {
+    if (!validId(pluginId) || !validId(id)) throw new AppError("ui/invalid-target", "Invalid deferred schedule identity");
+    const task = this.tasks.get(`${pluginId}:${id}`);
+    if (!task?.active || task.declaration.mode !== "deferred") throw new AppError("ui/unavailable", "Deferred schedule is not bound");
+    return task;
   }
   list(query: PluginScheduleQuery = {}): PluginSchedulePage {
     if (!query || typeof query !== "object" || Array.isArray(query) || Object.keys(query).some(key => !["pluginId", "offset", "limit"].includes(key))
@@ -74,7 +114,7 @@ export class PluginScheduleController {
       || !validId(input.pluginId) || !validId(input.id) || !["pause", "resume", "run"].includes(input.action)) throw new AppError("ui/invalid-target", "Invalid schedule control");
     const task = this.tasks.get(`${input.pluginId}:${input.id}`);
     if (!task?.active) throw new AppError("ui/unavailable", "Schedule is not bound");
-    if (input.action === "run") return this.execute(task, signal);
+    if (input.action === "run") return this.execute(task, "manual", signal);
     const token = task.token;
     await this.save(task, { paused: input.action === "pause" }, () => {
       signal?.throwIfAborted(); this.assertCurrent(task, token);
@@ -82,38 +122,60 @@ export class PluginScheduleController {
     signal?.throwIfAborted(); this.assertCurrent(task, token);
     return { status: "completed", schedule: this.snapshot(task) };
   }
-  sweep() {
+  sweep(idle = false) {
     const now = this.now();
-    for (const task of this.tasks.values()) {
-      if (!task.active || task.flight || task.record.paused) continue;
+    const entries = [...this.tasks], start = (entries.findIndex(([key]) => key === this.sweepCursor) + 1) % Math.max(entries.length, 1);
+    for (let offset = 0; offset < entries.length; offset++) {
+      const [key, task] = entries[(start + offset) % entries.length]!;
+      if (!task.active || task.flight || task.record.paused || !this.capacity(task)) continue;
+      if (task.declaration.mode === "deferred") {
+        const pending = this.deferredSnapshot(task);
+        if (pending?.state === "queued" && pending.dueAt <= now && (pending.when === "any" || idle)) {
+          this.sweepCursor = key;
+          void this.execute(task, "deferred").catch(this.report);
+        }
+        continue;
+      }
       const stamp = task.record.lastStartedAt;
       if (isScheduleDue(stamp === null ? undefined : new Date(stamp).toISOString(), task.declaration.everyMinutes, now)) {
-        void this.execute(task).catch(this.report);
+        this.sweepCursor = key;
+        void this.execute(task, "periodic").catch(this.report);
       }
     }
   }
-  private async execute(task: Task, signal?: AbortSignal): Promise<PluginScheduleReceipt> {
+  private async execute(task: Task, trigger: PluginScheduleRun["trigger"], signal?: AbortSignal): Promise<PluginScheduleReceipt> {
     if (task.flight) return { status: "already-running", schedule: this.snapshot(task) };
+    if (!this.capacity(task)) throw new AppError("plugin/busy", "Schedule execution capacity is occupied");
     signal?.throwIfAborted();
     const token = task.token, run = task.run;
+    const observed = this.deferredSnapshot(task);
+    const deferred = task.declaration.mode === "deferred" && observed?.state === "queued" ? observed : null;
+    const context: PluginScheduleRun = { trigger, requestId: deferred?.requestId ?? null, startedAt: this.now() };
+    const deferredPatch = (record: ScheduleRecord, state: PluginDeferredState["state"], code: string | null) =>
+      deferred && record.deferred?.requestId === deferred.requestId ? { deferred: { ...record.deferred, state, errorCode: code } } : {};
     const work = Promise.resolve().then(async () => {
-      await this.save(task, { lastStartedAt: this.now(), lastOutcome: "running", lastErrorCode: null }, () => {
+      await this.save(task, record => {
+        if (deferred && (record.deferred?.requestId !== deferred.requestId || record.deferred.state !== "queued")) throw new AppError("plugin/cancelled", "Deferred request changed before dispatch");
+        return { lastStartedAt: context.startedAt, lastOutcome: "running", lastErrorCode: null, ...deferredPatch(record, "running", null) };
+      }, () => {
         signal?.throwIfAborted(); this.assertCurrent(task, token);
       });
       try {
         signal?.throwIfAborted(); this.assertCurrent(task, token);
-        await run();
+        await run(context);
         signal?.throwIfAborted(); this.assertCurrent(task, token);
       } catch (error) {
         const cancelled = signal?.aborted || !task.active || task.token !== token || errorCode(error) === "plugin/cancelled";
         const code = cancelled ? "plugin/cancelled" : errorCode(error) ?? "ipc/unknown";
         this.report(error);
         if (task.active && task.token === token) {
-          await this.save(task, { lastFinishedAt: this.now(), lastOutcome: cancelled ? "cancelled" : "failed", lastErrorCode: code }, () => this.assertCurrent(task, token));
+          await this.save(task, record => ({ lastFinishedAt: this.now(), lastOutcome: cancelled ? "cancelled" : "failed", lastErrorCode: code,
+            ...deferredPatch(record, cancelled ? "cancelled" : "failed", code) }), () => this.assertCurrent(task, token));
         }
         throw new AppError(code, "Plugin schedule callback did not complete");
       }
-      await this.save(task, { lastFinishedAt: this.now(), lastSuccessAt: this.now(), lastOutcome: "succeeded", lastErrorCode: null }, () => this.assertCurrent(task, token));
+      await this.save(task, record => ({ lastFinishedAt: this.now(), lastSuccessAt: this.now(), lastOutcome: "succeeded", lastErrorCode: null,
+        ...deferredPatch(record, "succeeded", null) }), () => this.assertCurrent(task, token));
       signal?.throwIfAborted(); this.assertCurrent(task, token);
       return { status: "completed" as const, schedule: this.snapshot(task) };
     });
@@ -125,13 +187,15 @@ export class PluginScheduleController {
       this.changed();
     }
   }
-  private save(task: Task, patch: Partial<ScheduleRecord>, guard?: () => void): Promise<void> {
+  private save(task: Task, patch: Partial<ScheduleRecord> | ((record: ScheduleRecord) => Partial<ScheduleRecord> | undefined), guard?: () => void): Promise<void> {
     task.writes = (task.writes ?? 0) + 1;
     const previous = this.queues.get(task.pluginId) ?? Promise.resolve();
     // A failed write rejects its caller, but must not poison later control attempts.
     const work = previous.catch(() => {}).then(async () => {
       guard?.();
-      const records = this.storage.read(task.pluginId), next = { ...task.record, ...patch };
+      const update = typeof patch === "function" ? patch(task.record) : patch;
+      if (!update) return;
+      const records = this.storage.read(task.pluginId), next = { ...task.record, ...update };
       records[task.declaration.id] = next;
       await this.storage.write(task.pluginId, records);
       task.record = next; this.changed();
@@ -149,8 +213,18 @@ export class PluginScheduleController {
     if (!task.active || task.token !== token || this.tasks.get(`${task.pluginId}:${task.declaration.id}`) !== task) throw new AppError("plugin/cancelled", "Schedule owner retired");
   }
   private snapshot(task: Task): PluginScheduleState {
-    return { pluginId: task.pluginId, id: task.declaration.id, label: task.declaration.label, everyMinutes: task.declaration.everyMinutes,
-      ...task.record, running: !!task.flight,
+    return { pluginId: task.pluginId, id: task.declaration.id, label: task.declaration.label, everyMinutes: task.declaration.everyMinutes ?? null,
+      ...task.record, deferred: this.deferredSnapshot(task), running: !!task.flight,
       lastOutcome: !task.flight && task.record.lastOutcome === "running" ? "interrupted" : task.record.lastOutcome };
+  }
+  private deferredSnapshot(task: Task): PluginDeferredState | null {
+    const request = task.record.deferred;
+    if (request?.state === "queued" && (request.ownerVersion !== task.version || task.declaration.mode !== "deferred")) return { ...request, state: "cancelled", errorCode: "ui/superseded" };
+    return request ? { ...request, state: !task.flight && request.state === "running" ? "interrupted" : request.state } : null;
+  }
+  private capacity(task: Task): boolean {
+    let total = 0, own = 0;
+    for (const candidate of this.tasks.values()) if (candidate.flight) { total++; if (candidate.pluginId === task.pluginId) own++; }
+    return total < 8 && own < 2;
   }
 }

@@ -544,10 +544,12 @@ export function buildPluginContext(
           }
         },
         set: (key, value) => {
+          if (typeof key !== "string" || key === "schedule-state" || key === "schedule-runs") throw new AppError("plugin/invalid-input", "Schedule receipts are host-owned");
           return lifecycle.storageWrite("services.storage.set", () =>
             localKV.setItemAsync(storagePrefix + key, JSON.stringify(value ?? null), selfOrigin));
         },
         remove: (key) => {
+          if (typeof key !== "string" || key === "schedule-state" || key === "schedule-runs") throw new AppError("plugin/invalid-input", "Schedule receipts are host-owned");
           return lifecycle.storageWrite("services.storage.remove", () => localKV.removeItemAsync(storagePrefix + key, selfOrigin));
         },
         flush: async () => {
@@ -612,6 +614,14 @@ export function buildPluginContext(
         },
       },
       schedules: {
+        defer: (id, input, options) => {
+          lifecycle.assertActive("services.schedules.defer");
+          return lifecycle.storageWrite("services.schedules.defer", () => pluginSchedules.defer(manifest.id, id, input, callSignal(options)));
+        },
+        cancelDeferred: (id, requestId, options) => {
+          lifecycle.assertActive("services.schedules.cancelDeferred");
+          return lifecycle.storageWrite("services.schedules.cancelDeferred", () => pluginSchedules.cancelDeferred(manifest.id, id, requestId, callSignal(options)));
+        },
         list: async (query = {}) => { lifecycle.assertActive("services.schedules.list"); return pluginSchedules.list({ ...query, pluginId: manifest.id }); },
         observe: (query, handler) => track(() => ({ dispose: pluginSchedules.observe({ ...query, pluginId: manifest.id }, handler) })),
         control: (id, action) => { lifecycle.assertActive("services.schedules.control"); return pluginSchedules.control({ pluginId: manifest.id, id, action }, lifecycle.signal); },
@@ -625,7 +635,7 @@ export function buildPluginContext(
             );
           }
           return track(() => {
-            const registration = registerPluginSchedule(manifest.id, declaration, run);
+            const registration = registerPluginSchedule(manifest.id, declaration, run, manifest.version);
             return { dispose: () => { registration.dispose(); lifecycle.trackCleanup(pluginSchedules.drainWrites(manifest.id)); } };
           });
         },

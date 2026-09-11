@@ -64,6 +64,7 @@
     "permissions": "權限",
     "noPermissions": "無額外權限",
     "scheduleLine": "排程任務：{{label}} — 應用開啟時至少每 {{minutes}} 分鐘執行一次",
+    "deferredScheduleLine": "延遲任務：{{label}}（應用開啟時執行）",
     "permissionName": {
       "service_diagnostics": "資料診斷",
       "service_sync": "同步",

@@ -64,6 +64,7 @@
     "permissions": "权限",
     "noPermissions": "无额外权限",
     "scheduleLine": "定时任务：{{label}} — 应用打开时至少每 {{minutes}} 分钟执行一次",
+    "deferredScheduleLine": "延迟任务：{{label}}（应用打开时执行）",
     "permissionName": {
       "service_diagnostics": "数据诊断",
       "service_sync": "同步",

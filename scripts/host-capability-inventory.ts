@@ -213,6 +213,7 @@ const pluginMap = pairs([
   ["services.sync.connectionOptions", "OPS01"],
   ["services.sync.requestFlow", "OPS01 OPS06 OPS07"],
   ["services.schedules.list services.schedules.observe services.schedules.control", "MORE01"],
+  ["services.schedules.defer services.schedules.cancelDeferred", "MORE02"],
   ["services.maintenance.snapshot services.maintenance.observe services.maintenance.checkForUpdates", "SYS16"],
   ["services.maintenance.openSettings", "SYS15 SYS16 EXT12 OPS08 OPS09 OPS10 CFG08"],
   ["services.maintenance.requestBackup", "OPS08"],

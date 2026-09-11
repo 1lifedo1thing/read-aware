@@ -69,6 +69,7 @@
       "none": "No arbitrary HTTP requests; host-controlled actions only"
     },
     "scheduleLine": "Scheduled: {{label}} — at least every {{minutes}} min while the app is open",
+    "deferredScheduleLine": "Deferred task: {{label}} (while the app is open)",
     "permissionName": {
       "service_diagnostics": "Data diagnostics",
       "service_sync": "Sync",

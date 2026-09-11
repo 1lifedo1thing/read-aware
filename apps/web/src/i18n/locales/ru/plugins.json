@@ -64,6 +64,7 @@
     "permissions": "Разрешения",
     "noPermissions": "Без дополнительных разрешений",
     "scheduleLine": "По расписанию: {{label}} — не реже раза в {{minutes}} мин при открытом приложении",
+    "deferredScheduleLine": "Отложенная задача: {{label}} (при открытом приложении)",
     "permissionName": {
       "service_diagnostics": "Диагностика данных",
       "service_sync": "Синхронизация",

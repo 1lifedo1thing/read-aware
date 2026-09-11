@@ -79,7 +79,7 @@ test("compiled subscriptions command exposes schedule controls even with no feed
   if (root?.kind !== "list") throw Error("Expected subscriptions");
   const next = await root.actions!.find(action => action.id === "schedule")!.run();
   expect(next?.view?.kind).toBe("detail"); expect(f.controls).toHaveLength(0);
-  expect(manifest.requires.services.schedules).toBe("^1.1.0"); expect(manifest.requires.services.ui).toBe("^1.2.0");
+  expect(manifest.requires.services.schedules).toBe("^2.0.0"); expect(manifest.requires.services.ui).toBe("^1.2.0");
 });
 
 test("schedule labels cover all eight app locales without raw error messages", async () => {

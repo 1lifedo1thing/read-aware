@@ -293,9 +293,7 @@ export type PluginScheduleDeclaration = {
   id: string;
   /** Shown at install time and in the Plugins panel. */
   label: string;
-  /** Cadence in minutes, floored at MIN_SCHEDULE_MINUTES. */
-  everyMinutes: number;
-};
+} & ({ everyMinutes: number; mode?: never } | { mode: "deferred"; everyMinutes?: never });
 
 // ─── Theme contributions (`ui:themes`) ───────────────────────────────────────
 
@@ -2181,7 +2179,14 @@ export type PluginHostServices = {
     };
   };
   schedules: {
-    bind(scheduleId: string, run: () => void | Promise<void>): PluginDisposable;
+    bind(scheduleId: string, run: (context: import("@read-aware/core").PluginScheduleRun) => void | Promise<void>): PluginDisposable;
+    /** Schedules 2: enqueue one declared deferred task. Persists before acknowledgement.
+     * 1 second..7 days; idle means 5 seconds without host input. Never runs while closed.
+     * The most recent request ID is retained for retry; changed input conflicts, another queued ID is busy.
+     * A dispatched request is never automatically replayed after a crash. Inspect interrupted and decide explicitly. */
+    defer(id: string, input: import("@read-aware/core").PluginDeferredRequest, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginDeferredReceipt>;
+    /** Cancel exactly the queued ID, not an in-flight callback or a replacement request. */
+    cancelDeferred(id: string, requestId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginDeferredReceipt>;
     /** Bound schedules owned by this plugin only, with the latest persisted attempt/outcome. */
     list(query?: Omit<import("@read-aware/core").PluginScheduleQuery, "pluginId">): Promise<import("@read-aware/core").PluginSchedulePage>;
     observe(query: Omit<import("@read-aware/core").PluginScheduleQuery, "pluginId">, handler: (page: import("@read-aware/core").PluginSchedulePage) => unknown): PluginDisposable;

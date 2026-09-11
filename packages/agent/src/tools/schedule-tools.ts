@@ -10,7 +10,7 @@ export function buildScheduleTools(scope: ThreadScope, deps: RuntimeDeps): Agent
   if (scope.kind !== "global") return [];
   return [{
     name: "list_plugin_schedules", label: "Plugin schedules",
-    description: "List currently bound manifest schedules and their latest persisted attempt, success or failure. Results are bounded and contain no plugin settings. A trigger stamp is not a success. Paused schedules do not run automatically; running tasks do not overlap. Nothing runs while the app is closed; this is not an OS job or complete execution history.",
+    description: "List currently bound manifest schedules and their latest persisted attempt, success or failure. everyMinutes=null identifies a deferred task; deferred describes its most recent named request, not an execution archive. queued is not completed, and interrupted must not be retried blindly. Results are bounded and contain no plugin settings. Paused schedules do not run automatically; running tasks do not overlap. Nothing runs while the app is closed; this is not an OS job or complete execution history.",
     parameters: Type.Object({ pluginId: Type.Optional(Type.String({ minLength: 1, maxLength: 256 })),
       offset: Type.Optional(Type.Integer({ minimum: 0 })), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })) }, { additionalProperties: false }),
     execute: async (_id, params, signal) => {

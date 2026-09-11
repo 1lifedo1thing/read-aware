@@ -14,6 +14,7 @@ import { isTauri } from "../../../platform/environment";
 import { localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { PluginManifestError, parseManifestJson, versionSatisfies } from "../lib/manifest";
+import { clearPluginScheduleState } from "./plugin-scheduler";
 import type {
   InstalledPlugin,
   PluginDisposable,
@@ -534,6 +535,7 @@ export async function uninstallPlugin(id: string): Promise<void> {
   const target = getInstalled().find((entry) => entry.manifest.id === id);
   if (target?.builtin) throw new Error(`"${id}" is a built-in plugin`);
   await deactivatePlugin(id);
+  await clearPluginScheduleState(id);
   await uninstallPluginFiles(id);
   await pluginDocsClear(id).catch((error) => {
     log.error(`document wipe for "${id}" failed`, error);

@@ -186,7 +186,7 @@ export function PluginsPanel() {
                     </span>
                     {(manifest.schedules ?? []).map((schedule) => (
                       <Caption key={schedule.id} className="text-fg-subtle">
-                        {t("settings.scheduleLine", {
+                        {t(schedule.mode === "deferred" ? "settings.deferredScheduleLine" : "settings.scheduleLine", {
                           label: schedule.label,
                           minutes: schedule.everyMinutes,
                         })}

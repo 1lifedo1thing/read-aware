@@ -64,6 +64,7 @@
     "permissions": "Permisos",
     "noPermissions": "Sin permisos adicionales",
     "scheduleLine": "Programado: {{label}} — al menos cada {{minutes}} min con la app abierta",
+    "deferredScheduleLine": "Tarea diferida: {{label}} (con la app abierta)",
     "permissionName": {
       "service_diagnostics": "Diagnóstico de datos",
       "service_sync": "Sincronización",
