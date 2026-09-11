@@ -42,8 +42,8 @@ function capabilities(value: unknown): boolean {
 }
 
 /** Envelope validation shares the install-time manifest parser, not a second manifest schema. */
-export function parsePluginHostMessage(value: unknown): HostMessage {
-  assertPluginWireBudget(value);
+export function parsePluginHostMessage(value: unknown, account?: (usage: { bytes: number; entries: number }) => void): HostMessage {
+  assertPluginWireBudget(value, PLUGIN_WIRE_LIMITS, account);
   let valid = false;
   if (record(value)) switch (value.t) {
     case "boot":

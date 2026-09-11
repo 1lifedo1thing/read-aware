@@ -4,7 +4,8 @@ export const PLUGIN_WIRE_LIMITS = Object.freeze({ bytes: 80 * 1024 * 1024, entri
   callbacksPerMessage: 100_000, retainedCallbacks: 200_000, disposables: 4096 });
 
 /** Admission accounting, not a bound on structured-clone or decoder peak memory. */
-export function assertPluginWireBudget(value: unknown, limits: { bytes: number; entries: number; depth: number } = PLUGIN_WIRE_LIMITS): void {
+export function assertPluginWireBudget(value: unknown, limits: { bytes: number; entries: number; depth: number } = PLUGIN_WIRE_LIMITS,
+  account?: (usage: { bytes: number; entries: number }) => void): void {
   let bytes = 0, entries = 0;
   const seen = new Set<object>();
   const charge = (amount: number) => {
@@ -51,5 +52,7 @@ export function assertPluginWireBudget(value: unknown, limits: { bytes: number; 
       visit((item as Record<string, unknown>)[key], depth + 1);
     }
   };
-  visit(value, 0);
+  // Failed per-message admission still consumed traversal work and transport bytes.
+  try { visit(value, 0); }
+  finally { account?.({ bytes, entries }); }
 }

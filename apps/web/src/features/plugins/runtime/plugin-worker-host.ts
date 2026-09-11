@@ -39,6 +39,7 @@ import { parsePluginHostMessage, type ContextShape, type HostMessage } from "./p
 export type { ContextShape } from "./plugin-host-protocol";
 import { PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
 import { PluginCallbackBudget } from "./plugin-callback-budget";
+import { pluginHostBudget, pluginTrafficBudget, type BudgetLease } from "./plugin-host-budget";
 
 type HeldRegistration = PluginDisposable & Partial<Pick<PluginActionRegistration, "updateState">>;
 const actionRegistrations = new Set(["selectionActions", "headerActions", "contextActions", "commands", "agentTools"].map(point => `contributions.${point}.register`));
@@ -206,14 +207,21 @@ export function startPluginWorker(
   let termination: Promise<void> | undefined;
   let invalidMessageReported = false;
   let acknowledgeQuiescence: ((error?: string) => void) | undefined;
+  const traffic = pluginTrafficBudget.open();
+  let retireForTraffic: (error: unknown) => void;
+  const accountTraffic = (usage?: { bytes: number; entries: number }) => {
+    try { if (usage) traffic.graph(usage); else traffic.message(); }
+    catch (error) { retireForTraffic(error); throw error; }
+  };
   const post = (input: HostMessage) => {
     if (terminated) return;
+    accountTraffic();
     const message = "error" in input ? { ...input, error: input.error.slice(0, 4096) } : input;
-    worker.postMessage(parsePluginHostMessage(message));
+    worker.postMessage(parsePluginHostMessage(message, accountTraffic));
   };
 
   const pendingInvokes = new PluginRpcPending();
-  const callbackBudget = new PluginCallbackBudget();
+  const callbackBudget = new PluginCallbackBudget(count => pluginHostBudget.reserve("callbacks", count));
   const incomingCalls = new Map<number, AbortController>();
   const abortIncomingCalls = () => {
     for (const controller of incomingCalls.values()) controller.abort(new AppError("plugin/cancelled", "Plugin runtime stopped"));
@@ -243,10 +251,10 @@ export function startPluginWorker(
     pendingMigrations.clear();
   };
   /** Call a function the plugin kept inside the Worker. */
-  const invokeHandle = (handle: string, args: unknown[]): Promise<unknown> => {
-    return pendingInvokes.call(id => {
-      post({ t: "invoke", id, handle, args });
-    });
+  const invokeHandle = async (handle: string, args: unknown[]): Promise<unknown> => {
+    const lease = pluginHostBudget.reserve("invokes");
+    try { return await pendingInvokes.call(id => { post({ t: "invoke", id, handle, args }); }); }
+    finally { lease.release(); }
   };
 
   const releaseCallbacks = (wire: PluginCallbackWire) => {
@@ -319,6 +327,7 @@ export function startPluginWorker(
       if (settled) return;
       failRuntime("plugin activation timed out");
     }, 10_000);
+    retireForTraffic = error => failRuntime(error instanceof Error ? error.message : "Plugin transport traffic exhausted");
     liveWorkers.set(instanceId, { pluginId: manifest.id, worker, sync(patch) {
       try { post({ t: "sync", patch }); }
       catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
@@ -332,8 +341,9 @@ export function startPluginWorker(
     worker.onmessage = async (event: MessageEvent<unknown>) => {
       if (terminated) return;
       let message: WorkerMessage;
-      try { message = parsePluginWorkerMessage(event.data); }
+      try { accountTraffic(); message = parsePluginWorkerMessage(event.data, accountTraffic); }
       catch (error) {
+        if (terminated) return;
         // Correlate only the envelope, never invoke methods or inspect arbitrary
         // callback graphs after failed admission. Rate-limit diagnostics per realm.
         if (!invalidMessageReported) { invalidMessageReported = true; log.warn(`Invalid Worker message from "${manifest.id}"`, error); }
@@ -483,11 +493,15 @@ export function startPluginWorker(
           }
           const controller = new AbortController();
           let argumentOwner: HeldRegistration | undefined;
+          let callLease: BudgetLease | undefined;
+          let registrationLease: BudgetLease | undefined;
           let releaseArguments = () => releaseCallbacks(message.args);
           incomingCalls.set(message.id, controller);
           const timeout = setTimeout(() => controller.abort(new AppError("plugin/timeout", "Plugin call timed out")), 120_000);
           controller.signal.addEventListener("abort", () => clearTimeout(timeout), { once: true });
           try {
+            callLease = pluginHostBudget.reserve("calls");
+            registrationLease = pluginHostBudget.reserve("registrations");
             // Reserve for every in-flight call before invoking anything: a rejected
             // replacement registration must not displace the currently live one.
             if (heldDisposables.size + incomingCalls.size > PLUGIN_WIRE_LIMITS.disposables) {
@@ -548,13 +562,15 @@ export function startPluginWorker(
               }
               const handle = `d${nextDisposableId++}`;
               const registration = value as PluginDisposable;
+              const retainedLease = registrationLease;
+              registrationLease = undefined;
               let disposed = false;
               argumentOwner = {
                 dispose() {
                   if (disposed) return;
                   disposed = true;
                   try { registration.dispose(); }
-                  finally { releaseArguments(); }
+                  finally { try { releaseArguments(); } finally { retainedLease.release(); } }
                 },
               };
               if (actionRegistrations.has(message.method) && typeof (registration as HeldRegistration).updateState === "function") {
@@ -590,9 +606,12 @@ export function startPluginWorker(
           } finally {
             // Streaming callbacks belong to the call; registration callbacks
             // belong to the returned disposable, not the plugin's entire lifetime.
-            if (!argumentOwner) releaseArguments();
-            clearTimeout(timeout);
-            incomingCalls.delete(message.id);
+            try { if (!argumentOwner) releaseArguments(); }
+            finally {
+              registrationLease?.release(); callLease?.release();
+              clearTimeout(timeout);
+              incomingCalls.delete(message.id);
+            }
           }
           return;
         }

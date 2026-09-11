@@ -40,8 +40,8 @@ function wire(value: unknown): value is PluginCallbackWire {
 }
 
 /** The real host checks even messages posted directly, outside the friendly Worker proxy. */
-export function parsePluginWorkerMessage(value: unknown): WorkerMessage {
-  assertPluginWireBudget(value);
+export function parsePluginWorkerMessage(value: unknown, account?: (usage: { bytes: number; entries: number }) => void): WorkerMessage {
+  assertPluginWireBudget(value, PLUGIN_WIRE_LIMITS, account);
   let valid = false;
   if (record(value)) switch (value.t) {
     case "hello": valid = keys(value, ["t", "protocolVersion"]) && value.protocolVersion === PLUGIN_PROTOCOL_VERSION; break;

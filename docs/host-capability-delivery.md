@@ -2,6 +2,16 @@
 
 目标：实现统一模型中 Agent / 插件尚未接通或只部分接通的应开放能力，完成遗漏重扫，使用真实组合插件和 Tauri 桌面端到端验收。此文件是执行账本，不替代[统一模型](./host-capability-model.md)或[当前矩阵](./host-capability-matrix.md)。
 
+## 2026-09-12：CON04 全 App 资源和流量额度
+
+[进度] 上轮e7819b86交付持久延迟/空闲任务，属于progress；本轮补共享Worker运行时，未缩小总目标。
+
+[实现] 宿主资源池限制全App双向各1024在途RPC、16384注册预留、50万回调；预留在业务前，普通结果释放，注册转移真实disposable，回调按解码图lease释放。单实例及全App双向token桶计消息/字节/图访问，非法envelope先计条数，图失败也结算已耗，单调时间恢复且不退款，换代不清全App桶。耗尽退休触发实例并排空，不能丢同步却继续运行。完整数字和非保证见plugin-transport-budgets.md。
+
+[验证] 完整check:capabilities通过；预算5项、真实宿主transport41项及既有Bun Worker契约通过，含全局池占满前拒绝/恢复、回调/注册释放、重启与时钟回退、洪泛停止和清理屏障。隔离macOS debug Tauri启动两个真实模块Worker，违规实例尝试发送40000个非法envelope，宿主一次告警后以流量超限退休；其调用得到plugin/unavailable、贡献移除、另一Worker的ping返回alive。探针前后额外4个回调/注册全部释放，最终回调75/注册73为内置插件基线，calls/invokes为0。自有进程91160和exec23363终态0，Vite及其他应用未动。无Rust源码改动，37项既有构建警告保留。
+
+[状态] CON04实现接通、保留待E2E：完整崩溃撤权组合、长期压力与packaged跨平台仍需验收。总池不是OS队列/structured-clone峰值或插件自身CPU/堆限制，不外推SYS07网络累计额度，更不是MORE02事件因果防环。
+
 ## 2026-09-12：MORE02 持久延迟和空闲任务
 
 [实现] schedules2.0 在原周期调度器增加声明式 deferred 绑定、defer/cancelDeferred、最新请求回执与 trigger/requestId 回调；1秒到7天延迟，主窗口5秒无输入后允许idle执行。排队、开始与结果均经持久写，重复请求保持原截止，取消绑定精确ID，重启仅继续同版本queued；running恢复为interrupted不盲重放。回调可安排下一轮而不被旧完成覆盖，同任务不重叠。64/1024绑定、2/8执行配额和轮转公平。普通插件KV不能伪造宿主记录；卸载退休排空后清空调度状态，设置仍保留，重新安装不复活旧任务。RSS0.13协调迁移到新契约，八语言声明展示与Agent查询/批准管理同步。

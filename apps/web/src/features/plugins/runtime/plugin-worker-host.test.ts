@@ -18,6 +18,7 @@ import { AppError } from "@read-aware/core";
 import { identityHost } from "../../../../tests/helpers/identity-host";
 import { deferred, entityHost, entityRevision } from "../../../../tests/helpers/entity-host";
 import { PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
+import { pluginHostBudget, pluginTrafficBudget, PLUGIN_HOST_LIMITS, PluginTrafficBudget } from "./plugin-host-budget";
 
 test.each(["read", "before-write", "committed", "conflict"])("entity Worker RPC %s keeps cancellation and native receipt boundaries", async mode => {
   const host = entityHost(), entered = deferred(), gate = deferred();
@@ -45,6 +46,70 @@ test.each(["read", "before-write", "committed", "conflict"])("entity Worker RPC 
 });
 
 type WireMessage = { t: string; id?: number; handle?: string; handles?: string[]; disposable?: string; [key: string]: unknown };
+
+test.each(["calls", "registrations", "callbacks"] as const)("global %s capacity rejects before contribution replacement and recovers", async kind => {
+  const { worker, close } = await hostFixture();
+  const baseline = pluginHostBudget.snapshot();
+  const occupied = pluginHostBudget.reserve(kind, PLUGIN_HOST_LIMITS[kind] - baseline[kind]);
+  try {
+    await worker.deliver({ t: "call", id: 980, method: "contributions.commands.register",
+      args: worker.callbacks.encode([{ id: "global-capacity", title: "Rejected", run: () => null }]) });
+    expect(worker.sent.find(message => message.t === "result" && message.id === 980)).toMatchObject({ ok: false, code: "plugin/busy" });
+    expect(getDefaultStore().get(pluginCommandsAtom).some(command => command.id === "global-capacity")).toBe(false);
+    occupied.release();
+    await worker.deliver({ t: "call", id: 981, method: "contributions.commands.register",
+      args: worker.callbacks.encode([{ id: "global-capacity", title: "Recovered", run: () => null }]) });
+    expect(worker.sent.find(message => message.t === "result" && message.id === 981)).toMatchObject({ ok: true });
+    expect(pluginHostBudget.snapshot()).toMatchObject({ calls: baseline.calls, registrations: baseline.registrations + 1, callbacks: baseline.callbacks + 1 });
+  } finally { occupied.release(); await close(); }
+  expect(pluginHostBudget.snapshot()).toEqual(baseline);
+});
+
+test("global outgoing invoke quota does not dispatch a callback and releases after the real result", async () => {
+  const { worker, close } = await hostFixture();
+  const baseline = pluginHostBudget.snapshot();
+  const occupied = pluginHostBudget.reserve("invokes", PLUGIN_HOST_LIMITS.invokes - baseline.invokes);
+  try {
+    await worker.deliver({ t: "call", id: 982, method: "contributions.commands.register",
+      args: worker.callbacks.encode([{ id: "invoke-capacity", title: "Invoke", run: () => null }]) });
+    const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.id === "invoke-capacity")!;
+    await expect(Promise.resolve(command.run())).rejects.toMatchObject({ code: "plugin/busy" });
+    expect(worker.sent.filter(message => message.t === "invoke")).toHaveLength(0);
+    occupied.release();
+    const running = Promise.resolve(command.run());
+    expect(pluginHostBudget.snapshot().invokes).toBe(baseline.invokes + 1);
+    const invocation = worker.sent.find(message => message.t === "invoke")!;
+    await worker.deliver({ t: "result", id: invocation.id, ok: true, value: worker.callbacks.encode(null) });
+    await running;
+    expect(pluginHostBudget.snapshot().invokes).toBe(baseline.invokes);
+  } finally { occupied.release(); await close(); }
+  expect(pluginHostBudget.snapshot()).toEqual(baseline);
+});
+
+test("flood admission retires the offender before parsing another graph and drains existing cleanup", async () => {
+  let now = 0;
+  const rates = { burst: { messages: 8, bytes: 1e8, entries: 1e6 }, perSecond: { messages: 1, bytes: 1, entries: 1 } };
+  const meter = new PluginTrafficBudget({ realm: rates, host: rates }, () => now);
+  const open = spyOn(pluginTrafficBudget, "open").mockImplementation(() => meter.open());
+  const gate = deferred();
+  const drain = spyOn(PluginLifecycleController.prototype, "drainStorageWrites").mockImplementation(() => gate.promise);
+  const { worker, runtime, close } = await hostFixture();
+  try {
+    // Boot, hello, ready and promote consume four envelopes; malformed ones count too.
+    for (let i = 0; i < 5; i++) await worker.deliver(null);
+    expect(worker.terminated).toBe(true);
+    let finished = false;
+    const stopping = runtime.terminate().then(() => { finished = true; });
+    await Promise.resolve(); expect(finished).toBe(false);
+    const before = worker.sent.length;
+    await worker.deliver({ t: "call", id: 983, method: "contributions.commands.register", args: worker.callbacks.encode([]) });
+    expect(worker.sent).toHaveLength(before);
+    gate.resolve(); await stopping;
+    expect(drain).toHaveBeenCalledTimes(1);
+    expect(() => meter.open().message()).toThrow();
+    now = 1000; expect(() => meter.open().message()).not.toThrow();
+  } finally { gate.resolve(); await close(); open.mockRestore(); drain.mockRestore(); }
+});
 
 test.each(["read", "cancel", "denied"])("profile inspection Worker RPC %s uses actor grants and request cancellation", async mode => {
   const host = identityHost(), entered = deferred(), gate = deferred();
