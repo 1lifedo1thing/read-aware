@@ -90,7 +90,7 @@ test("malformed, authority-injected, incomplete or ungrounded model output remai
   }
 });
 
-test("partial commits remain eligible and oversize input does not call inference or settle a truncated prefix", async () => {
+test("partial commits remain eligible and oversized input rejects an invalid intermediate digest without settling a prefix", async () => {
   const { deps, stores, warnings } = fixture();
   const partial = { ...proposal(), resolutions: [], complete: false };
   expect(await run(deps, async () => fauxAssistantMessage(JSON.stringify(partial)))).toMatchObject({ status: "partial" });
@@ -98,7 +98,7 @@ test("partial commits remain eligible and oversize input does not call inference
   let calls = 0;
   stores.memories[0]!.content = "Huge source ".repeat(5000);
   expect(await run(deps, async () => { calls++; return fauxAssistantMessage(JSON.stringify(proposal())); })).toMatchObject({ status: "pending" });
-  expect(calls).toBe(0); expect(warnings).toHaveLength(2);
+  expect(calls).toBe(1); expect(warnings).toHaveLength(2);
   expect((await deps.identityConsolidation.snapshot()).settled).toBe(false);
 });
 

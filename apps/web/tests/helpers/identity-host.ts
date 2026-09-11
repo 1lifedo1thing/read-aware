@@ -36,6 +36,8 @@ export function identityHost() {
     invoke: async <T>(command: string, args?: unknown): Promise<T> => {
       calls.push({ command, args: structuredClone(args) });
       if (command === "identity_consolidation_snapshot") { await controls.beforeRead(); return structuredClone(controls.snapshot) as T; }
+      if (command === "identity_work_read") { await controls.beforeRead(); return { revision: identityRevision, index: 0, pageCount: 0, json: null } as T; }
+      if (command === "identity_work_append") { await controls.beforeCommit(); return { revision: identityRevision, pageCount: 1, status: "appended" } as T; }
       if (command === "profile_context") {
         await controls.beforeRead();
         const value = controls.snapshot;

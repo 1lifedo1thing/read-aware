@@ -2,7 +2,8 @@ import { AppError, type EntityIdentity, type EntityAlias, type IdentityConsolida
 import type { RuntimeDeps } from "../ports";
 
 export type IdentityClass = { id: string; definition: EntityIdentity["definition"]; members: EntityIdentity[]; aliases: EntityAlias[] };
-export type IdentityInput = { memories: { id: string; content: string; kind: string; scope: string; evidenceCount: number; pinned: boolean; createdAt: string; updatedAt: string }[]; identities: IdentityClass[] };
+export type IdentityDigest = { summary: string; memoryIds: string[] };
+export type IdentityInput = { memories: { id: string; content: string; kind: string; scope: string; evidenceCount: number; pinned: boolean; createdAt: string; updatedAt: string }[]; identities: IdentityClass[]; digests?: IdentityDigest[] };
 export const identityBytes = (value: string) => new TextEncoder().encode(value).byteLength;
 
 /** A capacity miss is pending work, not a partial list falsely labelled complete. */

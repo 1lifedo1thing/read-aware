@@ -21,7 +21,8 @@ export async function identityPlan(raw: string, snapshot: IdentityConsolidationS
     || parsed.resolutions.length + parsed.merges.length > 32) return invalid();
   const known = new Set(input.identities.flatMap(group => [group.id, ...group.members.map(member => member.id)]));
   const roots = new Set(input.identities.filter(group => group.definition !== null).map(group => group.id));
-  const eligible = new Set(snapshot.sources.map(source => source.memory.id));
+  const sources = new Set(snapshot.sources.map(source => source.memory.id));
+  const eligible = new Set([...input.memories.map(memory => memory.id), ...input.digests?.flatMap(digest => digest.memoryIds) ?? []].filter(id => sources.has(id)));
   const evidence = (value: unknown): string[] => {
     if (!Array.isArray(value) || !value.length || value.some(id => typeof id !== "string" || !eligible.has(id)) || new Set(value).size !== value.length) return invalid();
     return [...value] as string[];

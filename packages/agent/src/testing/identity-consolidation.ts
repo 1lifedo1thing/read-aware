@@ -1,4 +1,4 @@
-import { AppError, identityProfileContext, normalizeIdentityConsolidationPlan, normalizeProfileInspectionQuery, profileInspectionPage, type IdentityConsolidationPort, type IdentityConsolidationSnapshot, type ProfileContext } from "@read-aware/core";
+import { AppError, identityProfileContext, normalizeIdentityConsolidationPlan, normalizeIdentityWorkQuery, normalizeIdentityWorkAppend, normalizeProfileInspectionQuery, profileInspectionPage, type IdentityConsolidationPort, type IdentityConsolidationSnapshot, type ProfileContext } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import type { EntityRegistryFixture } from "./entity-registry";
 
@@ -7,6 +7,8 @@ export function createIdentityConsolidationFixture(deps: () => RuntimeDeps, regi
   context(): Promise<ProfileContext>; inspect: RuntimeDeps["profile"]["inspectProfileContext"];
 } {
   let derived: unknown = null, settled: string | null = null, sequence = 0;
+  let workRevision: string | undefined;
+  const pages: string[] = [];
   const readSources = async () => (await deps().memory.snapshotMemories()).filter(({ memory }) => (memory.scope === "user" || memory.scope === "global")
     && (memory.evidenceCount >= 3 || memory.pinned)).sort((a, b) => a.memory.id < b.memory.id ? -1 : a.memory.id > b.memory.id ? 1 : 0);
   const revision = async (snapshot: Omit<IdentityConsolidationSnapshot, "revision" | "settled">) => {
@@ -28,7 +30,27 @@ export function createIdentityConsolidationFixture(deps: () => RuntimeDeps, regi
     profile: { summary: await deps().profile.getProfileSummary() ?? null, revision: (await deps().profile.readProfile()).revision }, derived,
     sourceConditions: derived === null ? [] : (await readSources()).map(source => ({ memoryId: source.memory.id, revision: source.revision })),
   });
-  return { snapshot, context: async () => identityProfileContext(await contextSnapshot()), inspect: async (input, signal) => {
+  const work: IdentityConsolidationPort["work"] = {
+    read: async (raw, signal) => {
+      const input = normalizeIdentityWorkQuery(raw);
+      if ((await snapshot(signal)).revision !== input.expectedRevision) throw new AppError("memory/conflict", "Source changed");
+      const current = workRevision === input.expectedRevision;
+      return { revision: input.expectedRevision, index: input.index, pageCount: current ? pages.length : 0, json: current ? pages[input.index] ?? null : null };
+    },
+    append: async (raw, signal) => {
+      const input = normalizeIdentityWorkAppend(raw);
+      if ((await snapshot(signal)).revision !== input.expectedRevision) throw new AppError("memory/conflict", "Source changed");
+      if (workRevision !== input.expectedRevision) {
+        if (input.index !== 0) throw new AppError("memory/conflict", "Work changed");
+        workRevision = input.expectedRevision; pages.length = 0;
+      }
+      if (input.index < pages.length && pages[input.index] === input.json) return { revision: input.expectedRevision, pageCount: pages.length, status: "retained" };
+      if (input.index !== pages.length) throw new AppError("memory/conflict", "Work changed");
+      pages.push(input.json);
+      return { revision: input.expectedRevision, pageCount: pages.length, status: "appended" };
+    },
+  };
+  return { snapshot, work, context: async () => identityProfileContext(await contextSnapshot()), inspect: async (input, signal) => {
     const query = normalizeProfileInspectionQuery(input);
     signal?.throwIfAborted();
     const page = await profileInspectionPage(await contextSnapshot(), query);
@@ -58,6 +80,7 @@ export function createIdentityConsolidationFixture(deps: () => RuntimeDeps, regi
     registry.adopt(nextRegistry, before.entitiesRevision);
     derived = nextDerived;
     settled = input.complete ? next : null;
+    if (input.complete) { pages.length = 0; workRevision = undefined; }
     return { revision: next, emittedEventIds, settled: input.complete };
   } };
 }

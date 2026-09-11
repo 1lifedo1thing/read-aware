@@ -1,15 +1,30 @@
-import { identityProfileContext, normalizeIdentityConsolidationPlan, normalizeProfileInspectionQuery, profileInspectionPage, type ProfileInspectionQuery,
+import { identityProfileContext, normalizeIdentityConsolidationPlan, normalizeIdentityWorkQuery, normalizeIdentityWorkAppend, normalizeProfileInspectionQuery, profileInspectionPage, type ProfileInspectionQuery,
+  type IdentityWorkPort, type IdentityWorkPage, type IdentityWorkReceipt,
   type IdentityConsolidationPort, type IdentityConsolidationReceipt, type IdentityConsolidationSnapshot, type ProfileContextSnapshot } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../platform/domain-events";
 import { createLogger } from "../platform/logger";
 import { initializeUserProfile } from "./user-profile";
+import { durableWrites } from "../platform/write-settlement";
 
 type IdentityHost = { invoke: typeof invoke; mint: typeof mintEventRows; broadcast: typeof broadcastDomainEventDrafts;
   initialize(): Promise<void>; warn(message: string): void };
 
 /** Internal production port; neither model output nor a plugin chooses event authority. */
 export function createIdentityConsolidationService(host: IdentityHost) {
+  const work: IdentityWorkPort = {
+    read: async (raw, signal) => {
+      const input = normalizeIdentityWorkQuery(raw);
+      signal?.throwIfAborted(); await host.initialize(); signal?.throwIfAborted();
+      const page = await host.invoke<IdentityWorkPage>("identity_work_read", input);
+      signal?.throwIfAborted(); return page;
+    },
+    append: async (raw, signal) => {
+      const input = normalizeIdentityWorkAppend(raw);
+      signal?.throwIfAborted(); await host.initialize(); signal?.throwIfAborted();
+      return durableWrites.track(host.invoke<IdentityWorkReceipt>("identity_work_append", input));
+    },
+  };
   const snapshot: IdentityConsolidationPort["snapshot"] = async signal => {
     signal?.throwIfAborted();
     await host.initialize();
@@ -59,7 +74,7 @@ export function createIdentityConsolidationService(host: IdentityHost) {
     if (result.derivedStatus === "invalid") host.warn("Invalid consolidated profile omitted from context");
     return result;
   };
-  return { snapshot, commit, context: async (signal?: AbortSignal) => checkContext(await readContextSnapshot(signal)),
+  return { snapshot, commit, work, context: async (signal?: AbortSignal) => checkContext(await readContextSnapshot(signal)),
     inspect: async (input?: ProfileInspectionQuery, signal?: AbortSignal) => {
       const query = normalizeProfileInspectionQuery(input);
       const result = await profileInspectionPage(await readContextSnapshot(signal), query);
@@ -71,6 +86,6 @@ export function createIdentityConsolidationService(host: IdentityHost) {
 
 const service = createIdentityConsolidationService({ invoke, mint: mintEventRows, broadcast: broadcastDomainEventDrafts,
   initialize: initializeUserProfile, warn: message => createLogger("identity-consolidation").warn(message) });
-export const identityConsolidationPort: IdentityConsolidationPort = { snapshot: service.snapshot, commit: service.commit };
+export const identityConsolidationPort: IdentityConsolidationPort = { snapshot: service.snapshot, commit: service.commit, work: service.work };
 export const readProfileContext = service.context;
 export const inspectProfileContext = service.inspect;

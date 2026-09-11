@@ -6,9 +6,10 @@ Native snapshot/conditional commit, the v34 local checkpoint, typed host service
 bounded automatic inference/idle production and evidence-validated prompt
 consumption are implemented. Public inspection now uses `inspect_user_profile`
 and memory 2.3 `queries.profileContext` / `events.observe(kind=profileContext)`.
-The producer ports remain internal. MEM08 remains partial for resumable
-large-input handling; no partial pass is labelled complete. Existing curated
-profile APIs retain their meaning.
+The producer ports remain internal. Schema 39 adds durable intermediate pages
+for oversized memory evidence. MEM08 still has capacity gaps for an oversized
+entity registry and work exceeding the journal limit; no partial pass is labelled
+complete. Existing curated profile APIs retain their meaning.
 
 ## Ownership
 
@@ -67,13 +68,35 @@ revisions; rerunning is preferable to hiding unseen source changes.
 
 ## Producer And Consumers
 
-The first automatic producer uses one complete, revision-pinned input per pass,
-not a silently truncated prefix. It reads all eligible memories and the registry
-classes/members/aliases into a JSON data envelope. Input is capped at 48000 UTF-8
-bytes and further constrained by the selected model window after output/framing
-reserves; output is capped at 4096 tokens. Exceeding the input bound leaves the
-pass pending and logs the reason. This is an explicit capacity limitation, not
-evidence that a large store was processed; resumable partitioning remains work.
+The automatic producer first tries a complete, revision-pinned JSON envelope of
+eligible memories and registry classes/members/aliases. Input is capped at 48000
+UTF-8 bytes and constrained further by the model window after output/framing
+reserves; output is capped at 4096 tokens.
+
+Oversized memory evidence uses a deterministic binary reduction tree. Leaf JSON
+is at most 8000 bytes, fragments retain exact UTF-16 offsets without splitting
+surrogate pairs, and each digest is at most 3500 UTF-8 bytes including its cited
+memory IDs. Each maintenance pass makes at most four model calls, including the
+final publication call. Every source fragment is visited before publication;
+digests can omit unsupported claims and are inferred summaries, not raw evidence.
+Entity decisions can cite only IDs retained in the final input. Full source
+conditions still accompany publication so an omitted source can invalidate it.
+
+Internal work.read/append crosses the typed host service to SQLite. Schema 39's
+device-local work header and immutable pages bind the complete input revision
+and a versioned SHA-256 key for each node. Identical append retries return the
+retained receipt; conflicting content or changed sources reject. Pages and count
+commit together, survive restart, and never emit profile events or completion.
+Final successful completion clears scratch in the publication transaction.
+Shutdown settlement and automatic-building revocation drain dispatched appends;
+revocation prevents further calls and writes. These ports are not plugin APIs;
+plugins and Agent inspection consume the existing profileContext projection.
+
+The journal allows 4096 pages of at most 48000 bytes each. A full journal, a model
+too small for a leaf, or a registry too large for final resolution remains pending
+with a logged reason. Registry partitioning and journal compaction remain required
+capacity work. The native snapshot still loads the full eligible source set;
+bounded model payloads do not imply bounded total process memory.
 
 The strict model result contains summary, complete, resolutions and merges.
 Existing resolution IDs and merge roots must occur in the captured registry;
@@ -113,9 +136,8 @@ The runtime now uses the production identity port under the same automatic-memor
 policy as extraction/digests. Explicit inference output caps and source-tracking
 options survive the policy wrapper, and its signal combines caller cancellation.
 The source, validation and execution modules are separate from runtime scheduling.
-Required next work: resumable bounded partitions for a store exceeding one full
-input. Oversized or incomplete
-model work stays pending with logged diagnostics, not a fake successful pass.
+Remaining capacity work covers oversized registries and journal exhaustion.
+Incomplete model work stays pending with logged diagnostics, not a successful pass.
 Curated profile edits win by separation and read-set conflict checks. Forgotten
 or superseded evidence invalidates the derived layer before regeneration.
 
