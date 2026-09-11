@@ -29,7 +29,11 @@ fn snapshot(root: &Path, staging: &Path) -> BackupSnapshot {
     // GNU long paths and Unicode are round-tripped without unbounded metadata.
     let plugin = root.join("plugins/archive");
     fs::create_dir_all(&plugin).unwrap();
-    fs::write(plugin.join("manifest.json"), "{\"id\":\"archive\"}").unwrap();
+    fs::write(
+        plugin.join("manifest.json"),
+        "{\"id\":\"archive\",\"schemaVersion\":1}",
+    )
+    .unwrap();
     fs::write(
         plugin.join(format!("{}中文.txt", "x".repeat(130))),
         "PLUGIN CONTENT",
@@ -91,7 +95,14 @@ fn backup_archive_real_password_roundtrip_authenticates_all_members_and_preserve
     );
     drop(copied);
     let restored_path = restored.directory().to_owned();
-    drop(restored);
+    let inspected = preflight(
+        restored,
+        std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    )
+    .unwrap();
+    assert_eq!(inspected.report.credentials, 1);
+    assert_eq!(inspected.report.blobs, 1);
+    drop(inspected);
     assert!(!restored_path.exists());
     let mut checked = 0;
     assert_eq!(

@@ -129,6 +129,20 @@ pub(crate) fn encrypt(data_dir: &Path, plaintext: &str) -> Result<String, Comman
 }
 
 pub(crate) fn decrypt(data_dir: &Path, packed: &str) -> Result<String, CommandError> {
+    decrypt_with_cipher(packed, || cipher(data_dir))
+}
+
+/// Read-only verification of a backup's credential store. Never create or repair
+/// a key in an imported directory, including when its key is missing or invalid.
+pub(crate) fn decrypt_existing(data_dir: &Path, packed: &str) -> Result<String, CommandError> {
+    let bytes = std::fs::read(key_path(data_dir))
+        .map_err(|error| CommandError::context_coded(crate::error::CODE_SECRETS_UNAVAILABLE, "existing secret key", error))?;
+    let cipher = Aes256Gcm::new_from_slice(&bytes)
+        .map_err(|_| CommandError::new(crate::error::CODE_SECRETS_UNAVAILABLE, "existing secret key has invalid length"))?;
+    decrypt_with_cipher(packed, || Ok(cipher))
+}
+
+fn decrypt_with_cipher(packed: &str, cipher: impl FnOnce() -> Result<Aes256Gcm, CommandError>) -> Result<String, CommandError> {
     let raw = base64::engine::general_purpose::STANDARD
         .decode(packed)
         .map_err(|_| "stored secret is not valid base64".to_string())?;
@@ -136,7 +150,7 @@ pub(crate) fn decrypt(data_dir: &Path, packed: &str) -> Result<String, CommandEr
         return Err(CommandError::internal("stored secret is truncated"));
     }
     let (nonce, ciphertext) = raw.split_at(12);
-    let plaintext = cipher(data_dir)?
+    let plaintext = cipher()?
         .decrypt(Nonce::from_slice(nonce), ciphertext)
         .map_err(|_| CommandError::new(crate::error::CODE_SECRETS_UNAVAILABLE, "failed to decrypt secret (wrong or missing key file)"))?;
     String::from_utf8(plaintext).map_err(|_| CommandError::internal("decrypted secret is not UTF-8"))

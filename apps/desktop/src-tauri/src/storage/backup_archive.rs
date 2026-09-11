@@ -19,6 +19,9 @@ use tempfile::{NamedTempFile, TempDir};
 #[path = "backup_archive_read.rs"]
 mod reader;
 pub(crate) use reader::read_archive;
+#[path = "backup_preflight.rs"]
+mod preflight;
+pub(crate) use preflight::{preflight, PreflightedBackup};
 const MAX_FILES: usize = 100_000;
 const MAX_BYTES: u64 = 512 * 1024 * 1024 * 1024;
 const MAX_MANIFEST: u64 = 32 * 1024 * 1024;

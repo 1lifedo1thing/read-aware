@@ -29,7 +29,7 @@ base64 = "0.22"
 # Bundled SQLite — no system dependency; compiles SQLite from source.
 # `functions` lets us register ra_fts_segment (CJK bigram segmentation) as a
 # SQL function so the FTS triggers can call it.
-rusqlite = { version = "0.32", features = ["bundled", "functions", "backup"] }
+rusqlite = { version = "0.32", features = ["bundled", "functions", "backup", "hooks", "limits"] }
 # Content hashes for the blob registry (dedupe, integrity, sync reconciliation).
 sha2 = "0.10"
 # Cover normalization (covers.rs): every extracted cover is bounded to a

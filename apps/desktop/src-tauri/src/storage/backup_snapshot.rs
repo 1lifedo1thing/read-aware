@@ -1,6 +1,6 @@
 //! Private, native preparation for the full-backup pipeline. This is deliberately
 //! not an IPC/export API: the directory contains the credential key and must only
-//! leave the host only through the authenticated encrypted archive writer.
+//! leave the host through the authenticated encrypted archive writer.
 //! It preserves the actual DB (including legacy projection drift), not just replay.
 use super::*;
 use rusqlite::backup::{Backup, StepResult};
@@ -207,7 +207,7 @@ pub(crate) fn capture(
         // a replacement key or persisting anything in the live database.
         let mut statement = copied.prepare("SELECT value_json FROM app_kv WHERE substr(key,1,length('read-aware-secret:'))='read-aware-secret:'")?;
         for row in statement.query_map([], |row| row.get::<_, String>(0))? {
-            crate::secrets::decrypt(directory.path(), &row?)?;
+            crate::secrets::decrypt_existing(directory.path(), &row?)?;
         }
     } else if secret_count != 0 {
         return Err(CommandError::new(
