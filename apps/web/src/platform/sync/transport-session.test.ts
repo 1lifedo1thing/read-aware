@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import type { PluginSyncTransportSession } from "@read-aware/plugin-types";
 import { ownTransportSession } from "./transport-session";
-import { findSyncTransport, invalidateSyncTransportSessions, registerSyncTransport } from "./transport-registry";
+import { findSyncTransport, invalidateSyncTransportSessions, onSyncTransportsChanged, registerSyncTransport } from "./transport-registry";
+import { withContributionActivation } from "../../features/plugins/state/contribution-activation";
 import { TransportSessionCache } from "./transport-session-cache";
 import { withTransportSession } from "./transport-session-scope";
 import { decodePluginCallbacks, PluginCallbackRegistry, releasePluginCallbacks } from "../../features/plugins/runtime/plugin-callback-wire";
@@ -21,6 +22,73 @@ function fixture(overrides: Partial<PluginSyncTransportSession> = {}): PluginSyn
     async getBlobPart() { return new Uint8Array(); }, ...overrides,
   };
 }
+
+test("failed registration replacement preserves old transport sessions and pending opens", async () => {
+  const pending = deferred<PluginSyncTransportSession>();
+  let opens = 0, closes = 0, notifications = 0;
+  const first = registerSyncTransport("activation-test", {
+    id: "rollback", label: "First", open: async () => ++opens === 1
+      ? fixture({ close: async () => { closes++; } }) : pending.promise,
+  });
+  const old = findSyncTransport("plugin:activation-test:rollback")!;
+  const session = await old.open();
+  const opening = old.open();
+  const unsubscribe = onSyncTransportsChanged(() => { notifications++; });
+  let candidate!: typeof old;
+  let cleanup!: () => Promise<void>;
+  expect(() => withContributionActivation(() => {
+    cleanup = registerSyncTransport("activation-test", { id: "rollback", label: "New", open: async () => fixture() });
+    candidate = findSyncTransport(old.ref)!;
+    throw new Error("later registration failed");
+  })).toThrow("later registration failed");
+  expect(findSyncTransport(old.ref)).toBe(old);
+  expect(closes).toBe(0);
+  expect(notifications).toBe(0);
+  await session.probe();
+  pending.resolve(fixture());
+  await (await opening).probe();
+  await expect(candidate.open()).rejects.toMatchObject({ code: "plugin/unavailable" });
+  await cleanup();
+  expect(findSyncTransport(old.ref)).toBe(old);
+  unsubscribe(); await first();
+  expect(closes).toBe(1);
+});
+
+test("nested successful transport replacement retires old sessions only on outer commit", async () => {
+  let closes = 0;
+  const first = registerSyncTransport("activation-test", { id: "commit", label: "First", open: async () => fixture({ close: async () => { closes++; } }) });
+  const old = findSyncTransport("plugin:activation-test:commit")!;
+  const session = await old.open();
+  let closeNew!: () => Promise<void>;
+  withContributionActivation(() => {
+    withContributionActivation(() => {
+      closeNew = registerSyncTransport("activation-test", { id: "commit", label: "New", open: async () => fixture() });
+    });
+    expect(closes).toBe(0);
+    expect(findSyncTransport(old.ref)?.label).toBe("New");
+  });
+  await expect(old.open()).rejects.toMatchObject({ code: "plugin/unavailable" });
+  await expect(session.probe()).rejects.toMatchObject({ code: "plugin/unavailable" });
+  expect(closes).toBe(1);
+  await first();
+  expect(findSyncTransport(old.ref)?.label).toBe("New");
+  await closeNew();
+});
+
+test("failed transport promotion never restores an explicitly stopped predecessor", async () => {
+  const first = registerSyncTransport("activation-test", { id: "stopped", label: "First", open: async () => fixture() });
+  const old = findSyncTransport("plugin:activation-test:stopped")!;
+  let closing!: Promise<void>;
+  let closeNew!: () => Promise<void>;
+  expect(() => withContributionActivation(() => {
+    closeNew = registerSyncTransport("activation-test", { id: "stopped", label: "New", open: async () => fixture() });
+    closing = first();
+    throw new Error("failed");
+  })).toThrow("failed");
+  expect(findSyncTransport(old.ref)).toBeNull();
+  await expect(old.open()).rejects.toMatchObject({ code: "plugin/unavailable" });
+  await closing; await closeNew();
+});
 
 test("closing cancels waiters, rejects late success and releases only session callbacks", async () => {
   const registry = new PluginCallbackRegistry();

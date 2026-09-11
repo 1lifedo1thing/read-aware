@@ -4,6 +4,7 @@ import type {
 } from "@read-aware/plugin-types";
 import { AppError } from "@read-aware/core";
 import { createLogger } from "../../../platform/logger";
+import { withContributionActivation } from "../state/contribution-activation";
 
 const log = createLogger("plugin-lifecycle");
 
@@ -103,6 +104,10 @@ export class PluginLifecycleController {
   }
 
   private activateRegistrations(entries: StagedRegistration[], failurePhase: PluginLifecyclePhase): void {
+    withContributionActivation(() => this.activateRegistrationBatch(entries, failurePhase));
+  }
+
+  private activateRegistrationBatch(entries: StagedRegistration[], failurePhase: PluginLifecyclePhase): void {
     const initial = new Set(this.registrations);
     const activated: StagedRegistration[] = [];
     const parentTransaction = this.activationTransaction;

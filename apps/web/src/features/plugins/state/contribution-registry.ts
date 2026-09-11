@@ -2,6 +2,7 @@ import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
 import { createLogger } from "../../../platform/logger";
 import type { ContributionId } from "@read-aware/core";
 import type { ContributionKey, PluginDisposable } from "../lib/plugin-types";
+import { publishContributionChange, undoContributionReplacement } from "./contribution-activation";
 
 export type ContributionIdentity = {
   key: ContributionKey;
@@ -58,51 +59,64 @@ export function createContributionRegistry<T extends ContributionIdentity>(
   }
   const entriesAtom = atom<T[]>([]);
   const store = getDefaultStore();
-  const owners = new Map<ContributionKey, symbol>();
+  const owners = new Map<ContributionKey, { disposed: boolean }>();
+  let entries: T[] = [];
+  const publish = () => publishContributionChange(entriesAtom, () => {
+    const published = store.get(entriesAtom);
+    if (published.length !== entries.length || published.some((item, index) => item !== entries[index])) {
+      store.set(entriesAtom, entries);
+    }
+  });
   const registry: ContributionRegistry<T> = {
     point,
     atom: entriesAtom,
     register(item) {
       validateIdentity(item);
-      const owner = Symbol(item.key);
+      const owner = { disposed: false };
+      const previousOwner = owners.get(item.key);
+      const previousIndex = entries.findIndex(entry => entry.key === item.key);
+      const previous = entries[previousIndex];
+      undoContributionReplacement(() => {
+        // Disposal is irreversible: never resurrect an explicitly retired owner.
+        if (owners.has(item.key) && owners.get(item.key) !== owner) return;
+        owners.delete(item.key);
+        entries = entries.filter(entry => entry.key !== item.key);
+        if (previous && previousOwner && !previousOwner.disposed) {
+          owners.set(item.key, previousOwner);
+          entries.splice(Math.min(previousIndex, entries.length), 0, previous);
+        }
+        publish();
+      });
       owners.set(item.key, owner);
-      store.set(entriesAtom, [
-        ...store.get(entriesAtom).filter((entry) => entry.key !== item.key),
+      entries = [
+        ...entries.filter((entry) => entry.key !== item.key),
         item,
-      ]);
-      let disposed = false;
+      ];
+      publish();
       return {
         dispose: () => {
-          if (disposed) return;
-          disposed = true;
+          if (owner.disposed) return;
+          owner.disposed = true;
           if (owners.get(item.key) !== owner) return;
           owners.delete(item.key);
-          store.set(
-            entriesAtom,
-            store
-              .get(entriesAtom)
-              .filter((entry) => entry.key !== item.key),
-          );
+          entries = entries.filter((entry) => entry.key !== item.key);
+          publish();
         },
       };
     },
-    list: () => store.get(entriesAtom),
-    find: (predicate) => store.get(entriesAtom).find(predicate) ?? null,
+    list: () => entries,
+    find: (predicate) => entries.find(predicate) ?? null,
     update: (key, update) => {
       let updated: T | null = null;
-      store.set(
-        entriesAtom,
-        store
-          .get(entriesAtom)
-          .map((entry) => {
-            if (entry.key !== key) return entry;
-            updated = update(entry);
-            if (updated.key !== entry.key || updated.pluginId !== entry.pluginId) {
-              throw new Error("Contribution updates cannot transfer registration ownership");
-            }
-            return updated;
-          }),
-      );
+      entries = entries.map((entry) => {
+        if (entry.key !== key) return entry;
+        updated = update(entry);
+        if (updated.key !== entry.key || updated.pluginId !== entry.pluginId) {
+          throw new Error("Contribution updates cannot transfer registration ownership");
+        }
+        return updated;
+      });
+      publish();
       return updated;
     },
   };

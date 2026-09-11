@@ -184,7 +184,7 @@ class FaultWorker {
   terminate() { this.terminated = true; this.callbacks.clear(); }
 }
 
-async function hostFixture(permissions: PluginPermission[] = []) {
+async function hostFixture(permissions: PluginPermission[] = [], promote = true) {
   const native = globalThis.Worker;
   const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   const values = new Map<string, string>();
@@ -208,7 +208,7 @@ async function hostFixture(permissions: PluginPermission[] = []) {
     else Reflect.deleteProperty(globalThis, "localStorage");
   }
   const runtime = await started;
-  runtime.promote();
+  if (promote) runtime.promote();
   const worker = FaultWorker.current;
   return {
     worker,
@@ -221,6 +221,28 @@ async function hostFixture(permissions: PluginPermission[] = []) {
 }
 
 describe("plugin worker capability bridge", () => {
+  test("failed candidate promotion restores the previous realm command and its RPC state authority", async () => {
+    const old = await hostFixture();
+    const candidate = await hostFixture([], false);
+    try {
+      await old.worker.deliver({ t: "call", id: 901, method: "contributions.commands.register",
+        args: old.worker.callbacks.encode([{ id: "rollback", title: "Old", run: () => "old" }]) });
+      const handle = old.worker.sent.find(message => message.id === 901)?.disposable;
+      const original = getDefaultStore().get(pluginCommandsAtom).find(command => command.id === "rollback")!;
+      for (const [id, command] of [[902, { id: "rollback", title: "New", run: () => "new" }],
+        [903, { id: "invalid", title: "Invalid", run: () => null, state: {} }]] as const) {
+        await candidate.worker.deliver({ t: "call", id, method: "contributions.commands.register", args: candidate.worker.callbacks.encode([command]) });
+        expect(candidate.worker.sent.find(message => message.id === id)).toMatchObject({ ok: true });
+      }
+      expect(() => candidate.runtime.promote()).toThrow();
+      expect(getDefaultStore().get(pluginCommandsAtom).find(command => command.id === "rollback")).toBe(original);
+      await old.worker.deliver({ t: "call", id: 904, method: "$registration.updateState",
+        args: old.worker.callbacks.encode([handle, { revision: 1, enabled: false, visible: true }]) });
+      expect(old.worker.sent.find(message => message.id === 904)).toMatchObject({ ok: true, value: { status: "applied" } });
+      await candidate.close();
+      expect(getDefaultStore().get(pluginCommandsAtom).find(command => command.id === "rollback")?.state?.enabled).toBe(false);
+    } finally { await candidate.close(); await old.close(); }
+  });
   test.each(["failed", "clone", "version", "early-call"] as const)("startup %s drains the lifecycle before rejecting", async fault => {
     const gate = deferred();
     const drain = spyOn(PluginLifecycleController.prototype, "drainStorageWrites").mockImplementation(() => gate.promise);

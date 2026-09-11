@@ -10,6 +10,7 @@
  */
 import { getVersion } from "@tauri-apps/api/app";
 import { getDefaultStore } from "jotai";
+import { withContributionActivation } from "../state/contribution-activation";
 import { isTauri } from "../../../platform/environment";
 import { localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
@@ -244,9 +245,11 @@ async function startPluginInstance(
 
 function promotePluginInstance(instance: ActivePlugin): void {
   if (instance.promoted) return;
-  instance.sandbox.promote();
-  registerManifestContributions(instance.manifest, instance.disposables);
-  instance.promoted = true;
+  withContributionActivation(() => {
+    instance.sandbox.promote();
+    registerManifestContributions(instance.manifest, instance.disposables);
+    instance.promoted = true;
+  });
 }
 
 /**

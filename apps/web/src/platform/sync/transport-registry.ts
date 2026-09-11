@@ -16,6 +16,7 @@ import type { PluginSyncTransport, PluginSyncTransportSession, PluginText } from
 import { AppError } from "@read-aware/core";
 import { closeTransportSessionValue, ownTransportSession } from "./transport-session";
 import { createLogger } from "../logger";
+import { commitContributionReplacement, publishContributionChange, undoContributionReplacement } from "../../features/plugins/state/contribution-activation";
 
 const log = createLogger("sync-transports");
 
@@ -33,12 +34,21 @@ export type RegisteredSyncTransport = {
 const transports = new Map<string, RegisteredSyncTransport>();
 const retirements = new WeakMap<RegisteredSyncTransport, () => Promise<void>>();
 const invalidations = new WeakMap<RegisteredSyncTransport, () => Promise<void>>();
+const retiredEntries = new WeakSet<RegisteredSyncTransport>();
 const listeners = new Set<() => void>();
+let published = new Map<string, { entry: RegisteredSyncTransport; generation: number }>();
 
 function notify(): void {
-  for (const listener of [...listeners]) {
-    try { listener(); } catch (error) { log.warn("Transport observer failed", error); }
-  }
+  publishContributionChange(transports, () => {
+    if (published.size === transports.size && [...transports].every(([ref, entry]) => {
+      const previous = published.get(ref);
+      return previous?.entry === entry && previous.generation === entry.generation;
+    })) return;
+    published = new Map([...transports].map(([ref, entry]) => [ref, { entry, generation: entry.generation }]));
+    for (const listener of [...listeners]) {
+      try { listener(); } catch (error) { log.warn("Transport observer failed", error); }
+    }
+  });
 }
 
 export function syncTransportRef(pluginId: string, transportId: string): string {
@@ -63,6 +73,7 @@ export function registerSyncTransport(
   };
   const retire = () => {
     retired = true;
+    retiredEntries.add(entry);
     return retirement ??= closeSessions();
   };
   const entry: RegisteredSyncTransport = {
@@ -91,10 +102,19 @@ export function registerSyncTransport(
     },
   };
   const previous = transports.get(entry.ref);
+  undoContributionReplacement(() => {
+    void retire().catch(error => log.warn("Rolled back transport cleanup failed", error));
+    if (transports.has(entry.ref) && transports.get(entry.ref) !== entry) return;
+    if (previous && !retiredEntries.has(previous)) transports.set(entry.ref, previous);
+    else transports.delete(entry.ref);
+    notify();
+  });
   retirements.set(entry, retire);
   invalidations.set(entry, () => { generation++; return closeSessions(); });
   transports.set(entry.ref, entry);
-  if (previous) void retirements.get(previous)?.().catch(error => log.warn("Replaced transport cleanup failed", error));
+  if (previous) commitContributionReplacement(() => {
+    void retirements.get(previous)?.().catch(error => log.warn("Replaced transport cleanup failed", error));
+  });
   notify();
   return () => {
     const closing = retire();
