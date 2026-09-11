@@ -11,8 +11,11 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     path::Path,
 };
+#[path = "backup_credentials.rs"]
+mod credentials;
 #[path = "backup_file_inventory.rs"]
 mod inventory;
+pub(crate) use credentials::{CredentialChoice, CredentialFacts, PreparedCredentials};
 pub(crate) use inventory::{BlobAvailability, BlobBinding};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,6 +67,23 @@ pub(crate) struct FilePlan {
     pub programs: Vec<ProgramMatch>,
 }
 impl FilePlan {
+    pub(crate) fn credential_facts(
+        &self,
+        tx: &Transaction<'_>,
+        data_dir: &Path,
+        check: impl FnMut() -> Result<(), CommandError>,
+    ) -> Result<Vec<CredentialFacts>, CommandError> {
+        credentials::inspect(self, tx, data_dir, check)
+    }
+    pub(crate) fn prepare_credentials(
+        self,
+        tx: &Transaction<'_>,
+        data_dir: &Path,
+        choices: &BTreeMap<String, CredentialChoice>,
+        check: impl FnMut() -> Result<(), CommandError>,
+    ) -> Result<PreparedCredentials, CommandError> {
+        credentials::prepare(self, tx, data_dir, choices, check)
+    }
     pub(crate) fn rows(&self) -> &RowPlan {
         &self.rows
     }

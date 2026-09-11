@@ -118,7 +118,21 @@ fn cipher(data_dir: &Path) -> Result<Aes256Gcm, CommandError> {
 /// `pub(crate)` only so the storage tests can exercise the crypto directly; the
 /// commands below are the supported entry points.
 pub(crate) fn encrypt(data_dir: &Path, plaintext: &str) -> Result<String, CommandError> {
-    let cipher = cipher(data_dir)?;
+    encrypt_with_cipher(cipher(data_dir)?, plaintext)
+}
+
+/// Pure preparation for atomic restore: never create or replace a live key.
+pub(crate) fn encrypt_with_key(key: &[u8], plaintext: &str) -> Result<String, CommandError> {
+    let cipher = Aes256Gcm::new_from_slice(key).map_err(|_| {
+        CommandError::new(
+            crate::error::CODE_SECRETS_UNAVAILABLE,
+            "invalid prepared credential key",
+        )
+    })?;
+    encrypt_with_cipher(cipher, plaintext)
+}
+
+fn encrypt_with_cipher(cipher: Aes256Gcm, plaintext: &str) -> Result<String, CommandError> {
     let nonce = Aes256Gcm::generate_nonce(OsRng);
     let ciphertext = cipher
         .encrypt(&nonce, plaintext.as_bytes())

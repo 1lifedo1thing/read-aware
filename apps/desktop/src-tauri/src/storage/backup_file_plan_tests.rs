@@ -8,7 +8,7 @@ use std::{
     fs,
     sync::{atomic::AtomicBool, Arc},
 };
-fn db(root: &Path) -> Connection {
+pub(super) fn db(root: &Path) -> Connection {
     let mut conn = Connection::open(root.join("db")).unwrap();
     storage::apply_connection_pragmas(&conn).unwrap();
     storage::register_sql_functions(&conn).unwrap();
@@ -16,7 +16,7 @@ fn db(root: &Path) -> Connection {
     storage::ensure_local_device(&conn).unwrap();
     conn
 }
-fn source(edit: impl FnOnce(&Connection, &Path)) -> backup_archive::PreflightedBackup {
+pub(super) fn source(edit: impl FnOnce(&Connection, &Path)) -> backup_archive::PreflightedBackup {
     let root = tempfile::tempdir().unwrap();
     let stage = tempfile::tempdir().unwrap();
     let mut conn = db(root.path());
@@ -51,7 +51,7 @@ fn plugin(root: &Path, folder: &str, body: &str) {
 fn blob(conn: &Connection, root: &Path, key: &str, content: &[u8]) {
     storage::put_blob_inner(conn, root, key, None, content).unwrap();
 }
-fn rows(
+pub(super) fn rows(
     source: backup_archive::PreflightedBackup,
     target: &mut Connection,
     stage: &Path,

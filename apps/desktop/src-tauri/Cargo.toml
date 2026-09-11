@@ -40,6 +40,9 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 # no system dependency and no OS credential store — that trade is explained in
 # the module header.
 aes-gcm = "0.10"
+# Existing sync-envelope v1 wire compatibility during native backup restore.
+chacha20poly1305 = "0.10"
+zeroize = "1"
 # EPUB metadata is a few small ZIP entries (container.xml, OPF, cover). Reading
 # those directly avoids opening the whole book in the webview just to paint a
 # shelf cover.
