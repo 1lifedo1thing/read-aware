@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
+import { PluginLifecycleController } from "./plugin-lifecycle";
 import {
   inspectPluginSchedules,
   isScheduleDue,
@@ -33,6 +34,19 @@ describe("isScheduleDue", () => {
 });
 
 describe("schedule registration lifecycle", () => {
+  test("scheduler timers start only after successful promotion and stop with the last binding", () => {
+    const timers = spyOn(globalThis, "setTimeout"), clear = spyOn(globalThis, "clearTimeout");
+    const life = new PluginLifecycleController([]); let fail = true;
+    life.stage(() => registerPluginSchedule("activation-timer", { id: "refresh", label: "Refresh", everyMinutes: 60 }, () => {}));
+    life.stage(() => { if (fail) throw new Error("Rejected"); return { dispose() {} }; });
+    try {
+      expect(() => life.promote()).toThrow("Rejected"); expect(timers).not.toHaveBeenCalled();
+      fail = false; life.promote(); expect(timers).toHaveBeenCalledTimes(1);
+      const timer = timers.mock.results[0].value;
+      life.stop(); expect(clear).toHaveBeenCalledWith(timer);
+      expect(inspectPluginSchedules()).not.toContain("activation-timer:refresh");
+    } finally { life.stop(); timers.mockRestore(); clear.mockRestore(); }
+  });
   test("a stale disposable cannot remove a replacement schedule", () => {
     const first = registerPluginSchedule(
       "test-plugin",

@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import type { PluginContext, PluginDisposable } from "../lib/plugin-types";
+import type { PluginContext, PluginDisposable, PluginManifest } from "../lib/plugin-types";
 import { getDefaultStore } from "jotai";
 import { contextActionsAtom, pluginCommandsAtom, voiceProvidersAtom } from "../state/plugin-store";
 import { emitAppEvent } from "../../../platform/app-events";
@@ -187,7 +187,7 @@ class FaultWorker {
   terminate() { this.terminated = true; this.callbacks.clear(); }
 }
 
-async function hostFixture(permissions: PluginPermission[] = [], promote = true) {
+async function hostFixture(permissions: PluginPermission[] = [], promote = true, schedules?: PluginManifest["schedules"]) {
   const native = globalThis.Worker;
   const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   const values = new Map<string, string>();
@@ -204,7 +204,7 @@ async function hostFixture(permissions: PluginPermission[] = [], promote = true)
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: storage });
   let started: ReturnType<typeof startPluginWorker>;
   try {
-    started = startPluginWorker({ id: "callback-host-test", name: "Callback host test", version: "1.0.0", schemaVersion: 1, permissions, requires: {} }, "1.0.0", disposables, { moduleUrl: "test:callback" });
+    started = startPluginWorker({ id: "callback-host-test", name: "Callback host test", version: "1.0.0", schemaVersion: 1, permissions, requires: {}, schedules }, "1.0.0", disposables, { moduleUrl: "test:callback" });
   } finally {
     globalThis.Worker = native;
     if (storageDescriptor) Object.defineProperty(globalThis, "localStorage", storageDescriptor);
@@ -224,6 +224,36 @@ async function hostFixture(permissions: PluginPermission[] = [], promote = true)
 }
 
 describe("plugin worker capability bridge", () => {
+  test("failed candidate schedule promotion restores the previous realm callback through RPC", async () => {
+    const schedules = [{ id: "tick", label: "Tick", everyMinutes: 60 }];
+    const write = spyOn(localKV, "setItemAsync").mockResolvedValue();
+    const old = await hostFixture([], true, schedules), candidate = await hostFixture([], false, schedules);
+    let run: Promise<void> | undefined;
+    let answered = false;
+    try {
+      await old.worker.deliver({ t: "call", id: 950, method: "services.schedules.bind", args: old.worker.callbacks.encode(["tick", () => undefined]) });
+      await candidate.worker.deliver({ t: "call", id: 951, method: "services.schedules.bind", args: candidate.worker.callbacks.encode(["tick", () => undefined]) });
+      await candidate.worker.deliver({ t: "call", id: 952, method: "contributions.commands.register",
+        args: candidate.worker.callbacks.encode([{ id: "invalid", title: "Invalid", run: () => null, state: {} }]) });
+      expect(() => candidate.runtime.promote()).toThrow();
+      await candidate.close();
+      run = old.worker.deliver({ t: "call", id: 953, method: "services.schedules.control", args: old.worker.callbacks.encode(["tick", "run"]) });
+      await Bun.sleep(0);
+      const invoked = old.worker.sent.find(message => message.t === "invoke");
+      expect(invoked).toBeDefined();
+      expect(candidate.worker.sent.filter(message => message.t === "invoke")).toEqual([]);
+      await old.worker.deliver({ t: "result", id: invoked!.id, ok: true, value: old.worker.callbacks.encode(null) });
+      answered = true;
+      await run;
+      expect(old.worker.sent.find(message => message.t === "result" && message.id === 953))
+        .toMatchObject({ ok: true, value: { status: "completed", schedule: { lastOutcome: "succeeded" } } });
+    } finally {
+      for (const message of answered ? [] : old.worker.sent.filter(message => message.t === "invoke")) {
+        await old.worker.deliver({ t: "result", id: message.id, ok: true, value: old.worker.callbacks.encode(null) });
+      }
+      await run; await candidate.close(); await old.close(); write.mockRestore();
+    }
+  });
   test.each(["stop", "crash"])("%s drains graph execution after its task receipt has returned", async mode => {
     const entered = deferred(), finish = deferred(); let executionSignal!: AbortSignal;
     const runtime = { runBookGraphTask: async (input: { signal: AbortSignal }) => {

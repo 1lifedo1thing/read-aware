@@ -2,9 +2,10 @@ import { AppError, errorCode, normalizeDeferredRequest, type PluginDeferredReque
   type PluginScheduleRun, type PluginDeferredState, type PluginScheduleControl, type PluginSchedulePage, type PluginScheduleQuery,
   type PluginScheduleReceipt, type PluginScheduleState } from "@read-aware/core";
 import { MIN_SCHEDULE_MINUTES, type PluginScheduleDeclaration } from "@read-aware/plugin-types";
+import { publishContributionChange, undoContributionReplacement } from "../state/contribution-activation";
 
 export type ScheduleRecord = Pick<PluginScheduleState, "paused" | "lastStartedAt" | "lastFinishedAt" | "lastSuccessAt" | "lastOutcome" | "lastErrorCode" | "deferred">;
-type Task = { pluginId: string; version: string; declaration: PluginScheduleDeclaration; token: object;
+type Task = { pluginId: string; version: string; declaration: PluginScheduleDeclaration; token: { disposed: boolean };
   run(context: PluginScheduleRun): void | Promise<void>; record: ScheduleRecord; active: boolean; writes?: number; flight?: Promise<PluginScheduleReceipt> };
 type Storage = { read(pluginId: string): Record<string, ScheduleRecord>; write(pluginId: string, records: Record<string, ScheduleRecord>): Promise<void> };
 const empty = (): ScheduleRecord => ({ paused: false, lastStartedAt: null, lastFinishedAt: null, lastSuccessAt: null, lastOutcome: null, lastErrorCode: null });
@@ -31,19 +32,37 @@ export class PluginScheduleController {
     }
   }
   subscribe(handler: () => void) { this.listeners.add(handler); return () => { this.listeners.delete(handler); }; }
-  private changed() { for (const handler of this.listeners) { try { handler(); } catch (error) { this.report(error); } } }
+  private changed() {
+    publishContributionChange(this, () => {
+      for (const handler of this.listeners) { try { handler(); } catch (error) { this.report(error); } }
+    });
+  }
   register(pluginId: string, input: PluginScheduleDeclaration, run: Task["run"], version = "1.0.0") {
     if (typeof pluginId !== "string" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(pluginId) || !input || typeof input.id !== "string" || !/^[a-z][a-z0-9-]{0,63}$/.test(input.id)
       || typeof version !== "string" || !version || version.length > 128 || typeof input.label !== "string" || !input.label.trim() || input.label.length > 256
       || (input.mode === "deferred" ? input.everyMinutes !== undefined : input.mode !== undefined || !Number.isFinite(input.everyMinutes) || input.everyMinutes <= 0)
       || typeof run !== "function") throw new AppError("ui/invalid-target", "Invalid schedule declaration");
-    const key = `${pluginId}:${input.id}`, old = this.tasks.get(key), token = {};
+    const key = `${pluginId}:${input.id}`, old = this.tasks.get(key), token = { disposed: false };
     if (!old && this.tasks.size >= 1024) throw new AppError("plugin/busy", "Host schedule capacity is occupied");
     if (!old && [...this.tasks.values()].filter(task => task.pluginId === pluginId).length >= 64) throw new AppError("ui/unavailable", "Too many schedules for this plugin");
     const task: Task = old ?? { pluginId, version, declaration: input, token, run, record: structuredClone(this.storage.read(pluginId)[input.id] ?? empty()), active: true };
+    const previous = old && { declaration: old.declaration, version: old.version, token: old.token, run: old.run, active: old.active };
+    undoContributionReplacement(() => {
+      if (task.token !== token || this.tasks.has(key) && this.tasks.get(key) !== task) return;
+      if (previous) {
+        Object.assign(task, previous, { active: previous.active && !previous.token.disposed });
+      } else task.active = false;
+      // Keep the shared in-flight execution/write state even when neither
+      // binding survives; a later binding must not overlap the old callback.
+      if (task.active || task.flight || task.writes) this.tasks.set(key, task);
+      else this.tasks.delete(key);
+      this.changed();
+    });
     Object.assign(task, { declaration: input.mode === "deferred" ? { ...input } : { ...input, everyMinutes: Math.max(input.everyMinutes, MIN_SCHEDULE_MINUTES) }, version, token, run, active: true });
     this.tasks.set(key, task); this.changed();
     return { dispose: () => {
+      if (token.disposed) return;
+      token.disposed = true;
       if (task.token !== token) return;
       task.active = false;
       if (!task.flight && !task.writes) this.tasks.delete(key);

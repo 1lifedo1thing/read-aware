@@ -84,6 +84,8 @@ function updateLoop() {
   }
 }
 export function registerPluginSchedule(pluginId: string, declaration: PluginScheduleDeclaration, run: (context: PluginScheduleRun) => void | Promise<void>, version = "1.0.0") {
-  const registration = pluginSchedules.register(pluginId, declaration, run, version); updateLoop();
-  return { dispose: () => { registration.dispose(); updateLoop(); } };
+  return pluginSchedules.register(pluginId, declaration, run, version);
 }
+
+// Timers and input listeners follow the final registry after activation settles.
+pluginSchedules.subscribe(updateLoop);

@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
 import { AppError } from "@read-aware/core";
 import { PluginScheduleController, type ScheduleRecord } from "./plugin-schedule-controller";
+import { PluginLifecycleController } from "./plugin-lifecycle";
+import { withContributionActivation } from "../state/contribution-activation";
 
 const declaration = { id: "refresh", label: "Refresh", everyMinutes: 60 };
 const command = (action: "pause" | "resume" | "run") => ({ pluginId: "test", id: "refresh", action });
@@ -12,6 +14,60 @@ function fixture() {
   return { controller: new PluginScheduleController(storage, error => errors.push(error), () => now), storage, disk, errors,
     fail: (value: boolean) => { fail = value; }, advance: () => { now += 3_600_000; } };
 }
+
+test("failed activation restores the old schedule callback and its in-flight result without overlap", async () => {
+  const f = fixture(); let finish!: () => void, oldCalls = 0, newCalls = 0;
+  const old = f.controller.register("test", declaration, async () => {
+    oldCalls++; if (oldCalls === 1) await new Promise<void>(resolve => { finish = resolve; });
+  });
+  const pending = f.controller.control(command("run")); await Bun.sleep(0);
+  const seen: string[][] = [];
+  const off = f.controller.subscribe(() => { seen.push(f.controller.list().schedules.map(task => task.label)); });
+  const life = new PluginLifecycleController([]);
+  life.stage(() => f.controller.register("test", { ...declaration, label: "Candidate" }, () => { newCalls++; }, "2.0.0"));
+  life.stage(() => { throw new Error("Later registration failed"); });
+  expect(() => life.promote()).toThrow("Later registration failed");
+  expect(seen).toEqual([["Refresh"]]);
+  expect((await f.controller.control(command("run"))).status).toBe("already-running");
+  finish(); expect((await pending).schedule.lastOutcome).toBe("succeeded");
+  life.stop(); await f.controller.control(command("run"));
+  expect(oldCalls).toBe(2); expect(newCalls).toBe(0);
+  old.dispose(); off(); expect(f.controller.inspect()).toEqual([]);
+});
+
+test("nested rollback restores binding metadata and queued intent; explicit old disposal stays retired", async () => {
+  const f = fixture(), deferred = { id: "refresh", label: "Deferred", mode: "deferred" as const };
+  const old = f.controller.register("test", deferred, () => {}, "1.0.0");
+  await f.controller.defer("test", "refresh", { requestId: "one", delayMs: 1000, when: "idle" });
+  const original = f.controller.list();
+  expect(() => withContributionActivation(() => {
+    f.controller.register("test", declaration, () => {}, "2.0.0");
+    expect(() => withContributionActivation(() => {
+      f.controller.register("test", { ...declaration, label: "Child" }, () => {}, "3.0.0");
+      throw new Error("Child failed");
+    })).toThrow("Child failed");
+    expect(f.controller.list().schedules[0].label).toBe("Refresh");
+    throw new Error("Outer failed");
+  })).toThrow("Outer failed");
+  expect(f.controller.list()).toEqual(original);
+  const life = new PluginLifecycleController([]);
+  life.stage(() => f.controller.register("test", declaration, () => {}));
+  life.stage(() => { old.dispose(); throw new Error("Old already disposed"); });
+  expect(() => life.promote()).toThrow("Old already disposed");
+  expect(f.controller.inspect()).toEqual([]); life.stop();
+});
+
+test("successful replacement survives stale disposal and a factory failure before returning leaves no binding", () => {
+  const f = fixture(), life = new PluginLifecycleController([]);
+  life.stage(() => { f.controller.register("test", declaration, () => {}); throw new Error("No disposable returned"); });
+  expect(() => life.promote()).toThrow("No disposable returned"); expect(f.controller.inspect()).toEqual([]);
+  life.stop();
+  const old = f.controller.register("test", declaration, () => {}), next = new PluginLifecycleController([]);
+  next.stage(() => f.controller.register("test", { ...declaration, label: "Replacement" }, () => {}));
+  next.promote(); old.dispose(); expect(f.controller.list().schedules[0].label).toBe("Replacement");
+  next.stop(); expect(f.controller.inspect()).toEqual([]);
+});
+
 test("pause persists, manual run bypasses pause once, and attempt/success stamps survive a new controller", async () => {
   const f = fixture(); let calls = 0;
   const off = f.controller.register("test", declaration, () => { calls++; });
