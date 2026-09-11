@@ -276,7 +276,7 @@ fn list_plugin_dirs(dir: &Path, builtin: bool, entries: &mut Vec<PluginEntry>) {
 
 /// Same shape the web-side manifest validator enforces: lowercase ASCII,
 /// digits, hyphens; no leading hyphen; max 64 chars.
-fn valid_plugin_id(id: &str) -> bool {
+pub(crate) fn valid_plugin_id(id: &str) -> bool {
     !id.is_empty()
         && id.len() <= 64
         && !id.starts_with('-')

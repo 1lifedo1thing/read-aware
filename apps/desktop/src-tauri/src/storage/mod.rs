@@ -93,6 +93,7 @@ mod preferences;
 pub use preferences::*;
 mod checkpoints;
 pub use checkpoints::*;
+pub(crate) mod backup_snapshot;
 
 use crate::error::CommandError;
 use std::io::{Read, Seek, SeekFrom};

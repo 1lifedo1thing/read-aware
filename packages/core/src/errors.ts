@@ -27,6 +27,10 @@ export const ERR_FS_NO_SPACE = "fs/no-space";
 export const ERR_DB_LOCKED = "db/locked";
 export const ERR_DB_ERROR = "db/error";
 export const ERR_SECRETS_UNAVAILABLE = "secrets/unavailable";
+/** Native full-backup preparation; never substitute a partial archive. */
+export const ERR_BACKUP_INCOMPLETE = "backup/incomplete";
+export const ERR_BACKUP_CHANGED = "backup/changed";
+export const ERR_BACKUP_CANCELLED = "backup/cancelled";
 /** Invalid plugin service arguments or a bounded service payload over quota. */
 export const ERR_PLUGIN_INVALID_ARGUMENT = "plugin/invalid-argument";
 export const ERR_PLUGIN_QUOTA_EXCEEDED = "plugin/quota-exceeded";

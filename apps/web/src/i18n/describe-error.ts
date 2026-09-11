@@ -83,6 +83,9 @@ type CopyEntry = {
 const AI_SETTINGS: ErrorAction = "open-ai-settings";
 
 const CODE_COPY: Record<string, CopyEntry> = {
+  "backup/incomplete": { key: "backupIncomplete", retryable: false },
+  "backup/changed": { key: "backupChanged", retryable: true },
+  "backup/cancelled": { key: "backupCancelled", retryable: false },
   "ai/invalid-capability-query": { key: "capabilityQueryInvalid", retryable: false },
   "ai/capability-catalog-changed": { key: "capabilityCatalogChanged", retryable: false },
   "ai/capability-catalog-unavailable": { key: "capabilityCatalogUnavailable", retryable: false },
