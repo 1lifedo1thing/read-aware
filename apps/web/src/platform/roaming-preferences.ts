@@ -19,6 +19,7 @@
  * language. Credentials DO roam, but only sealed — see "Roaming secrets"
  * below: plaintext never enters the log or any queryable table.
  */
+import { PluginPreferencePublication } from "./plugin-preference-publication";
 import { errorCode } from "@read-aware/core";
 import { waitForPluginDataUpdates, withPluginDataWrites } from "./plugin-data-access";
 import { invoke } from "./ipc";
@@ -197,7 +198,7 @@ async function overlaySecret(slot: string, valueJson: string): Promise<boolean> 
  * healed by the next save of the same namespace (whole-object payloads).
  */
 export function publishRoamingPreference(key: RoamingPreferenceKey, value: unknown): void {
-  if (!isTauri()) return;
+  if (!isTauri() || PluginPreferencePublication.blocks(key)) return;
   const strip = roamingPolicyFor(key)?.stripOnPublish;
   let published = value;
   if (strip?.length && value && typeof value === "object" && !Array.isArray(value)) {
@@ -212,6 +213,21 @@ export function publishRoamingPreference(key: RoamingPreferenceKey, value: unkno
   );
 }
 
+/** Final accepted values use the same event log as ordinary preferences. A
+ * failed append stays in this process's publication scope for a later save or
+ * refresh to retry; remote overlays cannot replace it with an older projection. */
+export function acceptPluginPreferencePublication(scope: PluginPreferencePublication): Promise<void> {
+  return scope.accept(async changes => {
+    const events: import("./domain-events").DomainEventDraft[] = [];
+    for (const [key, raw] of changes) {
+      if (!roamingPolicyFor(key)) continue;
+      try { events.push({ type: "preference.changed", payload: { key, value: raw === null ? null : JSON.parse(raw) } }); }
+      catch { /* Non-JSON plugin KV is outside the existing roaming contract. */ }
+    }
+    if (events.length && isTauri()) await commitDomainEvents(...events);
+  }, error => log.error(`failed to log accepted plugin ${scope.pluginId} preferences`, error));
+}
+
 // ── The write seam ───────────────────────────────────────────────────────────
 //
 // Publishing is POLICY, not a call sites remember to make: every durable KV
@@ -224,6 +240,7 @@ export function publishRoamingPreference(key: RoamingPreferenceKey, value: unkno
 onLocalKVWrite((key, raw, origin) => {
   if (origin === "remote" || !isTauri()) return;
   if (!roamingPolicyFor(key)) return;
+  if (PluginPreferencePublication.record(key, raw)) return;
   if (raw === null) {
     publishRoamingPreference(key, null);
     return;
@@ -315,12 +332,15 @@ async function overlayRows(rows: PreferenceRow[]): Promise<string[]> {
  * the update settles, and keep admission until queued remote KV writes settle. */
 async function loadAndOverlayRows(): Promise<{ rows: PreferenceRow[]; changed: string[] }> {
   while (true) {
+    await PluginPreferencePublication.flushAccepted();
     const rows = await invoke<PreferenceRow[]>("preferences_load_all");
-    const ids = rows.flatMap(row => /^read-aware-plugin\.([a-z0-9-]+)\./.exec(row.key)?.[1] ?? []);
+    const eligible = rows.filter(row => !PluginPreferencePublication.suppressesOverlay(row.key));
+    if (eligible.length !== rows.length) log.warn("Skipped plugin preferences awaiting update recovery or accepted publication");
+    const ids = eligible.flatMap(row => /^read-aware-plugin\.([a-z0-9-]+)\./.exec(row.key)?.[1] ?? []);
     try {
       return await withPluginDataWrites(ids, async () => {
         let failed = false;
-        try { return { rows, changed: await overlayRows(rows) }; }
+        try { return { rows, changed: await overlayRows(eligible) }; }
         catch (error) { failed = true; throw error; }
         finally {
           // Even a later overlay failure must drain every earlier native write.

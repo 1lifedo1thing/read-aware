@@ -1,4 +1,5 @@
 import { AppError } from "@read-aware/core";
+import { PluginPreferencePublication } from "./plugin-preference-publication";
 
 /** Host-only admission for writers outside a plugin runtime. The runtime's own
  * storage is controlled by quiesce/migration; it must not join this barrier. */
@@ -18,6 +19,7 @@ export async function withPluginDataWrites<T>(ids: readonly string[], operation:
   // Admit the entire settings batch synchronously, before any read or side effect.
   for (const [id, owner] of owners) {
     if (owner.update) throw new AppError("plugin/data-busy", "Plugin data is being updated");
+    PluginPreferencePublication.assertWritable(id);
     if (expected?.has(id) && expected.get(id) !== owner.revision) {
       throw new AppError("plugin/settings-stale", "Reopen plugin settings after an update");
     }
@@ -48,6 +50,7 @@ export async function withPluginDataUpdate<T>(id: string, operation: (scope: Plu
     return operation(existing);
   }
   if (owner.update) throw new AppError("plugin/data-busy", "Plugin data is already being updated");
+  PluginPreferencePublication.assertAvailable(id);
   let finish!: () => void;
   const scope = { pluginId: id, done: new Promise<void>(resolve => { finish = resolve; }) };
   owner.update = scope;

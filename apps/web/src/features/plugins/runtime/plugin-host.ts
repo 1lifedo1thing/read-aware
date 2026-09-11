@@ -13,6 +13,8 @@ import { getDefaultStore } from "jotai";
 import { withContributionActivation } from "../state/contribution-activation";
 import { isTauri } from "../../../platform/environment";
 import { withPluginDataUpdate, type PluginDataUpdate } from "../../../platform/plugin-data-access";
+import { PluginPreferencePublication } from "../../../platform/plugin-preference-publication";
+import { acceptPluginPreferencePublication } from "../../../platform/roaming-preferences";
 import { localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { PluginManifestError, parseManifestJson, versionSatisfies } from "../lib/manifest";
@@ -205,6 +207,7 @@ async function startPluginInstance(
   dataUpdate?: PluginDataUpdate,
 ): Promise<ActivePlugin> {
   assertManifestCanActivate(manifest);
+  PluginPreferencePublication.assertAvailable(manifest.id);
   const disposables: PluginDisposable[] = [];
   let sandbox: SandboxedPlugin | undefined;
   try {
@@ -216,13 +219,21 @@ async function startPluginInstance(
       const storedSchema = getPluginDataSchemaVersion(manifest.id);
       const snapshot =
         storedSchema === manifest.schemaVersion ? undefined : await snapshotPluginData(manifest.id);
+      const publication = snapshot ? PluginPreferencePublication.begin(manifest.id, snapshot.kv) : undefined;
       try {
         await migratePluginInstance(instance, snapshot ? pluginDataSchemaVersion(snapshot.schema) : storedSchema);
         promotePluginInstance(instance);
+        if (publication) await acceptPluginPreferencePublication(publication);
       } catch (error) {
         // A teardown failure must not restore under a possibly live writer.
-        await instance.sandbox.terminate();
-        if (snapshot) await restorePluginData(manifest.id, snapshot);
+        try {
+          await instance.sandbox.terminate();
+          if (snapshot) await restorePluginData(manifest.id, snapshot);
+          publication?.rollback();
+        } catch (recoveryError) {
+          publication?.quarantine();
+          throw recoveryError;
+        }
         throw error;
       }
     }, dataUpdate);
@@ -396,82 +407,97 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
 
   const previous = active.get(manifest.id);
   let dataSnapshot: PluginDataSnapshot | undefined;
+  let publication: PluginPreferencePublication | undefined;
   let accepted = false;
   let candidateRuntimeError: string | undefined;
   let committed: Awaited<ReturnType<typeof commitPluginCandidate>> | undefined;
   let previousQuiesced = false;
   const plugin: InstalledPlugin = { manifest, enabled: true };
 
-  await withPluginDataUpdate(manifest.id, dataUpdate => runPluginUpdateTransaction<ActivePlugin>({
-    startCandidate: () =>
-      startPluginInstance(
-        manifest,
-        {
-          moduleUrl: pluginCandidateModuleUrl(entry.token, manifest.main ?? "main.js"),
-          instanceId: `${manifest.id}@candidate:${entry.token}`,
-          onRuntimeError: (message) => {
-            if (accepted) updateInstalledPlugin(manifest.id, { error: message });
-            else candidateRuntimeError = message;
+  await withPluginDataUpdate(manifest.id, async dataUpdate => {
+    await runPluginUpdateTransaction<ActivePlugin>({
+      startCandidate: () =>
+        startPluginInstance(
+          manifest,
+          {
+            moduleUrl: pluginCandidateModuleUrl(entry.token, manifest.main ?? "main.js"),
+            instanceId: `${manifest.id}@candidate:${entry.token}`,
+            onRuntimeError: (message) => {
+              if (accepted) updateInstalledPlugin(manifest.id, { error: message });
+              else candidateRuntimeError = message;
+            },
+            deferPromotion: true,
           },
-          deferPromotion: true,
-        },
-        entry.token,
-      ),
-    verifyCandidate: () => {
-      if (candidateRuntimeError) throw new Error(candidateRuntimeError);
-    },
-    commitFiles: async () => {
-      committed = await commitPluginCandidate(entry.token);
-    },
-    verifyCommit: () => {
-      if (!committed) throw new Error("plugin candidate was not committed");
-      const committedManifest = parseManifestJson(committed.manifest);
-      if (committed.id !== manifest.id || committedManifest.version !== manifest.version) {
-        throw new Error("committed plugin candidate does not match the health-checked version");
-      }
-      if (candidateRuntimeError) throw new Error(candidateRuntimeError);
-    },
-    quiescePrevious: async () => {
-      if (!previous) return;
-      previousQuiesced = true;
-      if (active.get(manifest.id) === previous) active.delete(manifest.id);
-      await stopPluginInstance(previous);
-    },
-    snapshotData: async () => { dataSnapshot = await snapshotPluginData(manifest.id); },
-    migrateCandidate: (next) => {
-      if (!dataSnapshot) throw new Error("plugin update has no rollback baseline");
-      return migratePluginInstance(next, pluginDataSchemaVersion(dataSnapshot.schema));
-    },
-    promoteCandidate: (next) => promotePluginInstance(next),
-    accept: (next) => {
-      active.set(manifest.id, next);
-      setInstalledPlugins([
-        ...getInstalled().filter((installed) => installed.manifest.id !== manifest.id),
-        plugin,
-      ]);
-      persistPluginEnabled(manifest.id, true);
-      accepted = true;
-    },
-    retirePrevious: async () => {
-      if (previous && !previousQuiesced) await stopPluginInstance(previous);
-    },
-    cleanupCandidate: async (next) => {
-      if (active.get(manifest.id) === next) active.delete(manifest.id);
-      if (next) await stopPluginInstance(next);
-      else await discardPluginCandidate(entry.token);
-    },
-    rollbackFiles: async () => {
-      if (existing) await rollbackPluginFiles(manifest.id);
-      else await uninstallPluginFiles(manifest.id);
-    },
-    restoreData: () => {
-      if (!dataSnapshot) throw new Error("plugin update has no rollback baseline");
-      return restorePluginData(manifest.id, dataSnapshot);
-    },
-    restartPrevious: async () => {
-      if (previous && previousQuiesced) await restartPreviousInstance(previous, dataUpdate);
-    },
-  }));
+          entry.token,
+        ),
+      verifyCandidate: () => {
+        if (candidateRuntimeError) throw new Error(candidateRuntimeError);
+      },
+      commitFiles: async () => {
+        committed = await commitPluginCandidate(entry.token);
+      },
+      verifyCommit: () => {
+        if (!committed) throw new Error("plugin candidate was not committed");
+        const committedManifest = parseManifestJson(committed.manifest);
+        if (committed.id !== manifest.id || committedManifest.version !== manifest.version) {
+          throw new Error("committed plugin candidate does not match the health-checked version");
+        }
+        if (candidateRuntimeError) throw new Error(candidateRuntimeError);
+      },
+      quiescePrevious: async () => {
+        if (!previous) return;
+        previousQuiesced = true;
+        if (active.get(manifest.id) === previous) active.delete(manifest.id);
+        await stopPluginInstance(previous);
+      },
+      snapshotData: async () => {
+        dataSnapshot = await snapshotPluginData(manifest.id);
+        publication = PluginPreferencePublication.begin(manifest.id, dataSnapshot.kv);
+      },
+      migrateCandidate: (next) => {
+        if (!dataSnapshot) throw new Error("plugin update has no rollback baseline");
+        return migratePluginInstance(next, pluginDataSchemaVersion(dataSnapshot.schema));
+      },
+      promoteCandidate: (next) => promotePluginInstance(next),
+      accept: (next) => {
+        active.set(manifest.id, next);
+        setInstalledPlugins([
+          ...getInstalled().filter((installed) => installed.manifest.id !== manifest.id),
+          plugin,
+        ]);
+        persistPluginEnabled(manifest.id, true);
+        accepted = true;
+      },
+      retirePrevious: async () => {
+        if (previous && !previousQuiesced) await stopPluginInstance(previous);
+      },
+      cleanupCandidate: async (next) => {
+        if (active.get(manifest.id) === next) active.delete(manifest.id);
+        if (next) await stopPluginInstance(next);
+        else await discardPluginCandidate(entry.token);
+      },
+      rollbackFiles: async () => {
+        if (existing) await rollbackPluginFiles(manifest.id);
+        else await uninstallPluginFiles(manifest.id);
+      },
+      restoreData: async () => {
+        if (!dataSnapshot) throw new Error("plugin update has no rollback baseline");
+        await restorePluginData(manifest.id, dataSnapshot);
+        publication?.rollback();
+      },
+      restartPrevious: async () => {
+        // Also release a baseline taken before a failed file switch (no migration).
+        publication?.rollback();
+        if (previous && previousQuiesced) await restartPreviousInstance(previous, dataUpdate);
+      },
+    }).catch(error => {
+      // Successful restoration/restart already released its scope. A retained
+      // scope denotes unsafe recovery; never let catch-up publish that data.
+      publication?.quarantine();
+      throw error;
+    });
+    if (publication) await acceptPluginPreferencePublication(publication);
+  });
 
   return plugin;
 }

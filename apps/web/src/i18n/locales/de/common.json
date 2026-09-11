@@ -59,6 +59,7 @@
     "memoryForbidden": "Diese Erinnerung liegt außerhalb des erlaubten Bereichs.",
     "memoryInvalidQuery": "Gültige Erinnerungsbereiche, Namen oder eine Kapitelnummer wählen.",
     "settingsObserverLimit": "Zu viele aktive Einstellungsabonnements.",
+    "pluginRecoveryRequired": "Das Plugin-Update konnte nicht sicher wiederhergestellt werden. Seine Daten sind vorübergehend nicht verfügbar.",
     "pluginDataBusy": "Dieses Plugin wird aktualisiert. Versuchen Sie danach erneut zu speichern.",
     "pluginSettingsStale": "Dieses Plugin hat sich geändert. Schließen und öffnen Sie seine Einstellungen vor dem Speichern erneut.",
     "settingsUnavailable": "Die Einstellungen konnten nicht gelesen werden. Versuchen Sie es erneut.",

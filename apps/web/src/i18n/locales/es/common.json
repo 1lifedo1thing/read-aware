@@ -59,6 +59,7 @@
     "memoryForbidden": "Este recuerdo está fuera del alcance permitido.",
     "memoryInvalidQuery": "Elige ámbitos de memoria, nombres o un número de capítulo válidos.",
     "settingsObserverLimit": "Hay demasiadas suscripciones activas a los ajustes.",
+    "pluginRecoveryRequired": "No se pudo restaurar la actualización del complemento de forma segura. Sus datos no están disponibles temporalmente.",
     "pluginDataBusy": "Este complemento se está actualizando. Intenta guardar de nuevo cuando termine.",
     "pluginSettingsStale": "Este complemento ha cambiado. Cierra y vuelve a abrir sus ajustes antes de guardar.",
     "settingsUnavailable": "No se pudieron leer los ajustes. Inténtalo de nuevo.",
