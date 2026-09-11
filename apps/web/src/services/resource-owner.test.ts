@@ -130,7 +130,7 @@ test("cancelled and failed writes never report success; export-only read policy 
   } finally { await f.owner.dispose(); await restricted.dispose(); }
 });
 
-test("native domain consumption holds the sealed resource until accepted work settles", async () => {
+test("read-only domain consumption holds its lease but rejects a retired result", async () => {
   const f = fixture(), gate = Promise.withResolvers<void>();
   const ref = await f.owner.create({ name: "book.txt" });
   await expect(f.owner.use(ref.id, async () => "no")).rejects.toMatchObject({ code: "ui/invalid-target" });
@@ -144,6 +144,42 @@ test("native domain consumption holds the sealed resource until accepted work se
   gate.resolve(); await retiring;
   expect(consumed).toBe(true); expect(await importing).toMatchObject({ code: "ui/superseded" });
   expect(f.files.size).toBe(0);
+});
+
+test.each(["cancel", "retire", "expire"])("write leases recheck %s immediately before dispatch", async mode => {
+  const f = fixture(), gate = Promise.withResolvers<void>(), caller = new AbortController();
+  const ref = await f.owner.create({ name: "book.txt" }); await f.owner.commit(ref.id);
+  let written = false, retiring: Promise<void> | undefined;
+  const pending = f.owner.useForWrite(ref.id, async (_native, beforeWrite) => {
+    await gate.promise; beforeWrite(); written = true; return "imported";
+  }, caller.signal).catch(error => error);
+  await Bun.sleep(0);
+  if (mode === "cancel") caller.abort(new AppError("ui/superseded", "Cancelled"));
+  else if (mode === "retire") retiring = f.owner.dispose();
+  else f.time(ref.expiresAt);
+  gate.resolve();
+  expect(await pending).toMatchObject({ code: mode === "expire" ? "fs/not-found" : "ui/superseded" });
+  expect(written).toBe(false); await (retiring ?? f.owner.dispose());
+});
+
+test.each(["imported", "duplicate", "failed"])("accepted write leases retain the actual %s outcome after cancellation and retirement", async outcome => {
+  const f = fixture(), gate = Promise.withResolvers<void>(), caller = new AbortController();
+  const ref = await f.owner.create({ name: "book.txt" });
+  await expect(f.owner.useForWrite(ref.id, async () => "no")).rejects.toMatchObject({ code: "ui/invalid-target" });
+  await f.owner.commit(ref.id);
+  const failure = new AppError("db/locked", "Native write failed");
+  const pending = f.owner.useForWrite(ref.id, async (_native, beforeWrite) => {
+    beforeWrite(); await gate.promise;
+    if (outcome === "failed") throw failure;
+    return { status: outcome };
+  }, caller.signal).catch(error => error);
+  await Bun.sleep(0); caller.abort();
+  let disposed = false; const retiring = f.owner.dispose().then(() => { disposed = true; });
+  await Bun.sleep(0); expect(disposed).toBe(false); expect(f.files.size).toBe(1);
+  gate.resolve();
+  if (outcome === "failed") expect(await pending).toBe(failure);
+  else expect(await pending).toEqual({ status: outcome });
+  await retiring; expect(f.files.size).toBe(0);
 });
 
 test("cover snapshots keep book authorization, isolation, null availability and retirement cleanup", async () => {

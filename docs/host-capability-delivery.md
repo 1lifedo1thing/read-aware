@@ -3,6 +3,18 @@
 目标：实现统一模型中 Agent / 插件尚未接通或只部分接通的应开放能力，完成遗漏重扫，使用真实组合插件和 Tauri 桌面端到端验收。此文件是执行账本，不替代[统一模型](./host-capability-model.md)或[当前矩阵](./host-capability-matrix.md)。
 
 
+## 2026-09-12：LIB06 导入受理与取消回执边界
+
+[缺口] 导入任务协议前置检查发现：importBook已在原生stage受理后继续提交，但ResourceOwner.use在消费返回后再guard，导致已落库/去重成功的结果被调用方取消或owner退出覆盖。文件输入在arrayBuffer等待期间取消也未在首次blob写前复查。插件两个导入入口未接单次调用信号，无法按调用取消。
+
+[实现] 增加仅供宿主写消费者使用的useForWrite：共用资源串行队列、封口/来源检查与清理排空，提供首次写前的owner/expiry/授权/取消复查，不对已返回的写回执再做读结果式guard。资源导入将此复查传到importBook；File读取完成后也重查signal，首次blob写或原生stage派发后保留最终结果。只读use语义不变。Library升1.19，importBook/importResource加入PluginCallOptions.signal并进入同一Worker/host位置表，Worker侧drainCancellation保留受理后真实回执；Agent原有逐次批准资源导入沿同一写入口受益。
+
+[验证] 资源owner定向测试覆盖受理前取消/退出/到期、未封口拒绝、受理后imported/duplicate/原始写失败与清理等待；实际资源领域→导入管线结合受控native边界，验证取消和owner退出后仍返回成功/去重回执。File缓冲取消不写blob，blob受理后取消仍提交；onPrepared取消与资源复查失败不派发。生产Worker消息验证调用信号到达宿主、受理前拒绝、受理后结果保留；信号位置/权限检查通过。类型检查发现并修复测试ArrayBuffer类型和不完整adapter，最后Web/desktop通过。
+
+[检查偏差] 本轮误调用check-capabilities总入口，重跑了范围外的Foliate生成及既有scripts/core/Agent/domain/runtime检查；发现后尝试停止时它已因上述测试adapter类型错误结束。未再次运行总入口，后续只跑本次相关定向检查和Web/desktop类型。此次全量运行不作为新增能力验收，也未执行真实Tauri产品验收。
+
+[状态/下一步] 关闭已提交导入结果被外层取消覆盖及首次写前漏检的缺口；LIB06仍部分，继续完整导入任务进度/可查询状态接线，再集中组合插件和Tauri验收。MORE02定向检查确认现有broadcast只携带最后origin，跨插件异步因果传递尚无实现，不能通过忽略全部插件事件或限流代替防环；本轮未改该契约。总目标active，未推送。
+
 ## 2026-09-12：CON03 计划绑定提升失败恢复
 
 [缺口] 后台来源定向核对确认：计划执行的结果写均重验绑定token，已派发持久写已有队列排空；但register原地替换同ID任务的run/token/version/declaration，未参与注册提升事务。候选后续工厂失败时旧绑定丢失，前一轮贡献注册事务没有覆盖这一服务绑定。

@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
-import { PLUGIN_CALL_OPTIONS, preparePluginCall, injectPluginCallSignal, pluginOperationSignal } from "./plugin-call-options";
+import { PLUGIN_CALL_OPTIONS, preparePluginCall, injectPluginCallSignal, pluginOperationSignal, pluginCallDrainsCancellation } from "./plugin-call-options";
 import { buildPluginContext } from "./plugin-context";
 import { PluginLifecycleController } from "./plugin-lifecycle";
 import * as navigation from "../../library/lib/book-content-navigation";
@@ -18,7 +18,10 @@ test("every supported option slot strips local signals, preserves guards and rec
     injectPluginCallSignal(method, prepared.args, host.signal);
     expect(prepared.args[index]).toEqual({ signal: host.signal });
   }
-  expect(Object.keys(PLUGIN_CALL_OPTIONS)).toHaveLength(42);
+  expect(Object.keys(PLUGIN_CALL_OPTIONS)).toHaveLength(44);
+  for (const method of ["domains.library.commands.books.importBook", "domains.library.commands.books.importResource"]) {
+    expect(pluginCallDrainsCancellation(method)).toBe(true);
+  }
   const args = ["not an options slot"];
   expect(preparePluginCall("services.storage.get", args).args).toBe(args);
   injectPluginCallSignal("services.storage.get", args, host.signal);
@@ -31,7 +34,7 @@ test("every supported option slot strips local signals, preserves guards and rec
 test("all registered host methods observe pre-cancellation without granting extra domains", () => {
   const built = buildPluginContext({ id: "cancel-probe", name: "Cancel", version: "1", schemaVersion: 1,
     requires: { domains: { library: "^1.17.0", reading: "^2.18.0" }, services: { diagnostics: "^1.0.0" } },
-    permissions: ["library:read", "reading:write", "memory:write", "service:diagnostics", "service:sync", "service:network"] }, "1", []);
+    permissions: ["library:write", "reading:write", "memory:write", "service:diagnostics", "service:sync", "service:network"] }, "1", []);
   built.lifecycle.promote();
   const controller = new AbortController(), reason = new Error("cancel this call only"); controller.abort(reason);
   try {

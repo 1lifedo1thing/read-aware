@@ -150,6 +150,16 @@ export class ResourceOwner implements ResourcePort {
       return result;
     }, signal);
   }
+  /** Host mutation consumers arbitrate admission at their first durable write.
+   * After dispatch, preserve the real receipt while retaining the resource lease. */
+  useForWrite<T>(id: string, consume: (resource: NativeResource, beforeWrite: () => void) => Promise<T>, signal?: AbortSignal): Promise<T> {
+    return this.run(async () => {
+      const entry = this.get(id, true);
+      if (entry.ref.source === "context") throw invalid();
+      const beforeWrite = () => { this.guard(signal); this.get(id, true); };
+      return consume({ id: entry.nativeId, name: entry.ref.name, mimeType: entry.ref.mimeType, size: entry.ref.size }, beforeWrite);
+    }, signal);
+  }
   read(id: string, offset: number, length: number, signal?: AbortSignal) {
     if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(length) || length < 1 || length > RESOURCE_MAX_CHUNK) return Promise.reject(invalid());
     return this.run(async () => {

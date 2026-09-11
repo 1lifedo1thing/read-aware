@@ -21,6 +21,8 @@ export const PLUGIN_CALL_OPTIONS = {
   "services.diagnostics.requestReport": 1,
   "services.sync.requestFlow": 1,
   "domains.library.queries.books.inspectResource": 1,
+  "domains.library.commands.books.importBook": 1,
+  "domains.library.commands.books.importResource": 1,
   "domains.library.queries.books.getNavigationToc": 1,
   "domains.library.queries.books.listNavigationTargets": 1,
   "domains.library.queries.books.searchLocations": 1,
@@ -52,7 +54,8 @@ export const PLUGIN_CALL_OPTIONS = {
  * A deadline or lost realm still leaves the outcome unknown; never retry blindly. */
 export function pluginCallDrainsCancellation(method: string): boolean {
   return method === "domains.memory.commands.decideEntity" || method === "domains.memory.commands.context.capture" || method === "domains.memory.commands.completeOnboarding"
-    || method === "services.schedules.defer" || method === "services.schedules.cancelDeferred";
+    || method === "services.schedules.defer" || method === "services.schedules.cancelDeferred"
+    || method === "domains.library.commands.books.importBook" || method === "domains.library.commands.books.importResource";
 }
 
 function position(method: string): number | undefined {

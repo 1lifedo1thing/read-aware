@@ -75,8 +75,10 @@ export type ImportBookOptions = {
   /** Shelf books already loaded — the free name+size duplicate check. */
   knownBooks: readonly LibraryBook[];
   origin?: EventOrigin;
-  /** Cancellation before native staging; accepted staging is finalized, never abandoned halfway. */
+  /** Cancellation before the first durable write; accepted imports are finalized. */
   signal?: AbortSignal;
+  /** Host resource lease/admission recheck immediately before that first write. */
+  beforeWrite?: () => void;
   /**
    * Called once the format is known and the id reserved, before the (possibly
    * long) copy — the UI can show the placeholder in its final slot.
@@ -119,11 +121,17 @@ export async function importBook(
   // arrive as Files) stream into the blob store first; native paths are
   // copied by Rust without ever entering the webview.
   if (source.kind === "file") {
+    const bytes = new Uint8Array(await source.file.arrayBuffer());
+    options.signal?.throwIfAborted();
+    options.beforeWrite?.();
     await putDesktopBlob(
       bookFileKey(bookId),
-      new Uint8Array(await source.file.arrayBuffer()),
+      bytes,
       file.type || undefined,
     );
+  } else {
+    options.signal?.throwIfAborted();
+    options.beforeWrite?.();
   }
   const stagingAt = performance.now();
   const staged = await invoke<StagedImport>("library_stage_import", {

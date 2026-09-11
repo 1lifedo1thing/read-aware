@@ -7,6 +7,8 @@ import * as events from "../../../platform/domain-events";
 import * as library from "./library-db";
 import { importBook, pendingImportPlaceholder } from "./book-import";
 import type { BookImportSource } from "./library-types";
+import { ResourceOwner, type ResourceAdapter } from "../../../services/resource-owner";
+import { importResourceBook } from "../../../domain/library-resource-import";
 
 const source: BookImportSource = { kind: "native-resource", resourceId: "private-native-id", name: "book.txt", size: 7, type: "text/plain" };
 const t = ((key: string) => key) as TFunction<"shelf">;
@@ -79,4 +81,52 @@ test("cancellation prevents native staging but does not abandon an already accep
   invoke.mockImplementation(async () => { controller.abort(); return staged as never; });
   expect((await importBook(source, { t, knownBooks: [], signal: controller.signal })).status).toBe("imported");
   expect(commit).toHaveBeenCalledTimes(1);
+});
+
+test("a cancelled file read writes no blob; cancellation during the accepted blob write still finalizes", async () => {
+  const { invoke, put, commit } = setup();
+  const file = new File(["content"], "book.txt"), controller = new AbortController();
+  const bytes = spyOn(file, "arrayBuffer").mockImplementation(async () => {
+    controller.abort(); return new ArrayBuffer(7);
+  });
+  try {
+    await expect(importBook({ kind: "file", file }, { t, knownBooks: [], signal: controller.signal })).rejects.toBeDefined();
+    expect(put).not.toHaveBeenCalled(); expect(invoke).not.toHaveBeenCalled(); expect(commit).not.toHaveBeenCalled();
+  } finally { bytes.mockRestore(); }
+  const accepted = new AbortController();
+  put.mockImplementation(async () => { accepted.abort(); return { sha256: "content-hash", byteSize: 7 }; });
+  expect((await importBook({ kind: "file", file }, { t, knownBooks: [], signal: accepted.signal })).status).toBe("imported");
+  expect(commit).toHaveBeenCalledTimes(1);
+});
+
+test("prepared UI cancellation and resource admission failure prevent the first durable write", async () => {
+  const { invoke, put, commit } = setup(), controller = new AbortController();
+  await expect(importBook(source, { t, knownBooks: [], signal: controller.signal, onPrepared: () => controller.abort() })).rejects.toBeDefined();
+  const failure = new Error("Resource lease retired");
+  await expect(importBook(source, { t, knownBooks: [], beforeWrite: () => { throw failure; } })).rejects.toBe(failure);
+  expect(put).not.toHaveBeenCalled(); expect(invoke).not.toHaveBeenCalled(); expect(commit).not.toHaveBeenCalled();
+});
+
+test.each(["imported", "duplicate"])("resource domain preserves %s through cancellation and resource-owner retirement", async status => {
+  const { invoke, book } = setup(), controller = new AbortController();
+  const list = spyOn(library, "listLibraryBooks").mockResolvedValue([book]); restore.push(() => list.mockRestore());
+  let released = false, retiring: Promise<void> | undefined;
+  const unexpected = async () => { throw new Error("Unexpected resource operation during import"); };
+  const adapter: ResourceAdapter = {
+    create: async () => ({ id: "native-import", name: "book.txt", size: 7, mimeType: "text/plain" }),
+    commit: async () => {}, release: async () => { released = true; },
+    pick: unexpected, openBook: unexpected, openCover: unexpected, read: unexpected, append: unexpected,
+    commitContext: unexpected, save: unexpected, copyImage: unexpected, imagePreview: unexpected,
+  };
+  const owner = new ResourceOwner(adapter, () => {});
+  try {
+    const ref = await owner.create({ name: "book.txt" }); await owner.commit(ref.id);
+    invoke.mockImplementation(async () => {
+      controller.abort(); retiring = owner.dispose();
+      expect(released).toBe(false);
+      return { ...staged, duplicateOf: status === "duplicate" ? book.id : null } as never;
+    });
+    expect(await importResourceBook(owner, ref.id, "agent", controller.signal)).toMatchObject({ status, book: { id: book.id } });
+    await retiring; expect(released).toBe(true);
+  } finally { await owner.dispose(); }
 });

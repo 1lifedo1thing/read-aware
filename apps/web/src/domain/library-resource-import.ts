@@ -11,11 +11,11 @@ const log = createLogger("resource-import");
 
 /** Library mutation over an actor's resource lease, not filesystem authority. */
 export function importResourceBook(owner: ResourceOwner, id: string, origin: EventOrigin, signal?: AbortSignal): Promise<BookImportReceipt> {
-  return owner.use(id, async resource => {
+  return owner.useForWrite(id, async (resource, beforeWrite) => {
     const knownBooks = await listLibraryBooks();
     const outcome = await importBook({ kind: "native-resource", resourceId: resource.id,
       name: resource.name, size: resource.size, type: resource.mimeType },
-    { t: i18n.getFixedT(null, "shelf"), knownBooks, origin, signal });
+    { t: i18n.getFixedT(null, "shelf"), knownBooks, origin, signal, beforeWrite });
     // Duplicates may have repaired a synced-in book's missing local original.
     emitAppEvent("library-changed", {});
     return { status: outcome.status, book: toBookSummary(outcome.book) };

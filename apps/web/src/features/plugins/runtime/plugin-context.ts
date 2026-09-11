@@ -709,8 +709,9 @@ export function buildPluginContext(
           retryEnrichment: (bookId: string) => library.commands!.books.retryEnrichment(bookId, lifecycle.signal),
           mergeDuplicates: (input: import("@read-aware/core").BookMergeRequest) => library.commands!.books.mergeDuplicates(input, lifecycle.signal),
           cancelTextTask: library.commands.books.cancelTextTask,
-          importBook: library.commands.books.importBook,
-          importResource: (id: string) => importResourceBook(resources, id, selfOrigin, lifecycle.signal),
+          importBook: (input: { fileName: string; data: ArrayBuffer | Uint8Array }, options?: PluginCallOptions) =>
+            library.commands!.books.importBook(input, callSignal(options)),
+          importResource: (id: string, options?: PluginCallOptions) => importResourceBook(resources, id, selfOrigin, callSignal(options)),
           editMetadata: library.commands.books.editMetadata,
           setStarred: library.commands.books.setStarred,
           remove: library.commands.books.remove,

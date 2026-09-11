@@ -1426,9 +1426,11 @@ export type PluginLibraryDomain = {
       importBook(input: {
         fileName: string;
         data: ArrayBuffer | Uint8Array;
-      }): Promise<PluginBook>;
-      /** Library 1.8: import this activation's sealed resource without transferring the whole file. */
-      importResource(id: string): Promise<import("@read-aware/core").BookImportReceipt>;
+      }, options?: PluginCallOptions): Promise<PluginBook>;
+      /** Library 1.19 adds per-call cancellation. Before the first durable write,
+       * cancellation prevents admission; afterward await the actual imported/duplicate
+       * receipt or failure. No whole-file transfer, opening or resource release. */
+      importResource(id: string, options?: PluginCallOptions): Promise<import("@read-aware/core").BookImportReceipt>;
       editMetadata(bookId: string, patch: { title?: string; author?: string }): Promise<void>;
       setStarred(bookId: string, starred: boolean): Promise<void>;
       remove(bookId: string): Promise<void>;

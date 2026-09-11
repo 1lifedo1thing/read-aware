@@ -134,7 +134,7 @@ export type LibraryCommands = {
     importBook(input: {
       fileName: string;
       data: ArrayBuffer | Uint8Array;
-    }): Promise<BookSummary>;
+    }, signal?: AbortSignal): Promise<BookSummary>;
     editMetadata(bookId: string, patch: { title?: string; author?: string }): Promise<void>;
     setStarred(bookId: string, starred: boolean): Promise<void>;
     remove(bookId: string): Promise<void>;
@@ -221,11 +221,13 @@ export function createLibraryDomain(origin: EventOrigin, lifetime?: AbortSignal)
       mergeDuplicates: (input, signal) => mergeDuplicateBooks(input, origin, signal ?? lifetime),
       retryEnrichment: (bookId, signal) => retryBookEnrichment(bookId, origin, signal ?? lifetime),
       cancelTextTask: async (bookId, taskId) => textTasks.cancel(bookId, taskId),
-      importBook: async (input) => {
+      importBook: async (input, signal) => {
+        const inputSignal = signal && lifetime ? AbortSignal.any([signal, lifetime]) : signal ?? lifetime;
+        inputSignal?.throwIfAborted();
         const file = new File([input.data], String(input.fileName));
         const outcome = await importBook(
           { kind: "file", file },
-          { t: i18n.getFixedT(null, "shelf"), knownBooks: await listLibraryBooks(), origin },
+          { t: i18n.getFixedT(null, "shelf"), knownBooks: await listLibraryBooks(), origin, signal: inputSignal },
         );
         if (outcome.status === "imported") notifyLibraryChanged();
         return toBookSummary(outcome.book);

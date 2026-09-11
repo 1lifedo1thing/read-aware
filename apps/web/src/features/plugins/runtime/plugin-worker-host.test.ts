@@ -5,6 +5,7 @@ import { contextActionsAtom, pluginCommandsAtom, voiceProvidersAtom } from "../s
 import { emitAppEvent } from "../../../platform/app-events";
 import { localKV } from "../../../platform/local-store";
 import * as libraryDb from "../../library/lib/library-db";
+import * as bookImport from "../../library/lib/book-import";
 import { describeContext, startPluginWorker } from "./plugin-worker-host";
 import { PluginCallbackRegistry, pluginCallbackOwner, retainPluginCallbacks } from "./plugin-callback-wire";
 import { openPluginViewChannel } from "../lib/plugin-view-channels";
@@ -224,6 +225,28 @@ async function hostFixture(permissions: PluginPermission[] = [], promote = true,
 }
 
 describe("plugin worker capability bridge", () => {
+  test.each(["before-write", "accepted"])("import RPC %s forwards cancellation and preserves the accepted result", async mode => {
+    const gate = deferred(), entered = deferred(); let signal!: AbortSignal;
+    const list = spyOn(libraryDb, "listLibraryBooks").mockResolvedValue([]);
+    const book = bookImport.pendingImportPlaceholder("imported", { kind: "file", file: new File(["text"], "book.txt") }, "txt");
+    const source = spyOn(bookImport, "importBook").mockImplementation(async (_input, options) => {
+      signal = options.signal!; entered.resolve(); await gate.promise;
+      if (mode === "before-write") signal.throwIfAborted();
+      return { status: "imported", book };
+    });
+    const { worker, close } = await hostFixture(["library:write"]);
+    try {
+      const pending = worker.deliver({ t: "call", id: 954, method: "domains.library.commands.books.importBook",
+        args: worker.callbacks.encode([{ fileName: "book.txt", data: new TextEncoder().encode("text") }]) });
+      await entered.promise; await worker.deliver({ t: "cancel", id: 954 });
+      expect(signal.aborted).toBe(true);
+      expect(worker.sent.find(message => message.t === "result" && message.id === 954)).toBeUndefined();
+      gate.resolve(); await pending;
+      const result = worker.sent.find(message => message.t === "result" && message.id === 954);
+      if (mode === "accepted") expect(result).toMatchObject({ ok: true, value: { id: "imported" } });
+      else expect(result).toMatchObject({ ok: false, code: "plugin/cancelled" });
+    } finally { gate.resolve(); await close(); source.mockRestore(); list.mockRestore(); }
+  });
   test("failed candidate schedule promotion restores the previous realm callback through RPC", async () => {
     const schedules = [{ id: "tick", label: "Tick", everyMinutes: 60 }];
     const write = spyOn(localKV, "setItemAsync").mockResolvedValue();
