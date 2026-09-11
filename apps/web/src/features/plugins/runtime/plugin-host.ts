@@ -43,7 +43,6 @@ import {
   listPluginEntries,
   pluginCandidateModuleUrl,
   pluginDocsClear,
-  rollbackPluginFiles,
   stagePluginFiles,
   stagePluginFromDir,
   stagePluginFromZip,
@@ -61,7 +60,9 @@ import { unbindVirtualBook } from "../lib/virtual-books";
 import { runPluginUpdateTransaction } from "./plugin-update-transaction";
 import { assertPluginCapabilityRequirements } from "./plugin-capabilities";
 import { planPluginDataMigration } from "./plugin-data-migration";
-import { PLUGIN_SCHEMA_KEY_PREFIX, pluginDataSchemaVersion, snapshotPluginData, restorePluginData, type PluginDataSnapshot } from "./plugin-data-snapshot";
+import { PLUGIN_SCHEMA_KEY_PREFIX, pluginDataSchemaVersion } from "./plugin-data-snapshot";
+
+import { beginPluginUpdate, acceptPluginUpdate, rollbackPluginUpdate, finishPluginUpdate, type PluginUpdateJournal } from "./plugin-update-journal";
 
 const log = createLogger("plugins");
 
@@ -217,18 +218,22 @@ async function startPluginInstance(
     const instance = { manifest, sandbox, disposables, candidateToken, promoted: false };
     if (!deferPromotion) await withPluginDataUpdate(manifest.id, async () => {
       const storedSchema = getPluginDataSchemaVersion(manifest.id);
-      const snapshot =
-        storedSchema === manifest.schemaVersion ? undefined : await snapshotPluginData(manifest.id);
-      const publication = snapshot ? PluginPreferencePublication.begin(manifest.id, snapshot.kv) : undefined;
+      const journal = storedSchema === manifest.schemaVersion ? undefined : await beginPluginUpdate(manifest.id);
+      const publication = journal ? PluginPreferencePublication.begin(manifest.id, journal.baseline.kv) : undefined;
       try {
-        await migratePluginInstance(instance, snapshot ? pluginDataSchemaVersion(snapshot.schema) : storedSchema);
+        await migratePluginInstance(instance, journal ? pluginDataSchemaVersion(journal.baseline.schema) : storedSchema);
         promotePluginInstance(instance);
+        if (journal) {
+          const accepted = await acceptPluginUpdate(journal);
+          publication?.rebase(accepted.accepted!.kv);
+        }
         if (publication) await acceptPluginPreferencePublication(publication);
+        if (journal) await finishPluginUpdate(journal);
       } catch (error) {
         // A teardown failure must not restore under a possibly live writer.
         try {
           await instance.sandbox.terminate();
-          if (snapshot) await restorePluginData(manifest.id, snapshot);
+          if (journal) await rollbackPluginUpdate(journal);
           publication?.rollback();
         } catch (recoveryError) {
           publication?.quarantine();
@@ -406,7 +411,12 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
   }
 
   const previous = active.get(manifest.id);
-  let dataSnapshot: PluginDataSnapshot | undefined;
+  let journal: PluginUpdateJournal | undefined;
+  let recovered = false;
+  const recoverJournal = async () => {
+    if (journal && !recovered) { await rollbackPluginUpdate(journal); recovered = true; }
+    publication?.rollback();
+  };
   let publication: PluginPreferencePublication | undefined;
   let accepted = false;
   let candidateRuntimeError: string | undefined;
@@ -414,7 +424,9 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
   let previousQuiesced = false;
   const plugin: InstalledPlugin = { manifest, enabled: true };
 
+  let entered = false;
   await withPluginDataUpdate(manifest.id, async dataUpdate => {
+    entered = true;
     await runPluginUpdateTransaction<ActivePlugin>({
       startCandidate: () =>
         startPluginInstance(
@@ -434,7 +446,8 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
         if (candidateRuntimeError) throw new Error(candidateRuntimeError);
       },
       commitFiles: async () => {
-        committed = await commitPluginCandidate(entry.token);
+        if (!journal) throw new Error("plugin update has no durable baseline");
+        committed = await commitPluginCandidate(entry.token, journal.updateId);
       },
       verifyCommit: () => {
         if (!committed) throw new Error("plugin candidate was not committed");
@@ -451,15 +464,18 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
         await stopPluginInstance(previous);
       },
       snapshotData: async () => {
-        dataSnapshot = await snapshotPluginData(manifest.id);
-        publication = PluginPreferencePublication.begin(manifest.id, dataSnapshot.kv);
+        journal = await beginPluginUpdate(manifest.id, entry.token);
+        publication = PluginPreferencePublication.begin(manifest.id, journal.baseline.kv);
       },
       migrateCandidate: (next) => {
-        if (!dataSnapshot) throw new Error("plugin update has no rollback baseline");
-        return migratePluginInstance(next, pluginDataSchemaVersion(dataSnapshot.schema));
+        if (!journal) throw new Error("plugin update has no rollback baseline");
+        return migratePluginInstance(next, pluginDataSchemaVersion(journal.baseline.schema));
       },
       promoteCandidate: (next) => promotePluginInstance(next),
-      accept: (next) => {
+      accept: async (next) => {
+        if (!journal) throw new Error("plugin update has no durable baseline");
+        const decision = await acceptPluginUpdate(journal);
+        publication?.rebase(decision.accepted!.kv);
         active.set(manifest.id, next);
         setInstalledPlugins([
           ...getInstalled().filter((installed) => installed.manifest.id !== manifest.id),
@@ -476,18 +492,11 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
         if (next) await stopPluginInstance(next);
         else await discardPluginCandidate(entry.token);
       },
-      rollbackFiles: async () => {
-        if (existing) await rollbackPluginFiles(manifest.id);
-        else await uninstallPluginFiles(manifest.id);
-      },
-      restoreData: async () => {
-        if (!dataSnapshot) throw new Error("plugin update has no rollback baseline");
-        await restorePluginData(manifest.id, dataSnapshot);
-        publication?.rollback();
-      },
+      rollbackFiles: recoverJournal,
+      restoreData: recoverJournal,
       restartPrevious: async () => {
         // Also release a baseline taken before a failed file switch (no migration).
-        publication?.rollback();
+        await recoverJournal();
         if (previous && previousQuiesced) await restartPreviousInstance(previous, dataUpdate);
       },
     }).catch(error => {
@@ -497,6 +506,10 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
       throw error;
     });
     if (publication) await acceptPluginPreferencePublication(publication);
+    if (journal) await finishPluginUpdate(journal);
+  }).catch(async error => {
+    if (!entered) await discardPluginCandidate(entry.token).catch(cleanup => log.warn("Rejected candidate cleanup failed", cleanup));
+    throw error;
   });
 
   return plugin;
@@ -564,12 +577,14 @@ export async function installPluginFiles(
 export async function uninstallPlugin(id: string): Promise<void> {
   const target = getInstalled().find((entry) => entry.manifest.id === id);
   if (target?.builtin) throw new Error(`"${id}" is a built-in plugin`);
-  await deactivatePlugin(id);
-  await clearPluginScheduleState(id);
-  await uninstallPluginFiles(id);
-  await pluginDocsClear(id).catch((error) => {
-    log.error(`document wipe for "${id}" failed`, error);
+  await withPluginDataUpdate(id, async () => {
+    await deactivatePlugin(id);
+    await clearPluginScheduleState(id);
+    await uninstallPluginFiles(id);
+    await pluginDocsClear(id).catch((error) => {
+      log.error(`document wipe for "${id}" failed`, error);
+    });
+    forgetPluginEnabled(id);
+    setInstalledPlugins(getInstalled().filter((entry) => entry.manifest.id !== id));
   });
-  forgetPluginEnabled(id);
-  setInstalledPlugins(getInstalled().filter((entry) => entry.manifest.id !== id));
 }

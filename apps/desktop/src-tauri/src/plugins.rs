@@ -33,7 +33,7 @@ pub struct PluginCandidate {
     pub manifest: String,
 }
 
-fn plugins_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn plugins_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let dir = app
         .path()
         .app_data_dir()
@@ -69,7 +69,7 @@ fn manifest_id(manifest: &str) -> Result<String, String> {
     Ok(id)
 }
 
-fn candidate_at(plugins: &Path, token: &str) -> Result<(PathBuf, PluginCandidate), String> {
+pub(crate) fn candidate_at(plugins: &Path, token: &str) -> Result<(PathBuf, PluginCandidate), String> {
     if !valid_candidate_token(token) {
         return Err("invalid plugin candidate token".into());
     }
@@ -346,7 +346,7 @@ pub fn plugins_stage_dir(
 
 /// Recursive copy of regular files and directories. Hidden entries (.git,
 /// .DS_Store) and symlinks are skipped — a plugin is plain files only.
-fn copy_dir(src: &Path, dest: &Path) -> Result<(), String> {
+pub(crate) fn copy_dir(src: &Path, dest: &Path) -> Result<(), String> {
     fs::create_dir_all(dest).map_err(|e| e.to_string())?;
     for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -452,7 +452,7 @@ pub fn plugins_stage_files(
     })
 }
 
-fn commit_candidate_at(plugins: &Path, token: &str) -> Result<PluginEntry, String> {
+pub(crate) fn commit_candidate_at(plugins: &Path, token: &str) -> Result<PluginEntry, String> {
     let (candidate_path, candidate) = candidate_at(plugins, token)?;
     let active_path = plugins.join(&candidate.id);
     let rollback_root = rollback_dir(plugins);
@@ -492,6 +492,7 @@ fn commit_candidate_at(plugins: &Path, token: &str) -> Result<PluginEntry, Strin
 pub fn plugins_commit_candidate(
     app: tauri::AppHandle,
     token: String,
+    update_id: String,
 ) -> Result<PluginEntry, String> {
     let plugins = plugins_dir(&app)?;
     let (_, candidate) = candidate_at(&plugins, &token)?;
@@ -506,6 +507,13 @@ pub fn plugins_commit_candidate(
                 candidate.id
             ));
         }
+    }
+    let db = app.state::<crate::storage::Db>();
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let journal = crate::storage::read_plugin_update(&conn, &update_id).map_err(|e| e.to_string())?
+        .ok_or_else(|| "plugin update baseline is missing".to_string())?;
+    if journal.phase != "prepared" || journal.plugin_id != candidate.id || journal.candidate_token.as_deref() != Some(&token) {
+        return Err("plugin candidate does not match its durable update baseline".into());
     }
     commit_candidate_at(&plugins, &token)
 }
@@ -556,7 +564,19 @@ pub fn plugins_rollback(app: tauri::AppHandle, id: String) -> Result<PluginEntry
 }
 
 #[tauri::command]
-pub fn plugins_uninstall(app: tauri::AppHandle, id: String) -> Result<(), String> {
+pub fn plugins_uninstall(app: tauri::AppHandle, id: String) -> Result<(), crate::error::CommandError> {
+    let db = app.state::<crate::storage::Db>();
+    let conn = db.0.lock()?;
+    for journal in crate::storage::list_plugin_updates(&conn)?.into_iter().filter(|journal| journal.plugin_id == id) {
+        if journal.phase != "accepted" {
+            return Err(crate::error::CommandError::new("plugin/recovery-required", "Resolve the durable plugin update before removing its files"));
+        }
+        crate::plugin_updates::finish_at(&conn, &plugins_dir(&app).map_err(crate::error::CommandError::internal)?, &journal.update_id)?;
+    }
+    uninstall_files_unchecked(app.clone(), id).map_err(crate::error::CommandError::internal)
+}
+
+fn uninstall_files_unchecked(app: tauri::AppHandle, id: String) -> Result<(), String> {
     if let Some(root) = bundled_root(&app) {
         if root.plugin_dir(&id).join("manifest.json").is_file() {
             return Err(format!(

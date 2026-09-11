@@ -12,6 +12,7 @@ export type PluginUpdateTransaction<TCandidate> = {
   migrateCandidate(candidate: TCandidate): void | Promise<void>;
   /** Explicit side-effect boundary: candidate contributions become live here. */
   promoteCandidate(candidate: TCandidate): void | Promise<void>;
+  /** Final durable decision; no fallible retirement step may follow it. */
   accept(candidate: TCandidate): void | Promise<void>;
   retirePrevious(): void | Promise<void>;
   cleanupCandidate(candidate: TCandidate | undefined): void | Promise<void>;
@@ -59,8 +60,8 @@ export async function runPluginUpdateTransaction<TCandidate>(
     dataMayHaveChanged = true;
     await transaction.migrateCandidate(candidate);
     await transaction.promoteCandidate(candidate);
-    await transaction.accept(candidate);
     await transaction.retirePrevious();
+    await transaction.accept(candidate);
     return candidate;
   } catch (cause) {
     const recoveryErrors: Error[] = [];

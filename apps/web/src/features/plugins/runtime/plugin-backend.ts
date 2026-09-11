@@ -42,8 +42,8 @@ export function stagePluginFiles(
   return invoke<PluginCandidateDiskEntry>("plugins_stage_files", { id, files });
 }
 
-export function commitPluginCandidate(token: string): Promise<PluginDiskEntry> {
-  return invoke<PluginDiskEntry>("plugins_commit_candidate", { token });
+export function commitPluginCandidate(token: string, updateId: string): Promise<PluginDiskEntry> {
+  return invoke<PluginDiskEntry>("plugins_commit_candidate", { token, updateId });
 }
 
 export function discardPluginCandidate(token: string): Promise<void> {

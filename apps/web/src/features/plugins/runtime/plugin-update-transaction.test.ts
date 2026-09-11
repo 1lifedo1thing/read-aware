@@ -42,9 +42,16 @@ describe("plugin update transaction", () => {
       "verify-commit",
       "migrate",
       "promote",
-      "accept",
       "retire",
+      "accept",
     ]);
+  });
+
+  test("failed final retirement never reaches irreversible acceptance", async () => {
+    const log: string[] = [];
+    await expect(runPluginUpdateTransaction(transaction(log, "retire"))).rejects.toThrow("retire failed");
+    expect(log).not.toContain("accept");
+    expect(log.slice(-4)).toEqual(["cleanup", "rollback-files", "restore-data", "restart-previous"]);
   });
 
   test("a failed health check leaves the live runtime and its data untouched", async () => {

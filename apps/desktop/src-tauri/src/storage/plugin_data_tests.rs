@@ -67,3 +67,17 @@ fn plugin_data_empty_baseline_and_invalid_owners() {
         assert_eq!(plugin_data_snapshot_inner(&mut conn, id).unwrap_err().code, "plugin/invalid-argument");
     }
 }
+
+
+#[test]
+fn plugin_data_preserves_arbitrary_owned_key_suffixes_through_recovery() {
+    let mut conn = database();
+    for key in ["", "line\nbreak", "\0", "__proto__"] {
+        conn.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES (?1,'true','now')", [format!("read-aware-plugin.sample.{key}")]).unwrap();
+    }
+    let snapshot = plugin_data_snapshot_inner(&mut conn,"sample").unwrap();
+    assert_eq!(snapshot.kv.len(),4);
+    for key in ["", "line\nbreak", "\0", "__proto__"] { assert_eq!(snapshot.kv.get(key).map(String::as_str),Some("true")); }
+    plugin_data_restore_inner(&mut conn,"sample",snapshot.clone()).unwrap();
+    assert_eq!(plugin_data_snapshot_inner(&mut conn,"sample").unwrap().kv,snapshot.kv);
+}

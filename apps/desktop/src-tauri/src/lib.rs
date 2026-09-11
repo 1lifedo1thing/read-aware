@@ -18,6 +18,7 @@ mod mobi_metadata;
 mod native_path;
 mod pdf_metadata;
 mod plugins;
+mod plugin_updates;
 mod plugin_sandbox_policy;
 mod secrets;
 mod resources;
@@ -797,10 +798,13 @@ pub fn run() {
             // A failed migration or unreadable database is the most likely
             // real-world "app dies at launch" cause — make sure it is the
             // first thing the log file explains before the process goes down.
-            let (conn, data_dir) = storage::init_db(app.handle()).map_err(|error| {
+            let (mut conn, data_dir) = storage::init_db(app.handle()).map_err(|error| {
                 log::error!("database initialization failed: {error}");
                 error
             })?;
+            // No IPC/Worker or background sync is running yet. Restore both
+            // plugin files and private data before the webview can hydrate KV.
+            plugin_updates::recover_at(&mut conn, &data_dir.join("plugins"))?;
             // Read the persisted theme preference BEFORE the main window exists
             // so the very first frame — window background and boot splash —
             // honors the in-app setting, not just the OS scheme. `None` means
@@ -1094,6 +1098,12 @@ pub fn run() {
             plugins::plugins_stage_zip,
             plugins::plugins_stage_files,
             plugins::plugins_commit_candidate,
+            plugin_updates::plugins_update_begin,
+            plugin_updates::plugins_update_get,
+            plugin_updates::plugins_update_accept,
+            plugin_updates::plugins_update_rollback,
+            plugin_updates::plugins_update_finish,
+            plugin_updates::plugins_recovery_status,
             plugins::plugins_discard_candidate,
             plugins::plugins_rollback,
             plugins::plugins_uninstall,

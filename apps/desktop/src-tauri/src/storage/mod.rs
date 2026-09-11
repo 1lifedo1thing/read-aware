@@ -72,6 +72,8 @@ mod plugin_docs;
 pub use plugin_docs::*;
 mod plugin_data;
 pub use plugin_data::*;
+mod plugin_update_journal;
+pub(crate) use plugin_update_journal::*;
 mod plugin_document_operations;
 mod plugin_document_search;
 pub use plugin_document_operations::*;

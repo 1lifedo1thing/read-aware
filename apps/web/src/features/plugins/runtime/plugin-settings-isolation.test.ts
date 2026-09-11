@@ -1,3 +1,4 @@
+import type { PluginUpdateJournal } from "./plugin-update-journal";
 import type { SandboxedPlugin } from "./plugin-worker-host";
 import { expect, spyOn, test } from "bun:test";
 
@@ -20,7 +21,9 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
   const manifest = { id, name: "Settings update proof", version: "1.0.0", schemaVersion: 1, requires: {},
     settings: [{ kind: "toggle" as const, id: "enabled", label: "Enabled", value: false }] };
   let candidate = { ...manifest, version: "2.0.0", schemaVersion: 2 };
-  let rows: { key: string; valueJson: string }[] = []; let holdKV = false; let failPublication = false;
+  let rows: { key: string; valueJson: string }[] = []; let holdKV = false; let failPublication = false; let loseAcceptReply = false; let loseBeginReply = false; let driftBeforeAccept = false;
+  const journals = new Map<string, PluginUpdateJournal>();
+  const snapshot = () => ({ pluginId: id, kv: Object.fromEntries([...disk].filter(([key]) => key.startsWith(`read-aware-plugin.${id}.`)).map(([key,value]) => [key.slice(`read-aware-plugin.${id}.`.length),value])), documents: [], schema: disk.get(schemaKey) ?? null });
   const writes: ((error?: unknown) => void)[] = [];
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => null } });
   Object.defineProperty(globalThis, "window", { configurable: true, value: { __TAURI_INTERNALS__: {
@@ -41,10 +44,42 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
         }
         return { appended: args.events.length, applied: args.events.length };
       }
+      if (command === "plugins_update_begin") {
+        const journal: PluginUpdateJournal = { updateId: args.updateId, pluginId: id, candidateToken: args.candidateToken,
+          hadPrevious: args.candidateToken ? true : null, baseline: snapshot(), phase: "prepared", accepted: null };
+        journals.set(journal.updateId, journal);
+        if (loseBeginReply) { loseBeginReply = false; throw { code: "ipc/unknown", message: "reply lost after preparation" }; }
+        return structuredClone(journal);
+      }
+      if (command === "plugins_update_get") return structuredClone(journals.get(args.updateId) ?? null);
+      if (command === "plugins_update_accept") {
+        const journal = journals.get(args.updateId)!;
+        if (journal.phase === "prepared") {
+          if (driftBeforeAccept) {
+            driftBeforeAccept = false;
+            await localKV.setItemAsync(`read-aware-plugin.${id}.raced`, "true");
+            throw { code: "plugin/data-busy", message: "source changed before decision" };
+          }
+          if (failPublication) throw { code: "db/locked", message: "event log unavailable" };
+          publications.push(structuredClone(args.events));
+          for (const event of args.events) rows = [...rows.filter(row => row.key !== event.payload.key), { key: event.payload.key, valueJson: JSON.stringify(event.payload.value) }];
+          journal.phase = "accepted"; journal.accepted = snapshot();
+          if (loseAcceptReply) { loseAcceptReply = false; throw { code: "ipc/unknown", message: "reply lost after commit" }; }
+        }
+        return structuredClone(journal);
+      }
+      if (command === "plugins_update_finish") { journals.delete(args.updateId); return; }
+      if (command === "plugins_update_rollback") {
+        const journal = journals.get(args.updateId)!;
+        if (journal.phase === "accepted") throw { code: "plugin/recovery-required", message: "already accepted" };
+        for (const key of disk.keys()) if (key.startsWith(`read-aware-plugin.${id}.`) || key === schemaKey) disk.delete(key);
+        for (const [key,value] of Object.entries(journal.baseline.kv)) disk.set(`read-aware-plugin.${id}.${key}`, value);
+        if (journal.baseline.schema !== null) disk.set(schemaKey,journal.baseline.schema);
+        journals.delete(args.updateId); return;
+      }
       if (command === "plugins_stage_files") return { id, token: "candidate-proof", manifest: JSON.stringify(candidate) };
       if (command === "plugins_commit_candidate") return { id, manifest: JSON.stringify(candidate) };
-      if (command === "plugin_data_snapshot") return { pluginId: id, kv: Object.fromEntries([...disk].filter(([key]) => key.startsWith(`read-aware-plugin.${id}.`)).map(([key, value]) => [key.slice(`read-aware-plugin.${id}.`.length), value])), documents: [], schema: disk.get(schemaKey) ?? null };
-      if (command === "plugin_data_restore") { disk.set(settingsKey, args.snapshot.kv.settings); disk.set(schemaKey, args.snapshot.schema); return; }
+      if (command === "plugin_data_snapshot") return snapshot();
       if (command === "desktop_startup_enabled") return false;
     },
   } } });
@@ -70,9 +105,9 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
     expect(publications).toEqual([]);
     await expect(Promise.resolve(oldForm.onSubmit({ enabled: false }))).rejects.toMatchObject({ code: "plugin/data-busy" });
     await expect(createSettingsDomain("agent").commands.update([{ path: `plugins.${id}.enabled`, value: false }])).rejects.toMatchObject({ code: "plugin/data-busy" });
-    migration.resolve(); await tick(); expect(commands).not.toContain("plugin_data_restore");
+    migration.resolve(); await tick(); expect(commands).not.toContain("plugins_update_rollback");
     teardown.resolve(); expect((await update).message).toContain("migration failed");
-    expect(commands).toContain("plugin_data_restore"); expect(starts).toEqual([1, 2, 1]);
+    expect(commands).toContain("plugins_update_rollback"); expect(starts).toEqual([1, 2, 1]);
     expect(publications).toEqual([]);
     expect(localKV.getItem(settingsKey)).toBe('{"enabled":true}'); expect(disk.get(settingsKey)).toBe('{"enabled":true}');
     await expect(Promise.resolve(oldForm.onSubmit({ enabled: false }))).rejects.toMatchObject({ code: "plugin/settings-stale" });
@@ -107,38 +142,39 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
     migration.resolve(); expect((await install).manifest.version).toBe("2.0.0"); await tick();
     expect(publications).toHaveLength(1);
     expect(publications[0]!.map(event => event.payload)).toEqual([
-      { key: settingsKey, value: { enabled: true } }, { key: prefix + "obsolete", value: null },
+      { key: prefix + "obsolete", value: null }, { key: settingsKey, value: { enabled: true } },
     ]);
     await localKV.setItemAsync(settingsKey, '{"afterAcceptance":true}'); await tick();
     expect(publications.at(-1)?.[0]?.payload.value).toEqual({ afterAcceptance: true });
     await host.setPluginEnabled(id, false);
   });
 
-  test("accepted publication failure retains current data across sync refresh and retries latest values", async () => {
+  test("atomic acceptance failure rolls back; a lost accepted reply is resolved without rollback or double publication", async () => {
     candidate = { ...candidate, version: "3.0.0", schemaVersion: 3 };
     spyOn(worker, "startPluginWorker").mockImplementation(async () => ({
       hasMigration: true, checkHealth: async () => {}, promote: () => {}, terminate: async () => {},
       migrate: async () => { await localKV.setItemAsync(settingsKey, '{"accepted":3}'); },
     }) as unknown as SandboxedPlugin);
     const host = await import("./plugin-host");
-    const roaming = await import("../../../platform/roaming-preferences");
-    const restored = commands.filter(command => command === "plugin_data_restore").length;
+    const before = disk.get(settingsKey);
     failPublication = true;
+    await expect(host.installPluginFiles(id, [])).rejects.toMatchObject({ code: "db/locked" });
+    expect(disk.get(settingsKey)).toBe(before);
+    expect(getDefaultStore().get(installedPluginsAtom)[0]?.manifest.version).toBe("2.0.0");
+    expect(journals.size).toBe(0);
+    failPublication = false; loseBeginReply = true; loseAcceptReply = true; driftBeforeAccept = true;
+    const restored = commands.filter(command => command === "plugins_update_rollback").length;
+    publications.length = 0;
     expect((await host.installPluginFiles(id, [])).manifest.version).toBe("3.0.0");
-    expect(commands.filter(command => command === "plugin_data_restore")).toHaveLength(restored);
-    expect(disk.get(settingsKey)).toBe('{"accepted":3}');
-    await roaming.refreshRoamingPreferences();
-    expect(disk.get(settingsKey)).toBe('{"accepted":3}');
-    await localKV.setItemAsync(settingsKey, '{"accepted":4}'); await tick();
-    failPublication = false;
-    await roaming.refreshRoamingPreferences();
-    expect(disk.get(settingsKey)).toBe('{"accepted":4}');
-    expect(rows.find(row => row.key === settingsKey)?.valueJson).toBe('{"accepted":4}');
+    expect(commands.filter(command => command === "plugins_update_rollback")).toHaveLength(restored);
+    expect(commands).toContain("plugins_update_get"); expect(publications).toHaveLength(1);
+    expect(publications[0]!.some(event => event.payload.key.endsWith(".raced") && event.payload.value === true)).toBe(true);
+    expect(disk.get(settingsKey)).toBe('{"accepted":3}'); expect(journals.size).toBe(0);
     await host.setPluginEnabled(id, false);
   });
 
   test("activation teardown failure never restores a snapshot under the failed runtime", async () => {
-    const restoresBefore = commands.filter(command => command === "plugin_data_restore").length;
+    const restoresBefore = commands.filter(command => command === "plugins_update_rollback").length;
     spyOn(worker, "startPluginWorker").mockImplementation(async () => ({
       hasMigration: true, checkHealth: async () => {}, promote: () => {},
       migrate: async () => { throw new Error("activation migration failed"); },
@@ -147,9 +183,15 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
     getDefaultStore().set(installedPluginsAtom, [{ manifest: { ...candidate, schemaVersion: 4 }, enabled: false }]);
     const host = await import("./plugin-host");
     await host.setPluginEnabled(id, true);
-    expect(commands.filter(command => command === "plugin_data_restore")).toHaveLength(restoresBefore);
+    expect(commands.filter(command => command === "plugins_update_rollback")).toHaveLength(restoresBefore);
     expect(getDefaultStore().get(installedPluginsAtom)[0]?.error).toContain("runtime still draining");
     await expect(createSettingsDomain("agent").commands.update([{ path: `plugins.${id}.enabled`, value: false }])).rejects.toMatchObject({ code: "plugin/recovery-required" });
+    const removedBefore = commands.filter(command => command === "plugins_uninstall").length;
+    await expect(host.uninstallPlugin(id)).rejects.toMatchObject({ code: "plugin/recovery-required" });
+    expect(commands.filter(command => command === "plugins_uninstall")).toHaveLength(removedBefore);
+    const discardedBefore = commands.filter(command => command === "plugins_discard_candidate").length;
+    await expect(host.installPluginFiles(id, [])).rejects.toMatchObject({ code: "plugin/recovery-required" });
+    expect(commands.filter(command => command === "plugins_discard_candidate")).toHaveLength(discardedBefore + 1);
     const current = disk.get(settingsKey);
     rows = [{ key: settingsKey, valueJson: '{"unsafeRemote":true}' }, { key: "read-aware-plugin.healthy-recovery.settings", valueJson: '{"healthy":true}' }];
     const roaming = await import("../../../platform/roaming-preferences");

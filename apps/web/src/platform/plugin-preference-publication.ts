@@ -33,9 +33,9 @@ export class PluginPreferencePublication {
   }
 
   private static owner(key: string): { scope: PluginPreferencePublication; suffix: string } | undefined {
-    const match = /^read-aware-plugin\.([a-z0-9-]+)\.(.*)$/.exec(key);
+    const match = /^read-aware-plugin\.([a-z0-9-]+)\./.exec(key);
     const scope = match ? this.pending.get(match[1]!) : undefined;
-    return scope && match ? { scope, suffix: match[2]! } : undefined;
+    return scope && match ? { scope, suffix: key.slice(match[0].length) } : undefined;
   }
 
   /** Capture exact durable receipts, never the optimistic mirror or a backfill read. */
@@ -54,6 +54,19 @@ export class PluginPreferencePublication {
   static isQuarantined(key: string): boolean { return this.owner(key)?.scope.quarantined ?? false; }
   static async flushAccepted(): Promise<void> {
     await Promise.all([...this.pending.values()].filter(scope => scope.publisher).map(scope => scope.flush()));
+  }
+
+  /** Native acceptance already logged these values atomically. Only durable
+   * writes observed after that boundary still need the ordinary publisher. */
+  rebase(baseline: Record<string, string>): void {
+    if (this.closed || this.publisher || this.quarantined) throw new AppError("plugin/recovery-required", "Cannot rebase this publication scope");
+    this.baseline.clear();
+    for (const [key, value] of Object.entries(baseline)) this.baseline.set(key, value);
+  }
+
+  static quarantineOwner(pluginId: string): void {
+    const scope = this.pending.get(pluginId) ?? this.begin(pluginId, {});
+    scope.quarantine();
   }
 
   /** Acceptance is final: publication failure retains only accepted values for

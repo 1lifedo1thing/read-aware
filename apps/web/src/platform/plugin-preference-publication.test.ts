@@ -68,3 +68,25 @@ test("accepted append failures retain final values, block stale overlays, and re
   ]);
   expect(Publication.blocks("read-aware-plugin.publish-retry.settings")).toBe(false);
 });
+
+test("every owned KV suffix stays inside the migration publication boundary", async () => {
+  const scope = Publication.begin("publish-keys", {});
+  const keys = ["line\nbreak", "trailing\n", "\0", "__proto__", "", "nested.setting"];
+  for (const suffix of keys) {
+    const key = `read-aware-plugin.publish-keys.${suffix}`;
+    expect(Publication.blocks(key)).toBe(true); expect(Publication.record(key, "1")).toBe(true);
+  }
+  const received: string[] = [];
+  await scope.accept(async values => { received.push(...values.keys()); }, () => {});
+  expect(received).toEqual(keys.map(key => `read-aware-plugin.publish-keys.${key}`));
+});
+
+test("native acceptance rebases already logged values while retaining later durable writes", async () => {
+  const scope = Publication.begin("publish-native", { settings: "1" });
+  Publication.record("read-aware-plugin.publish-native.settings", "2");
+  Publication.record("read-aware-plugin.publish-native.settings", "3");
+  scope.rebase({ settings: "2" });
+  const batches: unknown[] = [];
+  await scope.accept(async values => { batches.push([...values]); }, () => {});
+  expect(batches).toEqual([[["read-aware-plugin.publish-native.settings", "3"]]]);
+});

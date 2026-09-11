@@ -1,5 +1,6 @@
 import { applyPlatformAttributes, disableNativeContextMenu } from "./platform/environment";
 import { syncAndroidSafeArea } from "./platform/safe-area";
+import { recoverPluginUpdates } from "./platform/plugin-update-recovery";
 import { hydrateLocalStore } from "./platform/local-store";
 import { hydrateAppIdentity } from "./platform/app-identity";
 import { hydrateRoamingPreferences } from "./platform/roaming-preferences";
@@ -20,9 +21,10 @@ syncAndroidSafeArea();
 // reach the file log even when they happen mid-boot.
 installGlobalErrorLogging();
 
-// Boot order matters, but only ONE await gates on IPC and only ONE dynamic
-// import remains on the critical path:
+// Native setup restores interrupted plugin updates before admitting IPC.
+// Boot then checks unresolved owners before any local config is consumed:
 //
+// 0. `recoverPluginUpdates()` reads native status and quarantines failed owners.
 // 1. `hydrateLocalStore()` loads the device-local config snapshot (SQLite on
 //    desktop) — everything below reads settings through it.
 // 2. The settings/i18n helpers above are STATIC imports: they are pure at
@@ -39,6 +41,8 @@ const log = createLogger("boot");
 
 void (async () => {
   log.info("start");
+  await recoverPluginUpdates();
+  log.info("plugin updates recovered");
   await hydrateLocalStore();
   log.info("local store hydrated");
   // Which bundle is this (dev vs production identifier)? The sync layer's
