@@ -1,4 +1,5 @@
 import { AppError, normalizeIdentityConsolidationPlan, type IdentityConsolidationPlan, type IdentityConsolidationSnapshot } from "@read-aware/core";
+import type { RuntimeDeps } from "../ports";
 import type { IdentityInput } from "./identity-input";
 
 const invalid = (): never => { throw new AppError("memory/invalid-input", "Invalid identity inference result"); };
@@ -49,5 +50,18 @@ export async function identityPlan(raw: string, snapshot: IdentityConsolidationS
       keepId: value.keepId, mergedId: value.mergedId } });
   }
   return normalizeIdentityConsolidationPlan({ expectedRevision: snapshot.revision, entitiesRevision: snapshot.entitiesRevision,
-    summary: parsed.summary, complete: parsed.complete, sources: snapshot.sources.map(source => ({ memoryId: source.memory.id, revision: source.revision })), decisions });
+    summary: parsed.summary, complete: parsed.complete && !input.registryScan?.hasMore, sources: snapshot.sources.map(source => ({ memoryId: source.memory.id, revision: source.revision })), decisions });
+}
+
+
+/** A shortlist is not the entire ID namespace. Never overwrite an unselected existing identity as new. */
+export async function checkNewIdentityIds(plan: IdentityConsolidationPlan, input: IdentityInput, registry: RuntimeDeps["entityRegistry"], signal?: AbortSignal): Promise<void> {
+  if (!input.registryScan) return;
+  const known = new Set(input.identities.flatMap(group => [group.id, ...group.members.map(member => member.id)]));
+  for (const { input: decision } of plan.decisions) {
+    if (decision.op !== "resolve" || known.has(decision.entityId)) continue;
+    signal?.throwIfAborted();
+    const page = await registry.query({ kind: "members", entityId: decision.entityId, limit: 1, expectedRevision: plan.entitiesRevision }, signal);
+    if (page.kind !== "members" || page.revision !== plan.entitiesRevision || page.canonicalId !== null || page.items.length) return invalid();
+  }
 }

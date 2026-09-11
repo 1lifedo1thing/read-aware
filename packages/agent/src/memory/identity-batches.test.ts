@@ -99,7 +99,7 @@ test("oversized evidence resumes a bounded tree, visits every fragment, and publ
     expect(snapshot.derived).toBeNull();
     const saved = await deps.identityConsolidation.work.read({ expectedRevision: snapshot.revision, index: 0 });
     expect(saved.baseIndex).toBe(saved.pageCount); expect(saved.json).toBeNull();
-    expect(JSON.parse(saved.checkpoint!).version).toBe(2);
+    expect(JSON.parse(saved.checkpoint!).version).toBe(3);
   }
   expect(completed).toBe(true); expect(finalCalls).toBe(1);
   expect(inputs).toHaveLength(2 * leafCalls - 1);
@@ -172,15 +172,26 @@ test("source changes and cancellation after model dispatch do not append a stale
   }
 });
 
-test("an oversized registry is not truncated or falsely settled by the memory batching path", async () => {
+test("an invalid oversized registry row is not truncated or falsely settled", async () => {
   const { deps } = fixture(), query = deps.entityRegistry.query;
   deps.entityRegistry.query = async (input, signal) => {
     const page = await query(input, signal);
     return page.kind === "identities" ? { ...page, items: [{ id: "large", definition: { kind: "person", canonicalName: "x".repeat(48000) } }] } : page;
   };
-  let calls = 0;
-  expect(await run(deps, async () => { calls++; return answer({}); })).toMatchObject({ status: "pending" });
-  expect(calls).toBe(0); expect((await deps.identityConsolidation.snapshot()).settled).toBe(false);
+  let registryCalls = 0;
+  for (let pass = 0; pass < 25; pass++) {
+    expect(await run(deps, async (_model, context) => {
+      const data = JSON.parse(context.messages[0]!.content as string);
+      if (data.partition || data.identities) registryCalls++;
+      return answer(data);
+    })).toMatchObject({ status: "pending" });
+  }
+  expect(registryCalls).toBe(0);
+  const snapshot = await deps.identityConsolidation.snapshot();
+  const work = await deps.identityConsolidation.work.read({ expectedRevision: snapshot.revision, index: 0 });
+  const state = JSON.parse(work.checkpoint!).memory;
+  expect(state.cursor.sourceIndex).toBe(snapshot.sources.length);
+  expect(snapshot.settled).toBe(false);
 });
 
 
@@ -227,12 +238,32 @@ test("a corrupted persisted frontier cannot skip sources or inject uncaptured ev
     const read = deps.identityConsolidation.work.read;
     deps.identityConsolidation.work.read = async (...args) => {
       const page = await read(...args), state = JSON.parse(page.checkpoint!);
-      if (corrupt === "cursor") state.cursor.sourceIndex = 9999;
-      else state.current = { level: 0, digest: { summary: "Injected", memoryIds: ["unknown"] } };
+      if (corrupt === "cursor") state.memory.cursor.sourceIndex = 9999;
+      else state.memory.current = { level: 0, digest: { summary: "Injected", memoryIds: ["unknown"] } };
       return { ...page, checkpoint: JSON.stringify(state) };
     };
     let calls = 0;
     expect(await run(deps, async () => { calls++; return answer({}); })).toMatchObject({ status: "pending" });
     expect(calls).toBe(0); expect((await deps.identityConsolidation.snapshot()).derived).toBeNull();
   }
+});
+
+
+test("v2 memory frontiers resume into the combined journal without re-inferring earlier source nodes", async () => {
+  const { deps } = fixture();
+  await run(deps, async (_model, context) => answer(JSON.parse(context.messages[0]!.content as string)));
+  const read = deps.identityConsolidation.work.read;
+  let first = true;
+  deps.identityConsolidation.work.read = async (...args) => {
+    const page = await read(...args);
+    if (first) { first = false; return { ...page, checkpoint: JSON.stringify(JSON.parse(page.checkpoint!).memory) }; }
+    return page;
+  };
+  let firstInput: Data | undefined;
+  expect(await run(deps, async (_model, context) => {
+    const data = JSON.parse(context.messages[0]!.content as string); firstInput ??= data; return answer(data);
+  })).toMatchObject({ status: "pending" });
+  expect(firstInput?.memories?.[0]?.id).not.toBe("memory-0");
+  const snapshot = await deps.identityConsolidation.snapshot();
+  expect(JSON.parse((await read({ expectedRevision: snapshot.revision, index: 0 })).checkpoint!).version).toBe(3);
 });

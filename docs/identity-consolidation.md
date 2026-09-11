@@ -7,8 +7,10 @@ bounded automatic inference/idle production and evidence-validated prompt
 consumption are implemented. Public inspection now uses `inspect_user_profile`
 and memory 2.3 `queries.profileContext` / `events.observe(kind=profileContext)`.
 The producer ports remain internal. Schemas 39–40 add durable intermediate pages
-and a compact resume frontier for oversized memory evidence. MEM08 still has a
-capacity gap for an oversized entity registry; no partial pass is labelled complete. Existing curated profile APIs retain their meaning.
+and a compact resume frontier for oversized memory evidence. Oversized registries
+now use a revision-pinned partition scan and exact selected-member hydration.
+MEM08 is wired pending integrated acceptance; no partial pass is labelled complete.
+Existing curated profile APIs retain their meaning.
 
 ## Ownership
 
@@ -108,10 +110,38 @@ idempotent. A failed compact leaves its inference page reusable, so retrying doe
 not repeat the model call. Index zero reads the header/frontier even after page
 zero has been pruned; other pruned reads conflict. Compaction emits no domain
 events, obeys the same cancellation/drain policy and clears on final publication
-or data wipe. A model too small for a leaf or a registry too large for final
-resolution still remains pending with a logged reason; registry partitioning is
-required. The native snapshot still loads the full eligible source set, so bounded
-model payloads do not imply bounded total process memory.
+or data wipe. A model too small for a leaf/registry partition remains pending with
+a logged capacity reason. The native snapshot still loads the full eligible source
+set, so bounded model payloads do not imply bounded total process memory.
+
+When the complete registry cannot fit, the producer first reduces the full memory
+source set, then scans every canonical class, original member and accumulated
+alias under the captured registry revision. The same public entity query supplies
+pages of at most 100 rows; model partitions split further by encoded byte size
+without dropping rows. Class definitions stay attached to each partition. The
+selector retains a bounded shortlist of original/canonical ID pairs and inferred
+identity context, never model-written definitions or mutations. Its output is at
+most 3500 bytes, and final hydration reserves worst-case escaped definition space
+for 1–8 references according to model capacity. All phases share the four-call
+maintenance allowance and compact each completed node.
+
+Journal frontier version 3 wraps the existing memory state and a registry cursor
+(class offset, member/alias phase, row offset) plus shortlist. Version 1 node pages
+and version 2 memory frontiers remain resumable. A failed model call, page read or
+checkpoint cannot skip a partition or publish a truncated scan. Changed sources
+or registry invalidate both phases. After the scan, exact selected original and
+canonical definitions are re-read under the same registry revision. Final input
+explicitly declares that member/alias lists are selective; the inferred registry
+summary is not raw evidence, and an absent shortlist entry is not proof that an
+identity does not exist. Code-generated new IDs are checked against the complete
+registry before commit, so they cannot overwrite omitted existing identities.
+
+If needed references exceed the shortlist, the selector must set hasMore. This
+flag persists through the scan and forces partial publication even if the final
+model claims complete. The next maintenance pass reevaluates remaining work
+against the committed definitions. Which identity matches are supported, whether
+remaining work is recognized, and whether partial passes converge require model
+semantic acceptance; structural validation alone does not establish those facts.
 
 The strict model result contains summary, complete, resolutions and merges.
 Existing resolution IDs and merge roots must occur in the captured registry;
@@ -151,7 +181,7 @@ The runtime now uses the production identity port under the same automatic-memor
 policy as extraction/digests. Explicit inference output caps and source-tracking
 options survive the policy wrapper, and its signal combines caller cancellation.
 The source, validation and execution modules are separate from runtime scheduling.
-Remaining capacity work covers oversized registries.
+Both oversized evidence and valid oversized registries have resumable production paths.
 Incomplete model work stays pending with logged diagnostics, not a successful pass.
 Curated profile edits win by separation and read-set conflict checks. Forgotten
 or superseded evidence invalidates the derived layer before regeneration.
