@@ -91,15 +91,21 @@ test.each(["read", "cancel", "denied"])("context bundle Worker RPC %s resolves t
 /** Deterministic transport faults, with the real host context and registration path. */
 class FaultWorker {
   static current: FaultWorker;
+  static bootFault: "failed" | "clone" | undefined;
   onmessage: ((event: MessageEvent) => Promise<void>) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
+  onmessageerror: (() => void) | null = null;
   readonly sent: WireMessage[] = [];
   readonly callbacks = new PluginCallbackRegistry();
   terminated = false;
   constructor() { FaultWorker.current = this; }
   postMessage(message: WireMessage) {
     this.sent.push(message);
-    if (message.t === "boot") queueMicrotask(() => { void this.deliver({ t: "ready", hasMigration: false }); });
+    if (message.t === "boot") {
+      if (FaultWorker.bootFault === "clone") throw new DOMException("Could not clone boot", "DataCloneError");
+      const response = FaultWorker.bootFault === "failed" ? { t: "failed", error: "activation rejected" } : { t: "ready", hasMigration: false };
+      queueMicrotask(() => { void this.deliver(response); });
+    }
     if (message.t === "quiesce") queueMicrotask(() => { void this.deliver({ t: "quiesced" }); });
     if (message.t === "release") this.callbacks.release(message.handles!);
   }
@@ -135,6 +141,7 @@ async function hostFixture(permissions: PluginPermission[] = []) {
   const worker = FaultWorker.current;
   return {
     worker,
+    runtime,
     async close() {
       try { await runtime.terminate(); }
       finally { for (const disposable of disposables.reverse()) disposable.dispose(); }
@@ -143,6 +150,85 @@ async function hostFixture(permissions: PluginPermission[] = []) {
 }
 
 describe("plugin worker capability bridge", () => {
+  test.each(["failed", "clone"] as const)("startup %s drains the lifecycle before rejecting", async fault => {
+    const gate = deferred();
+    const drain = spyOn(PluginLifecycleController.prototype, "drainStorageWrites").mockImplementation(() => gate.promise);
+    FaultWorker.bootFault = fault;
+    try {
+      let settled = false;
+      const starting = hostFixture().catch(error => { settled = true; return error; });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(FaultWorker.current.terminated).toBe(true);
+      expect(settled).toBe(false);
+      gate.resolve();
+      expect(await starting).toMatchObject({ code: "plugin/unavailable" });
+      expect(drain).toHaveBeenCalledTimes(1);
+    } finally { gate.resolve(); drain.mockRestore(); FaultWorker.bootFault = undefined; }
+  });
+
+  test("an old realm crash cannot remove its replacement registrations", async () => {
+    const old = await hostFixture();
+    await old.worker.deliver({ t: "call", id: 1, method: "contributions.commands.register",
+      args: old.worker.callbacks.encode([{ id: "generation", title: "Old", run: () => null }]) });
+    const replacement = await hostFixture();
+    try {
+      await replacement.worker.deliver({ t: "call", id: 1, method: "contributions.commands.register",
+        args: replacement.worker.callbacks.encode([{ id: "generation", title: "New", run: () => null }]) });
+      old.worker.onerror?.({ message: "old runtime crashed" } as ErrorEvent);
+      await old.close();
+      expect(replacement.worker.terminated).toBe(false);
+      expect(getDefaultStore().get(pluginCommandsAtom).find(command => command.id === "generation")?.title).toBe("New");
+    } finally { await old.close(); await replacement.close(); }
+  });
+
+  test.each(["error", "messageerror", "failed"])("fatal %s closes contributions, callbacks and pending health immediately", async kind => {
+    const { worker, runtime, close } = await hostFixture();
+    try {
+      await worker.deliver({ t: "call", id: 1, method: "contributions.commands.register",
+        args: worker.callbacks.encode([{ id: "crash", title: "Crash", run: () => null }]) });
+      const pending = runtime.checkHealth().catch(error => error);
+      if (kind === "error") worker.onerror?.({ message: "runtime crashed" } as ErrorEvent);
+      else if (kind === "messageerror") worker.onmessageerror?.();
+      else await worker.deliver({ t: "failed", error: "runtime failed" });
+      expect(worker.terminated).toBe(true);
+      expect(await pending).toMatchObject({ code: "plugin/unavailable" });
+      expect(worker.callbacks.size).toBe(0);
+      expect(getDefaultStore().get(pluginCommandsAtom).some(command => command.id === "crash")).toBe(false);
+      await expect(runtime.checkHealth()).rejects.toMatchObject({ code: "plugin/unavailable" });
+      expect(() => runtime.promote()).toThrow("Plugin runtime stopped");
+      const count = worker.sent.length;
+      await worker.deliver({ t: "call", id: 2, method: "contributions.commands.register",
+        args: worker.callbacks.encode([{ id: "late", title: "Late", run: () => null }]) });
+      expect(worker.sent).toHaveLength(count);
+      await close();
+      await close();
+      expect(worker.sent).toHaveLength(count);
+    } finally { await close(); }
+  });
+
+  test("fatal failure aborts a running domain read and waits for its cleanup without posting a late result", async () => {
+    const entered = deferred(), gate = deferred();
+    const host = identityHost();
+    host.controls.beforeRead = () => { entered.resolve(); return gate.promise; };
+    const spy = spyOn(identityDomain, "inspectProfileContext").mockImplementation(host.service.inspect);
+    const { worker, close } = await hostFixture(["memory:read"]);
+    try {
+      const pending = worker.deliver({ t: "call", id: 20, method: "domains.memory.queries.profileContext",
+        args: worker.callbacks.encode([{ kind: "summary" }]) });
+      await entered.promise;
+      worker.onerror?.({ message: "runtime crashed" } as ErrorEvent);
+      const count = worker.sent.length;
+      let closed = false;
+      const closing = close().then(() => { closed = true; });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(closed).toBe(false);
+      gate.resolve();
+      await pending;
+      await closing;
+      expect(worker.sent).toHaveLength(count);
+    } finally { gate.resolve(); await close(); spy.mockRestore(); }
+  });
+
   test("retained disposable quota rejects before replacement effects and recovers after release", async () => {
     const { worker, close } = await hostFixture();
     try {

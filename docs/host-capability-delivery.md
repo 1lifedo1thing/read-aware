@@ -2,6 +2,14 @@
 
 目标：实现统一模型中 Agent / 插件尚未接通或只部分接通的应开放能力，完成遗漏重扫，使用真实组合插件和 Tauri 桌面端到端验收。此文件是执行账本，不替代[统一模型](./host-capability-model.md)或[当前矩阵](./host-capability-matrix.md)。
 
+## 2026-09-11：第一段 CON03 致命故障清理
+
+[实现] Worker error/messageerror/failed、启动超时和 boot clone 失败统一关闭传输，取消领域读取与在途调用，结束健康检查/迁移等待，立即退休贡献和回调，再排空异步资源及持久写。terminate 复用同一个清理承诺，失败保留给调用者且后台记录，不再把崩溃 Worker 留作可用实例。迟到业务结果不再发送；旧代只能移除自己的 live 映射和注册，不能覆盖新代状态。停止后的健康检查/迁移/提升立即稳定拒绝。
+
+[验证] 宿主 bridge 30 项和真实 Bun Worker 21 项通过；新增启动 failed/clone 清理屏障、三种致命消息、在途源读取排空及同 ID 换代回归；web 与 desktop 类型通过。没有冒充真实 Tauri 崩溃或跨平台验收。
+
+[剩余] CON03 的通用同 ID 贡献提升失败恢复、provider session 全链路及 packaged 证据仍保留；这一组不宣称全部能力完成。
+
 ## 2026-09-11：第一段 CON10 可重复契约门禁与 CI
 
 [实现] bun run check:capabilities 在固定仓库 cwd 依次运行 Foliate 生成、矩阵/模型只读检查、库存门禁、core、Agent、domain、插件 runtime、真实 Worker 和宿主 bridge、KV/迁移桥及双端类型；测试模块 mock/浏览器全局按组分进程隔离，任一步失败立即停止。capabilities.yml 对 main push/所有 PR 配置只读任务，锁文件安装，固定仓库 Bun1.3.13；三桌面 OS 单独编译并跑原生契约，Linux 原生依赖沿用现有 workflow。不自动部署、安装插件、推送或启动桌面，不把生成后的覆盖写回文档作为通过。

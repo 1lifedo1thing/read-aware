@@ -196,6 +196,8 @@ export function startPluginWorker(
   disposables: PluginDisposable[],
   options: StartPluginWorkerOptions = {},
 ): Promise<SandboxedPlugin> {
+  const runtime = buildPluginContext(manifest, appVersion, disposables);
+  const ctx = runtime.context;
   const worker = new Worker(new URL("./plugin-sandbox.worker.ts", import.meta.url), {
     type: "module",
     name: `plugin:${manifest.id}`,
@@ -203,13 +205,12 @@ export function startPluginWorker(
   const instanceId = options.instanceId ?? manifest.id;
   wireHostSync();
   liveWorkers.set(instanceId, { pluginId: manifest.id, worker });
-  const runtime = buildPluginContext(manifest, appVersion, disposables);
-  const ctx = runtime.context;
   let terminated = false;
   let quiescing = false;
   let termination: Promise<void> | undefined;
   let invalidMessageReported = false;
   let acknowledgeQuiescence: ((error?: string) => void) | undefined;
+  const post = (message: unknown) => { if (!terminated) worker.postMessage(message); };
 
   const pendingInvokes = new PluginRpcPending();
   const callbackBudget = new PluginCallbackBudget();
@@ -227,35 +228,31 @@ export function startPluginWorker(
     number,
     { resolve: () => void; reject: (error: Error) => void; timeout: ReturnType<typeof setTimeout> }
   >();
-  /** A dead worker answers nothing — fail its in-flight calls, don't strand them. */
-  const failAllInvokes = (reason: string) => {
-    pendingInvokes.failAll(new AppError("plugin/unavailable", reason));
-  };
   const failAllHealthChecks = (reason: string) => {
     for (const pending of pendingHealth.values()) {
       clearTimeout(pending.timeout);
-      pending.reject(new Error(reason));
+      pending.reject(new AppError("plugin/unavailable", reason));
     }
     pendingHealth.clear();
   };
   const failAllMigrations = (reason: string) => {
     for (const pending of pendingMigrations.values()) {
       clearTimeout(pending.timeout);
-      pending.reject(new Error(reason));
+      pending.reject(new AppError("plugin/unavailable", reason));
     }
     pendingMigrations.clear();
   };
   /** Call a function the plugin kept inside the Worker. */
   const invokeHandle = (handle: string, args: unknown[]): Promise<unknown> => {
     return pendingInvokes.call(id => {
-      worker.postMessage({ t: "invoke", id, handle, args });
+      post({ t: "invoke", id, handle, args });
     });
   };
 
   const releaseCallbacks = (wire: PluginCallbackWire) => {
     const handles = Array.isArray(wire?.callbacks)
       ? wire.callbacks.flatMap(entry => typeof entry?.handle === "string" ? [entry.handle] : []) : [];
-    if (!terminated && handles.length) worker.postMessage({ t: "release", handles });
+    if (!terminated && handles.length) post({ t: "release", handles });
   };
 
   /**
@@ -265,38 +262,67 @@ export function startPluginWorker(
   const heldDisposables = new Map<string, HeldRegistration>();
   let nextDisposableId = 1;
 
+  const assertRunning = () => {
+    if (terminated || quiescing) throw new AppError("plugin/unavailable", "Plugin runtime stopped");
+  };
+  const closeTransport = (reason: string) => {
+    if (terminated) return;
+    terminated = true;
+    quiescing = true;
+    runtime.lifecycle.cancelOperations();
+    abortIncomingCalls();
+    pendingInvokes.close(new AppError("plugin/unavailable", reason));
+    failAllHealthChecks(reason);
+    failAllMigrations(reason);
+    acknowledgeQuiescence?.(reason);
+    const live = liveWorkers.get(instanceId);
+    if (live?.worker === worker) liveWorkers.delete(instanceId);
+    worker.terminate();
+    callbackBudget.close();
+  };
+  const drainRuntime = async () => {
+    const errors: unknown[] = [];
+    try { runtime.lifecycle.stop(); } catch (error) { errors.push(error); }
+    for (const disposable of heldDisposables.values()) {
+      try { disposable.dispose(); } catch (error) { errors.push(error); }
+    }
+    heldDisposables.clear();
+    try { await runtime.lifecycle.drainCleanups(); } catch (error) { errors.push(error); }
+    try { await runtime.lifecycle.drainStorageWrites(); } catch (error) { errors.push(error); }
+    if (errors.length) throw new AggregateError(errors, "Plugin shutdown failed");
+  };
+
   return new Promise<SandboxedPlugin>((resolve, reject) => {
     let settled = false;
+    const failRuntime = (reason: string) => {
+      const starting = !settled;
+      const currentInstance = liveWorkers.get(instanceId)?.worker === worker;
+      settled = true;
+      clearTimeout(activationTimeout);
+      closeTransport(reason);
+      termination ??= drainRuntime();
+      // A fatal transport failure has no caller to await shutdown. Keep the
+      // same promise for terminate(), but always observe background failures.
+      void termination.catch(error => log.error(`Cleanup after failure in "${manifest.id}" failed`, error));
+      if (starting) void termination.then(
+        () => reject(new AppError("plugin/unavailable", reason)),
+        error => reject(new AggregateError([new AppError("plugin/unavailable", reason), error], "Plugin activation and cleanup failed")),
+      );
+      else {
+        log.error(`runtime error in "${manifest.id}"`, reason);
+        if (options.onRuntimeError) options.onRuntimeError(reason);
+        else if (currentInstance) updateInstalledPlugin(manifest.id, { error: reason });
+      }
+    };
     const activationTimeout = setTimeout(() => {
       if (settled) return;
-      settled = true;
-      liveWorkers.delete(instanceId);
-      worker.terminate();
-      failAllInvokes(`plugin "${manifest.id}" activation timed out`);
-      reject(new Error("plugin activation timed out"));
+      failRuntime("plugin activation timed out");
     }, 10_000);
 
     worker.onerror = (event) => {
-      if (settled) {
-        // A crash after activation used to vanish here; keep the sandbox up
-        // (its registrations may still work) but put the error where the
-        // settings panel shows it.
-        const message = event.message || "plugin crashed at runtime";
-        log.error(`runtime error in "${manifest.id}"`, message);
-        failAllInvokes(message);
-        failAllHealthChecks(message);
-        failAllMigrations(message);
-        if (options.onRuntimeError) options.onRuntimeError(message);
-        else updateInstalledPlugin(manifest.id, { error: message });
-        return;
-      }
-      settled = true;
-      clearTimeout(activationTimeout);
-      liveWorkers.delete(instanceId);
-      worker.terminate();
-      failAllMigrations(`plugin "${manifest.id}" failed to start`);
-      reject(new Error(event.message || "plugin worker failed to start"));
+      if (!terminated) failRuntime(event.message || "plugin worker failed");
     };
+    worker.onmessageerror = () => { if (!terminated) failRuntime("plugin message could not be deserialized"); };
 
     worker.onmessage = async (event: MessageEvent<unknown>) => {
       if (terminated) return;
@@ -307,10 +333,10 @@ export function startPluginWorker(
         // callback graphs after failed admission. Rate-limit diagnostics per realm.
         if (!invalidMessageReported) { invalidMessageReported = true; log.warn(`Invalid Worker message from "${manifest.id}"`, error); }
         const handles = rejectedPluginCallbackHandles(event.data);
-        if (handles.length) worker.postMessage({ t: "release", handles });
+        if (handles.length) post({ t: "release", handles });
         const raw = event.data as { t?: unknown; id?: unknown } | null;
         if (raw && validPluginCallId(raw.id)) {
-          if (raw.t === "call") worker.postMessage({ t: "result", id: raw.id, ok: false, code: errorCode(error), error: "Plugin message rejected" });
+          if (raw.t === "call") post({ t: "result", id: raw.id, ok: false, code: errorCode(error), error: "Plugin message rejected" });
           else if (raw.t === "result") pendingInvokes.settle(raw.id, false, error);
         }
         return;
@@ -324,6 +350,7 @@ export function startPluginWorker(
               manifest,
               hasMigration: message.hasMigration,
               checkHealth() {
+                try { assertRunning(); } catch (error) { return Promise.reject(error); }
                 const id = nextHealthId++;
                 return new Promise<void>((healthResolve, healthReject) => {
                   const timeout = setTimeout(() => {
@@ -335,18 +362,19 @@ export function startPluginWorker(
                     reject: healthReject,
                     timeout,
                   });
-                  worker.postMessage({ t: "health", id });
+                  post({ t: "health", id });
                 });
               },
               migrate(migration) {
+                try { assertRunning(); } catch (error) { return Promise.reject(error); }
                 runtime.lifecycle.beginMigration();
-                worker.postMessage({ t: "sync", patch: { phase: "migrating", storage: localKV.entries(pluginStoragePrefix(manifest.id)) } });
+                post({ t: "sync", patch: { phase: "migrating", storage: localKV.entries(pluginStoragePrefix(manifest.id)) } });
                 const id = nextMigrationId++;
                 return new Promise<void>((migrationResolve, migrationReject) => {
                   const timeout = setTimeout(() => {
                     pendingMigrations.delete(id);
                     runtime.lifecycle.finishMigration();
-                    worker.postMessage({ t: "sync", patch: { phase: "activating" } });
+                    post({ t: "sync", patch: { phase: "activating" } });
                     migrationReject(new Error("plugin data migration timed out"));
                   }, 30_000);
                   pendingMigrations.set(id, {
@@ -354,15 +382,16 @@ export function startPluginWorker(
                     reject: migrationReject,
                     timeout,
                   });
-                  worker.postMessage({ t: "migrate", id, migration });
+                  post({ t: "migrate", id, migration });
                 });
               },
               promote() {
-                worker.postMessage({ t: "sync", patch: { phase: "active" } });
+                assertRunning();
+                post({ t: "sync", patch: { phase: "active" } });
                 try {
                   runtime.lifecycle.promote();
                 } catch (error) {
-                  worker.postMessage({ t: "sync", patch: { phase: "activating" } });
+                  post({ t: "sync", patch: { phase: "activating" } });
                   throw error;
                 }
               },
@@ -376,36 +405,19 @@ export function startPluginWorker(
                   const quiescenceError = await new Promise<string | undefined>(done => {
                     const timeout = setTimeout(() => done("plugin quiescence timed out"), 2_000);
                     acknowledgeQuiescence = error => { clearTimeout(timeout); done(error); };
-                    worker.postMessage({ t: "quiesce" });
+                    post({ t: "quiesce" });
                   });
                   acknowledgeQuiescence = undefined;
                   // Retire migration timers/results before closing the lifecycle:
                   // a late response must not reopen (or throw from) a stopped realm.
                   failAllMigrations(`plugin "${manifest.id}" was deactivated`);
                   try {
-                    const errors: unknown[] = [];
-                    try { runtime.lifecycle.stop(); }
-                    catch (error) { errors.push(error); }
-                    try { await runtime.lifecycle.drainCleanups(); }
-                    catch (error) { errors.push(error); }
-                    try { await runtime.lifecycle.drainStorageWrites(); }
-                    catch (error) { errors.push(error); }
-                    if (quiescenceError) errors.push(new Error(quiescenceError));
-                    if (errors.length === 1) throw errors[0];
-                    if (errors.length > 1) throw new AggregateError(errors, "Plugin shutdown failed");
+                    await drainRuntime();
+                    if (quiescenceError) throw new AppError("plugin/unavailable", quiescenceError);
                   } finally {
-                    worker.postMessage({ t: "deactivate" });
+                    post({ t: "deactivate" });
                     await new Promise(done => setTimeout(done, 50));
-                    terminated = true;
-                    pendingInvokes.close(new AppError("plugin/unavailable", "Plugin runtime stopped"));
-                    const live = liveWorkers.get(instanceId);
-                    if (live?.worker === worker) liveWorkers.delete(instanceId);
-                    worker.terminate();
-                    heldDisposables.clear();
-                    callbackBudget.close();
-                    failAllInvokes(`plugin "${manifest.id}" was deactivated`);
-                    failAllHealthChecks(`plugin "${manifest.id}" was deactivated`);
-                    failAllMigrations(`plugin "${manifest.id}" was deactivated`);
+                    closeTransport(`plugin "${manifest.id}" was deactivated`);
                   }
                 })();
               },
@@ -414,14 +426,7 @@ export function startPluginWorker(
           return;
 
         case "failed":
-          if (!settled) {
-            settled = true;
-            clearTimeout(activationTimeout);
-            liveWorkers.delete(instanceId);
-            worker.terminate();
-            failAllInvokes(`plugin "${manifest.id}" failed to start`);
-            reject(new Error(message.error));
-          }
+          failRuntime(message.error);
           return;
 
         case "dispose": {
@@ -447,7 +452,7 @@ export function startPluginWorker(
           if (incomingCalls.has(message.id)) return;
           if (incomingCalls.size >= 256) {
             releaseCallbacks(message.args);
-            worker.postMessage({ t: "result", id: message.id, ok: false, code: "plugin/busy", error: "Too many pending plugin calls" });
+            post({ t: "result", id: message.id, ok: false, code: "plugin/busy", error: "Too many pending plugin calls" });
             return;
           }
           const controller = new AbortController();
@@ -481,7 +486,7 @@ export function startPluginWorker(
             releaseArguments = () => { callbackLease.dispose(); releaseCallbacks(message.args); };
             const args = decodePluginCallbacks(message.args, invokeHandle, handles => {
               callbackLease.release(handles);
-              if (!terminated) worker.postMessage({ t: "release", handles });
+              if (!terminated) post({ t: "release", handles });
             }, runtime.lifecycle.signal);
             // Ordinary consumers may retain a normalized subgraph (live view updates).
             // Registrations transfer this entire lease to their returned disposable.
@@ -532,7 +537,7 @@ export function startPluginWorker(
               }
               heldDisposables.set(handle, argumentOwner);
               try {
-                worker.postMessage({ t: "result", id: message.id, ok: true, value: null, disposable: handle });
+                post({ t: "result", id: message.id, ok: true, value: null, disposable: handle });
               } catch (error) {
                 heldDisposables.delete(handle);
                 argumentOwner.dispose();
@@ -540,13 +545,13 @@ export function startPluginWorker(
               }
               return;
             }
-            worker.postMessage({ t: "result", id: message.id, ok: true, value: value ?? null });
+            post({ t: "result", id: message.id, ok: true, value: value ?? null });
           } catch (error) {
             const failure = controller.signal.aborted && !pluginCallDrainsCancellation(message.method) ? controller.signal.reason : error;
             if (message.method.startsWith("services.network.") && !controller.signal.aborted) {
               log.warn("Plugin network request failed", manifest.id, message.method, failure);
             }
-            worker.postMessage({
+            post({
               t: "result",
               id: message.id,
               ok: false,
@@ -578,7 +583,7 @@ export function startPluginWorker(
               const acceptedLease = callbackLease;
               const value = decodePluginCallbacks(message.value, invokeHandle, handles => {
                 acceptedLease.release(handles);
-                if (!terminated) worker.postMessage({ t: "release", handles });
+                if (!terminated) post({ t: "release", handles });
               }, runtime.lifecycle.signal);
               pendingInvokes.settle(message.id, true, value);
             } catch (error) {
@@ -610,7 +615,7 @@ export function startPluginWorker(
           pendingMigrations.delete(message.id);
           clearTimeout(pending.timeout);
           runtime.lifecycle.finishMigration();
-          worker.postMessage({ t: "sync", patch: { phase: "activating" } });
+          post({ t: "sync", patch: { phase: "activating" } });
           if (message.ok) pending.resolve();
           else pending.reject(new Error(message.error));
           return;
@@ -618,7 +623,7 @@ export function startPluginWorker(
       }
     };
 
-    worker.postMessage({
+    try { post({
       t: "boot",
       url: options.moduleUrl ?? pluginModuleUrl(manifest.id, manifest.main ?? "main.js"),
       manifest,
@@ -628,6 +633,6 @@ export function startPluginWorker(
       storage: localKV.entries(pluginStoragePrefix(manifest.id)),
       locale: ctx.locale,
       phase: runtime.lifecycle.phase,
-    });
+    }); } catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
   });
 }
