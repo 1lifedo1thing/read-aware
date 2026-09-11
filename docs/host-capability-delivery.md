@@ -3,6 +3,16 @@
 目标：实现统一模型中 Agent / 插件尚未接通或只部分接通的应开放能力，完成遗漏重扫，使用真实组合插件和 Tauri 桌面端到端验收。此文件是执行账本，不替代[统一模型](./host-capability-model.md)或[当前矩阵](./host-capability-matrix.md)。
 
 
+## 2026-09-12：CON03 宿主在途调用退出屏障
+
+[缺口] Worker quiesced只说明Worker侧等待已结束；调用方取消可以让它先回报静默，宿主方法仍在等待原生写入。原退出流程只等lifecycle显式登记的source cleanup/storageWrites，library等直接领域命令没有统一在途屏障，可能在升级snapshot/restore之后继续写入。
+
+[实现] 每个已受理Worker→host调用持有独立完成凭证，取消仅发AbortSignal，方法返回及参数/额度清理完成才退休凭证。正常退出在quiescence窗口后关闭全部新调用（含storage），先退休注册，再等宿主在途表清空，最后沿用独立source cleanup和持久写排空。崩溃先停止Worker/取消传输，仍等同一宿主屏障后才完成terminate。资源释放即使抛错也在finally退休在途凭证。既有升级事务等待terminate，因此不会与仍在执行的旧宿主方法并行恢复插件数据；未新增事务、未延长quiescence截止或把取消当回滚。
+
+[验证] 生产Worker context经真实library.setStarred命令路径，用受控写源模拟原生调用仍未完成：调用方先取消，正常退出/Worker崩溃均保持退出promise未完成，写源结算后才退出；退出屏障期间storage.get稳定拒绝。写源失败同样释放屏障，不永久悬挂。原启动故障、fatal错误、取消读cleanup及清理异常时持久写排空的相关测试通过。类型检查先发现模拟写源漏返LibraryBook|null，补齐null后Web/desktop通过。实际setLibraryBookStarred等待commitDomainEvents提交book.starred事件，并返回重读后的书籍记录；本轮没有运行真实SQLite/Tauri或不相关全仓检查。
+
+[状态] 关闭RPC取消/静默早于宿主调用完成的退出竞态。CON03仍部分：方法已返回任务回执后继续运行的后台任务，必须由各自owner控制，不由在途表冒充覆盖；这部分按既有账本继续核对。非协作底层调用未结算时不会假称安全退出；外部已提交效果不承诺回滚，真实全链路集中后置。总目标active，不推送。
+
 ## 2026-09-12：CON03 通知与计划回调结果消费
 
 [缺口] 上轮确认计划控制器await run(context)不消费返回值；同类路径还包括领域事件、状态观察、storage.onChange和LLM分片。插件即便声明返回void，也可经Worker送回带新回调句柄的对象；宿主忽略对象会遗留回调额度。

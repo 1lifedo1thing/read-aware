@@ -4,6 +4,7 @@ import { getDefaultStore } from "jotai";
 import { contextActionsAtom, pluginCommandsAtom, voiceProvidersAtom } from "../state/plugin-store";
 import { emitAppEvent } from "../../../platform/app-events";
 import { localKV } from "../../../platform/local-store";
+import * as libraryDb from "../../library/lib/library-db";
 import { describeContext, startPluginWorker } from "./plugin-worker-host";
 import { PluginCallbackRegistry, pluginCallbackOwner, retainPluginCallbacks } from "./plugin-callback-wire";
 import { openPluginViewChannel } from "../lib/plugin-view-channels";
@@ -223,6 +224,37 @@ async function hostFixture(permissions: PluginPermission[] = [], promote = true)
 }
 
 describe("plugin worker capability bridge", () => {
+  test.each(["stop", "crash", "write-failure"])("%s waits for cancelled but still running host writes before completing retirement", async mode => {
+    const entered = deferred(), finish = deferred();
+    let committed = false;
+    const writeSource = spyOn(libraryDb, "setLibraryBookStarred").mockImplementation(async () => {
+      entered.resolve(); await finish.promise;
+      if (mode === "write-failure") throw new AppError("db/locked", "Write failed after cancellation");
+      committed = true;
+      return null;
+    });
+    const { worker, close } = await hostFixture(["library:write"]);
+    let closing: Promise<void> | undefined;
+    try {
+      const write = worker.deliver({ t: "call", id: 930, method: "domains.library.commands.books.setStarred",
+        args: worker.callbacks.encode(["book", true]) });
+      await entered.promise;
+      await worker.deliver({ t: "cancel", id: 930 });
+      if (mode === "crash") worker.onerror?.({ message: "Crash during write" } as ErrorEvent);
+      let retired = false;
+      closing = close().then(() => { retired = true; });
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(retired).toBe(false); expect(committed).toBe(false);
+      if (mode !== "crash") {
+        await worker.deliver({ t: "call", id: 931, method: "services.storage.get", args: worker.callbacks.encode(["late"]) });
+        expect(worker.sent.find(message => message.t === "result" && message.id === 931))
+          .toMatchObject({ ok: false, code: "plugin/cancelled" });
+      }
+      finish.resolve(); await write; await closing;
+      expect(committed).toBe(mode !== "write-failure"); expect(retired).toBe(true);
+      expect(worker.terminated).toBe(true);
+    } finally { finish.resolve(); await (closing ?? close()); writeSource.mockRestore(); }
+  });
   test("event notifications release returned callbacks even after the subscription is disposed", async () => {
     const storage = spyOn(localKV, "entries").mockReturnValue({});
     const { worker, close } = await hostFixture();

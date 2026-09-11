@@ -223,9 +223,10 @@ export function startPluginWorker(
 
   const pendingInvokes = new PluginRpcPending();
   const callbackBudget = new PluginCallbackBudget(count => pluginHostBudget.reserve("callbacks", count));
-  const incomingCalls = new Map<number, AbortController>();
+  const incomingCalls = new Map<number, { controller: AbortController; settled: Promise<void> }>();
+  let callAdmissionClosed = false;
   const abortIncomingCalls = () => {
-    for (const controller of incomingCalls.values()) controller.abort(new AppError("plugin/cancelled", "Plugin runtime stopped"));
+    for (const { controller } of incomingCalls.values()) controller.abort(new AppError("plugin/cancelled", "Plugin runtime stopped"));
   };
   let nextHealthId = 1;
   const pendingHealth = new Map<
@@ -290,12 +291,16 @@ export function startPluginWorker(
     callbackBudget.close();
   };
   const drainRuntime = async () => {
+    // A Worker cancellation/quiescence receipt is not evidence that an already
+    // dispatched native write has finished. Close admission, then await host work.
+    callAdmissionClosed = true;
     const errors: unknown[] = [];
     try { runtime.lifecycle.stop(); } catch (error) { errors.push(error); }
     for (const disposable of heldDisposables.values()) {
       try { disposable.dispose(); } catch (error) { errors.push(error); }
     }
     heldDisposables.clear();
+    while (incomingCalls.size) await Promise.all([...incomingCalls.values()].map(call => call.settled));
     try { await runtime.lifecycle.drainCleanups(); } catch (error) { errors.push(error); }
     try { await runtime.lifecycle.drainStorageWrites(); } catch (error) { errors.push(error); }
     if (errors.length) throw new AggregateError(errors, "Plugin shutdown failed");
@@ -482,7 +487,7 @@ export function startPluginWorker(
           return;
 
         case "cancel":
-          incomingCalls.get(message.id)?.abort(new AppError("plugin/cancelled", "Plugin call cancelled"));
+          incomingCalls.get(message.id)?.controller.abort(new AppError("plugin/cancelled", "Plugin call cancelled"));
           return;
 
         case "call": {
@@ -493,11 +498,13 @@ export function startPluginWorker(
             return;
           }
           const controller = new AbortController();
+          let finish!: () => void;
+          const settled = new Promise<void>(resolve => { finish = resolve; });
           let argumentOwner: HeldRegistration | undefined;
           let callLease: BudgetLease | undefined;
           let registrationLease: BudgetLease | undefined;
           let releaseArguments = () => releaseCallbacks(message.args);
-          incomingCalls.set(message.id, controller);
+          incomingCalls.set(message.id, { controller, settled });
           const timeout = setTimeout(() => controller.abort(new AppError("plugin/timeout", "Plugin call timed out")), 120_000);
           controller.signal.addEventListener("abort", () => clearTimeout(timeout), { once: true });
           try {
@@ -508,7 +515,7 @@ export function startPluginWorker(
             if (heldDisposables.size + incomingCalls.size > PLUGIN_WIRE_LIMITS.disposables) {
               throw new AppError("plugin/busy", "Plugin disposable capacity exceeded");
             }
-            if (quiescing && !message.method.startsWith("services.storage.")) {
+            if (callAdmissionClosed || quiescing && !message.method.startsWith("services.storage.")) {
               throw new AppError("plugin/cancelled", "Plugin runtime is stopping");
             }
             const method = message.method === "$registration.updateState"
@@ -610,9 +617,12 @@ export function startPluginWorker(
             // belong to the returned disposable, not the plugin's entire lifetime.
             try { if (!argumentOwner) releaseArguments(); }
             finally {
-              registrationLease?.release(); callLease?.release();
-              clearTimeout(timeout);
-              incomingCalls.delete(message.id);
+              try { registrationLease?.release(); callLease?.release(); }
+              finally {
+                clearTimeout(timeout);
+                incomingCalls.delete(message.id);
+                finish();
+              }
             }
           }
           return;
