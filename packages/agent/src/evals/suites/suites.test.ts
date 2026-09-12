@@ -7,7 +7,7 @@ import { describe, expect, test } from "bun:test";
 import { realBookSlugs } from "../book-fixtures";
 import { evalSuites, evalSuiteGroups, suiteIdsOfGroup } from "./index";
 import type { AgentEvalScenario } from "../agent-harness";
-import type { EvalSuite } from "../types";
+import type { AgentEvalObservation, EvalSuite } from "../types";
 import { invalidTags } from "../tags";
 import { realBook, type RealBookSlug } from "../book-fixtures";
 import { buildSystemPrompt } from "../../context/system-prompt";
@@ -15,6 +15,37 @@ import { SPOILER_POLICY_RULES } from "../../context/spoiler-policy";
 
 const BOOK_SLUGS = realBookSlugs();
 const allSuites = Object.values(evalSuites) as EvalSuite<AgentEvalScenario>[];
+
+function behaviorObservation(overrides: Partial<AgentEvalObservation>): AgentEvalObservation {
+  return { turns: [], answer: "已完成。", thinking: "", tools: [], interactions: [], modelRequests: [],
+    telemetry: { wallTimeMs: 1 }, ...overrides };
+}
+
+describe("behavior acceptance boundaries", () => {
+  test("memory correction accepts conditional edits only when the active user state contains the correction", async () => {
+    const scenario = evalSuites.personalization.scenarios.find(s => s.id === "memory-update-correction")!;
+    const output = behaviorObservation({ tools: [{ turn: 1, id: "correct", name: "manage_memory", args: { action: "correct" }, isError: false }],
+      state: { memories: [{ scope: "user", content: "现在玩 Factorio", status: "active" }] } });
+    expect((await scenario.evaluate(output)).passed).toBe(true);
+    for (const memory of [
+      { scope: "user", content: "仍玩 Minecraft", status: "active" },
+      { scope: "book:other", content: "Factorio", status: "active" },
+      { scope: "user", content: "Factorio", status: "forgotten" },
+    ]) expect((await scenario.evaluate({ ...output, state: { memories: [memory] } })).passed).toBe(false);
+    expect((await scenario.evaluate({ ...output, state: { saved: [{ content: "Factorio" }] } })).passed).toBe(false);
+  });
+
+  test("a translated memory answer still requires evidence from the requested book", async () => {
+    const scenario = evalSuites.memory.scenarios.find(s => s.id === "global-thread-book-memory-search")!;
+    const tool = { turn: 1, id: "search", name: "search_memory", args: { bookId: "eval-memory-book" },
+      output: JSON.stringify({ items: [{ id: "memory-book-lighthouse", scope: "book:eval-memory-book" }] }), isError: false };
+    const output = behaviorObservation({ answer: "你把灯塔看守人的作息看作注意力的隐喻。", tools: [tool] });
+    expect((await scenario.evaluate(output)).passed).toBe(true);
+    expect((await scenario.evaluate({ ...output, tools: [{ ...tool, args: { bookId: "another-book" } }] })).passed).toBe(false);
+    expect((await scenario.evaluate({ ...output, tools: [{ ...tool, output: "{\"items\":[]}" }] })).passed).toBe(false);
+    expect((await scenario.evaluate({ ...output, answer: "你喜欢晚上读书。" })).passed).toBe(false);
+  });
+});
 
 describe("eval suite registry", () => {
   test("every suite belongs to exactly one group and the registry is their union", () => {

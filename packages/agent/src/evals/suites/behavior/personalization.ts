@@ -403,26 +403,27 @@ export const personalizationEvalSuite: EvalSuite<AgentEvalScenario> = {
       },
       turns: [{ text: "更正一下你的记忆：我现在不怎么玩 Minecraft 了，最近迷上了 Factorio。" }],
       expectation: {
-        tools: { required: ["remember"], noErrors: true },
+        tools: { requiredAny: ["remember", "manage_memory"], noErrors: true },
       },
       criteria: {
         update:
-          "a new user-scope memory must capture Factorio / the correction; hard supersession is consolidation's job",
+          "the active user-scope memory state must capture Factorio via a new memory or a conditional correction",
       },
-      observeState: ({ stores }) => ({ saved: stores.savedMemoryInputs }),
+      observeState: ({ stores }) => ({ memories: stores.memories }),
       rubric: ["Acknowledges the correction naturally — no arguing, no re-asking"],
       evaluate: (observation) => {
         const state =
           observation.state && typeof observation.state === "object" && !Array.isArray(observation.state)
-            ? (observation.state as { saved?: Array<{ content?: string }> })
+            ? (observation.state as { memories?: Array<{ scope?: string; content?: string; status?: string }> })
             : {};
-        const saved = Array.isArray(state.saved) ? state.saved : [];
+        const saved = Array.isArray(state.memories) ? state.memories : [];
         const captured = saved.some(
-          (memory) => typeof memory.content === "string" && memory.content.includes("Factorio"),
+          (memory) => memory.scope === "user" && (!memory.status || memory.status === "active")
+            && typeof memory.content === "string" && memory.content.includes("Factorio"),
         );
         return combineAssessments(
           evaluateAgentTrace(observation, {
-            tools: { required: ["remember"], noErrors: true },
+            tools: { requiredAny: ["remember", "manage_memory"], noErrors: true },
           }),
           assessmentFromChecks([
             {

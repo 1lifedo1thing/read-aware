@@ -336,14 +336,33 @@ export const memoryEvalSuite: EvalSuite<AgentEvalScenario> = {
         },
       ],
       expectation: {
-        answer: { mustContain: ["lighthouse"] },
         tools: { required: ["search_memory"], noErrors: true },
       },
+      evaluate: observation => combineAssessments(
+        evaluateAgentTrace(observation, { tools: { required: ["search_memory"], noErrors: true } }),
+        assessmentFromChecks([{
+          id: "memory.scoped-insight", category: "tool",
+          passed: observation.tools.some(tool => {
+            if (tool.name !== "search_memory" || tool.isError || !tool.args || typeof tool.args !== "object"
+              || Array.isArray(tool.args) || tool.args.bookId !== MEMORY_BOOK_ID) return false;
+            try {
+              const result = JSON.parse(tool.output ?? "null");
+              return Array.isArray(result?.items) && result.items.some((item: { id?: string; scope?: string }) =>
+                item.id === "memory-book-lighthouse" && item.scope === `book:${MEMORY_BOOK_ID}`);
+            } catch { return false; }
+          }),
+          message: "the requested book's stored insight was retrieved through its scoped memory query",
+        }, {
+          id: "answer.translated-insight", category: "answer",
+          passed: /lighthouse|灯塔/iu.test(observation.answer) && /attention|注意|专注/iu.test(observation.answer),
+          message: "the answer conveys the lighthouse/attention insight in the reader's language",
+        }]),
+      ),
     }),
     defineAgentEvalScenario({
       id: "first-session-onboarding-questions",
       description:
-        "全局线程首次会话且画像为空：先问 2-4 个短问题了解读者，而不是长篇独白。",
+        "全局线程首次会话且画像为空：通过宿主访谈表单了解读者，而不是长篇独白。",
       tags: ["interaction", "memory", "global"],
       scope: { kind: "global", threadId: "memory-onboarding" },
       // 刻意不 seed profile：空画像 + 首条消息 = 系统提示的访谈模式
@@ -352,13 +371,14 @@ export const memoryEvalSuite: EvalSuite<AgentEvalScenario> = {
       },
       turns: [{ text: "我今晚想找点东西读，你帮我参谋参谋。" }],
       expectation: {
-        interactions: { requiredKinds: ["question"] },
+        tools: { required: ["onboard_reader"] },
+        interactions: { requiredKinds: ["form"] },
       },
       criteria: {
         onboarding: "empty profile + first turn → the interview block in the system prompt kicks in",
       },
       rubric: [
-        "Asks one short, warm question (reading goals, background, or preferred depth) instead of lecturing",
+        "Offers a short, warm onboarding form about reading goals, background, depth, or language; respects a skipped form without inventing a profile or lecturing",
       ],
     }),
   ],

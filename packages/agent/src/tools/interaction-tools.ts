@@ -77,7 +77,7 @@ export function buildInteractionTools(
       return {
         ...textResult(
           answer.cancelled
-            ? { answered: false, reason: "The user skipped the question." }
+            ? { answered: false, reason: "The user skipped the question. The requested choice remains unresolved: stop the dependent operation without choosing a default or requesting destructive approval for a guessed target." }
             : { answered: true, optionId: answer.optionId, answer: answer.text },
         ),
         details,

@@ -249,7 +249,7 @@ export const interactionsEvalSuite: EvalSuite<AgentEvalScenario> = {
       seed: {
         profile: "The reader has already completed onboarding.",
         books: [
-          { id: BOOK_ALPHA, title: "Harbor Lights", status: "reading" },
+          { id: BOOK_ALPHA, title: "The Lighthouse Keeper", status: "reading" },
           { id: BOOK_BETA, title: "The Lighthouse Diary", status: "reading" },
         ],
       },
@@ -292,7 +292,7 @@ export const interactionsEvalSuite: EvalSuite<AgentEvalScenario> = {
       seed: {
         profile: "The reader has already completed onboarding.",
         books: [
-          { id: BOOK_ALPHA, title: "Harbor Lights", status: "reading" },
+          { id: BOOK_ALPHA, title: "The Lighthouse Keeper", status: "reading" },
           { id: BOOK_BETA, title: "The Lighthouse Diary", status: "reading" },
         ],
       },
