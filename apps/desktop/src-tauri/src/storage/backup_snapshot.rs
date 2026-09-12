@@ -11,7 +11,8 @@ use tempfile::TempDir;
 pub(super) mod files;
 use files::FileCollector;
 
-pub(crate) const FORMAT: u32 = 1;
+// v2 requires pending reading facts to be closed into identified events first.
+pub(crate) const FORMAT: u32 = 2;
 pub(crate) const CODE_INCOMPLETE: &str = "backup/incomplete";
 pub(crate) const CODE_CHANGED: &str = "backup/changed";
 pub(crate) const CODE_CANCELLED: &str = "backup/cancelled";
@@ -113,6 +114,7 @@ pub(crate) fn capture(
 ) -> Result<BackupSnapshot, CommandError> {
     progress(CaptureProgress::Preparing)?;
     let tx = conn.transaction()?;
+    super::backup_reading::require_closed(&tx)?;
     let version: i64 = tx.query_row("SELECT max(version) FROM schema_migrations", [], |row| {
         row.get(0)
     })?;

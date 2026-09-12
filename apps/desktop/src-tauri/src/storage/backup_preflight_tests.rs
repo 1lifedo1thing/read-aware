@@ -274,3 +274,17 @@ fn backup_preflight_cancellation_interrupts_sql_and_cleans_owned_files() {
         Some(rusqlite::ErrorCode::OperationInterrupted)
     );
 }
+
+#[test]
+fn backup_preflight_rejects_unclosed_reading_facts_in_v2_even_with_valid_member_hashes() {
+    let mut archive = fixture();
+    edit(&mut archive, |conn, _| {
+        conn.execute("INSERT INTO reading_sessions_pending(book_id,local_day,local_hour,ms,started_at,last_at) VALUES ('b1','2026-09-12',15,20,1000,1020)",[]).unwrap();
+    });
+    let path = archive.directory().to_owned();
+    assert_eq!(
+        preflight(archive, cancellation()).unwrap_err().code,
+        "backup/invalid-archive"
+    );
+    assert!(!path.exists());
+}

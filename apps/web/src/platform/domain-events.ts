@@ -144,6 +144,14 @@ export async function mintEventRows(drafts: DomainEventDraft[]): Promise<EventRo
   return drafts.map((draft) => toEventRow(draft, deviceId));
 }
 
+/** Specialized native decisions must follow the latest persisted frontier,
+ * including restored checkpoints, while sharing the ordinary JS allocator. */
+export async function mintEventRowsAfterCurrentFrontier(drafts: DomainEventDraft[]): Promise<EventRowWire[]> {
+  const info = await invoke<LocalDeviceInfo>("local_device_get");
+  clock.seed(info.lastHlcWallMs, info.lastHlcCounter);
+  return drafts.map(draft => toEventRow(draft, info.deviceId));
+}
+
 function toEventRow(draft: DomainEventDraft, deviceId: string): EventRowWire {
   const route = AGGREGATE_ROUTES[draft.type];
   const aggregateId = route

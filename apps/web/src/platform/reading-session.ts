@@ -16,9 +16,9 @@
  * Buckets are keyed by the day/hour the time was READ in, in this device's
  * timezone — the event contract (`book.sessionRecorded` in @read-aware/core).
  */
-import type { ReadingStatus } from "@read-aware/core";
+import { errorCode, type ReadingStatus } from "@read-aware/core";
 import type { CommitReport } from "./domain-events";
-import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "./domain-events";
+import { broadcastDomainEventDrafts, mintEventRows, mintEventRowsAfterCurrentFrontier, type DomainEventDraft } from "./domain-events";
 import { isTauri } from "./environment";
 import { invoke } from "./ipc";
 import { createLogger } from "./logger";
@@ -163,5 +163,26 @@ export async function flushPendingReadingSessions(): Promise<number> {
     // close) flushes them; the stats and position merely lag until then.
     log.error("could not flush pending reading sessions", error);
     return 0;
+  }
+}
+
+/** Full backup's host preparation. Caller pauses/drains reader writes until
+ * capture/planning ends; native capture also refuses any newly opened bucket. */
+export async function closeReadingSessionsForBackup(): Promise<number> {
+  if (!isTauri()) return 0;
+  for (let attempt = 0; ; attempt++) {
+    const buckets = await listPendingReadingSessions();
+    if (buckets.length === 0) return 0;
+    const drafts: DomainEventDraft[] = buckets.filter(b => b.ms > 0 || b.progress !== null)
+      .map(bucket => ({ ...draftFor(bucket), origin: "system" }));
+    const events = await mintEventRowsAfterCurrentFrontier(drafts);
+    try {
+      const closed = await durableWrites.track(invoke<DomainEventDraft[]>("backup_close_reading_sessions", { events }));
+      broadcastDomainEventDrafts(closed);
+      return closed.length;
+    } catch (error) {
+      if (errorCode(error) === "backup/changed" && attempt < 2) continue;
+      throw error; // Strict backup preparation never swallows a failed close.
+    }
   }
 }

@@ -4,10 +4,9 @@ import { errorCode, type HlcStamp } from "@read-aware/core";
 import { invoke } from "./ipc";
 import { isTauri } from "./environment";
 import { afterSecretWrites, getDurableSecret } from "./secret-store";
-import { broadcastDomainEventDrafts, mintEventRows, observeRemoteHlcStamps, type DomainEventDraft } from "./domain-events";
+import { broadcastDomainEventDrafts, mintEventRowsAfterCurrentFrontier, type DomainEventDraft } from "./domain-events";
 import { durableWrites } from "./write-settlement";
 
-type DeviceInfo = { deviceId: string; lastHlcWallMs: number | null; lastHlcCounter: number | null };
 type Report = { events: (DomainEventDraft & { hlc: HlcStamp })[]; awaitingConnection: boolean };
 let active: Promise<void> | null = null;
 export function flushRestoredCredentialPublications(): Promise<void> {
@@ -21,11 +20,7 @@ export function flushRestoredCredentialPublications(): Promise<void> {
       if (slots.length === 0) return;
       // Native restore/other transactions can have advanced the frontier since
       // this webview's cached device seed. Mint after the current persisted head.
-      const device = await invoke<DeviceInfo>("local_device_get");
-      if (device.lastHlcWallMs !== null) observeRemoteHlcStamps([{
-        wallMs: device.lastHlcWallMs, counter: device.lastHlcCounter ?? 0, deviceId: device.deviceId,
-      }]);
-      const events = await mintEventRows(slots.map(slot => ({
+      const events = await mintEventRowsAfterCurrentFrontier(slots.map(slot => ({
         type: "preference.changed", origin: "system", payload: { key: `secret:${slot}`, value: null },
       })));
       try {

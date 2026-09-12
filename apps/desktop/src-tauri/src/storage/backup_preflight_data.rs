@@ -242,6 +242,14 @@ pub(super) fn validate(
     control: &Control,
     report: &mut PreflightReport,
 ) -> Result<(), CommandError> {
+    control.check()?;
+    if conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM reading_sessions_pending)",
+        [],
+        |row| row.get::<_, bool>(0),
+    )? {
+        return Err(invalid("backup v2 contains unclosed reading sessions"));
+    }
     report.events = events(conn, control)?;
     report.blobs = blobs(conn, archive, control)?;
     report.credentials = credentials(conn, archive, control)?;

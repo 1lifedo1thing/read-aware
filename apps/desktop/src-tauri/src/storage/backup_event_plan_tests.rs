@@ -304,3 +304,35 @@ fn backup_event_plan_normalizes_json_spelling_but_preserves_large_numbers_arrays
     let explanation: String = plan.entries.query_row("EXPLAIN QUERY PLAN SELECT source_id FROM event_matches WHERE source_id>?1 ORDER BY source_id LIMIT 3", ["large"], |row| row.get(3)).unwrap();
     assert!(explanation.contains("SEARCH"), "{explanation}");
 }
+
+#[test]
+fn backup_event_plan_requires_target_to_close_its_own_pending_reading_first() {
+    let root = tempfile::tempdir().unwrap();
+    let staging = tempfile::tempdir().unwrap();
+    let mut target = database(&root.path().join("db"));
+    target.execute("INSERT INTO reading_sessions_pending(book_id,local_day,local_hour,ms,started_at,last_at) VALUES ('book','2026-09-12',10,20,1000,1020)", []).unwrap();
+    let source = source(&[]);
+    let source_path = source.archive().directory().to_owned();
+    assert_eq!(
+        plan_events(source, &mut target, staging.path(), || Ok(()))
+            .unwrap_err()
+            .code,
+        "backup/incomplete"
+    );
+    assert!(!source_path.exists());
+    assert_eq!(
+        target
+            .query_row("SELECT ms FROM reading_sessions_pending", [], |row| row
+                .get::<_, i64>(0))
+            .unwrap(),
+        20
+    );
+    assert_eq!(
+        target
+            .query_row("SELECT count(*) FROM domain_events", [], |row| row
+                .get::<_, i64>(0))
+            .unwrap(),
+        0
+    );
+    assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
+}

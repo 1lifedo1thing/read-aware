@@ -638,6 +638,15 @@ pub(crate) fn reading_session_flush_inner(
     events_in: &[EventRow],
 ) -> Result<CommitReport, CommandError> {
     let tx = conn.transaction()?;
+    let report = reading_session_flush_in_transaction(&tx, events_in)?;
+    tx.commit()?;
+    Ok(report)
+}
+
+pub(crate) fn reading_session_flush_in_transaction(
+    tx: &Transaction<'_>,
+    events_in: &[EventRow],
+) -> Result<CommitReport, CommandError> {
     let mut report = CommitReport {
         appended: 0,
         applied: 0,
@@ -670,13 +679,13 @@ pub(crate) fn reading_session_flush_inner(
         if ms <= 0 && !has_position {
             continue;
         }
-        if !events::insert_event_row(&tx, ev, events::EventSource::Local)? {
+        if !events::insert_event_row(tx, ev, events::EventSource::Local)? {
             // Redelivery of an already-logged flush: the bucket was retired
             // with it the first time.
             continue;
         }
         report.appended += 1;
-        if apply::apply_event(&tx, ev)? {
+        if apply::apply_event(tx, ev)? {
             report.applied += 1;
         }
         tx.execute(
@@ -695,7 +704,6 @@ pub(crate) fn reading_session_flush_inner(
             params![book_id, local_day, local_hour, ended_at, observed_at],
         )?;
     }
-    tx.commit()?;
     Ok(report)
 }
 

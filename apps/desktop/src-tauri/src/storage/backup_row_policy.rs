@@ -90,6 +90,8 @@ pub(super) fn table(name: &str) -> Result<RowPolicy, CommandError> {
         "app_kv" => ReviewSettings,
         "synced_preferences" => RoamingPreferences,
         "blob_objects" => BlobFiles,
+        // Format 2 closes these on the owning device before capture/planning.
+        // Retain explicit responsibility; never import or discard pending facts.
         "reading_sessions_pending" => RecoverReading,
         "local_device"
         | "sync_profile"

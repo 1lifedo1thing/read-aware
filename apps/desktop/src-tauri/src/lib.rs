@@ -1060,6 +1060,7 @@ pub fn run() {
             storage::reading_session_position,
             storage::reading_sessions_pending,
             storage::reading_session_flush,
+            storage::backup_close_reading_sessions,
             storage::reading_time_import,
             external_open::external_open_take,
             external_open::external_open_is_current,

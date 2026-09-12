@@ -156,6 +156,7 @@ pub(crate) fn plan_events(
 ) -> Result<EventPlan, CommandError> {
     check()?;
     let target_tx = target.transaction()?;
+    crate::storage::backup_reading::require_closed(&target_tx)?;
     let target_revision = revision::database(&target_tx, &mut check)?;
     let directory = tempfile::Builder::new()
         .prefix("readaware-backup-plan-")

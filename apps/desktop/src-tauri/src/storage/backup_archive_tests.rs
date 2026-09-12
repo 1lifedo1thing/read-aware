@@ -324,3 +324,21 @@ fn backup_archive_cancellation_and_header_limits_do_not_leave_plaintext() {
         CODE_PASSWORD
     );
 }
+
+#[test]
+fn backup_archive_rejects_the_unreleased_v1_format_without_closed_reading_identity() {
+    let mut manifest = BackupManifest {
+        format: FORMAT,
+        schema_version: storage::SCHEMA_VERSION,
+        tables: BTreeMap::new(),
+        excluded: vec![],
+        files: vec![CapturedFile {
+            path: "database.sqlite".into(),
+            byte_size: 0,
+            sha256: "0".repeat(64),
+        }],
+    };
+    assert!(manifest_members(&manifest).is_ok());
+    manifest.format = 1;
+    assert_eq!(manifest_members(&manifest).unwrap_err().code, CODE_INVALID);
+}
