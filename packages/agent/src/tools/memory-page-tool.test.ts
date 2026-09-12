@@ -22,6 +22,12 @@ test("search_memory continues with the returned revision and rejects changed res
 test("global book filters and book-thread boundaries are preserved across pages", async () => {
   const f = createInMemoryDeps({ memories: [seedMemory({ id: "private", scope: "book:other", content: "Other book" }), seedMemory({ id: "current", scope: "book:current", content: "Current book" })] });
   const global = buildMemoryTools({ kind: "global", threadId: "test" }, f.deps).find(tool => tool.name === "search_memory")!;
+  const unscopedResult = await global.execute("global", {});
+  if (unscopedResult.content[0]?.type !== "text") throw Error("Expected text");
+  const unscoped = JSON.parse(unscopedResult.content[0].text);
+  expect(unscoped.items).toEqual([]);
+  expect(unscoped.searchedScopes).toEqual(["user", "global"]);
+  expect(unscoped.scopeNotice).toContain("Book-specific memories were not searched");
   expect(JSON.stringify(await global.execute("global", { bookId: "other" }))).toContain("Other book");
   const book = buildMemoryTools({ kind: "book", bookId: "current" as never }, f.deps).find(tool => tool.name === "search_memory")!;
   expect(JSON.stringify(await book.execute("book", {}))).not.toContain("Other book");

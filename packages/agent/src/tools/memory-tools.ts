@@ -33,7 +33,7 @@ export function buildMemoryTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
     name: "search_memory",
     label: "Search memory",
     description:
-      "Search long-term memory about this reader (preferences, insights, book takeaways). Omit query to list the strongest memories. Returns items, total, revision and nextOffset; follow nextOffset with the same filters and expectedRevision to read beyond the first page. If results changed, restart at offset 0 without expectedRevision. The page revision is not a token for editing memory. A book thread cannot query another book via bookId.",
+      "Search long-term memory about this reader (preferences, insights, book takeaways). Omit query to list the strongest memories. In a global thread, memories about a specific book require bookId; an unfiltered global search does not include every book. If a keyword search misses, keep that bookId and omit query before claiming no book memories exist: wording or language may differ. Returns items, total, revision and nextOffset; follow nextOffset with the same filters and expectedRevision to read beyond the first page. If results changed, restart at offset 0 without expectedRevision. The page revision is not a token for editing memory. A book thread cannot query another book via bookId.",
     parameters: Type.Object({
       query: Type.Optional(Type.String({ description: "Text filter; omit to list top memories" })),
       bookId: Type.Optional(
@@ -53,7 +53,10 @@ export function buildMemoryTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
         || scope.kind === "book" && bookId !== scope.bookId)) throw new AppError("memory/invalid-query", "Invalid memory book scope");
       const scopes: MemoryScope[] =
         bookId && scope.kind === "global" ? [`book:${bookId}`, "user", "global"] : visibleScopes(scope);
-      return textResult(await deps.memory.pageMemories(normalizeMemoryPageQuery({ ...page, scopes })));
+      const result = await deps.memory.pageMemories(normalizeMemoryPageQuery({ ...page, scopes }));
+      return textResult({ ...result, searchedScopes: scopes,
+        ...(scope.kind === "global" && !bookId ? { scopeNotice: "Book-specific memories were not searched. Pass bookId to search a particular book before drawing conclusions about its saved memories." } : {}),
+      });
     },
   };
 
