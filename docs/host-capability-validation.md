@@ -94,7 +94,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | UI02 | 命令面板搜索/书架布局/排序/分组/多选 | F6 | 本机集合两书多选在列表/标题排序/作者分组后保持，DOM/原生持久值一致；搜索结果/多选续页等待验，见第二十三流程 |
 | UI03 | 发现/执行宿主命令与可用条件 | F6 | 本机真实Worker按权限发现commands/checked/不可用原因，执行及缺失目标/旧revision/无阅读控制拒绝通过；完整命令集待验，见第二十三流程 |
 | UI04 | 快捷键查询、重绑、冲突与重置 | F6 | 编译Workspace Profiles表单冲突拒绝、mod+alt+p绑定/实际WebView派发、默认恢复通过；其他快捷键/输入上下文待验，见第二十七流程 |
-| UI05 | 菜单可见/溢出位置及自定义重排 | F6 | 待验 |
+| UI05 | 菜单可见/溢出位置及自定义重排 | F6 | 真实Worker配置四表visible/overflow，书架/阅读器/选区菜单顺序与移动一致；溢出视图/外观入口可用；用户编辑器/退役恢复/窄窗待验，见第二十九流程 |
 | CFG01 | 设置 discover/read/update 与动态选项 | F6 | 本机Agent/Worker设置查询/原子修改/动态主题、编译Workspace Profiles v2十项预设保存/应用/确认删除、宿主批准与过期保护/真分页通过；字体实际翻页/搜索/应用通过；完整目录及预设重启/v1待验，见第二十六/二十八流程 |
 | CFG02 | 全局/本书/全书阅读设置覆盖 | F6 | 本机真实Worker全局/两书覆盖/全书修改及原生重读通过；FB2外观作用域切换及正文21px↔17px通过；其他呈现与进程重启待验，见第二十五流程 |
 | CFG03 | 清除覆盖/恢复默认/查询值来源 | F6 | Worker三目标defaults、单书/全书inherit、值来源及非法global inherit拒绝；Agent当前书重置/继承通过，实际外观UI无独立重置按钮；双scope另一端及进程重启待验，见第二十五流程 |
@@ -125,11 +125,11 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET15 | reading.pageMargins | F6 | 实际设置UI Wide→Narrow及原生KV通过；实际正文页边距待验，见第二十五流程 |
 | SET16 | reading.readingMode | F6 | 实际设置UI Two Pages→Scroll及原生KV通过；实际正文模式切换待验，见第二十五流程 |
 | SET17 | reading.fixedLayoutReadingMode | F6 | 待验 |
-| SET18 | ai.preferences.features.explainSelection | F6 | 待验 |
-| SET19 | ai.preferences.features.defineTerm | F6 | 待验 |
-| SET20 | ai.preferences.features.translate | F6 | 待验 |
-| SET21 | ai.preferences.features.summarizeChapter | F6 | 待验 |
-| SET22 | ai.preferences.features.askConversation | F6 | 待验 |
+| SET18 | ai.preferences.features.explainSelection | F6 | 实际Agent工具关闭/恢复开关，当前选区Explain selection入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
+| SET19 | ai.preferences.features.defineTerm | F6 | 实际Agent工具关闭/恢复开关，当前选区Define term入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
+| SET20 | ai.preferences.features.translate | F6 | 实际Agent工具关闭/恢复开关，当前选区Translate入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
+| SET21 | ai.preferences.features.summarizeChapter | F6 | 实际Agent工具关闭/恢复开关，当前选区Summarize chapter入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
+| SET22 | ai.preferences.features.askConversation | F6 | 实际Agent工具关闭/恢复开关，当前选区Ask AI入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
 | SET23 | ai.preferences.buildMemory | F6 | 待验 |
 | SET24 | ai.preferences.sendHighlightedText | F6 | 待验 |
 | SET25 | ai.preferences.sendSurroundingContext | F6 | 待验 |
@@ -137,14 +137,14 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET27 | ai.preferences.followStreaming | F6 | 待验 |
 | SET28 | ai.connection.configured | F6 | 待验 |
 | SET29 | ai.connection.credentialConfigured | F6 | 待验 |
-| SET30 | menus.primaryNav.visible | F6 | 待验 |
-| SET31 | menus.primaryNav.overflow | F6 | 待验 |
-| SET32 | menus.shelfHeader.visible | F6 | 待验 |
-| SET33 | menus.shelfHeader.overflow | F6 | 待验 |
-| SET34 | menus.readerHeader.visible | F6 | 待验 |
-| SET35 | menus.readerHeader.overflow | F6 | 待验 |
-| SET36 | menus.selection.visible | F6 | 待验 |
-| SET37 | menus.selection.overflow | F6 | 待验 |
+| SET30 | menus.primaryNav.visible | F6 | Worker主导航重排为Agent→统计→书架，实际DOM一致；编辑器/窄窗待验，见第二十九流程 |
+| SET31 | menus.primaryNav.overflow | F6 | Worker反向排序及原生KV通过；隐藏目的地实际发现待验，见第二十九流程 |
+| SET32 | menus.shelfHeader.visible | F6 | Worker页头Settings→Workspace Profiles→Search，实际DOM一致；编辑器待验，见第二十九流程 |
+| SET33 | menus.shelfHeader.overflow | F6 | Worker溢出排序DOM一致，移入Shelf view仍可打开布局面板；其他动作待验，见第二十九流程 |
+| SET34 | menus.readerHeader.visible | F6 | Worker阅读页头Chat→Jumper，实际DOM一致；固定左侧入口保持，见第二十九流程 |
+| SET35 | menus.readerHeader.overflow | F6 | Worker外观/分句阅读移入溢出并重排，外观入口实际可打开；其他动作待验，见第二十九流程 |
+| SET36 | menus.selection.visible | F6 | 真实FB2 DOM Range触发选区，Underline→Copy及More顺序一致；物理拖选/窄窗待验，见第二十九流程 |
+| SET37 | menus.selection.overflow | F6 | 真实选区溢出前七项按Worker配置排序；完整动作执行待验，见第二十九流程 |
 | SET38 | ai.connection.provider | F6 | 待验 |
 | SET39 | ai.connection.primaryModel | F6 | 待验 |
 | SET40 | ai.connection.fastModel | F6 | 待验 |

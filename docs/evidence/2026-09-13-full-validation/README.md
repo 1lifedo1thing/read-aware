@@ -743,3 +743,33 @@ typography并Save，输入框变Lora，应用文档400/700 Lora亦loaded；独�
 未修改源代码或重复基础门禁。详情见 [font-observations.json](./font-observations.json)。
 仍待验：全部字体/完整虚拟列表、分页期间安装变化、字体下载失败与字形/前台画面、
 聊天消息/笔记编辑器、其他平台及打包字体。
+
+## 第二十九个桌面流程：菜单配置、实际入口与AI功能开关
+
+现有真实 settings Worker 获得八项menus路径授权。空primaryNav.visible被拒绝；
+一批先合法改变书架菜单、再写未知reader菜单ID也被整体拒绝，值与revision均不变。
+探针记录失败code=null，不将其称为已有稳定业务错误码。
+
+四个visible配置一次更新：主导航Agent→统计→书架；书架页头Settings→编译
+Workspace Profiles→Search；阅读器Chat→Jumper；选区Underline→Copy。
+被移出的项进入相应overflow，随后四个overflow路径分别反向排序。原生菜单KV
+四表重读，设置回执包含八条失效路径；不是只改文档配置而没有运行消费者。
+
+实际书架DOM顺序一致，导入/视图/统计进入更多，Workspace Profiles进入页头。
+反向排序的溢出菜单按统计/视图/导入…显示；点击Shelf view能打开原布局、分组、
+排序面板。实际FB2阅读器页头Chat/Jumper，更多按Appearance/分句阅读…排列，
+点击Appearance打开真实阅读外观控件。固定返回/目录/笔记入口仍存在。
+
+在真实Foliate Alpha文档创建DOM Range选中Alpha paragraph 1.并触发pointerup；
+实际选区菜单出现Underline、Copy selection、More，更多前七项按配置顺序为
+Look up、Ask AI、Add note、Highlight、New highlight、New note、Inspect passage，
+随后附加四项AI快捷动作。未声称物理鼠标拖选或前台像素通过，也未执行删除/模型。
+
+实际Agent update_settings 工具关闭五个ai.preferences.features开关，当前菜单
+即时移除Ask AI、Explain selection、Define term、Translate、Summarize chapter，
+其余动作保持；恢复后完整菜单与原观察一致。本次验证入口开关，不证明对应模型
+执行语义通过。八项菜单配置及五个开关恢复原值，Worker贡献0，返回书架。
+
+未改源代码、未重复基础门禁。详见 [menu-observations.json](./menu-observations.json)。
+仍待验：用户菜单编辑器拖动、隐藏主导航项的发现、插件退役/恢复保留位置、
+完整动作执行/窄窗口/进程重启及打包与其他平台。
