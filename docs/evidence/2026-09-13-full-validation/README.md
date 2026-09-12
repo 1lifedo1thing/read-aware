@@ -888,5 +888,6 @@ desktop类型通过。在真实 debug Tauri 导入同一份889字节FB2，第一
 已关书并删除精确自有ID，files released、隔离实例书数0，原画像等资料保持。
 
 证据：[native-shortcuts-position-observations.json](./native-shortcuts-position-observations.json)。
-更新的release包正在构建，解锁后需正常退出旧进程再启动新包验证画面与重读；
+更新的release包构建通过（编译1m20s、app bundle成功），解锁后需正常退出旧
+PID 69794，再启动新包验证画面与重读；
 本轮不重跑全量门禁，不以debug DOM替代该发布包边界。

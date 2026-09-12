@@ -62,6 +62,12 @@
     "secondDom": "- generic Packaged Lifecycle Probe [ref=e5]\n- button Previous page [ref=e8]\n- button Next page [ref=e10]\n- button Back to shelf [ref=e16]:\n  - /description: Shelf\n- tooltip Shelf [ref=e17]:\n  - text: Shelf\n- button Table of contents [ref=e19]:\n  - /description: Contents\n- tooltip Contents [ref=e20]:\n  - text: Contents\n- button Notes [ref=e23]\n- tooltip Notes [ref=e24]:\n  - text: Notes\n- paragraph [ref=e26]:\n  - text: Packaged Lifecycle Probe\n- text: \"1 / 1 · 100%\"\n- button Start reading by sentence or paragraph [ref=e32]:\n  - /description: Read by sentence or paragraph\n- tooltip Read by sentence or paragraph [ref=e33]:\n  - text: Read by sentence or paragraph\n- button Reading appearance [ref=e37]\n- tooltip Reading appearance [ref=e38]:\n  - text: Reading appearance\n- button Chat [ref=e41]\n- tooltip Chat [ref=e42]:\n  - text: Chat\n- button More [ref=e45]\n- tooltip More [ref=e47]:\n  - text: More\n- slider Reading position [valuetext=\"1 / 1 · 100%\"] [ref=e49] [cursor=pointer]\n\n# ───────────────────────────────────────\n# Generated: 2026-09-12T22:38:35.639Z\n# Elements indexed: 54\n# Use [ref=eN] with other webview tools",
     "cleanup": "{\"remaining\":[],\"removed\":{\"bookIds\":[\"dabf382c-f7e4-4b42-ba46-af15b8646d80\"],\"committed\":true,\"files\":{\"status\":\"released\"}}}",
     "persistence": "Temporary hidden debug book progress_json was null before cleanup; no persisted corrected position claimed.",
-    "pending": "Updated release build and post-unlock pixel/restart acceptance; existing running release still old code."
+    "pending": "Post-unlock release pixel/restart acceptance; existing running release PID 69794 still old code.",
+    "releaseBuild": {
+      "command": "bun run --cwd apps/desktop tauri build --bundles app --config /tmp/readaware-validation-20260913-packaged.conf.json",
+      "exit": 0,
+      "releaseCompile": "1m20s",
+      "log": "/tmp/readaware-validation-20260913-position-packaged-build.log"
+    }
   }
 }
