@@ -8,10 +8,13 @@ use std::collections::{BTreeMap, BTreeSet};
 #[path = "backup_row_policy.rs"]
 mod policy;
 pub(crate) use policy::RowPolicy;
+#[path = "backup_row_choices.rs"]
+mod choices;
 #[path = "backup_file_plan.rs"]
 mod files;
 #[path = "backup_row_review.rs"]
 mod review;
+pub(crate) use choices::{RowChoiceReceipt, RowChoiceRequest, RowDecisionState};
 #[path = "backup_row_scan.rs"]
 mod scan;
 pub(crate) use files::{FileMatchKind, FilePlan, ReviewPage, ReviewQuery};
@@ -50,12 +53,15 @@ pub(crate) struct RowMatch {
     pub source_digest: Option<String>,
     pub target_digest: Option<String>,
     pub generated_only: bool,
+    pub selectable: bool,
+    pub selection: Option<String>,
 }
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RowPage {
     pub entries: Vec<RowMatch>,
     pub next_after: Option<i64>,
+    pub decision_revision: String,
 }
 #[derive(Debug)]
 pub(crate) struct RowPlan {
@@ -101,7 +107,7 @@ impl RowPlan {
                 "invalid internal backup row page",
             ));
         }
-        let mut statement = self.events.entries.prepare("SELECT entry_id,policy,source_digest,target_digest,source_full_digest,target_full_digest FROM row_matches WHERE table_name=?1 AND entry_id>?2 ORDER BY entry_id LIMIT ?3")?;
+        let mut statement = self.events.entries.prepare("SELECT entry_id,policy,source_digest,target_digest,source_full_digest,target_full_digest,choice FROM row_matches WHERE table_name=?1 AND entry_id>?2 ORDER BY entry_id LIMIT ?3")?;
         let mut rows = statement.query(params![table, after, limit as i64 + 1])?;
         let mut entries = Vec::new();
         while let Some(row) = rows.next()? {
@@ -116,9 +122,13 @@ impl RowPlan {
             };
             let generated_only = kind == RowMatchKind::Same
                 && row.get::<_, Option<String>>(4)? != row.get::<_, Option<String>>(5)?;
+            let policy = RowPolicy::from_name(&row.get::<_, String>(1)?)?;
+            let selectable = choices::selectable(policy, source.as_deref(), target.as_deref());
             entries.push(RowMatch {
                 entry_id: row.get(0)?,
-                policy: RowPolicy::from_name(&row.get::<_, String>(1)?)?,
+                policy,
+                selectable,
+                selection: row.get(6)?,
                 kind,
                 source_digest: source,
                 target_digest: target,
@@ -132,6 +142,7 @@ impl RowPlan {
             None
         };
         Ok(RowPage {
+            decision_revision: choices::revision(&self.events.entries)?,
             entries,
             next_after,
         })
@@ -203,9 +214,14 @@ pub(super) fn plan(
     let plan = events.entries.transaction()?;
     plan.execute_batch("CREATE TABLE row_matches (
         entry_id INTEGER PRIMARY KEY, table_name TEXT NOT NULL, row_key BLOB NOT NULL, policy TEXT NOT NULL,
-        source_digest TEXT, target_digest TEXT, source_full_digest TEXT, target_full_digest TEXT,
+        source_digest TEXT, target_digest TEXT, source_full_digest TEXT, target_full_digest TEXT, choice TEXT CHECK(choice IN ('source','target')),
         UNIQUE(table_name,row_key)
     ); CREATE INDEX row_matches_page ON row_matches(table_name,entry_id);")?;
+    plan.execute_batch("CREATE TABLE row_decision_state(id INTEGER PRIMARY KEY CHECK(id=1),revision TEXT NOT NULL);")?;
+    plan.execute(
+        "INSERT INTO row_decision_state VALUES (1,?1)",
+        [uuid::Uuid::new_v4().to_string()],
+    )?;
     let mut tables = BTreeMap::new();
     for name in names {
         check()?;

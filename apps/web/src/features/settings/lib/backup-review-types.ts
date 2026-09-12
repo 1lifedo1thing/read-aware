@@ -1,6 +1,9 @@
 import type { BackupProgramFacts } from "../../plugins/runtime/backup-program-review";
 
+export type BackupRowChoiceRequest = { expectedRevision: string; edits: { table: string; entryId: number; choice: "source" | "target" | "clear" }[] };
+export type BackupRowChoiceReceipt = { revision: string; changed: number };
 export type BackupReviewQuery =
+  | { kind: "rowDecisions" }
   | { kind: "events" | "files" | "programs" | "credentials"; after?: string | null; limit: number }
   | { kind: "rows"; table: string; after?: number | null; limit: number }
   | { kind: "rowFields"; table: string; entryId: number; after?: number | null; limit: number }
@@ -27,12 +30,13 @@ export type BackupReviewCell =
   | { type: "blob"; base64: string; byteLength: number; offset: number; nextOffset: number | null };
 export type BackupReviewField = { name: string; primary: number; source: BackupReviewCell | null; target: BackupReviewCell | null };
 export type BackupReviewPage =
+  | { kind: "rowDecisions"; revision: string; unresolved: number; source: number; target: number }
   | (Page<"rowFields", BackupReviewField, number> & { table: string; entryId: number; policy: BackupRowPolicy; restricted: boolean })
   | { kind: "rowField"; table: string; entryId: number; column: string; side: "source" | "target"; value: BackupReviewCell | null }
   | Page<"events", { sourceId: string; kind: "new" | "existing" | "idConflict" | "clockConflict" | "idAndClockConflict";
       sourceDigest: string; idTargetDigest: string | null; clockTargetId: string | null; clockTargetDigest: string | null }>
-  | Page<"rows", { entryId: number; policy: BackupRowPolicy; kind: RowKind; sourceDigest: string | null;
-      targetDigest: string | null; generatedOnly: boolean }, number>
+  | (Page<"rows", { entryId: number; policy: BackupRowPolicy; kind: RowKind; sourceDigest: string | null;
+      targetDigest: string | null; generatedOnly: boolean; selectable: boolean; selection: "source" | "target" | null }, number> & { decisionRevision: string })
   | Page<"files", { path: string; policy: "blob" | "programTree" | "preserveCredentialKey"; kind: RowKind | "unavailable";
       source: CapturedFile | null; target: CapturedFile | null;
       targetBlob: { key: string | null; availability: "local" | "unavailable" | "missingLocalFile" | "registryMismatch" | "unregisteredFile" } | null }>

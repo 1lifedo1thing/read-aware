@@ -371,3 +371,13 @@ pub(super) fn plan(
 #[cfg(test)]
 #[path = "backup_file_plan_tests.rs"]
 mod tests;
+
+impl FilePlan {
+    pub(crate) fn choose_rows(
+        &self,
+        request: super::RowChoiceRequest,
+        check: impl FnMut() -> Result<(), CommandError>,
+    ) -> Result<super::RowChoiceReceipt, CommandError> {
+        self.rows.choose_rows(request, check)
+    }
+}

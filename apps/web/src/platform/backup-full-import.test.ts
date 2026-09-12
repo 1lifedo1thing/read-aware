@@ -18,6 +18,11 @@ if (process.env.FULL_IMPORT_PROOF === "1") {
       return { taskId: args.taskId, newEvents: 0, existingEvents: 0, conflictingEvents: 0, tables: {},
         files: { sourceOnly: 0, targetOnly: 0, same: 0, different: 0, unavailable: 0 }, pluginPrograms: 0 };
     }
+    if (command === "backup_import_choose_rows") {
+      expect(Object.keys(args).sort()).toEqual(["request", "taskId"]);
+      expect(args.request.expectedRevision).toBe("fixed-revision");
+      return { revision: "updated-revision", changed: 1 };
+    }
     if (command === "backup_import_review") {
       expect(Object.keys(args).sort()).toEqual(["query", "taskId"]);
       return { kind: args.query.kind, entries: [], nextAfter: null };
@@ -43,6 +48,8 @@ if (process.env.FULL_IMPORT_PROOF === "1") {
     expect(review.disposed).toBe(false);
     const before = calls.filter(command => command === "backup_close_reading_sessions").length;
     expect(await review.read({ kind: "programs", limit: 10 })).toEqual({ kind: "programs", entries: [], nextAfter: null });
+    expect(calls.filter(command => command === "backup_close_reading_sessions")).toHaveLength(before);
+    await expect(review.chooseRows({ expectedRevision: "fixed-revision", edits: [{ table: "memories", entryId: 1, choice: "source" }] })).resolves.toEqual({ revision: "updated-revision", changed: 1 });
     expect(calls.filter(command => command === "backup_close_reading_sessions")).toHaveLength(before);
     await localKV.setItemAsync("import-proof", "during-review");
     await review.dispose();

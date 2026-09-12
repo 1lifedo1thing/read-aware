@@ -557,3 +557,202 @@ fn backup_row_review_reads_fixed_values_composite_keys_and_policy_boundaries() {
     drop(plan);
     assert!(!private.exists());
 }
+
+#[test]
+fn backup_row_choices_are_atomic_versioned_drafts_and_never_change_live_data() {
+    use super::choices::{RowChoice, RowChoiceEdit, RowChoiceRequest};
+    let root = tempfile::tempdir().unwrap();
+    let stage = tempfile::tempdir().unwrap();
+    let mut target = db(&root.path().join("db"));
+    memory(&target, "changed", "target");
+    memory(&target, "target-only", "target");
+    let source = incoming(|conn, _| {
+        memory(conn, "changed", "source");
+        memory(conn, "source-only", "source");
+        document(conn, "notes", "one");
+    });
+    let plan = backup_archive::plan_events_fixture(source, &mut target, stage.path(), || Ok(()))
+        .unwrap()
+        .plan_rows(&mut target, || Ok(()))
+        .unwrap();
+    let page = plan.page("memories", 0, 100).unwrap();
+    let changed = page
+        .entries
+        .iter()
+        .find(|r| r.kind == RowMatchKind::Different)
+        .unwrap()
+        .entry_id;
+    let only = page
+        .entries
+        .iter()
+        .find(|r| r.kind == RowMatchKind::SourceOnly)
+        .unwrap()
+        .entry_id;
+    let target_only = page
+        .entries
+        .iter()
+        .find(|r| r.kind == RowMatchKind::TargetOnly)
+        .unwrap()
+        .entry_id;
+    assert!(
+        !page
+            .entries
+            .iter()
+            .find(|r| r.entry_id == target_only)
+            .unwrap()
+            .selectable
+    );
+    let plugin = plan.page("plugin_documents", 0, 100).unwrap().entries[0].entry_id;
+    let edit = |table: &str, entry_id, choice| RowChoiceEdit {
+        table: table.into(),
+        entry_id,
+        choice,
+    };
+    let request = |revision: &str, edits| RowChoiceRequest {
+        expected_revision: revision.into(),
+        edits,
+    };
+    let rev = &page.decision_revision;
+    let state = serde_json::to_value(plan.row_decisions(|| Ok(())).unwrap()).unwrap();
+    assert_eq!(state["unresolved"], 2);
+    let no_op = plan
+        .choose_rows(
+            request(rev, vec![edit("memories", changed, RowChoice::Clear)]),
+            || Ok(()),
+        )
+        .unwrap();
+    assert_eq!(&no_op.revision, rev);
+    assert_eq!(no_op.changed, 0);
+    // A valid first edit cannot survive a later invalid or forbidden edit.
+    for (table, id) in [
+        ("plugin_documents", plugin),
+        ("memories", target_only),
+        ("app_kv", changed),
+        ("memories", changed),
+    ] {
+        assert!(plan
+            .choose_rows(
+                request(
+                    rev,
+                    vec![
+                        edit("memories", changed, RowChoice::Source),
+                        edit(table, id, RowChoice::Source)
+                    ]
+                ),
+                || Ok(())
+            )
+            .is_err());
+        assert_eq!(
+            serde_json::to_value(plan.row_decisions(|| Ok(())).unwrap()).unwrap(),
+            state
+        );
+    }
+    let mut checks = 0;
+    let error = plan
+        .choose_rows(
+            request(
+                rev,
+                vec![
+                    edit("memories", changed, RowChoice::Source),
+                    edit("memories", only, RowChoice::Target),
+                ],
+            ),
+            || {
+                checks += 1;
+                if checks == 3 {
+                    Err(CommandError::new(
+                        "backup/cancelled",
+                        "cancel after first edit",
+                    ))
+                } else {
+                    Ok(())
+                }
+            },
+        )
+        .err()
+        .unwrap();
+    assert_eq!(error.code, "backup/cancelled");
+    assert_eq!(
+        serde_json::to_value(plan.row_decisions(|| Ok(())).unwrap()).unwrap(),
+        state
+    );
+    let saved = plan
+        .choose_rows(
+            request(
+                rev,
+                vec![
+                    edit("memories", changed, RowChoice::Source),
+                    edit("memories", only, RowChoice::Target),
+                ],
+            ),
+            || Ok(()),
+        )
+        .unwrap();
+    assert_ne!(&saved.revision, rev);
+    assert_eq!(saved.changed, 2);
+    assert_eq!(
+        plan.choose_rows(
+            request(rev, vec![edit("memories", changed, RowChoice::Target)]),
+            || Ok(())
+        )
+        .err()
+        .unwrap()
+        .code,
+        "backup/changed"
+    );
+    let next = plan.page("memories", 0, 100).unwrap();
+    assert_eq!(next.decision_revision, saved.revision);
+    assert_eq!(
+        next.entries
+            .iter()
+            .find(|r| r.entry_id == changed)
+            .unwrap()
+            .selection
+            .as_deref(),
+        Some("source")
+    );
+    let stats = serde_json::to_value(plan.row_decisions(|| Ok(())).unwrap()).unwrap();
+    assert_eq!(stats["unresolved"], 0);
+    assert_eq!(stats["source"], 1);
+    assert_eq!(stats["target"], 1);
+    let clear = plan
+        .choose_rows(
+            request(
+                &saved.revision,
+                vec![edit("memories", changed, RowChoice::Clear)],
+            ),
+            || Ok(()),
+        )
+        .unwrap();
+    assert_eq!(clear.changed, 1);
+    assert_eq!(
+        serde_json::to_value(plan.row_decisions(|| Ok(())).unwrap()).unwrap()["unresolved"],
+        1
+    );
+    assert_eq!(
+        target
+            .query_row("SELECT content FROM memories WHERE id='changed'", [], |r| r
+                .get::<_, String>(0))
+            .unwrap(),
+        "target"
+    );
+    assert_eq!(
+        target
+            .query_row(
+                "SELECT count(*) FROM memories WHERE id='source-only'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        plan.events
+            .source
+            .connection()
+            .query_row("SELECT content FROM memories WHERE id='changed'", [], |r| r
+                .get::<_, String>(0))
+            .unwrap(),
+        "source"
+    );
+}

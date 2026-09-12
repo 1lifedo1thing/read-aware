@@ -306,3 +306,20 @@ pub async fn backup_import_review(
 #[cfg(test)]
 #[path = "backup_import_tests.rs"]
 mod tests;
+
+#[tauri::command]
+pub async fn backup_import_choose_rows(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    task_id: String,
+    request: backup_archive::RowChoiceRequest,
+) -> Result<backup_archive::RowChoiceReceipt, CommandError> {
+    let tasks = app.state::<BackupTasks>().inner().clone();
+    let owner = window.label().to_owned();
+    super::blocking("backup_import_choose_rows", move || {
+        tasks.with_plan(&owner, &task_id, |plan, lease| {
+            plan.choose_rows(request, || lease.check())
+        })
+    })
+    .await
+}

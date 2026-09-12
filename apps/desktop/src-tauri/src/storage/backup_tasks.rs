@@ -106,7 +106,8 @@ impl Drop for Lease {
     }
 }
 impl BackupTasks {
-    /// A read borrows a ready plan until its physical receipt. Invalid queries
+    /// Review reads and private draft edits borrow a ready plan until their
+    /// physical receipt. Invalid requests
     /// retain the plan; cancellation of the whole owner retires it deliberately.
     pub(crate) fn with_plan<T>(
         &self,

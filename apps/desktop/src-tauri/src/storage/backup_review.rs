@@ -1,7 +1,7 @@
 //! Bounded, immutable review evidence in the plan's private database. These
 //! pages never authorize installation or apply source rows. Credential slots
 //! retain their dedicated facts-only route; ordinary user content is host-only.
-use super::super::{RowFieldPage, RowFieldsPage, RowSide};
+use super::super::{RowDecisionState, RowFieldPage, RowFieldsPage, RowSide};
 use super::FilePlan;
 use crate::error::CommandError;
 use rusqlite::{params, Transaction};
@@ -16,6 +16,7 @@ fn invalid() -> CommandError {
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) enum ReviewQuery {
+    RowDecisions {},
     Events {
         after: Option<String>,
         limit: usize,
@@ -62,6 +63,7 @@ pub(crate) struct JsonPage {
 #[derive(Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub(crate) enum ReviewPage {
+    RowDecisions(RowDecisionState),
     Events(super::super::super::EventMatchPage),
     Rows(super::super::RowPage),
     RowFields(RowFieldsPage),
@@ -125,6 +127,9 @@ impl FilePlan {
     ) -> Result<ReviewPage, CommandError> {
         check()?;
         let result = match query {
+            ReviewQuery::RowDecisions {} => {
+                ReviewPage::RowDecisions(self.rows.row_decisions(&mut check)?)
+            }
             ReviewQuery::Events { after, limit } => {
                 ReviewPage::Events(self.rows.events().page(after.as_deref(), limit)?)
             }

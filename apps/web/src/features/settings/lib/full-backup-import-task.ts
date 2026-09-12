@@ -1,6 +1,6 @@
 import { AppError } from "@read-aware/core";
 import { validBackupPassword } from "./backup-password";
-import type { BackupReviewPage, BackupReviewQuery } from "./backup-review-types";
+import type { BackupReviewPage, BackupReviewQuery, BackupRowChoiceRequest, BackupRowChoiceReceipt } from "./backup-review-types";
 
 export type FullBackupImportProgress = "decrypting" | "checkingSource" | "comparingEvents" | "comparingRows" | "comparingFiles" | "preparingReview";
 export type BackupSourceSummary = {
@@ -22,6 +22,7 @@ type Dependencies = {
   /** Holds the capture fences only around physical target planning. */
   plan(taskId: string, progress: (update: FullBackupImportProgress) => void, signal?: AbortSignal): Promise<BackupPlanReceipt>;
   read(taskId: string, query: BackupReviewQuery): Promise<BackupReviewPage>;
+  chooseRows(taskId: string, request: BackupRowChoiceRequest): Promise<BackupRowChoiceReceipt>;
   cancel(taskId: string): Promise<void>;
   warn(message: string, error: unknown): void;
 };
@@ -31,6 +32,8 @@ export type FullBackupReview = {
   /** Admission has closed; await dispose() for the physical cleanup receipt. */
   readonly disposed: boolean;
   read(query: BackupReviewQuery, signal?: AbortSignal): Promise<BackupReviewPage>;
+  /** A version-bound draft edit, never an application or approval receipt. */
+  chooseRows(request: BackupRowChoiceRequest): Promise<BackupRowChoiceReceipt>;
   dispose(): Promise<void>;
 };
 
@@ -45,15 +48,15 @@ export function createFullBackupImport(deps: Dependencies) {
     if (sourcePath === null) return null;
     const taskId = deps.id();
     let retained = false, disposed = false, cancelling: Promise<void> | undefined, disposal: Promise<void> | undefined;
-    let reads = Promise.resolve(), pendingReads = 0;
+    let operations = Promise.resolve(), pendingOperations = 0;
     const cancel = (): Promise<void> => cancelling ??= Promise.resolve().then(() => deps.cancel(taskId))
       .catch(error => deps.warn("Full backup import cleanup failed", error))
       .finally(() => { cancelling = undefined; });
     const dispose = (): Promise<void> => disposal ??= (async () => {
       disposed = true; signal?.removeEventListener("abort", abort);
-      const retirement = pendingReads > 0 ? cancel() : undefined;
-      await reads; await retirement; await cancelling;
-      // A cancel during a native read retires it on physical completion. Retry
+      const retirement = pendingOperations > 0 ? cancel() : undefined;
+      await operations; await retirement; await cancelling;
+      // A cancel during a native review operation retires it on physical completion. Retry
       // after that receipt if an earlier cancellation IPC could not reach it.
       await cancel();
     })();
@@ -74,31 +77,43 @@ export function createFullBackupImport(deps: Dependencies) {
       if (plan?.taskId !== taskId) throw new AppError("backup/changed", "Unexpected import planning receipt");
       const { taskId: _sourceId, ...sourceSummary } = source;
       const { taskId: _planId, ...planSummary } = plan;
-      const read = (query: BackupReviewQuery, readSignal?: AbortSignal): Promise<BackupReviewPage> => {
+      const enqueue = <T>(run: () => Promise<T>, readSignal?: AbortSignal): Promise<T> => {
         readSignal?.throwIfAborted();
         if (disposed) return Promise.reject(new AppError("backup/changed", "Backup review has been disposed"));
-        if (pendingReads >= 32) return Promise.reject(new AppError("backup/busy", "Backup review queue is full"));
-        const candidate = structuredClone(query);
-        if (candidate.kind !== "rowField" && (!Number.isSafeInteger(candidate.limit) || candidate.limit < 1 || candidate.limit > 100)) {
-          return Promise.reject(new AppError("backup/invalid-archive", "Invalid backup review page limit"));
-        }
-        pendingReads++;
-        const operation = reads.then(async () => {
+        if (pendingOperations >= 32) return Promise.reject(new AppError("backup/busy", "Backup review queue is full"));
+        pendingOperations++;
+        const operation = operations.then(async () => {
           readSignal?.throwIfAborted();
           if (disposed) throw new AppError("backup/changed", "Backup review has been disposed");
-          const page = await deps.read(taskId, candidate);
-          // A cancelled individual read leaves the native plan intact; do not
-          // forward its signal to the whole-task cancellation command.
+          const result = await run();
+          // Read cancellation discards only a page. Draft edits have no separate
+          // abort signal: once sent they return their physical decision receipt.
           readSignal?.throwIfAborted();
           if (disposed) throw new AppError("backup/changed", "Backup review has been disposed");
-          if (page.kind !== candidate.kind) throw new AppError("backup/changed", "Unexpected backup review page");
-          return page;
-        }).finally(() => { pendingReads--; });
-        reads = operation.then(() => {}, () => { /* The read caller owns its failure; later pages may continue. */ });
+          return result;
+        }).finally(() => { pendingOperations--; });
+        operations = operation.then(() => {}, () => { /* The caller owns failure; later operations may continue. */ });
         return operation;
       };
+      const read = (query: BackupReviewQuery, readSignal?: AbortSignal): Promise<BackupReviewPage> => {
+        readSignal?.throwIfAborted();
+        const candidate = structuredClone(query);
+        if (candidate.kind !== "rowField" && candidate.kind !== "rowDecisions" && (!Number.isSafeInteger(candidate.limit) || candidate.limit < 1 || candidate.limit > 100)) {
+          return Promise.reject(new AppError("backup/invalid-archive", "Invalid backup review page limit"));
+        }
+        return enqueue(async () => {
+          const page = await deps.read(taskId, candidate);
+          if (page.kind !== candidate.kind) throw new AppError("backup/changed", "Unexpected backup review page");
+          return page;
+        }, readSignal);
+      };
+      const chooseRows = (request: BackupRowChoiceRequest): Promise<BackupRowChoiceReceipt> => {
+        const candidate = structuredClone(request);
+        if (candidate.edits.length < 1 || candidate.edits.length > 100) return Promise.reject(new AppError("backup/invalid-archive", "Invalid backup row decision batch"));
+        return enqueue(() => deps.chooseRows(taskId, candidate));
+      };
       retained = true;
-      return { source: sourceSummary, plan: planSummary, get disposed() { return disposed; }, read, dispose };
+      return { source: sourceSummary, plan: planSummary, get disposed() { return disposed; }, read, chooseRows, dispose };
     } finally {
       // Cancellation before native admission can initially miss. Wait for
       // physical preparation/planning, then retry cleanup before returning.

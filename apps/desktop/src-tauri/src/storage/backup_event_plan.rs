@@ -13,7 +13,9 @@ mod revision;
 mod rows;
 #[path = "backup_target_snapshot.rs"]
 mod target_snapshot;
-pub(crate) use rows::{FileMatchKind, FilePlan, ReviewPage, ReviewQuery, RowPlan};
+pub(crate) use rows::{
+    FileMatchKind, FilePlan, ReviewPage, ReviewQuery, RowChoiceReceipt, RowChoiceRequest, RowPlan,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

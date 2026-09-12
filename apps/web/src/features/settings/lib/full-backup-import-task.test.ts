@@ -15,9 +15,12 @@ function fixture() {
     },
     plan: async (): Promise<BackupPlanReceipt> => { calls.push("plan"); return plan; },
     read: async (_id: string, query: BackupReviewQuery): Promise<BackupReviewPage> => { calls.push("read");
+      if (query.kind === "rowDecisions") return { kind: "rowDecisions", revision: "revision", unresolved: 0, source: 0, target: 0 };
+      if (query.kind === "rows") return { kind: "rows", decisionRevision: "revision", entries: [], nextAfter: null };
       if (query.kind === "rowField") return { ...query, value: null };
       if (query.kind === "rowFields") return { ...query, policy: "domain-state", restricted: false, entries: [], nextAfter: null };
       return { kind: query.kind, entries: [], nextAfter: null }; },
+    chooseRows: async (_id: string, request: import("./backup-review-types").BackupRowChoiceRequest) => ({ revision: "updated", changed: request.edits.length }),
     cancel: async () => { calls.push("cancel"); },
     warn: (_message: string, _error: unknown) => { calls.push("warn"); },
   };
@@ -68,7 +71,7 @@ test("review reads serialize snapshots of page requests; an individual cancellat
   const { deps, run, calls } = fixture();
   const first = Promise.withResolvers<BackupReviewPage>(), entered = Promise.withResolvers<void>();
   const seen: BackupReviewQuery[] = [];
-  deps.read = async (_id, query) => { seen.push(query); if (seen.length === 1) { entered.resolve(); return first.promise; } return { kind: "rows", entries: [], nextAfter: null }; };
+  deps.read = async (_id, query) => { seen.push(query); if (seen.length === 1) { entered.resolve(); return first.promise; } return { kind: "rows", decisionRevision: "revision", entries: [], nextAfter: null }; };
   const review = (await run("a test password"))!;
   const owner = new AbortController();
   const one = review.read({ kind: "events", limit: 1 }, owner.signal).catch(error => error);
@@ -120,4 +123,32 @@ test("record fields and continuation reads use the same owned serial review with
   expect(seen[1]).toMatchObject({ offset: 4095 });
   expect(calls).not.toContain("cancel");
   await review.dispose();
+});
+
+test("row choices snapshot submissions and share the read queue and physical disposal", async () => {
+  const { deps, run } = fixture();
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<{ revision: string; changed: number }>();
+  const seen: import("./backup-review-types").BackupRowChoiceRequest[] = [];
+  let reads = 0;
+  deps.chooseRows = async (_id, request) => { seen.push(request); entered.resolve(); return release.promise; };
+  deps.read = async () => { reads++; return { kind: "rowDecisions", revision: "new", unresolved: 0, source: 1, target: 0 }; };
+  const review = (await run("a test password"))!;
+  const request: import("./backup-review-types").BackupRowChoiceRequest = { expectedRevision: "old", edits: [{ table: "memories", entryId: 1, choice: "source" }] };
+  const saving = review.chooseRows(request); request.edits[0]!.choice = "target";
+  await entered.promise;
+  const read = review.read({ kind: "rowDecisions" });
+  await Bun.sleep(0); expect(reads).toBe(0); expect(seen[0]!.edits[0]!.choice).toBe("source");
+  release.resolve({ revision: "new", changed: 1 }); expect(await saving).toEqual({ revision: "new", changed: 1 });
+  expect(await read).toMatchObject({ revision: "new" });
+  deps.chooseRows = async () => { throw Object.assign(new Error("stale"), { code: "backup/changed" }); };
+  await expect(review.chooseRows(request)).rejects.toMatchObject({ code: "backup/changed" });
+  expect((await review.read({ kind: "rowDecisions" })).kind).toBe("rowDecisions");
+  const active = Promise.withResolvers<void>(), receipt = Promise.withResolvers<{ revision: string; changed: number }>();
+  deps.chooseRows = async () => { active.resolve(); return receipt.promise; };
+  const pending = review.chooseRows(request).catch(error => error); await active.promise;
+  let done = false; const closing = review.dispose().then(() => { done = true; });
+  await Bun.sleep(0); expect(done).toBe(false);
+  receipt.resolve({ revision: "newer", changed: 1 }); await closing;
+  expect((await pending).code).toBe("backup/changed");
+  await expect(review.chooseRows(request)).rejects.toMatchObject({ code: "backup/changed" });
 });
