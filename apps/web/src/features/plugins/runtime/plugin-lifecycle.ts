@@ -227,7 +227,9 @@ export class PluginLifecycleController {
       this.reads.delete(pending);
       // Normal read failures already reach the caller. After cancellation only
       // the expected abort is ignorable; source/cleanup failures still surface.
-      if (signal.aborted && error !== signal.reason && !(error instanceof Error && error.name === "AbortError")) throw error;
+      const expectedAbort = error === signal.reason || error instanceof Error && error.name === "AbortError"
+        || error instanceof AppError && error.code === "library/cancelled";
+      if (signal.aborted && !expectedAbort) throw error;
     }));
     return new Promise<T>((resolve, reject) => {
       const cancel = () => reject(signal.reason);

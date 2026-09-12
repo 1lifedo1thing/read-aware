@@ -984,3 +984,31 @@ ordinal=1/2/3、href=0/1/2、同一contentVersion。抽取目录没有暴露源h
 本轮WebView hidden，验的是真实Worker/索引/端口/DOM，不计前台像素或release。
 长章分段、嵌套目录、其他格式、取消/背压/分页及跨Worker/进程重启仍待验。
 无产品代码改动，无重复全量门禁。
+
+## 第三十八流程：真实搜索取消、迟到结果和 Worker 关闭修复
+
+在现有desktop-text-search-probe中补可释放的读取等待点：真实导入FB2、原解析器
+createDocument、编译Text Desk 0.22.0及真实Worker/SQLite保留，仅延迟节读取。
+Search进入Searching，entered=1/returned=0且正文preparing；点击Cancel this request
+立即变为Search cancelled。放行后returned=1、索引ready/一章，取消界面仍保持；
+只有再次点击Search才显示正确exact命中。共享正文抽取会完成，不宣称物理强停。
+
+首次真实关闭Worker失败，原生日志记录library/cancelled为asynchronous resource
+cleanup failed，外层Plugin shutdown failed。原因是生命周期只认识原signal.reason
+或AbortError，而正文搜索按公开契约抛library/cancelled，被错记成清理错误。
+仅在合并signal已取消时把该AppError视为正常取消；源读取/清理的其他错误继续
+保留到shutdown。新增真实searchBookText与生命周期组合回归，连同原清理失败/
+资源等待和正文检索检查共27项通过，desktop类型通过。
+
+相同真实Worker流程定向复验：取消→放行→索引完成但旧结果不交付→明确重试
+返回命中→关闭，shutdownErrors=[]，贡献0、自有书0、原两书保留、会话idle。
+辅助驱动清理也改为收集各Worker关闭失败后继续清理自有资料并报告错误，避免
+早退掩盖残留。一次开发页重载及一次夹具接口不匹配未计验收，精确自有ID均清理。
+
+证据：[text-search-cancellation-observations.json](./text-search-cancellation-observations.json)。
+本轮只有debug真实运行时/DOM；发布包需重建后另验。精确搜索分页、背压、换查询
+退役、其他格式仍待验，不用本条取消通过关闭TXT08整行。无重复全量门禁。
+
+第38流程启动中断另有明确残留：开发页重载后，一个661字节暂存bookfile仍存在，
+对应书未提交。已通过宿主blob接口清理该精确自有key并重读null；不能将手动清理
+记为自动恢复通过。导入中重载的暂存恢复保留独立缺口，尚无packaged崩溃结论。

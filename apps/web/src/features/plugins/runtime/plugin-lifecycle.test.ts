@@ -1,8 +1,27 @@
 import { describe, expect, test } from "bun:test";
 import type { PluginDisposable } from "@read-aware/plugin-types";
 import { PluginLifecycleController } from "./plugin-lifecycle";
+import { searchBookText } from "../../library/lib/book-text-search";
 
 describe("plugin lifecycle barrier", () => {
+  test("cancelled library search drains its late extraction without poisoning Worker shutdown", async () => {
+    const lifecycle = new PluginLifecycleController([]); lifecycle.promote();
+    const caller = new AbortController();
+    let finish!: () => void, entered!: () => void;
+    const gate = new Promise<void>(resolve => { finish = resolve; });
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const read = lifecycle.read("library.searchText", signal => searchBookText({
+      list: async () => [], persisted: async () => null,
+      extract: async () => { entered(); await gate; return [{ text: "needle" }]; },
+    }, { bookId: "synthetic", queries: ["needle"] }, signal), caller.signal);
+    await started; caller.abort();
+    await expect(read).rejects.toBe(caller.signal.reason);
+    let drained = false;
+    const draining = lifecycle.drainCleanups().then(() => { drained = true; });
+    await Promise.resolve(); expect(drained).toBe(false);
+    finish(); await draining;
+    lifecycle.stop(); await lifecycle.drainCleanups();
+  });
   test("read cancellation settles the caller but shutdown keeps its source lease until finally", async () => {
     const lifecycle = new PluginLifecycleController([]); lifecycle.promote();
     let finish!: () => void, released = false;

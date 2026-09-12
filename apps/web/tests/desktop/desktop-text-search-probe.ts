@@ -10,10 +10,15 @@ import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-stor
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { seedTextStateBooks, extractRealTextProbe, cleanupTextStateProbe, startTextDeskProbe } from "./desktop-text-state-probe";
+import { registerActiveBookContent, withBookContent } from "../../src/features/library/lib/book-content-source";
+import { retainBook } from "../../src/features/reader/lib/book-lifetime";
+import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
+import textDeskManifest from "../../../../plugins/text-desk/manifest.json";
 
 const workers = new Map<string, SandboxedPlugin>();
 const disposables: PluginDisposable[] = [];
 let books: Record<string, string> = {};
+let heldSearch: { entered: number; returned: number; release: () => void; finish: () => void; task: Promise<void> } | undefined;
 async function isolated() {
   const path = await appDataDir();
   if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw Error("Use isolated capability-e2e data");
@@ -48,9 +53,64 @@ export async function startTextSearchProbe() {
 }
 
 export async function cleanupTextSearchProbe() {
-  await isolated(); const ids = [...workers.keys()];
-  for (const worker of workers.values()) await worker.terminate(); workers.clear();
+  await isolated();
+  let sourceError: string | undefined;
+  if (heldSearch) {
+    heldSearch.release(); heldSearch.finish();
+    try { await heldSearch.task; }
+    catch (error) { sourceError = String(error); }
+    heldSearch = undefined;
+  }
+  const ids = [...workers.keys()];
+  const shutdown = await Promise.allSettled([...workers.values()].map(worker => worker.terminate())); workers.clear();
   for (const disposable of disposables.splice(0).reverse()) disposable.dispose();
   const cleanup = await cleanupTextStateProbe(); books = {};
-  return { ...cleanup, searchContributions: ids.reduce((count, id) => count + inspectContributions(id).length, 0) };
+  return { ...cleanup, sourceError, shutdownErrors: shutdown.flatMap(result => result.status === "rejected" ? [String(result.reason)] : []),
+    searchContributions: ids.reduce((count, id) => count + inspectContributions(id).length, 0) };
+}
+
+/** Real imported parser and compiled Worker; only the section read timing is held. */
+export async function startTextSearchLifecycleProbe() {
+  await isolated();
+  if (heldSearch || workers.size) throw Error("Clean the previous search probe first");
+  const seed = await seedTextStateBooks(); books = seed.books;
+  let release!: () => void, finish!: () => void, ready!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const lifetime = new Promise<void>(resolve => { finish = resolve; });
+  const registered = new Promise<void>(resolve => { ready = resolve; });
+  const state = { entered: 0, returned: 0, release, finish, task: Promise.resolve() };
+  heldSearch = state;
+  state.task = withBookContent(books.normal!, undefined, undefined, async ({ book, contentVersion }) => {
+    if (!book.sections.some(section => section.getText || section.createDocument)) throw Error("Fixture parser has no section reader");
+    const releaseParser = retainBook(book);
+    const readAfterGate = async <T>(read: () => T | Promise<T>) => {
+      state.entered++; await gate;
+      const value = await read(); state.returned++; return value;
+    };
+    const held = { ...book, sections: book.sections.map(section => ({ ...section,
+      ...(section.getText ? { getText: () => readAfterGate(() => section.getText!()) }
+        : section.createDocument ? { createDocument: () => readAfterGate(() => section.createDocument!()) } : {}),
+    })), destroy: releaseParser };
+    const releaseOwner = retainBook(held);
+    const unregister = registerActiveBookContent(books.normal!, held, contentVersion);
+    ready();
+    try { await lifetime; }
+    finally { unregister(); await releaseOwner(); }
+  });
+  await Promise.race([registered, state.task]);
+  const id = "capability-search-lifecycle-desk";
+  const worker = await startPluginWorker({ ...textDeskManifest, id } as PluginManifest, "0.5.4", disposables,
+    { moduleUrl: new URL("../../../../plugins/text-desk/dist/main.js", import.meta.url).href });
+  workers.set(id, worker); await worker.checkHealth(); worker.promote();
+  const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === id && item.id === "open")!;
+  await runPluginContribution(id, "Text Desk search lifecycle", command.run, { presentation: "dialog", owner: command.run });
+  return { ...seed, pluginId: id };
+}
+
+export async function textSearchLifecycleStatus(releaseRead = false) {
+  await isolated();
+  if (!heldSearch) throw Error("No owned search lifecycle probe");
+  if (releaseRead) heldSearch.release();
+  return { entered: heldSearch.entered, returned: heldSearch.returned,
+    textState: await getBookTextSnapshot(books.normal!) };
 }

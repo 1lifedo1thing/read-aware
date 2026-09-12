@@ -30,7 +30,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | LIB03 | 收藏/取消收藏 | F1 | 本机编译Library Desk收藏/取消收藏、刷新Yes/No及重启保持通过；其他actor待验，见第二十四流程 |
 | LIB04 | 删除单本书 | F1 | 本机Library Desk单书复核前不删，明确删除后记录null/原文件不存在；其他actor/故障待验，见第二十四流程 |
 | LIB05 | 批量删除书籍 | F1 | 本机Agent真实批准UI拒绝保留/批准两书删除，Worker正常批删及恢复后旧清理pending保护通过；文件故障/崩溃待验，见第二十四流程 |
-| LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机FB2 user/Worker选择器、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML原生字节导入与源解析通过；CBR/别名/其他actor待验，见第二十一流程 |
+| LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机FB2 user/Worker选择器、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML原生字节导入与源解析通过；CBR/别名/其他actor待验；第38流程开发页重载留下未提交暂存blob，已手动清理但自动恢复未通过，见第二十一/三十八流程 |
 | LIB07 | 识别格式/DRM/损坏文件并报告 | F1 | 部分通过：合成加密MOBI入库后源打开明确book/unsupported-encryption，未冒充可读；损坏文件/UI提示待验，见第二十一流程 |
 | LIB08 | 查询/读取书籍原文件与本地可用性 | F1 | 本机 Library Desk 原文件状态、原生导出字节一致及取消通过；其他格式/actor待验 |
 | LIB09 | 提取/显示封面与封面可用状态 | F1 | 本机 FB2 封面显示/解码、PNG原生保存及插件副本重读通过；其他格式待验 |
@@ -48,9 +48,9 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | TXT03 | 按抽取章节读正文/分段 | F2 | 本机book/global Agent真实Tauri端口读第二章原文相同、part0/totalParts1，未读章节围栏拒绝通过；长章分段/插件直接读取待验，见第三十七流程 |
 | TXT04 | 查询本地正文准备状态与文本存在性 | F2 | 本机短/正常FB2及空白PDF、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML正文准备与available/textless一致；短章节另读源文本确认存在；Worker权限/Agent双scope和缺源/换源通过；CBR等待验 |
 | TXT05 | 启动、重建、暂停让路正文抽取 | F2 | 本机准备/重建、共享取消/退役隔离、激活期禁止、宿主忙拒绝通过；Worker重启历史已有证据；让路/截止/进程重启待验 |
-| TXT06 | 当前书及跨书多查询正文检索 | F2 | 编译Text Desk真实Worker三查询两章桶去重、两书索引搜索/详情/无命中/空输入拒绝通过，宿主重读及global Agent结果一致；取消/完整负载/其他格式待验，见第三十七流程 |
+| TXT06 | 当前书及跨书多查询正文检索 | F2 | 编译Text Desk真实Worker三查询两章桶去重、两书索引搜索/详情/无命中/空输入拒绝通过，宿主重读及global Agent结果一致；取消/迟到结果不交付/明确重试已复验，完整负载/其他格式待验，见第三十七/三十八流程 |
 | TXT07 | 引擎全文精确搜索并返回 CFI | F2 | 本机 FB2 真 Worker 搜索命中及 CFI 通过；其他格式/分页待验 |
-| TXT08 | 搜索分页、取消、背压和过期查询淘汰 | F2 | 待验 |
+| TXT08 | 搜索分页、取消、背压和过期查询淘汰 | F2 | 真实Text Desk Worker在延迟真实解析时取消立即显示cancelled，放行后索引完成但不交付旧结果，明确重试及关闭通过；分页/背压/换查询退役待验，见第三十八流程 |
 | TXT09 | 读取当前可见文本/阅读游标 | F2 | 本机FB2实际开书后会话ready返回正文及range/available/未截断状态；本轮窗口hidden，不计前台可见范围像素校验，PDF/自动游标边界待验，见第三十七流程 |
 | TXT10 | 选区附近句段上下文 | F2 | 本机 Text Desk 命中段落与前后文显示通过；其他状态待验 |
 | TXT11 | 书内脚注/链接目标解析与预览 | F2 | 本机 FB2 真实Worker列举/读脚注/宿主浮层通过；其他格式待验 |
@@ -250,7 +250,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | OPS11 | 事件写入、重建/验证投影、历史 genesis | F8 | 待验 |
 | CON01 | 能力发现/版本/权限/依赖与安装同意 | F7 | 待验 |
 | CON02 | 对象级授权/用户批准/来源与审计 | F7 | 待验 |
-| CON03 | 生命周期 staging/activate/deactivate 与资源释放 | F7 | 部分通过：真实Worker20次临时回调注册/重复释放/旧调用拒绝，cleanup owner不累积，退役贡献0；完整安装升级/packaged待验，见第十九流程 |
+| CON03 | 生命周期 staging/activate/deactivate 与资源释放 | F7 | 部分通过：真实Worker20次临时回调注册/重复释放/旧调用拒绝，cleanup owner不累积，退役贡献0；实际取消搜索误报关闭失败已修，复验shutdownErrors空/贡献0，源清理真错误仍保留；完整安装升级/packaged待验，见第十九/三十八流程 |
 | CON04 | 跨 Worker RPC 的类型、错误与资源额度 | F7 | 部分通过：真实Worker四万消息洪泛被宿主终止、稳定plugin/unavailable，同伴ping成功，贡献收回；其他额度待验，见第十八流程 |
 | CON05 | 稳定错误码/安全文案/可重试与降级状态 | F7 | 待验 |
 | CON06 | 长任务进度、取消、超时、并发与幂等 | F7 | 待验 |
