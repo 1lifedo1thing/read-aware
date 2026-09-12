@@ -125,3 +125,24 @@ Judge 旧版只看工具名和少量参数，缺少工具回执及宿主选择/�
 结果及译文语义、active user memory 最终状态。补错误 scope/旧状态/遗漏结果的反例，
 11 条契约检查及 Agent 类型检查通过。记忆纠错新 live 样本确实 inspect→批准→条件改写，
 最终同一条用户记忆改为 Factorio；主 Agent 评分 5。其余更新用例的全量重评仍待完成。
+
+## 第四个流程：候选记忆、分页和遗忘抑制
+
+同一隔离 Tauri，编译 Reading Goals 0.5 / Memory Desk 0.13 在独立测试 ID 的真实 Worker。
+自有书先有 105 条合成记忆，插件表单保存阅读目标并启用候选；生产候选收集/持久化
+管线通过实际 SQLite 写入第 106 条，插件结果状态变为 Saved to memory。此处直接驱动
+生产管线，没有模型调用或完整聊天轮。重复处理后仍 106 条、相同目标 ID；Agent 工具
+使用真实原生端口分页得到 20/20/20/20/20/6，共 106 个不重复自有 ID。
+Memory Desk 控件翻页及搜索目标，进入详情，纠错和置顶后重新读取同一条记录，
+内容已更新、pinned=true。遗忘表单未勾确认时拒绝，确认后活动集合中该记录消失。
+
+边界观察：先纠错再遗忘时，插件仍提交的“原始目标”文本与遗忘文本不同，再次处理
+会新建原始目标。当前协议只承诺同 scope 规范化同文抑制，不是语义/来源链抑制，
+不能声称遗忘后任何改写都不再出现。另用未改写目标验证既定边界：保存→user 条件遗忘
+→插件再次提交完全相同候选，仍 105 条，插件收到 memory/forgotten-suppressed 并给出
+“Automatic extraction did not recreate it.”。两轮自有书/记忆/私有目标文档/测试贡献已清理，
+末轮 book=null、count=0、contributions=0。细节见 memory-observations.json。
+
+本批环境限制：系统前台为 loginwindow，WebView visibility=hidden，弹窗 opacity=0，
+原生截图只显示旧阅读画面。因此本批只计真实 Worker、控件状态和 SQLite 结果，
+不计前台视觉/可达性通过；没有把隐藏弹窗截图保存成呈现证据。待桌面会话可用再验。

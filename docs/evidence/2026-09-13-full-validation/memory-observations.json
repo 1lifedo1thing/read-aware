@@ -1,0 +1,82 @@
+{
+  "memoryPrepared": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"bookId\":\"24532be8-88bf-4673-953e-7b56a412a7cc\",\"count\":105,\"goalRows\":[],\"marker\":\"Composition memory 862d56fb-3035-4003-bd0c-a549f8890e9e\",\"versions\":{\"desk\":\"0.13.0\",\"goals\":\"0.5.0\"}}\n\n[Executed in window: main]"
+      }
+    ]
+  },
+  "memoryGoalProcessed": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"bookId\":\"24532be8-88bf-4673-953e-7b56a412a7cc\",\"count\":106,\"goalRows\":[{\"content\":\"Validation goal: compare the passage with prior notes and retain the evidence.\",\"id\":\"9703aa3e-f5a2-4722-aa9b-b710883d2af4\"}],\"marker\":\"Composition memory 862d56fb-3035-4003-bd0c-a549f8890e9e\",\"versions\":{\"desk\":\"0.13.0\",\"goals\":\"0.5.0\"}}\n\n[Executed in window: main]"
+      }
+    ]
+  },
+  "memoryGoalResultUi": {
+    "content": [
+      {
+        "type": "text",
+        "text": "# Scoped to: [role=dialog]\n- dialog Reading Goals [modal] [ref=e0]:\n  - heading Reading Goals [level=2] [ref=e1]:\n    - text: Reading Goals\n  - paragraph [ref=e5]:\n    - text: Goal memory result\n  - paragraph [ref=e10]:\n    - text: Composition memory 862d56fb-3035-4003-bd0c-a549f8890e9e\n  - paragraph [ref=e11]:\n    - text: Saved to memory\n  - separator [ref=e13]\n  - button Refresh [ref=e16]:\n    - text: Refresh\n  - button Close [ref=e17]:\n    - text: Close\n\n# ───────────────────────────────────────\n# Generated: 2026-09-12T18:05:22.075Z\n# Elements indexed: 18\n# Use [ref=eN] with other webview tools"
+      }
+    ]
+  },
+  "memoryPages": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"again\":{\"bookId\":\"24532be8-88bf-4673-953e-7b56a412a7cc\",\"count\":106,\"goalRows\":[{\"content\":\"Validation goal: compare the passage with prior notes and retain the evidence.\",\"id\":\"9703aa3e-f5a2-4722-aa9b-b710883d2af4\"}],\"marker\":\"Composition memory 862d56fb-3035-4003-bd0c-a549f8890e9e\",\"versions\":{\"desk\":\"0.13.0\",\"goals\":\"0.5.0\"}},\"pages\":{\"counts\":[20,20,20,20,20,6],\"ownCount\":106,\"uniqueOwnCount\":106}}\n\n[Executed in window: main]"
+      }
+    ]
+  },
+  "memoryCorrectedPinned": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"content\":\"Validation corrected goal: compare evidence before drawing conclusions.\",\"createdAt\":\"2026-09-12T18:05:21.839Z\",\"evidenceCount\":1,\"id\":\"9703aa3e-f5a2-4722-aa9b-b710883d2af4\",\"importance\":0.35,\"kind\":\"preference\",\"pinned\":true,\"scope\":\"book:24532be8-88bf-4673-953e-7b56a412a7cc\",\"status\":\"active\",\"updatedAt\":\"2026-09-12T18:06:53.027Z\"}]\n\n[Executed in window: main]"
+      }
+    ]
+  },
+  "memoryForgotAndReprocess": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"afterForget\":{\"bookId\":\"24532be8-88bf-4673-953e-7b56a412a7cc\",\"count\":105,\"goalRows\":[],\"marker\":\"Composition memory 862d56fb-3035-4003-bd0c-a549f8890e9e\",\"versions\":{\"desk\":\"0.13.0\",\"goals\":\"0.5.0\"}},\"reprocess\":{\"bookId\":\"24532be8-88bf-4673-953e-7b56a412a7cc\",\"count\":106,\"goalRows\":[{\"content\":\"Validation goal: compare the passage with prior notes and retain the evidence.\",\"id\":\"9be52b2c-26da-41fd-9556-336b7cc4a82f\"}],\"marker\":\"Composition memory 862d56fb-3035-4003-bd0c-a549f8890e9e\",\"versions\":{\"desk\":\"0.13.0\",\"goals\":\"0.5.0\"}}}\n\n[Executed in window: main]"
+      }
+    ]
+  },
+  "memorySuppressionPrepared": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"bookId\":\"e2543a8c-b71d-46cf-9212-464b57d6638c\",\"count\":105,\"goalRows\":[],\"marker\":\"Composition memory 145f1955-64ef-42a9-86d8-66871521a32e\",\"versions\":{\"desk\":\"0.13.0\",\"goals\":\"0.5.0\"}}\n\n[Executed in window: main]"
+      }
+    ]
+  },
+  "memorySuppression": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"afterForget\":{\"bookId\":\"e2543a8c-b71d-46cf-9212-464b57d6638c\",\"count\":105,\"goalRows\":[],\"marker\":\"Composition memory 145f1955-64ef-42a9-86d8-66871521a32e\",\"versions\":{\"desk\":\"0.13.0\",\"goals\":\"0.5.0\"}},\"reprocess\":{\"bookId\":\"e2543a8c-b71d-46cf-9212-464b57d6638c\",\"count\":105,\"goalRows\":[],\"marker\":\"Composition memory 145f1955-64ef-42a9-86d8-66871521a32e\",\"versions\":{\"desk\":\"0.13.0\",\"goals\":\"0.5.0\"}},\"saved\":{\"bookId\":\"e2543a8c-b71d-46cf-9212-464b57d6638c\",\"count\":106,\"goalRows\":[{\"content\":\"Validation suppression: remember this exact unchanged goal only once.\",\"id\":\"5fb00a50-ab77-47a6-b7b8-c25d21598fb6\"}],\"marker\":\"Composition memory 145f1955-64ef-42a9-86d8-66871521a32e\",\"versions\":{\"desk\":\"0.13.0\",\"goals\":\"0.5.0\"}}}\n\n[Executed in window: main]"
+      }
+    ]
+  },
+  "memorySuppressionUi": {
+    "content": [
+      {
+        "type": "text",
+        "text": "# Scoped to: [role=dialog]\n- dialog Reading Goals [modal] [ref=e0]:\n  - heading Reading Goals [level=2] [ref=e1]:\n    - text: Reading Goals\n  - paragraph [ref=e5]:\n    - text: Goal memory result\n  - paragraph [ref=e10]:\n    - text: Composition memory 145f1955-64ef-42a9-86d8-66871521a32e\n  - paragraph [ref=e11]:\n    - text: Save failed\n  - alert [ref=e12]:\n    - text: The reader previously forgot this memory. Automatic extraction did not recreate it.\n  - separator [ref=e15]\n  - button Refresh [ref=e18]:\n    - text: Refresh\n  - button Close [ref=e19]:\n    - text: Close\n\n# ───────────────────────────────────────\n# Generated: 2026-09-12T18:08:35.863Z\n# Elements indexed: 20\n# Use [ref=eN] with other webview tools"
+      }
+    ]
+  },
+  "memorySuppressionCleanup": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"book\":null,\"bookId\":\"e2543a8c-b71d-46cf-9212-464b57d6638c\",\"contributions\":0,\"count\":0,\"goalRows\":[],\"marker\":\"Composition memory 145f1955-64ef-42a9-86d8-66871521a32e\",\"versions\":{\"desk\":\"0.13.0\",\"goals\":\"0.5.0\"}}\n\n[Executed in window: main]"
+      }
+    ]
+  }
+}
