@@ -143,7 +143,8 @@
     "syncCheckpointMismatch": "アカウントのスナップショットは別バージョンの ReadAware で作成されたため無視されました。同期は完全な履歴から再構築します。",
     "syncCheckpointPrecondition": "同期待ちの変更があるため、今はチェックポイントを保存できません。自動的に再試行します。",
     "localSaveFailedTitle": "変更が保存されていません",
-    "localSaveFailed": "この変更をローカルストレージに書き込めませんでした。再起動後に失われる可能性があります。"
+    "localSaveFailed": "この変更をローカルストレージに書き込めませんでした。再起動後に失われる可能性があります。",
+    "pluginAssetConflict": "保存したリソースが変更または削除されました。一覧を更新してから操作してください。"
   },
   "crashPrompt": {
     "title": "前回 ReadAware に問題が発生しました",

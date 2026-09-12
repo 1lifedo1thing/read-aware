@@ -6718,3 +6718,36 @@ or Worker survives disposal.
     `migrate()` and runtime work behind committed registrations.
 14. Agent extensions provide bounded data or candidates, never prompt or
     Memory-port authority.
+
+
+### Private durable assets (Resources 1.3)
+
+`services.resources.assets` stores binary data in the calling plugin's private
+namespace. `policy` describes local storage, complete-backup inclusion, deletion
+on uninstall and the 256-name / 512 MiB logical / 64 MiB per-asset quotas. Bytes
+use immutable native blobs; reserved host metadata follows the existing private
+namespace snapshot and rollback. Assets do not sync. Public documents cannot
+open the reserved metadata collection.
+
+`store(resourceId, {key, expectedRevision, name?})` consumes an owned sealed
+resource lease without releasing its public reference. Null revision requires
+an absent key; replacement requires its exact current revision. `get(key)`
+returns metadata or null. `list({after?, limit?})` pages by key, default 50 and
+maximum 100, without promising a frozen multi-page snapshot. `open(key, revision)`
+returns a fresh `source: "asset"` ResourceRef subject to normal expiry, capacity,
+read and release rules. `delete(key, revision)` deletes only that private name.
+Open, replacement and deletion reject stale revisions with `plugin/asset-conflict`.
+
+Store/delete return the committed receipt even if cancellation arrives after
+native dispatch. Cleanup failure after commit is `cleanupPending`; startup and
+subsequent writes retry orphan cleanup. Uninstall cleanup errors are visible.
+Assets are unavailable during staging/migration and native update journals block
+mutation until their namespace decision is settled, keeping rollback bytes live.
+Registry paths are derived and checked by owner; open verifies size/hash and
+rejects symlinks. No arbitrary file paths or blob keys are public.
+
+Library Desk 0.9 saves, reopens, exports and deletes private cover copies. Its
+three global Agent tools return metadata and require approval for changes or
+export; saving a copy does not modify the library cover. Native file/SQLite,
+controlled host/Worker cancellation protocol and compiled plugin tests cover the
+implementation; actual Tauri/Worker and full restore UI acceptance are pending.

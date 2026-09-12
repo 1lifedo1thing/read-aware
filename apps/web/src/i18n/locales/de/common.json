@@ -143,7 +143,8 @@
     "syncCheckpointMismatch": "Der Konto-Snapshot stammt aus einer anderen ReadAware-Version und wurde ignoriert. Die Synchronisierung baut stattdessen aus dem vollständigen Verlauf neu auf.",
     "syncCheckpointPrecondition": "Ein Prüfpunkt konnte gerade nicht gespeichert werden, weil noch Änderungen auf die Synchronisierung warten. Es wird automatisch erneut versucht.",
     "localSaveFailedTitle": "Änderung nicht gespeichert",
-    "localSaveFailed": "Diese Änderung konnte nicht lokal gespeichert werden und geht nach einem Neustart möglicherweise verloren."
+    "localSaveFailed": "Diese Änderung konnte nicht lokal gespeichert werden und geht nach einem Neustart möglicherweise verloren.",
+    "pluginAssetConflict": "Diese gespeicherte Ressource wurde geändert oder gelöscht. Aktualisieren Sie die Liste."
   },
   "crashPrompt": {
     "title": "ReadAware hatte beim letzten Mal ein Problem",

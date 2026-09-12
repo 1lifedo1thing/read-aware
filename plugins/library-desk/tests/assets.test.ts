@@ -13,6 +13,7 @@ function fixture() {
   const calls: unknown[][] = [], updates: PluginViewContent[] = [];
   let handler: Parameters<PluginLibraryDomain["events"]["observeEnrichment"]>[1] | undefined;
   const resources = {
+    assets: { get: async () => null },
     pick: async (options: unknown) => { calls.push(["pick", options]); return { cancelled: false, resources: [resource] }; },
     openBook: async (id: string) => { calls.push(["book", id]); return resource; },
     openCover: async (id: string) => { calls.push(["cover", id]); return resource; },
@@ -142,7 +143,7 @@ test("compiled header entry reaches selected-book assets and the import review t
   const compiled = (await import(new URL("../dist/main.js", import.meta.url).href)).default as PluginModule;
   const f = fixture();
   let header: Parameters<PluginContext["contributions"]["headerActions"]["register"]>[0] | undefined;
-  f.ctx.contributions = { commands: { register() {} }, headerActions: { register(value: typeof header) { header = value; } } } as unknown as PluginContext["contributions"];
+  f.ctx.contributions = { agentTools: { register() {} }, commands: { register() {} }, headerActions: { register(value: typeof header) { header = value; } } } as unknown as PluginContext["contributions"];
   await compiled.activate(f.ctx);
   const root = await header!.view!({}) as PluginView & PluginListView;
   const subscription = await root.live!.subscribe({ id: "compiled" });

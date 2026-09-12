@@ -39,6 +39,7 @@ export const ERR_BACKUP_RECOVERY_REQUIRED = "backup/recovery-required";
 /** Invalid plugin service arguments or a bounded service payload over quota. */
 export const ERR_PLUGIN_INVALID_ARGUMENT = "plugin/invalid-argument";
 export const ERR_PLUGIN_QUOTA_EXCEEDED = "plugin/quota-exceeded";
+export const ERR_PLUGIN_ASSET_CONFLICT = "plugin/asset-conflict";
 
 /** Sync/relay failure codes (classified in apps/web platform/sync). */
 export const ERR_SYNC_NETWORK = "sync/network";

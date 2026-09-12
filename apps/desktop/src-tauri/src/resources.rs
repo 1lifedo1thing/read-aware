@@ -398,3 +398,34 @@ mod tests {
         assert!(entries.is_empty());
     }
 }
+
+#[tauri::command]
+pub async fn resource_store_plugin_asset(app: tauri::AppHandle, plugin_id: String, key: String,
+    expected_revision: Option<String>, id: String, name: String, mime_type: String,
+) -> Result<crate::storage::plugin_assets::PluginAssetReceipt, CommandError> {
+    crate::storage::blocking("resource_store_plugin_asset", move || {
+        // Clone the sealed input before locking SQLite, keeping the resource/DB
+        // lock order separate from opens. Context exports cannot be persisted.
+        let source = reader(&app, &id)?;
+        let db = app.state::<crate::storage::Db>(); let mut conn = db.0.lock()?;
+        let dir = app.state::<crate::storage::DataDir>();
+        crate::storage::plugin_assets::store_inner(&mut conn, &dir.0, &plugin_id, &key,
+            expected_revision.as_deref(), &name, &mime_type, source)
+    }).await
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssetResourceInfo { #[serde(flatten)] resource: ResourceInfo, name: String, mime_type: String }
+#[tauri::command]
+pub async fn resource_open_plugin_asset(app: tauri::AppHandle, plugin_id: String, key: String, expected_revision: String,
+) -> Result<AssetResourceInfo, CommandError> {
+    crate::storage::blocking("resource_open_plugin_asset", move || {
+        let (file, asset) = {
+            let db = app.state::<crate::storage::Db>(); let conn = db.0.lock()?;
+            let dir = app.state::<crate::storage::DataDir>();
+            crate::storage::plugin_assets::open_inner(&conn, &dir.0, &plugin_id, &key, &expected_revision)?
+        };
+        let resources = app.state::<ResourceFiles>(); let mut entries = resources.0.lock()?;
+        Ok(AssetResourceInfo { resource: insert(&mut entries, Some(file))?, name: asset.name, mime_type: asset.mime_type })
+    }).await
+}

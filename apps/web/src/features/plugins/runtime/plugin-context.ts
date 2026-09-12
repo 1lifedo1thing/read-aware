@@ -47,6 +47,7 @@ import { openBookImageResource } from "../../../domain/library-book-images";
 import { hostSync } from "../../../services/sync";
 import { hostMaintenance } from "../../../services/maintenance";
 import { hostDiagnostics } from "../../../services/diagnostics";
+import { createPluginAssets } from "./plugin-assets";
 import { createResourceOwner } from "../../../services/resources";
 import { registerPluginImageOwner } from "../lib/plugin-image-owner";
 import { importResourceBook } from "../../../domain/library-resource-import";
@@ -632,6 +633,7 @@ export function buildPluginContext(
         } : {}),
       },
       resources: {
+        assets: createPluginAssets(manifest.id, lifecycle, resources),
         pick: options => { lifecycle.assertActive("services.resources.pick"); return resources.pick(options, lifecycle.signal); },
         ...(permissions.has("library:read") || permissions.has("library:write") ? {
           openBook: (bookId: string) => { lifecycle.assertActive("services.resources.openBook"); return resources.openBook(bookId, lifecycle.signal); },

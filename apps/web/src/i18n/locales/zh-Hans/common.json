@@ -143,7 +143,8 @@
     "syncCheckpointMismatch": "账号快照由另一个版本的 ReadAware 生成，已被忽略；同步将改为从完整历史重建。",
     "syncCheckpointPrecondition": "尚有变更等待同步，暂时无法保存检查点，稍后会自动重试。",
     "localSaveFailedTitle": "更改未保存",
-    "localSaveFailed": "这次更改没能写入本地存储，重启后可能丢失。"
+    "localSaveFailed": "这次更改没能写入本地存储，重启后可能丢失。",
+    "pluginAssetConflict": "已保存的资源已变更或删除，请刷新列表后再操作。"
   },
   "crashPrompt": {
     "title": "ReadAware 上次运行出了问题",

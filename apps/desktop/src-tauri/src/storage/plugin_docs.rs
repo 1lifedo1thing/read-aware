@@ -181,6 +181,7 @@ pub async fn plugin_docs_clear(
     crate::storage::blocking("plugin_docs_clear", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
+        super::plugin_assets::assert_mutable(&conn, &plugin_id)?;
         let tx = conn.transaction()?;
         tx.execute(
             "DELETE FROM plugin_documents WHERE plugin_id = ?1",
@@ -188,7 +189,9 @@ pub async fn plugin_docs_clear(
         )
         ?;
         tx.execute("DELETE FROM plugin_document_generations WHERE plugin_id=?1", params![plugin_id])?;
-        Ok(tx.commit()?)
+        tx.commit()?;
+        let dir = app.state::<DataDir>();
+        super::plugin_assets::reclaim(&conn, &dir.0, &plugin_id)
     })
     .await
 }

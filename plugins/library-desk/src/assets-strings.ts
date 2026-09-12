@@ -1,4 +1,8 @@
 const en = {
+  privateCovers: "Saved covers", noPrivateCovers: "No saved covers", keepPrivate: "Keep a private copy",
+  privatePolicy: "Local to Library Desk; included in full backups and deleted when this plugin is uninstalled.",
+  removePrivate: "Delete saved copy", removePrivateReview: "Delete this saved copy? The book and its original cover will remain.",
+  removedPrivate: "Saved copy deleted", cleanupPending: "Saved change completed; old file cleanup is pending", next: "Next page",
   details: "Book details", import: "Import book", confirmImport: "Import", imported: "Imported",
   duplicate: "Already in library", cover: "Cover", preview: "Preview cover", copy: "Copy cover",
   copied: "Cover copied", save: "Save cover", export: "Export original file", saved: "Saved",
@@ -10,6 +14,10 @@ const en = {
   idle: "Idle", queued: "Queued", running: "Running", completed: "Completed", skipped: "Skipped",
 };
 const zh: typeof en = {
+  privateCovers: "已保存封面", noPrivateCovers: "暂无已保存封面", keepPrivate: "保留私有副本",
+  privatePolicy: "保存在 Library Desk 的本机私有数据中，包含在完整备份内；卸载此插件时删除。",
+  removePrivate: "删除保存的副本", removePrivateReview: "删除此副本？书籍及其原始封面会保留。",
+  removedPrivate: "已删除保存的副本", cleanupPending: "变更已保存，旧文件仍待清理", next: "下一页",
   details: "书籍详情", import: "导入书籍", confirmImport: "导入", imported: "已导入",
   duplicate: "书库中已存在", cover: "封面", preview: "预览封面", copy: "复制封面",
   copied: "封面已复制", save: "保存封面", export: "导出原文件", saved: "已保存",

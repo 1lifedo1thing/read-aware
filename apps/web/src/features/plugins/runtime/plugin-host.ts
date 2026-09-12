@@ -576,7 +576,8 @@ export async function uninstallPlugin(id: string): Promise<void> {
     await clearPluginScheduleState(id);
     await uninstallPluginFiles(id);
     await pluginDocsClear(id).catch((error) => {
-      log.error(`document wipe for "${id}" failed`, error);
+      log.error(`private data wipe for "${id}" failed`, error);
+      throw error;
     });
     forgetPluginEnabled(id);
     setInstalledPlugins(getInstalled().filter((entry) => entry.manifest.id !== id));

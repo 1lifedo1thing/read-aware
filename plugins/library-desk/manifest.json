@@ -1,17 +1,17 @@
 {
   "id": "library-desk",
   "name": "Library Desk",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "schemaVersion": 1,
   "description": "Organize books and collections, review duplicate merges, import books, export local assets, and manage removal batches.",
   "author": "ReadAware",
   "main": "main.js",
-  "permissions": ["library:write", "reading:write", "service:clipboard"],
+  "permissions": ["library:write", "reading:write", "service:clipboard", "agent:tools"],
   "settingsAccess": { "read": ["shelf.layout", "shelf.sort", "shelf.group"], "write": ["shelf.layout", "shelf.sort", "shelf.group"] },
   "requires": {
     "domains": { "library": "^1.11.0", "reading": "^2.0.0" },
-    "contributions": { "headerActions": "^1.0.0", "commands": "^1.0.0" },
-    "services": { "ui": "^1.6.0", "resources": "^1.1.0", "clipboard": "^1.1.0" },
+    "contributions": { "headerActions": "^1.0.0", "commands": "^1.0.0", "agentTools": "^1.2.0" },
+    "services": { "ui": "^1.6.0", "resources": "^1.3.0", "clipboard": "^1.1.0" },
     "schemas": { "views": "^1.7.0" }
   }
 }

@@ -71,3 +71,5 @@ export * from "./identity-work";
 export * from "./profile-inspection";
 export * from "./memory-candidate";
 export * from "./memory-page";
+
+export * from "./plugin-assets";

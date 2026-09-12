@@ -165,6 +165,7 @@ fn programs(
 }
 
 fn plugin_data(conn: &Connection, control: &Control) -> Result<(), CommandError> {
+    crate::storage::plugin_assets::validate_namespaces(conn)?;
     let mut statement = conn.prepare("SELECT plugin_id,collection,id FROM plugin_documents")?;
     let mut rows = statement.query([])?;
     while let Some(row) = rows.next()? {

@@ -20,6 +20,12 @@ export const PLUGIN_CALL_OPTIONS = {
   "services.diagnostics.verifyProjections": 0,
   "services.diagnostics.requestReport": 1,
   "services.diagnostics.requestProjectionRepair": 0,
+  "services.resources.assets.policy": 0,
+  "services.resources.assets.list": 1,
+  "services.resources.assets.get": 1,
+  "services.resources.assets.store": 2,
+  "services.resources.assets.open": 2,
+  "services.resources.assets.delete": 2,
   "services.sync.requestFlow": 1,
   "domains.library.queries.books.inspectResource": 1,
   "domains.library.commands.books.importBook": 1,
@@ -59,7 +65,8 @@ export function pluginCallDrainsCancellation(method: string): boolean {
   return method === "domains.memory.commands.decideEntity" || method === "domains.memory.commands.context.capture" || method === "domains.memory.commands.completeOnboarding"
     || method === "services.schedules.defer" || method === "services.schedules.cancelDeferred"
     || method === "domains.library.commands.books.importBook" || method === "domains.library.commands.books.importResource"
-    || method === "domains.library.commands.books.startImport";
+    || method === "domains.library.commands.books.startImport"
+    || method === "services.resources.assets.store" || method === "services.resources.assets.delete";
 }
 
 function position(method: string): number | undefined {

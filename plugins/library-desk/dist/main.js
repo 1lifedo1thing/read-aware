@@ -185,6 +185,15 @@ async function workspaceView(ctx, selected) {
 
 // src/assets-strings.ts
 var en2 = {
+  privateCovers: "Saved covers",
+  noPrivateCovers: "No saved covers",
+  keepPrivate: "Keep a private copy",
+  privatePolicy: "Local to Library Desk; included in full backups and deleted when this plugin is uninstalled.",
+  removePrivate: "Delete saved copy",
+  removePrivateReview: "Delete this saved copy? The book and its original cover will remain.",
+  removedPrivate: "Saved copy deleted",
+  cleanupPending: "Saved change completed; old file cleanup is pending",
+  next: "Next page",
   details: "Book details",
   import: "Import book",
   confirmImport: "Import",
@@ -226,6 +235,15 @@ var en2 = {
   skipped: "Skipped"
 };
 var zh = {
+  privateCovers: "已保存封面",
+  noPrivateCovers: "暂无已保存封面",
+  keepPrivate: "保留私有副本",
+  privatePolicy: "保存在 Library Desk 的本机私有数据中，包含在完整备份内；卸载此插件时删除。",
+  removePrivate: "删除保存的副本",
+  removePrivateReview: "删除此副本？书籍及其原始封面会保留。",
+  removedPrivate: "已删除保存的副本",
+  cleanupPending: "变更已保存，旧文件仍待清理",
+  next: "下一页",
   details: "书籍详情",
   import: "导入书籍",
   confirmImport: "导入",
@@ -268,6 +286,58 @@ var zh = {
 };
 var assetStrings = (locale) => locale === "zh-Hans" || locale === "zh-CN" ? zh : en2;
 
+// src/saved-covers.ts
+var coverKey = (bookId) => `cover:${bookId}`;
+function saveCover(ctx, book, resource, expectedRevision) {
+  const extension = resource.name.match(/\.[a-zA-Z0-9]{1,10}$/)?.[0] ?? ".bin";
+  const name = `${book.title.replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, "-").trim().slice(0, 180) || "cover"}${extension}`;
+  return ctx.services.resources.assets.store(resource.id, { key: coverKey(book.id), expectedRevision, name });
+}
+async function savedCoverView(ctx, asset) {
+  const resources = ctx.services.resources, t = assetStrings(ctx.locale);
+  const ref = await resources.assets.open(asset.key, asset.revision);
+  return {
+    kind: "detail",
+    title: asset.name,
+    content: [{ kind: "image", resourceId: ref.id, alt: asset.name, aspectRatio: 2 / 3 }, { kind: "text", text: t.privatePolicy }],
+    onClose: () => resources.release(ref.id),
+    actions: [
+      { id: "export", label: t.save, icon: "download-simple", run: async () => (await resources.save(ref.id, asset.name)).saved ? { toast: t.saved } : null },
+      { id: "delete", label: t.removePrivate, icon: "trash", variant: "danger", run: () => ({ view: {
+        kind: "detail",
+        title: t.removePrivate,
+        content: [{ kind: "text", text: t.removePrivateReview }],
+        actions: [
+          { id: "confirm", label: t.removePrivate, variant: "danger", run: async () => {
+            const result = await resources.assets.delete(asset.key, asset.revision);
+            return { view: await savedCovers(ctx), navigation: "reset", toast: result.cleanupPending ? t.cleanupPending : t.removedPrivate };
+          } }
+        ]
+      } }) }
+    ]
+  };
+}
+async function savedCovers(ctx, after) {
+  const t = assetStrings(ctx.locale);
+  const page = await ctx.services.resources.assets.list({ limit: 50, ...after ? { after } : {} });
+  return {
+    kind: "list",
+    title: t.privateCovers,
+    emptyText: t.noPrivateCovers,
+    items: page.items.filter((asset) => asset.key.startsWith("cover:")).map((asset) => ({
+      id: asset.key,
+      title: asset.name,
+      subtitle: `${asset.size} ${t.size}`,
+      icon: "image",
+      onSelect: async () => ({ view: await savedCoverView(ctx, asset) })
+    })),
+    actions: [
+      { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await savedCovers(ctx), navigation: "replace" }) },
+      ...page.nextAfter ? [{ id: "next", label: t.next, icon: "arrow-right", run: async () => ({ view: await savedCovers(ctx, page.nextAfter), navigation: "replace" }) }] : []
+    ]
+  };
+}
+
 // src/book-assets.ts
 async function bookAssets(ctx, book) {
   const library = ctx.domains.library, resources = ctx.services.resources, t = assetStrings(ctx.locale);
@@ -287,19 +357,31 @@ async function bookAssets(ctx, book) {
     const resource = await resources.openCover(book.id);
     if (!resource)
       return unavailable();
-    return { view: {
-      kind: "detail",
-      title: book.title,
-      content: [{ kind: "image", resourceId: resource.id, alt: book.title, aspectRatio: 2 / 3 }],
-      actions: [
-        { id: "save-cover", label: t.save, icon: "download-simple", run: async () => (await resources.save(resource.id, resource.name)).saved ? { toast: t.saved } : null },
-        { id: "copy-cover", label: t.copy, icon: "copy", run: async () => {
-          await ctx.services.clipboard.writeImage(resource.id);
-          return { toast: t.copied };
-        } }
-      ],
-      onClose: () => resources.release(resource.id)
-    } };
+    try {
+      const previous = await resources.assets.get(coverKey(book.id));
+      let expectedRevision = previous?.revision ?? null;
+      return { view: {
+        kind: "detail",
+        title: book.title,
+        content: [{ kind: "image", resourceId: resource.id, alt: book.title, aspectRatio: 2 / 3 }],
+        actions: [
+          { id: "keep-cover", label: t.keepPrivate, icon: "floppy-disk", run: async () => {
+            const receipt = await saveCover(ctx, book, resource, expectedRevision);
+            expectedRevision = receipt.asset.revision;
+            return { toast: receipt.cleanupPending ? t.cleanupPending : t.saved };
+          } },
+          { id: "save-cover", label: t.save, icon: "download-simple", run: async () => (await resources.save(resource.id, resource.name)).saved ? { toast: t.saved } : null },
+          { id: "copy-cover", label: t.copy, icon: "copy", run: async () => {
+            await ctx.services.clipboard.writeImage(resource.id);
+            return { toast: t.copied };
+          } }
+        ],
+        onClose: () => resources.release(resource.id)
+      } };
+    } catch (error) {
+      await resources.release(resource.id);
+      throw error;
+    }
   };
   const content = () => ({
     kind: "detail",
@@ -785,6 +867,7 @@ ${book.author ?? ""}` }))
     })),
     actions: [
       { id: "refresh", label: t[7], icon: "arrows-clockwise", run: refresh },
+      { id: "saved-covers", label: assetsText.privateCovers, icon: "image", run: async () => ({ view: await savedCovers(ctx) }) },
       { id: "import", label: assetsText.import, icon: "plus", run: () => importBook(ctx) },
       { id: "duplicates", label: organizeText.duplicates, icon: "books", run: async () => ({ view: await duplicateList(ctx) }) },
       { id: "collections", label: organizeText.collections, icon: "folder", run: async () => ({ view: await collectionList(ctx) }) },
@@ -809,11 +892,94 @@ ${book.author ?? ""}` }))
   } } };
 }
 
+// src/saved-cover-tools.ts
+var invalid = () => {
+  throw Object.assign(Error("Invalid saved cover request"), { code: "plugin/invalid-argument" });
+};
+function string(input) {
+  if (typeof input !== "string" || !input || input.length > 128)
+    return invalid();
+  return input;
+}
+var text = { type: "string", minLength: 1, maxLength: 128 };
+var revision = { type: "string", pattern: "^[a-f0-9]{32}$" };
+function registerSavedCoverTools(ctx) {
+  if (!ctx.contributions.agentTools)
+    throw Error("Library Desk requires agent:tools");
+  ctx.contributions.agentTools.register({
+    name: "list_saved_covers",
+    label: "List saved covers",
+    contexts: ["global"],
+    description: "List a bounded key-ordered page of Library Desk's private saved cover assets. Returns names, keys, exact revisions, sizes and nextAfter, never image bytes, paths or resource handles. Assets survive app restart, remain local, are included in full backups and are removed on plugin uninstall. Pages are not an immutable snapshot. Saving a cover does not change the book's cover.",
+    parameters: { type: "object", properties: { after: text, limit: { type: "integer", minimum: 1, maximum: 20 } }, additionalProperties: false },
+    execute: async (params) => {
+      if (Object.keys(params).some((k) => !["after", "limit"].includes(k)))
+        return invalid();
+      const limit = params.limit ?? 10;
+      if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 20)
+        return invalid();
+      const page = await ctx.services.resources.assets.list({ limit, ...params.after === undefined ? {} : { after: string(params.after) } });
+      return { ...page, items: page.items.filter((asset) => asset.key.startsWith("cover:")) };
+    }
+  });
+  ctx.contributions.agentTools.register({
+    name: "save_cover_asset",
+    label: "Save private cover",
+    contexts: ["global"],
+    approval: "required",
+    description: "After host approval, copy the book's currently available local cover into Library Desk's private assets. Use bookId from library discovery and expectedRevision from list_saved_covers for cover:<bookId>, or null if not present. Refuses a changed destination. No download, original cover modification or system file write. Returns the durable asset metadata and whether old-byte cleanup remains pending. Local-only, full-backup included, removed on plugin uninstall.",
+    parameters: { type: "object", properties: { bookId: text, expectedRevision: { anyOf: [revision, { type: "null" }] } }, required: ["bookId", "expectedRevision"], additionalProperties: false },
+    execute: async (params) => {
+      if (Object.keys(params).some((k) => !["bookId", "expectedRevision"].includes(k)))
+        return invalid();
+      const bookId = string(params.bookId), expected = params.expectedRevision === null ? null : string(params.expectedRevision);
+      if (expected !== null && !/^[a-f0-9]{32}$/.test(expected))
+        return invalid();
+      const book = await ctx.domains.library.queries.books.get(bookId);
+      if (!book)
+        return { status: "book-not-found" };
+      const resource = await ctx.services.resources.openCover(bookId);
+      if (!resource)
+        return { status: "cover-unavailable" };
+      try {
+        return await saveCover(ctx, book, resource, expected);
+      } finally {
+        await ctx.services.resources.release(resource.id);
+      }
+    }
+  });
+  ctx.contributions.agentTools.register({
+    name: "manage_saved_cover",
+    label: "Manage saved cover",
+    contexts: ["global"],
+    approval: "required",
+    description: "After host approval, delete a Library Desk private saved cover or export it through the user's native file dialog. Use an exact cover key and revision from list_saved_covers; changed assets reject. Delete affects only the private saved copy, never the original book or its cover. Export returns saved:false on dialog cancellation. No bytes, paths or handles enter the model. Cancellation cannot undo a dispatched durable operation.",
+    parameters: { type: "object", properties: { key: text, expectedRevision: revision, action: { type: "string", enum: ["delete", "export"] } }, required: ["key", "expectedRevision", "action"], additionalProperties: false },
+    execute: async (params) => {
+      if (Object.keys(params).some((k) => !["key", "expectedRevision", "action"].includes(k)))
+        return invalid();
+      const key = string(params.key), expected = string(params.expectedRevision);
+      if (!key.startsWith("cover:") || !/^[a-f0-9]{32}$/.test(expected) || !["delete", "export"].includes(String(params.action)))
+        return invalid();
+      const resources = ctx.services.resources;
+      if (params.action === "delete")
+        return resources.assets.delete(key, expected);
+      const ref = await resources.assets.open(key, expected);
+      try {
+        return await resources.save(ref.id, ref.name);
+      } finally {
+        await resources.release(ref.id);
+      }
+    }
+  });
+}
+
 // src/index.ts
 var src_default = {
   activate(ctx) {
     if (!ctx.domains.library?.commands)
       throw Error("Library Desk requires library:write");
+    registerSavedCoverTools(ctx);
     const title = strings(ctx.locale)[0];
     ctx.contributions.commands.register({ id: "open", title, icon: "books", run: async () => ({ view: await libraryDesk(ctx) }) });
     ctx.contributions.headerActions.register({ id: "shelf", title, icon: "books", surface: "shelf", presentation: "popup", view: () => libraryDesk(ctx) });

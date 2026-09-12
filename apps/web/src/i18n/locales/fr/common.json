@@ -143,7 +143,8 @@
     "syncCheckpointMismatch": "L’instantané du compte a été créé par une autre version de ReadAware et a été ignoré. La synchronisation reconstruira à partir de l’historique complet.",
     "syncCheckpointPrecondition": "Impossible d’enregistrer un point de contrôle pour l’instant : des modifications attendent encore d’être synchronisées. Nouvelle tentative automatique.",
     "localSaveFailedTitle": "Modification non enregistrée",
-    "localSaveFailed": "Cette modification n'a pas pu être écrite dans le stockage local et pourrait être perdue après un redémarrage."
+    "localSaveFailed": "Cette modification n'a pas pu être écrite dans le stockage local et pourrait être perdue après un redémarrage.",
+    "pluginAssetConflict": "Cette ressource enregistrée a été modifiée ou supprimée. Actualisez la liste avant de continuer."
   },
   "crashPrompt": {
     "title": "ReadAware a rencontré un problème la dernière fois",

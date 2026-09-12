@@ -143,7 +143,8 @@
     "syncCheckpointMismatch": "帳號快照由另一個版本的 ReadAware 產生，已被忽略；同步將改為從完整歷史重建。",
     "syncCheckpointPrecondition": "尚有變更等待同步，暫時無法儲存檢查點，稍後會自動重試。",
     "localSaveFailedTitle": "變更未儲存",
-    "localSaveFailed": "這次變更沒能寫入本機儲存空間，重新啟動後可能遺失。"
+    "localSaveFailed": "這次變更沒能寫入本機儲存空間，重新啟動後可能遺失。",
+    "pluginAssetConflict": "已儲存的資源已變更或刪除，請重新整理清單後再操作。"
   },
   "crashPrompt": {
     "title": "ReadAware 上次執行發生了問題",

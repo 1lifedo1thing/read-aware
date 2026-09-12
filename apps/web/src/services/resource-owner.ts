@@ -132,6 +132,14 @@ export class ResourceOwner implements ResourcePort {
       catch (error) { await this.cleanNative([value]); throw error; }
     }, signal);
   }
+  /** Host-only: acquire an owned immutable private asset as a fresh lease. */
+  importAsset(load: () => Promise<NativeResource>, signal?: AbortSignal): Promise<ResourceRef> {
+    return this.run(async () => {
+      const value = await load();
+      try { this.guard(signal); this.capacity([value]); return this.register(value, "asset", "ready"); }
+      catch (error) { await this.cleanNative([value]); throw error; }
+    }, signal);
+  }
   create(options: ResourceCreateOptions, signal?: AbortSignal) {
     const accepted = { name: resourceName(options?.name), mimeType: mime(options?.mimeType) };
     return this.run(async () => {

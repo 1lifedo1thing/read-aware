@@ -143,7 +143,8 @@
     "syncCheckpointMismatch": "The account snapshot was made by a different version of ReadAware and was ignored. Sync will rebuild from the full history instead.",
     "syncCheckpointPrecondition": "A checkpoint could not be saved right now because some changes are still waiting to sync. It will be retried automatically.",
     "localSaveFailedTitle": "Change not saved",
-    "localSaveFailed": "This change couldn't be written to local storage and may be lost after a restart."
+    "localSaveFailed": "This change couldn't be written to local storage and may be lost after a restart.",
+    "pluginAssetConflict": "This saved asset changed or was deleted. Refresh the list before continuing."
   },
   "crashPrompt": {
     "title": "ReadAware had a problem last time",

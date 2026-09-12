@@ -223,6 +223,7 @@ const pluginMap = pairs([
   ["services.diagnostics.verifyProjections", "OPS03 OPS11 SYS15"],
   ["services.diagnostics.requestProjectionRepair", "OPS03 OPS11"],
   ["services.diagnostics.requestReport", "SYS15"],
+  ["services.resources.assets.policy services.resources.assets.list services.resources.assets.get services.resources.assets.store services.resources.assets.open services.resources.assets.delete", "MORE07 SYS13"],
   ["services.resources.pick", "SYS11"],
   ["services.resources.openBook", "LIB08"],
   ["services.resources.openCover", "LIB09"],
@@ -240,6 +241,7 @@ const catalogMap: Record<string, Record<string, string[]>> = {
 const nativeMap = pairs([
   ["library_stage_import", "LIB06"], ["library_put_cover library_cover_backlog", "LIB09 LIB10"],
   ["library_duplicate_groups library_merge_preview library_merge_commit library_resolve_book", "LIB11"],
+  ["resource_store_plugin_asset resource_open_plugin_asset plugin_asset_get plugin_asset_list plugin_asset_policy plugin_asset_delete", "MORE07 SYS13"],
   ["append_events commit_events rebuild_projections verify_projections read_events_since list_event_aggregate_ids", "OPS11"],
   ["apply_remote_events stage_remote_events finalize_staged_events", "OPS02 OPS05"],
   ["local_device_get sync_profile_get sync_profile_set sync_profile_touch sync_adopt_account", "OPS01 OPS02"],
@@ -445,6 +447,7 @@ export function collectInventory(): Inventory[] {
   const featureMap = pairs([["agent ai", "AI01 AI03 MEM01"],["annotations", "ANN01"],["command", "UI03"],["library shelf", "LIB01 UI02"],["menus", "UI05"],["navigation", "UI01 SYS17"],["plugins", "EXT01 CON03"],["reader", "READ01 TXT01"],["settings", "CFG01 OPS08"],["stats", "STAT01"],["sync", "OPS01"],["update", "SYS16"]]);
   for (const directory of readdirSync("apps/web/src/features", {withFileTypes:true}).filter(d=>d.isDirectory())) add("Feature owner", directory.name, featureMap[directory.name], "[代码+人工审计] 所属功能组入口；目录覆盖不等于每个 UI 分支测试通过");
   const expectedPlugins = pairs([["memory-desk", "MEM01 MEM04 MEM05 MEM09 MEM10 MEM11 READ01 EXT02 EXT05"],["dictionary", "EXT09 AI12 READ07 LIB01"],["rss-reader", "EXT10"],["editorial-themes", "EXT08"],["sentence-reader", "READ15 READ16"],["tts", "READ17 READ18"],["webdav-sync", "OPS04"],["jumper", "TXT02 TXT07 READ06 EXT02"],["annotation-desk", "ANN01 ANN04 ANN05 ANN08 ANN09 EXT02 EXT05 SYS10"],["listening-desk", "READ16 READ18 READ06 EXT02 MORE03"],["reading-goals", "AI11 MEM03 SET23 STAT02 STAT05 STAT03 EXT07 EXT02 EXT05 SYS01"],["workspace-profiles", "UI02 UI04 CFG01 CFG10 EXT02 EXT05 SYS02"],["text-desk", "TXT04 TXT05 TXT06 TXT07 TXT10 TXT11 TXT12 TXT13 LIB01 READ01 READ13 EXT01 EXT02 EXT05 EXT06 SYS09 SYS13"],["library-desk", "LIB01 LIB02 LIB03 LIB05 LIB06 LIB07 LIB08 LIB09 LIB10 LIB11 LIB15 LIB16 LIB17 LIB18 READ01 UI01 UI02 UI03 EXT02 EXT03 EXT05 EXT06 SYS09 SYS11 SYS13 MORE05"]]);
+  expectedPlugins["library-desk"].push("MORE07");
   expectedPlugins["maintenance-desk"] = ["CFG08", "SYS15", "OPS03", "OPS08", "OPS11", "EXT02", "EXT05"];
   expectedPlugins["reading-goals"].push("SYS02");
   expectedPlugins["jumper"] = ["TXT02", "TXT07", "READ01", "READ06", "READ07", "READ13", "EXT02", "SYS02", "AI05"];
@@ -459,7 +462,7 @@ export function collectInventory(): Inventory[] {
           const names = stringProperties(node.arguments[0], retrieval ? "id" : "name");
           if (names.length !== 1) throw new Error(`Dynamic Agent contribution needs manual audit: ${file}`);
           const wireName = `plugin_${manifest.id.replace(/[^a-zA-Z0-9_]/g,"_")}_${retrieval ? "retrieve_" : ""}${names[0].replace(/[^a-zA-Z0-9_]/g,"_")}`;
-          add("Plugin Agent contribution",wireName,expectedPlugins[directory.name], `[代码] ${["rss-reader", "jumper"].includes(manifest.id) ? "仅 global" : "global/book"}；插件启用后才进入工具集；来源 plugins/${directory.name}/src/${file}`);
+          add("Plugin Agent contribution",wireName,expectedPlugins[directory.name], `[代码] ${["rss-reader", "jumper", "library-desk"].includes(manifest.id) ? "仅 global" : "global/book"}；插件启用后才进入工具集；来源 plugins/${directory.name}/src/${file}`);
         }
         ts.forEachChild(node,visitRegistration);
       }

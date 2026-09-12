@@ -823,6 +823,7 @@ pub fn run() {
             // No IPC/Worker or background sync is running yet. Restore both
             // plugin files and private data before the webview can hydrate KV.
             plugin_updates::recover_at(&mut conn, &data_dir.join("plugins"))?;
+            storage::plugin_assets::recover_all(&conn, &data_dir);
             // Read the persisted theme preference BEFORE the main window exists
             // so the very first frame — window background and boot splash —
             // honors the in-app setting, not just the OS scheme. `None` means
@@ -1113,6 +1114,12 @@ pub fn run() {
             resources::resource_open_file,
             resources::resource_open_book,
             resources::resource_open_cover,
+            resources::resource_store_plugin_asset,
+            resources::resource_open_plugin_asset,
+            storage::plugin_assets::plugin_asset_get,
+            storage::plugin_assets::plugin_asset_list,
+            storage::plugin_assets::plugin_asset_policy,
+            storage::plugin_assets::plugin_asset_delete,
             resource_images::resource_copy_image,
             resource_images::resource_image_preview,
             resources::resource_create,

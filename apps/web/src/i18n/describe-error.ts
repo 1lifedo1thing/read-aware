@@ -22,6 +22,7 @@ import { i18n } from "./instance";
 import {
   ERR_PLUGIN_INVALID_ARGUMENT,
   ERR_PLUGIN_QUOTA_EXCEEDED,
+  ERR_PLUGIN_ASSET_CONFLICT,
   ERR_SYNC_MISDIRECTED,
   ERR_SYNC_NETWORK,
   ERR_SYNC_PASSPHRASE,
@@ -137,6 +138,7 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "plugin/settings-stale": { key: "pluginSettingsStale", retryable: false },
   "plugin/action-disabled": { key: "pluginActionDisabled", retryable: false },
   [ERR_PLUGIN_INVALID_ARGUMENT]: { key: "pluginInvalidArgument", retryable: false },
+  [ERR_PLUGIN_ASSET_CONFLICT]: { key: "pluginAssetConflict", retryable: false },
   [ERR_PLUGIN_QUOTA_EXCEEDED]: { key: "pluginQuotaExceeded", retryable: false },
   "plugin/network-denied": { key: "pluginNetworkDenied", retryable: false },
   "plugin/network-redirect": { key: "pluginNetworkRedirect", retryable: false },

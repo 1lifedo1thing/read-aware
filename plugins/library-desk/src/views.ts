@@ -3,6 +3,7 @@ import type { BookFileReleaseReceipt } from "@read-aware/plugin-types";
 import { strings, cleanupStrings } from "./strings";
 import { workspaceStrings, workspaceView } from "./workspace";
 import { assetStrings } from "./assets-strings";
+import { savedCovers } from "./saved-covers";
 import { bookAssets } from "./book-assets";
 import { importBook } from "./import-book";
 import { organizeStrings } from "./organize-strings";
@@ -76,6 +77,7 @@ export async function libraryDesk(ctx: PluginContext): Promise<PluginView> {
       },
     })),
     actions: [{ id: "refresh", label: t[7], icon: "arrows-clockwise", run: refresh },
+      { id: "saved-covers", label: assetsText.privateCovers, icon: "image", run: async () => ({ view: await savedCovers(ctx) }) },
       { id: "import", label: assetsText.import, icon: "plus", run: () => importBook(ctx) },
       { id: "duplicates", label: organizeText.duplicates, icon: "books", run: async () => ({ view: await duplicateList(ctx) }) },
       { id: "collections", label: organizeText.collections, icon: "folder", run: async () => ({ view: await collectionList(ctx) }) },

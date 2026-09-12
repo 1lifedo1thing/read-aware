@@ -2253,6 +2253,16 @@ export type PluginHostServices = {
     verifyProjections(options?: PluginCallOptions): Promise<import("@read-aware/core").ProjectionVerification>;
   };
   resources: {
+    /** Resources 1.3: own local binary assets, retained across activations.
+     * Only full backups include them; uninstall deletes them. No sync. */
+    assets: {
+      policy(options?: PluginCallOptions): Promise<import("@read-aware/core").PluginAssetPolicy>;
+      list(query?: import("@read-aware/core").PluginAssetQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginAssetPage>;
+      get(key: string, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginAsset | null>;
+      store(resourceId: string, input: import("@read-aware/core").PluginAssetWrite, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginAssetReceipt>;
+      open(key: string, expectedRevision: string, options?: PluginCallOptions): Promise<import("@read-aware/core").ResourceRef>;
+      delete(key: string, expectedRevision: string, options?: PluginCallOptions): Promise<{ deleted: true; cleanupPending: boolean }>;
+    };
     pick(options?: import("@read-aware/core").ResourcePickOptions): Promise<{ cancelled: boolean; resources: import("@read-aware/core").ResourceRef[] }>;
     /** Requires library:read. Original local file only; no implicit remote download. */
     openBook?(bookId: string): Promise<import("@read-aware/core").ResourceRef | null>;

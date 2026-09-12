@@ -1,4 +1,5 @@
 import type { PluginBook, PluginContext, PluginDetailView, PluginView, PluginViewResult } from "@read-aware/plugin-types";
+import { coverKey, saveCover } from "./saved-covers";
 import { assetStrings } from "./assets-strings";
 
 export async function bookAssets(ctx: PluginContext, book: PluginBook): Promise<PluginView> {
@@ -14,9 +15,17 @@ export async function bookAssets(ctx: PluginContext, book: PluginBook): Promise<
   const cover = async (): Promise<PluginViewResult> => {
     const resource = await resources.openCover!(book.id);
     if (!resource) return unavailable();
+    try {
+    const previous = await resources.assets.get(coverKey(book.id));
+    let expectedRevision = previous?.revision ?? null;
     return { view: { kind: "detail", title: book.title,
       content: [{ kind: "image", resourceId: resource.id, alt: book.title, aspectRatio: 2 / 3 }],
       actions: [
+        { id: "keep-cover", label: t.keepPrivate, icon: "floppy-disk", run: async () => {
+          const receipt = await saveCover(ctx, book, resource, expectedRevision);
+          expectedRevision = receipt.asset.revision;
+          return { toast: receipt.cleanupPending ? t.cleanupPending : t.saved };
+        } },
         { id: "save-cover", label: t.save, icon: "download-simple", run: async () =>
           (await resources.save(resource.id, resource.name)).saved ? { toast: t.saved } : null },
         { id: "copy-cover", label: t.copy, icon: "copy", run: async () => {
@@ -24,6 +33,7 @@ export async function bookAssets(ctx: PluginContext, book: PluginBook): Promise<
         } },
       ], onClose: () => resources.release(resource.id),
     } };
+    } catch (error) { await resources.release(resource.id); throw error; }
   };
   const content = (): PluginDetailView => ({ kind: "detail", title: book.title,
     content: [

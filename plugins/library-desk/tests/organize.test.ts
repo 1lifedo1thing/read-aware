@@ -128,7 +128,7 @@ test("stale merge is an error, not an automatic refresh/retry against a differen
 test("compiled entry routes to duplicates, collection management and single-book organization", async () => {
   const f = fixture(), plugin = (await import(new URL("../dist/main.js", import.meta.url).href)).default as PluginModule;
   let header: Parameters<PluginContext["contributions"]["headerActions"]["register"]>[0] | undefined;
-  f.ctx.contributions = { commands: { register() {} }, headerActions: { register(value: typeof header) { header = value; } } } as unknown as PluginContext["contributions"];
+  f.ctx.contributions = { agentTools: { register() {} }, commands: { register() {} }, headerActions: { register(value: typeof header) { header = value; } } } as unknown as PluginContext["contributions"];
   await plugin.activate(f.ctx);
   const root = await header!.view({}) as PluginView & PluginListView, subscription = await root.live!.subscribe({ id: "compiled" });
   expect((await action(root, "duplicates").run())!.view!.title).toBe("Duplicate books");
