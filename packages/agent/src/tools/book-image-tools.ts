@@ -1,6 +1,6 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { validateModelImages, MODEL_IMAGES_MAX_COUNT, MODEL_IMAGES_MAX_BYTES, AppError, normalizeBookImageQuery, normalizeBookImagesQuery, type BookImageQuery, type BookImagesQuery } from "@read-aware/core";
+import { validateModelImages, MODEL_IMAGES_MAX_COUNT, MODEL_IMAGES_MAX_BYTES, AppError, errorCode, normalizeBookImageQuery, normalizeBookImagesQuery, type BookImageQuery, type BookImagesQuery } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import { threadScopeKey, type ThreadScope } from "../thread-scope";
 import type { AgentTurnState } from "./turn-state";
@@ -13,6 +13,16 @@ const imageParameters = Type.Object({ image: Type.Object({ bookId: Type.String({
   confirmSpoiler: confirmSpoilerSchema }, { additionalProperties: false });
 
 export function buildBookImageTools(scope: ThreadScope, deps: RuntimeDeps, state?: AgentTurnState): AgentTool[] {
+  async function withSourceRecovery<T>(bookId: string, read: () => Promise<T>): Promise<T> {
+    try { return await read(); }
+    catch (error) {
+      if (errorCode(error) !== "reader/stale-location") throw error;
+      const args = scope.kind === "book" ? {} : { bookId };
+      throw new AppError("reader/stale-location",
+        `The supplied contentVersion or image descriptor is stale or invented. Do not retry the same arguments. Next call get_navigation_toc with ${JSON.stringify(args)}, then use its returned contentVersion and source sectionIndex in list_book_images. Copy a fresh returned image descriptor to read_book_image. This failure does not mean there are no images. If discovery fails, report that failure instead of repeating this call.`,
+        { cause: error });
+    }
+  }
   function access(bookId: string, raw: unknown) {
     if (scope.kind === "book" && bookId !== scope.bookId) throw new AppError("memory/forbidden",
       "This book context cannot access that image bookId. For the current book, call get_navigation_toc with {} and list_book_images without bookId; use their returned source version and image descriptor. An access error does not mean the book has no images.");
@@ -31,7 +41,7 @@ export function buildBookImageTools(scope: ThreadScope, deps: RuntimeDeps, state
       const { confirmSpoiler, ...input } = params as Omit<BookImagesQuery, "bookId"> & { bookId?: string; confirmSpoiler?: unknown };
       const query = normalizeBookImagesQuery({ ...input, bookId: resolveBookId(scope, input.bookId), limit: 20 });
       const { current, grant, fence } = access(query.bookId, confirmSpoiler);
-      const result = await deps.bookText.listImages({ ...query, ...fence }, signal);
+      const result = await withSourceRecovery(query.bookId, () => deps.bookText.listImages({ ...query, ...fence }, signal));
       signal?.throwIfAborted(); if (state && current && grant) state.spoilerGranted = true;
       return textResult(result);
     },
@@ -43,7 +53,7 @@ export function buildBookImageTools(scope: ThreadScope, deps: RuntimeDeps, state
       signal?.throwIfAborted();
       const { confirmSpoiler, ...input } = params as BookImageQuery & { confirmSpoiler?: unknown };
       const query = normalizeBookImageQuery(input), { current, grant, fence } = access(query.image.bookId, confirmSpoiler);
-      const result = await deps.bookText.openImageResource(threadScopeKey(scope), { ...query, ...fence }, signal);
+      const result = await withSourceRecovery(query.image.bookId, () => deps.bookText.openImageResource(threadScopeKey(scope), { ...query, ...fence }, signal));
       signal?.throwIfAborted(); if (state && current && grant) state.spoilerGranted = true;
       return textResult(result);
     },
@@ -58,7 +68,7 @@ export function buildBookImageTools(scope: ThreadScope, deps: RuntimeDeps, state
       const session = await deps.reader.getSession();
       signal?.throwIfAborted();
       if (session.status !== "ready" || !session.sessionId) throw new AppError("reader/unavailable", "Open the image book first");
-      const result = await deps.reader.openImage({ ...query, ...fence }, signal, { sessionId: session.sessionId, bookId: query.image.bookId });
+      const result = await withSourceRecovery(query.image.bookId, () => deps.reader.openImage({ ...query, ...fence }, signal, { sessionId: session.sessionId!, bookId: query.image.bookId }));
       signal?.throwIfAborted(); if (state && current && grant) state.spoilerGranted = true;
       return textResult(result);
     },
@@ -73,7 +83,7 @@ export function buildBookImageTools(scope: ThreadScope, deps: RuntimeDeps, state
       if (state?.modelSupportsImages === false) throw new AppError("ai/image-unsupported", "Current model does not support image inputs");
       if (!deps.bookText.readImageInput) throw new AppError("library/content-unavailable", "Image model input is unavailable");
       if ((state?.modelImageCount ?? imageCount) >= MODEL_IMAGES_MAX_COUNT) throw new AppError("ai/image-budget-exceeded", "This turn has reached its image input limit");
-      const result = await deps.bookText.readImageInput(threadScopeKey(scope), { ...query, ...fence }, signal);
+      const result = await withSourceRecovery(query.image.bookId, () => deps.bookText.readImageInput!(threadScopeKey(scope), { ...query, ...fence }, signal));
       signal?.throwIfAborted();
       if (result.status !== "ready") return textResult(result);
       const [image] = validateModelImages([result.input]);

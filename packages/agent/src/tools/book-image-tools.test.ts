@@ -2,6 +2,30 @@ import { expect, test } from "bun:test";
 import { createInMemoryDeps } from "../testing/fixtures";
 import { buildBookImageTools } from "./book-image-tools";
 import { createAgentTurnState } from "./turn-state";
+import { AppError } from "@read-aware/core";
+
+test("stale image sources preserve the error code and give the model an executable discovery step", async () => {
+  const { deps } = createInMemoryDeps();
+  const stale = new AppError("reader/stale-location", "Book content revision changed");
+  const fail = async () => { throw stale; };
+  deps.bookText.listImages = fail; deps.bookText.openImageResource = fail;
+  deps.bookText.readImageInput = fail; deps.reader.openImage = fail;
+  const initial = await deps.reader.getSession();
+  deps.reader.getSession = async () => ({ ...initial, status: "ready", sessionId: "s", bookId: "book" });
+  const image = { bookId: "book", contentVersion: "1.0", sectionIndex: 0, index: 0 };
+  for (const scope of [{ kind: "book", bookId: "book" }, { kind: "global", threadId: "global" }] as const) {
+    for (const tool of buildBookImageTools(scope, deps)) {
+      const params = tool.name === "list_book_images" ? { bookId: "book", contentVersion: "1.0", sectionIndex: 0 } : { image };
+      await expect(tool.execute("stale", params)).rejects.toMatchObject({ code: "reader/stale-location" });
+      await expect(tool.execute("stale", params)).rejects.toThrow(scope.kind === "book"
+        ? "get_navigation_toc with {}" : 'get_navigation_toc with {"bookId":"book"}');
+    }
+  }
+  const denied = new AppError("memory/forbidden", "Access denied");
+  deps.bookText.listImages = async () => { throw denied; };
+  await expect(buildBookImageTools({ kind: "book", bookId: "book" }, deps)[0]!
+    .execute("denied", { contentVersion: "1.0", sectionIndex: 0 })).rejects.toBe(denied);
+});
 
 test("image discovery/acquisition pass the original fence and bind resources to the actual thread", async () => {
   const { deps } = createInMemoryDeps(), state = createAgentTurnState();
