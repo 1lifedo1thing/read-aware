@@ -10,7 +10,14 @@ export const resolvePDFHref = async (
     pdf: Pick<PDFDocument, 'getDestination' | 'getPageIndex' | 'numPages'>,
     href: string,
 ): Promise<ResolvedNavigation | undefined> => {
-    const parsed: unknown = JSON.parse(href)
+    let parsed: unknown
+    // Public navigation can receive a stale or non-PDF href. Invalid syntax is
+    // an unresolved target; preserve actual PDF provider failures below.
+    try { parsed = JSON.parse(href) }
+    catch (error) {
+        if (error instanceof SyntaxError) return
+        throw error
+    }
     const destination: unknown = typeof parsed === 'string' ? await pdf.getDestination(parsed) : parsed
     if (!Array.isArray(destination)) return
     const ref: unknown = destination[0]

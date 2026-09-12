@@ -1,0 +1,28 @@
+{
+  "implementationBase": "63da60b1",
+  "before": {
+    "actor": "real reading Worker",
+    "href": "missing.xhtml",
+    "error": "JSON Parse error: Unexpected identifier \"missing\""
+  },
+  "after": {
+    "actor": "product reading engine adapter against actual PDF WebView",
+    "after": "epubcfi(/6/8)",
+    "before": "epubcfi(/6/8)",
+    "error": {
+      "code": "reader/target-not-found",
+      "message": "Renderer could not resolve this target"
+    },
+    "visibility": "hidden"
+  },
+  "checks": {
+    "testsPassed": 14,
+    "assertions": 70,
+    "foliateBuild": "strict types; 53 static modules"
+  },
+  "limits": [
+    "Full Worker sequence retries encountered hidden WebView and reader/timeout while actual raster stayed pending; not counted passed.",
+    "Earlier PDF visible text unavailable; separate reopening yielded available pdf-text-layer, 761 characters. Cause of transition not established.",
+    "No engine errors broadly swallowed; only malformed JSON navigation syntax resolves to no target."
+  ]
+}

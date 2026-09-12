@@ -430,3 +430,14 @@ revision从0递增至39；关闭后bookId/location/selection清空。只读角�
 visibleTextState仍为not-visible，未归为可见正文通过。环境变化事件、专门章节/进度事件待验。
 收尾commands/tools/documents均0，localOnly恢复false，两本原有测试书保留。
 详情见[观察记录](./session-environment-observations.json)。
+
+## PDF 导航错误契约定向修复
+
+第十七流程后补测真实reading Worker时，missing.xhtml泄漏JSON解析异常。
+PDF destination解析现在仅把非法JSON输入作为未解析目标，保留PDF服务读取错误。
+14项相关测试/70断言与严格Foliate构建通过。实际PDF WebView上的产品engine adapter
+复验返回reader/target-not-found，前后CFI均epubcfi(/6/8)，没有移动。
+完整Worker流程复验时窗口又hidden，raster/text layer尚pending并返回reader/timeout，
+不将其记为整组导航通过；已请求保持测试窗口可见。之前PDF可见正文不可用，另一次
+重开得到available/pdf-text-layer及761字符，保留两次观察，不据此宣称时序问题已修复。
+见[pdf-navigation-observations.json](./pdf-navigation-observations.json)。
