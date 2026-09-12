@@ -1427,6 +1427,10 @@ export type PluginLibraryDomain = {
       retryEnrichment(bookId: string): Promise<import("@read-aware/core").BookEnrichmentReceipt>;
       /** Conditional record merge with the host's deterministic keeper; not file deletion or undo. */
       mergeDuplicates(input: import("@read-aware/core").BookMergeRequest): Promise<import("@read-aware/core").BookMergeReceipt>;
+      /** Library 1.21: pauses only this request by releasing its lease; other consumers and dispatched I/O may continue. */
+      pauseTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
+      /** Library 1.21: reacquires this paused request using saved checkpoints and the same handle. */
+      resumeTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       /** Cancels only this activation's request; shared work or dispatched writes may continue. */
       cancelTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       importBook(input: {

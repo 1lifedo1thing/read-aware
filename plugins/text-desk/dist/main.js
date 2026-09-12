@@ -1,6 +1,9 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  task_paused: ["Paused", "已暂停", "已暫停", "一時停止中", "Приостановлено", "En pause", "Pausiert", "En pausa"],
+  pauseRequest: ["Pause request", "暂停此请求", "暫停此請求", "リクエストを一時停止", "Приостановить запрос", "Mettre la requête en pause", "Anfrage pausieren", "Pausar solicitud"],
+  resumeRequest: ["Resume request", "恢复此请求", "恢復此請求", "リクエストを再開", "Возобновить запрос", "Reprendre la requête", "Anfrage fortsetzen", "Reanudar solicitud"],
   imageControls: ["Image controls", "图片控制", "圖片控制", "画像操作", "Управление изображением", "Commandes de l'image", "Bildsteuerung", "Controles de imagen"],
   noOpenImage: ["No image viewer open", "尚未打开图片查看器", "尚未開啟圖片檢視器", "画像ビューアは開いていません", "Просмотр изображения не открыт", "Aucune visionneuse ouverte", "Kein Bildbetrachter geöffnet", "No hay un visor de imágenes abierto"],
   zoomIn: ["Zoom in", "放大", "放大", "拡大", "Увеличить", "Agrandir", "Vergrößern", "Acercar"],
@@ -121,7 +124,7 @@ function tr(locale, key) {
 }
 
 // src/task-views.ts
-var active = (task) => task.status === "queued" || task.status === "running";
+var active = (task) => task.status === "queued" || task.status === "running" || task.status === "paused";
 async function requestDetail(ctx, bookId, title, taskId) {
   const task = await ctx.domains.library.queries.books.getTextTask(bookId, taskId);
   return { ...requestSnapshot(ctx, title, task), live: {
@@ -149,7 +152,16 @@ function requestSnapshot(ctx, title, task) {
       view: await requestDetail(ctx, bookId, title, taskId),
       navigation: "replace"
     }) },
-    ...active(task) ? [{ id: "cancel", label: tr(ctx.locale, "cancelRequest"), icon: "stop", run: async () => {
+    ...active(task) ? [{
+      id: task.status === "paused" ? "resume" : "pause",
+      label: tr(ctx.locale, task.status === "paused" ? "resumeRequest" : "pauseRequest"),
+      icon: task.status === "paused" ? "play" : "pause",
+      run: async () => {
+        const commands = ctx.domains.library.commands.books;
+        await (task.status === "paused" ? commands.resumeTextTask : commands.pauseTextTask)(bookId, taskId);
+        return { view: await requestDetail(ctx, bookId, title, taskId), navigation: "replace" };
+      }
+    }, { id: "cancel", label: tr(ctx.locale, "cancelRequest"), icon: "stop", run: async () => {
       await ctx.domains.library.commands.books.cancelTextTask(bookId, taskId);
       return { view: await requestDetail(ctx, bookId, title, taskId), navigation: "replace" };
     } }] : [],

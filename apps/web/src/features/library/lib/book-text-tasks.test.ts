@@ -103,3 +103,40 @@ test("invalid options and disposal during preflight do not launch work", async (
   const start = h.owner.start("book"); h.owner.dispose();
   await expect(start).rejects.toMatchObject({ code: "library/text-cancelled" }); expect(h.work).toHaveLength(0);
 });
+
+test("pause retains the handle, resumes with a new lease, and ignores the old attempt's callbacks", async () => {
+  const h = harness(); const started = await h.owner.start("book", { rebuild: true });
+  const paused = h.owner.pause("book", started.taskId);
+  expect(paused.status).toBe("paused"); expect(h.work[0]!.options.signal!.aborted).toBe(true);
+  expect(h.owner.pause("book", started.taskId)).toEqual(paused);
+  expect(() => h.owner.resume("other", started.taskId)).toThrow();
+  const resumed = h.owner.resume("book", started.taskId);
+  expect(resumed).toMatchObject({ status: "running", taskId: started.taskId });
+  expect(h.work[1]!.options.rebuild).toBe(true); // Initial reset never happened.
+  expect(h.work[1]!.options.signal!.aborted).toBe(false);
+  h.work[0]!.options.progress?.(state("book", "error"));
+  h.work[0]!.result.resolve(state("book", "ready")); await settle();
+  expect(h.owner.get("book", started.taskId)).toEqual(resumed);
+  h.work[1]!.options.onRebuildReset?.();
+  h.owner.pause("book", started.taskId); h.owner.resume("book", started.taskId);
+  expect(h.work[2]!.options.rebuild).toBe(false); // Preserve successful checkpoints.
+  h.work[1]!.result.reject(Error("Old error")); await settle();
+  expect(h.warnings).toHaveLength(0);
+  h.work[2]!.result.resolve(state("book", "ready")); await settle();
+  const completed = h.owner.get("book", started.taskId);
+  expect(completed.status).toBe("completed");
+  expect(h.owner.pause("book", started.taskId)).toEqual(completed);
+  expect(h.owner.resume("book", started.taskId)).toEqual(completed);
+});
+
+test("paused handles still consume the bounded live quota and can be cancelled or retired", async () => {
+  const lifetime = new AbortController(), h = harness(lifetime.signal);
+  for (let i = 0; i < 16; i++) { const task = await h.owner.start("book"); h.owner.pause("book", task.taskId); }
+  await expect(h.owner.start("book")).rejects.toMatchObject({ code: "library/text-task-limit" });
+  const first = h.owner.list("book")[0]!;
+  expect(h.owner.cancel("book", first.taskId).status).toBe("cancelled");
+  expect(h.owner.resume("book", first.taskId).status).toBe("cancelled");
+  await h.owner.start("book");
+  lifetime.abort();
+  expect(() => h.owner.resume("book", first.taskId)).toThrow();
+});

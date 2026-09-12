@@ -20,7 +20,7 @@ export function buildBookTextTaskTools(scope: ThreadScope, deps: RuntimeDeps): A
     },
   }, {
     name: "get_book_text_tasks", label: "Book text requests",
-    description: "Read this Agent's local text preparation requests for a book, or one taskId returned by prepare_book_text. Lists newest first, 10 per page by default (maximum 20); nextOffset is null at the end. Offset pages are snapshots, not stable across new requests or eviction. Returns queued/running/completed/failed/cancelled, revision, source text-state and stable failure code. Does not start work or download. Other plugins' tasks are not exposed. Task handles expire on app restart and old terminal tasks may be evicted; use get_book_text_status for current source availability.",
+    description: "Read this Agent's local text preparation requests for a book, or one taskId returned by prepare_book_text. Lists newest first, 10 per page by default (maximum 20); nextOffset is null at the end. Offset pages are snapshots, not stable across new requests or eviction. Returns queued/running/paused/completed/failed/cancelled, revision, source text-state and stable failure code. Does not start work or download. Other plugins' tasks are not exposed. Task handles expire on app restart and old terminal tasks may be evicted; use get_book_text_status for current source availability.",
     parameters: Type.Object({ bookId: Type.Optional(Type.String()), taskId: Type.Optional(Type.String()),
       offset: Type.Optional(Type.Integer({ minimum: 0 })), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })) }),
     execute: async (_id, params) => {
@@ -43,5 +43,16 @@ export function buildBookTextTaskTools(scope: ThreadScope, deps: RuntimeDeps): A
       const input = params as { bookId?: string; taskId: string };
       return textResult(await tasks.cancel(book(input.bookId), input.taskId));
     },
-  }];
+  }, ...(["pause", "resume"] as const).map(action => ({
+    name: `${action}_book_text_task`, label: `${action === "pause" ? "Pause" : "Resume"} text request`,
+    description: action === "pause"
+      ? "Pause this Agent-owned text request without losing its handle or saved checkpoints. Releases only this request: other readers/plugins may continue the shared extraction and dispatched I/O may drain. Paused is not a claim of globally stopped parsing."
+      : "Resume this Agent-owned paused text request using the same handle and saved checkpoints. A rebuild resets only if its initial reset had not completed before pausing. Terminal/running requests are unchanged; failures stay visible and require an explicit new request.",
+    parameters: Type.Object({ bookId: Type.Optional(Type.String()), taskId: Type.String() }),
+    executionMode: "sequential" as const,
+    execute: async (_id: string, params: unknown) => {
+      const input = params as { bookId?: string; taskId: string };
+      return textResult(await tasks[action](book(input.bookId), input.taskId));
+    },
+  }))];
 }

@@ -17,7 +17,7 @@ export type BookTextTaskSnapshot = {
   bookId: string;
   mode: "prepare" | "rebuild";
   revision: number;
-  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  status: "queued" | "running" | "paused" | "completed" | "failed" | "cancelled";
   createdAt: string;
   updatedAt: string;
   textState: BookTextSnapshot;

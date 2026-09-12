@@ -1,7 +1,7 @@
 import type { BookTextTaskSnapshot, PluginContext, PluginDetailView, PluginFormView, PluginListView, PluginView } from "@read-aware/plugin-types";
 import { tr } from "./strings";
 
-const active = (task: BookTextTaskSnapshot) => task.status === "queued" || task.status === "running";
+const active = (task: BookTextTaskSnapshot) => task.status === "queued" || task.status === "running" || task.status === "paused";
 
 export async function requestDetail(ctx: PluginContext, bookId: string, title: string, taskId: string): Promise<PluginDetailView & Pick<PluginView, "live">> {
   const task = await ctx.domains.library!.queries.books.getTextTask(bookId, taskId);
@@ -34,7 +34,13 @@ function requestSnapshot(ctx: PluginContext, title: string, task: BookTextTaskSn
     { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({
       view: await requestDetail(ctx, bookId, title, taskId), navigation: "replace",
     }) },
-    ...(active(task) ? [{ id: "cancel", label: tr(ctx.locale, "cancelRequest"), icon: "stop", run: async () => {
+    ...(active(task) ? [{ id: task.status === "paused" ? "resume" : "pause",
+      label: tr(ctx.locale, task.status === "paused" ? "resumeRequest" : "pauseRequest"), icon: task.status === "paused" ? "play" : "pause",
+      run: async () => {
+        const commands = ctx.domains.library!.commands!.books;
+        await (task.status === "paused" ? commands.resumeTextTask : commands.pauseTextTask)(bookId, taskId);
+        return { view: await requestDetail(ctx, bookId, title, taskId), navigation: "replace" as const };
+      } }, { id: "cancel", label: tr(ctx.locale, "cancelRequest"), icon: "stop", run: async () => {
       await ctx.domains.library!.commands!.books.cancelTextTask(bookId, taskId);
       return { view: await requestDetail(ctx, bookId, title, taskId), navigation: "replace" as const };
     } }] : []),

@@ -245,3 +245,28 @@ test("legacy, wrong-source and structurally corrupt records are never trusted as
     h.seed(value); expect((await h.repo.snapshot("book")).status).toBe("unprepared"); expect(await h.repo.persisted("book")).toBeNull();
   }
 });
+
+test("resuming a paused rebuild preserves completed sections and rejects the old parser's late result", async () => {
+  const { BookTextTaskOwner } = await import("./book-text-tasks");
+  const h = harness(); await h.repo.prepare("book");
+  const entered = deferred(), oldRead = deferred<string>();
+  let firstReads = 0, secondReads = 0;
+  h.book(makeBook([
+    ...Array.from({ length: 25 }, () => async () => { firstReads++; return prose; }),
+    async () => { if (++secondReads === 1) { entered.resolve(); return oldRead.promise; } return `${prose} Resumed section.`; },
+  ]));
+  const owner = new BookTextTaskOwner(h.repo, () => {});
+  const task = await owner.start("book", { rebuild: true });
+  await entered.promise;
+  expect(owner.pause("book", task.taskId).status).toBe("paused");
+  expect(h.signals.at(-1)!.aborted).toBe(true);
+  owner.resume("book", task.taskId);
+  await h.repo.prepare("book");
+  expect(firstReads).toBe(25); expect(secondReads).toBe(2);
+  expect(owner.get("book", task.taskId).status).toBe("completed");
+  const committed = h.saved();
+  oldRead.resolve("Obsolete content"); await Bun.sleep(0);
+  expect(h.saved()).toEqual(committed);
+  expect(owner.get("book", task.taskId).status).toBe("completed");
+  owner.dispose();
+});

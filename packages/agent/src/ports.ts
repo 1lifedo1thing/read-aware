@@ -346,6 +346,8 @@ export interface BookTextPort {
     start(bookId: Id, options?: import("@read-aware/core").BookTextPrepareOptions): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
     get(bookId: Id, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
     list(bookId: Id): Promise<import("@read-aware/core").BookTextTaskSnapshot[]>;
+    pause(bookId: Id, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
+    resume(bookId: Id, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
     cancel(bookId: Id, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
   };
   getTextState?(bookId: Id): Promise<import("@read-aware/core").BookTextSnapshot>;

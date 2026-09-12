@@ -3,8 +3,8 @@ import type { BookTextRepository } from "./book-text-repository";
 
 type Listener = (state: BookTextTaskSnapshot) => void | Promise<void>;
 type Observer = { send(state: BookTextTaskSnapshot): void; stop(): void };
-type Task = { state: BookTextTaskSnapshot; controller: AbortController; observers: Set<Observer> };
-const active = (state: BookTextTaskSnapshot) => state.status === "queued" || state.status === "running";
+type Task = { state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
+const active = (state: BookTextTaskSnapshot) => state.status === "queued" || state.status === "running" || state.status === "paused";
 const cancelled = () => new AppError("library/text-cancelled", "This text preparation request was cancelled");
 
 /** Per-actor-generation task handles. Each request leases the shared repository work. */
@@ -47,30 +47,53 @@ export class BookTextTaskOwner {
       if (!active(task.state)) { for (const observer of task.observers) observer.stop(); this.tasks.delete(id); }
     }
     const now = new Date().toISOString();
-    const task: Task = { controller: new AbortController(), observers: new Set(), state: {
+    const task: Task = { controller: new AbortController(), rebuildPending: request.rebuild === true, observers: new Set(), state: {
       taskId: crypto.randomUUID(), bookId, mode: request.rebuild ? "rebuild" : "prepare", revision: 0,
       status: "queued", createdAt: now, updatedAt: now, textState: state,
     } };
     this.tasks.set(task.state.taskId, task);
-    void this.run(task, request);
+    void this.run(task);
     return structuredClone(task.state);
   }
 
-  private async run(task: Task, options: BookTextPrepareOptions): Promise<void> {
-    this.publish(task, { status: "running" });
+  private async run(task: Task): Promise<void> {
+    const controller = task.controller;
+    const current = () => task.controller === controller && !controller.signal.aborted && task.state.status === "running";
+    this.publish(task, { status: "running", errorCode: undefined });
     try {
-      const textState = await this.repository.prepare(task.state.bookId, { ...options, signal: task.controller.signal,
-        progress: textState => this.publish(task, { textState }) });
-      this.publish(task, { status: "completed", textState });
+      const textState = await this.repository.prepare(task.state.bookId, {
+        rebuild: task.rebuildPending, signal: controller.signal,
+        onRebuildReset: () => { task.rebuildPending = false; },
+        progress: textState => { if (current()) this.publish(task, { textState }); },
+      });
+      if (current()) this.publish(task, { status: "completed", textState });
     } catch (error) {
-      if (task.controller.signal.aborted || !active(task.state)) return;
+      if (!current()) return;
       this.warn("Book text request failed", error);
-      // A failed query remains a failure code; it must not replace known progress with an empty state.
       let textState = task.state.textState;
       try { textState = await this.repository.snapshot(task.state.bookId); }
       catch (readError) { this.warn("Failed to refresh text state after a request failure", readError); }
-      this.publish(task, { status: "failed", errorCode: errorCode(error) ?? "library/text-extraction-failed", textState });
+      if (current()) this.publish(task, { status: "failed", errorCode: errorCode(error) ?? "library/text-extraction-failed", textState });
     }
+  }
+
+  /** Release only this lease. Other readers can continue; dispatched work may drain. */
+  pause(bookId: string, taskId: string): BookTextTaskSnapshot {
+    const task = this.lookup(bookId, taskId);
+    if (task.state.status === "queued" || task.state.status === "running") {
+      this.publish(task, { status: "paused", errorCode: undefined });
+      task.controller.abort(new AppError("library/text-cancelled", "Text request paused"));
+    }
+    return structuredClone(task.state);
+  }
+
+  resume(bookId: string, taskId: string): BookTextTaskSnapshot {
+    const task = this.lookup(bookId, taskId);
+    if (task.state.status === "paused") {
+      task.controller = new AbortController();
+      void this.run(task);
+    }
+    return structuredClone(task.state);
   }
 
   get(bookId: string, taskId: string): BookTextTaskSnapshot { return structuredClone(this.lookup(bookId, taskId).state); }

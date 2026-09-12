@@ -18,6 +18,8 @@ export type TextPreparationOptions = {
   rebuild?: boolean;
   signal?: AbortSignal;
   progress?(snapshot: BookTextSnapshot): void;
+  /** Internal request checkpoint: reset completed, so a resumed rebuild must not erase new progress. */
+  onRebuildReset?(): void;
 };
 type Job = { version: string; controller: AbortController; snapshot: BookTextSnapshot; promise: Promise<PreparedText>;
   settled: boolean; consumers: Map<symbol, TextPreparationOptions["progress"]> };
@@ -160,7 +162,9 @@ export class BookTextRepository {
       };
       next.promise = (async () => {
         await current();
-        if (options.rebuild) await this.queueWrite(bookId, async () => { await current(); await this.deps.remove(bookId); await current(); });
+        if (options.rebuild) await this.queueWrite(bookId, async () => {
+          await current(); await this.deps.remove(bookId); options.onRebuildReset?.(); await current();
+        });
         const result = await this.deps.content(bookId, version, signal, book => extractBookText(book, {
           bookId, contentVersion: version, prior: options.rebuild ? null : prior, signal,
           yieldToReader: () => this.deps.yieldToReader(signal),

@@ -130,6 +130,8 @@ export type LibraryCommands = {
     prepareText(bookId: string, options?: BookTextPrepareOptions): Promise<BookTextTaskSnapshot>;
     retryEnrichment(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookEnrichmentReceipt>;
     mergeDuplicates(input: import("@read-aware/core").BookMergeRequest, signal?: AbortSignal): Promise<import("@read-aware/core").BookMergeReceipt>;
+    pauseTextTask(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>;
+    resumeTextTask(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>;
     cancelTextTask(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>;
     importBook(input: {
       fileName: string;
@@ -220,6 +222,8 @@ export function createLibraryDomain(origin: EventOrigin, lifetime?: AbortSignal)
       prepareText: (bookId, options) => textTasks.start(bookId, options),
       mergeDuplicates: (input, signal) => mergeDuplicateBooks(input, origin, signal ?? lifetime),
       retryEnrichment: (bookId, signal) => retryBookEnrichment(bookId, origin, signal ?? lifetime),
+      pauseTextTask: async (bookId, taskId) => textTasks.pause(bookId, taskId),
+      resumeTextTask: async (bookId, taskId) => textTasks.resume(bookId, taskId),
       cancelTextTask: async (bookId, taskId) => textTasks.cancel(bookId, taskId),
       importBook: async (input, signal) => {
         const inputSignal = signal && lifetime ? AbortSignal.any([signal, lifetime]) : signal ?? lifetime;

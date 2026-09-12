@@ -47,3 +47,21 @@ test("alternate hosts lacking task preparation do not advertise a fake tool", ()
   const { deps } = createInMemoryDeps(); delete deps.bookText.preparation;
   expect(buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps)).toEqual([]);
 });
+
+test("pause and resume tools preserve the resolved book, exact handle and host failure", async () => {
+  const { deps } = createInMemoryDeps({ chapters: { book: [{ text: "Fixture" }] } });
+  const task = await deps.bookText.preparation!.start("book");
+  const calls: unknown[] = [];
+  deps.bookText.preparation!.pause = async (bookId, taskId) => { calls.push(["pause", bookId, taskId]); return { ...task, status: "paused" }; };
+  deps.bookText.preparation!.resume = async (bookId, taskId) => { calls.push(["resume", bookId, taskId]); return { ...task, status: "running" }; };
+  const tools = buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps);
+  for (const action of ["pause", "resume"] as const) {
+    const tool = tools.find(t => t.name === `${action}_book_text_task`)!;
+    const result = await tool.execute("test", { bookId: "current", taskId: task.taskId });
+    const value = result.content[0]; if (value?.type !== "text") throw Error("Expected text");
+    expect(JSON.parse(value.text).status).toBe(action === "pause" ? "paused" : "running");
+  }
+  expect(calls).toEqual([["pause", "book", task.taskId], ["resume", "book", task.taskId]]);
+  deps.bookText.preparation!.resume = async () => { throw Error("Retired owner"); };
+  await expect(tools.find(t => t.name === "resume_book_text_task")!.execute("test", { taskId: task.taskId })).rejects.toThrow("Retired owner");
+});

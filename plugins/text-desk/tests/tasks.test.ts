@@ -16,6 +16,12 @@ function harness() {
     }, listTextTasks: async () => [structuredClone(task)],
   } }, commands: { books: {
     prepareText: async (bookId: string, options: unknown) => { starts.push({ bookId, options }); return structuredClone(task); },
+    pauseTextTask: async (bookId: string, taskId: string) => {
+      if (fails) throw Error("pause failed"); expect([bookId, taskId]).toEqual(["book", "task"]); task.status = "paused";
+    },
+    resumeTextTask: async (bookId: string, taskId: string) => {
+      if (fails) throw Error("resume failed"); expect([bookId, taskId]).toEqual(["book", "task"]); task.status = "running";
+    },
     cancelTextTask: async (bookId: string, taskId: string) => {
       if (fails) throw Error("cancel failed"); expect(bookId).toBe("book"); cancelled.push(taskId); task.status = "cancelled";
     },
@@ -82,4 +88,20 @@ test("request views publish initial, progress and terminal snapshots; hiding rel
   expect((updates[2].view as PluginDetailView).actions!.some(action => action.id === "cancel")).toBe(false);
   expect(updates.every(update => !("live" in update.view))).toBe(true);
   subscription.dispose(); expect(observer).toBeUndefined(); expect(h.cancelled).toEqual([]);
+});
+
+
+test("Text Desk pauses and resumes the same request and retains cancel while paused", async () => {
+  const h = harness();
+  const running = await requestDetail(h.ctx, "book", "Book", "task");
+  const paused = (await running.actions!.find(a => a.id === "pause")!.run())!.view as PluginDetailView;
+  expect(h.task.status).toBe("paused");
+  expect(paused.actions!.map(a => a.id)).toContain("resume");
+  expect(paused.actions!.map(a => a.id)).toContain("cancel");
+  expect(paused.actions!.map(a => a.id)).not.toContain("pause");
+  const resumed = (await paused.actions!.find(a => a.id === "resume")!.run())!.view as PluginDetailView;
+  expect(h.task.status).toBe("running"); expect(resumed.actions!.map(a => a.id)).toContain("pause");
+  h.fail();
+  await expect(resumed.actions!.find(a => a.id === "pause")!.run()).rejects.toThrow("pause failed");
+  expect(h.task.status).toBe("running");
 });
