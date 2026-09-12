@@ -57,9 +57,13 @@ pub(crate) struct PreflightReport {
 pub(crate) struct PreflightedBackup {
     connection: Connection,
     archive: AuthenticatedBackup,
+    cancelled: Arc<AtomicBool>,
     pub report: PreflightReport,
 }
 impl PreflightedBackup {
+    pub(crate) fn cancellation(&self) -> Arc<AtomicBool> {
+        self.cancelled.clone()
+    }
     pub(crate) fn connection(&self) -> &Connection {
         &self.connection
     }
@@ -147,6 +151,7 @@ pub(crate) fn preflight(
         Ok(PreflightedBackup {
             connection: conn,
             archive,
+            cancelled: control.cancelled.clone(),
             report,
         })
     })();

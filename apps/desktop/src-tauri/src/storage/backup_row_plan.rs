@@ -8,8 +8,17 @@ use std::collections::{BTreeMap, BTreeSet};
 #[path = "backup_row_policy.rs"]
 mod policy;
 pub(crate) use policy::RowPolicy;
+#[path = "backup_row_candidate.rs"]
+mod candidate;
 #[path = "backup_row_choices.rs"]
 mod choices;
+#[path = "backup_row_identity.rs"]
+mod identity;
+#[path = "backup_sql_cancel.rs"]
+mod sql_cancel;
+#[path = "backup_row_structure.rs"]
+mod structure;
+pub(crate) use structure::{RowIssuePage, RowStructureReceipt};
 #[path = "backup_file_plan.rs"]
 mod files;
 #[path = "backup_row_review.rs"]
@@ -217,7 +226,7 @@ pub(super) fn plan(
         source_digest TEXT, target_digest TEXT, source_full_digest TEXT, target_full_digest TEXT, choice TEXT CHECK(choice IN ('source','target')),
         UNIQUE(table_name,row_key)
     ); CREATE INDEX row_matches_page ON row_matches(table_name,entry_id);")?;
-    plan.execute_batch("CREATE TABLE row_decision_state(id INTEGER PRIMARY KEY CHECK(id=1),revision TEXT NOT NULL);")?;
+    plan.execute_batch("CREATE TABLE row_decision_state(id INTEGER PRIMARY KEY CHECK(id=1),revision TEXT NOT NULL); CREATE TABLE row_structure_state(revision TEXT PRIMARY KEY,selected_source_rows INTEGER NOT NULL,issues INTEGER NOT NULL); CREATE TABLE row_structure_issues(id INTEGER PRIMARY KEY,kind TEXT NOT NULL,table_name TEXT NOT NULL,entry_id INTEGER,related_table TEXT);")?;
     plan.execute(
         "INSERT INTO row_decision_state VALUES (1,?1)",
         [uuid::Uuid::new_v4().to_string()],

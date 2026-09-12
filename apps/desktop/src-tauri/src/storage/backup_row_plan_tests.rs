@@ -756,3 +756,330 @@ fn backup_row_choices_are_atomic_versioned_drafts_and_never_change_live_data() {
         "source"
     );
 }
+
+#[test]
+fn backup_row_structure_reports_versioned_required_links_without_rejecting_soft_provenance() {
+    use super::choices::{RowChoice, RowChoiceEdit, RowChoiceRequest};
+    let root = tempfile::tempdir().unwrap();
+    let stage = tempfile::tempdir().unwrap();
+    let mut target = db(&root.path().join("db"));
+    target.execute_batch("INSERT INTO entity_redirects VALUES ('b','c','now','event'); INSERT INTO book_aliases VALUES ('b','c');").unwrap();
+    let source = incoming(|conn, _| {
+        conn.execute_batch("INSERT INTO entities VALUES ('entity','person','Name','now','now','event');
+            INSERT INTO entity_aliases VALUES ('entity','Name','now');
+            INSERT INTO context_bundles VALUES ('bundle','user_profile_context','global',NULL,'{}','now','event');
+            INSERT INTO context_bundle_items VALUES ('bundle',0,'memory','gone','rev');
+            INSERT INTO ai_conversations(id,created_at,updated_at) VALUES ('chat','now','now');
+            INSERT INTO ai_messages(id,conversation_id,role,seq,content,created_at) VALUES ('message','chat','user',0,'hello','now');
+            INSERT INTO books(id,title,author,format,file_name,file_size,created_at,updated_at) VALUES ('virtual','Book','Author','virtual','virtual',0,'now','now');
+            INSERT INTO app_kv VALUES ('read-aware-virtual-books','{\"virtual\":{\"pluginId\":\"proof\",\"providerId\":\"feed\",\"key\":\"entry\"}}','now');
+            INSERT INTO entity_redirects VALUES ('a','b','now','event'); INSERT INTO book_aliases VALUES ('a','b');
+            INSERT INTO annotations(id,book_id,type,text,created_at,updated_at) VALUES ('retained','removed-book','note','retained provenance','now','now');").unwrap();
+    });
+    let plan = backup_archive::plan_events_fixture(source, &mut target, stage.path(), || Ok(()))
+        .unwrap()
+        .plan_rows(&mut target, || Ok(()))
+        .unwrap();
+    let initial = plan.row_decisions(|| Ok(())).unwrap().revision;
+    assert_eq!(
+        plan.check_rows(initial.clone(), || Ok(()))
+            .err()
+            .unwrap()
+            .code,
+        "backup/incomplete"
+    );
+    let source_tables = [
+        "entity_aliases",
+        "context_bundle_items",
+        "ai_messages",
+        "books",
+        "entity_redirects",
+        "book_aliases",
+        "annotations",
+    ];
+    let edits: Vec<_> = plan
+        .tables
+        .keys()
+        .flat_map(|table| {
+            plan.page(table, 0, 100)
+                .unwrap()
+                .entries
+                .into_iter()
+                .filter(|r| r.selectable)
+                .map(|r| RowChoiceEdit {
+                    table: table.clone(),
+                    entry_id: r.entry_id,
+                    choice: if source_tables.contains(&table.as_str()) {
+                        RowChoice::Source
+                    } else {
+                        RowChoice::Target
+                    },
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let revision = plan
+        .choose_rows(
+            RowChoiceRequest {
+                expected_revision: initial,
+                edits,
+            },
+            || Ok(()),
+        )
+        .unwrap()
+        .revision;
+    let private = plan.events.directory.path();
+    let candidate_exists = || {
+        std::fs::read_dir(private).unwrap().any(|e| {
+            e.unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with("row-candidate-")
+        })
+    };
+    assert_eq!(
+        plan.check_rows(revision.clone(), || if candidate_exists() {
+            Err(CommandError::new(
+                "backup/cancelled",
+                "cancel candidate copy",
+            ))
+        } else {
+            Ok(())
+        })
+        .err()
+        .unwrap()
+        .code,
+        "backup/cancelled"
+    );
+    assert!(!candidate_exists());
+    assert!(plan.row_issues(revision.clone(), 0, 10, || Ok(())).is_err());
+    let report = plan.check_rows(revision.clone(), || Ok(())).unwrap();
+    assert!(!report.constraints_passed);
+    assert_eq!(report.issues, 6);
+    assert!(!candidate_exists());
+    let first =
+        serde_json::to_value(plan.row_issues(revision.clone(), 0, 2, || Ok(())).unwrap()).unwrap();
+    assert_eq!(first["entries"].as_array().unwrap().len(), 2);
+    assert_eq!(first["nextAfter"], 2);
+    let second = serde_json::to_value(
+        plan.row_issues(revision.clone(), 2, 100, || Ok(()))
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(second["entries"].as_array().unwrap().len(), 4);
+    assert!(second["nextAfter"].is_null());
+    assert!(first["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .chain(second["entries"].as_array().unwrap())
+        .all(|e| e["entryId"].is_number()));
+    assert!(!first.to_string().contains("hello"));
+    let mut checks = 0;
+    assert_eq!(
+        plan.check_rows(revision.clone(), || {
+            checks += 1;
+            Ok(())
+        })
+        .unwrap()
+        .issues,
+        6
+    );
+    assert_eq!(checks, 1); // Same-revision evidence reuses the completed cache.
+    let mut edits = Vec::new();
+    for table in [
+        "entities",
+        "context_bundles",
+        "ai_conversations",
+        "app_kv",
+        "entity_redirects",
+        "book_aliases",
+    ] {
+        for row in plan
+            .page(table, 0, 100)
+            .unwrap()
+            .entries
+            .into_iter()
+            .filter(|r| r.selectable)
+        {
+            edits.push(RowChoiceEdit {
+                table: table.into(),
+                entry_id: row.entry_id,
+                choice: if ["entity_redirects", "book_aliases"].contains(&table) {
+                    RowChoice::Target
+                } else {
+                    RowChoice::Source
+                },
+            });
+        }
+    }
+    let next = plan
+        .choose_rows(
+            RowChoiceRequest {
+                expected_revision: revision.clone(),
+                edits,
+            },
+            || Ok(()),
+        )
+        .unwrap()
+        .revision;
+    assert_eq!(
+        plan.row_issues(revision, 0, 100, || Ok(()))
+            .err()
+            .unwrap()
+            .code,
+        "backup/changed"
+    );
+    assert!(plan.row_issues(next.clone(), 0, 100, || Ok(())).is_err());
+    let repaired = plan.check_rows(next.clone(), || Ok(())).unwrap();
+    assert!(repaired.constraints_passed);
+    assert_eq!(repaired.issues, 0);
+    assert!(
+        serde_json::to_value(plan.row_issues(next, 0, 100, || Ok(())).unwrap()).unwrap()["entries"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert!(!candidate_exists());
+    assert_eq!(
+        target
+            .query_row("SELECT count(*) FROM ai_messages", [], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        target
+            .query_row(
+                "SELECT keep_id FROM entity_redirects WHERE merged_id='b'",
+                [],
+                |r| r.get::<_, String>(0)
+            )
+            .unwrap(),
+        "c"
+    );
+}
+
+#[test]
+fn backup_row_structure_handles_unique_swaps_and_conflicts_without_running_target_triggers() {
+    use super::choices::{RowChoice, RowChoiceEdit, RowChoiceRequest};
+    let root = tempfile::tempdir().unwrap();
+    let stage = tempfile::tempdir().unwrap();
+    let mut target = db(&root.path().join("db"));
+    for (id, text) in [("a", "A"), ("b", "B"), ("c", "C")] {
+        memory(&target, id, text);
+    }
+    // Additional live constraint demonstrates that an insert may be invalid on
+    // this target even when the independently preflighted source is sound.
+    target.execute_batch("CREATE UNIQUE INDEX proof_unique_content ON memories(content); CREATE TRIGGER proof_no_insert BEFORE INSERT ON memories BEGIN SELECT RAISE(ABORT,'must not run in candidate'); END;").unwrap();
+    let source = incoming(|conn, _| {
+        memory(conn, "a", "B");
+        memory(conn, "b", "A");
+        memory(conn, "d", "C");
+    });
+    let plan = backup_archive::plan_events_fixture(source, &mut target, stage.path(), || Ok(()))
+        .unwrap()
+        .plan_rows(&mut target, || Ok(()))
+        .unwrap();
+    let page = plan.page("memories", 0, 100).unwrap();
+    let new = page
+        .entries
+        .iter()
+        .find(|r| r.kind == RowMatchKind::SourceOnly)
+        .unwrap()
+        .entry_id;
+    let edits = page
+        .entries
+        .into_iter()
+        .filter(|r| r.selectable)
+        .map(|r| RowChoiceEdit {
+            table: "memories".into(),
+            entry_id: r.entry_id,
+            choice: if r.entry_id == new {
+                RowChoice::Target
+            } else {
+                RowChoice::Source
+            },
+        })
+        .collect();
+    let rev = plan
+        .choose_rows(
+            RowChoiceRequest {
+                expected_revision: page.decision_revision,
+                edits,
+            },
+            || Ok(()),
+        )
+        .unwrap()
+        .revision;
+    assert!(
+        plan.check_rows(rev.clone(), || Ok(()))
+            .unwrap()
+            .constraints_passed
+    );
+    let rev = plan
+        .choose_rows(
+            RowChoiceRequest {
+                expected_revision: rev,
+                edits: vec![RowChoiceEdit {
+                    table: "memories".into(),
+                    entry_id: new,
+                    choice: RowChoice::Source,
+                }],
+            },
+            || Ok(()),
+        )
+        .unwrap()
+        .revision;
+    let result = plan.check_rows(rev.clone(), || Ok(())).unwrap();
+    assert!(!result.constraints_passed);
+    assert_eq!(result.issues, 1);
+    let page = serde_json::to_value(plan.row_issues(rev, 0, 100, || Ok(())).unwrap()).unwrap();
+    assert_eq!(page["entries"][0]["kind"], "constraint");
+    assert_eq!(page["entries"][0]["entryId"], new);
+    assert_eq!(
+        target
+            .query_row("SELECT content FROM memories WHERE id='a'", [], |r| r
+                .get::<_, String>(0))
+            .unwrap(),
+        "A"
+    );
+    assert_eq!(
+        target
+            .query_row(
+                "SELECT count(*) FROM sqlite_schema WHERE name='proof_no_insert'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+        1
+    );
+}
+
+#[test]
+fn backup_row_structure_turns_malformed_virtual_bindings_into_record_evidence() {
+    for raw in [
+        "not-json",
+        "[]",
+        r#"{"a":"bad","b":{"pluginId":3,"providerId":"feed","key":"entry"}}"#,
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let stage = tempfile::tempdir().unwrap();
+        let mut target = db(&root.path().join("db"));
+        kv(&target, "read-aware-virtual-books", raw);
+        let source = incoming(|_, _| {});
+        let plan =
+            backup_archive::plan_events_fixture(source, &mut target, stage.path(), || Ok(()))
+                .unwrap()
+                .plan_rows(&mut target, || Ok(()))
+                .unwrap();
+        let rev = plan.row_decisions(|| Ok(())).unwrap().revision;
+        let report = plan.check_rows(rev.clone(), || Ok(())).unwrap();
+        assert_eq!(report.issues, 1);
+        assert!(!report.constraints_passed);
+        let page = serde_json::to_value(plan.row_issues(rev, 0, 100, || Ok(())).unwrap()).unwrap();
+        assert_eq!(page["entries"][0]["kind"], "virtualBinding");
+        assert_eq!(page["entries"][0]["table"], "app_kv");
+        assert!(page["entries"][0]["entryId"].is_number());
+    }
+}

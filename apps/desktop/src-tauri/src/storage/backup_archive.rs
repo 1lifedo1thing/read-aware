@@ -27,6 +27,7 @@ mod event_plan;
 pub(crate) use event_plan::plan_events;
 pub(crate) use event_plan::{
     FileMatchKind, FilePlan, ReviewPage, ReviewQuery, RowChoiceReceipt, RowChoiceRequest,
+    RowStructureReceipt,
 };
 const MAX_FILES: usize = 100_000;
 const MAX_BYTES: u64 = 512 * 1024 * 1024 * 1024;

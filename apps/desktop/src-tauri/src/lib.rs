@@ -1097,6 +1097,7 @@ pub fn run() {
             storage::backup_import::backup_import_cancel,
             storage::backup_import::backup_import_review,
             storage::backup_import::backup_import_choose_rows,
+            storage::backup_import::backup_import_check_rows,
             storage::reading_time_import,
             external_open::external_open_take,
             external_open::external_open_is_current,

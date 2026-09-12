@@ -15,6 +15,7 @@ mod rows;
 mod target_snapshot;
 pub(crate) use rows::{
     FileMatchKind, FilePlan, ReviewPage, ReviewQuery, RowChoiceReceipt, RowChoiceRequest, RowPlan,
+    RowStructureReceipt,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]

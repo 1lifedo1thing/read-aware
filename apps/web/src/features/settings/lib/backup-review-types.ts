@@ -2,7 +2,9 @@ import type { BackupProgramFacts } from "../../plugins/runtime/backup-program-re
 
 export type BackupRowChoiceRequest = { expectedRevision: string; edits: { table: string; entryId: number; choice: "source" | "target" | "clear" }[] };
 export type BackupRowChoiceReceipt = { revision: string; changed: number };
+export type BackupRowStructureReceipt = { revision: string; selectedSourceRows: number; issues: number; constraintsPassed: boolean };
 export type BackupReviewQuery =
+  | { kind: "rowIssues"; expectedRevision: string; after?: number | null; limit: number }
   | { kind: "rowDecisions" }
   | { kind: "events" | "files" | "programs" | "credentials"; after?: string | null; limit: number }
   | { kind: "rows"; table: string; after?: number | null; limit: number }
@@ -30,6 +32,7 @@ export type BackupReviewCell =
   | { type: "blob"; base64: string; byteLength: number; offset: number; nextOffset: number | null };
 export type BackupReviewField = { name: string; primary: number; source: BackupReviewCell | null; target: BackupReviewCell | null };
 export type BackupReviewPage =
+  | (Page<"rowIssues", { id: number; kind: "constraint" | "foreignKey" | "conversation" | "entityRedirect" | "bookAlias" | "virtualBinding"; table: string; entryId: number | null; relatedTable: string | null }, number> & { revision: string })
   | { kind: "rowDecisions"; revision: string; unresolved: number; source: number; target: number }
   | (Page<"rowFields", BackupReviewField, number> & { table: string; entryId: number; policy: BackupRowPolicy; restricted: boolean })
   | { kind: "rowField"; table: string; entryId: number; column: string; side: "source" | "target"; value: BackupReviewCell | null }

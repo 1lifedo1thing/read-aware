@@ -4,6 +4,7 @@ if (process.env.FULL_IMPORT_PROOF === "1") {
   const calls: string[] = [];
   const opening = Promise.withResolvers<void>(), releaseOpen = Promise.withResolvers<void>();
   const planning = Promise.withResolvers<void>(), releasePlan = Promise.withResolvers<void>();
+  const checkingRows = Promise.withResolvers<void>(), releaseCheck = Promise.withResolvers<void>();
   const native = async (command: string, args: any): Promise<unknown> => {
     calls.push(command);
     if (command === "plugin:dialog|open") return "/synthetic/source.age";
@@ -17,6 +18,12 @@ if (process.env.FULL_IMPORT_PROOF === "1") {
       planning.resolve(); await releasePlan.promise;
       return { taskId: args.taskId, newEvents: 0, existingEvents: 0, conflictingEvents: 0, tables: {},
         files: { sourceOnly: 0, targetOnly: 0, same: 0, different: 0, unavailable: 0 }, pluginPrograms: 0 };
+    }
+    if (command === "backup_import_check_rows") {
+      expect(Object.keys(args).sort()).toEqual(["expectedRevision", "taskId"]);
+      expect(args.expectedRevision).toBe("updated-revision");
+      checkingRows.resolve(); await releaseCheck.promise;
+      return { revision: "updated-revision", selectedSourceRows: 1, issues: 0, constraintsPassed: true };
     }
     if (command === "backup_import_choose_rows") {
       expect(Object.keys(args).sort()).toEqual(["request", "taskId"]);
@@ -50,6 +57,12 @@ if (process.env.FULL_IMPORT_PROOF === "1") {
     expect(await review.read({ kind: "programs", limit: 10 })).toEqual({ kind: "programs", entries: [], nextAfter: null });
     expect(calls.filter(command => command === "backup_close_reading_sessions")).toHaveLength(before);
     await expect(review.chooseRows({ expectedRevision: "fixed-revision", edits: [{ table: "memories", entryId: 1, choice: "source" }] })).resolves.toEqual({ revision: "updated-revision", changed: 1 });
+    expect(calls.filter(command => command === "backup_close_reading_sessions")).toHaveLength(before);
+    const checking = review.checkRows("updated-revision");
+    await checkingRows.promise;
+    await localKV.setItemAsync("import-proof", "during-constraint-check");
+    releaseCheck.resolve();
+    await expect(checking).resolves.toMatchObject({ constraintsPassed: true });
     expect(calls.filter(command => command === "backup_close_reading_sessions")).toHaveLength(before);
     await localKV.setItemAsync("import-proof", "during-review");
     await review.dispose();

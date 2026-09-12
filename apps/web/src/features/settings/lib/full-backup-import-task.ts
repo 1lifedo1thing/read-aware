@@ -1,6 +1,6 @@
 import { AppError } from "@read-aware/core";
 import { validBackupPassword } from "./backup-password";
-import type { BackupReviewPage, BackupReviewQuery, BackupRowChoiceRequest, BackupRowChoiceReceipt } from "./backup-review-types";
+import type { BackupReviewPage, BackupReviewQuery, BackupRowChoiceRequest, BackupRowChoiceReceipt, BackupRowStructureReceipt } from "./backup-review-types";
 
 export type FullBackupImportProgress = "decrypting" | "checkingSource" | "comparingEvents" | "comparingRows" | "comparingFiles" | "preparingReview";
 export type BackupSourceSummary = {
@@ -22,6 +22,7 @@ type Dependencies = {
   /** Holds the capture fences only around physical target planning. */
   plan(taskId: string, progress: (update: FullBackupImportProgress) => void, signal?: AbortSignal): Promise<BackupPlanReceipt>;
   read(taskId: string, query: BackupReviewQuery): Promise<BackupReviewPage>;
+  checkRows(taskId: string, expectedRevision: string): Promise<BackupRowStructureReceipt>;
   chooseRows(taskId: string, request: BackupRowChoiceRequest): Promise<BackupRowChoiceReceipt>;
   cancel(taskId: string): Promise<void>;
   warn(message: string, error: unknown): void;
@@ -34,6 +35,8 @@ export type FullBackupReview = {
   read(query: BackupReviewQuery, signal?: AbortSignal): Promise<BackupReviewPage>;
   /** A version-bound draft edit, never an application or approval receipt. */
   chooseRows(request: BackupRowChoiceRequest): Promise<BackupRowChoiceReceipt>;
+  /** Checks row constraints only, not whole-restore readiness. */
+  checkRows(expectedRevision: string): Promise<BackupRowStructureReceipt>;
   dispose(): Promise<void>;
 };
 
@@ -112,8 +115,9 @@ export function createFullBackupImport(deps: Dependencies) {
         if (candidate.edits.length < 1 || candidate.edits.length > 100) return Promise.reject(new AppError("backup/invalid-archive", "Invalid backup row decision batch"));
         return enqueue(() => deps.chooseRows(taskId, candidate));
       };
+      const checkRows = (expectedRevision: string): Promise<BackupRowStructureReceipt> => enqueue(() => deps.checkRows(taskId, expectedRevision));
       retained = true;
-      return { source: sourceSummary, plan: planSummary, get disposed() { return disposed; }, read, chooseRows, dispose };
+      return { source: sourceSummary, plan: planSummary, get disposed() { return disposed; }, read, chooseRows, checkRows, dispose };
     } finally {
       // Cancellation before native admission can initially miss. Wait for
       // physical preparation/planning, then retry cleanup before returning.

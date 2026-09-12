@@ -381,3 +381,13 @@ impl FilePlan {
         self.rows.choose_rows(request, check)
     }
 }
+
+impl FilePlan {
+    pub(crate) fn check_rows(
+        &self,
+        expected_revision: String,
+        check: impl FnMut() -> Result<(), CommandError>,
+    ) -> Result<super::RowStructureReceipt, CommandError> {
+        self.rows.check_rows(expected_revision, check)
+    }
+}

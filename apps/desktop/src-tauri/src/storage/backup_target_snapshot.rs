@@ -12,8 +12,24 @@ pub(super) fn capture(
     check: &mut impl FnMut() -> Result<(), CommandError>,
 ) -> Result<Connection, CommandError> {
     let mut copied = Connection::open(path)?;
+    copy(target, &mut copied, check)?;
+    check()?;
+    copied.query_row("PRAGMA journal_mode=DELETE", [], |row| {
+        row.get::<_, String>(0)
+    })?;
+    drop(copied);
+    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    conn.execute_batch("PRAGMA trusted_schema=OFF; PRAGMA query_only=ON;")?;
+    Ok(conn)
+}
+
+pub(super) fn copy(
+    source: &Connection,
+    copied: &mut Connection,
+    check: &mut impl FnMut() -> Result<(), CommandError>,
+) -> Result<(), CommandError> {
     {
-        let backup = Backup::new(target, &mut copied)?;
+        let backup = Backup::new(source, copied)?;
         loop {
             check()?;
             match backup.step(256)? {
@@ -35,13 +51,7 @@ pub(super) fn capture(
         }
     }
     check()?;
-    copied.query_row("PRAGMA journal_mode=DELETE", [], |row| {
-        row.get::<_, String>(0)
-    })?;
-    drop(copied);
-    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
-    conn.execute_batch("PRAGMA trusted_schema=OFF; PRAGMA query_only=ON;")?;
-    Ok(conn)
+    Ok(())
 }
 
 #[cfg(test)]

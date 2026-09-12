@@ -25,6 +25,7 @@ export const prepareFullBackupImport = createFullBackupImport({
     }, signal), signal), signal),
   // Planning only reads target data, so it uses the read/capture mode. Normal
   // reading facts are closed first; source data is never applied to the target.
+  checkRows: (taskId, expectedRevision) => invoke("backup_import_check_rows", { taskId, expectedRevision }),
   chooseRows: (taskId, request) => invoke("backup_import_choose_rows", { taskId, request }),
   read: (taskId, query) => invoke("backup_import_review", { taskId, query }),
   cancel: taskId => invoke("backup_import_cancel", { taskId }),

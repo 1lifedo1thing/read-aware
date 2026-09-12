@@ -323,3 +323,20 @@ pub async fn backup_import_choose_rows(
     })
     .await
 }
+
+#[tauri::command]
+pub async fn backup_import_check_rows(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    task_id: String,
+    expected_revision: String,
+) -> Result<backup_archive::RowStructureReceipt, CommandError> {
+    let tasks = app.state::<BackupTasks>().inner().clone();
+    let owner = window.label().to_owned();
+    super::blocking("backup_import_check_rows", move || {
+        tasks.with_plan(&owner, &task_id, |plan, lease| {
+            plan.check_rows(expected_revision, || lease.check())
+        })
+    })
+    .await
+}

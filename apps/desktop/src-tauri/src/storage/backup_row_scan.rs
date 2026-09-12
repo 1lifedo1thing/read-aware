@@ -25,7 +25,7 @@ pub(super) fn columns(conn: &Connection, table: &str) -> Result<Vec<Column>, Com
         .collect::<Result<Vec<_>, _>>()?;
     Ok(columns)
 }
-fn key_cell(key: &mut Vec<u8>, value: ValueRef<'_>) -> Result<(), CommandError> {
+pub(super) fn key_cell(key: &mut Vec<u8>, value: ValueRef<'_>) -> Result<(), CommandError> {
     match value {
         ValueRef::Null => {
             return Err(CommandError::new(

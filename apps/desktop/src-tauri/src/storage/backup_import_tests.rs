@@ -429,6 +429,29 @@ fn backup_import_review_pages_are_stable_private_evidence_and_invalid_queries_ke
     .unwrap();
     assert_eq!(state["revision"], saved.revision);
     assert_eq!(state["source"], 1);
+    assert!(tasks
+        .with_plan("foreign", &id, |plan, lease| plan
+            .check_rows(saved.revision.clone(), || lease.check()))
+        .is_err());
+    assert_eq!(
+        tasks
+            .with_plan("main", &id, |plan, lease| plan
+                .check_rows("stale".into(), || lease.check()))
+            .err()
+            .unwrap()
+            .code,
+        "backup/changed"
+    );
+    let structure = tasks
+        .with_plan("main", &id, |plan, lease| {
+            plan.check_rows(saved.revision.clone(), || lease.check())
+        })
+        .unwrap();
+    assert!(structure.constraints_passed);
+    let problems = serde_json::to_value(read(serde_json::from_value(serde_json::json!({"kind":"rowIssues","expectedRevision":saved.revision,"limit":100})).unwrap()).unwrap()).unwrap();
+    assert_eq!(problems["kind"], "rowIssues");
+    assert_eq!(problems["entries"], serde_json::json!([]));
+
     assert_eq!(
         conn.query_row(
             "SELECT count(*) FROM app_kv WHERE key='restorable'",
@@ -510,6 +533,15 @@ fn backup_import_review_pages_are_stable_private_evidence_and_invalid_queries_ke
         .is_err());
     let cancelled_read = tasks.with_plan("main", &id, |plan, lease| {
         tasks.cancel("main", Some(&id))?;
+        // The retained source shares the native owner cancellation flag, even
+        // when the observer itself does not check the lease.
+        assert_eq!(
+            plan.check_rows(saved.revision.clone(), || Ok(()))
+                .err()
+                .unwrap()
+                .code,
+            "backup/cancelled"
+        );
         assert!(tasks
             .begin("main", &uuid::Uuid::new_v4().to_string())
             .is_err());
