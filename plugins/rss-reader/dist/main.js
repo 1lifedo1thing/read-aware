@@ -4202,6 +4202,7 @@ function registerAgentTools(ctx) {
       return (await loadFeeds(ctx)).map((feed) => ({
         title: feed.title,
         url: feed.url,
+        subscriptionLink: `readaware://plugin/rss-reader/subscribe?url=${encodeURIComponent(feed.url)}`,
         bookId: feed.bookId,
         lastFetched: feed.lastFetched,
         removalPending: !!feed.removalId,
@@ -4238,6 +4239,7 @@ function registerAgentTools(ctx) {
         subscribed: true,
         title: feed.title,
         url: feed.url,
+        subscriptionLink: `readaware://plugin/rss-reader/subscribe?url=${encodeURIComponent(feed.url)}`,
         bookId: feed.bookId,
         articles: feed.articles.length
       };
@@ -4265,6 +4267,7 @@ function registerAgentTools(ctx) {
       return {
         title: feed.title,
         url: feed.url,
+        subscriptionLink: `readaware://plugin/rss-reader/subscribe?url=${encodeURIComponent(feed.url)}`,
         lastFetched: feed.lastFetched,
         removalPending: !!feed.removalId,
         articles: feed.articles.map((article) => ({
@@ -4917,7 +4920,7 @@ function formatWhen(ctx, iso, style) {
     return iso.slice(0, 10);
   }
 }
-function addFeedView(ctx) {
+function addFeedView(ctx, initialUrl = "") {
   return {
     kind: "form",
     title: tr(ctx.locale, "addFeed"),
@@ -4925,6 +4928,7 @@ function addFeedView(ctx) {
       {
         kind: "text",
         id: "url",
+        value: initialUrl,
         label: tr(ctx.locale, "feedUrlLabel"),
         placeholder: "https://example.com/feed.xml",
         inputMode: "url",
@@ -5161,6 +5165,11 @@ async function rssPageView(ctx) {
 var plugin = {
   async activate(ctx) {
     assertPluginCapabilities(ctx);
+    ctx.contributions.uriHandlers.register({ id: "subscribe", open: (request) => {
+      if (request.parameters.length !== 1 || request.parameters[0]?.key !== "url" || !isHttpFeedUrl(request.parameters[0].value))
+        throw Object.assign(Error("Expected one HTTP feed URL"), { code: "plugin/invalid-input" });
+      return { view: addFeedView(ctx, request.parameters[0].value) };
+    } });
     ctx.contributions.contentProviders.register({
       id: PROVIDER_ID,
       load: (url) => loadFeedContent(ctx, url)

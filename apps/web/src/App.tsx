@@ -45,6 +45,7 @@ import { CommandPalette } from "./features/command/components/CommandPalette";
 import { FeatureErrorBoundary } from "./components/FeatureErrorBoundary";
 import type { CommandContext } from "./features/command/lib/build-commands";
 import { PluginDialogHost } from "./features/plugins/components/PluginDialogHost";
+import { PluginUriPrompt } from "./features/plugins/components/PluginUriPrompt";
 import { PluginInstallConsentDialog } from "./features/plugins/components/PluginInstallConsentDialog";
 import { PluginPageHost } from "./features/plugins/components/PluginPageHost";
 import { PluginToastBridge } from "./features/plugins/components/PluginToastBridge";
@@ -568,6 +569,7 @@ function App() {
 
       <PluginToastBridge />
       <PluginDialogHost />
+      <PluginUriPrompt />
       <PluginInstallConsentDialog />
     </>
   );

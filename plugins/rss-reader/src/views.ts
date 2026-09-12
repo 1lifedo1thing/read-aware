@@ -42,7 +42,7 @@ function formatWhen(
   }
 }
 
-export function addFeedView(ctx: RssPluginContext): PluginFormView {
+export function addFeedView(ctx: RssPluginContext, initialUrl = ""): PluginFormView {
   return {
     kind: "form",
     title: tr(ctx.locale, "addFeed"),
@@ -50,6 +50,7 @@ export function addFeedView(ctx: RssPluginContext): PluginFormView {
       {
         kind: "text",
         id: "url",
+        value: initialUrl,
         label: tr(ctx.locale, "feedUrlLabel"),
         placeholder: "https://example.com/feed.xml",
         inputMode: "url",

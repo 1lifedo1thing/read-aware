@@ -66,6 +66,7 @@ test("live state exposes failure codes and persisted timestamps, then releases a
 test("compiled subscriptions command exposes schedule controls even with no feeds", async () => {
   const f = fixture(); let run!: () => Promise<PluginViewResult>;
   Object.assign(f.ctx, { domains: { library: { commands: {}, events: { subscribe() {} } }, reading: { commands: {} } }, contributions: {
+    uriHandlers: {register() { return {dispose(){}}; }},
     commands: { register: (value: { run: typeof run }) => { run = value.run; } }, headerActions: { register() {} },
     contentProviders: { register() {} }, agentTools: { register() {} },
   } });

@@ -5,12 +5,20 @@ import { forgetRemovedBook, loadFeedContent } from "./feed-library";
 import { tr } from "./strings";
 import { migrateLegacyFeeds } from "./storage";
 import { assertPluginCapabilities, PROVIDER_ID } from "./types";
-import { rssPageView } from "./views";
+import { addFeedView, rssPageView } from "./views";
+import { isHttpFeedUrl } from "./feed";
 import { REFRESH_SCHEDULE, refreshScheduledFeeds } from "./refresh";
 
 const plugin: PluginModule = {
   async activate(ctx) {
     assertPluginCapabilities(ctx);
+    ctx.contributions.uriHandlers.register({id:"subscribe",open:request=>{
+      if(request.parameters.length!==1||request.parameters[0]?.key!=="url"||!isHttpFeedUrl(request.parameters[0].value))
+        throw Object.assign(Error("Expected one HTTP feed URL"),{code:"plugin/invalid-input"});
+      // External navigation opens a draft only; fetching and durable subscribe
+      // remain in the form's explicit submit handler.
+      return {view:addFeedView(ctx,request.parameters[0].value)};
+    }});
     ctx.contributions.contentProviders.register({
       id: PROVIDER_ID,
       load: url => loadFeedContent(ctx, url),

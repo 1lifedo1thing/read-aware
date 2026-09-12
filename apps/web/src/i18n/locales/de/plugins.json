@@ -1,4 +1,5 @@
 {
+  "uri": {"title": "Link in {{name}} öffnen?", "description": "Erst nach dem Öffnen wird dieser externe Link an das ausgewählte Plugin übergeben.", "unavailable": "Der Plugin-Eintrag ist nicht verfügbar oder wurde geändert. Schließen Sie den Dialog, aktivieren Sie das Plugin und öffnen Sie den Link erneut.", "cancel": "Abbrechen", "open": "Öffnen"},
   "viewer": {
     "imageFailed": "Dieses Bild konnte nicht angezeigt werden.",
     "tree": { "expand": "{{label}} aufklappen", "collapse": "{{label}} zuklappen" },

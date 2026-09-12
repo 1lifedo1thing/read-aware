@@ -1,4 +1,5 @@
 {
+  "uri": {"title": "Ouvrir le lien dans {{name}} ?", "description": "Ce lien externe sera transmis au plugin sélectionné lorsque vous l’ouvrirez.", "unavailable": "Cette entrée du plugin est indisponible ou a changé. Fermez cette invite, activez le plugin et ouvrez à nouveau le lien.", "cancel": "Annuler", "open": "Ouvrir"},
   "viewer": {
     "imageFailed": "Impossible d'afficher cette image.",
     "tree": { "expand": "Développer {{label}}", "collapse": "Réduire {{label}}" },

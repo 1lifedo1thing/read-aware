@@ -2063,7 +2063,20 @@ export type PluginSyncTransport = {
   open(): Promise<PluginSyncTransportSession>;
 };
 
+/** readaware://plugin/<pluginId>/<handlerId>?key=value, delivered only after
+ * host confirmation. Namespaces cannot intercept login/billing/system links.
+ * Link parameters are untrusted input, never authorization or secret grants. */
+export type PluginUriRequest = { parameters: { key: string; value: string }[] };
+export type PluginUriHandler = {
+  id: string;
+  state?: PluginActionState;
+  open(request: PluginUriRequest): PluginViewResult | Promise<PluginViewResult>;
+};
+
 export type PluginContributions = {
+  uriHandlers: {
+    register(handler: PluginUriHandler): PluginActionRegistration;
+  };
   selectionActions: {
     register(action: PluginSelectionAction): PluginActionRegistration;
   };

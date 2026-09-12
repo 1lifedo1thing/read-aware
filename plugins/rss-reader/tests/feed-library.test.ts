@@ -16,6 +16,7 @@ const item = (id: string, body = id) => `<item><guid>${id}</guid><title>${id}</t
 
 function fixture() {
   const tools: PluginToolDefinition[] = [];
+  const uriHandlers: import("@read-aware/plugin-types").PluginUriHandler[] = [];
   const tables = new Map<string, Map<string, unknown>>();
   const table = (name: string) => { let values = tables.get(name); if (!values) { values = new Map(); tables.set(name, values); } return values; };
   const writes = new Map<string, number>();
@@ -90,11 +91,12 @@ function fixture() {
       },
     },
     contributions: {
+      uriHandlers: { register: (handler: import("@read-aware/plugin-types").PluginUriHandler) => { uriHandlers.push(handler);return {dispose(){}}; } },
       contentProviders: { register: (value: { load: typeof provider }) => { provider = value.load; return { dispose() {} }; } },
       headerActions: { register: () => ({ dispose() {} }) }, commands: { register: () => ({ dispose() {} }) }, agentTools: { register: (tool: PluginToolDefinition) => { tools.push(tool); return { dispose() {} }; } },
     },
   } as unknown as RssPluginContext;
-  return { ctx, state, table, tools, provider: () => provider!, scheduled: () => scheduled!() };
+  return { ctx, state, table, tools, uriHandlers, provider: () => provider!, scheduled: () => scheduled!() };
 }
 
 test("registered schedule rejects partial/all feed failures instead of reporting success", async () => {
@@ -412,4 +414,15 @@ test("RSS storage view and Agent query await durable writes and propagate failur
   expect(await tools.find(tool=>tool.name==="storage_policy")!.execute({})).toEqual(policy);
   ctx.services.storage.flush=async()=>{throw Object.assign(Error("Write failed"),{code:"db/locked"});};
   calls.length=0;await expect(storageView(ctx)).rejects.toMatchObject({code:"db/locked"});expect(calls).toEqual([]);
+});
+
+
+test("RSS URI consumer only prefills a draft; invalid or extra inputs never subscribe", async () => {
+  const f=fixture();await plugin.activate(f.ctx);
+  const handler=f.uriHandlers.find(item=>item.id==="subscribe")!;
+  const result=await handler.open({parameters:[{key:"url",value:url}]});
+  expect(result?.view).toMatchObject({kind:"form",fields:[{id:"url",value:url}]});
+  expect(f.state.fetches).toBe(0);expect(f.state.adds).toBe(0);
+  for(const parameters of [[],[{key:"url",value:"file:///private"}],[{key:"url",value:url},{key:"url",value:url}]])
+    expect(()=>handler.open({parameters})).toThrow();
 });

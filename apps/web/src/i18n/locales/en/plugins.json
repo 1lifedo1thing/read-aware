@@ -1,4 +1,5 @@
 {
+  "uri": {"title": "Open link in {{name}}?", "description": "This external link will be handed to the selected plugin after you open it.", "unavailable": "This plugin entry is unavailable or has changed. Close this prompt and open a fresh link after enabling the plugin.", "cancel": "Cancel", "open": "Open"},
   "viewer": {
     "imageFailed": "Could not display this image.",
     "tree": { "expand": "Expand {{label}}", "collapse": "Collapse {{label}}" },

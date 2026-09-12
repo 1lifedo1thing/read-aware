@@ -1,4 +1,6 @@
 import { createPluginStoragePolicy } from "./plugin-storage-policy";
+import { pluginUriRegistry } from "../lib/plugin-uri";
+import { normalizeActionState } from "../lib/plugin-action-state";
 import { assertToolApproval } from "../lib/plugin-tool-approval";
 import { resolvePluginBookCards } from "./plugin-book-cards";
 import { wrapReadingIntent } from "./plugin-reading-intents";
@@ -313,6 +315,13 @@ export function buildPluginContext(
       },
     },
     contributions: {
+      uriHandlers: {
+        register: handler => {
+          if (!handler || typeof handler !== "object" || typeof handler.id !== "string" || !NAMESPACE_KEY.test(handler.id) || typeof handler.open !== "function") throw new AppError("plugin/invalid-input", "Invalid URI handler");
+          const captured={id:handler.id,open:handler.open,...(handler.state===undefined?{}:{state:normalizeActionState(handler.state)})};
+          return trackAction(() => pluginUriRegistry.register({ ...captured, ...brand, key: contributionKey(manifest.id, captured.id) }));
+        },
+      },
       selectionActions: {
         register: (action) =>
           trackAction(() =>

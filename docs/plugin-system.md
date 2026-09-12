@@ -6936,3 +6936,28 @@ as well as current preferences. Plugin contributions retain their own registrati
 identity and updateState guards; host filtering cannot redirect an old plugin
 call to a same-name replacement. Scripted model/port checks are implementation
 evidence; native and autonomous-model acceptance remains pending.
+
+
+### URI handlers 1.0
+
+A plugin registers `contributions.uriHandlers.register({ id, open })` for its own
+`readaware://plugin/<pluginId>/<handlerId>?key=value` route. `open` receives a list
+of key/value pairs and returns the existing PluginViewResult. It is untrusted
+external input, not an authorization ticket. No new OS schemes, auth/billing
+interception or file paths are exposed. Handler IDs are flat ASCII identifiers.
+The existing contribution directory includes URI entry identities.
+
+The host subscribes before reading startup links, waits for plugin initialization
+and shows the exact link and target. Only explicit acceptance calls the captured
+registration. Disposal, replacement or disabled/hidden state rejects stale
+approval. Results use the existing plugin dialog, callback retirement and error
+handling. RSS 0.19 opens a prefilled subscription form; it performs no fetch or
+write until that form is submitted. Its list_feeds tool supplies subscriptionLink.
+
+Inputs are limited to 4096 UTF-16 units, 24 query pairs, 64-character keys and
+2048-unit values. Credentials, ports, fragments, control characters, encoded
+route identifiers and traversal paths are rejected. The in-memory queue holds
+8 links; recent-event deduplication retains at most 32 URLs for five seconds.
+This is neither durable delivery nor exactly-once execution. Full queues drop
+additional links without invoking plugins. OS/Worker/dialog integration remains
+pending concentrated acceptance; these limits are not a system-wide URI sandbox.

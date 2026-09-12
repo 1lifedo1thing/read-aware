@@ -66,6 +66,7 @@ export function registerAgentTools(ctx: RssPluginContext): void {
       return (await loadFeeds(ctx)).map((feed) => ({
         title: feed.title,
         url: feed.url,
+        subscriptionLink: `readaware://plugin/rss-reader/subscribe?url=${encodeURIComponent(feed.url)}`,
         bookId: feed.bookId,
         lastFetched: feed.lastFetched,
         removalPending: !!feed.removalId,
@@ -103,6 +104,7 @@ export function registerAgentTools(ctx: RssPluginContext): void {
         subscribed: true,
         title: feed.title,
         url: feed.url,
+        subscriptionLink: `readaware://plugin/rss-reader/subscribe?url=${encodeURIComponent(feed.url)}`,
         bookId: feed.bookId,
         articles: feed.articles.length,
       };
@@ -131,6 +133,7 @@ export function registerAgentTools(ctx: RssPluginContext): void {
       return {
         title: feed.title,
         url: feed.url,
+        subscriptionLink: `readaware://plugin/rss-reader/subscribe?url=${encodeURIComponent(feed.url)}`,
         lastFetched: feed.lastFetched,
         removalPending: !!feed.removalId,
         articles: feed.articles.map((article) => ({
