@@ -1,0 +1,158 @@
+{
+  "steps": [
+    {
+      "name": "FB2-book-xl-justify",
+      "visibility": "hidden",
+      "native": {
+        "preferences": {
+          "theme": "warm",
+          "fontFamily": "curated:inter",
+          "fontSize": "medium",
+          "fontWeight": "regular",
+          "lineSpacing": "comfortable",
+          "paragraphSpacing": "normal",
+          "pageMargins": "wide",
+          "textAlign": "book",
+          "readingMode": "paginated-double",
+          "fixedLayoutReadingMode": "scroll",
+          "fixedLayoutColor": "theme"
+        },
+        "overrides": {
+          "07ef226e-1ebc-47b6-8dc9-d09109448d22": {
+            "scope": "book",
+            "settings": {
+              "theme": "warm",
+              "fontFamily": "curated:inter",
+              "fontSize": "x-large",
+              "fontWeight": "regular",
+              "lineSpacing": "comfortable",
+              "paragraphSpacing": "normal",
+              "textAlign": "justify",
+              "pageMargins": "wide",
+              "readingMode": "paginated-double",
+              "fixedLayoutReadingMode": "scroll",
+              "fixedLayoutColor": "theme"
+            }
+          }
+        }
+      },
+      "rendered": [
+        {
+          "index": 0,
+          "fontSize": "21px",
+          "textAlign": "justify",
+          "filter": "none",
+          "backgroundColor": "rgb(245, 241, 232)",
+          "canvases": 0
+        }
+      ]
+    },
+    {
+      "name": "FB2-switch-global",
+      "visibility": "hidden",
+      "native": {
+        "preferences": {
+          "theme": "warm",
+          "fontFamily": "curated:inter",
+          "fontSize": "medium",
+          "fontWeight": "regular",
+          "lineSpacing": "comfortable",
+          "paragraphSpacing": "normal",
+          "pageMargins": "wide",
+          "textAlign": "book",
+          "readingMode": "paginated-double",
+          "fixedLayoutReadingMode": "scroll",
+          "fixedLayoutColor": "theme"
+        },
+        "overrides": {
+          "07ef226e-1ebc-47b6-8dc9-d09109448d22": {
+            "scope": "global",
+            "settings": {
+              "theme": "warm",
+              "fontFamily": "curated:inter",
+              "fontSize": "x-large",
+              "fontWeight": "regular",
+              "lineSpacing": "comfortable",
+              "paragraphSpacing": "normal",
+              "textAlign": "justify",
+              "pageMargins": "wide",
+              "readingMode": "paginated-double",
+              "fixedLayoutReadingMode": "scroll",
+              "fixedLayoutColor": "theme"
+            }
+          }
+        }
+      },
+      "rendered": [
+        {
+          "index": 0,
+          "fontSize": "17px",
+          "textAlign": "start",
+          "filter": "none",
+          "backgroundColor": "rgb(245, 241, 232)",
+          "canvases": 0
+        }
+      ]
+    },
+    {
+      "name": "FB2-reactivate-book",
+      "visibility": "hidden",
+      "native": {
+        "preferences": {
+          "theme": "warm",
+          "fontFamily": "curated:inter",
+          "fontSize": "medium",
+          "fontWeight": "regular",
+          "lineSpacing": "comfortable",
+          "paragraphSpacing": "normal",
+          "pageMargins": "wide",
+          "textAlign": "book",
+          "readingMode": "paginated-double",
+          "fixedLayoutReadingMode": "scroll",
+          "fixedLayoutColor": "theme"
+        },
+        "overrides": {
+          "07ef226e-1ebc-47b6-8dc9-d09109448d22": {
+            "scope": "book",
+            "settings": {
+              "theme": "warm",
+              "fontFamily": "curated:inter",
+              "fontSize": "x-large",
+              "fontWeight": "regular",
+              "lineSpacing": "comfortable",
+              "paragraphSpacing": "normal",
+              "textAlign": "justify",
+              "pageMargins": "wide",
+              "readingMode": "paginated-double",
+              "fixedLayoutReadingMode": "scroll",
+              "fixedLayoutColor": "theme"
+            }
+          }
+        }
+      },
+      "rendered": [
+        {
+          "index": 0,
+          "fontSize": "21px",
+          "textAlign": "justify",
+          "filter": "none",
+          "backgroundColor": "rgb(245, 241, 232)",
+          "canvases": 0
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "overridesRestored": true,
+    "preferencesRestored": true
+  },
+  "environment": "macOS debug Tauri :9223; document.visibilityState=hidden",
+  "testedHead": "3b02e97d",
+  "pdf": {
+    "result": "pending",
+    "observed": "Opening reading-paint-probe.pdf; FOLIATE-FXL exists but reading status not ready; appearance UI click rejected reader/unavailable",
+    "unminimize": "visibility remained hidden; focus false",
+    "colorsChanged": false
+  },
+  "boundary": "Actual UI actions, Foliate FB2 document computed styles and native persisted settings; no pixel screenshot, no PDF color proof."
+}

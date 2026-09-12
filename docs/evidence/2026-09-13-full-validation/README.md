@@ -641,3 +641,22 @@ rgb(28,25,23)，computed 背景仍暖色 rgb(245,241,232)，颜色过渡完成/�
 桌面探针类型检查通过；未修改产品代码或重复全量门禁。详情与逐步值见
 [reading-settings-observations.json](./reading-settings-observations.json)。
 仍待验：实际阅读器排版/固定版式颜色、界面重置入口、进程重启及其他平台。
+
+### 第二十五流程续验：实际 FB2 正文与外观作用域
+
+实际打开保留的 FB2，在 Reading appearance 选择 This book、XL、Justified。
+原生覆盖为 active/book，全球仍 medium/book；Foliate 当前 Alpha 文档的 body
+computed 为21px/justify。切回 All books，原生覆盖 scope=global 保留其原设置，
+正文变17px/start；再次 This book 恢复原21px/justify。UI 的停用并记住覆盖已验，
+与 API inherit 删除覆盖不同。这里的 All books 标签指跟随全局，提示语亦如此，
+不是 API all-books 的批量覆盖更新。不能把预览或全局值代替这个实际正文结果。
+
+阅读外观面板没有独立 defaults/inherit 重置按钮，当前 CFG03 矩阵定义的是共享
+Agent/插件命令；因此不再将不存在的按钮无限保留为“待点击”，也不为验收新增入口。
+其他正文样式、固定版式颜色、进程重启和其他平台仍待验。
+
+随后打开原 PDF，当前后台加载未就绪，外观点击被 reader/unavailable 拒绝，
+日志为 Reader panels require a ready reader；unminimize 后 visibility 仍 hidden、
+focus=false。没有修改 PDF 颜色，不重做之前已经有效的 PDF 前台导航证据。
+返回书架并恢复原全局/空覆盖。详见
+[reader-appearance-ui-observations.json](./reader-appearance-ui-observations.json)。
