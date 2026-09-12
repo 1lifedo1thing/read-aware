@@ -62,8 +62,8 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | READ04 | 前后翻页、章节、书首书尾 | F3 | 本机FB2 Worker前后翻页通过；章/首尾/其他格式待验 |
 | READ05 | 按进度/固定版式页索引定位 | F3 | 本机FB2 Worker/Agent按进度及非法值拒绝通过；固定版式待验 |
 | READ06 | 导航历史 back/forward 及可用性 | F3 | 本机FB2 Worker/Jumper历史与启用状态通过；其他格式/跨书待验 |
-| READ07 | 统一当前书/位置/加载/历史快照 | F3 | 本机ready会话/版本/可见正文观察通过；跨书变化待验 |
-| READ08 | 会话开关/章节/进度事件 | F3 | 待验 |
+| READ07 | 统一当前书/位置/加载/历史快照 | F3 | 本机FB2→PDF→关书快照/新会话ID/权限隔离及词典缓存跟随通过；PDF可见正文状态待核，见第十七流程 |
+| READ08 | 会话开关/章节/进度事件 | F3 | 部分通过：真实Worker观察idle→loading→ready、跨书新会话、关闭清空及revision递增；章节/进度专门事件待验，见第十七流程 |
 | READ09 | 阅读沉浸/显示隐藏控制层 | F3 | 本机 Listening Desk 显隐控制层与面板 visible 状态通过；锁屏视觉待验 |
 | READ10 | 目录/注释/外观/聊天面板开关 | F3 | 本机真实插件开关目录通过；其他面板/视觉待验 |
 | READ11 | 阅读面板尺寸/布局与焦点恢复 | F3 | 本机插件设置目录宽度288→340并恢复通过；焦点/视觉待验 |
@@ -262,7 +262,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | CON12 | 新格式/OCR/实时协作/向量/任意编辑与新平台 | F7 | 待验 |
 | MORE01 | 周期调度/启动补跑/失败记录 | F7 | 待验 |
 | MORE02 | 一次性延迟/短周期/空闲任务与自触发防环 | F7 | 待验 |
-| MORE03 | 环境 locale/platform/timezone/在线/ready 快照 | F7 | 待验 |
+| MORE03 | 环境 locale/platform/timezone/在线/ready 快照 | F7 | 部分通过：真实Worker与Agent原生端口一致返回desktop/macos/en/Asia-Singapore/480/online，初始订阅可读；环境变化待验，见第十七流程 |
 | MORE04 | 书籍/集合上下文菜单与 Agent header 插槽 | F7 | 待验 |
 | MORE05 | 贡献的动态 visible/enabled/checked 与自有视图刷新 | F7 | 待验 |
 | MORE06 | 发现/复用类型化提供者与跨插件权限交集 | F7 | 待验 |

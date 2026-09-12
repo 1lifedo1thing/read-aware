@@ -1,0 +1,434 @@
+{
+  "implementation": "ebcd9288",
+  "environment": {
+    "agent": {
+      "content": [
+        {
+          "text": "{\"runtime\":\"desktop\",\"platform\":\"macos\",\"locale\":\"en\",\"timeZone\":\"Asia/Singapore\",\"utcOffsetMinutes\":480,\"networkHint\":\"online\",\"revision\":1}",
+          "type": "text"
+        }
+      ]
+    },
+    "cleanup": {
+      "commands": 0
+    },
+    "worker": {
+      "current": {
+        "locale": "en",
+        "networkHint": "online",
+        "platform": "macos",
+        "revision": 1,
+        "runtime": "desktop",
+        "timeZone": "Asia/Singapore",
+        "utcOffsetMinutes": 480
+      },
+      "hasReading": false,
+      "seen": [
+        {
+          "locale": "en",
+          "networkHint": "online",
+          "platform": "macos",
+          "revision": 1,
+          "runtime": "desktop",
+          "timeZone": "Asia/Singapore",
+          "utcOffsetMinutes": 480
+        }
+      ],
+      "version": "2.0.0"
+    }
+  },
+  "session": {
+    "cleanup": {
+      "commands": 0,
+      "documents": 0,
+      "localOnly": false,
+      "tools": 0
+    },
+    "closed": {
+      "current": {
+        "bookId": null,
+        "change": {
+          "origin": "agent",
+          "reason": "close"
+        },
+        "controls": null,
+        "history": {
+          "canGoBack": true,
+          "canGoForward": false
+        },
+        "location": null,
+        "mode": {
+          "availableModes": [],
+          "cfiRange": null,
+          "label": null,
+          "modeKey": null,
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "unavailable",
+          "unavailableReason": "no-session",
+          "unitId": null,
+          "units": []
+        },
+        "pagination": null,
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "no-session"
+        },
+        "readerDemand": {
+          "active": false,
+          "idleAt": null,
+          "lastActivityAt": null,
+          "reason": null
+        },
+        "revision": 39,
+        "selection": null,
+        "sessionId": null,
+        "sourceRevision": null,
+        "status": "idle",
+        "visibleTextState": {
+          "reason": "not-ready",
+          "source": null,
+          "status": "unavailable",
+          "truncated": false
+        },
+        "visibleTextLength": 0
+      },
+      "dictionary": {
+        "definition": "No current book",
+        "note": "The reader is now looking at the full entry card (pronunciation, every sense with examples, etymology). Do not repeat any of it in prose.",
+        "presented": "boundary-probe"
+      },
+      "empty": {
+        "hasCommands": false,
+        "hasReading": false,
+        "seen": [],
+        "services": [
+          "environment",
+          "observeEnvironment"
+        ]
+      },
+      "hasCommands": false
+    },
+    "fb2": {
+      "current": {
+        "bookId": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+        "change": {
+          "origin": "system",
+          "reason": "reader-demand"
+        },
+        "controls": {
+          "visible": false
+        },
+        "history": {
+          "canGoBack": false,
+          "canGoForward": false
+        },
+        "location": {
+          "bookId": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+          "cfi": "epubcfi(/6/2!/4/2[chapter-0],/2/1:0,/16/1:67)",
+          "contentVersion": "sha256:6a86faa0decfb7f8af78263b715a82b468a2ce0cdbc1072e8057cd0b6b57f108",
+          "fraction": 0.05565098384236178,
+          "href": "0"
+        },
+        "mode": {
+          "availableModes": [
+            {
+              "defaultUnitId": "sentence",
+              "key": "sentence-reader:guided-reading",
+              "label": "Sentence Reader: Read by sentence or paragraph",
+              "units": [
+                {
+                  "id": "sentence",
+                  "label": "By sentence"
+                },
+                {
+                  "id": "paragraph",
+                  "label": "By paragraph"
+                }
+              ]
+            }
+          ],
+          "cfiRange": null,
+          "label": "Sentence Reader: Read by sentence or paragraph",
+          "modeKey": "sentence-reader:guided-reading",
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "inactive",
+          "unavailableReason": null,
+          "unitId": "paragraph",
+          "units": [
+            {
+              "id": "sentence",
+              "label": "By sentence"
+            },
+            {
+              "id": "paragraph",
+              "label": "By paragraph"
+            }
+          ]
+        },
+        "pagination": {
+          "flow": "paginated",
+          "layout": "reflowable",
+          "screen": {
+            "count": 6,
+            "index": 0
+          },
+          "section": {
+            "count": 3,
+            "index": 0
+          }
+        },
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "mode-inactive"
+        },
+        "readerDemand": {
+          "active": false,
+          "idleAt": 1789244407662,
+          "lastActivityAt": 1789244406162,
+          "reason": "relocate"
+        },
+        "revision": 21,
+        "selection": null,
+        "sessionId": "4575e9e0-50d9-467c-8ba3-8923f742939e",
+        "sourceRevision": "sha256:6a86faa0decfb7f8af78263b715a82b468a2ce0cdbc1072e8057cd0b6b57f108",
+        "status": "ready",
+        "visibleTextState": {
+          "source": "range",
+          "status": "available",
+          "truncated": false
+        },
+        "visibleTextLength": 1104
+      },
+      "dictionary": {
+        "definition": "Reading Capability Probe",
+        "note": "The reader is now looking at the full entry card (pronunciation, every sense with examples, etymology). Do not repeat any of it in prose.",
+        "presented": "boundary-probe"
+      },
+      "empty": {
+        "hasCommands": false,
+        "hasReading": false,
+        "seen": [],
+        "services": [
+          "environment",
+          "observeEnvironment"
+        ]
+      },
+      "hasCommands": false
+    },
+    "initial": {
+      "current": {
+        "bookId": null,
+        "change": {
+          "origin": "system",
+          "reason": "initial"
+        },
+        "controls": null,
+        "history": {
+          "canGoBack": false,
+          "canGoForward": false
+        },
+        "location": null,
+        "mode": {
+          "availableModes": [],
+          "cfiRange": null,
+          "label": null,
+          "modeKey": null,
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "unavailable",
+          "unavailableReason": "no-session",
+          "unitId": null,
+          "units": []
+        },
+        "pagination": null,
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "no-session"
+        },
+        "readerDemand": {
+          "active": false,
+          "idleAt": null,
+          "lastActivityAt": null,
+          "reason": null
+        },
+        "revision": 0,
+        "selection": null,
+        "sessionId": null,
+        "sourceRevision": null,
+        "status": "idle",
+        "visibleTextState": {
+          "reason": "not-ready",
+          "source": null,
+          "status": "unavailable",
+          "truncated": false
+        },
+        "visibleTextLength": 0
+      },
+      "dictionary": {
+        "definition": "No current book",
+        "note": "The reader is now looking at the full entry card (pronunciation, every sense with examples, etymology). Do not repeat any of it in prose.",
+        "presented": "boundary-probe"
+      },
+      "empty": {
+        "hasCommands": false,
+        "hasReading": false,
+        "seen": [],
+        "services": [
+          "environment",
+          "observeEnvironment"
+        ]
+      },
+      "hasCommands": false
+    },
+    "pdf": {
+      "current": {
+        "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "change": {
+          "origin": "system",
+          "reason": "reader-demand"
+        },
+        "controls": {
+          "visible": false
+        },
+        "history": {
+          "canGoBack": true,
+          "canGoForward": false
+        },
+        "location": {
+          "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "cfi": "epubcfi(/6/2)",
+          "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+          "fraction": 0.25
+        },
+        "mode": {
+          "availableModes": [
+            {
+              "defaultUnitId": "sentence",
+              "key": "sentence-reader:guided-reading",
+              "label": "Sentence Reader: Read by sentence or paragraph",
+              "units": [
+                {
+                  "id": "sentence",
+                  "label": "By sentence"
+                },
+                {
+                  "id": "paragraph",
+                  "label": "By paragraph"
+                }
+              ]
+            }
+          ],
+          "cfiRange": null,
+          "label": "Sentence Reader: Read by sentence or paragraph",
+          "modeKey": "sentence-reader:guided-reading",
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "unavailable",
+          "unavailableReason": "unsupported-format",
+          "unitId": "paragraph",
+          "units": [
+            {
+              "id": "sentence",
+              "label": "By sentence"
+            },
+            {
+              "id": "paragraph",
+              "label": "By paragraph"
+            }
+          ]
+        },
+        "pagination": {
+          "flow": "scrolled",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 4,
+            "index": 0
+          }
+        },
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "mode-inactive"
+        },
+        "readerDemand": {
+          "active": false,
+          "idleAt": 1789244421651,
+          "lastActivityAt": 1789244420151,
+          "reason": "render"
+        },
+        "revision": 38,
+        "selection": null,
+        "sessionId": "5f148cd4-85b4-463c-ad59-9874a97a74ae",
+        "sourceRevision": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+        "status": "ready",
+        "visibleTextState": {
+          "reason": "not-visible",
+          "source": null,
+          "status": "unavailable",
+          "truncated": false
+        },
+        "visibleTextLength": 0
+      },
+      "dictionary": {
+        "definition": "Reading Paint Probe",
+        "note": "The reader is now looking at the full entry card (pronunciation, every sense with examples, etymology). Do not repeat any of it in prose.",
+        "presented": "boundary-probe"
+      },
+      "empty": {
+        "hasCommands": false,
+        "hasReading": false,
+        "seen": [],
+        "services": [
+          "environment",
+          "observeEnvironment"
+        ]
+      },
+      "hasCommands": false
+    },
+    "prepared": {
+      "books": [
+        {
+          "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+          "title": "Reading Capability Probe"
+        },
+        {
+          "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "title": "Reading Paint Probe"
+        }
+      ],
+      "legacyRejected": true,
+      "path": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e"
+    }
+  },
+  "limits": [
+    "Dictionary results are seeded cache hits under temporary localOnly=true; no remote lookup evidence.",
+    "FB2/PDF screenshots visually inspected; PDF visibleTextState remained unavailable/not-visible and is not marked passed.",
+    "Only current environment snapshot observed; locale/timezone/network transitions not tested."
+  ],
+  "screenshots": [
+    "session-fb2.png",
+    "session-pdf.png"
+  ]
+}

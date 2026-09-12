@@ -416,3 +416,17 @@ Qwen3 VL 30B实际可调用：Agent第一次连续10次传错bookId被拒后错�
 两条带validation标记的记忆、画像、合并身份和三版归档保留在独立backup验收实例，
 不称该实例已清空；正式资料与原capability-e2e资料未动。
 详情见[原始观察](./identity-context-observations.json)。
+
+## 第十七个桌面流程：会话隔离与环境快照
+
+真实 Worker 与 Agent 原生端口的环境快照一致：desktop/macos/en、Asia/Singapore、
+UTC+480分钟、online，session服务2.0；没有读取权限的 Worker 不获得 reading 入口。
+旧 session1.0 声明被拒。实际FB2→PDF→关闭流程中，读角色观察 loading/ready、不同sessionId，
+revision从0递增至39；关闭后bookId/location/selection清空。只读角色没有commands。
+编译Dictionary插件在临时localOnly下分别命中“无当前书/FB2/PDF/无当前书”四个预置缓存结果。
+这证明上下文隔离和缓存键跟随，不证明远端词典质量或卡片实际展示。
+
+两格式画面已实际查看：[FB2](./session-fb2.png)、[PDF](./session-pdf.png)。PDF快照中
+visibleTextState仍为not-visible，未归为可见正文通过。环境变化事件、专门章节/进度事件待验。
+收尾commands/tools/documents均0，localOnly恢复false，两本原有测试书保留。
+详情见[观察记录](./session-environment-observations.json)。
