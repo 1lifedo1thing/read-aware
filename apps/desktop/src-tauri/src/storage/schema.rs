@@ -775,6 +775,10 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
     (42, "restored_credential_publications", include_str!("restored_credentials_v42.sql")),
     (43, "annotation_source_range", "ALTER TABLE annotations ADD COLUMN range_json TEXT;"),
     (44, "digest_content_version", "ALTER TABLE chapter_digests ADD COLUMN content_version TEXT;"),
+    (45, "interrupted_import_cleanup", "CREATE TABLE book_import_cleanup (book_id TEXT PRIMARY KEY, owner TEXT NOT NULL);
+        CREATE TRIGGER trg_import_cleanup_committed AFTER INSERT ON books BEGIN
+            DELETE FROM book_import_cleanup WHERE book_id=new.id;
+        END;"),
 ];
 
 /// Rebuild the annotation FTS index from the table. Required after any VACUUM
@@ -793,7 +797,7 @@ pub(crate) fn rebuild_annotations_fts(conn: &Connection) -> Result<(), CommandEr
 /// The schema version a projection checkpoint is stamped with. Restoring one
 /// is only sound when the derived tables' shapes match exactly, so a
 /// checkpoint from a different version is ignored in favour of the log.
-pub(crate) const SCHEMA_VERSION: i64 = 44;
+pub(crate) const SCHEMA_VERSION: i64 = 45;
 
 /// The migration after which `materialize_legacy_covers` must run: the cover
 /// projection columns exist, the inline data-URL column still does.

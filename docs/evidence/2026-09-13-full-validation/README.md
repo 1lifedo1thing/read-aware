@@ -1012,3 +1012,32 @@ cleanup failed，外层Plugin shutdown failed。原因是生命周期只认识�
 第38流程启动中断另有明确残留：开发页重载后，一个661字节暂存bookfile仍存在，
 对应书未提交。已通过宿主blob接口清理该精确自有key并重读null；不能将手动清理
 记为自动恢复通过。导入中重载的暂存恢复保留独立缺口，尚无packaged崩溃结论。
+
+## 第三十九流程：导入暂存意图、失败回收与真实进程恢复
+
+第38流程发现的空书目暂存文件确实缺少恢复依据。schema45新增设备本地导入意图，
+前端在第一个blob写入前经library_begin_import登记；book.imported的书目投影插入
+在同一SQLite事务清除意图。finally经library_finish_import清理失败/重复导入；
+清理失败保留原业务错误并记录日志，意图留待恢复，不覆盖已提交书籍。
+
+原生每进程生成owner，启动完成事件恢复后按100项分页处理旧owner，跳过本进程
+正在写入的导入。现存书、合并别名和陈旧投影沿用删除保护；精确登记的bookfile/
+cover及其未注册文件/.tmp可重试释放。不扫描或认领历史未知孤立文件。意图不随
+备份漫游到其他设备，备份行策略检查覆盖新增表。单实例应用边界沿用现有机制。
+
+实际debug Tauri正常导入一本FB2，另通过真实begin/blob/stage走到暂存成功但故意
+不提交书目事件：678字节、无书目、一条意图。实际重载WebView后局部JS状态消失，
+意图保持；正常关闭原生PID91126并确认退出，重新启动同一隔离实例PID92218。
+原生意图归零、未提交文件不存在/registry storage_uri=null；已提交书的SHA256不变，
+重新抽取目录及正文成功。随后改文件名重复导入返回同ID，无新增书/意图。
+
+再用仅匹配一个合成书名的临时SQLite触发器拒绝提交，真实前端导入返回db/error，
+finally释放对应暂存文件、意图归零，原书保持。触发器在finally删除；最终自有书
+删除committed/files released，恢复原两书。前端12项、原生恢复4项、备份全表策略
+1项及desktop类型通过；未重复全量门禁。
+
+证据：[import-recovery-observations.json](./import-recovery-observations.json)。
+页面重载后在下一次原生进程启动回收，不宣称立即回收或已提交用户书籍丢失恢复。
+中途复制/未注册.tmp由原生故障测试覆盖，未做任意断电证明；release、其他平台仍
+待验。primary目前schema45/新二进制；backup隔离实例仍是旧原生进程，使用新导入
+命令前需重启更新；release包也尚未包含第38/39流程修复。

@@ -840,6 +840,7 @@ pub fn run() {
             })?;
             app.manage(storage::Db(Mutex::new(conn)));
             app.manage(storage::DataDir(data_dir));
+            app.manage(storage::ImportSession::default());
 
             // A previous session may have died between staging pulled events
             // and the finishing replay (see `stage_remote_events`) — the
@@ -869,6 +870,9 @@ pub fn run() {
                     let cleanup = storage::recover_book_removal_cleanup(&db, &data_dir.0);
                     if let Err(error) = cleanup {
                         log::warn!("book removal recovery deferred: {error}");
+                    }
+                    if let Err(error) = storage::recover_import_cleanup(&db, &data_dir.0, &handle.state::<storage::ImportSession>().0) {
+                        log::warn!("interrupted import recovery deferred: {error}");
                     }
                 });
             }
@@ -946,6 +950,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             import::library_stage_import,
+            storage::library_begin_import,
+            storage::library_finish_import,
             covers::library_put_cover,
             covers::library_cover_backlog,
             storage::append_events,

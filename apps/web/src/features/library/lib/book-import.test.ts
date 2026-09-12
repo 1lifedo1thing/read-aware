@@ -28,6 +28,25 @@ function setup() {
   return { invoke, put, commit, get, book };
 }
 
+test("an import records recovery ownership before bytes and releases it after a failed commit", async () => {
+  const f = setup(), order: string[] = [], failure = new Error("commit failed");
+  f.invoke.mockImplementation(async <T>(command: string) => { order.push(command); return staged as T; });
+  f.put.mockImplementation(async () => { order.push("bytes"); return { sha256: "content-hash", byteSize: 7 }; });
+  f.commit.mockImplementation(async () => { order.push("commit"); throw failure; });
+  await expect(importBook({ kind: "file", file: new File(["content"], "book.txt") }, { t, knownBooks: [] })).rejects.toBe(failure);
+  expect(order).toEqual(["library_begin_import", "bytes", "library_stage_import", "commit", "library_finish_import"]);
+});
+
+test("cleanup failure cannot hide the original import failure and leaves the native intent for recovery", async () => {
+  const f = setup(), failure = new Error("commit failed");
+  f.invoke.mockImplementation(async <T>(command: string) => {
+    if (command === "library_finish_import") throw new Error("file release failed");
+    return staged as T;
+  });
+  f.commit.mockRejectedValue(failure);
+  await expect(importBook(source, { t, knownBooks: [] })).rejects.toBe(failure);
+});
+
 test("resource imports stage natively and use content deduplication even with matching name and size", async () => {
   const { invoke, put, commit, book } = setup();
   const result = await importBook(source, { t, knownBooks: [book], origin: "plugin:fixture" });

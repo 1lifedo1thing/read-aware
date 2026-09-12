@@ -1,0 +1,100 @@
+{
+  "date": "2026-09-13",
+  "baseline": "b3b2097a",
+  "observedBase": "dfda4d0e",
+  "scope": "macOS aarch64 debug Tauri 2.11.2; actual native staging, frontend import, SQLite and process restart",
+  "schemaVersion": 45,
+  "beforePid": 91126,
+  "afterPid": 92218,
+  "abandonedId": "26da05b3-7cff-40ce-9007-bc396b384d5b",
+  "committedId": "f542ea62-e119-44f2-a122-58b349f6bf39",
+  "staging": {
+    "bytes": 678,
+    "bookRow": null,
+    "intentOwner": "6a81d342-a45b-460b-95a1-054c3e89ef4c",
+    "sourceSha256": "6a98b5f191e0c4a7d6a845b88cfcd000d73ad7e9e21ccbca03f98a61dee77402"
+  },
+  "webviewReload": {
+    "localFixtureStateLost": true,
+    "intentPreserved": true,
+    "nativeProcessUnchanged": true
+  },
+  "restart": {
+    "oldPidExited": true,
+    "pendingIntents": 0,
+    "abandonedFileExists": false,
+    "abandonedBlobStorageUri": null,
+    "committedSourceSha256": "905c0e3a96a934bbac3346d0e73c15b6cbfc00778a2dece0d1165ea430da445d",
+    "committedHashUnchanged": true,
+    "chapter": "Recovery chapterA blue notebook remains intact while an unfinished import is reclaimed on restart.",
+    "toc": [
+      {
+        "index": 0,
+        "title": "Recovery chapter",
+        "chars": 98
+      }
+    ]
+  },
+  "duplicate": {
+    "books": 3,
+    "id": "f542ea62-e119-44f2-a122-58b349f6bf39"
+  },
+  "rejectedCommit": {
+    "injection": "Temporary SQLite trigger rejects only exact synthetic title Recovery Rejected Fixture 20260913; removed in finally",
+    "result": {
+      "books": [
+        {
+          "id": "f542ea62-e119-44f2-a122-58b349f6bf39",
+          "title": "Import Recovery eeb8d073-3799-4f74-9e95-82ed58abae1f"
+        },
+        {
+          "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "title": "Reading Paint Probe"
+        },
+        {
+          "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+          "title": "Reading Capability Probe"
+        }
+      ],
+      "code": "db/error",
+      "rejected": true
+    },
+    "fileReleased": true,
+    "pendingIntents": 0
+  },
+  "cleanup": {
+    "remaining": [
+      {
+        "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "title": "Reading Paint Probe"
+      },
+      {
+        "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+        "title": "Reading Capability Probe"
+      }
+    ],
+    "removed": {
+      "bookIds": [
+        "f542ea62-e119-44f2-a122-58b349f6bf39"
+      ],
+      "committed": true,
+      "files": {
+        "status": "released"
+      }
+    }
+  },
+  "checks": {
+    "frontendImport": 12,
+    "nativeRecovery": 4,
+    "backupTablePolicy": 1,
+    "desktopTypecheck": "passed",
+    "nativeCommandExecutionBoundary": 1
+  },
+  "limits": [
+    "Uncommitted native stage intentionally omits frontend event commit; only synthetic content used",
+    "Page reload preserves ownership and cleanup occurs on native process restart, not immediately on reload",
+    "Pre-existing orphan blobs without an import intent are not globally swept",
+    "Partial physical-copy recovery covered by native tests, not forced mid-write OS termination",
+    "Release package, other platforms and arbitrary power-loss combinations remain unverified"
+  ]
+}

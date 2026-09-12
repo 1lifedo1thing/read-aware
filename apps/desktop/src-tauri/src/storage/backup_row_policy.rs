@@ -99,7 +99,8 @@ pub(super) fn table(name: &str) -> Result<RowPolicy, CommandError> {
         | "sync_cursors"
         | "event_sync_state"
         | "blob_sync_state"
-        | "restored_credential_publications" => PreserveDevice,
+        | "restored_credential_publications"
+        | "book_import_cleanup" => PreserveDevice,
         "identity_consolidation_work" | "identity_consolidation_pages" => ReviewRuntimeHistory,
         "identity_consolidation_checkpoint"
         | "context_bundle_source_clock"

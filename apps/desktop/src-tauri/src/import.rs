@@ -1,5 +1,6 @@
-//! The import staging command: everything a picked book needs before the
-//! `book.imported` event can be committed, in ONE native round trip.
+//! Import preparation: hashing, metadata and cover extraction in one native
+//! round trip. The frontend records a durable import intent before writing
+//! bytes; committing `book.imported` clears that intent transactionally.
 //!
 //! Order of operations, chosen so the common cases pay the least:
 //!

@@ -30,7 +30,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | LIB03 | 收藏/取消收藏 | F1 | 本机编译Library Desk收藏/取消收藏、刷新Yes/No及重启保持通过；其他actor待验，见第二十四流程 |
 | LIB04 | 删除单本书 | F1 | 本机Library Desk单书复核前不删，明确删除后记录null/原文件不存在；其他actor/故障待验，见第二十四流程 |
 | LIB05 | 批量删除书籍 | F1 | 本机Agent真实批准UI拒绝保留/批准两书删除，Worker正常批删及恢复后旧清理pending保护通过；文件故障/崩溃待验，见第二十四流程 |
-| LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机FB2 user/Worker选择器、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML原生字节导入与源解析通过；CBR/别名/其他actor待验；第38流程开发页重载留下未提交暂存blob，已手动清理但自动恢复未通过，见第二十一/三十八流程 |
+| LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机FB2 user/Worker选择器、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML原生字节导入与源解析通过；CBR/别名/其他actor待验；第38流程暂存残留已加设备本地意图，真实重载/进程重启回收、已提交书保持/重复导入/提交失败回收通过；release待验，见第二十一/三十九流程 |
 | LIB07 | 识别格式/DRM/损坏文件并报告 | F1 | 部分通过：合成加密MOBI入库后源打开明确book/unsupported-encryption，未冒充可读；损坏文件/UI提示待验，见第二十一流程 |
 | LIB08 | 查询/读取书籍原文件与本地可用性 | F1 | 本机 Library Desk 原文件状态、原生导出字节一致及取消通过；其他格式/actor待验 |
 | LIB09 | 提取/显示封面与封面可用状态 | F1 | 本机 FB2 封面显示/解码、PNG原生保存及插件副本重读通过；其他格式待验 |
