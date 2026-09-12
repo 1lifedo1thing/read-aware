@@ -14,7 +14,8 @@ const imageParameters = Type.Object({ image: Type.Object({ bookId: Type.String({
 
 export function buildBookImageTools(scope: ThreadScope, deps: RuntimeDeps, state?: AgentTurnState): AgentTool[] {
   function access(bookId: string, raw: unknown) {
-    if (scope.kind === "book" && bookId !== scope.bookId) throw new AppError("memory/forbidden", "Images belong to another book");
+    if (scope.kind === "book" && bookId !== scope.bookId) throw new AppError("memory/forbidden",
+      "This book context cannot access that image bookId. For the current book, call get_navigation_toc with {} and list_book_images without bookId; use their returned source version and image descriptor. An access error does not mean the book has no images.");
     const current = scope.kind === "book", grant = spoilerGranted(raw);
     assertSpoilerPermission(grant, state, current);
     return { current, grant, fence: current && state?.spoilerFence && !grant ? { throughChapterIndex: state.spoilerFence.throughChapterIndex } : {} };
@@ -22,7 +23,7 @@ export function buildBookImageTools(scope: ThreadScope, deps: RuntimeDeps, state
   let imageCount = 0, imageBytes = 0;
   return [{
     name: "list_book_images", label: "Book illustrations",
-    description: "List authored image candidates in one versioned book section without navigating or fetching remote URLs; PDF operator inspection may decode embedded objects. Use sectionIndex/contentVersion from get_navigation_toc, not extracted chapter numbering. Returns up to 20 bounded alt labels, source locations and opaque image descriptors; continue with nextOffset. Covers img/SVG, srcset/picture alternatives, authored CSS image URLs and PDF embedded bitmaps. CSS candidates are declarations, not the active viewport/cascade. PDF masks depending on page paint state return unsupported when read. Footnote marker images are excluded. Unsupported is distinct from an empty supported section. Current narrative sections remain behind the reading fence.",
+    description: "List authored image candidates in one versioned book section without navigating or fetching remote URLs; PDF operator inspection may decode embedded objects. First call get_navigation_toc for sectionIndex/contentVersion, not extracted chapter numbering; never invent these values. In a book conversation omit bookId to use the current book. Returns up to 20 bounded alt labels, source locations and opaque image descriptors; continue with nextOffset. Covers img/SVG, srcset/picture alternatives, authored CSS image URLs and PDF embedded bitmaps. CSS candidates are declarations, not the active viewport/cascade. PDF masks depending on page paint state return unsupported when read. Footnote marker images are excluded. Unsupported and access failure are distinct from an empty supported section. Current narrative sections remain behind the reading fence.",
     parameters: Type.Object({ bookId: Type.Optional(Type.String()), contentVersion: Type.String({ minLength: 1, maxLength: 256 }),
       sectionIndex: Type.Integer({ minimum: 0 }), offset: Type.Optional(Type.Integer({ minimum: 0 })), confirmSpoiler: confirmSpoilerSchema }, { additionalProperties: false }),
     execute: async (_id, params, signal) => {
