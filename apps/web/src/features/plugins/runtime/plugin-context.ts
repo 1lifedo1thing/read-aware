@@ -538,12 +538,12 @@ export function buildPluginContext(
         set: async (key, value) => {
           lifecycle.assertActive("services.secrets.set");
           requireSecretKey(key);
-          await setPluginSecret(manifest.id, key, String(value));
+          await lifecycle.storageWrite("services.secrets.set", () => setPluginSecret(manifest.id, key, String(value)));
         },
         remove: async (key) => {
           lifecycle.assertActive("services.secrets.remove");
           requireSecretKey(key);
-          await deletePluginSecret(manifest.id, key);
+          await lifecycle.storageWrite("services.secrets.remove", () => deletePluginSecret(manifest.id, key));
         },
       },
       ui: {

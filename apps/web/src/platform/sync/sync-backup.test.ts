@@ -19,6 +19,7 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
       if (command === "sync_outbox_counts") return { events: 0, blobs: 0 };
       if (command === "local_device_get") return { deviceId: "sync-backup", lastHlcWallMs: null, lastHlcCounter: null };
       if (command === "get_blob") return blobs.get(args.key) ?? new ArrayBuffer(0);
+      if (command === "get_blob_info") return blobs.has(args.key) ? { byteSize: blobs.get(args.key)!.byteLength } : null;
       if (command === "commit_events") { await commitGate; return { appended: args.events.length, applied: args.events.length }; }
       return undefined;
     } },
@@ -31,7 +32,7 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
   const annotations = await import("../../features/annotations/lib/annotation-db");
   const userProfile = await import("../../domain/user-profile");
   const secrets = await import("../secret-store");
-  const { withPluginDataWrites } = await import("../plugin-data-access");
+  const { withPluginDataWrites, withPluginRuntimeDataWrite } = await import("../plugin-data-access");
   const { toBase64 } = await import("../sync-envelope");
   const scheduler = await import("./sync-scheduler");
   const { exportBackup, importBackup } = await import("../../features/settings/lib/backup-io");
@@ -39,6 +40,7 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
   let cycleGate: Promise<void> | undefined, downloadGate: Promise<void> | undefined;
   let cycles = 0;
   let writeJournal = false;
+  let refreshDownloadToken: (() => Promise<void>) | undefined;
   const downloads: string[] = [];
   spyOn(engineModule, "createSyncEngine").mockReturnValue({
     async syncOnce() {
@@ -51,6 +53,7 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
     },
     async fetchBlob(key: string) {
       downloads.push(key); order.push(`fetch:${key}`);
+      await refreshDownloadToken?.();
       await downloadGate;
       blobs.set(key, new TextEncoder().encode("synthetic book").buffer as ArrayBuffer);
       return "fetched";
@@ -66,6 +69,7 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
   await kv.localKV.setItemAsync("read-aware-sync-relay-url", '"http://localhost:8787"');
 
   test("real export waits for the cycle overlay, admits its own missing source download and defers new sync producers", async () => {
+    refreshDownloadToken = () => withPluginRuntimeDataWrite(() => secrets.setPluginSecret("download-token", "refresh", "synthetic"));
     const first = Promise.withResolvers<void>(), source = Promise.withResolvers<void>();
     cycleGate = first.promise; downloadGate = source.promise;
     const reads = [
@@ -79,17 +83,24 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
     let saved = false;
     const backup = exportBackup().then(json => { saved = true; return JSON.parse(json); });
     const laterCycle = scheduler.syncNow(), laterBlob = scheduler.fetchRemoteBlob("later");
+    try {
     await Bun.sleep(0); expect(order).toEqual(["cycle"]); expect(downloads).toEqual([]);
     first.resolve(); cycleGate = undefined; await initial; await Bun.sleep(0);
-    expect(order.indexOf("overlay")).toBeLessThan(order.indexOf("backup-read"));
+    expect(order).toContain("overlay"); expect(order).not.toContain("backup-read");
     expect(cycles).toBe(1); expect(downloads).toHaveLength(1); expect(downloads[0]).toContain("source");
     expect(saved).toBe(false);
     source.resolve(); downloadGate = undefined;
     const result = await backup;
+    expect(order.indexOf("overlay")).toBeLessThan(order.indexOf("backup-read"));
     expect(atob(result.files.source)).toBe("synthetic book");
     await laterCycle; expect(await laterBlob).toEqual({ outcome: "fetched" });
     expect(cycles).toBe(2); expect(downloads).toContain("later");
-    for (const read of reads) read.mockRestore();
+    } finally {
+      first.resolve(); source.resolve(); cycleGate = undefined; downloadGate = undefined;
+      await Promise.allSettled([initial, backup, laterCycle, laterBlob]);
+      refreshDownloadToken = undefined;
+      for (const read of reads) read.mockRestore();
+    }
   });
 
   test("real import retains sync exclusion through its last write and caller cancellation", async () => {

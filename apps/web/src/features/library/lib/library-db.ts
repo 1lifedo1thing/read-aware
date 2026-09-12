@@ -194,13 +194,14 @@ async function fetchBookFile(bookId: string, fetchBlob = fetchRemoteBlob): Promi
   }
 }
 
-export async function getStoredBookBlob(bookId: string, fetchBlob = fetchRemoteBlob): Promise<Blob | null> {
+/** Pass null only for host capture phases that must not download or write. */
+export async function getStoredBookBlob(bookId: string, fetchBlob: typeof fetchRemoteBlob | null = fetchRemoteBlob): Promise<Blob | null> {
   if (!isTauri()) return null;
   let bytes = await getDesktopBlob(bookFileKey(bookId));
   // Not on this device — the new-device bootstrap case: the manifest row came
   // from replaying `book.imported`, the bytes live on the relay. Lazy-fetch
   // decrypts into the local store, so this path runs once per book.
-  if (!bytes && (await fetchBookFile(bookId, fetchBlob)).ok) {
+  if (!bytes && fetchBlob && (await fetchBookFile(bookId, fetchBlob)).ok) {
     bytes = await getDesktopBlob(bookFileKey(bookId));
   }
   return bytes ? new Blob([bytes]) : null;

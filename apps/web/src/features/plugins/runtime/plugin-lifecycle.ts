@@ -5,6 +5,7 @@ import type {
 import { AppError } from "@read-aware/core";
 import { createLogger } from "../../../platform/logger";
 import { withContributionActivation } from "../state/contribution-activation";
+import { withPluginRuntimeDataWrite } from "../../../platform/plugin-data-access";
 
 const log = createLogger("plugin-lifecycle");
 
@@ -198,7 +199,7 @@ export class PluginLifecycleController {
 
   storageWrite<T>(operation: string, write: () => Promise<T>): Promise<T> {
     this.assertStorageWrite(operation);
-    const pending = write();
+    const pending = withPluginRuntimeDataWrite(write);
     this.storageWrites.add(pending);
     void pending.then(() => this.storageWrites.delete(pending), () => this.storageWrites.delete(pending));
     return pending;

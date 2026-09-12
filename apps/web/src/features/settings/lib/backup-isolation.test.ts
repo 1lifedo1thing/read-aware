@@ -7,6 +7,7 @@ import * as profile from "../../../domain/user-profile";
 import { PluginPreferencePublication } from "../../../platform/plugin-preference-publication";
 import { withPluginDataUpdate } from "../../../platform/plugin-data-access";
 import { exportBackup, importBackup } from "./backup-io";
+import type { LibraryBook } from "../../library/lib/library-types";
 const gate = () => Promise.withResolvers<void>();
 const document = JSON.stringify({ kind: "backup", version: 1, books: [], kv: { "read-aware-plugin.backup-proof.settings": "true" } });
 
@@ -57,4 +58,25 @@ test("the merge retains exclusion through later writes and keeps real results af
     writing.resolve(); expect(await result).toMatchObject({ settings: 1 });
     await withPluginDataUpdate("backup-import-owner", async () => {});
   } finally { writing.resolve(); await result; write.mockRestore(); }
+});
+
+test("capture never downloads and rejects a prepared source that disappeared or a new missing book", async () => {
+  let reads = 0;
+  const books = spyOn(library, "listLibraryBooks").mockResolvedValue([{ id: "prepared" } as LibraryBook]);
+  const mocks = [
+    spyOn(kv, "dumpLocalKV").mockResolvedValue({}),
+    books,
+    spyOn(library, "hasLocalBookFile").mockResolvedValue(true),
+    spyOn(library, "getStoredBookBlob").mockResolvedValue(null),
+    spyOn(library, "listCollections").mockResolvedValue([]),
+    spyOn(annotations, "listAnnotations").mockResolvedValue([]),
+    spyOn(profile, "readUserProfileSnapshot").mockResolvedValue({ summary: null, revision: "empty" }),
+  ];
+  try {
+    await expect(exportBackup()).rejects.toMatchObject({ code: "backup/changed" });
+    expect(library.getStoredBookBlob).toHaveBeenLastCalledWith("prepared", null);
+    books.mockImplementation(async () => ++reads === 1 ? [] : [{ id: "new" } as LibraryBook]);
+    await expect(exportBackup()).rejects.toMatchObject({ code: "backup/changed" });
+    expect(library.getStoredBookBlob).toHaveBeenLastCalledWith("new", null);
+  } finally { for (const mock of mocks) mock.mockRestore(); }
 });

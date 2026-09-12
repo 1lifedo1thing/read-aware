@@ -14,9 +14,12 @@ import { dumpLocalKV, restoreLocalKV } from "../../../platform/local-store";
 import { withPluginDataBackup } from "../../../platform/plugin-data-access";
 import { withSyncBackup, type fetchRemoteBlob } from "../../../platform/sync/sync-scheduler";
 import { withReadingBackup } from "../../reader/lib/reading-trace-runtime";
+import { AppError } from "@read-aware/core";
 import { LEGACY_PROFILE_KEY, readUserProfileSnapshot, restoreUserProfile } from "../../../domain/user-profile";
 import {
   getStoredBookBlob,
+  hasLocalBookFile,
+  bookFileKey,
   listCollections,
   listLibraryBooks,
   restoreCollection,
@@ -75,11 +78,27 @@ function settledValue<T>(result: PromiseSettledResult<T>): T {
 
 /** Serialize the v1 backup subset into one portable JSON string. */
 export async function exportBackup(signal?: AbortSignal): Promise<string> {
+  const available = new Map<string, boolean>();
   return withSyncBackup(fetchBlob => withPluginDataBackup("export",
-    () => withReadingBackup(() => exportBackupContents(fetchBlob), signal), signal), signal);
+    () => withReadingBackup(() => exportBackupContents(available), signal), signal,
+    () => prepareBackupFiles(fetchBlob, available, signal)), signal);
 }
 
-async function exportBackupContents(fetchBlob: typeof fetchRemoteBlob): Promise<string> {
+/** Prepare without holding the private-write fence: transports can refresh
+ * tokens. Read metadata only here; source bytes are read once during capture. */
+async function prepareBackupFiles(fetchBlob: typeof fetchRemoteBlob, available: Map<string, boolean>, signal?: AbortSignal): Promise<void> {
+  for (const book of await listLibraryBooks()) {
+    signal?.throwIfAborted();
+    let local = await hasLocalBookFile(book.id);
+    if (!local) {
+      const fetched = await fetchBlob(bookFileKey(book.id));
+      local = fetched.outcome === "fetched";
+    }
+    available.set(book.id, local);
+  }
+}
+
+async function exportBackupContents(available: ReadonlyMap<string, boolean>): Promise<string> {
   // Retain the backup boundary until every dispatched read settles, even when
   // one fails. A rejected export must not release still-running native work.
   const results = await Promise.allSettled([
@@ -103,8 +122,13 @@ async function exportBackupContents(fetchBlob: typeof fetchRemoteBlob): Promise<
 
   const files: Record<string, string> = {};
   for (const book of books) {
-    const blob = await getStoredBookBlob(book.id, fetchBlob);
+    const blob = await getStoredBookBlob(book.id, null);
     if (blob) files[book.id] = bytesToBase64(new Uint8Array(await blob.arrayBuffer()));
+    else if (available.get(book.id) !== false) {
+      // A new or newly missing source needs a fresh preparation pass. Existing
+      // unavailable sources retain v1's documented omission behavior.
+      throw new AppError("backup/changed", "Book source changed after backup preparation");
+    }
   }
 
   const backup: Backup = {

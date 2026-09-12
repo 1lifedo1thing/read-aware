@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { pluginDataRevision, waitForPluginDataUpdates, withPluginDataBackup, withPluginDataUpdate, withPluginDataWrites } from "./plugin-data-access";
+import { pluginDataRevision, waitForPluginDataUpdates, withPluginDataBackup, withPluginDataUpdate, withPluginDataWrites, withPluginRuntimeDataWrite } from "./plugin-data-access";
 import { runPluginUpdateTransaction } from "../features/plugins/runtime/plugin-update-transaction";
 const gate = () => { let resolve!: () => void; return { promise: new Promise<void>(r => { resolve = r; }), release: () => resolve() }; };
 const tick = () => Bun.sleep(0);
@@ -94,4 +94,32 @@ test("cancelled backup admission drains accepted writes but never begins data IO
   saved.release(); await writer;
   expect(await result).toBeInstanceOf(Error); expect(calls).toBe(0);
   await withPluginDataUpdate("backup-cancel", async () => {});
+});
+
+test("source preparation allows token/settings writes while excluding migration, then fences capture", async () => {
+  const events: string[] = [];
+  await withPluginDataBackup("export", async () => {
+    events.push("capture");
+    await expect(withPluginRuntimeDataWrite(async () => {})).rejects.toMatchObject({ code: "backup/busy" });
+    await expect(withPluginDataWrites(["prepare"], async () => {})).rejects.toMatchObject({ code: "plugin/data-busy" });
+  }, undefined, async () => {
+    await withPluginRuntimeDataWrite(async () => { events.push("token"); });
+    await withPluginDataWrites(["prepare"], async () => { events.push("settings"); });
+    await expect(withPluginDataUpdate("prepare", async () => {})).rejects.toMatchObject({ code: "plugin/data-busy" });
+  });
+  expect(events).toEqual(["token", "settings", "capture"]);
+});
+
+test("failed preparation still drains admitted plugin writes before releasing migration exclusion", async () => {
+  const save = gate(); let write: Promise<void> | undefined, finished = false, captured = false;
+  const backup = withPluginDataBackup("export", async () => { captured = true; }, undefined, async () => {
+    write = withPluginRuntimeDataWrite(() => save.promise);
+    throw new Error("preparation failed");
+  }).catch(error => { finished = true; return error; });
+  await tick(); expect(finished).toBe(false);
+  await expect(withPluginDataUpdate("prepare-failed", async () => {})).rejects.toMatchObject({ code: "plugin/data-busy" });
+  await expect(withPluginRuntimeDataWrite(async () => {})).rejects.toMatchObject({ code: "backup/busy" });
+  save.release(); await write;
+  expect((await backup).message).toBe("preparation failed"); expect(captured).toBe(false);
+  await withPluginDataUpdate("prepare-failed", async () => {});
 });
