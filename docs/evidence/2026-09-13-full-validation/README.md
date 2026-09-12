@@ -891,3 +891,30 @@ desktop类型通过。在真实 debug Tauri 导入同一份889字节FB2，第一
 更新的release包构建通过（编译1m20s、app bundle成功），解锁后需正常退出旧
 PID 69794，再启动新包验证画面与重读；
 本轮不重跑全量门禁，不以debug DOM替代该发布包边界。
+
+第三十三流程续验完成：桌面控制恢复后正常退出旧PID69794，启动新包74255，
+实际第二章顶栏/滑条均1/1·100%，高亮/笔记保持。原有位置记录在首次重开时
+仍为旧currentLocation=0；实际前后翻页后原生保存1（没有宣称自动迁移旧记录）。
+再正常退出/启动75173，实际重开仍为同一CFI第二章、1/1·100%。
+聊天输入框实际输入[、空格、]、左右方向及h/u/n，只编辑草稿，未导航或触发
+标注动作，随后清空且未发送。Command+comma打开设置，Reset Open search
+清除临时覆盖，原生bindings={}；Command+K恢复搜索，Escape关闭。
+Command+N打开Agent空白输入并聚焦Message，未发送模型请求、持久会话数0；
+Command+1返回书架。第31/32流程记录的短书显示差异现已定向修复复验。
+
+## 第三十四流程：发布包分句/分段、原生单元快捷键及回当前
+
+沿用同一release、合成FB2和真实bundled Sentence Reader。第一章启动模式，
+准备阶段控制禁用；就绪后1/4强调标题。物理Down到2/4，仅强调第一句话，
+同段第二句和其他正文变淡；Up回1/4。实际打开Paragraph mode，计数变1/3，
+Down到2/3时同时强调第一段两句话和换行，证明实际按段而非只改控件文案。
+
+Right普通翻页到第二章，当前单元计数消失且Read aloud禁用。点击Back to current
+返回第一章保留的2/3段。切回Sentence后2/4，再Exit；工具栏/计时器消失，
+正文恢复正常对比度、临时强调消失。原生navigator状态active=false、resting=null、
+unitId=sentence，插件设置也恢复sentence；最后回第二章并关书到书架。
+
+证据：[packaged-reading-mode-observations.json](./packaged-reading-mode-observations.json)。
+未启动朗读，不声称音频通过；独立follow仍未实现，其他格式/平台和模式位置跨
+进程恢复仍单列。观察到段落模式的返回按钮仍叫Back to current sentence，保留
+文案不一致记录，不把它误记为导航失效。本轮无产品改动，无重复全量门禁。

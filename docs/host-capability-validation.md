@@ -64,14 +64,14 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | READ06 | 导航历史 back/forward 及可用性 | F3 | 本机FB2 Worker/Jumper及PDF Worker前后历史通过；其他格式/跨书待验 |
 | READ07 | 统一当前书/位置/加载/历史快照 | F3 | 本机FB2→PDF→关书快照/新会话ID/权限隔离及词典缓存跟随通过；PDF可见正文状态待核，见第十七流程 |
 | READ08 | 会话开关/章节/进度事件 | F3 | 部分通过：真实Worker观察idle→loading→ready、跨书新会话、关闭清空及revision递增；章节/进度专门事件待验，见第十七流程 |
-| READ09 | 阅读沉浸/显示隐藏控制层 | F3 | 本机 Listening Desk 显隐控制层与面板 visible 状态通过；锁屏视觉待验 |
-| READ10 | 目录/注释/外观/聊天面板开关 | F3 | 本机真实Worker开关目录/聊天/外观通过，可见截图及弹窗DOM核实；注释等待验，见第二十二流程 |
+| READ09 | 阅读沉浸/显示隐藏控制层 | F3 | 本机Listening Desk显隐状态通过；release原生space显示、模式进入/退出实际绘制通过，见第三十一/三十四流程 |
+| READ10 | 目录/注释/外观/聊天面板开关 | F3 | 本机真实Worker开关目录/聊天/外观通过，可见截图及弹窗DOM核实；release原生Notes列表/全文/定位通过；其他组合待验，见第二十二/三十二流程 |
 | READ11 | 阅读面板尺寸/布局与焦点恢复 | F3 | 本机插件宽度设置/恢复已有证据；真实Worker内容/目录/聊天DOM焦点及隐藏/弹窗拒绝、Agent端口通过；窄窗/OS激活等未验，见第二十二流程 |
 | READ12 | 固定版式自动适配；图片缩放/平移/旋转 | F3 | 待验 |
 | READ13 | 读取/建立/清除文本选区 | F3 | 前台已开书/重开选择通过；首次后台打开后选区消失待定位 |
-| READ14 | 临时范围强调/搜索标记及释放 | F3 | 待验 |
-| READ15 | 贡献句子/段落等分段模式 | F3 | 本机 Sentence Reader 按句分段返回实际 CFI，通过；段落/其他格式待验 |
-| READ16 | 启停模式/上下一单元/跟随/回当前 | F3 | 本机启停/前后单元/回当前调用通过；独立follow未实现，视觉待验 |
+| READ14 | 临时范围强调/搜索标记及释放 | F3 | release模式当前句/段强调及退出清除真实绘制通过；公共putEmphasis及搜索标记待验，见第三十四流程 |
+| READ15 | 贡献句子/段落等分段模式 | F3 | 本机Sentence Reader实际CFI通过；release句4单元/段3单元及两句整段强调真实绘制通过；其他格式待验，见第三十四流程 |
+| READ16 | 启停模式/上下一单元/跟随/回当前 | F3 | 本机调用与release真实启停/上下句/下一段/跨章回当前/退出清除强调通过；独立follow未实现，跨进程模式恢复待验，见第三十四流程 |
 | READ17 | 列声音并合成音频的提供者 | F3 | 待验 |
 | READ18 | 开始/停止朗读、播放位置与 fallback 状态 | F3 | 本机插件TTS失败后系统fallback启动/逐句跨章推进/停止状态通过；音质/其他后端待验 |
 | READ19 | 完成页、标记读完/撤销读完 | F3 | 待验 |
@@ -166,16 +166,16 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET56 | shelf.layout | F6 | 本机真实Worker grid→list，命令checked/列表DOM/原生KV一致并恢复；其他入口待验，见第二十三流程 |
 | SET57 | shelf.group | F6 | 本机真实Worker none→author，作者分组DOM/原生KV一致并恢复；其他分组/入口待验，见第二十三流程 |
 | SET58 | shelf.sort | F6 | 本机真实Worker recent→title，列表顺序/原生KV一致并恢复；其他排序/入口待验，见第二十三流程 |
-| SET59 | shortcuts.search | F6 | 插件冲突写未改变mod+k，实际按键打开搜索通过；release自身UI冲突拒绝/重绑及物理按键打开搜索通过；临时键尚待恢复，输入上下文待验，见第二十七/三十三流程 |
-| SET60 | shortcuts.settings | F6 | 待验 |
-| SET61 | shortcuts.new-conversation | F6 | 待验 |
-| SET62 | shortcuts.next-page | F6 | release物理按键Right从第一章到第二章通过；其他格式/输入防误触/重绑待验，见第三十三流程 |
-| SET63 | shortcuts.prev-page | F6 | release物理按键Left从第二章到第一章通过；其他格式/输入防误触/重绑待验，见第三十三流程 |
-| SET64 | shortcuts.next-chapter | F6 | release物理按键]从第一章到第二章通过；其他格式/输入防误触/重绑待验，见第三十三流程 |
-| SET65 | shortcuts.prev-chapter | F6 | release物理按键[从第二章到第一章通过；其他格式/输入防误触/重绑待验，见第三十三流程 |
-| SET66 | shortcuts.toggle-controls | F6 | release物理按键space显示阅读工具栏通过；其他格式/输入防误触/重绑待验，见第三十三流程 |
-| SET67 | shortcuts.reader-mode-next-unit | F6 | 待验 |
-| SET68 | shortcuts.reader-mode-prev-unit | F6 | 待验 |
+| SET59 | shortcuts.search | F6 | 插件冲突写未改变mod+k，实际按键打开搜索通过；release自身UI冲突拒绝/重绑及物理按键打开搜索通过；已实际Reset/原生bindings清空/默认Command+K恢复；其余输入上下文待验，见第二十七/三十三流程 |
+| SET60 | shortcuts.settings | F6 | release原生Command+comma打开设置通过；重绑/其他上下文待验，见第三十三流程 |
+| SET61 | shortcuts.new-conversation | F6 | release原生Command+N打开Agent空白输入并聚焦，未发送模型请求；既有会话/重绑待验，见第三十三流程 |
+| SET62 | shortcuts.next-page | F6 | release物理按键Right从第一章到第二章通过；聊天输入框内对应编辑键不导航通过；其他格式/重绑待验，见第三十三流程 |
+| SET63 | shortcuts.prev-page | F6 | release物理按键Left从第二章到第一章通过；聊天输入框内对应编辑键不导航通过；其他格式/重绑待验，见第三十三流程 |
+| SET64 | shortcuts.next-chapter | F6 | release物理按键]从第一章到第二章通过；聊天输入框内对应编辑键不导航通过；其他格式/重绑待验，见第三十三流程 |
+| SET65 | shortcuts.prev-chapter | F6 | release物理按键[从第二章到第一章通过；聊天输入框内对应编辑键不导航通过；其他格式/重绑待验，见第三十三流程 |
+| SET66 | shortcuts.toggle-controls | F6 | release物理按键space显示阅读工具栏通过；聊天输入框内对应编辑键不导航通过；其他格式/重绑待验，见第三十三流程 |
+| SET67 | shortcuts.reader-mode-next-unit | F6 | release真实Sentence Reader物理Down推进句/段，计数及实际强调一致；其他格式/重绑待验，见第三十四流程 |
+| SET68 | shortcuts.reader-mode-prev-unit | F6 | release真实Sentence Reader物理Up回前句，计数/强调正确；其他格式/重绑待验，见第三十四流程 |
 | SET69 | shortcuts.selection-copy | F6 | 待验 |
 | SET70 | shortcuts.selection-highlight | F6 | 待验 |
 | SET71 | shortcuts.selection-underline | F6 | 待验 |
