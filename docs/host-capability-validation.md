@@ -166,14 +166,14 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET56 | shelf.layout | F6 | 本机真实Worker grid→list，命令checked/列表DOM/原生KV一致并恢复；其他入口待验，见第二十三流程 |
 | SET57 | shelf.group | F6 | 本机真实Worker none→author，作者分组DOM/原生KV一致并恢复；其他分组/入口待验，见第二十三流程 |
 | SET58 | shelf.sort | F6 | 本机真实Worker recent→title，列表顺序/原生KV一致并恢复；其他排序/入口待验，见第二十三流程 |
-| SET59 | shortcuts.search | F6 | 插件冲突写未改变mod+k，实际按键打开搜索通过；搜索自身重绑及输入上下文待验，见第二十七流程 |
+| SET59 | shortcuts.search | F6 | 插件冲突写未改变mod+k，实际按键打开搜索通过；release自身UI冲突拒绝/重绑及物理按键打开搜索通过；临时键尚待恢复，输入上下文待验，见第二十七/三十三流程 |
 | SET60 | shortcuts.settings | F6 | 待验 |
 | SET61 | shortcuts.new-conversation | F6 | 待验 |
-| SET62 | shortcuts.next-page | F6 | 待验 |
-| SET63 | shortcuts.prev-page | F6 | 待验 |
-| SET64 | shortcuts.next-chapter | F6 | 待验 |
-| SET65 | shortcuts.prev-chapter | F6 | 待验 |
-| SET66 | shortcuts.toggle-controls | F6 | 待验 |
+| SET62 | shortcuts.next-page | F6 | release物理按键Right从第一章到第二章通过；其他格式/输入防误触/重绑待验，见第三十三流程 |
+| SET63 | shortcuts.prev-page | F6 | release物理按键Left从第二章到第一章通过；其他格式/输入防误触/重绑待验，见第三十三流程 |
+| SET64 | shortcuts.next-chapter | F6 | release物理按键]从第一章到第二章通过；其他格式/输入防误触/重绑待验，见第三十三流程 |
+| SET65 | shortcuts.prev-chapter | F6 | release物理按键[从第二章到第一章通过；其他格式/输入防误触/重绑待验，见第三十三流程 |
+| SET66 | shortcuts.toggle-controls | F6 | release物理按键space显示阅读工具栏通过；其他格式/输入防误触/重绑待验，见第三十三流程 |
 | SET67 | shortcuts.reader-mode-next-unit | F6 | 待验 |
 | SET68 | shortcuts.reader-mode-prev-unit | F6 | 待验 |
 | SET69 | shortcuts.selection-copy | F6 | 待验 |

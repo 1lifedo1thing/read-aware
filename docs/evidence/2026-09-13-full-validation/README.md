@@ -864,3 +864,29 @@ followReader=true、fontFamily=null、medium、comfortable，原生重读一致�
 
 证据：[packaged-annotations-typography-observations.json](./packaged-annotations-typography-observations.json)。
 本轮不证明其他格式/平台、所有字体组合、聊天消息排版或该发布包的编辑/删除入口。
+
+## 第三十三流程：发布包原生快捷键及短书位置显示修复
+
+实际 Shortcuts 设置录制搜索键，按 Command+comma 与设置键冲突，界面明确
+拒绝且仍显示 Command+K。重新录制物理 Command+Option+K，原生 KV 保存
+`key=˚, mod=true, alt=true`：当前 macOS 键盘布局的 Option 会改变字符，不能
+把实际存储值伪写成 k。关闭设置后按同一物理组合实际打开搜索并聚焦输入框；
+输入 Packaged Lifecycle 只有一项结果，Return 打开真实验收书。
+
+原生 Left/Right 实际在 Native Reading 与 Return Visit 两章间翻页；[ 和 ]
+同样完成前后章导航；space 令阅读控件出现。点击 Chat 开始输入上下文验收时，
+CUA 连续两次返回 Mac locked，未把点击或防误触记为成功。待解锁完成输入行为
+并在实际 UI Reset Open search，当前发布包临时键仍保留，不冒称已恢复。
+
+第31/32流程的短书顶栏0/1差异已定位：Foliate SectionProgress 的 location.current
+从0计数，宿主直接显示，而滑条至少为1。仅在 readingPagePosition 转为一基并
+限制不超过total；零长度仍0/0，固定版式继续按源页，CFI/章节索引没有改动。
+使用真实 SectionProgress 的短书/末端边界回归，加原位置/固定版式检查共16项通过，
+desktop类型通过。在真实 debug Tauri 导入同一份889字节FB2，第一章顶栏/滑条
+均1/1·55%，第二章均1/1·100%；两章pagination.section.index仍0和1，正文正确。
+该隐藏实例临时书的progress_json尚未落盘，不据此宣称修复后的持久位置通过。
+已关书并删除精确自有ID，files released、隔离实例书数0，原画像等资料保持。
+
+证据：[native-shortcuts-position-observations.json](./native-shortcuts-position-observations.json)。
+更新的release包正在构建，解锁后需正常退出旧进程再启动新包验证画面与重读；
+本轮不重跑全量门禁，不以debug DOM替代该发布包边界。

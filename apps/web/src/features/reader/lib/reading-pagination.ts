@@ -1,10 +1,12 @@
 import type { ReadingPaginationSnapshot } from "@read-aware/core";
 import type { FoliateRelocateDetail, FoliateView } from "./foliate-engine";
 
-/** Fixed-layout source sections are pages; engine locations estimate text size. */
+/** Present one-based positions. Fixed-layout sections are source pages;
+ * reflowable engine locations are zero-based estimates of text size. */
 export function readingPagePosition(fixedLayout: boolean, detail: Pick<FoliateRelocateDetail, "section" | "location">): { current: number; total: number } {
   if (fixedLayout) return { current: detail.section.current + 1, total: detail.section.total };
-  return { current: detail.location.current, total: detail.location.total };
+  const { current, total } = detail.location;
+  return { current: total > 0 ? Math.min(total, current + 1) : 0, total };
 }
 
 /** Read the renderer's current geometry, never estimate unrendered sections. */

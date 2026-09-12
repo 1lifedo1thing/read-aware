@@ -20,8 +20,21 @@ test("fixed-layout page readouts use source pages rather than size-based engine 
   for (let index = 0; index < 4; index++) {
     const detail = progress.getProgress(index, 0, 1);
     expect(readingPagePosition(true, detail)).toEqual({ current: index + 1, total: 4 });
-    expect(readingPagePosition(false, detail)).toEqual({ current: detail.location.current, total: detail.location.total });
+    expect(readingPagePosition(false, detail)).toEqual({ current: Math.min(detail.location.total, detail.location.current + 1), total: detail.location.total });
   }
+});
+
+test("short reflowable books never display location zero, including the last visible section", () => {
+  const progress = new SectionProgress([{ size: 180 }, { size: 75 }], 1500, 1600);
+  for (const index of [0, 1]) {
+    const detail = progress.getProgress(index, 0, 1);
+    expect(detail.location).toEqual({ current: 0, next: 0, total: 1 });
+    expect(readingPagePosition(false, detail)).toEqual({ current: 1, total: 1 });
+  }
+  const boundary = new SectionProgress([{ size: 3000 }], 1500, 1600);
+  expect(readingPagePosition(false, boundary.getProgress(0, 1, 0))).toEqual({ current: 2, total: 2 });
+  const empty = new SectionProgress([{ size: 0 }], 1500, 1600);
+  expect(readingPagePosition(false, empty.getProgress(0))).toEqual({ current: 0, total: 0 });
 });
 
 test("reflow metrics count current-section viewports, excluding engine padding and not source sections", () => {

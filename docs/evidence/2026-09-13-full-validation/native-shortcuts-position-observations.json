@@ -1,0 +1,67 @@
+{
+  "platform": "macOS aarch64 release package for keyboard actions; debug Tauri for changed position adapter",
+  "nativeKeyboard": {
+    "searchConflict": {
+      "physicalKeys": "Command + comma",
+      "ui": "That shortcut is already assigned. Choose another combination or update the conflicting bindings together.",
+      "saved": false
+    },
+    "searchRebind": {
+      "physicalKeys": "Command + Option + K",
+      "recordedKey": "˚",
+      "mod": true,
+      "alt": true,
+      "note": "macOS Option transforms KeyboardEvent.key on this layout; record actual stored chord, not a fictitious key k.",
+      "openedSearch": true,
+      "focus": "Search books, collections, commands…",
+      "query": "Packaged Lifecycle",
+      "results": 1,
+      "enterOpened": "Packaged Lifecycle Probe"
+    },
+    "reading": [
+      {
+        "key": "Left",
+        "result": "Native Reading"
+      },
+      {
+        "key": "Right",
+        "result": "Return Visit"
+      },
+      {
+        "key": "[",
+        "result": "Native Reading"
+      },
+      {
+        "key": "]",
+        "result": "Return Visit"
+      },
+      {
+        "key": "space",
+        "result": "Reader toolbar visible"
+      }
+    ],
+    "pending": [
+      "Chat input must retain editing keys without navigating",
+      "Restore search to original Command + K through UI",
+      "Other selection/mode/global shortcuts"
+    ],
+    "interruption": "CUA reported Mac locked twice during Chat click; no assertion that click completed"
+  },
+  "positionFix": {
+    "before": "Release short FB2 header 0 / 1 at 100%; slider 1 / 1 at 100%",
+    "cause": "Foliate SectionProgress.location.current is zero based; readingPagePosition previously passed it through.",
+    "change": "Convert reflowable current to one based and clamp to total; empty locations remain zero; fixed layout unchanged.",
+    "tests": {
+      "passed": 16,
+      "command": "bun test apps/web/src/features/reader/lib/reading-pagination.test.ts apps/web/src/features/reader/lib/reader-progress.test.ts"
+    },
+    "desktopTypecheck": "passed",
+    "runtimeFirst": "{\"open\":{\"receipt\":{\"location\":{\"bookId\":\"dabf382c-f7e4-4b42-ba46-af15b8646d80\",\"cfi\":\"epubcfi(/6/2!/4/2[first],/1:0,/6/1:60)\",\"contentVersion\":\"sha256:11298554ac76727181b20cdb306430d387c536bdfeb28a96b9fa2e8567c65521\",\"fraction\":0.5492822966507177,\"href\":\"0\"},\"sessionId\":\"7941c318-3add-4510-9fb4-9cf72ecf3f26\",\"status\":\"completed\"},\"status\":\"done\"},\"session\":{\"bookId\":\"dabf382c-f7e4-4b42-ba46-af15b8646d80\",\"change\":{\"origin\":\"system\",\"reason\":\"reader-demand\"},\"controls\":{\"visible\":false},\"history\":{\"canGoBack\":false,\"canGoForward\":false},\"location\":{\"bookId\":\"dabf382c-f7e4-4b42-ba46-af15b8646d80\",\"cfi\":\"epubcfi(/6/2!/4/2[first],/1:0,/6/1:60)\",\"contentVersion\":\"sha256:11298554ac76727181b20cdb306430d387c536bdfeb28a96b9fa2e8567c65521\",\"fraction\":0.5492822966507177,\"href\":\"0\"},\"mode\":{\"availableModes\":[{\"defaultUnitId\":\"sentence\",\"key\":\"sentence-reader:guided-reading\",\"label\":\"Sentence Reader: Read by sentence or paragraph\",\"units\":[{\"id\":\"sentence\",\"label\":\"By sentence\"},{\"id\":\"paragraph\",\"label\":\"By paragraph\"}]}],\"cfiRange\":null,\"label\":\"Sentence Reader: Read by sentence or paragraph\",\"modeKey\":\"sentence-reader:guided-reading\",\"position\":null,\"progress\":null,\"requestedActive\":false,\"status\":\"inactive\",\"unavailableReason\":null,\"unitId\":\"sentence\",\"units\":[{\"id\":\"sentence\",\"label\":\"By sentence\"},{\"id\":\"paragraph\",\"label\":\"By paragraph\"}]},\"pagination\":{\"flow\":\"paginated\",\"layout\":\"reflowable\",\"screen\":{\"count\":1,\"index\":0},\"section\":{\"count\":2,\"index\":0}},\"playback\":{\"backend\":null,\"cfiRange\":null,\"fallback\":false,\"owner\":null,\"status\":\"unavailable\",\"unavailableReason\":\"mode-inactive\"},\"readerDemand\":{\"active\":false,\"idleAt\":1789252680075,\"lastActivityAt\":1789252678575,\"reason\":\"relocate\"},\"revision\":16,\"selection\":null,\"sessionId\":\"7941c318-3add-4510-9fb4-9cf72ecf3f26\",\"sourceRevision\":\"sha256:11298554ac76727181b20cdb306430d387c536bdfeb28a96b9fa2e8567c65521\",\"status\":\"ready\",\"visibleText\":\"Native ReadingA silver compass rests on the library desk. This synthetic passage verifies the packaged reader.The window can close after its reading state has been saved.\",\"visibleTextState\":{\"source\":\"range\",\"status\":\"available\",\"truncated\":false}}}",
+    "firstDom": "- generic Packaged Lifecycle Probe [ref=e5]\n- button Previous page [ref=e8]\n- button Next page [ref=e10]\n- button Back to shelf [ref=e16]:\n  - /description: Shelf\n- tooltip Shelf [ref=e17]:\n  - text: Shelf\n- button Table of contents [ref=e19]:\n  - /description: Contents\n- tooltip Contents [ref=e20]:\n  - text: Contents\n- button Notes [ref=e23]\n- tooltip Notes [ref=e24]:\n  - text: Notes\n- paragraph [ref=e26]:\n  - text: Packaged Lifecycle Probe\n- text: \"1 / 1 · 55%\"\n- button Start reading by sentence or paragraph [ref=e32]:\n  - /description: Read by sentence or paragraph\n- tooltip Read by sentence or paragraph [ref=e33]:\n  - text: Read by sentence or paragraph\n- button Reading appearance [ref=e37]\n- tooltip Reading appearance [ref=e38]:\n  - text: Reading appearance\n- button Chat [ref=e41]\n- tooltip Chat [ref=e42]:\n  - text: Chat\n- button More [ref=e45]\n- tooltip More [ref=e47]:\n  - text: More\n- slider Reading position [valuetext=\"1 / 1 · 55%\"] [ref=e49] [cursor=pointer]\n\n# ───────────────────────────────────────\n# Generated: 2026-09-12T22:38:23.332Z\n# Elements indexed: 54\n# Use [ref=eN] with other webview tools",
+    "runtimeSecond": "{\"book\":{\"addedAt\":\"2026-09-12T22:37:48.071Z\",\"author\":\"ReadAware Validation\",\"collectionId\":null,\"fileName\":\"short-location-proof.fb2\",\"fileSize\":889,\"format\":\"fb2\",\"id\":\"dabf382c-f7e4-4b42-ba46-af15b8646d80\",\"lastOpenedAt\":\"2026-09-12T22:37:58.359Z\",\"starred\":false,\"title\":\"Packaged Lifecycle Probe\",\"updatedAt\":\"2026-09-12T22:37:58.359Z\"},\"location\":{\"bookId\":\"dabf382c-f7e4-4b42-ba46-af15b8646d80\",\"cfi\":\"epubcfi(/6/4!/4/2[second],/1:0,/4/1:71)\",\"contentVersion\":\"sha256:11298554ac76727181b20cdb306430d387c536bdfeb28a96b9fa2e8567c65521\",\"fraction\":1,\"href\":\"1\"},\"pagination\":{\"flow\":\"paginated\",\"layout\":\"reflowable\",\"screen\":{\"count\":1,\"index\":0},\"section\":{\"count\":2,\"index\":1}},\"visibleText\":\"Return VisitOn reopening, the same synthetic book remains available in the library.\"}",
+    "secondDom": "- generic Packaged Lifecycle Probe [ref=e5]\n- button Previous page [ref=e8]\n- button Next page [ref=e10]\n- button Back to shelf [ref=e16]:\n  - /description: Shelf\n- tooltip Shelf [ref=e17]:\n  - text: Shelf\n- button Table of contents [ref=e19]:\n  - /description: Contents\n- tooltip Contents [ref=e20]:\n  - text: Contents\n- button Notes [ref=e23]\n- tooltip Notes [ref=e24]:\n  - text: Notes\n- paragraph [ref=e26]:\n  - text: Packaged Lifecycle Probe\n- text: \"1 / 1 · 100%\"\n- button Start reading by sentence or paragraph [ref=e32]:\n  - /description: Read by sentence or paragraph\n- tooltip Read by sentence or paragraph [ref=e33]:\n  - text: Read by sentence or paragraph\n- button Reading appearance [ref=e37]\n- tooltip Reading appearance [ref=e38]:\n  - text: Reading appearance\n- button Chat [ref=e41]\n- tooltip Chat [ref=e42]:\n  - text: Chat\n- button More [ref=e45]\n- tooltip More [ref=e47]:\n  - text: More\n- slider Reading position [valuetext=\"1 / 1 · 100%\"] [ref=e49] [cursor=pointer]\n\n# ───────────────────────────────────────\n# Generated: 2026-09-12T22:38:35.639Z\n# Elements indexed: 54\n# Use [ref=eN] with other webview tools",
+    "cleanup": "{\"remaining\":[],\"removed\":{\"bookIds\":[\"dabf382c-f7e4-4b42-ba46-af15b8646d80\"],\"committed\":true,\"files\":{\"status\":\"released\"}}}",
+    "persistence": "Temporary hidden debug book progress_json was null before cleanup; no persisted corrected position claimed.",
+    "pending": "Updated release build and post-unlock pixel/restart acceptance; existing running release still old code."
+  }
+}
