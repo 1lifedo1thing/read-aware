@@ -76,6 +76,18 @@ export interface DomainEventEnvelope<T extends string = string, P = unknown> {
 // last_opened_at …) are derived from the envelope `createdAt` (which defaults
 // to the HLC wall time) unless a payload field is called out explicitly.
 export type DomainEvent =
+  // Full restore decisions are recorded as bounded chunks followed by an
+  // validated manifest. Chunks alone never change a projection. The native
+  // projector accepts only versioned, typed rows from its domain-table allowlist;
+  // device identity, the local credential vault and chat presentation stay local.
+  | DomainEventEnvelope<
+      "backup.restoreChunk",
+      { restoreId: Id; index: number; data: string }
+    >
+  | DomainEventEnvelope<
+      "backup.restored",
+      { restoreId: Id; format: 1; chunks: number; sha256: string }
+    >
   // --- Books -------------------------------------------------------------
   | DomainEventEnvelope<
       "book.imported",

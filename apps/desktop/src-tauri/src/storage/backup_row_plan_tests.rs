@@ -52,6 +52,9 @@ fn kv(conn: &Connection, key: &str, value: &str) {
 fn document(conn: &Connection, collection: &str, id: &str) {
     conn.execute("INSERT INTO plugin_documents(plugin_id,collection,id,json,updated_at) VALUES ('proof',?1,?2,'{\"retained\":true}','now')", params![collection,id]).unwrap();
 }
+
+#[path = "backup_restore_rows_tests.rs"]
+mod restore_tests;
 #[test]
 fn backup_row_plan_covers_every_current_table_and_preserves_actual_legacy_and_presentation_differences(
 ) {

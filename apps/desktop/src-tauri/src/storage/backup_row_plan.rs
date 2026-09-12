@@ -18,6 +18,8 @@ mod identity;
 mod sql_cancel;
 #[path = "backup_row_structure.rs"]
 mod structure;
+#[path = "backup_restore_rows.rs"]
+mod restore;
 pub(crate) use structure::{RowIssuePage, RowStructureReceipt};
 #[path = "backup_file_plan.rs"]
 mod files;

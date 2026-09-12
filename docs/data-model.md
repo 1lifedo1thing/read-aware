@@ -180,6 +180,8 @@ row's historical timestamp while their HLC is stamped at synthesis time.
 
 | Type | Payload (JSON, summarized) |
 |------|----------------------------|
+| `backup.restoreChunk` | `{ restoreId, index, data }` — format-1 typed domain row operations, base64 in at most 16 KiB raw chunks; no projection change until the manifest arrives |
+| `backup.restored` | `{ restoreId, format: 1, chunks, sha256 }` — validates contiguous preceding chunks and applies the reviewed restore decision in the same transaction; limited to domain tables, preserving historical stored values. Device identity, local settings, credential vault and chat presentation are restored separately and never accepted as row operations |
 | `book.imported` | `{ bookId, title, author?, format, fileName, mimeType?, fileSize, sourceBlobKey, sourceSha256? }` |
 | `book.metadataEdited` | `{ bookId, title?, author? }` |
 | `book.coverExtracted` | `{ bookId, status, coverBlobKey? }` |

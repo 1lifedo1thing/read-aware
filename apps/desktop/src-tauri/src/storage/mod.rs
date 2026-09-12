@@ -104,6 +104,7 @@ pub(crate) mod backup_archive;
 pub(crate) mod backup_export;
 pub(crate) mod backup_tasks;
 pub(crate) mod backup_import;
+mod backup_restore_events;
 
 use crate::error::CommandError;
 use std::io::{Read, Seek, SeekFrom};

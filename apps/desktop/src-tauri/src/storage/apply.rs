@@ -46,6 +46,7 @@ mod profile;
 mod onboarding;
 mod entities;
 mod context_bundles;
+pub(crate) mod backup_restore;
 
 use crate::error::CommandError;
 use rusqlite::{params, Transaction};
@@ -170,6 +171,8 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
     let t = ev.event_type.as_str();
 
     match t {
+        "backup.restoreChunk" => return backup_restore::chunk(ev).map(|_| false),
+        "backup.restored" => return backup_restore::apply(tx, ev).map(|_| true),
         // ── Books ───────────────────────────────────────────────────────────
         "book.imported" => {
             let id = require(p, "bookId", t)?;
