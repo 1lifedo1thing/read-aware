@@ -3,14 +3,20 @@ import { expect, test } from "bun:test";
 if (process.env.PERSISTENCE_SHUTDOWN_PROOF === "1") {
   type Pending = { command: string; args: Record<string, unknown>; resolve(value?: unknown): void; reject(error: unknown): void };
   const pending: Pending[] = [];
+  const credentialMarkers = new Set<string>();
   let hold = false;
   const device = { deviceId: "shutdown-proof", lastHlcWallMs: null, lastHlcCounter: null };
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => null } });
   Object.defineProperty(globalThis, "window", { configurable: true, value: { __TAURI_INTERNALS__: {
     invoke(command: string, args: Record<string, unknown>) {
       if (command === "secret_keys") return Promise.resolve([]);
-      if (["secret_set", "secret_delete", "set_kv", "local_device_get", "commit_events"].includes(command) && hold) {
-        return new Promise((resolve, reject) => pending.push({ command, args, resolve, reject }));
+      if (command === "restored_credentials_pending") return Promise.resolve([...credentialMarkers]);
+      if (["secret_set", "secret_delete", "set_kv", "local_device_get", "commit_events", "restored_credentials_publish"].includes(command) && hold) {
+        return new Promise((resolve, reject) => pending.push({ command, args, resolve, reject })).then(value => {
+          if (command === "secret_set" && args.roam && String(args.key).startsWith("ai-api-key")) credentialMarkers.add(String(args.key));
+          if (command === "restored_credentials_publish") credentialMarkers.clear();
+          return value;
+        });
       }
       if (command === "local_device_get") return Promise.resolve(device);
       return Promise.resolve();
@@ -23,7 +29,7 @@ if (process.env.PERSISTENCE_SHUTDOWN_PROOF === "1") {
   await import("./roaming-preferences");
   const { onDomainEventBroadcast, commitDomainEvents } = await import("./domain-events");
   const { durableWrites } = await import("./write-settlement");
-  const { toBase64, openSecret } = await import("./sync-envelope");
+  const { toBase64 } = await import("./sync-envelope");
   const tick = () => Bun.sleep(0);
   const take = (command: string) => {
     const index = pending.findIndex(work => work.command === command);
@@ -54,15 +60,18 @@ if (process.env.PERSISTENCE_SHUTDOWN_PROOF === "1") {
     take("secret_set").resolve(); take("set_kv").resolve();
     await Promise.all([saved, setting]); await tick();
     expect(closed).toBe(false); expect(durableWrites.size).toBe(2);
-    expect(pending.map(work => work.command)).toEqual(["local_device_get"]);
-    take("local_device_get").resolve(device); await tick();
+    expect(pending.map(work => work.command)).toEqual(["local_device_get", "local_device_get"]);
+    take("local_device_get").resolve(device); take("local_device_get").resolve(device); await tick();
     expect(observed).toEqual([]); expect(closed).toBe(false);
-    const commits = [take("commit_events"), take("commit_events")];
-    const drafts = commits.flatMap(work => work.args.events as { payload: { key: string; value: { sealed: string } } }[]);
-    const sealed = drafts.find(draft => draft.payload.key === "secret:ai-api-key.proof")!;
-    expect(openSecret(key, "ai-api-key.proof", sealed.payload.value.sealed)).toBe("synthetic-proof");
-    expect(JSON.stringify(drafts)).not.toContain("synthetic-proof");
-    for (const commit of commits) commit.resolve({ appended: 1, applied: 1 });
+    const preference = take("commit_events"), credential = take("restored_credentials_publish");
+    const events = credential.args.events as { payload: { key: string; value: unknown } }[];
+    expect(events.map(event => event.payload)).toEqual([{ key: "secret:ai-api-key.proof", value: null }]);
+    expect(JSON.stringify([preference.args, credential.args])).not.toContain("synthetic-proof");
+    preference.resolve({ appended: 1, applied: 1 });
+    await tick(); expect(closed).toBe(false); expect(observed).not.toContain("secret:ai-api-key.proof");
+    // Native code owns sealing and atomic marker retirement. This host check proves
+    // shutdown waits for that receipt and the event observer it subsequently starts.
+    credential.resolve({ events, awaitingConnection: false });
     await tick(); expect(closed).toBe(false);
     expect(observed).toContain("secret:ai-api-key.proof");
     take("commit_events").resolve({ appended: 1, applied: 1 });

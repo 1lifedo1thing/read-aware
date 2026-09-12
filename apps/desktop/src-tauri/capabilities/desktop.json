@@ -18,6 +18,7 @@
     "core:window:allow-unminimize",
     "core:window:allow-set-fullscreen",
     "core:window:allow-close",
+    "core:window:allow-destroy",
     "decorum:allow-show-snap-overlay",
     "updater:default",
     "process:allow-restart",

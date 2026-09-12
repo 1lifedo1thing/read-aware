@@ -797,3 +797,40 @@ Lora/Menlo/followReader=false三项保持。实际Apply v2：十项全部回到�
 修复，无重复全量门禁。详见
 [workspace-profile-restart-observations.json](./workspace-profile-restart-observations.json)。
 仍待验：真正应用进程重启/崩溃恢复、其他设置组合与实际模型选择、打包和其他平台。
+
+## 第三十一流程：正常关闭权限修复、进程重启与发布包原生导入阅读
+
+真实 backup 隔离实例请求关闭后，收尾 receipt 已 ready（五个 owner 均 flushed，
+75ms），进程却保持运行。日志明确报 `window.destroy not allowed`，因为关闭
+协调器防止默认关闭后调用 destroy，而桌面 capability 只有 allow-close。
+补 `core:window:allow-destroy` 后重新构建，真实 close 请求使应用进程和 dev
+父进程退出。再次启动仍读到原 26 项 KV，逐值 SHA256 全部一致。
+
+SQLite integrity 为 ok；两条记忆、画像、合并身份、三版归档、28 条事件和既存
+时长投影内容保留。完整表比较的差异是启动时间、KV 更新时间、旧合成书删除
+意图完成及对应 blob 删除标记、KV 触发的 source clock 递增；未伪称数据库字节相同。
+截图显示重新启动后的实际书架，未把空书架说成没有其他持久资料。
+
+另外构建真正 release `.app`，独立 `com.readaware.app.validation-packaged-e2e`，
+使用生产 CSP/关闭权限和 bundled 插件，页面地址 `tauri://localhost`，无 MCP。
+只覆写验收标识/名称/deep-link 并停产 updater 工件，不涉及签名、公证、分发验证。
+CUA 点击 macOS 原生关闭按钮后旧 PID 66102 退出；下一次 CUA 观察自动重启为
+66266，这是工具重新启动，并非旧进程仍存活。
+
+发布包实际 UI 打开“Import books”原生选择器，选中自有 889 字节 FB2，导入
+Packaged Lifecycle Probe。正文 Native Reading 的两段合成文字实际绘制；点击
+翻页箭头显示 Return Visit 第二章。从原生菜单 Quit 退出后旧 PID 66266 消失，
+工具重新启动为 67135；原书、100% 进度、第二章 CFI 和 40002ms 结算时长保留。
+实际再次打开同一本书，仍显示 Return Visit 及对应正文。
+启动日志同时记录关闭上一运行留下的一条阅读 session，未将该观察当成崩溃恢复证明。
+
+关闭定向检查及凭据发布/收尾检查通过，desktop 探针类型通过。收尾旧测试仍模拟
+前端 commit_events 发布凭据，已同步为当前 restored_credentials_publish 原生
+事务，并保持“发布回执和后续观察事件完成前不能关闭”的断言；不模拟证明原生加密。
+发布构建还发现 Reading Goals 已提交源码与 dist 不同步；重建带入已有 durable
+读取和 readingIntent，相关 6 项测试及插件类型检查通过，作为独立工件同步提交。
+
+证据见 [process-close-observations.json](./process-close-observations.json) 和
+[重启书架截图](./restarted-window.png)。发布包合成书保留供后续验收；该流程只
+验证本机正常退出/重启和一份 FB2，不关闭全格式、所有设置持久组合、崩溃/断电、
+跨设备或其他平台边界。
