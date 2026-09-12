@@ -1,10 +1,14 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { AppError } from "@read-aware/core";
+import { AppError, type BookTextTaskSnapshot } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import type { ThreadScope } from "../thread-scope";
 import { normalizeBookIdParam, resolveBookId } from "./current-book";
 import { textResult } from "./tool-result";
+
+function presentTask({ timeoutMs, ...snapshot }: BookTextTaskSnapshot) {
+  return { ...snapshot, timeLimit: `${timeoutMs / 1000}s` };
+}
 
 export function buildBookTextTaskTools(scope: ThreadScope, deps: RuntimeDeps): AgentTool[] {
   const tasks = deps.bookText.preparation;
@@ -16,24 +20,33 @@ export function buildBookTextTaskTools(scope: ThreadScope, deps: RuntimeDeps): A
     parameters: Type.Object({ bookId: Type.Optional(Type.String()), rebuild: Type.Optional(Type.Boolean()), timeoutMs: Type.Optional(Type.Integer({ minimum: 1000, maximum: 7200000 })), priority: Type.Optional(Type.Union([Type.Literal("normal"), Type.Literal("background")])) }),
     execute: async (_id, params) => {
       const input = params as { bookId?: string; rebuild?: boolean; timeoutMs?: number; priority?: "normal" | "background" };
-      return textResult(await tasks.start(book(input.bookId), { rebuild: input.rebuild, priority: input.priority, timeoutMs: input.timeoutMs }));
+      return textResult(presentTask(await tasks.start(book(input.bookId), { rebuild: input.rebuild, priority: input.priority, timeoutMs: input.timeoutMs })));
     },
   }, {
     name: "get_book_text_tasks", label: "Book text requests",
-    description: "Read this Agent's local text preparation requests for a book, or one taskId returned by prepare_book_text. Lists newest first, 10 per page by default (maximum 20); nextOffset is null at the end. Offset pages are snapshots, not stable across new requests or eviction. Returns queued/running/paused/completed/failed/cancelled, revision, priority, timeoutMs/deadlineAt, waitReason (queue/reader or null), source text-state and stable failure code. Does not start work or download. Other plugins' tasks are not exposed. Task handles expire on app restart and old terminal tasks may be evicted; use get_book_text_status for current source availability.",
+    description: "Read this Agent's local text preparation requests for a book, or one taskId returned by prepare_book_text. Lists newest first, 10 per page by default (maximum 20); nextOffset is null at the end. Offset pages are snapshots, not stable across new requests or eviction. Returns queued/running/paused/completed/failed/cancelled, revision, priority, timeLimit/deadlineAt, waitReason (queue/reader or null), source text-state and stable failure code. Does not start work or download. Other plugins' tasks are not exposed. Task handles expire on app restart and old terminal tasks may be evicted; get_book_text_task_history reads bounded persisted metadata across restarts; use get_book_text_status for current source availability.",
     parameters: Type.Object({ bookId: Type.Optional(Type.String()), taskId: Type.Optional(Type.String()),
       offset: Type.Optional(Type.Integer({ minimum: 0 })), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })) }),
     execute: async (_id, params) => {
       const input = params as { bookId?: string; taskId?: string; offset?: number; limit?: number };
       const bookId = book(input.bookId);
-      if (input.taskId !== undefined) return textResult(await tasks.get(bookId, input.taskId));
+      if (input.taskId !== undefined) return textResult(presentTask(await tasks.get(bookId, input.taskId)));
       const offset = input.offset ?? 0, limit = input.limit ?? 10;
       if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 20) {
         throw new AppError("library/invalid-input", "Invalid text task page");
       }
       const all = (await tasks.list(bookId)).reverse();
-      return textResult({ tasks: all.slice(offset, offset + limit), total: all.length, offset,
+      return textResult({ tasks: all.slice(offset, offset + limit).map(presentTask), total: all.length, offset,
         nextOffset: offset + limit < all.length ? offset + limit : null });
+    },
+  }, {
+    name: "get_book_text_task_history", label: "Text preparation history",
+    description: "Read this actor's local persisted text-request metadata for one book, newest first, 20 per page. At most 64 requests are retained per owner, including live requests. History is separate from current source readiness: inspect snapshot and recordedAt. requestAvailable means its exact process-local handle remains; interrupted marks a previously active request whose owner generation is gone. It does not restart work or authorize resume of an old handle. A new prepare request can use validated saved checkpoints; never silently rebuild. Reads wait for metadata writes and report persistence failures instead of an empty history. Other plugins' history is private; no chapter text is returned.",
+    parameters: Type.Object({ bookId: Type.Optional(Type.String()), offset: Type.Optional(Type.Integer({ minimum: 0, maximum: 64 })), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })) }),
+    execute: async (_id, params) => {
+      const input = params as { bookId?: string; offset?: number; limit?: number };
+      const page = await tasks.history(book(input.bookId), { offset: input.offset, limit: input.limit });
+      return textResult({ ...page, items: page.items.map(entry => ({ ...entry, snapshot: presentTask(entry.snapshot) })) });
     },
   }, {
     name: "cancel_book_text_task", label: "Cancel text request",
@@ -41,7 +54,7 @@ export function buildBookTextTaskTools(scope: ThreadScope, deps: RuntimeDeps): A
     parameters: Type.Object({ bookId: Type.Optional(Type.String()), taskId: Type.String() }),
     execute: async (_id, params) => {
       const input = params as { bookId?: string; taskId: string };
-      return textResult(await tasks.cancel(book(input.bookId), input.taskId));
+      return textResult(presentTask(await tasks.cancel(book(input.bookId), input.taskId)));
     },
   }, {
     name: "set_book_text_task_priority", label: "Set text request priority",
@@ -50,7 +63,7 @@ export function buildBookTextTaskTools(scope: ThreadScope, deps: RuntimeDeps): A
     executionMode: "sequential",
     execute: async (_id, params) => {
       const input = params as { bookId?: string; taskId: string; priority: "normal" | "background" };
-      return textResult(await tasks.setPriority(book(input.bookId), input.taskId, input.priority));
+      return textResult(presentTask(await tasks.setPriority(book(input.bookId), input.taskId, input.priority)));
     },
   }, ...(["pause", "resume"] as const).map(action => ({
     name: `${action}_book_text_task`, label: `${action === "pause" ? "Pause" : "Resume"} text request`,
@@ -61,7 +74,7 @@ export function buildBookTextTaskTools(scope: ThreadScope, deps: RuntimeDeps): A
     executionMode: "sequential" as const,
     execute: async (_id: string, params: unknown) => {
       const input = params as { bookId?: string; taskId: string };
-      return textResult(await tasks[action](book(input.bookId), input.taskId));
+      return textResult(presentTask(await tasks[action](book(input.bookId), input.taskId)));
     },
   }))];
 }

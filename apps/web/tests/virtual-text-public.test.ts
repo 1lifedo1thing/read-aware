@@ -11,14 +11,16 @@ import { textDetail } from "../../../plugins/text-desk/src/views";
 test("registered virtual content flows through public text tasks, Text Desk and Agent with invalidation and retirement fences", async () => withDom(async () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
   const bookId = crypto.randomUUID(), registryKey = "read-aware-virtual-books";
-  const bytes = new Map<string, Uint8Array>();
+  const bytes = new Map<string, Uint8Array>(), history = new Map<string, string>();
   const spies = [
     spyOn(blobs, "getDesktopBlob").mockImplementation(async key => bytes.get(key) ?? null),
     spyOn(blobs, "putDesktopBlob").mockImplementation(async (key, data) => { bytes.set(key, new Uint8Array(data)); return { sha256: "fixture", byteSize: data.length }; }),
     spyOn(blobs, "deleteDesktopBlob").mockImplementation(async key => { bytes.delete(key); }),
   ];
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { __TAURI_INTERNALS__: { invoke: async (command: string) => {
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { __TAURI_INTERNALS__: { invoke: async (command: string, args?: Record<string, string>) => {
     const row = { id: bookId, title: "Feed", format: "virtual", coverStatus: "none" };
+    if (command === "plugin_docs_get") return history.has(args!.pluginId) ? { json: history.get(args!.pluginId) } : null;
+    if (command === "plugin_docs_put") { history.set(args!.pluginId, args!.json); return; }
     if (command === "library_get_book") return row;
     if (command === "library_load") return [row];
     if (command === "set_kv" || command === "delete_kv") return;
@@ -43,6 +45,7 @@ test("registered virtual content flows through public text tasks, Text Desk and 
         if (state.status === "failed") { clearTimeout(timeout); reject(Error(state.errorCode)); }
       });
     });
+    expect((await book.listTextTaskHistory(bookId)).items[0]).toMatchObject({ requestAvailable: true, interrupted: false, snapshot: { status: "completed" } });
     const indexed = await getPersistedChapters(bookId);
     expect(indexed![0]!.hrefs).toEqual(["article"]); expect(indexed![0]!.text).toContain(text);
     const agent = createBookTextPort(); expect((await agent.getToc(bookId))[0]!.title).toBe("Article");

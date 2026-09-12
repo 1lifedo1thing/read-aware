@@ -6822,3 +6822,25 @@ Text Desk 0.16 displays deadlines and supplies a validated 1–120 minute form;
 Agent preparation exposes the same timeout option. Timer/lease/late-result and
 public consumer checks pass. App suspension, background throttling and actual
 Worker/Tauri behavior remain pending; task history is still process local.
+
+
+### Persisted text request metadata (Library 1.25)
+
+`library.queries.books.listTextTaskHistory(bookId, { offset, limit })` lists this
+owner's local metadata across activations and restarts: up to 64 records total,
+20 per page, newest first. Each entry has the last saved snapshot, `recordedAt`,
+`requestAvailable`, and `interrupted`. An old active record is interrupted when
+its exact generation no longer owns a handle. Reading history never starts work;
+explicit new preparation can reuse validated checkpoints, without replaying a
+past rebuild. History does not establish current source readiness.
+
+Admission is saved before extraction starts. Status and priority milestones are
+saved independently of extraction: live `history` reports pending/saved/failed
+and the saved revision or error code. A history read retries dirty metadata and
+propagates failure. Progress notifications are not all persisted. Plugin metadata
+uses a host-reserved private collection, covered by existing namespace backup,
+rollback and uninstall, with write exclusion and lifecycle drain. Host actors use
+local KV; neither history is preference-roamed. Records contain no chapter text.
+Text Desk 0.17 supplies paging, details and an explicit fresh continuation;
+Agent tools expose the same owner boundary and format time limits with units.
+Actual Tauri/Worker and disk restart acceptance remains pending.

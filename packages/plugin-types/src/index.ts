@@ -97,7 +97,7 @@ import type {
 // depending on @read-aware/core directly.
 export type { BookTextSearch, BookTextHit } from "@read-aware/core";
 export type { BookImportPhase, BookImportReceipt, BookImportRequest, BookImportTaskSnapshot } from "@read-aware/core";
-export type { BookTextRange, BookRangeQuery, BookRangePage, BookTextSnapshot, BookTextTaskSnapshot, BookTextPrepareOptions, BookTextPriority, BookTextWaitReason, AnnotationSnapshot, AnnotationMutation, AnnotationCommitResult, AnnotationPage, AnnotationPageQuery, BookTocEntry, BookNavigationToc, BookLocationSearch, BookLocationSearchPage, BookLocationHit,
+export type { BookTextRange, BookRangeQuery, BookRangePage, BookTextSnapshot, BookTextTaskSnapshot, BookTextPrepareOptions, BookTextTaskHistoryEntry, BookTextTaskHistoryPage, BookTextTaskHistoryQuery, BookTextPriority, BookTextWaitReason, AnnotationSnapshot, AnnotationMutation, AnnotationCommitResult, AnnotationPage, AnnotationPageQuery, BookTocEntry, BookNavigationToc, BookLocationSearch, BookLocationSearchPage, BookLocationHit,
   ReadingLocation, ReadingTarget, ReadingSessionSnapshot, ReadingPaginationSnapshot, ReadingSelectionSnapshot, ReadingSelectionReceipt, ReadingSessionGuard, ReadingNavigationReceipt, ReadingPlaybackSnapshot, ReadingPlaybackReceipt, ReadingModeConfiguration, ReadingModeDescriptor, ReadingModeSnapshot, ReadingModeReceipt, ReadingModePosition, ReadingModeStepOutcome, ReadingModeStepReceipt } from "@read-aware/core";
 export type {
   BookFormat,
@@ -1390,6 +1390,7 @@ export type PluginLibraryDomain = {
       getEnrichment(bookId: string): Promise<import("@read-aware/core").BookEnrichmentSnapshot>;
       /** Source metadata only; never loads a provider or reveals reading state. Library 1.16. */
       getContentState(bookId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").BookContentState>;
+      listTextTaskHistory(bookId: string, query?: import("@read-aware/core").BookTextTaskHistoryQuery): Promise<import("@read-aware/core").BookTextTaskHistoryPage>;
       getTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       listTextTasks(bookId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot[]>;
       /** Library 1.20: this activation's in-memory import handles (64 retained). */

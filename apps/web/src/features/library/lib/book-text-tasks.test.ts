@@ -185,3 +185,52 @@ test("paused time counts toward the deadline and malformed time limits never adm
   expect(h.owner.list("book")[0]).toMatchObject({ status: "failed", errorCode: "library/text-timeout", timeoutMs: 1000 });
   expect(Date.parse(task.deadlineAt) - Date.parse(task.createdAt)).toBe(1000); h.owner.dispose();
 });
+
+test("a request does not parse before durable history admission and stop during admission cannot launch it", async () => {
+  const { BookTextTaskHistory } = await import("./book-text-task-history");
+  for (const stop of [false, true]) {
+    const gate = deferred<void>(); let raw: string | null = null, parses = 0;
+    const history = new BookTextTaskHistory(crypto.randomUUID(), { read: async () => raw,
+      write: async value => { await gate.promise; raw = value; }, run: operation => operation() });
+    const owner = new BookTextTaskOwner({ snapshot: async () => state(), prepare: async () => { parses++; return state("book", "ready"); } }, () => {}, undefined, history);
+    const start = owner.start("book").catch(e => e); await settle(); expect(parses).toBe(0);
+    if (stop) owner.dispose(); gate.resolve();
+    const receipt = await start; await settle();
+    expect(parses).toBe(stop ? 0 : 1);
+    if (stop) expect(receipt).toMatchObject({ code: "library/text-cancelled" });
+    else expect((await owner.listHistory("book")).items[0]).toMatchObject({ snapshot: { status: "completed" } });
+    owner.dispose();
+  }
+});
+
+test("completed extraction exposes failed history persistence and an explicit history read retries the metadata", async () => {
+  const { BookTextTaskHistory } = await import("./book-text-task-history");
+  let raw: string | null = null, failure = false;
+  const done = deferred<BookTextSnapshot>();
+  const history = new BookTextTaskHistory(crypto.randomUUID(), { read: async () => raw,
+    write: async value => { if (failure) throw new AppError("db/locked", "History not saved"); raw = value; }, run: operation => operation() });
+  const owner = new BookTextTaskOwner({ snapshot: async () => state(), prepare: async () => done.promise }, () => {}, undefined, history);
+  const task = await owner.start("book"); await settle(); failure = true;
+  done.resolve(state("book", "ready")); await settle();
+  expect(owner.get("book", task.taskId)).toMatchObject({ status: "completed", history: { status: "failed", errorCode: "db/locked" } });
+  await expect(owner.listHistory("book")).rejects.toMatchObject({ code: "db/locked" });
+  failure = false; expect((await owner.listHistory("book")).items[0]!.snapshot.status).toBe("completed");
+  expect(owner.get("book", task.taskId).history?.status).toBe("saved"); owner.dispose();
+});
+
+
+test("pause and resume found by listing cannot bypass the durable admission receipt", async () => {
+  const { BookTextTaskHistory } = await import("./book-text-task-history");
+  for (const resume of [false, true]) {
+    const gate = deferred<void>(); let raw: string | null = null, parses = 0;
+    const history = new BookTextTaskHistory(crypto.randomUUID(), { read: async () => raw,
+      write: async value => { await gate.promise; raw = value; }, run: operation => operation() });
+    const owner = new BookTextTaskOwner({ snapshot: async () => state(), prepare: async () => { parses++; return state("book", "ready"); } }, () => {}, undefined, history);
+    const start = owner.start("book"); await settle();
+    const task = owner.list("book")[0]!; owner.pause("book", task.taskId);
+    if (resume) owner.resume("book", task.taskId);
+    await settle(); expect(parses).toBe(0); gate.resolve(); await start; await settle();
+    expect(parses).toBe(resume ? 1 : 0);
+    expect(owner.get("book", task.taskId).status).toBe(resume ? "completed" : "paused"); owner.dispose();
+  }
+});

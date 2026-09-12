@@ -10,7 +10,7 @@ export function createBookTextPort(): BookTextPort {
   const domain = createLibraryDomain("agent");
   const library = domain.queries.books;
   return {
-    preparation: { setPriority: domain.commands.books.setTextTaskPriority, start: domain.commands.books.prepareText, get: library.getTextTask, list: library.listTextTasks, pause: domain.commands.books.pauseTextTask, resume: domain.commands.books.resumeTextTask, cancel: domain.commands.books.cancelTextTask },
+    preparation: { history: library.listTextTaskHistory, setPriority: domain.commands.books.setTextTaskPriority, start: domain.commands.books.prepareText, get: library.getTextTask, list: library.listTextTasks, pause: domain.commands.books.pauseTextTask, resume: domain.commands.books.resumeTextTask, cancel: domain.commands.books.cancelTextTask },
     getTextState: library.getTextState,
     getNavigationToc: library.getNavigationToc,
     listNavigationTargets: library.listNavigationTargets,

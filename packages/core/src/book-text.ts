@@ -28,5 +28,17 @@ export type BookTextTaskSnapshot = {
   createdAt: string;
   updatedAt: string;
   textState: BookTextSnapshot;
+  /** Persistence of the latest recorded milestone; separate from extraction completion. */
+  history?: { status: "pending" | "saved" | "failed"; persistedRevision?: number; errorCode?: string };
   errorCode?: string;
 };
+
+/** Persisted metadata only; an old handle never grants control of a new request. */
+export type BookTextTaskHistoryEntry = {
+  snapshot: BookTextTaskSnapshot;
+  recordedAt: string;
+  requestAvailable: boolean;
+  interrupted: boolean;
+};
+export type BookTextTaskHistoryQuery = { offset?: number; limit?: number };
+export type BookTextTaskHistoryPage = { items: BookTextTaskHistoryEntry[]; total: number; nextOffset: number | null; retainedLimit: number };

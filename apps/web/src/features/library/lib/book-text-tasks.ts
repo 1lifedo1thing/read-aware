@@ -1,9 +1,10 @@
 import { AppError, errorCode, type BookTextPriority, type BookTextPrepareOptions, type BookTextTaskSnapshot } from "@read-aware/core";
+import type { BookTextTaskHistory } from "./book-text-task-history";
 import type { BookTextRepository } from "./book-text-repository";
 
 type Listener = (state: BookTextTaskSnapshot) => void | Promise<void>;
 type Observer = { send(state: BookTextTaskSnapshot): void; stop(): void };
-type Task = { timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
+type Task = { admitted: boolean; lastHistoryRevision?: number; timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
 const active = (state: BookTextTaskSnapshot) => state.status === "queued" || state.status === "running" || state.status === "paused";
 const cancelled = () => new AppError("library/text-cancelled", "This text preparation request was cancelled");
 
@@ -13,7 +14,7 @@ export class BookTextTaskOwner {
   private stopped = false;
   constructor(private readonly repository: Pick<BookTextRepository, "snapshot" | "prepare">,
     private readonly warn: (message: string, error: unknown) => void,
-    lifetime?: AbortSignal) {
+    lifetime?: AbortSignal, private readonly history?: BookTextTaskHistory) {
     if (lifetime?.aborted) this.dispose();
     else lifetime?.addEventListener("abort", () => this.dispose(), { once: true });
   }
@@ -30,7 +31,39 @@ export class BookTextTaskOwner {
     if (!active(task.state)) return;
     task.state = { ...task.state, ...change, revision: task.state.revision + 1, updatedAt: new Date().toISOString() };
     if (!active(task.state)) { clearTimeout(task.timer); task.timer = undefined; }
+    if (change.status !== undefined || change.priority !== undefined) this.record(task);
     for (const observer of task.observers) observer.send(task.state);
+  }
+
+  private historySettled(task: Task, revision: number, error?: unknown): void {
+    if (this.stopped || task.lastHistoryRevision !== revision) return;
+    task.state = { ...task.state, revision: task.state.revision + 1,
+      history: error === undefined ? { status: "saved", persistedRevision: revision }
+        : { status: "failed", errorCode: errorCode(error) ?? "db/error" } };
+    for (const observer of task.observers) observer.send(task.state);
+  }
+
+  private record(task: Task): void {
+    if (!this.history) return;
+    const revision = task.state.revision; task.lastHistoryRevision = revision;
+    task.state = { ...task.state, history: { status: "pending" } };
+    const failed = (error: unknown) => { this.warn("Text task history write failed", error); this.historySettled(task, revision, error); };
+    try { void this.history.record(task.state).then(() => this.historySettled(task, revision), failed); }
+    catch (error) { failed(error); }
+  }
+
+  async listHistory(bookId: string, query?: import("@read-aware/core").BookTextTaskHistoryQuery): Promise<import("@read-aware/core").BookTextTaskHistoryPage> {
+    this.assertLive();
+    for (const task of this.tasks.values()) this.expire(task);
+    if (!this.history) return { items: [], total: 0, nextOffset: null, retainedLimit: 64 };
+    const result = await this.history.list(bookId, query, id => this.tasks.has(id));
+    this.assertLive();
+    for (const entry of result.items) {
+      const task = this.tasks.get(entry.snapshot.taskId);
+      if (entry.requestAvailable && task?.lastHistoryRevision !== undefined
+        && entry.snapshot.revision >= task.lastHistoryRevision && task.state.history?.status !== "saved") this.historySettled(task, task.lastHistoryRevision);
+    }
+    return result;
   }
 
   private expire(task: Task): void {
@@ -71,13 +104,18 @@ export class BookTextTaskOwner {
       if (!active(task.state)) { for (const observer of task.observers) observer.stop(); this.tasks.delete(id); }
     }
     const now = new Date().toISOString(), deadlineAt = new Date(Date.parse(now) + request.timeoutMs).toISOString();
-    const task: Task = { controller: new AbortController(), rebuildPending: request.rebuild === true, observers: new Set(), state: {
+    const task: Task = { admitted: false, controller: new AbortController(), rebuildPending: request.rebuild === true, observers: new Set(), state: {
       taskId: crypto.randomUUID(), bookId, mode: request.rebuild ? "rebuild" : "prepare", revision: 0,
       status: "queued", priority: request.priority, timeoutMs: request.timeoutMs, deadlineAt, waitReason: null, createdAt: now, updatedAt: now, textState: state,
     } };
     this.tasks.set(task.state.taskId, task);
-    this.scheduleDeadline(task);
-    void this.run(task);
+    try { await this.history?.record(task.state); }
+    catch (error) { this.tasks.delete(task.state.taskId); throw error; }
+    this.assertLive(); this.expire(task); task.admitted = true;
+    if (active(task.state)) {
+      this.scheduleDeadline(task);
+      if (task.state.status === "queued") void this.run(task);
+    }
     return structuredClone(task.state);
   }
 
@@ -118,7 +156,8 @@ export class BookTextTaskOwner {
     const task = this.lookup(bookId, taskId);
     if (task.state.status === "paused") {
       task.controller = new AbortController();
-      void this.run(task);
+      if (task.admitted) void this.run(task);
+      else this.publish(task, { status: "queued" });
     }
     return structuredClone(task.state);
   }

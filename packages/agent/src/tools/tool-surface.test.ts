@@ -154,6 +154,7 @@ const SURFACE_CASES: Record<string, Record<string, unknown>> = {
   get_toc: { bookId: BOOK_ID },
   get_book_text_status: { bookId: BOOK_ID },
   prepare_book_text: { bookId: BOOK_ID },
+  get_book_text_task_history: { bookId: BOOK_ID },
   get_book_text_tasks: { bookId: BOOK_ID },
   set_book_text_task_priority: { bookId: BOOK_ID, taskId: "prepared-in-test", priority: "background" },
   pause_book_text_task: { bookId: BOOK_ID, taskId: "prepared-in-test" },

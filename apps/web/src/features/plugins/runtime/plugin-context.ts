@@ -699,6 +699,7 @@ export function buildPluginContext(
           readReference: (input, options) => lifecycle.read("library.readReference", signal => library.queries.books.readReference(input, signal), callSignal(options)),
           searchText: (input, options) => lifecycle.read("library.searchText", signal => library.queries.books.searchText(input, signal), callSignal(options)),
           getContentState: (bookId, options) => lifecycle.read("library.getContentState", signal => library.queries.books.getContentState(bookId, signal), callSignal(options)),
+          listTextTaskHistory: (bookId, query) => lifecycle.read("library.textTaskHistory", () => library.queries.books.listTextTaskHistory(bookId, query)),
           listRemovalCleanup: library.queries.books.listRemovalCleanup,
         },
       },

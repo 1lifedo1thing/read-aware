@@ -107,6 +107,7 @@ export type LibraryQueries = {
     getTextState(bookId: string): Promise<BookTextSnapshot>;
     getEnrichment(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookEnrichmentSnapshot>;
     getContentState(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookContentState>;
+    listTextTaskHistory(bookId: string, query?: import("@read-aware/core").BookTextTaskHistoryQuery): Promise<import("@read-aware/core").BookTextTaskHistoryPage>;
     getTextTask(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>;
     listTextTasks(bookId: string): Promise<BookTextTaskSnapshot[]>;
     getChapterText(bookId: string, chapterIndex: number): Promise<string | null>;
@@ -166,10 +167,10 @@ export type LibraryDomain = {
   };
 };
 
-const agentTextTasks = createBookTextTaskOwner();
+const agentTextTasks = createBookTextTaskOwner(undefined, "agent");
 
-export function createLibraryDomain(origin: EventOrigin, lifetime?: AbortSignal): LibraryDomain {
-  const textTasks = origin === "agent" ? agentTextTasks : createBookTextTaskOwner(lifetime);
+export function createLibraryDomain(origin: EventOrigin, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void): LibraryDomain {
+  const textTasks = origin === "agent" ? agentTextTasks : createBookTextTaskOwner(lifetime, origin, trackCleanup);
   const queries: LibraryQueries = {
     books: {
       getNavigationToc: getBookNavigationToc,
@@ -182,6 +183,7 @@ export function createLibraryDomain(origin: EventOrigin, lifetime?: AbortSignal)
       getTextState: getBookTextSnapshot,
       getEnrichment: (bookId, signal) => getBookEnrichment(bookId, signal ?? lifetime),
       getContentState: (bookId, signal) => getBookContentState(bookId, signal ?? lifetime),
+      listTextTaskHistory: (bookId, query) => textTasks.listHistory(bookId, query),
       getTextTask: async (bookId, taskId) => textTasks.get(bookId, taskId),
       listTextTasks: async bookId => textTasks.list(bookId),
       searchLocations: searchBookLocations,

@@ -25,6 +25,7 @@ function requestSnapshot(ctx: PluginContext, title: string, task: BookTextTaskSn
     { label: tr(ctx.locale, "text"), value: tr(ctx.locale, task.textState.text) },
     { label: tr(ctx.locale, "chapters"), value: String(task.textState.chapterCount) },
   ];
+  if (task.history) rows.push({ label: tr(ctx.locale, "taskHistory"), value: tr(ctx.locale, task.history.status === "saved" ? "historySaved" : task.history.status === "pending" ? "historyPending" : "historyFailed") });
   if (task.status === "failed") rows.push({ label: tr(ctx.locale, "failure"), value: tr(ctx.locale,
     task.errorCode === "library/text-timeout" ? "taskTimeout" : task.errorCode === "library/text-busy" ? "busy" : task.errorCode === "library/text-unsupported" ? "unsupported"
       : task.errorCode === "library/content-unavailable" ? "unavailable" : "error") });

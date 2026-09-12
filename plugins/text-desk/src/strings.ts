@@ -1,5 +1,12 @@
 const locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 const labels = {
+  historySaved: ["Milestone saved", "节点已保存", "節點已儲存", "進行状況を保存済み", "Этап сохранён", "Étape enregistrée", "Zwischenstand gespeichert", "Etapa guardada"],
+  historyPending: ["Saving history", "正在保存历史", "正在儲存歷史", "履歴を保存中", "Сохранение истории", "Enregistrement de l'historique", "Verlauf wird gespeichert", "Guardando historial"],
+  historyFailed: ["History save failed; reopen history to retry", "历史保存失败，重新打开历史可重试", "歷史儲存失敗，重新開啟歷史可重試", "履歴の保存に失敗。履歴を開き直して再試行", "История не сохранена; откройте её снова", "Échec de sauvegarde ; rouvrez l'historique", "Speichern fehlgeschlagen; Verlauf erneut öffnen", "No se guardó; vuelve a abrir el historial"],
+  taskHistory: ["Saved request history", "已保存的请求历史", "已儲存的請求歷史", "保存済みリクエスト履歴", "Сохранённая история запросов", "Historique enregistré", "Gespeicherter Anfrageverlauf", "Historial de solicitudes guardado"],
+  taskInterrupted: ["Interrupted in an earlier session", "已在先前会话中断", "已於先前工作階段中斷", "以前のセッションで中断", "Прервано в предыдущем сеансе", "Interrompue dans une session précédente", "In früherer Sitzung unterbrochen", "Interrumpida en una sesión anterior"],
+  recordedAt: ["Recorded at", "记录时间", "記錄時間", "記録日時", "Время записи", "Enregistré le", "Aufgezeichnet am", "Registrado el"],
+  noHistory: ["No saved requests for this book", "本书没有已保存的请求", "本書沒有已儲存的請求", "この本の保存済みリクエストはありません", "Нет сохранённых запросов для этой книги", "Aucune requête enregistrée pour ce livre", "Keine gespeicherten Anfragen für dieses Buch", "No hay solicitudes guardadas para este libro"],
   deadline: ["Deadline", "截止时间", "截止時間", "期限", "Крайний срок", "Échéance", "Frist", "Fecha límite"],
   taskTimeout: ["Time limit reached; saved checkpoints remain", "已到时间上限，已保存的检查点保留", "已達時間上限，保留已儲存的檢查點", "制限時間に到達。チェックポイントは保持", "Время истекло; контрольные точки сохранены", "Limite atteinte ; points de reprise conservés", "Zeitlimit erreicht; Zwischenstände bleiben erhalten", "Límite alcanzado; se conservan los puntos guardados"],
   timedPrepare: ["Prepare with time limit", "设置时限并准备", "設定時限並準備", "制限時間を指定して準備", "Подготовить с лимитом времени", "Préparer avec une limite de temps", "Mit Zeitlimit aufbereiten", "Preparar con límite de tiempo"],

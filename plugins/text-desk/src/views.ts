@@ -1,4 +1,5 @@
 import type { PluginContext, PluginDetailView, PluginListView, PluginAction, PluginListItem } from "@read-aware/plugin-types";
+import { taskHistory } from "./task-history";
 import { readerDemandDetail } from "./reader-demand";
 import { tr } from "./strings";
 import { rebuildForm, requestList, startRequest, timedPrepareForm } from "./task-views";
@@ -26,6 +27,7 @@ export async function textDetail(ctx: PluginContext, bookId: string, title: stri
     { id: "open", label: tr(ctx.locale, "open"), icon: "book-open", run: async () => {
       await ctx.domains.reading!.commands!.openBook(bookId); return { close: true };
     } },
+    { id: "history", label: tr(ctx.locale, "taskHistory"), icon: "clock-counter-clockwise", run: async () => ({ view: await taskHistory(ctx, bookId, title) }) },
     { id: "requests", label: tr(ctx.locale, "requests"), icon: "list-bullets", run: async () => ({ view: await requestList(ctx, bookId, title) }) },
     ...(state.status !== "unsupported" ? [
       { id: "prepare", label: tr(ctx.locale, "prepare"), icon: "play", run: () => startRequest(ctx, bookId, title) },

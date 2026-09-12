@@ -13,7 +13,8 @@ test("both Agent scopes prepare, inspect and cancel the exact task/book without 
     };
     const bookId = scope.kind === "book" ? "current" : "book";
     const task = await call("prepare_book_text", { bookId, rebuild: true, timeoutMs: 60000 });
-    expect(task.timeoutMs).toBe(60000);
+    expect(task.timeLimit).toBe("60s");
+    expect(task).not.toHaveProperty("timeoutMs");
     expect(task.bookId).toBe("book"); expect(task.mode).toBe("rebuild");
     expect(await call("get_book_text_tasks", { bookId, taskId: task.taskId })).toEqual(task);
     expect(await call("get_book_text_tasks", { bookId })).toEqual({ tasks: [task], total: 1, offset: 0, nextOffset: null });
@@ -77,4 +78,16 @@ test("priority tooling resolves the current book and forwards the exact handle w
   const result = await tool.execute("test", { bookId: "current", taskId: task.taskId, priority: "background" });
   expect(calls).toEqual([["book", task.taskId, "background"]]);
   expect(result.content[0]).toMatchObject({ type: "text", text: expect.stringContaining('"priority":"background"') });
+});
+
+test("history forwards actor-owned pages and preserves persistence failures without starting extraction", async () => {
+  const { deps } = createInMemoryDeps(); const calls: unknown[] = [];
+  const page = { items: [], total: 0, nextOffset: null, retainedLimit: 64 };
+  deps.bookText.preparation!.history = async (bookId, query) => { calls.push([bookId, query]); return page; };
+  deps.bookText.preparation!.start = async () => { throw Error("must not prepare from history read"); };
+  const tool = buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps).find(tool => tool.name === "get_book_text_task_history")!;
+  const result = await tool.execute("test", { bookId: "current", offset: 20, limit: 10 });
+  expect(calls).toEqual([["book", { offset: 20, limit: 10 }]]); expect(result.content[0]).toMatchObject({ type: "text", text: JSON.stringify(page) });
+  deps.bookText.preparation!.history = async () => { throw Error("disk unavailable"); };
+  await expect(tool.execute("test", {})).rejects.toThrow("disk unavailable");
 });

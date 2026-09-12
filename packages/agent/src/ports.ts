@@ -344,6 +344,7 @@ export type BookTextHit = import("@read-aware/core").BookTextHit;
 export interface BookTextPort {
   preparation?: {
     start(bookId: Id, options?: import("@read-aware/core").BookTextPrepareOptions): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
+    history(bookId: Id, query?: import("@read-aware/core").BookTextTaskHistoryQuery): Promise<import("@read-aware/core").BookTextTaskHistoryPage>;
     get(bookId: Id, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
     list(bookId: Id): Promise<import("@read-aware/core").BookTextTaskSnapshot[]>;
     setPriority(bookId: Id, taskId: string, priority: import("@read-aware/core").BookTextPriority): Promise<import("@read-aware/core").BookTextTaskSnapshot>;

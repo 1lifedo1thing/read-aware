@@ -20,6 +20,7 @@ export function createMemoryTextPreparation(chapters: ReadonlyMap<string, readon
       };
       tasks.set(task.taskId, task); return structuredClone(task);
     },
+    history: async () => ({ items: [], total: 0, nextOffset: null, retainedLimit: 64 }),
     get: async (bookId, taskId) => get(bookId, taskId),
     list: async bookId => [...tasks.values()].filter(t => t.bookId === bookId).map(t => structuredClone(t)),
     setPriority: async (bookId, taskId) => get(bookId, taskId),

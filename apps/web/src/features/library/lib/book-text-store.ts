@@ -1,5 +1,6 @@
 /** Native adapter for the shared, versioned derived-text repository. */
 import { AppError, type BookTextSnapshot } from "@read-aware/core";
+import { createTextTaskHistory } from "./book-text-history-storage";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { onAppEvent } from "../../../platform/app-events";
 import { deleteDesktopBlob, getDesktopBlob, getDesktopBlobInfo, putDesktopBlob } from "../../../platform/blob-store";
@@ -64,7 +65,7 @@ onAppEvent("book-removed", ({ bookId }) => {
 });
 
 export const getBookTextSnapshot = (bookId: string): Promise<BookTextSnapshot> => repository.snapshot(bookId);
-export const createBookTextTaskOwner = (lifetime?: AbortSignal) => new BookTextTaskOwner(repository, (message, error) => log.warn(message, error), lifetime);
+export const createBookTextTaskOwner = (lifetime?: AbortSignal, origin: import("@read-aware/core").EventOrigin = "user", trackCleanup?: (work: Promise<void>) => void) => new BookTextTaskOwner(repository, (message, error) => log.warn(message, error), lifetime, createTextTaskHistory(origin, trackCleanup));
 export const getPersistedBookText = (bookId: string) => repository.persisted(bookId);
 // Borrow the active parser with its registered version, never attach a new hash to an old parser.
 export const ensureBookTextExtracted = (bookId: string, preopened?: FoliateBook) => repository.ensure(bookId, !!preopened);
