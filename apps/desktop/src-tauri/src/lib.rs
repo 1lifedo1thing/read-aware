@@ -795,6 +795,10 @@ pub fn run() {
                 app.deep_link().register_all()?;
             }
 
+            let backup_exports = storage::backup_export::ExportTasks::default();
+            backup_exports.start_cleanup()?;
+            app.manage(backup_exports);
+
             // Disposable plaintext preparation is independent of DB recovery.
             // Cross-process leases protect live tasks; cleanup never blocks boot.
             let backup_staging = storage::backup_staging::BackupStaging::for_app(&app.path().app_data_dir()?);
@@ -924,6 +928,15 @@ pub fn run() {
             window_state::restore_and_track(&window)?;
 
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                if let Some(tasks) = window.app_handle().try_state::<storage::backup_export::ExportTasks>() {
+                    let tasks = tasks.inner().clone();
+                    let owner = window.label().to_owned();
+                    tauri::async_runtime::spawn_blocking(move || tasks.cancel_owner(&owner));
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             import::library_stage_import,
@@ -1075,6 +1088,10 @@ pub fn run() {
             storage::reading_sessions_pending,
             storage::reading_session_flush,
             storage::backup_close_reading_sessions,
+            storage::backup_export::backup_export_sources,
+            storage::backup_export::backup_export_capture,
+            storage::backup_export::backup_export_write,
+            storage::backup_export::backup_export_cancel,
             storage::reading_time_import,
             external_open::external_open_take,
             external_open::external_open_is_current,
