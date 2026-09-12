@@ -550,6 +550,9 @@ export class ReadingSessionController {
         check();
         if (this.session !== session || session.engine !== engine) throw new AppError("reader/superseded", "Reader engine was replaced");
         if (moveMode) { await moveMode(controller.signal); return this.state.location; }
+        // The newly ready virtual engine has already resolved its source-bound
+        // locator (or fallen back to its start). Do not override that with start.
+        if (reload && this.state.location?.contentVersion.startsWith("virtual:sha256:")) return this.state.location;
         return direction ? engine.step(direction)
           : target.cfi || target.href || target.fraction !== undefined || target.sectionIndex !== undefined ? engine.navigate(target)
           : this.state.location;

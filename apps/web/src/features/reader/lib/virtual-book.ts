@@ -4,6 +4,8 @@
  * is exactly how virtual (plugin-served) books read like real ones: same
  * pagination, selection, CFI annotations, and progress model.
  */
+import { AppError } from "@read-aware/core";
+import { digestContent, virtualContentVersion } from "../../library/lib/content-version";
 import { wrapSectionHtml } from "./section-document";
 import type { FoliateBook } from './foliate-engine';
 
@@ -14,17 +16,31 @@ export type VirtualBookContent = {
   sections: { id?: string; title?: string; html: string }[];
 };
 
-export function buildVirtualFoliateBook(content: VirtualBookContent): FoliateBook {
+export async function buildVirtualFoliateBook(content: VirtualBookContent): Promise<FoliateBook> {
   const language = content.language ?? "en";
   const ids = content.sections.map((section, index) => section.id || `sec-${index}`);
   const docs = content.sections.map((section) =>
     wrapSectionHtml(section.html, section.title, language),
   );
 
+  if (ids.length > 10000 || new Set(ids).size !== ids.length) {
+    throw new AppError("library/content-unavailable", "Virtual section identities must be unique and bounded");
+  }
+  // Stable section identity plus exact wrapped source identity survives reorder.
+  // Anonymous sections only survive an identical whole-book version.
+  const version = await virtualContentVersion(content);
+  const cfis: string[] = [];
+  for (let index = 0; index < ids.length; index++) {
+    const identity = content.sections[index]!.id ? `id:${ids[index]}` : `anonymous:${version}:${index}`;
+    const token = `rav1-${await digestContent(identity)}-${await digestContent(docs[index]!)}`;
+    cfis.push(`epubcfi(/6/${(index + 1) * 2}[${token}])`);
+  }
+
   const sections = content.sections.map((_section, index) => {
     let url: string | null = null;
     return {
       id: ids[index],
+      cfi: cfis[index],
       linear: "yes",
       size: docs[index].length,
       load: async () =>

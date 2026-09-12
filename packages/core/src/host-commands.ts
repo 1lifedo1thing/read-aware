@@ -18,6 +18,7 @@ export type HostCommandRequest = (
 export type HostCommandDescriptor = {
   id: HostCommandId;
   title: string;
+  /** Ambient permission/workspace readiness; supplied resource IDs are validated during execute. */
   enabled: boolean;
   checked?: boolean;
   unavailableReason?: "permission" | "workspace" | "reader-control";

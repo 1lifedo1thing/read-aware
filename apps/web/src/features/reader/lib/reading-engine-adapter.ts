@@ -35,7 +35,12 @@ export function createReadingEngineAdapter(view: FoliateView, bookId: string, co
       if (target.sectionIndex !== undefined && !view.book?.sections[target.sectionIndex]) {
         throw new AppError("reader/target-not-found", "Source section does not exist");
       }
-      const resolved = await view.goTo(target.sectionIndex ?? target.cfi ?? target.href ?? { fraction: target.fraction! });
+      const resolved = await view.goTo(target.sectionIndex ?? target.cfi ?? target.href ?? { fraction: target.fraction! }).catch((error: unknown) => {
+        if (error && typeof error === "object" && "name" in error && error.name === "ContentRangeError") {
+          throw new AppError("reader/target-not-found", "Stored source location no longer resolves", { cause: error });
+        }
+        throw error;
+      });
       if (!resolved) throw new AppError("reader/target-not-found", "Renderer could not resolve this target");
       await waitForReadingPaint(view);
       if (target.textQuote) {

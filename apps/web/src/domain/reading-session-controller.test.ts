@@ -357,3 +357,16 @@ test("a recovered engine clears the previous load error", async () => {
   expect(runtime.snapshot().errorCode).toBeUndefined();
   expect((await runtime.navigate({ cfi: "next" })).location.cfi).toBe("next");
 });
+
+
+test("virtual reload keeps the new engine's verified migrated position and new version", async () => {
+  const f = fixture();
+  const location = { bookId: "book", contentVersion: "virtual:sha256:new", cfi: "verified-current-section", fraction: 0.8 };
+  const off = f.runtime.bindShell({ open: (bookId, intent) => {
+    const next = f.runtime.begin(bookId, intent);
+    f.runtime.attach(next, { navigate: async () => { throw Error("Do not replay old positions"); },
+      step: async () => { throw Error("Do not discard restored virtual positions"); } }, location);
+  }, close: () => f.runtime.closed() });
+  try { expect((await f.runtime.reload()).location).toEqual(location); }
+  finally { off(); f.detach(); f.runtime.closed(); }
+});

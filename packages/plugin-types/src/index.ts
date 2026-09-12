@@ -1534,7 +1534,7 @@ export type PluginReadingDomain = {
     forward(guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
     /** Reading 2.12: page, source-section and book-boundary navigation; section/boundary jumps enter history. */
     step(direction: import("@read-aware/core").ReadingStep, guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
-    /** Reopen the current source at its start, discarding stale locators. Reading 2.15. */
+    /** Reading 2.21: reopen source; virtual sections with identical stable identity/content preserve their location across reorder. Stale/legacy virtual locators restart at the beginning; files still restart. Whole-book contentVersion guards remain strict. */
     reload(guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<import("@read-aware/core").ReadingNavigationReceipt>;
     close(guard?: import("@read-aware/core").ReadingSessionGuard, options?: PluginCallOptions): Promise<void>;
     /** Start resolves on actual audio start. Stop is idempotent; disabling the initiating plugin stops its playback. */

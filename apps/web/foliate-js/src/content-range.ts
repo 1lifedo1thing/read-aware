@@ -18,7 +18,18 @@ export function resolveContentCFI(book: Book, cfi: string): ResolvedNavigation {
     const parent = Array.isArray(parts) ? parts : parts.parent
     const base = parent.shift()
     if (!base) throw new ContentRangeError('not-found')
-    const index = CFI.fake.toIndex(base)
+    let index = CFI.fake.toIndex(base)
+    const token = base.at(-1)?.id
+    const virtual = book.sections.some(section => section.cfi?.includes('[rav1-'))
+    if (virtual) {
+        // Never apply an ordinal-only legacy CFI to a newly published virtual
+        // source. Only a stable section id AND identical wrapped document prove
+        // that the old local DOM path still describes the same text.
+        if (!token || !/^rav1-[a-f0-9]{64}-[a-f0-9]{64}$/.test(token)) throw new ContentRangeError('not-found')
+        const matches = book.sections.flatMap((section, i) => section.cfi?.endsWith(`[${token}])`) ? [i] : [])
+        if (matches.length !== 1) throw new ContentRangeError('not-found')
+        index = matches[0]
+    }
     // A page/spine CFI has no local document path. PDF quote navigation resolves
     // its text anchor only after the renderer has loaded the page's text layer.
     if (Array.isArray(parts) && !parts.length) return { index }

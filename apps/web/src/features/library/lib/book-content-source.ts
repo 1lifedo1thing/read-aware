@@ -52,7 +52,7 @@ export async function withBookContent<T>(bookId: string, expectedVersion: string
       if (!provider) throw new AppError("library/content-unavailable", "Book content provider is unavailable");
       const value = await provider.load(binding.key);
       signal?.throwIfAborted();
-      content = { book: buildVirtualFoliateBook(value), contentVersion: await virtualContentVersion(value) };
+      content = { book: await buildVirtualFoliateBook(value), contentVersion: await virtualContentVersion(value) };
       release = retainBook(content.book);
     } else {
       const contentVersion = await fileContentVersion(bookId);

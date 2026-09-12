@@ -101,3 +101,12 @@ test("chapter adapter uses TOC fragment targets, waits for paint and reports no 
   missing = true;
   await expect(adapter.step("next-chapter")).rejects.toMatchObject({ code: "reader/target-not-found" });
 });
+
+test("an invalid stored source locator reports a stable navigation failure and preserves unrelated errors", async () => {
+  const f = fixture();
+  f.value.goTo = async () => { throw Object.assign(new Error("old virtual source"), { name: "ContentRangeError", reason: "not-found" }); };
+  await expect(f.adapter.navigate({ cfi: "old-anchor" })).rejects.toMatchObject({ code: "reader/target-not-found" });
+  const failure = new Error("real renderer failure");
+  f.value.goTo = async () => { throw failure; };
+  await expect(f.adapter.navigate({ cfi: "current-anchor" })).rejects.toBe(failure);
+});

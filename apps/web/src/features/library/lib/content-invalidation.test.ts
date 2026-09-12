@@ -34,7 +34,7 @@ test("formal plugin invalidation bypasses stale active content and rejects a rea
     await flushLocalKV();
     const oldVersion = await virtualContentVersion(content);
     const oldRevision = contentInvalidationRevision(bookId);
-    detach = registerActiveBookContent(bookId, buildVirtualFoliateBook(content), oldVersion,
+    detach = registerActiveBookContent(bookId, await buildVirtualFoliateBook(content), oldVersion,
       resolveContentProvider({ pluginId: "content-invalidation", providerId: "feed", key: "source" }));
     expect(await withBookContent(bookId, oldVersion, undefined, async source => source.book.metadata?.title)).toBe("Before");
     expect(loads).toBe(0);
@@ -51,7 +51,8 @@ test("formal plugin invalidation bypasses stale active content and rejects a rea
     expect(await withBookContent(bookId, undefined, undefined, async source => source.book.metadata?.title)).toBe("After");
     expect(loads).toBe(2);
     await expect(withBookContent(bookId, oldVersion, undefined, async () => "must not succeed")).rejects.toMatchObject({ code: "reader/stale-location" });
-    expect(() => registerActiveBookContent(bookId, buildVirtualFoliateBook(content), oldVersion, undefined, oldRevision)).toThrow();
+    const staleBook = await buildVirtualFoliateBook(content);
+    expect(() => registerActiveBookContent(bookId, staleBook, oldVersion, undefined, oldRevision)).toThrow();
     await expect(withBookContent(bookId, undefined, undefined, async () => {
       await plugin.context.domains.library!.commands!.books.invalidateVirtualBook({ providerId: "feed", key: "source" });
       return "outdated";

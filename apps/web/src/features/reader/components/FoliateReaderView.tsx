@@ -87,6 +87,7 @@ import {
 import { useReaderPalette } from "../../settings/hooks/useReaderPalette";
 import type { ReaderSettings, ReadingMode } from "../../settings/lib/reader-settings";
 import { DEFAULT_READER_SETTINGS } from "../../settings/lib/reader-settings";
+import { restoreReadingPosition } from "../lib/restore-reading-position";
 import { buildVirtualFoliateBook } from "../lib/virtual-book";
 import { resolveContentProvider } from "../../plugins/lib/virtual-books";
 import { readingRuntime } from "../../../domain/reading-runtime";
@@ -1886,7 +1887,7 @@ export function FoliateReaderView({
           contentProvider = provider;
           contentVersion = await virtualContentVersion(content);
           if (cancelled) return;
-          parsedBook = buildVirtualFoliateBook(content);
+          parsedBook = await buildVirtualFoliateBook(content);
         } else {
           const source = initialBook.file;
           if (!source) throw new Error("Missing book file.");
@@ -2137,24 +2138,8 @@ export function FoliateReaderView({
         }
 
         const resetPosition = initialBook.resetPosition && resetPositionSourceRef.current !== initialBook;
-        const target = resetPosition ? null : lastLocationTargetRef.current;
-        const savedFraction = resetPosition ? 0 : initialFractionRef.current;
-        // A stored CFI/href can be unparseable for this engine (e.g. a legacy
-        // epub.js CFI from before the foliate migration), or simply absent for
-        // fixed-layout files. Fall back to the saved reading fraction so the
-        // position is still restored instead of snapping back to the start.
-        const restoreByFraction = async () => {
-          if (savedFraction > 0) {
-            await view?.goToFraction(savedFraction).catch(() => view?.renderer?.next?.());
-          } else {
-            await view?.renderer?.next?.();
-          }
-        };
-        if (target) {
-          await view.goTo(target).then(resolved => resolved ? undefined : restoreByFraction(), restoreByFraction);
-        } else {
-          await restoreByFraction();
-        }
+        await restoreReadingPosition(view, { virtual: !!initialBook.virtual, reset: !!resetPosition,
+          target: lastLocationTargetRef.current, fraction: initialFractionRef.current });
         if (view) {
           applyHighlights(view, highlightsRef.current);
           applyNotes(view, notesRef.current, highlightsRef.current);
