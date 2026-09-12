@@ -77,10 +77,17 @@ const OPENROUTER_EVAL_ROUTING = {
 } as const;
 
 /** 给 eval 解析出的模型注入路由偏好（仅 openrouter；其余原样返回）。 */
-export function applyEvalRouting<T extends { provider: string; compat?: object }>(model: T): T {
+export function applyEvalRouting<T extends { provider: string; id?: string; maxTokens?: number; compat?: object }>(model: T): T {
   if (model.provider !== "openrouter") return model;
   return {
     ...model,
+    // The SDK's 0731 catalog advertises 943,718 output tokens. That exceeds
+    // the preferred Baidu endpoint's completion limit (131,072) and CoreWeave's (235,929), and a
+    // fallback rejected input + output exceeding its context window. Keep the
+    // fixed eval snapshot within Baidu's documented completion capacity.
+    // Verified 2026-09-13: /api/v1/models/deepseek/deepseek-v4-flash-0731/endpoints
+    ...(model.id === "deepseek/deepseek-v4-flash-0731"
+      ? { maxTokens: Math.min(model.maxTokens ?? 131_072, 131_072) } : {}),
     compat: { ...model.compat, openRouterRouting: OPENROUTER_EVAL_ROUTING },
   };
 }

@@ -1,0 +1,45 @@
+{
+  "baseline": {
+    "completeRuns": 247,
+    "passed": 198,
+    "failed": 34,
+    "errors": 15,
+    "excluded": "reading-20260912T172040Z-18c2694a interrupted preliminary one-case run"
+  },
+  "overflow": {
+    "original": "berger-20260912T183950Z-300a549e",
+    "diagnostic": "berger-20260912T191354Z-f4d63aa5",
+    "observedInputTokens": 118077,
+    "sdkEstimatedContextTokens": 95306,
+    "requestedMaxOutputTokens": 943718,
+    "providerErrorLimit": 1048576,
+    "provider": "Cloudflare",
+    "model": "deepseek/deepseek-v4-flash-0731"
+  },
+  "endpointSource": {
+    "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4-flash-0731/endpoints",
+    "checkedAt": "2026-09-13 Asia/Singapore",
+    "baiduMaxCompletionTokens": 131072,
+    "coreWeaveMaxCompletionTokens": 235929,
+    "coreWeaveContextTokens": 262144
+  },
+  "fix": {
+    "scope": "eval/development fixed snapshot routing only; product hydrated catalog unchanged",
+    "maxOutputTokens": 131072,
+    "run": "berger-20260912T191825Z-3e2533d8",
+    "wallTimeMs": 28541.737375,
+    "machinePassed": true,
+    "mainReview": 2,
+    "remaining": "Restricts expository whole-book request to read chapters; long pocket checklist"
+  },
+  "freeQuestion": {
+    "id": "manual-mtyrtn8o-2efe83f6:1",
+    "mainReview": 3,
+    "result": "Explicit whole-book four-topic maximum12 request covers four topics/12 points, but includes process narration and extra explanation"
+  },
+  "checks": [
+    "model-config focused test 1 pass / 7 assertions",
+    "agent typecheck passed"
+  ],
+  "reviewStatus": "Santi 10, Lebon 4, Berger 3, Refactoring 2 original failures/errors reviewed; remaining earlier interaction/journey/legacy reviews and passing samples pending"
+}
