@@ -136,6 +136,7 @@ pub(super) fn keyed(table: &str, key: &str) -> RowPolicy {
         };
     }
     if key.starts_with("read-aware-secret:sync.")
+        || key.starts_with("read-aware-backup-restore-accepted:")
         || key.starts_with("read-aware-sync-")
         || key.starts_with("read-aware-migrated-")
     {

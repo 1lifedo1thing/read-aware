@@ -88,7 +88,7 @@ fn password_policy(password: &SecretString) -> Result<(), CommandError> {
 
 /// A portable, normalized relative path. The extractor never honors tar links,
 /// permissions, absolute paths, metadata extensions or filesystem aliases.
-fn member_path(path: &str) -> Result<(), CommandError> {
+pub(in crate::storage) fn member_path(path: &str) -> Result<(), CommandError> {
     if path.is_empty()
         || path.len() > MAX_PATH
         || path.contains('\\')

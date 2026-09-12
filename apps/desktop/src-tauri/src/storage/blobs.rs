@@ -396,6 +396,12 @@ pub fn init_db(app: &AppHandle) -> Result<(Connection, PathBuf), CommandError> {
     let mut conn = Connection::open(dir.join("read-aware.db"))?;
     apply_connection_pragmas(&conn)?;
     register_sql_functions(&conn)?;
+    // Resolve an interrupted full restore before migration helpers can read or
+    // rewrite its blob files, and before the frontend hydrates local settings.
+    super::backup_restore_files::recover(&mut conn, &dir).map_err(|error| {
+        log::error!("full backup file recovery failed: {error}");
+        error
+    })?;
     // Covers moved out of the books table (v24/v25). The data-URL rows must
     // be lifted into the blob store while both column sets exist, so the
     // migrations pause at v24 for that pass and finish afterwards.
