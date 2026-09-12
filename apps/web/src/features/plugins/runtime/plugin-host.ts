@@ -56,7 +56,7 @@ import {
   type StartPluginWorkerOptions,
 } from "./plugin-worker-host";
 import { onAppEvent } from "../../../platform/app-events";
-import { unbindVirtualBook } from "../lib/virtual-books";
+import { recoverVirtualBookBindings, unbindVirtualBook } from "../lib/virtual-books";
 import { runPluginUpdateTransaction } from "./plugin-update-transaction";
 import { assertPluginManifestCanActivate } from "./plugin-manifest-readiness";
 import { planPluginDataMigration } from "./plugin-data-migration";
@@ -112,6 +112,11 @@ export async function initializePlugins(): Promise<void> {
     markPluginsReady();
     return;
   }
+
+  try {
+    const { listLibraryBooks } = await import("../../library/lib/library-db");
+    await recoverVirtualBookBindings(listLibraryBooks);
+  } catch (error) { log.error("virtual book binding recovery failed; registry preserved", error); }
 
   const installed: InstalledPlugin[] = [];
   for (const entry of entries) {

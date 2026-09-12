@@ -253,6 +253,7 @@ const nativeMap = pairs([
   ["put_blob get_blob get_blob_info get_blob_range delete_blob blob_read_open blob_read_chunk blob_read_close blob_write_open blob_write_chunk blob_write_chunk_raw blob_write_commit blob_write_abort", "SYS13"],
   ["secret_get secret_keys secret_set secret_delete", "SYS04 CFG07"],
   ["load_kv_all set_kv set_kv_batch delete_kv replace_kv_prefix", "SYS01 CFG01 SET04 SET05"],
+  ["virtual_book_create", "LIB12 LIB13"], ["virtual_book_prune", "LIB13"],
   ["library_load library_get_book library_put_book", "LIB01 LIB02 OPS11"], ["library_release_book_files", "LIB04 LIB05 LIB13"],
   ["library_list_removal_cleanup", "LIB05 LIB13"],
   ["library_list_collections library_put_collection", "LIB15 LIB16 LIB17 LIB18"], ["library_duplicate_book_groups", "LIB11"],

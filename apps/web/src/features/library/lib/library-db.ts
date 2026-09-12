@@ -9,6 +9,7 @@ import {
   openDesktopBlobFile,
   putDesktopBlob,
 } from "../../../platform/blob-store";
+import { commitBoundVirtualBook, type VirtualBookBinding } from "../../plugins/lib/virtual-books";
 import { commitDomainEvents } from "../../../platform/domain-events";
 import { fetchRemoteBlob } from "../../../platform/sync/sync-scheduler";
 import type {
@@ -103,12 +104,14 @@ export function sortBooks(books: LibraryBook[]) {
  * the start — there is no file for any extractor to inspect.
  */
 export async function addVirtualLibraryBook(
-  input: { title: string; author?: string },
+  input: { title: string; author?: string; binding: VirtualBookBinding },
   origin?: EventOrigin,
+  signal?: AbortSignal,
 ): Promise<LibraryBook> {
   assertDesktop("Adding a virtual book");
+  if (origin !== `plugin:${input.binding.pluginId}`) throw new AppError("plugin/unavailable", "Virtual book owner mismatch");
   const bookId = crypto.randomUUID();
-  await commitDomainEvents(
+  await commitBoundVirtualBook(bookId, input.binding, [
     {
       type: "book.imported",
       payload: {
@@ -123,7 +126,7 @@ export async function addVirtualLibraryBook(
       origin,
     },
     { type: "book.coverExtracted", payload: { bookId, status: "none" }, origin },
-  );
+  ], signal);
   const stored = await getBookRecord(bookId);
   if (!stored) throw new Error("Virtual book was not persisted");
   return stored;

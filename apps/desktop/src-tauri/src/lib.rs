@@ -945,6 +945,8 @@ pub fn run() {
             covers::library_cover_backlog,
             storage::append_events,
             storage::commit_events,
+            storage::virtual_books::virtual_book_create,
+            storage::virtual_books::virtual_book_prune,
             storage::apply_remote_events,
             storage::stage_remote_events,
             storage::finalize_staged_events,

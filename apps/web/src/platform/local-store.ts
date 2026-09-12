@@ -198,6 +198,14 @@ export const localKV = {
   },
 };
 
+/** Join host-owned KV metadata to a native domain transaction using the same
+ * ordered optimistic mirror and rollback as ordinary KV writes. Desktop only. */
+export function commitLocalKVTransaction(entries: ReadonlyMap<string, string | null>, persist: () => Promise<void>, actor: EventOrigin): Promise<void> {
+  if (!isTauri()) return Promise.reject(new AppError("plugin/unavailable", "Native KV transaction requires desktop"));
+  const values = new Map(entries);
+  return writeLocal(values.keys(), () => writes.batch(values, persist, actor, "local", "caller"), "caller");
+}
+
 /** Host-only multi-record settings commit; never exposes raw KV authority to actors. */
 export function setLocalKVBatch(entries: ReadonlyMap<string, string | null>, actor: EventOrigin | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store", run: RunDomainWrite = runDomainWrite): Promise<void> {
   if (entries.size === 0) return Promise.resolve();

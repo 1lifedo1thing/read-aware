@@ -144,7 +144,7 @@ export type LibraryCommands = {
     remove(bookId: string): Promise<void>;
     removeMany(bookIds: string[]): Promise<BookRemovalReceipt>;
     retryRemovalCleanup(bookIds: string[]): Promise<BookFileReleaseReceipt>;
-    addVirtualBook(input: { title: string; author?: string }): Promise<BookSummary>;
+    addVirtualBook(input: { title: string; author?: string; binding: import("../features/plugins/lib/virtual-books").VirtualBookBinding }): Promise<BookSummary>;
     updateVirtualBookTitle(bookId: string, title: string, author?: string): Promise<void>;
   };
   collections: {
@@ -264,8 +264,8 @@ export function createLibraryDomain(origin: EventOrigin, lifetime?: AbortSignal,
       retryRemovalCleanup: retryLibraryBookFileRelease,
       addVirtualBook: async (input) => {
         const book = await addVirtualLibraryBook(
-          { title: String(input.title), author: input.author },
-          origin,
+          { title: String(input.title), author: input.author, binding: input.binding },
+          origin, lifetime,
         );
         notifyLibraryChanged();
         return toBookSummary(book);

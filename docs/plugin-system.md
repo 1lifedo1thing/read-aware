@@ -6859,3 +6859,22 @@ completion. Acknowledgement metadata does not replay an old captured UI value.
 snapshots, not every event, human-presence detection or a complete causal audit.
 Text Desk 0.18 displays the update category and source; Agent session reads retain
 existing book/privacy fences. Actual new Worker/Tauri acceptance is pending.
+
+
+### Atomic virtual-book binding admission (Library 1.26)
+
+`addVirtualBook` creates the book events, projection and local provider binding in
+one SQLite transaction. A binding failure rolls back the event/outbox too. The
+host queue updates or restores the KV mirror and emits domain changes only after
+the native receipt. Calls for the same owner/provider/key serialize through their
+receipts, reusing a live book ID. Native checks reject stale registry versions,
+duplicate bindings, wrong event owners and changes to unrelated bindings.
+
+Before plugin activation, after local/legacy hydration, recovery removes bindings
+whose virtual book no longer exists. It checks the current database and complete
+registry in the transaction. Failure preserves the registry; recovery never
+recreates deleted books or guesses provider keys already lost by legacy writes.
+Accepted native writes drain during retirement; undispatched retired work fails.
+RSS Reader 0.16 uses this through its existing subscription/ensure-book flow.
+The RSS private subscription and host deletion still need their separate recovery
+flow. SQLite/host contract checks are not actual Tauri/Worker startup acceptance.

@@ -5,14 +5,18 @@
  * resolves at open time. Providers themselves register per activation into
  * the contribution store (disposed on disable, like every contribution).
  */
-import { AppError } from "@read-aware/core";
-import { afterLocalKVWrites, localKV } from "../../../platform/local-store";
+import { AppError, type EventOrigin } from "@read-aware/core";
+import { afterLocalKVWrites, commitLocalKVTransaction, localKV } from "../../../platform/local-store";
 import type { VirtualBookRef } from "../../reader/lib/reader-types";
 import { invalidateBookContent } from "../../library/lib/content-invalidation";
 import {
   getContentProvider,
   type RegisteredContentProvider,
 } from "../state/plugin-store";
+
+import { invoke } from "../../../platform/ipc";
+import { runDomainWrite } from "../../../platform/domain-write-gate";
+import { mintEventRows, broadcastDomainEventDrafts, type DomainEventDraft } from "../../../platform/domain-events";
 
 const REGISTRY_KEY = "read-aware-virtual-books";
 
@@ -94,7 +98,66 @@ export async function removeOwnedVirtualBook(
   const bookId = await afterLocalKVWrites(() => findVirtualBookId(binding));
   if (!bookId) return;
   await removeBook(bookId);
-  await afterLocalKVWrites(async () => {
+  await unbindVirtualBookDurably(bookId, binding);
+}
+
+export function resolveContentProvider(
+  binding: VirtualBookBinding,
+): RegisteredContentProvider | null {
+  return getContentProvider(binding.pluginId, binding.providerId);
+}
+
+
+/** Serialize same-binding creation/removal through receipt settlement, not just
+ * the first registry lookup. Different providers can continue independently. */
+const bindingTails = new Map<string, Promise<unknown>>();
+export function withVirtualBookBinding<T>(binding: VirtualBookBinding, work: () => Promise<T>): Promise<T> {
+  const key = JSON.stringify([binding.pluginId, binding.providerId, binding.key]);
+  const result = (bindingTails.get(key) ?? Promise.resolve()).catch(() => {}).then(work);
+  bindingTails.set(key, result);
+  void result.finally(() => { if (bindingTails.get(key) === result) bindingTails.delete(key); }).catch(() => {});
+  return result;
+}
+
+export async function commitBoundVirtualBook(bookId: string, binding: VirtualBookBinding, drafts: DomainEventDraft[], signal?: AbortSignal): Promise<void> {
+  const origin: EventOrigin = `plugin:${binding.pluginId}`;
+  return runDomainWrite(async () => {
+    signal?.throwIfAborted();
+    const events = await mintEventRows(drafts);
+    await afterLocalKVWrites(() => {
+      signal?.throwIfAborted();
+      const expectedRegistry = localKV.getItem(REGISTRY_KEY), registry = readRegistry();
+      if (registry[bookId] || findVirtualBookId(binding)) throw new AppError("library/content-unavailable", "Virtual book binding changed");
+      registry[bookId] = { ...binding };
+      const replacementRegistry = JSON.stringify(registry);
+      return commitLocalKVTransaction(new Map([[REGISTRY_KEY, replacementRegistry]]), async () => {
+        signal?.throwIfAborted();
+        await invoke("virtual_book_create", { bookId, binding, events, expectedRegistry, replacementRegistry });
+      }, origin);
+    });
+    broadcastDomainEventDrafts(drafts);
+  });
+}
+
+/** Run after local-store/legacy hydration and before plugin activation. Native
+ * rechecks live books and the complete registry in the same write transaction. */
+export async function recoverVirtualBookBindings(listBooks: () => Promise<{ id: string; format: string }[]>): Promise<number> {
+  return runDomainWrite(async () => {
+    const books = new Set((await listBooks()).filter(book => book.format === "virtual").map(book => book.id));
+    return afterLocalKVWrites(async () => {
+      const expectedRegistry = localKV.getItem(REGISTRY_KEY), registry = readRegistry();
+      const bookIds = Object.keys(registry).filter(id => !books.has(id));
+      if (!bookIds.length) return 0;
+      for (const id of bookIds) delete registry[id];
+      const replacementRegistry = JSON.stringify(registry);
+      await commitLocalKVTransaction(new Map([[REGISTRY_KEY, replacementRegistry]]), () => invoke("virtual_book_prune", { bookIds, expectedRegistry, replacementRegistry }), "system");
+      return bookIds.length;
+    });
+  });
+}
+
+export function unbindVirtualBookDurably(bookId: string, binding: VirtualBookBinding): Promise<void> {
+  return afterLocalKVWrites(async () => {
     const registry = readRegistry();
     const current = registry[bookId];
     // The shared book-removed listener may already have durably cleaned it up.
@@ -105,10 +168,4 @@ export async function removeOwnedVirtualBook(
     delete registry[bookId];
     await localKV.setItemAsync(REGISTRY_KEY, JSON.stringify(registry));
   });
-}
-
-export function resolveContentProvider(
-  binding: VirtualBookBinding,
-): RegisteredContentProvider | null {
-  return getContentProvider(binding.pluginId, binding.providerId);
 }

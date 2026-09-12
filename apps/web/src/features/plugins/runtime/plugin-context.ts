@@ -36,7 +36,7 @@ import { DEFAULT_LOCALE, i18n, isAppLocale } from "../../../i18n";
 import { onAppEvent } from "../../../platform/app-events";
 import { hostIO } from "../../../services/host-io";
 import { pluginDirectory } from "../../../services/plugin-directory";
-import { flushLocalKV, localKV } from "../../../platform/local-store";
+import { afterLocalKVWrites, flushLocalKV, localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { hostEnvironment } from "../../../platform/host-environment";
 import { hostWindow } from "../../../services/window";
@@ -66,11 +66,11 @@ import {
 import { getAgentRuntime } from "../../ai/agent/agent-runtime";
 import { createPluginLlm } from "./plugin-llm";
 import {
-  bindVirtualBook,
+  withVirtualBookBinding,
   findVirtualBookId,
   removeOwnedVirtualBook,
   invalidateOwnedVirtualBook,
-  unbindVirtualBook,
+  unbindVirtualBookDurably,
 } from "../lib/virtual-books";
 import { showPluginToast } from "../lib/plugin-toast";
 import { normalizeReaderMode } from "../lib/reader-mode";
@@ -739,37 +739,28 @@ export function buildPluginContext(
               >["books"]["addVirtualBook"]
             >[0],
           ) => {
-          const binding = {
-            pluginId: manifest.id,
-            providerId: String(input.providerId),
-            key: String(input.key),
-          };
-          const existingId = findVirtualBookId(binding);
-          if (existingId) {
-            // The binding may be an orphan (book deleted before cleanup
-            // existed, or through an untracked path) — verify the record.
-            const alive = await library.queries.books.get(existingId);
-            if (alive) {
-              await library.commands!.books.updateVirtualBookTitle(
-                existingId,
-                String(input.title),
-                input.author,
-              );
-              return {
-                ...alive,
-                title: String(input.title),
-                author: input.author ?? alive.author,
-              };
-            }
-            unbindVirtualBook(existingId);
-          }
-          const book = await library.commands!.books.addVirtualBook({
-            title: String(input.title),
-            author: input.author,
-          });
-          bindVirtualBook(book.id, binding);
-          return book;
-        },
+            if (!input || typeof input.providerId !== "string" || !input.providerId.trim() || input.providerId.length > 256
+              || typeof input.key !== "string" || !input.key || input.key.length > 8192 || typeof input.title !== "string"
+              || input.author !== undefined && typeof input.author !== "string") throw new AppError("plugin/invalid-argument", "Invalid virtual book metadata");
+            const binding = { pluginId: manifest.id, providerId: input.providerId, key: input.key };
+            const metadata = { title: input.title, author: input.author };
+            return lifecycle.storageWrite("library.addVirtualBook", () => withVirtualBookBinding(binding, async () => {
+              lifecycle.assertActive("library.addVirtualBook");
+              const existingId = await afterLocalKVWrites(() => findVirtualBookId(binding));
+              if (existingId) {
+                const alive = await library.queries.books.get(existingId);
+                lifecycle.assertActive("library.addVirtualBook");
+                if (alive) {
+                  if (alive.format !== "virtual") throw new AppError("db/error", "Virtual binding points to a non-virtual book");
+                  await library.commands!.books.updateVirtualBookTitle(existingId, metadata.title, metadata.author);
+                  return { ...alive, title: metadata.title, author: metadata.author ?? alive.author };
+                }
+                await unbindVirtualBookDurably(existingId, binding);
+              }
+              lifecycle.assertActive("library.addVirtualBook");
+              return library.commands!.books.addVirtualBook({ ...metadata, binding });
+            }));
+          },
           removeVirtualBook: async (
             input: Parameters<
               NonNullable<
@@ -777,11 +768,11 @@ export function buildPluginContext(
               >["books"]["removeVirtualBook"]
             >[0],
           ) => {
-          await removeOwnedVirtualBook({
-            pluginId: manifest.id,
-            providerId: String(input.providerId),
-            key: String(input.key),
-          }, library.commands!.books.remove);
+            const binding = { pluginId: manifest.id, providerId: String(input.providerId), key: String(input.key) };
+            await lifecycle.storageWrite("library.removeVirtualBook", () => withVirtualBookBinding(binding, async () => {
+              lifecycle.assertActive("library.removeVirtualBook");
+              await removeOwnedVirtualBook(binding, library.commands!.books.remove);
+            }));
           },
           invalidateVirtualBook: (input: { providerId: string; key: string }) => invalidateOwnedVirtualBook({
             pluginId: manifest.id, providerId: String(input.providerId), key: String(input.key),

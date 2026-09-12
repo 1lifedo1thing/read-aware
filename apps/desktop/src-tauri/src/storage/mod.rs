@@ -72,6 +72,7 @@ pub use memories::*;
 mod chat;
 pub use chat::*;
 pub(crate) mod plugin_assets;
+pub(crate) mod virtual_books;
 mod plugin_docs;
 pub use plugin_docs::*;
 mod plugin_data;
