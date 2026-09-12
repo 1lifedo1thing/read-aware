@@ -719,3 +719,27 @@ minimized/maximized/fullscreen均为false，最终恢复一致。测试快捷键
 详情见 [shortcut-window-observations.json](./shortcut-window-observations.json)。
 仍待验：全屏在可聚焦前台的实际完成、关闭/退出协调/标题栏、其他快捷键及输入
 上下文、打包及其他平台。
+
+## 第二十八个桌面流程：实际字体目录、应用与跟随阅读
+
+复用编译 Workspace Profiles 0.6.0 真实 Worker 的 Fonts 界面。阅读字体目录第一页
+出现Inter/Lora/插件EB Garamond及本机字体，第二页出现BiauKaiTC/Big Caslon等；
+返回第一页，实际渲染的13项与之前一致。列表虚拟渲染，未把请求limit40当作已观察
+全部40项，也未声称全部安装字体都测过。搜索Lora仅一项，打开详情时reading字体
+仍Inter；明确Apply font后变curated:lora，其他两个字体设置保持。
+
+独立内容字体目录搜索Menlo后Apply font，同一设置命令得到system:Menlo、
+followReader=false，全局阅读字体仍Lora；原生content-typography重读一致。
+实际打开保留FB2，Foliate当前Alpha文档body computed为Lora，FontFaceSet有
+400/700 loaded，相关字体check通过。不是仅比较设置目录。
+
+实际聊天输入框computed为Menlo、14px、23.1px行高；这里没有聊天消息正文或
+笔记编辑器，不冒充这两个表面已验。再次从插件实际切换Content follows reader
+typography并Save，输入框变Lora，应用文档400/700 Lora亦loaded；独立Menlo值
+仍保留。阅读文档和应用文档的字体加载分别观察。
+
+恢复reading=Inter、内容字体null、followReader=true，实际正文和输入框均回Inter；
+测试Worker工具/命令/文档0，返回书架。窗口hidden，没有像素截图或字形质量结论。
+未修改源代码或重复基础门禁。详情见 [font-observations.json](./font-observations.json)。
+仍待验：全部字体/完整虚拟列表、分页期间安装变化、字体下载失败与字形/前台画面、
+聊天消息/笔记编辑器、其他平台及打包字体。

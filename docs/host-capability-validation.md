@@ -95,7 +95,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | UI03 | 发现/执行宿主命令与可用条件 | F6 | 本机真实Worker按权限发现commands/checked/不可用原因，执行及缺失目标/旧revision/无阅读控制拒绝通过；完整命令集待验，见第二十三流程 |
 | UI04 | 快捷键查询、重绑、冲突与重置 | F6 | 编译Workspace Profiles表单冲突拒绝、mod+alt+p绑定/实际WebView派发、默认恢复通过；其他快捷键/输入上下文待验，见第二十七流程 |
 | UI05 | 菜单可见/溢出位置及自定义重排 | F6 | 待验 |
-| CFG01 | 设置 discover/read/update 与动态选项 | F6 | 本机Agent/Worker设置查询/原子修改/动态主题、编译Workspace Profiles v2十项预设保存/应用/确认删除、宿主批准与过期保护/真分页通过；完整目录及预设重启/v1待验，见第二十六流程 |
+| CFG01 | 设置 discover/read/update 与动态选项 | F6 | 本机Agent/Worker设置查询/原子修改/动态主题、编译Workspace Profiles v2十项预设保存/应用/确认删除、宿主批准与过期保护/真分页通过；字体实际翻页/搜索/应用通过；完整目录及预设重启/v1待验，见第二十六/二十八流程 |
 | CFG02 | 全局/本书/全书阅读设置覆盖 | F6 | 本机真实Worker全局/两书覆盖/全书修改及原生重读通过；FB2外观作用域切换及正文21px↔17px通过；其他呈现与进程重启待验，见第二十五流程 |
 | CFG03 | 清除覆盖/恢复默认/查询值来源 | F6 | Worker三目标defaults、单书/全书inherit、值来源及非法global inherit拒绝；Agent当前书重置/继承通过，实际外观UI无独立重置按钮；双scope另一端及进程重启待验，见第二十五流程 |
 | CFG04 | 阅读对齐 reading.textAlign | F6 | Worker三目标与实际设置UI Justified、预览computed justify、原生重读通过；FB2实际正文justify↔start通过；其他格式待验，见第二十五流程 |
@@ -105,7 +105,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | CFG08 | 模型目录刷新、连接测试与模型能力 | F6 | 本机原生刷新目录、视觉能力发现与Qwen实际调用通过；GPT模型被账户上游规则阻止；连接测试UI待验 |
 | CFG09 | 插件非敏感设置的动态路径 | F6 | 待验 |
 | CFG10 | 设置变化事件/外部写入刷新 | F6 | 本机真实 Worker 观察本地设置/目录变化、remote与restore来源注入、停止订阅通过；跨设备待验 |
-| CFG11 | 聊天/笔记内容字体：跟随阅读或独立字号/字体/行距 | F6 | Workspace Profiles实际保存/应用独立Literata及followReader=false，十项重读一致；聊天/笔记实际字体及独立字号/行距待验，见第二十六流程 |
+| CFG11 | 聊天/笔记内容字体：跟随阅读或独立字号/字体/行距 | F6 | Workspace Profiles独立Menlo/跟随Lora应用、真实聊天输入框样式与应用字体加载通过；消息正文/笔记及独立字号/行距待验，见第二十八流程 |
 | CFG12 | 新标注默认颜色 | F6 | 待验 |
 | CFG13 | 软件更新通道 stable/beta | F6 | 待验 |
 | SET01 | general.startView | F6 | 待验 |
@@ -117,7 +117,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET07 | appearance.theme | F6 | 待验 |
 | SET08 | appearance.motion | F6 | 待验 |
 | SET09 | reading.theme | F6 | 实际设置UI Warm→Dark及原生KV通过；后台预览内联暗色、computed颜色过渡未完成，实际正文颜色待验，见第二十五流程 |
-| SET10 | reading.fontFamily | F6 | 实际设置UI Inter→Literata、预览font-family及原生KV通过；字体文件完成加载/实际正文待验，见第二十五流程 |
+| SET10 | reading.fontFamily | F6 | 实际设置UI及插件字体目录应用通过；Foliate FB2实际Lora样式/400与700 loaded通过，其他字体/格式待验，见第二十八流程 |
 | SET11 | reading.fontSize | F6 | 实际设置UI Medium→Small、预览15px及原生KV通过；Worker三目标覆盖/重置、FB2正文21px↔17px通过；其他格式待验，见第二十五流程 |
 | SET12 | reading.fontWeight | F6 | 实际设置UI Regular→Bold、预览600及原生KV通过；实际正文待验，见第二十五流程 |
 | SET13 | reading.lineSpacing | F6 | 实际设置UI Comfortable→Compact、预览1.55行高及原生KV通过；实际正文待验，见第二十五流程 |
@@ -157,8 +157,8 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET47 | reading.textAlign | F6 | Worker目标覆盖与实际设置UI Justified、预览及FB2正文computed justify、原生KV通过；其他格式待验，见第二十五流程 |
 | SET48 | reading.fixedLayoutColor | F6 | Worker theme/original目标覆盖及重置通过；PDF实际颜色与UI入口待验，见第二十五流程 |
 | SET49 | general.whatsNewDialog | F6 | 待验 |
-| SET50 | appearance.contentTypography.followReader | F6 | Workspace Profiles保存/应用false并恢复、宿主重读一致；聊天/笔记实际效果待验，见第二十六流程 |
-| SET51 | appearance.contentTypography.fontFamily | F6 | Workspace Profiles独立Literata保存/应用并恢复，宿主重读一致；字体加载/实际排版待验，见第二十六流程 |
+| SET50 | appearance.contentTypography.followReader | F6 | Workspace Profiles false→true真实切换，聊天输入框Menlo→Lora且加载通过；消息/笔记待验，见第二十八流程 |
+| SET51 | appearance.contentTypography.fontFamily | F6 | Workspace Profiles搜索Menlo/应用独立字体并关跟随，真实聊天输入框样式通过；消息/笔记/字形质量待验，见第二十八流程 |
 | SET52 | appearance.contentTypography.fontSize | F6 | 待验 |
 | SET53 | appearance.contentTypography.lineSpacing | F6 | 待验 |
 | SET54 | annotations.defaultColor | F6 | 待验 |

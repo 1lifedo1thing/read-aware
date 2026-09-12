@@ -1,0 +1,317 @@
+{
+  "date": "2026-09-13",
+  "testedHead": "1fce3b88",
+  "environment": "macOS aarch64 debug Tauri :9223 isolated capability-e2e; hidden",
+  "consumer": "compiled Workspace Profiles 0.6.0",
+  "checks": {
+    "pageReturn": true,
+    "secondPageDifferent": true,
+    "selectDidNotWrite": true,
+    "appliedLora": true,
+    "independentMenlo": true,
+    "LoraLoaded": true,
+    "composerMenlo": true,
+    "followLora": true,
+    "restored": true,
+    "clean": true
+  },
+  "steps": [
+    {
+      "name": "reading-font-page1-rendered",
+      "names": [
+        "Inter",
+        "Atkinson Hyperlegible",
+        "Literata",
+        "Lora",
+        "霞鹜文楷 LXGW WenKai",
+        "EB Garamond",
+        "Academy Engraved LET",
+        "Al Bayan",
+        "Al Nile",
+        "Al Tarikh",
+        "American Typewriter",
+        "Andale Mono",
+        "Apple Braille"
+      ]
+    },
+    {
+      "name": "reading-font-page2-rendered",
+      "names": [
+        "BiauKaiTC",
+        "Big Caslon",
+        "BIZ UDGothic",
+        "BIZ UDMincho",
+        "BM Dohyeon",
+        "BM Hanna 11yrs Old",
+        "BM Hanna Air",
+        "BM Hanna Pro",
+        "BM Jua",
+        "BM Kirang Haerang",
+        "BM Yeonsung",
+        "Bodoni 72",
+        "Bodoni 72 Oldstyle"
+      ]
+    },
+    {
+      "name": "reading-font-page1-return",
+      "names": [
+        "Inter",
+        "Atkinson Hyperlegible",
+        "Literata",
+        "Lora",
+        "霞鹜文楷 LXGW WenKai",
+        "EB Garamond",
+        "Academy Engraved LET",
+        "Al Bayan",
+        "Al Nile",
+        "Al Tarikh",
+        "American Typewriter",
+        "Andale Mono",
+        "Apple Braille"
+      ]
+    },
+    {
+      "name": "reading-font-selected-not-applied",
+      "value": "curated:inter"
+    },
+    {
+      "name": "reading-Lora-applied",
+      "values": [
+        {
+          "path": "reading.fontFamily",
+          "value": "curated:lora",
+          "target": {
+            "kind": "global"
+          },
+          "reading": {
+            "source": "global",
+            "override": "absent",
+            "defaultValue": "curated:inter"
+          }
+        },
+        {
+          "path": "appearance.contentTypography.fontFamily",
+          "value": null,
+          "target": {
+            "kind": "global"
+          }
+        },
+        {
+          "path": "appearance.contentTypography.followReader",
+          "value": true,
+          "target": {
+            "kind": "global"
+          }
+        }
+      ]
+    },
+    {
+      "name": "independent-Menlo-applied",
+      "values": [
+        {
+          "path": "reading.fontFamily",
+          "value": "curated:lora",
+          "target": {
+            "kind": "global"
+          },
+          "reading": {
+            "source": "global",
+            "override": "absent",
+            "defaultValue": "curated:inter"
+          }
+        },
+        {
+          "path": "appearance.contentTypography.fontFamily",
+          "value": "system:Menlo",
+          "target": {
+            "kind": "global"
+          }
+        },
+        {
+          "path": "appearance.contentTypography.followReader",
+          "value": false,
+          "target": {
+            "kind": "global"
+          }
+        }
+      ],
+      "native": {
+        "followReader": false,
+        "fontFamily": "system:Menlo",
+        "fontSize": "medium",
+        "lineSpacing": "comfortable"
+      }
+    },
+    {
+      "name": "actual-FB2-Lora-loaded",
+      "visibility": "hidden",
+      "contents": [
+        {
+          "index": 0,
+          "fontFamily": "Lora, ui-serif, Georgia, serif",
+          "checkRegular": true,
+          "checkBold": true,
+          "faces": [
+            {
+              "family": "Lora",
+              "status": "loaded",
+              "weight": "400"
+            },
+            {
+              "family": "Lora",
+              "status": "loaded",
+              "weight": "700"
+            }
+          ]
+        }
+      ],
+      "rootStyle": "color-scheme: light; --ra-content-font-family: \"Menlo\", ui-sans-serif, system-ui, sans-serif; --ra-content-font-size: 0.875rem; --ra-content-line-height: 1.65;"
+    },
+    {
+      "name": "actual-chat-composer-independent-Menlo",
+      "fontFamily": "Menlo, ui-sans-serif, system-ui, sans-serif",
+      "fontSize": "14px",
+      "lineHeight": "23.1px",
+      "systemFontCheck": true
+    },
+    {
+      "name": "follow-reader-enabled",
+      "values": [
+        {
+          "path": "reading.fontFamily",
+          "value": "curated:lora",
+          "target": {
+            "kind": "global"
+          },
+          "reading": {
+            "source": "global",
+            "override": "absent",
+            "defaultValue": "curated:inter"
+          }
+        },
+        {
+          "path": "appearance.contentTypography.fontFamily",
+          "value": "system:Menlo",
+          "target": {
+            "kind": "global"
+          }
+        },
+        {
+          "path": "appearance.contentTypography.followReader",
+          "value": true,
+          "target": {
+            "kind": "global"
+          }
+        }
+      ],
+      "composer": {
+        "fontFamily": "Lora, ui-serif, Georgia, serif",
+        "fontSize": "14px",
+        "lineHeight": "23.1px"
+      },
+      "appLoadedLora": [
+        {
+          "weight": "400",
+          "status": "loaded"
+        },
+        {
+          "weight": "700",
+          "status": "loaded"
+        }
+      ]
+    },
+    {
+      "name": "restored-rendered-fonts",
+      "composer": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "reader": [
+        "Inter, ui-sans-serif, system-ui, sans-serif"
+      ],
+      "cleanup": {
+        "status": "done",
+        "restored": [
+          {
+            "path": "reading.fontFamily",
+            "expected": "curated:inter",
+            "actual": "curated:inter"
+          },
+          {
+            "path": "appearance.contentTypography.fontFamily",
+            "expected": null,
+            "actual": null
+          },
+          {
+            "path": "appearance.contentTypography.followReader",
+            "expected": true,
+            "actual": true
+          }
+        ],
+        "worker": {
+          "profiles": 0,
+          "tools": 0,
+          "commands": 0
+        }
+      }
+    }
+  ],
+  "original": [
+    {
+      "path": "reading.fontFamily",
+      "value": "curated:inter",
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "appearance.contentTypography.fontFamily",
+      "value": null,
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "appearance.contentTypography.followReader",
+      "value": true,
+      "target": {
+        "kind": "global"
+      }
+    }
+  ],
+  "cleanup": {
+    "status": "done",
+    "restored": [
+      {
+        "path": "reading.fontFamily",
+        "expected": "curated:inter",
+        "actual": "curated:inter"
+      },
+      {
+        "path": "appearance.contentTypography.fontFamily",
+        "expected": null,
+        "actual": null
+      },
+      {
+        "path": "appearance.contentTypography.followReader",
+        "expected": true,
+        "actual": true
+      }
+    ],
+    "worker": {
+      "profiles": 0,
+      "tools": 0,
+      "commands": 0
+    }
+  },
+  "boundaries": [
+    "actual Worker font list/search/apply/follow UI",
+    "native content typography KV and host settings reread",
+    "real Foliate FB2 document and real chat composer computed styles",
+    "Lora loaded font faces in both documents"
+  ],
+  "pending": [
+    "all virtualized rows and all installed fonts",
+    "font invalidation/uninstall while paging",
+    "font download failure and glyph/visual correctness",
+    "chat transcript and note editor typography",
+    "cross-platform and packaged rendering"
+  ]
+}
