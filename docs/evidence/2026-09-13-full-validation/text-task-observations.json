@@ -1,0 +1,306 @@
+{
+  "activationRejected": true,
+  "agent": {
+    "book": {
+      "cancel": {
+        "history": {
+          "persistedRevision": 9,
+          "status": "saved"
+        },
+        "revision": 10,
+        "status": "completed",
+        "taskId": "65a9315b-717a-455f-abb7-1ce0ec46db99",
+        "textState": {
+          "bookId": "f06817fb-e3fc-44a5-8250-fb1618c2c5e3",
+          "chapterCount": 0,
+          "contentVersion": "sha256:3355c7b8daa7bc66f3bbe257435a08285010b4493ce6bf79d050f145b35ce9ff",
+          "progress": {
+            "completed": 1,
+            "failed": 0,
+            "total": 1,
+            "unsupported": 0
+          },
+          "status": "ready",
+          "text": "available"
+        }
+      },
+      "done": {
+        "history": {
+          "persistedRevision": 9,
+          "status": "saved"
+        },
+        "revision": 10,
+        "status": "completed",
+        "taskId": "65a9315b-717a-455f-abb7-1ce0ec46db99",
+        "textState": {
+          "bookId": "f06817fb-e3fc-44a5-8250-fb1618c2c5e3",
+          "chapterCount": 0,
+          "contentVersion": "sha256:3355c7b8daa7bc66f3bbe257435a08285010b4493ce6bf79d050f145b35ce9ff",
+          "progress": {
+            "completed": 1,
+            "failed": 0,
+            "total": 1,
+            "unsupported": 0
+          },
+          "status": "ready",
+          "text": "available"
+        }
+      },
+      "listed": 1
+    },
+    "global": {
+      "cancel": {
+        "history": {
+          "status": "pending"
+        },
+        "revision": 9,
+        "status": "completed",
+        "taskId": "cd0f1498-53bf-4c7a-8e9d-d3f69f0747a3",
+        "textState": {
+          "bookId": "f06817fb-e3fc-44a5-8250-fb1618c2c5e3",
+          "chapterCount": 0,
+          "contentVersion": "sha256:3355c7b8daa7bc66f3bbe257435a08285010b4493ce6bf79d050f145b35ce9ff",
+          "progress": {
+            "completed": 1,
+            "failed": 0,
+            "total": 1,
+            "unsupported": 0
+          },
+          "status": "ready",
+          "text": "available"
+        }
+      },
+      "done": {
+        "history": {
+          "status": "pending"
+        },
+        "revision": 9,
+        "status": "completed",
+        "taskId": "cd0f1498-53bf-4c7a-8e9d-d3f69f0747a3",
+        "textState": {
+          "bookId": "f06817fb-e3fc-44a5-8250-fb1618c2c5e3",
+          "chapterCount": 0,
+          "contentVersion": "sha256:3355c7b8daa7bc66f3bbe257435a08285010b4493ce6bf79d050f145b35ce9ff",
+          "progress": {
+            "completed": 1,
+            "failed": 0,
+            "total": 1,
+            "unsupported": 0
+          },
+          "status": "ready",
+          "text": "available"
+        }
+      },
+      "listed": 2
+    }
+  },
+  "books": {
+    "blank": "d95d3ff5-fdba-4a73-a3ee-5ddf9c131c8e",
+    "normal": "1cf36930-c53e-4633-8b7e-7eed006ef8bf",
+    "short": "f06817fb-e3fc-44a5-8250-fb1618c2c5e3"
+  },
+  "busy": {
+    "errorCode": "library/text-busy",
+    "history": {
+      "persistedRevision": 3,
+      "status": "saved"
+    },
+    "revision": 4,
+    "status": "failed",
+    "taskId": "2da4f9bd-f1c7-4279-b986-9877dc0e7bdc",
+    "textState": {
+      "bookId": "1cf36930-c53e-4633-8b7e-7eed006ef8bf",
+      "chapterCount": 0,
+      "contentVersion": "sha256:fe377c7d8dfe3ad2d9770c3f1169fe2ff6364b5d7d4920a4fad5c3fbfbc30164",
+      "progress": {
+        "completed": 0,
+        "failed": 0,
+        "total": 3,
+        "unsupported": 0
+      },
+      "status": "preparing",
+      "text": "unknown"
+    }
+  },
+  "cancelled": {
+    "errorCode": "library/text-cancelled",
+    "history": {
+      "status": "pending"
+    },
+    "revision": 7,
+    "status": "cancelled",
+    "taskId": "0c8e07ef-e11d-4438-9e49-74978adcd51a",
+    "textState": {
+      "bookId": "1cf36930-c53e-4633-8b7e-7eed006ef8bf",
+      "chapterCount": 0,
+      "contentVersion": "sha256:fe377c7d8dfe3ad2d9770c3f1169fe2ff6364b5d7d4920a4fad5c3fbfbc30164",
+      "progress": {
+        "completed": 0,
+        "failed": 0,
+        "total": 3,
+        "unsupported": 0
+      },
+      "status": "preparing",
+      "text": "unknown"
+    }
+  },
+  "cleanup": {
+    "contributions": 0,
+    "remainingBooks": 0,
+    "taskContributions": [
+      {
+        "count": 0,
+        "id": "capability-task-read"
+      },
+      {
+        "count": 0,
+        "id": "capability-task-empty"
+      },
+      {
+        "count": 0,
+        "id": "capability-task-foreign"
+      },
+      {
+        "count": 0,
+        "id": "capability-task-a"
+      },
+      {
+        "count": 0,
+        "id": "capability-task-b"
+      }
+    ]
+  },
+  "foreign": {
+    "errorCode": "library/text-task-not-found"
+  },
+  "lastCancelled": {
+    "errorCode": "library/text-cancelled",
+    "history": {
+      "status": "pending"
+    },
+    "revision": 7,
+    "status": "cancelled",
+    "taskId": "db8d4e5f-40e7-42b4-8372-bd9c35652429",
+    "textState": {
+      "bookId": "1cf36930-c53e-4633-8b7e-7eed006ef8bf",
+      "chapterCount": 0,
+      "contentVersion": "sha256:fe377c7d8dfe3ad2d9770c3f1169fe2ff6364b5d7d4920a4fad5c3fbfbc30164",
+      "progress": {
+        "completed": 0,
+        "failed": 0,
+        "total": 3,
+        "unsupported": 0
+      },
+      "status": "preparing",
+      "text": "unknown"
+    }
+  },
+  "limits": [
+    "Held section source injected to control concurrency; source ownership, native persistence and Worker transport real.",
+    "Deadline, background yielding and process restart not covered.",
+    "No UI visual pass claimed."
+  ],
+  "permissions": {
+    "empty": {
+      "library": false,
+      "write": false
+    },
+    "read": {
+      "library": true,
+      "write": false
+    },
+    "write": {
+      "library": true,
+      "write": true
+    }
+  },
+  "realRebuild": {
+    "history": {
+      "persistedRevision": 9,
+      "status": "saved"
+    },
+    "revision": 10,
+    "status": "completed",
+    "taskId": "c0a68268-67a1-4a01-b692-ca8d6cbecfeb",
+    "textState": {
+      "bookId": "1cf36930-c53e-4633-8b7e-7eed006ef8bf",
+      "chapterCount": 1,
+      "contentVersion": "sha256:fe377c7d8dfe3ad2d9770c3f1169fe2ff6364b5d7d4920a4fad5c3fbfbc30164",
+      "progress": {
+        "completed": 1,
+        "failed": 0,
+        "total": 1,
+        "unsupported": 0
+      },
+      "status": "ready",
+      "text": "available"
+    }
+  },
+  "retired": {
+    "errorCode": "library/text-task-not-found"
+  },
+  "revisions": [
+    1,
+    2,
+    3,
+    4,
+    6,
+    9,
+    10,
+    11,
+    12,
+    13
+  ],
+  "runtime": "macOS Tauri 2.11.2 debug / real Workers",
+  "shutdown": {
+    "lateBlob": null,
+    "survivor": {
+      "history": {
+        "persistedRevision": 12,
+        "status": "saved"
+      },
+      "revision": 13,
+      "status": "completed",
+      "taskId": "1d929049-6e86-493e-a5bd-e6efd908d733",
+      "textState": {
+        "bookId": "1cf36930-c53e-4633-8b7e-7eed006ef8bf",
+        "chapterCount": 1,
+        "contentVersion": "sha256:fe377c7d8dfe3ad2d9770c3f1169fe2ff6364b5d7d4920a4fad5c3fbfbc30164",
+        "progress": {
+          "completed": 3,
+          "failed": 0,
+          "total": 3,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "available"
+      }
+    },
+    "unsubscribed": {
+      "count": 3
+    }
+  },
+  "survivor": {
+    "history": {
+      "persistedRevision": 12,
+      "status": "saved"
+    },
+    "revision": 13,
+    "status": "completed",
+    "taskId": "6f4c6187-0ef9-40b7-9994-90bc5b7681cc",
+    "textState": {
+      "bookId": "1cf36930-c53e-4633-8b7e-7eed006ef8bf",
+      "chapterCount": 1,
+      "contentVersion": "sha256:fe377c7d8dfe3ad2d9770c3f1169fe2ff6364b5d7d4920a4fad5c3fbfbc30164",
+      "progress": {
+        "completed": 3,
+        "failed": 0,
+        "total": 3,
+        "unsupported": 0
+      },
+      "status": "ready",
+      "text": "available"
+    }
+  },
+  "time": "2026-09-12T19:38:07.518Z"
+}

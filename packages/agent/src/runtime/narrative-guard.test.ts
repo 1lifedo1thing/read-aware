@@ -158,7 +158,7 @@ describe("narrative output guard", () => {
     expect(persisted[persisted.length - 1]?.content).toBe(shown);
   });
 
-  test("removes a leaking teaser block while preserving the grounded answer", async () => {
+  test("rewrites a leaking teaser while preserving the grounded answer", async () => {
     faux = registerFauxProvider({ tokensPerSecond: 100_000 });
     const model = faux.getModel() as Model<Api>;
     faux.setResponses([
@@ -176,7 +176,7 @@ describe("narrative output guard", () => {
       completeFn: async () => fauxAssistantMessage('{"new":[],"reinforced":[]}'),
       repairCompleteFn: async () => {
         repairs += 1;
-        return fauxAssistantMessage("不应调用");
+        return fauxAssistantMessage("读到这里，能够确定的只有红岸基地这一条线。");
       },
       streamFn: streamSimple,
     });
@@ -190,6 +190,33 @@ describe("narrative output guard", () => {
     const shown = chunks.filter((chunk) => chunk.type === "text").map((chunk) => chunk.text).join("");
 
     expect(shown).toBe("读到这里，能够确定的只有红岸基地这一条线。");
-    expect(repairs).toBe(0);
+    expect(repairs).toBe(1);
+  });
+
+  test("does not publish a hollow section after removing its unsafe body", async () => {
+    faux = registerFauxProvider({ tokensPerSecond: 100_000 });
+    const model = faux.getModel() as Model<Api>;
+    faux.setResponses([fauxAssistantMessage(
+      "眼前的地点是红岸基地，这也是当前阅读位置已经明确交代的内容。\n\n## 主要线索\n\n后来原文写道“不要回答”。\n\n## 当前地点\n\n红岸基地。",
+    )]);
+    const { deps, stores } = narrativeDeps();
+    let repairs = 0;
+    const replacement = "当前明确的线索只有红岸基地；已提供的内容尚不足以列出更多线索。";
+    const thread = new AgentThread({
+      scope: { kind: "book", bookId: BOOK_ID }, deps,
+      resolveModel: () => model, getApiKey: () => "test-key",
+      completeFn: async () => fauxAssistantMessage('{"new":[],"reinforced":[]}'),
+      repairCompleteFn: async () => { repairs++; return fauxAssistantMessage(replacement); },
+      streamFn: streamSimple,
+    });
+    const chunks = await collect(thread.sendTurn({
+      text: "梳理已读到的主要线索。",
+      readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
+    }));
+    const shown = chunks.filter(chunk => chunk.type === "text").map(chunk => chunk.text).join("");
+    expect(repairs).toBe(1);
+    expect(shown).toBe(replacement);
+    const persisted = stores.turns.get(`book:${BOOK_ID}`) ?? [];
+    expect(persisted[persisted.length - 1]?.content).toBe(replacement);
   });
 });

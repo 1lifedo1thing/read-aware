@@ -44,7 +44,6 @@ import { persistExtensionMemory } from "./extension-memory";
 import {
   inspectNarrativeEvidence,
   loadNarrativeBookIndex,
-  normalizeEvidenceText,
   type NarrativeBookIndex,
   type NarrativeEvidenceViolation,
 } from "./narrative-evidence";
@@ -221,22 +220,6 @@ export class AgentThread {
     return "To protect your current reading position, I will not expand on that yet. Tell me where you are, or explicitly allow spoilers.";
   }
 
-  /** Drop whole prose blocks that carry a detected leak; coherent safe blocks survive. */
-  private redactUnsafeBlocks(
-    draft: string,
-    violations: NarrativeEvidenceViolation[],
-  ): string {
-    const forbidden = violations.map((item) => normalizeEvidenceText(item.phrase));
-    return draft
-      .split(/\n\s*\n/u)
-      .filter((block) => {
-        const normalized = normalizeEvidenceText(block);
-        return !forbidden.some((phrase) => normalized.includes(phrase));
-      })
-      .join("\n\n")
-      .trim();
-  }
-
   private async repairUnsafeAnswer(input: {
     readerText: string;
     draft: string;
@@ -260,6 +243,7 @@ export class AgentThread {
           "You are a final response safety rewriter for a reading app.",
           "Return only the replacement answer, in the reader's language.",
           "Use only the reader message and the safe evidence below for book-specific claims.",
+          "Answer every requested part supported by that evidence. If evidence is insufficient for a requested part, state that limit briefly instead of silently dropping it or leaving an empty heading or list item.",
           "Remove every future-only or edition-ungrounded detail. Do not name, quote, negate, hint at, or apologize for the removed details.",
           "For a progress or TOC question, give only the requested position or structure without previews.",
         ].join("\n"),
@@ -739,40 +723,28 @@ export class AgentThread {
               })
             : [];
           if (violations.length > 0 && bookIndex) {
-            const redacted = this.redactUnsafeBlocks(visibleDraft, violations);
-            const redactedViolations = redacted
-              ? inspectNarrativeEvidence({
-                  answer: redacted,
-                  readerText: input.text,
-                  attachments: input.attachments,
-                  cursor,
-                  toolEvidence: this.turnState.evidenceTexts,
-                  book: bookIndex,
-                  allowFuture: this.turnState.spoilerGranted,
-                })
-              : violations;
-            const repaired =
-              redacted.length >= 20 && redactedViolations.length === 0
-                ? { answer: redacted, usage: undefined, elapsedMs: 0 }
-                : await this.repairUnsafeAnswer({
-                    readerText: input.text,
-                    draft: visibleDraft,
-                    cursor,
-                    attachments: input.attachments,
-                    violations,
-                    book: bookIndex,
-                    signal: input.signal,
-                  }).catch((error) => {
-                    this.deps.log?.warn(
-                      "narrative answer rewrite failed; using deterministic fallback",
-                      error,
-                    );
-                    return {
-                      answer: this.fallbackForUnsafeAnswer(input.text),
-                      usage: undefined,
-                      elapsedMs: 0,
-                    };
-                  });
+            // Removing a whole block can silently drop the requested answer while
+            // leaving its heading or dependent prose. Recompose from safe evidence
+            // once, then apply the same boundary check before publication.
+            const repaired = await this.repairUnsafeAnswer({
+              readerText: input.text,
+              draft: visibleDraft,
+              cursor,
+              attachments: input.attachments,
+              violations,
+              book: bookIndex,
+              signal: input.signal,
+            }).catch((error) => {
+              this.deps.log?.warn(
+                "narrative answer rewrite failed; using deterministic fallback",
+                error,
+              );
+              return {
+                answer: this.fallbackForUnsafeAnswer(input.text),
+                usage: undefined,
+                elapsedMs: 0,
+              };
+            });
             answer = repaired.answer;
             discardUnsafeAgent = true;
             this.deps.log?.warn("narrative answer replaced at evidence boundary", violations);

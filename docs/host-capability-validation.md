@@ -47,7 +47,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | TXT02 | 读取原书分层导航目录及 href | F2 | 待验 |
 | TXT03 | 按抽取章节读正文/分段 | F2 | 待验 |
 | TXT04 | 查询本地正文准备状态与文本存在性 | F2 | 本机短/正常FB2和空白PDF分别ready/available、ready/available、ready/textless；Worker权限及Agent双scope一致；缺源/换源转unavailable/unprepared通过；其他格式待验 |
-| TXT05 | 启动、重建、暂停让路正文抽取 | F2 | 本机准备→完成→Worker重启后持久历史通过；暂停/恢复/截止等待验 |
+| TXT05 | 启动、重建、暂停让路正文抽取 | F2 | 本机准备/重建、共享取消/退役隔离、激活期禁止、宿主忙拒绝通过；Worker重启历史已有证据；让路/截止/进程重启待验 |
 | TXT06 | 当前书及跨书多查询正文检索 | F2 | 待验 |
 | TXT07 | 引擎全文精确搜索并返回 CFI | F2 | 本机 FB2 真 Worker 搜索命中及 CFI 通过；其他格式/分页待验 |
 | TXT08 | 搜索分页、取消、背压和过期查询淘汰 | F2 | 待验 |
