@@ -12,7 +12,7 @@ pub(crate) use policy::RowPolicy;
 mod files;
 #[path = "backup_row_scan.rs"]
 mod scan;
-pub(crate) use files::{FilePlan, FileMatchKind};
+pub(crate) use files::{FilePlan, FileMatchKind, ReviewPage, ReviewQuery};
 
 #[derive(Debug, Default)]
 pub(crate) struct RowCounts {
@@ -30,14 +30,16 @@ pub(crate) struct TablePlan {
     /// None means routed to another stage (schema, events, indexes, journal).
     pub comparisons: Option<RowCounts>,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) enum RowMatchKind {
     SourceOnly,
     TargetOnly,
     Same,
     Different,
 }
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct RowMatch {
     pub entry_id: i64,
     pub policy: RowPolicy,
@@ -46,7 +48,8 @@ pub(crate) struct RowMatch {
     pub target_digest: Option<String>,
     pub generated_only: bool,
 }
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct RowPage {
     pub entries: Vec<RowMatch>,
     pub next_after: Option<i64>,

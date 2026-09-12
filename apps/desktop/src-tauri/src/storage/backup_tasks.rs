@@ -106,6 +106,25 @@ impl Drop for Lease {
     }
 }
 impl BackupTasks {
+    /// A read borrows a ready plan until its physical receipt. Invalid queries
+    /// retain the plan; cancellation of the whole owner retires it deliberately.
+    pub(crate) fn with_plan<T>(
+        &self,
+        owner: &str,
+        id: &str,
+        operation: impl FnOnce(&FilePlan, &Lease) -> Result<T, CommandError>,
+    ) -> Result<T, CommandError> {
+        let (lease, prepared) = self.take(owner, id, Phase::Plan)?;
+        let PreparedBackup::Plan(plan) = prepared else {
+            return Err(missing());
+        };
+        let result = lease.check().and_then(|()| operation(&plan, &lease));
+        let retained = lease.publish(PreparedBackup::Plan(plan));
+        match (result, retained) {
+            (Err(error), _) | (_, Err(error)) => Err(error),
+            (Ok(value), Ok(())) => Ok(value),
+        }
+    }
     #[cfg(test)]
     pub(crate) fn is_empty(&self) -> bool {
         self.0.lock().unwrap().is_none()

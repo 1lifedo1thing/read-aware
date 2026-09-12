@@ -245,7 +245,7 @@ const nativeMap = pairs([
   ["sync_quota_rejected_blobs sync_requeue_blobs", "OPS01 OPS02"],
   ["sync_unverified_events sync_resolve_events sync_assume_events_missing sync_unverified_blobs sync_resolve_blobs sync_assume_blobs_missing sync_cursor_get sync_cursor_set sync_outbox_events sync_mark_events_pushed sync_mark_events_failed sync_outbox_blobs sync_mark_blobs_pushed sync_mark_blobs_failed sync_mark_blobs_rejected", "OPS02"],
   ["checkpoint_schema_version checkpoint_list checkpoint_maintain checkpoint_prepare_publish checkpoint_mark_published checkpoint_restore_bootstrap sync_backfill_status sync_backfill_events sync_backfill_settle", "OPS03"],
-  ["preferences_load_all", "OPS05"], ["restored_credentials_pending restored_credentials_publish backup_close_reading_sessions backup_export_sources backup_export_capture backup_export_write backup_export_cancel backup_import_open backup_import_plan backup_import_cancel", "OPS08"], ["wipe_all_data", "OPS09"],
+  ["preferences_load_all", "OPS05"], ["restored_credentials_pending restored_credentials_publish backup_close_reading_sessions backup_export_sources backup_export_capture backup_export_write backup_export_cancel backup_import_open backup_import_plan backup_import_cancel backup_import_review", "OPS08"], ["wipe_all_data", "OPS09"],
   ["put_blob get_blob get_blob_info get_blob_range delete_blob blob_read_open blob_read_chunk blob_read_close blob_write_open blob_write_chunk blob_write_chunk_raw blob_write_commit blob_write_abort", "SYS13"],
   ["secret_get secret_keys secret_set secret_delete", "SYS04 CFG07"],
   ["load_kv_all set_kv set_kv_batch delete_kv replace_kv_prefix", "SYS01 CFG01 SET04 SET05"],

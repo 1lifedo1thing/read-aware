@@ -14,7 +14,8 @@ use std::{
     path::Path,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) enum BlobAvailability {
     Local,
     Unavailable,
@@ -22,7 +23,8 @@ pub(crate) enum BlobAvailability {
     RegistryMismatch,
     UnregisteredFile,
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct BlobBinding {
     pub key: Option<String>,
     pub availability: BlobAvailability,

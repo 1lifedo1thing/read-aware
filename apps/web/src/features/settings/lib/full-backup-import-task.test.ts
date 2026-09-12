@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { createFullBackupImport, type BackupPlanReceipt, type BackupSourceReceipt } from "./full-backup-import-task";
+import type { BackupReviewPage, BackupReviewQuery } from "./backup-review-types";
 
 const source: BackupSourceReceipt = { taskId: "task", format: 2, schemaVersion: 42, tables: { books: 1 }, events: 1, blobs: 1, credentials: 0, pluginPrograms: 0 };
 const plan: BackupPlanReceipt = { taskId: "task", newEvents: 1, existingEvents: 0, conflictingEvents: 0, tables: {},
@@ -13,6 +14,7 @@ function fixture() {
       expect([path, password]).toEqual(["/source.age", "a test password"]); calls.push("open"); return source;
     },
     plan: async (): Promise<BackupPlanReceipt> => { calls.push("plan"); return plan; },
+    read: async (_id: string, query: BackupReviewQuery): Promise<BackupReviewPage> => { calls.push("read"); return { kind: query.kind, entries: [], nextAfter: null }; },
     cancel: async () => { calls.push("cancel"); },
     warn: (_message: string, _error: unknown) => { calls.push("warn"); },
   };
@@ -57,4 +59,41 @@ test("cancelled file choice does not reserve; mismatched receipts and plan failu
   await expect(run("a test password")).rejects.toMatchObject({ code: "backup/changed" }); expect(calls).toEqual(["cancel"]);
   deps.open = async () => source; deps.plan = async () => { throw new Error("plan failed"); };
   await expect(run("a test password")).rejects.toThrow("plan failed"); expect(calls).toEqual(["cancel", "cancel"]);
+});
+
+test("review reads serialize snapshots of page requests; an individual cancellation preserves the plan", async () => {
+  const { deps, run, calls } = fixture();
+  const first = Promise.withResolvers<BackupReviewPage>(), entered = Promise.withResolvers<void>();
+  const seen: BackupReviewQuery[] = [];
+  deps.read = async (_id, query) => { seen.push(query); if (seen.length === 1) { entered.resolve(); return first.promise; } return { kind: "rows", entries: [], nextAfter: null }; };
+  const review = (await run("a test password"))!;
+  const owner = new AbortController();
+  const one = review.read({ kind: "events", limit: 1 }, owner.signal).catch(error => error);
+  await entered.promise;
+  const candidate: BackupReviewQuery = { kind: "rows", table: "books", limit: 1 };
+  const two = review.read(candidate); candidate.table = "memories";
+  owner.abort(); await Bun.sleep(0); expect(seen).toHaveLength(1);
+  first.resolve({ kind: "events", entries: [], nextAfter: null });
+  expect((await one).name).toBe("AbortError"); expect((await two).kind).toBe("rows");
+  expect(seen[1]).toMatchObject({ table: "books" }); expect(calls).not.toContain("cancel");
+  deps.read = async () => { throw new Error("bad page"); };
+  await expect(review.read({ kind: "rows", table: "missing", limit: 1 })).rejects.toThrow("bad page");
+  deps.read = async () => ({ kind: "programs", entries: [], nextAfter: null });
+  expect((await review.read({ kind: "programs", limit: 1 })).kind).toBe("programs");
+  await review.dispose();
+});
+
+test("review disposal waits for the native read, discards queued reads, and bounds admission", async () => {
+  const { deps, run, calls } = fixture(); const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<BackupReviewPage>();
+  let physicalReads = 0;
+  deps.read = async () => { physicalReads++; entered.resolve(); return release.promise; };
+  const review = (await run("a test password"))!;
+  const pending = Array.from({ length: 32 }, () => review.read({ kind: "files", limit: 1 }).catch(error => error));
+  await entered.promise;
+  await expect(review.read({ kind: "files", limit: 1 })).rejects.toMatchObject({ code: "backup/busy" });
+  let disposed = false; const closing = review.dispose().then(() => { disposed = true; });
+  await Bun.sleep(0); expect(disposed).toBe(false); expect(calls).toContain("cancel");
+  release.resolve({ kind: "files", entries: [], nextAfter: null }); await closing;
+  expect(physicalReads).toBe(1); expect((await Promise.all(pending)).every(result => result.code === "backup/changed")).toBe(true);
+  await expect(review.read({ kind: "files", limit: 1 })).rejects.toMatchObject({ code: "backup/changed" });
 });

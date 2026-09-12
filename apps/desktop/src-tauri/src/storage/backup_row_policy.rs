@@ -2,7 +2,8 @@
 //! future migration cannot be silently left out of full restore planning.
 use crate::{error::CommandError, storage::apply::DERIVED_TABLES};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub(crate) enum RowPolicy {
     DomainState,
     ConversationState,

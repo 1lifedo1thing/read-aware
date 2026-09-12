@@ -18,6 +18,10 @@ if (process.env.FULL_IMPORT_PROOF === "1") {
       return { taskId: args.taskId, newEvents: 0, existingEvents: 0, conflictingEvents: 0, tables: {},
         files: { sourceOnly: 0, targetOnly: 0, same: 0, different: 0, unavailable: 0 }, pluginPrograms: 0 };
     }
+    if (command === "backup_import_review") {
+      expect(Object.keys(args).sort()).toEqual(["query", "taskId"]);
+      return { kind: args.query.kind, entries: [], nextAfter: null };
+    }
     if (["reading_sessions_pending", "backup_close_reading_sessions", "secret_keys"].includes(command)) return [];
     return undefined;
   };
@@ -36,7 +40,12 @@ if (process.env.FULL_IMPORT_PROOF === "1") {
     releasePlan.resolve(); const review = (await pending)!;
     await localKV.setItemAsync("import-proof", "after-plan");
     expect(calls).not.toContain("backup_import_cancel");
-    expect(review.disposed).toBe(false); await review.dispose();
+    expect(review.disposed).toBe(false);
+    const before = calls.filter(command => command === "backup_close_reading_sessions").length;
+    expect(await review.read({ kind: "programs", limit: 10 })).toEqual({ kind: "programs", entries: [], nextAfter: null });
+    expect(calls.filter(command => command === "backup_close_reading_sessions")).toHaveLength(before);
+    await localKV.setItemAsync("import-proof", "during-review");
+    await review.dispose();
     expect(calls.at(-1)).toBe("backup_import_cancel");
   });
 } else {

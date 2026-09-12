@@ -24,6 +24,7 @@ pub enum ImportProgress {
     ComparingEvents,
     ComparingRows,
     ComparingFiles,
+    PreparingReview,
 }
 
 /// Count-only host report. No source paths, event payloads, row keys, plugin
@@ -210,6 +211,12 @@ fn build_plan(
     let files = rows.plan_files(conn, data_dir, bundled, || {
         progress.update(&lease, ImportProgress::ComparingFiles)
     })?;
+    {
+        let target = conn.transaction()?;
+        files.prepare_review(&target, data_dir, || {
+            progress.update(&lease, ImportProgress::PreparingReview)
+        })?;
+    }
     let receipt = summarize(task_id, &files, &lease)?;
     lease.publish(PreparedBackup::Plan(files))?;
     Ok(receipt)
@@ -275,6 +282,23 @@ pub async fn backup_import_cancel(
     let owner = window.label().to_owned();
     super::blocking("backup_import_cancel", move || {
         tasks.cancel(&owner, Some(&task_id))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn backup_import_review(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    task_id: String,
+    query: backup_archive::ReviewQuery,
+) -> Result<backup_archive::ReviewPage, CommandError> {
+    let tasks = app.state::<BackupTasks>().inner().clone();
+    let owner = window.label().to_owned();
+    super::blocking("backup_import_review", move || {
+        tasks.with_plan(&owner, &task_id, |plan, lease| {
+            plan.review_page(query, || lease.check())
+        })
     })
     .await
 }

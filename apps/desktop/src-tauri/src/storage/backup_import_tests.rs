@@ -1,4 +1,5 @@
 use super::*;
+use crate::storage::backup_archive::ReviewQuery;
 fn database(root: &Path) -> rusqlite::Connection {
     let mut conn = rusqlite::Connection::open(root.join("db")).unwrap();
     crate::storage::apply_connection_pragmas(&conn).unwrap();
@@ -247,6 +248,208 @@ fn backup_import_cancel_after_decryption_and_during_planning_erases_private_work
         conn.query_row("SELECT COUNT(*) FROM app_kv WHERE key='private'", [], |r| r
             .get::<_, i64>(0))
             .unwrap(),
+        0
+    );
+}
+
+#[test]
+fn backup_import_review_pages_are_stable_private_evidence_and_invalid_queries_keep_the_plan() {
+    let source = tempfile::tempdir().unwrap();
+    let target = tempfile::tempdir().unwrap();
+    let out = tempfile::tempdir().unwrap();
+    let staging = tempfile::tempdir().unwrap();
+    let mut source_db = database(source.path());
+    let program = source.path().join("plugins/proof");
+    std::fs::create_dir_all(&program).unwrap();
+    std::fs::write(program.join("manifest.json"), r#"{"id":"proof","name":"Proof","version":"1.0.0","schemaVersion":1,"requires":{"services":{}},"permissions":[]}"#).unwrap();
+    std::fs::write(program.join("main.js"), "export default {};").unwrap();
+    source_db.execute_batch("INSERT INTO app_kv(key,value_json,updated_at) VALUES ('read-aware-plugin.other.note','\"PRIVATE NOTE\"','now'),('read-aware-plugin.proof.note','\"PRIVATE NOTE\"','now');
+        INSERT INTO domain_events(id,type,hlc_wall_ms,hlc_counter,hlc_device,payload_json,created_at) VALUES ('a','preference.changed',1,0,'source','{\"key\":\"read-aware-theme\",\"value\":\"paper\"}','now'),('b','preference.changed',2,0,'source','{\"key\":\"read-aware-theme\",\"value\":\"paper\"}','now');").unwrap();
+    let sealed = crate::secrets::encrypt(source.path(), "PRIVATE SOURCE KEY").unwrap();
+    source_db.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES ('read-aware-secret:ai-api-key.proof',?1,'now')", [&sealed]).unwrap();
+    let snapshot = crate::storage::backup_snapshot::capture_fixture(
+        &mut source_db,
+        source.path(),
+        staging.path(),
+        |_| Ok(()),
+    )
+    .unwrap();
+    let path = out.path().join("source.age");
+    backup_archive::write_archive(
+        &snapshot,
+        SecretString::from(PASSWORD.to_owned()),
+        &path,
+        || Ok(()),
+    )
+    .unwrap();
+    drop(snapshot);
+    let mut conn = database(target.path());
+    let sealed = crate::secrets::encrypt(target.path(), "PRIVATE TARGET KEY").unwrap();
+    conn.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES ('read-aware-secret:ai-api-key.proof',?1,'now')", [&sealed]).unwrap();
+    let root = BackupStaging::fixture(staging.path());
+    let tasks = BackupTasks::default();
+    let id = uuid::Uuid::new_v4().to_string();
+    open_source(
+        tasks.begin("main", &id).unwrap(),
+        id.clone(),
+        &path,
+        SecretString::from(PASSWORD.to_owned()),
+        &root,
+        |_| Ok(()),
+    )
+    .unwrap();
+    build_plan(
+        &tasks,
+        "main",
+        id.clone(),
+        &mut conn,
+        target.path(),
+        crate::plugins::BundledPrograms::fixture(target.path()),
+        &root,
+        |_| Ok(()),
+    )
+    .unwrap();
+    let read = |query| {
+        tasks.with_plan("main", &id, |plan, lease| {
+            plan.review_page(query, || lease.check())
+        })
+    };
+    assert!(read(ReviewQuery::Rows {
+        table: "unknown".into(),
+        after: None,
+        limit: 1
+    })
+    .is_err());
+    assert!(read(ReviewQuery::Programs {
+        after: None,
+        limit: 101
+    })
+    .is_err());
+    let events = serde_json::to_value(
+        read(ReviewQuery::Events {
+            after: None,
+            limit: 1,
+        })
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(events["kind"], "events");
+    assert_eq!(events["entries"][0]["sourceId"], "a");
+    assert_eq!(events["nextAfter"], "a");
+    let events = serde_json::to_value(
+        read(ReviewQuery::Events {
+            after: Some("a".into()),
+            limit: 1,
+        })
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(events["entries"][0]["sourceId"], "b");
+    assert!(events["nextAfter"].is_null());
+    let rows = serde_json::to_value(
+        read(ReviewQuery::Rows {
+            table: "app_kv".into(),
+            after: None,
+            limit: 100,
+        })
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(!rows.to_string().contains("PRIVATE"));
+    assert!(rows["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|row| row["policy"].is_string()));
+    let files = serde_json::to_value(
+        read(ReviewQuery::Files {
+            after: None,
+            limit: 100,
+        })
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(files["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|entry| entry["path"] == "plugins/proof/main.js"));
+    assert!(!files.to_string().contains(source.path().to_str().unwrap()));
+    let first = serde_json::to_value(
+        read(ReviewQuery::Programs {
+            after: None,
+            limit: 1,
+        })
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(first["entries"][0]["id"], "other");
+    assert_eq!(first["nextAfter"], "other");
+    let second = serde_json::to_value(
+        read(ReviewQuery::Programs {
+            after: Some("other".into()),
+            limit: 1,
+        })
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(second["entries"][0]["id"], "proof");
+    assert_eq!(second["entries"][0]["candidates"][0]["mainPresent"], true);
+    let credentials = serde_json::to_value(
+        read(ReviewQuery::Credentials {
+            after: None,
+            limit: 100,
+        })
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(credentials["entries"][0]["localEqual"], false);
+    assert!(!credentials.to_string().contains("PRIVATE"));
+    // Review remains the original comparison even when the live target changes.
+    conn.execute(
+        "DELETE FROM app_kv WHERE key LIKE 'read-aware-secret:%'",
+        [],
+    )
+    .unwrap();
+    assert_eq!(
+        serde_json::to_value(
+            read(ReviewQuery::Credentials {
+                after: None,
+                limit: 100
+            })
+            .unwrap()
+        )
+        .unwrap(),
+        credentials
+    );
+    assert!(tasks
+        .with_plan("foreign", &id, |plan, lease| plan.review_page(
+            ReviewQuery::Files {
+                after: None,
+                limit: 1
+            },
+            || lease.check()
+        ))
+        .is_err());
+    let cancelled_read = tasks.with_plan("main", &id, |plan, lease| {
+        tasks.cancel("main", Some(&id))?;
+        assert!(tasks
+            .begin("main", &uuid::Uuid::new_v4().to_string())
+            .is_err());
+        plan.review_page(
+            ReviewQuery::Files {
+                after: None,
+                limit: 1,
+            },
+            || lease.check(),
+        )
+    });
+    assert_eq!(cancelled_read.err().unwrap().code, "backup/cancelled");
+    assert!(tasks.is_empty());
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(staging.path())
+            .unwrap()
+            .count(),
         0
     );
 }

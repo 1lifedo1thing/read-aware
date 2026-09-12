@@ -25,7 +25,12 @@ mod inventory;
 pub(crate) use credentials::{CredentialChoice, CredentialFacts, PreparedCredentials};
 pub(crate) use inventory::{BlobAvailability, BlobBinding};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[path = "backup_review.rs"]
+mod review;
+pub(crate) use review::{ReviewPage, ReviewQuery};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) enum FileMatchKind {
     SourceOnly,
     TargetOnly,
@@ -33,13 +38,15 @@ pub(crate) enum FileMatchKind {
     Different,
     Unavailable,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) enum FilePolicy {
     Blob,
     ProgramTree,
     PreserveCredentialKey,
 }
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct FileMatch {
     pub path: String,
     pub policy: FilePolicy,

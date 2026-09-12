@@ -17,14 +17,16 @@ pub(crate) enum CredentialChoice {
     TargetLocal,
     TargetRoaming,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) enum RoamingState {
     Absent,
     Value,
     Deleted,
     Locked,
 }
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialFacts {
     pub slot: String,
     pub source_local: bool,

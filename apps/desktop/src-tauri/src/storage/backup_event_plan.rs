@@ -11,9 +11,10 @@ mod events;
 mod revision;
 #[path = "backup_row_plan.rs"]
 mod rows;
-pub(crate) use rows::{RowPlan, FilePlan, FileMatchKind};
+pub(crate) use rows::{RowPlan, FilePlan, FileMatchKind, ReviewPage, ReviewQuery};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) enum EventMatchKind {
     New,
     Existing,
@@ -43,7 +44,8 @@ impl EventMatchKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct EventMatch {
     pub source_id: String,
     pub kind: EventMatchKind,
@@ -61,7 +63,8 @@ pub(crate) struct EventPlanReport {
     pub id_conflicts: u64,
     pub clock_conflicts: u64,
 }
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct EventMatchPage {
     pub entries: Vec<EventMatch>,
     pub next_after: Option<String>,
