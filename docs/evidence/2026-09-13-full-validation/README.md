@@ -612,3 +612,32 @@ errorCode=library/book-reappeared，恢复的记录和文件都保留；不是�
 
 尚未覆盖：所有 Actor 的书目/收藏入口、大批成员分页、多集合移动、删除文件故障及
 跨进程中断；已通过的第一方插件操作不重复归零。
+
+## 第二十五个桌面流程：阅读设置覆盖、默认值与继承
+
+同一隔离 Tauri，复用实际 settings Worker，并补 reset-reading 命令和原覆盖恢复。
+验证现有两本 FB2/PDF 的全局与单书设置；没有创建名为 Settings Desk 的插件，
+覆盖表原先误写的消费者名称已改为现有设置 Worker 与实际设置界面。
+
+Worker 明确 global 目标修改字号/对齐/固定版式颜色，只影响继承全局的书；已有
+单书覆盖保持。book defaults 将整组11项设为内建值且保留 active/book 来源，
+book inherit 删除覆盖并跟随当前全局。global defaults 恢复全局，保留两书各自
+small/x-small 覆盖；all-books update 将全局及已有覆盖更新为 large/justify/original，
+仍保留 active 覆盖；inherit all-books 清覆盖但保留该全局值，defaults all-books
+同时恢复全部内建值并清覆盖。非法 global inherit 返回 ui/invalid-target，三目标
+值与 revision 都不变。Agent book scope 省略 bookId 的 defaults/inherit 分别创建和
+清除当前书覆盖，经过实际运行端口；本次未调用模型。原生 load_kv_all 重读一致。
+
+最初两次 Worker 修改漏传必需的 reading target，被拒绝且没有写入；这是验收输入
+错误，保留原回执，补显式 global 后通过，不算产品修复。清理后 Worker 贡献0、
+自有KV键0、原覆盖null恢复；原偏好字符串字段顺序变化，但逐字段值完全一致。
+
+随后实际设置界面依次修改 Small、Bold、Compact、Tight、Justified、Scroll、Narrow、
+Dark 和 Literata。控件 pressed/选择值与原生KV一致；预览 computed 为 Literata、
+15px、600、23.25px 行高、justify，段距变量0.6rem。窗口 hidden，内联背景已暗色
+rgb(28,25,23)，computed 背景仍暖色 rgb(245,241,232)，颜色过渡完成/前台像素未验。
+不以预览 CSS 代替字体文件加载完成或实际正文排版。界面关闭，所有偏好和覆盖恢复。
+
+桌面探针类型检查通过；未修改产品代码或重复全量门禁。详情与逐步值见
+[reading-settings-observations.json](./reading-settings-observations.json)。
+仍待验：实际阅读器排版/固定版式颜色、界面重置入口、进程重启及其他平台。

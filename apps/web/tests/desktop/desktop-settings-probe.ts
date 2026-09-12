@@ -1,6 +1,7 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import { getDefaultStore } from "jotai";
-import type { SettingChange } from "@read-aware/core";
+import type { ReadingSettingsReset, SettingChange } from "@read-aware/core";
+import { READER_OVERRIDES_KEY } from "../../src/features/settings/lib/reader-overrides";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
 import { buildSettingsTools } from "../../../../packages/agent/src/tools/settings-tools";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
@@ -20,6 +21,7 @@ const disposables: PluginDisposable[] = [];
 let restore: SettingChange[] = [];
 let events: unknown[] = [];
 let unsubscribe: (() => void) | undefined;
+let originalOverrides: string | null | undefined;
 
 async function assertIsolated() {
   const path = await appDataDir();
@@ -29,6 +31,7 @@ async function assertIsolated() {
 export async function prepareSettingsProbe(paths = ["appearance.theme", "appearance.motion", "general.startView"]) {
   await assertIsolated();
   if (worker) throw new Error("Settings probe is already running");
+  originalOverrides = localKV.getItem(READER_OVERRIDES_KEY);
   const settings = createSettingsDomain("user");
   const snapshot = await settings.queries.snapshot();
   restore = await Promise.all(paths.map(async path => {
@@ -88,6 +91,16 @@ export async function formSettings(enabled: boolean) {
   return { result, observed: (await inspect.run())?.toast };
 }
 
+export async function pluginReadingReset(request: ReadingSettingsReset) {
+  await assertIsolated();
+  await localKV.setItemAsync(prefix + "reset", JSON.stringify(request));
+  const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === id && command.id === "reset-reading");
+  if (!command) throw new Error("Settings probe command is unavailable");
+  await command.run();
+  const disk = await invoke<Record<string, string>>("load_kv_all");
+  return JSON.parse(disk[prefix + "result"] ?? "null") as unknown;
+}
+
 export async function cleanupSettingsProbe() {
   await assertIsolated();
   try {
@@ -97,8 +110,11 @@ export async function cleanupSettingsProbe() {
     for (const disposable of disposables.splice(0).reverse()) disposable.dispose();
     unsubscribe?.(); unsubscribe = undefined;
     if (restore.length) await createSettingsDomain("user").commands.update(restore);
+    if (originalOverrides === null) await localKV.removeItemAsync(READER_OVERRIDES_KEY);
+    else if (originalOverrides !== undefined) await localKV.setItemAsync(READER_OVERRIDES_KEY, originalOverrides);
+    originalOverrides = undefined;
     restore = [];
-    for (const key of ["changes", "result", "settings"]) await localKV.removeItemAsync(prefix + key);
+    for (const key of ["changes", "result", "settings", "reset"]) await localKV.removeItemAsync(prefix + key);
   }
   return { contributions: inspectContributions(id).length };
 }

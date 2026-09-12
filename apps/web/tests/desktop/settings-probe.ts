@@ -5,6 +5,13 @@ export default {
   activate(ctx) {
     const settings = ctx.domains.settings;
     const observed: unknown[] = [];
+    ctx.contributions.commands.register({ id: "reset-reading", title: "Reset reading settings", run: async () => {
+      const request = ctx.services.storage.get<import("@read-aware/core").ReadingSettingsReset>("reset")!;
+      let result: unknown;
+      try { result = await settings.commands.resetReading(request); }
+      catch (error) { result = { code: error && typeof error === "object" && "code" in error ? error.code : null }; }
+      await ctx.services.storage.set("result", result);
+    } });
     ctx.services.storage.onChange(() => { observed.push(ctx.services.storage.get("settings")); });
     ctx.contributions.commands.register({
       id: "observed", title: "Inspect settings mirror",

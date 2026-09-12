@@ -13,7 +13,7 @@
 | F3 | Jumper/Annotation/Listening Desk 阅读导航、模式与朗读、版本化标注、时长；观察页面和持久状态 |
 | F4 | 真实 AgentThread 问答、批准、图像输入、取消与持久历史；机器评分及主 Agent 逐条复核，另验 Tauri |
 | F5 | Memory Desk 记住/纠错/遗忘/巩固、身份与画像、摘要及 bundle；条件写和重新读取 |
-| F6 | Settings Desk 与实际设置界面修改/继承/重置；观察受影响 UI、授权与重启结果 |
+| F6 | 现有设置 Worker 与实际设置界面修改/继承/重置；观察受影响 UI、授权与重启结果 |
 | F7 | RSS/Dictionary 和插件安装/升级/撤权/故障恢复；数据、Worker 生命周期和真实消费者 |
 | F8 | 文件/目录/拖放/外部应用、网络、备份恢复/诊断/同步；原生回执及重读，外部环境单列 |
 
@@ -96,10 +96,10 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | UI04 | 快捷键查询、重绑、冲突与重置 | F6 | 待验 |
 | UI05 | 菜单可见/溢出位置及自定义重排 | F6 | 待验 |
 | CFG01 | 设置 discover/read/update 与动态选项 | F6 | 本机 Agent/Worker 设置查询与原子修改、动态主题观察通过；完整目录/其他目标待验 |
-| CFG02 | 全局/本书/全书阅读设置覆盖 | F6 | 待验 |
-| CFG03 | 清除覆盖/恢复默认/查询值来源 | F6 | 待验 |
-| CFG04 | 阅读对齐 reading.textAlign | F6 | 待验 |
-| CFG05 | 固定版式颜色 reading.fixedLayoutColor | F6 | 待验 |
+| CFG02 | 全局/本书/全书阅读设置覆盖 | F6 | 本机真实Worker全局/两书覆盖/全书修改及原生重读通过；实际阅读器呈现与进程重启待验，见第二十五流程 |
+| CFG03 | 清除覆盖/恢复默认/查询值来源 | F6 | Worker三目标defaults、单书/全书inherit、值来源及非法global inherit拒绝；Agent当前书重置/继承通过，UI重置入口待验，见第二十五流程 |
+| CFG04 | 阅读对齐 reading.textAlign | F6 | Worker三目标与实际设置UI Justified、预览computed justify、原生重读通过；实际正文排版待验，见第二十五流程 |
+| CFG05 | 固定版式颜色 reading.fixedLayoutColor | F6 | Worker theme/original三目标与重置、原生读写通过；PDF实际颜色与UI入口待验，见第二十五流程 |
 | CFG06 | 更新内容弹窗 general.whatsNewDialog | F6 | 待验 |
 | CFG07 | AI 提供商/端点/密钥配置 | F6 | 待验 |
 | CFG08 | 模型目录刷新、连接测试与模型能力 | F6 | 本机原生刷新目录、视觉能力发现与Qwen实际调用通过；GPT模型被账户上游规则阻止；连接测试UI待验 |
@@ -116,14 +116,14 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET06 | general.autoUpdate | F6 | 待验 |
 | SET07 | appearance.theme | F6 | 待验 |
 | SET08 | appearance.motion | F6 | 待验 |
-| SET09 | reading.theme | F6 | 待验 |
-| SET10 | reading.fontFamily | F6 | 待验 |
-| SET11 | reading.fontSize | F6 | 待验 |
-| SET12 | reading.fontWeight | F6 | 待验 |
-| SET13 | reading.lineSpacing | F6 | 待验 |
-| SET14 | reading.paragraphSpacing | F6 | 待验 |
-| SET15 | reading.pageMargins | F6 | 待验 |
-| SET16 | reading.readingMode | F6 | 待验 |
+| SET09 | reading.theme | F6 | 实际设置UI Warm→Dark及原生KV通过；后台预览内联暗色、computed颜色过渡未完成，实际正文颜色待验，见第二十五流程 |
+| SET10 | reading.fontFamily | F6 | 实际设置UI Inter→Literata、预览font-family及原生KV通过；字体文件完成加载/实际正文待验，见第二十五流程 |
+| SET11 | reading.fontSize | F6 | 实际设置UI Medium→Small、预览15px及原生KV通过；Worker三目标覆盖/重置通过，实际正文待验，见第二十五流程 |
+| SET12 | reading.fontWeight | F6 | 实际设置UI Regular→Bold、预览600及原生KV通过；实际正文待验，见第二十五流程 |
+| SET13 | reading.lineSpacing | F6 | 实际设置UI Comfortable→Compact、预览1.55行高及原生KV通过；实际正文待验，见第二十五流程 |
+| SET14 | reading.paragraphSpacing | F6 | 实际设置UI Normal→Tight、预览段距0.6rem及原生KV通过；实际正文待验，见第二十五流程 |
+| SET15 | reading.pageMargins | F6 | 实际设置UI Wide→Narrow及原生KV通过；实际正文页边距待验，见第二十五流程 |
+| SET16 | reading.readingMode | F6 | 实际设置UI Two Pages→Scroll及原生KV通过；实际正文模式切换待验，见第二十五流程 |
 | SET17 | reading.fixedLayoutReadingMode | F6 | 待验 |
 | SET18 | ai.preferences.features.explainSelection | F6 | 待验 |
 | SET19 | ai.preferences.features.defineTerm | F6 | 待验 |
@@ -154,8 +154,8 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET44 | ai.connection.custom.api | F6 | 待验 |
 | SET45 | ai.connection.custom.supportsThinking | F6 | 待验 |
 | SET46 | ai.connection.custom.maxOutputTokens | F6 | 待验 |
-| SET47 | reading.textAlign | F6 | 待验 |
-| SET48 | reading.fixedLayoutColor | F6 | 待验 |
+| SET47 | reading.textAlign | F6 | Worker目标覆盖与实际设置UI Justified、预览computed justify、原生KV通过；实际正文待验，见第二十五流程 |
+| SET48 | reading.fixedLayoutColor | F6 | Worker theme/original目标覆盖及重置通过；PDF实际颜色与UI入口待验，见第二十五流程 |
 | SET49 | general.whatsNewDialog | F6 | 待验 |
 | SET50 | appearance.contentTypography.followReader | F6 | 待验 |
 | SET51 | appearance.contentTypography.fontFamily | F6 | 待验 |
