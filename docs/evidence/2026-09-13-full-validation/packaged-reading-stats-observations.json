@@ -1,0 +1,69 @@
+{
+  "date": "2026-09-13",
+  "platform": "macOS aarch64 release",
+  "identifier": "com.readaware.app.validation-packaged-e2e",
+  "source": "Actual native UI reading during flows 31-34 and normal restarts; no synthetic time records inserted into this instance",
+  "nativeBeforeUI": {
+    "reading_time_totals": [
+      {
+        "book_id": "5506162d-7bd7-43c4-bf81-6495ee6067d3",
+        "total_ms": 1064030,
+        "first_started_at": 1789251660573,
+        "last_read_at": 1789253453824
+      }
+    ],
+    "reading_time_daily": [
+      {
+        "book_id": "5506162d-7bd7-43c4-bf81-6495ee6067d3",
+        "local_day": "2026-09-13",
+        "ms": 1064030
+      }
+    ],
+    "reading_time_hourly": [
+      {
+        "book_id": "5506162d-7bd7-43c4-bf81-6495ee6067d3",
+        "local_hour": 6,
+        "ms": 1064030
+      }
+    ],
+    "sessionEvents": 12
+  },
+  "ui": {
+    "header": "18m across 1 book · 1-day streak",
+    "totalTime": "18m",
+    "booksRead": 1,
+    "daysRead": 1,
+    "averagePerDay": "18m",
+    "byBook": {
+      "title": "Packaged Lifecycle Probe",
+      "time": "18m",
+      "progress": "100%",
+      "days": 1,
+      "notes": 1
+    },
+    "peak": "6 AM",
+    "week": "Last 7 days; Sunday bar drawn",
+    "month": "Last 30 days; weekday and hourly summaries",
+    "year": "Last 12 months; monthly bars, reading calendar, weekday and hourly summaries",
+    "all": "All time; actual September bar and latest heatmap cell drawn; milestones visible",
+    "milestones": {
+      "total": "18m",
+      "next": "1h",
+      "longestStreak": "1d",
+      "currentStreak": "1d",
+      "bestDay": "18m, Sep 13",
+      "daysRead": 1,
+      "booksRead": 1,
+      "mostRead": "Packaged Lifecycle Probe, 18m"
+    },
+    "bookEntry": "Click By book row opens actual book at Return Visit; close returns statistics; Back to shelf returns library"
+  },
+  "comparison": "1,064,030ms = 17m44.03s; displayed 18m. Total/day/hour exactly agree. Single local date 2026-09-13 and hour6 agree with UI. Highlight excluded from note count, one actual note shown.",
+  "final": "Library, existing synthetic book and two annotations retained, no statistics/settings edited",
+  "notProven": [
+    "Independent wall-clock accuracy calibration",
+    "Real multi-day/year or DST transitions",
+    "Cross-device sync",
+    "All time filter boundary fixtures beyond the earlier synthetic evidence"
+  ]
+}

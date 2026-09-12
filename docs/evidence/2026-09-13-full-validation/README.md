@@ -918,3 +918,21 @@ unitId=sentence，插件设置也恢复sentence；最后回第二章并关书到
 未启动朗读，不声称音频通过；独立follow仍未实现，其他格式/平台和模式位置跨
 进程恢复仍单列。观察到段落模式的返回按钮仍叫Back to current sentence，保留
 文案不一致记录，不把它误记为导航失效。本轮无产品改动，无重复全量门禁。
+
+## 第三十五流程：发布包真实阅读统计与原生投影对照
+
+沿用第31-34流程实际阅读和正常进程重启产生的记录，没有向该release实例插入
+合成时长。进统计前原生total/day/hour均1064030ms，即17m44.03s；local_day为
+2026-09-13，hour为6，正式book.sessionRecorded累计12条。
+
+实际统计页显示18m across 1 book、1-day streak，总时间18m、1本、1天、日均18m；
+By book同书18m/100%/1 Days/1 Notes（原有一高亮一笔记，笔记数1正确）。
+Week的Sunday柱和6AM高峰实际绘制。Month切为Last30days，Year切为Last12months
+并出现Reading calendar，All显示All time、September柱及最新热图格；各汇总一致。
+All的里程碑为next1h、最长/当前连续1d、最佳日Sep13/18m、总天数1、总书数1及
+Most read同书18m。点击单书行进入真实第二章，关书回统计，再Back to shelf恢复。
+
+证据：[packaged-reading-stats-observations.json](./packaged-reading-stats-observations.json)。
+这覆盖真实前台阅读→结算/正常重启保留→投影→界面组合，不等于独立时钟精度
+校准，也不新增真实跨日、夏令时、跨设备或任意日期边界通过声明；早前两日合成
+测试仍保留自己的证据边界。无产品源码改动，无重复全量测试。
