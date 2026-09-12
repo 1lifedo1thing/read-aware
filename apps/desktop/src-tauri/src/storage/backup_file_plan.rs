@@ -11,6 +11,10 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     path::Path,
 };
+#[path = "backup_programs.rs"]
+mod programs;
+pub(crate) use programs::{ProgramChoice, ProgramDecision, ProgramFacts};
+
 #[path = "backup_credentials.rs"]
 mod credentials;
 #[path = "backup_file_inventory.rs"]
@@ -67,6 +71,24 @@ pub(crate) struct FilePlan {
     pub programs: Vec<ProgramMatch>,
 }
 impl FilePlan {
+    pub(crate) fn program_facts(
+        &self,
+        tx: &Transaction<'_>,
+        data_dir: &Path,
+        check: impl FnMut() -> Result<(), CommandError>,
+    ) -> Result<Vec<ProgramFacts>, CommandError> {
+        programs::inspect(self, tx, data_dir, check)
+    }
+    pub(crate) fn prepare_programs(
+        &self,
+        tx: &Transaction<'_>,
+        data_dir: &Path,
+        choices: &BTreeMap<String, ProgramChoice>,
+        check: impl FnMut() -> Result<(), CommandError>,
+    ) -> Result<Vec<ProgramDecision>, CommandError> {
+        programs::prepare(self, tx, data_dir, choices, check)
+    }
+
     pub(crate) fn credential_facts(
         &self,
         tx: &Transaction<'_>,
@@ -153,6 +175,34 @@ fn kind<T: PartialEq>(a: Option<&T>, b: Option<&T>) -> FileMatchKind {
         (None, None) => FileMatchKind::Unavailable,
     }
 }
+fn read_manifest(
+    root: &Path,
+    manifest: &CapturedFile,
+    check: &mut impl FnMut() -> Result<(), CommandError>,
+) -> Result<String, CommandError> {
+    if manifest.byte_size > 1024 * 1024 {
+        return Err(CommandError::new(
+            "backup/incomplete",
+            "plugin manifest exceeds limit",
+        ));
+    }
+    verify_file(root, manifest, check)?;
+    use std::io::Read;
+    let mut bytes = Vec::new();
+    std::fs::File::open(root.join(&manifest.path))?
+        .take(1024 * 1024 + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 != manifest.byte_size
+        || format!("{:x}", Sha256::digest(&bytes)) != manifest.sha256
+    {
+        return Err(CommandError::new(
+            "backup/changed",
+            "plugin manifest changed during planning",
+        ));
+    }
+    String::from_utf8(bytes)
+        .map_err(|_| CommandError::new("backup/incomplete", "plugin manifest is not UTF-8"))
+}
 fn trees(
     root: &Path,
     files: &BTreeMap<String, CapturedFile>,
@@ -182,22 +232,8 @@ fn trees(
             .ok_or_else(|| {
                 CommandError::new("backup/incomplete", "invalid plugin tree manifest")
             })?;
-        // Verify again after traversal, then bound parsing even if it is changed.
-        verify_file(root, manifest, check)?;
-        use std::io::Read;
-        let mut bytes = Vec::new();
-        std::fs::File::open(root.join(path))?
-            .take(1024 * 1024 + 1)
-            .read_to_end(&mut bytes)?;
-        if bytes.len() as u64 != manifest.byte_size
-            || format!("{:x}", Sha256::digest(&bytes)) != manifest.sha256
-        {
-            return Err(CommandError::new(
-                "backup/changed",
-                "plugin manifest changed during planning",
-            ));
-        }
-        let value: serde_json::Value = serde_json::from_slice(&bytes)?;
+        let text = read_manifest(root, manifest, check)?;
+        let value: serde_json::Value = serde_json::from_str(&text)?;
         let schema_version = value
             .get("schemaVersion")
             .and_then(serde_json::Value::as_i64)

@@ -153,6 +153,11 @@ static BUNDLED: &[(&str, &Dir)] = &[
     ("jumper", &BUNDLED_JUMPER),
 ];
 
+/// Backup input cannot add an ID to the current build's trusted plugin set.
+pub(crate) fn is_bundled_plugin(id: &str) -> bool {
+    BUNDLED.iter().any(|(known, _)| *known == id)
+}
+
 /// Where the built-in set lives at runtime.
 enum BundledRoot {
     /// `<dir>/<id>/…` — extracted from the embedded set.

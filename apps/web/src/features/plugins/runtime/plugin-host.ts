@@ -17,7 +17,7 @@ import { PluginPreferencePublication } from "../../../platform/plugin-preference
 import { acceptPluginPreferencePublication } from "../../../platform/roaming-preferences";
 import { localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
-import { PluginManifestError, parseManifestJson, versionSatisfies } from "../lib/manifest";
+import { PluginManifestError, parseManifestJson } from "../lib/manifest";
 import { clearPluginScheduleState } from "./plugin-scheduler";
 import type {
   InstalledPlugin,
@@ -58,7 +58,7 @@ import {
 import { onAppEvent } from "../../../platform/app-events";
 import { unbindVirtualBook } from "../lib/virtual-books";
 import { runPluginUpdateTransaction } from "./plugin-update-transaction";
-import { assertPluginCapabilityRequirements } from "./plugin-capabilities";
+import { assertPluginManifestCanActivate } from "./plugin-manifest-readiness";
 import { planPluginDataMigration } from "./plugin-data-migration";
 import { PLUGIN_SCHEMA_KEY_PREFIX, pluginDataSchemaVersion } from "./plugin-data-snapshot";
 
@@ -187,14 +187,8 @@ async function activatePlugin(manifest: PluginManifest): Promise<void> {
 }
 
 function assertManifestCanActivate(manifest: PluginManifest): void {
-  if (manifest.minAppVersion && !versionSatisfies(appVersion, manifest.minAppVersion)) {
-    throw new Error(`requires app version ${manifest.minAppVersion} or newer`);
-  }
-  assertPluginCapabilityRequirements(manifest);
   const installed = getInstalled().find((plugin) => plugin.manifest.id === manifest.id);
-  if (manifest.permissions?.includes("reader:modes") && !installed?.builtin) {
-    throw new Error("reader:modes is currently reserved for built-in plugins");
-  }
+  assertPluginManifestCanActivate(manifest, { appVersion, builtin: installed?.builtin === true });
 }
 
 /**
