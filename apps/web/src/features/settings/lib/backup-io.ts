@@ -11,6 +11,7 @@
  */
 import { dumpLocalKV, restoreLocalKV } from "../../../platform/local-store";
 import { withPluginDataBackup } from "../../../platform/plugin-data-access";
+import { withReadingBackup } from "../../reader/lib/reading-trace-runtime";
 import { LEGACY_PROFILE_KEY, readUserProfileSnapshot, restoreUserProfile } from "../../../domain/user-profile";
 import {
   getStoredBookBlob,
@@ -72,7 +73,7 @@ function settledValue<T>(result: PromiseSettledResult<T>): T {
 
 /** Serialize the v1 backup subset into one portable JSON string. */
 export async function exportBackup(signal?: AbortSignal): Promise<string> {
-  return withPluginDataBackup("export", exportBackupContents, signal);
+  return withPluginDataBackup("export", () => withReadingBackup(exportBackupContents, signal), signal);
 }
 
 async function exportBackupContents(): Promise<string> {
@@ -125,7 +126,7 @@ async function exportBackupContents(): Promise<string> {
 export async function importBackup(json: string, signal?: AbortSignal): Promise<BackupImportResult> {
   // Cancellation can stop admission/draining, but does not revoke a merge
   // which has begun writing. Its legacy partial-write behavior is unchanged.
-  return withPluginDataBackup("import", () => importBackupContents(json), signal);
+  return withPluginDataBackup("import", () => withReadingBackup(() => importBackupContents(json), signal), signal);
 }
 
 async function importBackupContents(json: string): Promise<BackupImportResult> {

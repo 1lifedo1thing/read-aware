@@ -63,6 +63,7 @@
     "backupUnlockFailed": "Die Sicherung konnte nicht entsperrt werden. Prüfen Sie das Passwort und die Unversehrtheit der Datei.",
     "backupPasswordPolicy": "Das Sicherungspasswort muss mindestens 12 Zeichen enthalten und darf höchstens 1024 UTF-8-Bytes lang sein.",
     "backupIncomplete": "Für eine vollständige Sicherung fehlen Dateien oder sie werden nicht unterstützt. Stellen Sie fehlende Dateien vor einem erneuten Versuch wieder her.",
+    "backupBusy": "Ein anderer Sicherungsvorgang läuft. Versuchen Sie es danach erneut.",
     "backupChanged": "Daten wurden während der Sicherungsvorbereitung geändert oder konnten nicht überprüft werden. Versuchen Sie es nach Abschluss laufender Vorgänge erneut.",
     "backupCancelled": "Die Sicherungsvorbereitung wurde abgebrochen.",
     "pluginRecoveryRequired": "Das Plugin-Update konnte nicht sicher wiederhergestellt werden. Seine Daten sind vorübergehend nicht verfügbar.",

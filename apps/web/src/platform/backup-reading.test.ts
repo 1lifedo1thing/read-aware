@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
 
 if (process.env.BACKUP_READING_PROOF === "1") {
   const bucket = { bookId: "book", localDay: "2026-09-12", localHour: 10, ms: 20,
@@ -10,12 +10,26 @@ if (process.env.BACKUP_READING_PROOF === "1") {
   let frontier = Date.now() + 1_000_000;
   const requests: any[][] = [];
   const published: any[] = [];
+  let closeGate: Promise<void> | undefined;
+  const writes: string[] = [];
   Object.defineProperty(globalThis, "window", { configurable: true, value: { __TAURI_INTERNALS__: {
     invoke: async (command: string, args: any) => {
+      if (command === "reading_session_accrue" || command === "reading_session_position") {
+        writes.push(command);
+        let row = pending.find(row => row.bookId === args.bookId);
+        if (!row) { row = { ...bucket, bookId: args.bookId, ms: 0, startedAt: args.atEpochMs, lastAt: args.atEpochMs }; pending.push(row); }
+        if (command === "reading_session_accrue") row.ms += args.deltaMs;
+        else Object.assign(row, { progress: args.progress, positionAt: args.atEpochMs });
+        return row;
+      }
+      if (command === "reading_session_flush") {
+        pending = []; return { appended: args.events.length, applied: args.events.length };
+      }
       if (command === "reading_sessions_pending") return pending.map(value => ({ ...value }));
       if (command === "local_device_get") return { deviceId: "reading-proof", lastHlcWallMs: frontier, lastHlcCounter: 10 };
       if (command === "backup_close_reading_sessions") {
         closes++;
+        await closeGate;
         requests.push(args.events);
         for (const event of args.events) {
           expect(event.hlc.wallMs >= frontier).toBe(true);
@@ -68,6 +82,54 @@ if (process.env.BACKUP_READING_PROOF === "1") {
     expect(pending).toEqual([]);
     expect(published).toHaveLength(2);
   });
+
+  test("production backup entries close native facts before IO and retain later observations until IO ends", async () => {
+    const { readingTraces } = await import("../features/reader/lib/reading-trace-runtime");
+    const { exportBackup, importBackup } = await import("../features/settings/lib/backup-io");
+    const kv = await import("./local-store");
+    const library = await import("../features/library/lib/library-db");
+    const annotations = await import("../features/annotations/lib/annotation-db");
+    const profile = await import("../domain/user-profile");
+    for (const mode of ["export", "import"] as const) {
+      pending = []; failure = null;
+      const closing = Promise.withResolvers<void>(), io = Promise.withResolvers<void>();
+      closeGate = closing.promise;
+      let entered = false;
+      const readOrWrite = async () => {
+        expect(pending).toEqual([]); entered = true;
+        await io.promise; expect(pending).toEqual([]);
+        return {};
+      };
+      const mocks = [
+        spyOn(kv, "dumpLocalKV").mockImplementation(readOrWrite),
+        spyOn(kv, "restoreLocalKV").mockImplementation(async () => { await readOrWrite(); }),
+        spyOn(library, "listLibraryBooks").mockResolvedValue([]),
+        spyOn(library, "listCollections").mockResolvedValue([]),
+        spyOn(annotations, "listAnnotations").mockResolvedValue([]),
+        spyOn(profile, "readUserProfileSnapshot").mockResolvedValue({ summary: null, revision: "empty" }),
+      ];
+      const trace = readingTraces.begin(`backup-${mode}`, "book");
+      const unbind = trace.bindSampler(() => trace.accrue(1000, 1020));
+      const before = writes.length;
+      const result = mode === "export" ? exportBackup() : importBackup(JSON.stringify({ kind: "backup", version: 1, books: [], kv: {} }));
+      try {
+        await Bun.sleep(0); expect(entered).toBe(false); expect(writes.length).toBe(before + 1);
+        trace.position({ locator: "after-snapshot" }, 1040);
+        closing.resolve(); closeGate = undefined;
+        await Bun.sleep(0); expect(entered).toBe(true);
+        expect(writes.length).toBe(before + 1);
+        io.resolve(); await result;
+        await Bun.sleep(0); expect(writes.length).toBe(before + 2);
+        expect(trace.accepting).toBe(true);
+        expect((pending[0] as any).progress.locator).toBe("after-snapshot");
+      } finally {
+        closing.resolve(); io.resolve(); closeGate = undefined;
+        await result;
+        unbind(); await trace.retire();
+        for (const mock of mocks) mock.mockRestore();
+      }
+    }
+  });
 } else {
   test("isolated full-backup reading closure host boundary", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], {
@@ -75,6 +137,6 @@ if (process.env.BACKUP_READING_PROOF === "1") {
     });
     const output = await new Response(child.stderr).text();
     expect(await child.exited, output).toBe(0);
-    expect(output).toContain("3 pass");
+    expect(output).toContain("4 pass");
   }, 30_000);
 }

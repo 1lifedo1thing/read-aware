@@ -63,6 +63,7 @@
     "backupUnlockFailed": "No se pudo desbloquear la copia. Comprueba la contraseña y la integridad del archivo.",
     "backupPasswordPolicy": "La contraseña debe tener al menos 12 caracteres y no superar los 1024 bytes en UTF-8.",
     "backupIncomplete": "Faltan archivos necesarios para una copia completa o no son compatibles. Restaura los archivos que faltan antes de volver a intentarlo.",
+    "backupBusy": "Hay otra operación de copia de seguridad en curso. Vuelve a intentarlo cuando termine.",
     "backupChanged": "Los datos cambiaron o no superaron la verificación durante la preparación. Inténtalo de nuevo cuando terminen las operaciones actuales.",
     "backupCancelled": "Se canceló la preparación de la copia de seguridad.",
     "pluginRecoveryRequired": "No se pudo restaurar la actualización del complemento de forma segura. Sus datos no están disponibles temporalmente.",

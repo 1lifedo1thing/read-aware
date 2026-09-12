@@ -1,4 +1,5 @@
 import type { ReadingSessionBucket, SessionPosition } from "../../../platform/reading-session";
+import { AppError } from "@read-aware/core";
 import { bucketKeyAt, sameBucket, type BucketKey } from "./reading-session-policy";
 
 type TraceStore = {
@@ -25,6 +26,9 @@ export class ReadingTrace {
   ) {}
 
   get accepting(): boolean { return this.live; }
+
+  /** Capture the partial timer interval without retiring its React sampler. */
+  sampleNow(): void { if (this.live) this.sample?.(); }
 
   bindSampler(sample: () => void): () => void {
     if (!this.live) return () => {};
@@ -99,6 +103,8 @@ export class ReadingTrace {
 export class ReadingTraceCoordinator {
   private tail: Promise<void> = Promise.resolve();
   private active: ReadingTrace | undefined;
+  private readonly pending = new Set<Promise<void>>();
+  private paused = false;
 
   constructor(private readonly store: TraceStore) {}
 
@@ -113,10 +119,40 @@ export class ReadingTraceCoordinator {
     await this.tail;
   }
 
+  /** Reserve the queue synchronously after the current timer sample. Later
+   * observations (including replacement sessions) retain their order behind
+   * the reservation. Cancellation never releases native work still running.
+   * This fences this reader's writes, not other domains or native processes. */
+  async withWritesPaused<T>(operation: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+    signal?.throwIfAborted();
+    // Reentrancy must fail rather than enqueue a barrier behind its own release.
+    if (this.paused) throw new AppError("backup/busy", "Reading writes are already reserved for backup");
+    const active = this.active;
+    let release = () => {};
+    this.paused = true;
+    try {
+      active?.sampleNow();
+      const accepted = [...this.pending];
+      const reservation = new Promise<void>(resolve => { release = resolve; });
+      this.tail = this.tail.then(() => reservation);
+      // A queue failure cannot let the backup overtake another accepted write.
+      const results = await Promise.allSettled(accepted);
+      for (const result of results) if (result.status === "rejected") throw result.reason;
+      signal?.throwIfAborted();
+      return await operation();
+    } finally {
+      this.paused = false;
+      release();
+    }
+  }
+
   begin(id: string, bookId: string): ReadingTrace {
     if (this.active) void this.active.retire().catch(error => this.store.report(error));
     const trace = new ReadingTrace(id, bookId, this.store, work => {
       const task = this.tail.then(work);
+      this.pending.add(task);
+      const done = () => { this.pending.delete(task); };
+      task.then(done, done);
       // Failure does not strand subsequent sessions; the caller still sees it.
       this.tail = task.catch(() => {});
       return task;

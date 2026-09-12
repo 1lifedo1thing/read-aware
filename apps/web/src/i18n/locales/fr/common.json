@@ -63,6 +63,7 @@
     "backupUnlockFailed": "Impossible de déverrouiller la sauvegarde. Vérifiez le mot de passe et l’intégrité du fichier.",
     "backupPasswordPolicy": "Le mot de passe de sauvegarde doit contenir au moins 12 caractères et ne pas dépasser 1024 octets UTF-8.",
     "backupIncomplete": "Certains fichiers nécessaires à une sauvegarde complète sont manquants ou non pris en charge. Restaurez les fichiers manquants avant de réessayer.",
+    "backupBusy": "Une autre opération de sauvegarde est en cours. Réessayez une fois terminée.",
     "backupChanged": "Les données ont changé ou leur vérification a échoué pendant la préparation. Réessayez après la fin des opérations en cours.",
     "backupCancelled": "La préparation de la sauvegarde a été annulée.",
     "pluginRecoveryRequired": "La mise à jour du plugin n’a pas pu être restaurée en toute sécurité. Ses données sont temporairement indisponibles.",

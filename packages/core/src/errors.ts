@@ -29,6 +29,7 @@ export const ERR_DB_ERROR = "db/error";
 export const ERR_SECRETS_UNAVAILABLE = "secrets/unavailable";
 /** Native full-backup preparation; never substitute a partial archive. */
 export const ERR_BACKUP_INCOMPLETE = "backup/incomplete";
+export const ERR_BACKUP_BUSY = "backup/busy";
 export const ERR_BACKUP_CHANGED = "backup/changed";
 export const ERR_BACKUP_CANCELLED = "backup/cancelled";
 export const ERR_BACKUP_INVALID_ARCHIVE = "backup/invalid-archive";

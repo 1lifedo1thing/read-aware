@@ -87,6 +87,7 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "backup/unlock-failed": { key: "backupUnlockFailed", retryable: false },
   "backup/password-policy": { key: "backupPasswordPolicy", retryable: false },
   "backup/incomplete": { key: "backupIncomplete", retryable: false },
+  "backup/busy": { key: "backupBusy", retryable: true },
   "backup/changed": { key: "backupChanged", retryable: true },
   "backup/cancelled": { key: "backupCancelled", retryable: false },
   "ai/invalid-capability-query": { key: "capabilityQueryInvalid", retryable: false },
