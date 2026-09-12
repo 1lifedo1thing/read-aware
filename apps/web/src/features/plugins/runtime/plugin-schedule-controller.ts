@@ -22,6 +22,7 @@ export class PluginScheduleController {
   private queues = new Map<string, Promise<unknown>>();
   private listeners = new Set<() => void>();
   private sweepCursor?: string;
+  private writeReservation?: Promise<void>;
   constructor(private storage: Storage, private report: (error: unknown) => void, private now = Date.now) {}
   get size() { return [...this.tasks.values()].filter(task => task.active).length; }
   inspect() { return [...this.tasks].filter(([, task]) => task.active).map(([key]) => key).sort(); }
@@ -30,6 +31,27 @@ export class PluginScheduleController {
       // Failed writes already reject their command; draining waits for settlement.
       await this.queues.get(pluginId)!.catch(() => {});
     }
+  }
+  /** Do not join callback flights: one may be the caller requesting backup.
+   * Drain admitted state writes, defer later completion patches, and recheck
+   * their owner only when they can persist. New executions/controls reject. */
+  async withPersistencePaused<T>(operation: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+    signal?.throwIfAborted();
+    this.assertWritable();
+    const accepted = [...this.queues.values()];
+    let release!: () => void;
+    this.writeReservation = new Promise<void>(resolve => { release = resolve; });
+    try {
+      await Promise.allSettled(accepted);
+      signal?.throwIfAborted();
+      return await operation();
+    } finally {
+      this.writeReservation = undefined;
+      release();
+    }
+  }
+  private assertWritable(): void {
+    if (this.writeReservation) throw new AppError("backup/busy", "Schedule persistence is paused for backup");
   }
   subscribe(handler: () => void) { this.listeners.add(handler); return () => { this.listeners.delete(handler); }; }
   private changed() {
@@ -71,6 +93,7 @@ export class PluginScheduleController {
   }
   async defer(pluginId: string, id: string, raw: PluginDeferredRequest, signal?: AbortSignal): Promise<PluginDeferredReceipt> {
     const input = normalizeDeferredRequest(raw), task = this.deferredTask(pluginId, id), token = task.token;
+    this.assertWritable();
     let result!: PluginDeferredReceipt;
     await this.save(task, () => {
       const previous = this.deferredSnapshot(task);
@@ -88,6 +111,7 @@ export class PluginScheduleController {
   async cancelDeferred(pluginId: string, id: string, requestId: string, signal?: AbortSignal): Promise<PluginDeferredReceipt> {
     if (typeof requestId !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(requestId)) throw new AppError("ui/invalid-target", "Invalid deferred request ID");
     const task = this.deferredTask(pluginId, id), token = task.token;
+    this.assertWritable();
     let result!: PluginDeferredReceipt;
     await this.save(task, record => {
       if (record.deferred?.requestId !== requestId || record.deferred.state !== "queued") {
@@ -133,6 +157,7 @@ export class PluginScheduleController {
       || !validId(input.pluginId) || !validId(input.id) || !["pause", "resume", "run"].includes(input.action)) throw new AppError("ui/invalid-target", "Invalid schedule control");
     const task = this.tasks.get(`${input.pluginId}:${input.id}`);
     if (!task?.active) throw new AppError("ui/unavailable", "Schedule is not bound");
+    this.assertWritable();
     if (input.action === "run") return this.execute(task, "manual", signal);
     const token = task.token;
     await this.save(task, { paused: input.action === "pause" }, () => {
@@ -142,6 +167,7 @@ export class PluginScheduleController {
     return { status: "completed", schedule: this.snapshot(task) };
   }
   sweep(idle = false) {
+    if (this.writeReservation) return;
     const now = this.now();
     const entries = [...this.tasks], start = (entries.findIndex(([key]) => key === this.sweepCursor) + 1) % Math.max(entries.length, 1);
     for (let offset = 0; offset < entries.length; offset++) {
@@ -163,6 +189,7 @@ export class PluginScheduleController {
     }
   }
   private async execute(task: Task, trigger: PluginScheduleRun["trigger"], signal?: AbortSignal): Promise<PluginScheduleReceipt> {
+    this.assertWritable();
     if (task.flight) return { status: "already-running", schedule: this.snapshot(task) };
     if (!this.capacity(task)) throw new AppError("plugin/busy", "Schedule execution capacity is occupied");
     signal?.throwIfAborted();
@@ -209,8 +236,10 @@ export class PluginScheduleController {
   private save(task: Task, patch: Partial<ScheduleRecord> | ((record: ScheduleRecord) => Partial<ScheduleRecord> | undefined), guard?: () => void): Promise<void> {
     task.writes = (task.writes ?? 0) + 1;
     const previous = this.queues.get(task.pluginId) ?? Promise.resolve();
+    const reservation = this.writeReservation;
     // A failed write rejects its caller, but must not poison later control attempts.
     const work = previous.catch(() => {}).then(async () => {
+      if (reservation) await reservation;
       guard?.();
       const update = typeof patch === "function" ? patch(task.record) : patch;
       if (!update) return;

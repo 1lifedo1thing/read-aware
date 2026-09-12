@@ -14,6 +14,8 @@ import { dumpLocalKV, restoreLocalKV } from "../../../platform/local-store";
 import { withPluginDataBackup } from "../../../platform/plugin-data-access";
 import { withSyncBackup, type fetchRemoteBlob } from "../../../platform/sync/sync-scheduler";
 import { withReadingBackup } from "../../reader/lib/reading-trace-runtime";
+import { pluginSchedules } from "../../plugins/runtime/plugin-scheduler";
+import { isPluginScheduleStateKey } from "../../../platform/plugin-local-state";
 import { AppError } from "@read-aware/core";
 import { LEGACY_PROFILE_KEY, readUserProfileSnapshot, restoreUserProfile } from "../../../domain/user-profile";
 import {
@@ -80,7 +82,7 @@ function settledValue<T>(result: PromiseSettledResult<T>): T {
 export async function exportBackup(signal?: AbortSignal): Promise<string> {
   const available = new Map<string, boolean>();
   return withSyncBackup(fetchBlob => withPluginDataBackup("export",
-    () => withReadingBackup(() => exportBackupContents(available), signal), signal,
+    () => pluginSchedules.withPersistencePaused(() => withReadingBackup(() => exportBackupContents(available), signal), signal), signal,
     () => prepareBackupFiles(fetchBlob, available, signal)), signal);
 }
 
@@ -116,7 +118,7 @@ async function exportBackupContents(available: ReadonlyMap<string, boolean>): Pr
 
   const kv: Record<string, string> = {};
   for (const [key, value] of Object.entries(kvAll)) {
-    if (!EXCLUDED_KV_KEYS.has(key)) kv[key] = value;
+    if (!EXCLUDED_KV_KEYS.has(key) && !isPluginScheduleStateKey(key)) kv[key] = value;
   }
   if (profile.summary !== null) kv[LEGACY_PROFILE_KEY] = profile.summary;
 
@@ -154,7 +156,7 @@ export async function importBackup(json: string, signal?: AbortSignal): Promise<
   // Cancellation can stop admission/draining, but does not revoke a merge
   // which has begun writing. Its legacy partial-write behavior is unchanged.
   return withSyncBackup(() => withPluginDataBackup("import",
-    () => withReadingBackup(() => importBackupContents(json), signal), signal), signal);
+    () => pluginSchedules.withPersistencePaused(() => withReadingBackup(() => importBackupContents(json), signal), signal), signal), signal);
 }
 
 async function importBackupContents(json: string): Promise<BackupImportResult> {
@@ -165,6 +167,9 @@ async function importBackupContents(json: string): Promise<BackupImportResult> {
 
   const files = (parsed.files ?? {}) as Record<string, string>;
   const kv = { ...(parsed.kv ?? {}) } as Record<string, string>;
+  // Old v1 files may contain queued/running task identities. Preserve this
+  // device's live scheduler rather than replaying another device's work.
+  for (const key of Object.keys(kv)) if (isPluginScheduleStateKey(key)) delete kv[key];
   const settings = Object.keys(kv).length;
   const hasProfile = Object.hasOwn(kv, LEGACY_PROFILE_KEY);
   const summary = kv[LEGACY_PROFILE_KEY];

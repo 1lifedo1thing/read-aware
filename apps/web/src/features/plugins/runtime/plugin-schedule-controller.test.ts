@@ -15,6 +15,66 @@ function fixture() {
     fail: (value: boolean) => { fail = value; }, advance: () => { now += 3_600_000; } };
 }
 
+test("backup freezes controls and periodic dispatch while running completion waits for persistence release", async () => {
+  const f = fixture(), callback = Promise.withResolvers<void>(), backup = Promise.withResolvers<void>();
+  let called = 0;
+  f.controller.register("test", declaration, async () => { called++; await callback.promise; });
+  f.controller.register("other", { id: "later", label: "Later", mode: "deferred" }, () => { called++; });
+  await f.controller.defer("other", "later", { requestId: "one", delayMs: 1000, when: "any" });
+  const execution = f.controller.control(command("run")); await Bun.sleep(0);
+  const paused = f.controller.withPersistencePaused(() => backup.promise); await Bun.sleep(0);
+  f.advance(); f.controller.sweep(true); expect(called).toBe(1);
+  for (const action of ["pause", "resume", "run"] as const) await expect(f.controller.control(command(action))).rejects.toMatchObject({ code: "backup/busy" });
+  await expect(f.controller.defer("other", "later", { requestId: "two", delayMs: 1000, when: "any" })).rejects.toMatchObject({ code: "backup/busy" });
+  await expect(f.controller.cancelDeferred("other", "later", "one")).rejects.toMatchObject({ code: "backup/busy" });
+  callback.resolve(); await Bun.sleep(0);
+  expect(f.disk.get("test")?.refresh?.lastOutcome).toBe("running");
+  expect(f.controller.list({ pluginId: "test" }).schedules[0]?.running).toBe(true);
+  backup.resolve(); await paused;
+  expect((await execution).schedule.lastOutcome).toBe("succeeded");
+  expect(f.disk.get("test")?.refresh?.lastOutcome).toBe("succeeded");
+  f.controller.sweep(true); await Bun.sleep(0);
+  expect(f.controller.list({ pluginId: "other" }).schedules[0]?.deferred?.state).toBe("succeeded");
+});
+
+test("a callback can request backup without waiting for itself", async () => {
+  const f = fixture(); let captured = false;
+  f.controller.register("test", declaration, () => f.controller.withPersistencePaused(async () => {
+    expect(f.disk.get("test")?.refresh?.lastOutcome).toBe("running"); captured = true;
+  }));
+  expect((await f.controller.control(command("run"))).schedule.lastOutcome).toBe("succeeded");
+  expect(captured).toBe(true);
+});
+
+test("a deferred completion rechecks its retired owner and cannot save after replacement", async () => {
+  const f = fixture(), callback = Promise.withResolvers<void>(), backup = Promise.withResolvers<void>();
+  const old = f.controller.register("test", declaration, () => callback.promise);
+  const execution = f.controller.control(command("run")).catch(error => error); await Bun.sleep(0);
+  const paused = f.controller.withPersistencePaused(() => backup.promise); await Bun.sleep(0);
+  callback.resolve(); await Bun.sleep(0);
+  old.dispose(); f.controller.register("test", declaration, () => {}, "2.0.0");
+  backup.resolve(); await paused;
+  expect((await execution).code).toBe("plugin/cancelled");
+  expect(f.disk.get("test")?.refresh?.lastOutcome).toBe("running");
+  expect((await f.controller.control(command("run"))).schedule.lastOutcome).toBe("succeeded");
+});
+
+test("cancelled admission still drains dispatched state writes and leaves the controller reusable", async () => {
+  const f = fixture(), writing = Promise.withResolvers<void>(), entered = Promise.withResolvers<void>();
+  const original = f.storage.write;
+  f.storage.write = async (...args) => { entered.resolve(); await writing.promise; await original(...args); };
+  f.controller.register("test", declaration, () => {});
+  const commandResult = f.controller.control(command("pause")); await entered.promise;
+  const controller = new AbortController(); let finished = false, called = false;
+  const paused = f.controller.withPersistencePaused(async () => { called = true; }, controller.signal)
+    .catch(error => { finished = true; return error; });
+  controller.abort(new Error("cancelled")); await Bun.sleep(0); expect(finished).toBe(false);
+  writing.resolve(); await commandResult;
+  expect((await paused).message).toBe("cancelled"); expect(called).toBe(false);
+  await expect(f.controller.withPersistencePaused(async () => { throw new Error("capture failed"); })).rejects.toThrow("capture failed");
+  expect((await f.controller.control(command("resume"))).schedule.paused).toBe(false);
+});
+
 test("failed activation restores the old schedule callback and its in-flight result without overlap", async () => {
   const f = fixture(); let finish!: () => void, oldCalls = 0, newCalls = 0;
   const old = f.controller.register("test", declaration, async () => {
