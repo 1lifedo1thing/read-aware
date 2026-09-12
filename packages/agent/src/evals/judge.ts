@@ -9,7 +9,7 @@ import type { AgentEvalScenario } from "./agent-harness";
 import type { EvalAssessment, EvalCheck, JsonValue } from "./types";
 
 /** Bump whenever the judge-visible transcript or grading prompt semantics change. */
-export const JUDGE_IMPLEMENTATION_VERSION = 2;
+export const JUDGE_IMPLEMENTATION_VERSION = 3;
 
 /** 单次非流式补全；生产由 CLI 构造，测试注入假实现。 */
 export type JudgeCompletion = (
@@ -27,7 +27,8 @@ export interface JudgeObservationDigest {
   userTurns: string[];
   turns: Array<{ user: string; assistant?: string }>;
   answer: string;
-  tools: Array<{ name: string; args?: string }>;
+  tools: Array<{ name: string; turn?: number; args?: string; output?: string; isError?: boolean }>;
+  interactions: Array<{ turn?: number; phase: string; kind?: string; value?: string }>;
 }
 
 interface JudgeVerdict {
@@ -38,6 +39,13 @@ interface JudgeVerdict {
 
 const MAX_ARGS_CHARS = 200;
 const MAX_ANSWER_CHARS = 6_000;
+const MAX_RECEIPT_CHARS = 1_200;
+
+function boundedJson(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return text.length > MAX_RECEIPT_CHARS ? `${text.slice(0, MAX_RECEIPT_CHARS)}… [truncated]` : text;
+}
 
 /**
  * rescore 路径拿到的是 JSON 反序列化后的 observation（JsonValue），
@@ -73,9 +81,24 @@ export function digestObservation(observation: unknown): JudgeObservationDigest 
     if (typeof entry.name !== "string") return [];
     const args =
       entry.args === undefined ? undefined : JSON.stringify(entry.args).slice(0, MAX_ARGS_CHARS);
-    return [{ name: entry.name, ...(args === undefined ? {} : { args }) }];
+    return [{ name: entry.name,
+      ...(typeof entry.turn === "number" ? { turn: entry.turn } : {}),
+      ...(args === undefined ? {} : { args }),
+      ...(typeof entry.output === "string" ? { output: boundedJson(entry.output) } : {}),
+      ...(typeof entry.isError === "boolean" ? { isError: entry.isError } : {}),
+    }];
   });
-  return { userTurns, turns, answer: answer.slice(0, MAX_ANSWER_CHARS), tools };
+  const interactions = (Array.isArray(record.interactions) ? record.interactions : []).flatMap(interaction => {
+    if (!interaction || typeof interaction !== "object" || Array.isArray(interaction)) return [];
+    const entry = interaction as Record<string, unknown>;
+    if (entry.phase !== "request" && entry.phase !== "response") return [];
+    return [{ phase: entry.phase,
+      ...(typeof entry.turn === "number" ? { turn: entry.turn } : {}),
+      ...(typeof entry.kind === "string" ? { kind: entry.kind } : {}),
+      ...(entry.value === undefined ? {} : { value: boundedJson(entry.value) }),
+    }];
+  });
+  return { userTurns, turns, answer: answer.slice(0, MAX_ANSWER_CHARS), tools, interactions };
 }
 
 export function buildJudgePrompt(input: {
@@ -95,8 +118,11 @@ export function buildJudgePrompt(input: {
     .join("\n\n");
   const tools =
     input.digest.tools
-      .map((tool) => `- ${tool.name}${tool.args ? ` ${tool.args}` : ""}`)
+      .map((tool) => `- ${tool.turn === undefined ? "" : `Turn ${tool.turn}: `}${tool.name}${tool.args ? ` ${tool.args}` : ""}${tool.isError === undefined ? "" : ` [${tool.isError ? "failed" : "returned"}]`}${tool.output === undefined ? "" : `\n  Result: ${tool.output}`}`)
       .join("\n") || "- (none)";
+  const interactions = input.digest.interactions.map(entry =>
+    `- Turn ${entry.turn ?? "?"} ${entry.kind ?? "interaction"} ${entry.phase}: ${entry.value ?? "(not recorded)"}`,
+  ).join("\n") || "- (none recorded)";
   const criteria = input.rubric.map((entry, index) => `${index + 1}. ${entry}`).join("\n");
   return `You are grading one recorded run of a reading-assistant agent.
 
@@ -108,12 +134,16 @@ ${turns || "(empty)"}
 Tools the agent called:
 ${tools}
 
+Host interaction requests and reader responses:
+${interactions}
+
 Final answer:
 """
 ${input.digest.answer || "(empty answer)"}
 """
 
 Grade the final answer against each criterion below. Judge only what is in this transcript; do not reward promises about future work.
+Tool results and host interaction responses are evidence of what actually happened. A reader's choice or approval can arrive through these interactions within a turn; it need not be repeated as a separate user message or in the final answer. A skipped or cancelled question does not select a target. Assistant text may contain narration from before and after tool calls; use the recorded tool order and responses to assess action order, while still judging unnecessary narration and clarity. Truncated receipts do not prove anything about their omitted content.
 
 Criteria:
 ${criteria}

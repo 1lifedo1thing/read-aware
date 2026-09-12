@@ -36,7 +36,7 @@ describe("digestObservation", () => {
     ]);
     expect(digest.answer).toBe("About 1h 30m.");
     expect(digest.tools).toEqual([
-      { name: "get_reading_stats", args: '{"allBooks":true}' },
+      { name: "get_reading_stats", turn: 1, args: '{"allBooks":true}' },
     ]);
   });
 
@@ -46,13 +46,47 @@ describe("digestObservation", () => {
       turns: [],
       answer: "",
       tools: [],
+      interactions: [],
     });
     expect(digestObservation({ answer: 42, turns: "x", tools: [{}] })).toEqual({
       userTurns: [],
       turns: [],
       answer: "",
       tools: [],
+      interactions: [],
     });
+  });
+
+  test("gives the judge reader choices, cancellations and actual receipts without model internals", async () => {
+    let prompt = "";
+    const judge = new AgentEvalJudge({ complete: async value => { prompt = value; return verdictJson([1, 1]); } });
+    await judge.assess({ description: "Clarify then update", rubric: RUBRIC, observation: {
+      answer: "Updated globally.",
+      turns: [{ input: { text: "Ask me which scope first." }, answer: "Updated globally." }],
+      tools: [
+        { turn: 1, name: "ask_user", output: '{"answered":true,"answer":"Globally"}', isError: false },
+        { turn: 1, name: "update_settings", output: '{"updated":true}', isError: false },
+        { turn: 2, name: "delete_book", output: '{"deleted":false,"reason":"User declined."}', isError: false },
+        { turn: 2, name: "read_chapter", output: "unavailable", isError: true },
+      ],
+      interactions: [
+        { turn: 1, phase: "response", kind: "question", value: { optionId: "global", text: "Globally" } },
+        { turn: 2, phase: "response", kind: "question", value: { cancelled: true } },
+      ],
+      thinking: "PRIVATE_THINKING", modelRequests: [{ secret: "PRIVATE_REQUEST" }],
+    } });
+    expect(prompt).toContain('"answer":"Globally"');
+    expect(prompt).toContain('"optionId":"global"');
+    expect(prompt).toContain('"cancelled":true');
+    expect(prompt).toContain('"deleted":false');
+    expect(prompt).toContain("read_chapter [failed]");
+    expect(prompt).not.toContain("PRIVATE_");
+    const digest = digestObservation({ tools: [{ name: "read", output: "a".repeat(20_000) }],
+      interactions: [{ phase: "response", value: { text: "b".repeat(20_000) } }, null, { phase: "unknown" }] });
+    expect(digest.tools[0]?.output?.length).toBeLessThan(1_250);
+    expect(digest.tools[0]?.output).toEndWith("[truncated]");
+    expect(digest.interactions).toHaveLength(1);
+    expect(digest.interactions[0]?.value?.length).toBeLessThan(1_250);
   });
 });
 
