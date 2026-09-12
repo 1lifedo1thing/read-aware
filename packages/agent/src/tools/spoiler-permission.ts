@@ -2,6 +2,7 @@ import type { UserInteractionAnswer, UserInteractionOption } from "../ports";
 
 const SPOILER_TERM = /(?:剧透|泄底|爆雷|spoilers?|spoil(?:ed|ing)?)/iu;
 const EXPLICIT_GRANT = [
+  /^(?:yes[,!.]?\s+)?spoil\s+(?:me|it|the\s+(?:book|novel|story|ending))\b/iu,
   /(?:可以|允许|同意|接受|不怕|不介意|无所谓|随便|尽管|直接|放心|别管|不要管|不用管).{0,10}(?:剧透|泄底|爆雷)/u,
   /(?:剧透|泄底|爆雷).{0,10}(?:可以|没关系|没事|无所谓|随意|也行|不怕|不介意|同意|接受)/u,
   /(?:you\s+can|please|go\s+ahead\s+and|feel\s+free\s+to).{0,18}spoil/iu,
