@@ -1,6 +1,6 @@
 import { AppError, errorCode, type EventOrigin, type ReadingModeConfiguration, type ReadingModeSnapshot, type ReadingModeReceipt, type ReadingPlaybackSnapshot, type ReadingPlaybackReceipt, type ReadingLocation, type ReadingNavigationReceipt, type ReadingSessionSnapshot, type ReadingSessionGuard, type ReadingTarget } from "@read-aware/core";
 import type { ReadingModeStepOutcome, ReadingModeStepReceipt, ReadingStep, ReadingPaginationSnapshot } from "@read-aware/core";
-import type { ReadingControlsSnapshot, ReadingControlsReceipt, ReadingVisibleTextState } from "@read-aware/core";
+import type { ReadingDemandSnapshot, ReadingControlsSnapshot, ReadingControlsReceipt, ReadingVisibleTextState } from "@read-aware/core";
 import { normalizeBookRangeQuery, type BookTextRange, type ReadingSelectionSnapshot, type ReadingSelectionReceipt } from "@read-aware/core";
 
 export type ReadingSelectionAdapter = {
@@ -65,12 +65,14 @@ export class ReadingSessionController {
   private history: ReadingLocation[] = [];
   private cursor = -1;
   private userOpening: { id: string; before: ReadingLocation | null } | undefined;
+  private demandTimer: ReturnType<typeof setTimeout> | undefined;
   private intent = 0;
   private openingIntent: number | null = null;
 
   get hasPendingOpening(): boolean { return this.openingIntent === this.intent; }
   private readonly engineTails = new WeakMap<ReadingEngineAdapter, Promise<unknown>>();
   private state: ReadingSessionSnapshot = {
+    readerDemand: { active: false, lastActivityAt: null, idleAt: null, reason: null },
     revision: 0, sessionId: null, bookId: null, status: "idle", location: null, visibleText: "",
     visibleTextState: noVisibleText().visibleTextState,
     history: { canGoBack: false, canGoForward: false },
@@ -79,9 +81,26 @@ export class ReadingSessionController {
     controls: null, selection: null, pagination: null, sourceRevision: null,
   };
 
-  constructor(private readonly report: (error: unknown) => void = () => {}, private readonly deadlineMs = 30_000) {}
+  constructor(private readonly report: (error: unknown) => void = () => {}, private readonly deadlineMs = 30_000, private readonly readerCooldownMs = 1500) {}
 
   snapshot(): ReadingSessionSnapshot { return structuredClone(this.state); }
+
+  get readerDemandDelay(): number { return Math.max(0, (this.state.readerDemand?.idleAt ?? 0) - Date.now()); }
+
+  /** Only the current renderer may announce demand; it grants no actor write authority. */
+  readerDemandActivity(sessionId: string, reason: NonNullable<ReadingDemandSnapshot["reason"]>): void {
+    if (this.session?.id !== sessionId || this.state.status === "idle" || this.state.status === "error") return;
+    const now = Date.now(), idleAt = now + this.readerCooldownMs;
+    clearTimeout(this.demandTimer);
+    this.publish({ readerDemand: { active: true, lastActivityAt: now, idleAt, reason } });
+    this.demandTimer = setTimeout(() => {
+      this.demandTimer = undefined;
+      if (this.session?.id === sessionId && this.state.readerDemand?.idleAt === idleAt) {
+        this.publish({ readerDemand: { ...this.state.readerDemand, active: false } });
+      }
+    }, this.readerCooldownMs);
+    if (typeof this.demandTimer === "object" && "unref" in this.demandTimer) this.demandTimer.unref();
+  }
 
   observe(handler: (snapshot: ReadingSessionSnapshot) => unknown): () => void {
     this.listeners.add(handler);
@@ -590,7 +609,10 @@ export class ReadingSessionController {
   }
 
   private publish(patch: Partial<ReadingSessionSnapshot>): void {
-    if (patch.status && patch.status !== "ready") patch = { ...patch, sourceRevision: null };
+    if (patch.status && patch.status !== "ready") {
+      clearTimeout(this.demandTimer); this.demandTimer = undefined;
+      patch = { ...patch, sourceRevision: null, readerDemand: { active: false, lastActivityAt: null, idleAt: null, reason: null } };
+    }
     this.state = { ...this.state, ...patch, revision: this.state.revision + 1,
       history: { canGoBack: this.cursor > 0, canGoForward: this.cursor >= 0 && this.cursor < this.history.length - 1 } };
     for (const listener of [...this.listeners]) this.deliver(listener);

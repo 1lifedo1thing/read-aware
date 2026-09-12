@@ -43,7 +43,16 @@ export type ReadingVisibleTextState = {
   reason?: "not-ready" | "not-visible" | "unsupported" | "scan-limit" | "read-failed" | "withheld";
 };
 
+export type ReadingDemandSnapshot = {
+  active: boolean;
+  lastActivityAt: number | null;
+  idleAt: number | null;
+  reason: "render" | "relocate" | null;
+};
+
 export type ReadingSessionSnapshot = {
+  /** Reading 2.19: process-local render/relocation demand, not human presence or a durable event log. */
+  readerDemand?: ReadingDemandSnapshot;
   revision: number;
   sessionId: string | null;
   bookId: string | null;

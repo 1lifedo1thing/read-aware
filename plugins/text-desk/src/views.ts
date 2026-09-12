@@ -1,4 +1,5 @@
 import type { PluginContext, PluginDetailView, PluginListView, PluginAction, PluginListItem } from "@read-aware/plugin-types";
+import { readerDemandDetail } from "./reader-demand";
 import { tr } from "./strings";
 import { rebuildForm, requestList, startRequest } from "./task-views";
 import { textSearchForm } from "./search-views";
@@ -47,6 +48,7 @@ export async function textDesk(ctx: PluginContext, page = 0): Promise<PluginList
   }
   const actions: PluginAction[] = [{ id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise",
     run: async () => ({ view: await textDesk(ctx, index), navigation: "replace" }) }];
+  actions.push({ id: "reader-activity", label: tr(ctx.locale, "readerActivity"), icon: "book-open", run: async () => ({ view: await readerDemandDetail(ctx) }) });
   actions.push({ id: "search", label: tr(ctx.locale, "searchShelf"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx) }) });
   actions.push({ id: "temporary-marks", label: tr(ctx.locale, "temporaryMarks"), icon: "text-aa", run: async () => ({ view: await emphasisList(ctx) }) });
   actions.push({ id: "selection", label: tr(ctx.locale, "inspectSelection"), icon: "text-aa",

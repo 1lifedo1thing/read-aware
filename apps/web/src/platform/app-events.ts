@@ -22,7 +22,7 @@ export type AppEventMap = {
    * the page the user is looking at always wins (see book-text-store's
    * reader-idle gate).
    */
-  "reader-demand-activity": Record<string, never>;
+  "reader-demand-activity": { sessionId: string; reason: "render" | "relocate" };
   /** A book row was deleted (any path — shelf UI included). */
   "book-removed": { bookId: string };
   /** Library contents changed outside the controller (e.g. plugin import). */

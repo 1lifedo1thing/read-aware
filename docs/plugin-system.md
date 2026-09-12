@@ -6789,3 +6789,19 @@ generation, so an old activation cannot publish merely because hashes match.
 Provider unavailability does not delete retained derived bytes or authorize
 reading stale chapters. DOM/provider/public task/Agent tests use controlled
 storage; real Worker/Tauri and restart acceptance remain pending.
+
+
+### Reader demand (Reading 2.19)
+
+`session()` and `observeSession` include `readerDemand` with `active`, epoch-ms
+`lastActivityAt` / `idleAt`, and `reason: "render" | "relocate" | null`. This is
+the same process-local 1.5-second cooldown used by background text extraction.
+Only a matching renderer session can announce activity. Replaced/failed/closed
+sessions clear it and cancel old expiry notifications. It describes rendering
+and movement, not human presence, CPU load or durable event history.
+
+The existing reading grant and Worker/session observation path applies; actors
+cannot emit demand events. Text Desk 0.15 has a live activity view, and Agent
+session queries return the same metadata within their existing scope/privacy
+checks. Unit and controlled public-port/plugin checks pass; actual desktop and
+Worker rendering behavior remains in the concentrated acceptance phase.

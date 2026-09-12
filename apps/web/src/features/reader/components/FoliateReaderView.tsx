@@ -1934,7 +1934,7 @@ export function FoliateReaderView({
           // Every finished page raster keeps the busy signal fresh while the
           // stack prerenders around a scrolling reader.
           const rendererTarget = view.renderer;
-          const onRendered = () => emitAppEvent("reader-demand-activity", {});
+          const onRendered = () => { if (!cancelled && sessionId) emitAppEvent("reader-demand-activity", { sessionId, reason: "render" }); };
           rendererTarget.addEventListener("rendered", onRendered);
           cleanups.push(() => rendererTarget.removeEventListener("rendered", onRendered));
         }
@@ -1969,7 +1969,7 @@ export function FoliateReaderView({
           if (!view || cancelled || sessionId && readingRuntime.snapshot().sessionId !== sessionId) return;
           // Tell background pipelines (text extraction) the reader is busy —
           // the page being read must win the PDF worker and the blob channel.
-          emitAppEvent("reader-demand-activity", {});
+          if (sessionId) emitAppEvent("reader-demand-activity", { sessionId, reason: "relocate" });
           const detail = (event as CustomEvent<FoliateRelocateDetail>).detail;
           clearSelection();
           setActiveAnnotation(null);

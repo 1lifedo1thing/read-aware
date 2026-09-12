@@ -1,5 +1,11 @@
 const locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 const labels = {
+  activityState: ["Activity", "活动状态", "活動狀態", "活動状態", "Активность", "Activité", "Aktivität", "Actividad"],
+  readerActivity: ["Reading activity", "阅读活动", "閱讀活動", "読書アクティビティ", "Активность чтения", "Activité de lecture", "Leseaktivität", "Actividad de lectura"],
+  readerIdle: ["No recent render or movement", "近期没有绘制或位置变化", "近期沒有繪製或位置變化", "最近の描画・移動なし", "Недавних отрисовок или перемещений нет", "Aucun rendu ni déplacement récent", "Kein kürzliches Rendern oder Bewegen", "Sin renderizado ni movimiento reciente"],
+  activitySource: ["Last activity", "最近活动", "最近活動", "直近の動作", "Последняя активность", "Dernière activité", "Letzte Aktivität", "Última actividad"],
+  renderActivity: ["Page rendering", "页面绘制", "頁面繪製", "ページ描画", "Отрисовка страницы", "Rendu de page", "Seitenrendering", "Renderizado de página"],
+  relocateActivity: ["Reading position changed", "阅读位置变化", "閱讀位置變化", "読書位置の変更", "Изменение позиции чтения", "Position de lecture modifiée", "Leseposition geändert", "Cambio de posición de lectura"],
   priority: ["Priority", "优先级", "優先順序", "優先度", "Приоритет", "Priorité", "Priorität", "Prioridad"],
   normalPriority: ["Normal priority", "普通优先级", "一般優先順序", "通常優先度", "Обычный приоритет", "Priorité normale", "Normale Priorität", "Prioridad normal"],
   backgroundPriority: ["Background priority", "后台优先级", "背景優先順序", "バックグラウンド優先度", "Фоновый приоритет", "Priorité en arrière-plan", "Hintergrundpriorität", "Prioridad de fondo"],

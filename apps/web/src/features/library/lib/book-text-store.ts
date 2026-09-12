@@ -1,5 +1,6 @@
 /** Native adapter for the shared, versioned derived-text repository. */
 import { AppError, type BookTextSnapshot } from "@read-aware/core";
+import { readingRuntime } from "../../../domain/reading-runtime";
 import { onAppEvent } from "../../../platform/app-events";
 import { deleteDesktopBlob, getDesktopBlob, getDesktopBlobInfo, putDesktopBlob } from "../../../platform/blob-store";
 import { createLogger } from "../../../platform/logger";
@@ -13,8 +14,6 @@ export type { ExtractedChapter } from "./book-text-record";
 
 const log = createLogger("book-text");
 const blobKey = (bookId: string) => `booktext:${bookId}`;
-let lastReaderDemandAt = 0;
-onAppEvent("reader-demand-activity", () => { lastReaderDemandAt = Date.now(); });
 
 // MessageChannel avoids background WebKit timer throttling between sections.
 const yieldToUi = (() => {
@@ -46,11 +45,11 @@ const repository = new BookTextRepository({
   remove: bookId => deleteDesktopBlob(blobKey(bookId)),
   content: (bookId, version, signal, read) => withBookContent(bookId, version, signal, ({ book }) => read(book)),
   yieldToReader: async (signal, waiting) => {
-    while (Date.now() - lastReaderDemandAt < 1500) {
+    while (readingRuntime.readerDemandDelay > 0) {
       signal.throwIfAborted(); waiting?.(true);
       await new Promise<void>((resolve, reject) => {
         const abort = () => { clearTimeout(timer); reject(signal.reason); };
-        const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, 1500 - (Date.now() - lastReaderDemandAt));
+        const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, readingRuntime.readerDemandDelay);
         signal.addEventListener("abort", abort, { once: true });
       });
     }

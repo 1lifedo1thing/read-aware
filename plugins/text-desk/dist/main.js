@@ -1,6 +1,12 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  activityState: ["Activity", "活动状态", "活動狀態", "活動状態", "Активность", "Activité", "Aktivität", "Actividad"],
+  readerActivity: ["Reading activity", "阅读活动", "閱讀活動", "読書アクティビティ", "Активность чтения", "Activité de lecture", "Leseaktivität", "Actividad de lectura"],
+  readerIdle: ["No recent render or movement", "近期没有绘制或位置变化", "近期沒有繪製或位置變化", "最近の描画・移動なし", "Недавних отрисовок или перемещений нет", "Aucun rendu ni déplacement récent", "Kein kürzliches Rendern oder Bewegen", "Sin renderizado ni movimiento reciente"],
+  activitySource: ["Last activity", "最近活动", "最近活動", "直近の動作", "Последняя активность", "Dernière activité", "Letzte Aktivität", "Última actividad"],
+  renderActivity: ["Page rendering", "页面绘制", "頁面繪製", "ページ描画", "Отрисовка страницы", "Rendu de page", "Seitenrendering", "Renderizado de página"],
+  relocateActivity: ["Reading position changed", "阅读位置变化", "閱讀位置變化", "読書位置の変更", "Изменение позиции чтения", "Position de lecture modifiée", "Leseposition geändert", "Cambio de posición de lectura"],
   priority: ["Priority", "优先级", "優先順序", "優先度", "Приоритет", "Priorité", "Priorität", "Prioridad"],
   normalPriority: ["Normal priority", "普通优先级", "一般優先順序", "通常優先度", "Обычный приоритет", "Priorité normale", "Normale Priorität", "Prioridad normal"],
   backgroundPriority: ["Background priority", "后台优先级", "背景優先順序", "バックグラウンド優先度", "Фоновый приоритет", "Priorité en arrière-plan", "Hintergrundpriorität", "Prioridad de fondo"],
@@ -127,6 +133,29 @@ var labels = {
 };
 function tr(locale, key) {
   return labels[key][Math.max(0, locales.indexOf(locale))];
+}
+
+// src/reader-demand.ts
+function snapshot(ctx, session) {
+  const demand = session.readerDemand;
+  return { kind: "detail", title: tr(ctx.locale, "readerActivity"), content: [{ kind: "keyValue", rows: [
+    { label: tr(ctx.locale, "activityState"), value: tr(ctx.locale, !demand ? "unavailable" : demand.active ? "readerWait" : "readerIdle") },
+    ...demand?.reason ? [{ label: tr(ctx.locale, "activitySource"), value: tr(ctx.locale, demand.reason === "render" ? "renderActivity" : "relocateActivity") }] : []
+  ] }] };
+}
+async function readerDemandDetail(ctx) {
+  const reading = ctx.domains.reading;
+  const current = await reading.queries.session();
+  return { ...snapshot(ctx, current), live: { subscribe: (channel) => {
+    let previous;
+    return reading.events.observeSession(async (session) => {
+      const next = JSON.stringify(session.readerDemand);
+      if (previous === next)
+        return;
+      await ctx.services.ui.publishView(channel, { revision: session.revision, view: snapshot(ctx, session) });
+      previous = next;
+    });
+  } } };
 }
 
 // src/task-views.ts
@@ -557,10 +586,10 @@ async function imageControls(ctx) {
   if (!image?.control)
     throw Object.assign(Error("Image controls unavailable"), { code: "ui/unavailable" });
   const control = image.control.bind(image);
-  const render = (snapshot) => {
+  const render = (snapshot2) => {
     const actions = [];
-    if (snapshot) {
-      const id = snapshot.id;
+    if (snapshot2) {
+      const id = snapshot2.id;
       const request = async (operation) => {
         const receipt = await control(operation);
         return receipt.status === "closed" ? { close: "all" } : { toast: tr(ctx.locale, "imageUpdated") };
@@ -595,21 +624,21 @@ async function imageControls(ctx) {
     return {
       kind: "detail",
       title: tr(ctx.locale, "imageControls"),
-      content: snapshot ? [{ kind: "keyValue", rows: [
-        { label: tr(ctx.locale, "imageScale"), value: `${Math.round(snapshot.scale * 100)}%` },
-        { label: tr(ctx.locale, "imageRotation"), value: `${snapshot.rotation}°` },
-        { label: tr(ctx.locale, "imagePanX"), value: `${Math.round(snapshot.panX * 100)}%` },
-        { label: tr(ctx.locale, "imagePanY"), value: `${Math.round(snapshot.panY * 100)}%` }
+      content: snapshot2 ? [{ kind: "keyValue", rows: [
+        { label: tr(ctx.locale, "imageScale"), value: `${Math.round(snapshot2.scale * 100)}%` },
+        { label: tr(ctx.locale, "imageRotation"), value: `${snapshot2.rotation}°` },
+        { label: tr(ctx.locale, "imagePanX"), value: `${Math.round(snapshot2.panX * 100)}%` },
+        { label: tr(ctx.locale, "imagePanY"), value: `${Math.round(snapshot2.panY * 100)}%` }
       ] }] : [{ kind: "text", text: tr(ctx.locale, "noOpenImage") }],
       actions
     };
   };
   return { ...render(await image.snapshot()), live: { subscribe(channel) {
     let active2 = true, revision = 0;
-    const subscription = image.observe(async (snapshot) => {
+    const subscription = image.observe(async (snapshot2) => {
       if (!active2)
         return;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: render(snapshot) });
+      await ctx.services.ui.publishView(channel, { revision: ++revision, view: render(snapshot2) });
     });
     return { dispose() {
       if (!active2)
@@ -766,6 +795,7 @@ async function textDesk(ctx, page = 0) {
     icon: "arrows-clockwise",
     run: async () => ({ view: await textDesk(ctx, index), navigation: "replace" })
   }];
+  actions.push({ id: "reader-activity", label: tr(ctx.locale, "readerActivity"), icon: "book-open", run: async () => ({ view: await readerDemandDetail(ctx) }) });
   actions.push({ id: "search", label: tr(ctx.locale, "searchShelf"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx) }) });
   actions.push({ id: "temporary-marks", label: tr(ctx.locale, "temporaryMarks"), icon: "text-aa", run: async () => ({ view: await emphasisList(ctx) }) });
   actions.push({
