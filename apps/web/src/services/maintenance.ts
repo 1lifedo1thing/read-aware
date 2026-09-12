@@ -41,6 +41,11 @@ export const hostBackupFlows = new HostActionFlow<{ action: BackupAction }, "imp
         const value = (result as Record<string, unknown>)[key];
         return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
       })) return "imported";
+    if (action === "import" && result && typeof result === "object") {
+      const full = result as Record<string, unknown>;
+      if (full.format === 2 && typeof full.restoreId === "string" && /^[a-f0-9-]{36}$/.test(full.restoreId)
+        && typeof full.cleanupPending === "boolean" && ["domainRows", "files", "plugins", "credentials"].every(key => Number.isSafeInteger(full[key]) && (full[key] as number) >= 0)) return "imported";
+    }
     throw new AppError("internal", "Invalid native backup completion");
   },
 });

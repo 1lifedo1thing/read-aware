@@ -6,7 +6,9 @@ import type { BackupProgramChoice } from "../../plugins/runtime/backup-program-r
 import type { BackupProgramStageQuery, BackupProgramStageReceipt } from "../../plugins/runtime/backup-program-storage";
 export type BackupProgramStageRequest = { id: string; choices: Record<string, BackupProgramChoice>; consented: boolean };
 
-export type FullBackupImportProgress = "decrypting" | "checkingSource" | "comparingEvents" | "comparingRows" | "comparingFiles" | "preparingReview";
+import type { FullBackupRestoreRequest, FullBackupApplyReceipt, FullBackupRestoreReceipt } from "./full-backup-apply";
+
+export type FullBackupImportProgress = "decrypting" | "checkingSource" | "comparingEvents" | "comparingRows" | "comparingFiles" | "preparingReview" | "restoring";
 export type BackupSourceSummary = {
   format: 2; schemaVersion: number; tables: Record<string, number>;
   events: number; blobs: number; credentials: number; pluginPrograms: number;
@@ -30,6 +32,7 @@ type Dependencies = {
   chooseRows(taskId: string, request: BackupRowChoiceRequest): Promise<BackupRowChoiceReceipt>;
   stageProgram(taskId: string, request: BackupProgramStageRequest): Promise<BackupProgramStageReceipt>;
   stageStorage<T>(taskId: string, token: string, query: BackupProgramStageQuery): Promise<T>;
+  apply(taskId: string, request: FullBackupRestoreRequest, progress: (update: FullBackupImportProgress) => void, signal?: AbortSignal): Promise<FullBackupApplyReceipt>;
   cancel(taskId: string): Promise<void>;
   warn(message: string, error: unknown): void;
 };
@@ -45,6 +48,7 @@ export type FullBackupReview = {
   checkRows(expectedRevision: string): Promise<BackupRowStructureReceipt>;
   stageProgram(request: BackupProgramStageRequest): Promise<BackupProgramStageReceipt>;
   stageStorage<T>(token: string, query: BackupProgramStageQuery): Promise<T>;
+  apply(request: FullBackupRestoreRequest): Promise<FullBackupRestoreReceipt>;
   dispose(): Promise<void>;
 };
 
@@ -58,7 +62,7 @@ export function createFullBackupImport(deps: Dependencies) {
     signal?.throwIfAborted();
     if (sourcePath === null) return null;
     const taskId = deps.id();
-    let retained = false, disposed = false, cancelling: Promise<void> | undefined, disposal: Promise<void> | undefined;
+    let retained = false, disposed = false, consuming = false, cancelling: Promise<void> | undefined, disposal: Promise<void> | undefined;
     let operations = Promise.resolve(), pendingOperations = 0;
     const cancel = (): Promise<void> => cancelling ??= Promise.resolve().then(() => deps.cancel(taskId))
       .catch(error => deps.warn("Full backup import cleanup failed", error))
@@ -88,9 +92,9 @@ export function createFullBackupImport(deps: Dependencies) {
       if (plan?.taskId !== taskId) throw new AppError("backup/changed", "Unexpected import planning receipt");
       const { taskId: _sourceId, ...sourceSummary } = source;
       const { taskId: _planId, ...planSummary } = plan;
-      const enqueue = <T>(run: () => Promise<T>, readSignal?: AbortSignal): Promise<T> => {
+      const enqueue = <T>(run: () => Promise<T>, readSignal?: AbortSignal, decision = false): Promise<T> => {
         readSignal?.throwIfAborted();
-        if (disposed) return Promise.reject(new AppError("backup/changed", "Backup review has been disposed"));
+        if (disposed || consuming) return Promise.reject(new AppError("backup/changed", "Backup review has been disposed"));
         if (pendingOperations >= 32) return Promise.reject(new AppError("backup/busy", "Backup review queue is full"));
         pendingOperations++;
         const operation = operations.then(async () => {
@@ -100,7 +104,7 @@ export function createFullBackupImport(deps: Dependencies) {
           // Read cancellation discards only a page. Draft edits have no separate
           // abort signal: once sent they return their physical decision receipt.
           readSignal?.throwIfAborted();
-          if (disposed) throw new AppError("backup/changed", "Backup review has been disposed");
+          if (disposed && !decision) throw new AppError("backup/changed", "Backup review has been disposed");
           return result;
         }).finally(() => { pendingOperations--; });
         operations = operation.then(() => {}, () => { /* The caller owns failure; later operations may continue. */ });
@@ -132,8 +136,21 @@ export function createFullBackupImport(deps: Dependencies) {
         const candidate = structuredClone(query);
         return enqueue(() => deps.stageStorage<T>(taskId, token, candidate));
       };
+      const apply = (request: FullBackupRestoreRequest): Promise<FullBackupRestoreReceipt> => {
+        if (disposed || consuming) return Promise.reject(new AppError("backup/changed", "Backup review has been disposed"));
+        if (pendingOperations >= 32) return Promise.reject(new AppError("backup/busy", "Backup review queue is full"));
+        const candidate = structuredClone(request);
+        const pending = enqueue(async () => {
+          const receipt = await deps.apply(taskId, candidate, progress, signal);
+          if (receipt.taskId !== taskId || receipt.format !== 2) throw new AppError("backup/recovery-required", "Unexpected restore decision receipt");
+          const { taskId: _taskId, ...result } = receipt;
+          return result;
+        }, undefined, true);
+        consuming = true;
+        return pending.finally(() => { disposed = true; signal?.removeEventListener("abort", abort); });
+      };
       retained = true;
-      return { source: sourceSummary, plan: planSummary, get disposed() { return disposed; }, read, chooseRows, checkRows, stageProgram, stageStorage, dispose };
+      return { source: sourceSummary, plan: planSummary, get disposed() { return disposed; }, read, chooseRows, checkRows, stageProgram, stageStorage, apply, dispose };
     } finally {
       // Cancellation before native admission can initially miss. Wait for
       // physical preparation/planning, then retry cleanup before returning.

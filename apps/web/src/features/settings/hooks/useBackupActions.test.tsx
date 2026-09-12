@@ -10,6 +10,7 @@ import { workspace } from "../../../services/workspace";
 import { backupFileActions } from "../lib/backup-file-actions";
 import { useBackupActions } from "./useBackupActions";
 import { buildPluginContext } from "../../plugins/runtime/plugin-context";
+import { BackupImportDialog } from "../components/BackupImportDialog";
 import { BackupExportDialog } from "../components/BackupExportDialog";
 import * as fullBackup from "../lib/full-backup-export";
 import type { FullBackupProgress } from "../lib/full-backup-export-task";
@@ -36,9 +37,14 @@ test("actor backup requests await a real host click, preserve cancellation and r
     requires: { services: { maintenance: "^1.2.0" } }, permissions: [] }, "1", []);
   actor.lifecycle.promote();
   let flow!: ReturnType<typeof useBackupActions>;
-  function Harness() { flow = useBackupActions(); return <><button onClick={() => void flow.run("export")}>Export</button><BackupExportDialog flow={flow.exportDialog} /></>; }
+  function Harness() { flow = useBackupActions(); return <><button onClick={() => void flow.run("export")}>Export</button><BackupExportDialog flow={flow.exportDialog} /><BackupImportDialog flow={flow.importDialog} /></>; }
   const root = createRoot(dom.window.document.getElementById("root")!);
   const tick = () => Bun.sleep(0);
+  const importLibrary = async () => {
+    await act(async () => { void flow.run("import"); await tick(); });
+    await act(async () => { flow.importDialog.edit({ format: "library" }); });
+    await act(async () => { await flow.importDialog.submit(); await tick(); });
+  };
   try {
     await initI18n("en");
     Object.assign(dom.window, { __TAURI_INTERNALS__: {} });
@@ -116,7 +122,7 @@ test("actor backup requests await a real host click, preserve cancellation and r
     await act(async () => { root.render(<StrictMode><ToastProvider><Harness /></ToastProvider></StrictMode>); });
     expect(flow.exportDialog.view).toBeNull();
     await act(async () => { request = actor.context.services.maintenance.requestBackup("import"); await tick(); });
-    expect(imports).toBe(0); await act(async () => { await flow.run("import"); });
+    expect(imports).toBe(0); await importLibrary();
     expect(await request).toEqual({ action: "import", status: "cancelled" }); expect(imports).toBe(1);
     const signal = new AbortController();
     await act(async () => { request = actor.context.services.maintenance.requestBackup("export", { signal: signal.signal }); await tick(); });
@@ -126,7 +132,7 @@ test("actor backup requests await a real host click, preserve cancellation and r
     importMock.mockRejectedValueOnce(new AppError("plugin/data-busy", "PRIVATE RAW MIGRATION TEXT"));
     await act(async () => { request = actor.context.services.maintenance.requestBackup("import"); await tick(); });
     const busyResult = request.catch(error => error);
-    await act(async () => { await flow.run("import"); });
+    await importLibrary();
     expect(await busyResult).toMatchObject({ code: "plugin/data-busy" });
     const common = await Bun.file(new URL("../../../i18n/locales/en/common.json", import.meta.url)).json();
     expect(dom.window.document.body.textContent).toContain(common.errors.pluginDataBusy);
@@ -134,7 +140,7 @@ test("actor backup requests await a real host click, preserve cancellation and r
     expect(flow.busy).toBe(false);
     importMock.mockResolvedValueOnce({ books: 1, collections: 2, annotations: 3, settings: 4 });
     await act(async () => { request = actor.context.services.maintenance.requestBackup("import"); await tick(); });
-    await act(async () => { await flow.run("import"); });
+    await importLibrary();
     expect(await request).toEqual({ action: "import", status: "imported" }); expect(flow.busy).toBe(true);
     await act(async () => { actor.lifecycle.stop(); });
     expect(() => actor.context.services.maintenance.requestBackup("export")).toThrow();

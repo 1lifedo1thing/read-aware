@@ -464,14 +464,20 @@ export const pluginInstallConsentAtom = atom<PluginInstallConsentRequest | null>
  * Every install path funnels through this gate: show the manifest's declared
  * permissions and resolve with the user's decision before any activation.
  */
-export function requestInstallConsent(manifest: PluginManifest): Promise<boolean> {
+export function requestInstallConsent(manifest: PluginManifest, signal?: AbortSignal): Promise<boolean> {
+  signal?.throwIfAborted();
+  if (store.get(pluginInstallConsentAtom)) return Promise.reject(new Error("Plugin consent is already open"));
   return new Promise((resolve) => {
-    store.set(pluginInstallConsentAtom, {
+    const request: PluginInstallConsentRequest = {
       manifest,
-      resolve: (approved) => {
-        store.set(pluginInstallConsentAtom, null);
+      resolve: approved => {
+        signal?.removeEventListener("abort", abort);
+        if (store.get(pluginInstallConsentAtom) === request) store.set(pluginInstallConsentAtom, null);
         resolve(approved);
       },
-    });
+    };
+    const abort = () => request.resolve(false);
+    signal?.addEventListener("abort", abort, { once: true });
+    store.set(pluginInstallConsentAtom, request);
   });
 }

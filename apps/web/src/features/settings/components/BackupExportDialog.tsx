@@ -18,7 +18,6 @@ export function BackupExportDialog({ flow }: { flow: Pick<ReturnType<typeof useB
           options={[{ value: "full", label: t("dataSync.exportDialog.full") }, { value: "library", label: t("dataSync.exportDialog.library") }]} />
         <Body>{t(view.form.format === "full" ? "dataSync.exportDialog.fullDescription" : "dataSync.fullBackup.description")}</Body>
         {view.form.format === "full" ? <>
-          <Body>{t("dataSync.exportDialog.restorePending")}</Body>
           <TextField label={t("dataSync.exportDialog.password")} type="password" autoComplete="new-password" spellCheck={false}
             value={view.form.password} onChange={event => flow.edit({ password: event.target.value })}
             helperText={t("dataSync.exportDialog.passwordHint")} error={view.form.passwordError ? t("dataSync.exportDialog.passwordError") : undefined} />

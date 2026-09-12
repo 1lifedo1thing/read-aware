@@ -1,19 +1,18 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { AppError, type BackupAction } from "@read-aware/core";
+import { AppError, errorCode, type BackupAction } from "@read-aware/core";
 import { useToast } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import { describeError } from "../../../i18n/describe-error";
 import { createLogger } from "../../../platform/logger";
 import { hostBackupFlows, hostMaintenance } from "../../../services/maintenance";
-import { backupFileActions } from "../lib/backup-file-actions";
-import type { BackupImportResult } from "../lib/backup-io";
+import { useBackupImport, type BackupImportOutcome } from "./useBackupImport";
 import { useBackupExport, type BackupExportFormat } from "./useBackupExport";
 
 const log = createLogger("backup-actions");
 
 export function useBackupActions(blocked = false) {
   const { t } = useTranslation("settings"), { toast } = useToast();
-  const exportDialog = useBackupExport();
+  const exportDialog = useBackupExport(), importDialog = useBackupImport();
   const [busy, setBusy] = useState(false), [requested, setRequested] = useState<BackupAction | null>(null);
   const active = useRef(false), pending = useRef<BackupAction | null>(null), lifetime = useRef<AbortController | null>(null);
   const unavailable = useRef(blocked); unavailable.current = blocked;
@@ -37,10 +36,10 @@ export function useBackupActions(blocked = false) {
     let operationSignal: AbortSignal | undefined, restarting = false;
     const exportResult: { format: BackupExportFormat } = { format: "library" };
     try {
-      const result = await hostBackupFlows.run<boolean | BackupImportResult | null>(action, async signal => {
+      const result = await hostBackupFlows.run<boolean | BackupImportOutcome>(action, async signal => {
         const combined = signal && owner ? AbortSignal.any([signal, owner.signal]) : signal ?? owner?.signal;
         operationSignal = combined;
-        if (action === "import") return backupFileActions.import(combined);
+        if (action === "import") return importDialog.request(combined);
         const exported = await exportDialog.request(combined);
         exportResult.format = exported.format;
         return exported.saved;
@@ -48,9 +47,9 @@ export function useBackupActions(blocked = false) {
       if (result && typeof result === "object") {
         restarting = true;
         // Reboot also performs the existing backup genesis reconciliation.
-        window.setTimeout(() => window.location.reload(), 900);
+        if (!("format" in result)) window.setTimeout(() => window.location.reload(), 900);
       }
-      if (!result || owner?.signal.aborted) return;
+      if (!result || owner?.signal.aborted || typeof result === "object" && "format" in result) return;
       toast({ variant: "success", title: t("dataSync.noticeDone"), description: typeof result === "boolean"
         ? t(exportResult.format === "full" ? "dataSync.exportDialog.success" : "dataSync.exportSuccess")
         : t("dataSync.merge.summary", {
@@ -59,6 +58,7 @@ export function useBackupActions(blocked = false) {
         }) });
     } catch (error) {
       log.error(`Backup ${action} failed`, error);
+      if (errorCode(error) === "backup/recovery-required") restarting = true;
       if (!owner?.signal.aborted && !operationSignal?.aborted) toast({ variant: "destructive", title: t("dataSync.noticeError"),
         description: describeError(error, { fallback: t(action === "export" ? "dataSync.exportError" : "dataSync.importError") }).body });
     } finally {
@@ -66,5 +66,5 @@ export function useBackupActions(blocked = false) {
       if (!owner?.signal.aborted) { setBusy(restarting); setRequested(null); }
     }
   };
-  return { busy, requested, run, exportDialog };
+  return { busy, requested, run, exportDialog, importDialog };
 }

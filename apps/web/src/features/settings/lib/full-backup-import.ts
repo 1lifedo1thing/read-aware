@@ -7,6 +7,8 @@ import { withSyncBackup } from "../../../platform/sync/sync-scheduler";
 import { withBackupCapture } from "./backup-capture";
 import { createFullBackupImport, type BackupSourceReceipt, type BackupPlanReceipt, type FullBackupImportProgress } from "./full-backup-import-task";
 
+import { applyFullBackup } from "./full-backup-apply";
+
 const log = createLogger("full-backup-import");
 /** Internal preparation entry. UI/domain choices and atomic application must
  * consume the retained review before the existing import action can switch. */
@@ -30,6 +32,7 @@ export const prepareFullBackupImport = createFullBackupImport({
   read: (taskId, query) => invoke("backup_import_review", { taskId, query }),
   stageProgram: (taskId, request) => invoke("backup_import_stage_program", { taskId, request }),
   stageStorage: (taskId, token, query) => invoke("backup_import_stage_storage", { taskId, token, query }),
+  apply: applyFullBackup,
   cancel: taskId => invoke("backup_import_cancel", { taskId }),
   warn: (message, error) => log.warn(message, error),
 });

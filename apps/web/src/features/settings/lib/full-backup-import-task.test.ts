@@ -25,6 +25,7 @@ function fixture() {
     chooseRows: async (_id: string, request: import("./backup-review-types").BackupRowChoiceRequest) => ({ revision: "updated", changed: request.edits.length }),
     stageProgram: async () => ({ token: "stage", storage: {} }),
     stageStorage: async <T>() => null as T,
+    apply: async () => ({ taskId: "task", format: 2 as const, restoreId: "restore", domainRows: 1, files: 0, plugins: 0, credentials: 0, cleanupPending: false }),
     cancel: async () => { calls.push("cancel"); },
     warn: (_message: string, _error: unknown) => { calls.push("warn"); },
   };
@@ -180,4 +181,24 @@ test("row constraint checks keep their submitted revision and share physical rev
   await Bun.sleep(0);expect(closed).toBe(false);
   finish.resolve({revision:"fixed",selectedSourceRows:2,issues:1,constraintsPassed:false});
   await closing;expect((await pending).code).toBe("backup/changed");
+});
+
+test("restore consumes review once and retains the committed receipt through late cancellation", async () => {
+  const { deps, run } = fixture();
+  const entered = Promise.withResolvers<void>();
+  const decision = Promise.withResolvers<Awaited<ReturnType<typeof deps.apply>>>();
+  deps.apply = async () => { entered.resolve(); return decision.promise; };
+  const review = (await run("a test password"))!;
+  const request = { rowRevision: "fixed", files: {}, programs: {}, programResults: {}, credentials: {} };
+  const applied = review.apply(request);
+  await entered.promise;
+  await expect(review.apply(request)).rejects.toMatchObject({ code: "backup/changed" });
+  await expect(review.read({ kind: "rowDecisions" })).rejects.toMatchObject({ code: "backup/changed" });
+  let closed = false;
+  const disposing = review.dispose().then(() => { closed = true; });
+  await Bun.sleep(0); expect(closed).toBe(false);
+  decision.resolve({ taskId: "task", format: 2, restoreId: "restore", domainRows: 3, files: 1, plugins: 0, credentials: 0, cleanupPending: false });
+  expect(await applied).toMatchObject({ format: 2, domainRows: 3 });
+  expect(JSON.stringify(await applied)).not.toContain("taskId");
+  await disposing; expect(closed).toBe(true);
 });

@@ -138,6 +138,23 @@ pub(super) fn programs(
                 }
             }
         }
+        if program.program.is_none() {
+            // Data-only restoration must not boot retained code against a
+            // namespace for which the user approved no executable migration.
+            let key = "read-aware-plugins-enabled";
+            let raw = storage::get_kv_inner(tx, key)?;
+            let mut enabled: serde_json::Map<String, serde_json::Value> = match raw {
+                Some(raw) => serde_json::from_str(&raw).map_err(|_| {
+                    CommandError::new(
+                        "backup/incomplete",
+                        "Invalid restored plugin activation settings",
+                    )
+                })?,
+                None => serde_json::Map::new(),
+            };
+            enabled.insert(program.id.clone(), serde_json::Value::Bool(false));
+            tx.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES (?1,?2,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at",params![key,serde_json::to_string(&enabled)?])?;
+        }
         if let Some(version) = versions.get(&program.id) {
             tx.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES (?1,?2,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at",params![schema,version.to_string()])?;
         }

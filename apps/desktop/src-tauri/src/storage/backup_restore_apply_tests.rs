@@ -440,3 +440,43 @@ fn backup_restore_apply_fresh_credential_key_and_explicit_deletion_keep_target_i
         1
     );
 }
+
+#[test]
+fn backup_restore_apply_data_only_retains_code_but_disables_it_atomically() {
+    let root = tempfile::tempdir().unwrap();
+    let stage = tempfile::tempdir().unwrap();
+    let mut target = db(root.path());
+    plugin(&target, root.path(), "target");
+    kv(
+        &target,
+        "read-aware-plugins-enabled",
+        r#"{"proof":true,"other":true}"#,
+    );
+    let input = source(|conn, root| plugin(conn, root, "source"));
+    let plan = rows(input, &mut target, stage.path())
+        .plan_fixture_files(&mut target, root.path(), || Ok(()))
+        .unwrap();
+    let mut selected = request(&plan, &mut target, root.path());
+    selected.programs.get_mut("proof").unwrap().program = None;
+    selected.program_results.clear();
+    plan.restore(&mut target, root.path(), selected, || Ok(()))
+        .unwrap();
+    assert!(
+        fs::read_to_string(root.path().join("plugins/proof/main.js"))
+            .unwrap()
+            .contains("target")
+    );
+    let enabled: serde_json::Value = serde_json::from_str(
+        &storage::get_kv_inner(&target, "read-aware-plugins-enabled")
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(enabled, serde_json::json!({"proof":false,"other":true}));
+    assert_eq!(
+        storage::get_kv_inner(&target, "read-aware-plugin.proof.value")
+            .unwrap()
+            .as_deref(),
+        Some("\"source\"")
+    );
+}
