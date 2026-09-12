@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../../../platform/domain-write-gate";
 import type { EventOrigin, BookImportPhase } from "@read-aware/core";
 import type { TFunction } from "i18next";
 import { invoke } from "../../../platform/ipc";
@@ -123,104 +124,106 @@ export async function importBook(
   const placeholder = pendingImportPlaceholder(bookId, source, format);
   options.onPrepared?.(placeholder);
 
-  // In-memory sources (drag-and-drop, plugin importBook, mobile picks that
-  // arrive as Files) stream into the blob store first; native paths are
-  // copied by Rust without ever entering the webview.
-  if (source.kind === "file") {
-    const bytes = new Uint8Array(await source.file.arrayBuffer());
-    options.signal?.throwIfAborted();
-    options.beforeWrite?.();
-    progress("staging");
-    await putDesktopBlob(
-      bookFileKey(bookId),
-      bytes,
-      file.type || undefined,
-    );
-  } else {
-    options.signal?.throwIfAborted();
-    options.beforeWrite?.();
-    progress("staging");
-  }
-  const stagingAt = performance.now();
-  const staged = await invoke<StagedImport>("library_stage_import", {
-    request: {
-      bookId,
-      format,
-      mimeType: file.type || null,
-      ...(source.kind === "native-path" && source.externalOpenEpoch !== undefined
-        ? { externalOpenEpoch: source.externalOpenEpoch } : {}),
-      source: source.kind === "native-path" ? { kind: "path", path: source.path }
-        : source.kind === "native-resource" ? { kind: "resource", id: source.resourceId } : { kind: "blob" },
-    },
-  });
-
-  if (staged.duplicateOf) {
-    // The content gate caught what the name couldn't: this exact file is
-    // already on the shelf (possibly synced in under a different title, or
-    // sitting there as a shell whose bytes the pick just supplied).
-    const existing =
-      options.knownBooks.find((entry) => entry.id === staged.duplicateOf) ??
-      (await getBookRecord(staged.duplicateOf));
-    if (!existing) {
-      // The registry matched a sha whose book row is gone; the staging step
-      // kept nothing for this id, so there is no book to show either way.
-      throw new Error(`Duplicate of an unknown book ${staged.duplicateOf}`);
+  return runDomainWrite(async () => {
+    // In-memory sources (drag-and-drop, plugin importBook, mobile picks that
+    // arrive as Files) stream into the blob store first; native paths are
+    // copied by Rust without ever entering the webview.
+    if (source.kind === "file") {
+      const bytes = new Uint8Array(await source.file.arrayBuffer());
+      options.signal?.throwIfAborted();
+      options.beforeWrite?.();
+      progress("staging");
+      await putDesktopBlob(
+        bookFileKey(bookId),
+        bytes,
+        file.type || undefined,
+      );
+    } else {
+      options.signal?.throwIfAborted();
+      options.beforeWrite?.();
+      progress("staging");
     }
-    return { status: "duplicate", book: existing };
-  }
-
-  const title = staged.title?.trim() || placeholder.title;
-  const author = staged.author?.trim() || placeholder.author;
-  progress("committing");
-  await commitDomainEvents(
-    {
-      type: "book.imported",
-      payload: {
+    const stagingAt = performance.now();
+    const staged = await invoke<StagedImport>("library_stage_import", {
+      request: {
         bookId,
-        title,
-        author,
         format,
-        fileName: file.name,
-        mimeType: file.type || undefined,
-        fileSize: staged.byteSize,
-        sourceBlobKey: bookFileKey(bookId),
-        sourceSha256: staged.sha256,
+        mimeType: file.type || null,
+        ...(source.kind === "native-path" && source.externalOpenEpoch !== undefined
+          ? { externalOpenEpoch: source.externalOpenEpoch } : {}),
+        source: source.kind === "native-path" ? { kind: "path", path: source.path }
+          : source.kind === "native-resource" ? { kind: "resource", id: source.resourceId } : { kind: "blob" },
       },
-      origin: options.origin,
-    },
-    ...(staged.cover === "ready"
-      ? [
-          {
-            type: "book.coverExtracted" as const,
-            payload: { bookId, status: "ready" as const, coverBlobKey: `cover:${bookId}` },
-            origin: options.origin,
-          },
-        ]
-      : staged.cover === "none"
+    });
+
+    if (staged.duplicateOf) {
+      // The content gate caught what the name couldn't: this exact file is
+      // already on the shelf (possibly synced in under a different title, or
+      // sitting there as a shell whose bytes the pick just supplied).
+      const existing =
+        options.knownBooks.find((entry) => entry.id === staged.duplicateOf) ??
+        (await getBookRecord(staged.duplicateOf));
+      if (!existing) {
+        // The registry matched a sha whose book row is gone; the staging step
+        // kept nothing for this id, so there is no book to show either way.
+        throw new Error(`Duplicate of an unknown book ${staged.duplicateOf}`);
+      }
+      return { status: "duplicate", book: existing };
+    }
+
+    const title = staged.title?.trim() || placeholder.title;
+    const author = staged.author?.trim() || placeholder.author;
+    progress("committing");
+    await commitDomainEvents(
+      {
+        type: "book.imported",
+        payload: {
+          bookId,
+          title,
+          author,
+          format,
+          fileName: file.name,
+          mimeType: file.type || undefined,
+          fileSize: staged.byteSize,
+          sourceBlobKey: bookFileKey(bookId),
+          sourceSha256: staged.sha256,
+        },
+        origin: options.origin,
+      },
+      ...(staged.cover === "ready"
         ? [
             {
               type: "book.coverExtracted" as const,
-              payload: { bookId, status: "none" as const },
+              payload: { bookId, status: "ready" as const, coverBlobKey: `cover:${bookId}` },
               origin: options.origin,
             },
           ]
-        : []),
-  );
+        : staged.cover === "none"
+          ? [
+              {
+                type: "book.coverExtracted" as const,
+                payload: { bookId, status: "none" as const },
+                origin: options.origin,
+              },
+            ]
+          : []),
+    );
 
-  const book = await getBookRecord(bookId);
-  if (!book) throw new Error("Imported book was not persisted");
+    const book = await getBookRecord(bookId);
+    if (!book) throw new Error("Imported book was not persisted");
 
-  const stagedMs = Math.round(performance.now() - stagingAt);
-  const totalMs = Math.round(performance.now() - startedAt);
-  log.info(
-    `imported ${format} ${bookId}: ${totalMs} ms total (native staging ${stagedMs} ms, cover ${staged.cover})`,
-  );
-  if (staged.cover === "deferred" || staged.metadataDeferred) {
-    scheduleBookEnrichment({
-      bookId,
-      cover: staged.cover === "deferred",
-      metadata: staged.metadataDeferred,
-    });
-  }
-  return { status: "imported", book };
+    const stagedMs = Math.round(performance.now() - stagingAt);
+    const totalMs = Math.round(performance.now() - startedAt);
+    log.info(
+      `imported ${format} ${bookId}: ${totalMs} ms total (native staging ${stagedMs} ms, cover ${staged.cover})`,
+    );
+    if (staged.cover === "deferred" || staged.metadataDeferred) {
+      scheduleBookEnrichment({
+        bookId,
+        cover: staged.cover === "deferred",
+        metadata: staged.metadataDeferred,
+      });
+    }
+    return { status: "imported", book };
+  });
 }

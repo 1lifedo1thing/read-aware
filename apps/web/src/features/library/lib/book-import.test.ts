@@ -1,3 +1,4 @@
+import { withDomainBackup } from "../../../platform/domain-write-gate";
 import { afterEach, expect, spyOn, test } from "bun:test";
 import type { TFunction } from "i18next";
 import * as environment from "../../../platform/environment";
@@ -129,4 +130,20 @@ test.each(["imported", "duplicate"])("resource domain preserves %s through cance
     expect(await importResourceBook(owner, ref.id, "agent", controller.signal)).toMatchObject({ status, book: { id: book.id } });
     await retiring; expect(released).toBe(true);
   } finally { await owner.dispose(); }
+});
+
+test("backup drains a staged import through its book event and rejects a fresh native stage", async () => {
+  const f = setup(), entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  f.invoke.mockImplementation(async <T>() => { entered.resolve(); await release.promise; return staged as T; });
+  const work = importBook(source, { t, knownBooks: [] });
+  await entered.promise; let captured = false;
+  const backup = withDomainBackup(async () => {
+    captured = true;
+    expect(f.commit).toHaveBeenCalled();
+    const before = f.invoke.mock.calls.length;
+    await expect(importBook(source, { t, knownBooks: [] })).rejects.toMatchObject({ code: "backup/busy" });
+    expect(f.invoke).toHaveBeenCalledTimes(before);
+  });
+  await Bun.sleep(0); expect(captured).toBe(false);
+  release.resolve(); expect((await work).status).toBe("imported"); await backup;
 });

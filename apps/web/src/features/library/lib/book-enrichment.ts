@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { emitAppEvent } from "../../../platform/app-events";
 import { commitDomainEvents } from "../../../platform/domain-events";
@@ -133,53 +134,61 @@ async function runJob(request: EnrichmentRequest): Promise<EnrichmentOutcome> {
 }
 
 async function applyParsedBook(request: EnrichmentRequest, parsed: FoliateBook): Promise<EnrichmentOutcome> {
-  const current = await getBookRecord(request.bookId);
-  if (!current) return { reason: "book-removed" };
-  const events = [];
+  const observed = await getBookRecord(request.bookId);
+  if (!observed) return { reason: "book-removed" };
+  const cover = request.cover && observed.coverStatus === "unchecked"
+    ? await prepareParsedCover(request.bookId, parsed) : undefined;
+  return runDomainWrite(async () => {
+    const current = await getBookRecord(request.bookId);
+    if (!current) return { reason: "book-removed" };
+    const events = [];
 
-  if (request.metadata) {
-    const title = foliateTitle(parsed);
-    const author = foliateAuthor(parsed);
-    const fromFile = parseFileName(current.fileName);
-    const patch = {
-      ...(title && current.title === fromFile.title && title !== current.title ? { title } : {}),
-      ...(author && (!current.author || current.author === fromFile.author) && author !== current.author ? { author } : {}),
-    };
-    if (Object.keys(patch).length > 0) {
-      events.push({
-        type: "book.metadataEdited" as const,
-        payload: { bookId: request.bookId, ...patch },
-        // Parsed-metadata enrichment is app machinery, not a user edit.
-        origin: request.origin ?? "system" as const,
-      });
+    if (request.metadata) {
+      const title = foliateTitle(parsed);
+      const author = foliateAuthor(parsed);
+      const fromFile = parseFileName(current.fileName);
+      const patch = {
+        ...(title && current.title === fromFile.title && title !== current.title ? { title } : {}),
+        ...(author && (!current.author || current.author === fromFile.author) && author !== current.author ? { author } : {}),
+      };
+      if (Object.keys(patch).length > 0) {
+        events.push({
+          type: "book.metadataEdited" as const,
+          payload: { bookId: request.bookId, ...patch },
+          // Parsed-metadata enrichment is app machinery, not a user edit.
+          origin: request.origin ?? "system" as const,
+        });
+      }
     }
-  }
 
-  if (request.cover && current.coverStatus === "unchecked") {
-    const stored = await storeParsedCover(request.bookId, parsed);
-    events.push(
-      stored
-        ? {
-            type: "book.coverExtracted" as const,
-            payload: {
-              bookId: request.bookId,
-              status: "ready" as const,
-              coverBlobKey: stored.coverBlobKey,
+    if (cover !== undefined && request.cover && current.coverStatus === "unchecked") {
+      const stored = cover ? await invoke<StoredCover>("library_put_cover", cover.bytes, {
+        headers: { "x-book-id": request.bookId, ...(cover.mimeType ? { "x-blob-mime": cover.mimeType } : {}) },
+      }) : null;
+      events.push(
+        stored
+          ? {
+              type: "book.coverExtracted" as const,
+              payload: {
+                bookId: request.bookId,
+                status: "ready" as const,
+                coverBlobKey: stored.coverBlobKey,
+              },
+              origin: request.origin ?? "system" as const,
+            }
+          : {
+              type: "book.coverExtracted" as const,
+              payload: { bookId: request.bookId, status: "none" as const },
+              origin: request.origin ?? "system" as const,
             },
-            origin: request.origin ?? "system" as const,
-          }
-        : {
-            type: "book.coverExtracted" as const,
-            payload: { bookId: request.bookId, status: "none" as const },
-            origin: request.origin ?? "system" as const,
-          },
-    );
-  }
+      );
+    }
 
-  if (events.length === 0) return { reason: "not-needed" };
-  await commitDomainEvents(...events);
-  emitAppEvent("book-changed", { bookId: request.bookId });
-  return { reason: null };
+    if (events.length === 0) return { reason: "not-needed" };
+    await commitDomainEvents(...events);
+    emitAppEvent("book-changed", { bookId: request.bookId });
+    return { reason: null };
+  });
 }
 
 /** Sections the coverless fallback opens looking for the book's first image. */
@@ -226,7 +235,7 @@ async function firstInBookImage(parsed: FoliateBook): Promise<Blob | null> {
   return null;
 }
 
-async function storeParsedCover(bookId: string, parsed: FoliateBook): Promise<StoredCover> {
+async function prepareParsedCover(bookId: string, parsed: FoliateBook): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
   let blob: Blob | null = null;
   try {
     blob = (await parsed.getCover?.()) ?? null;
@@ -237,10 +246,5 @@ async function storeParsedCover(bookId: string, parsed: FoliateBook): Promise<St
   if (!blob || blob.size === 0) blob = await firstInBookImage(parsed);
   if (!blob || blob.size === 0) return null;
   const bytes = new Uint8Array(await blob.arrayBuffer());
-  return invoke<StoredCover>("library_put_cover", bytes, {
-    headers: {
-      "x-book-id": bookId,
-      ...(blob.type ? { "x-blob-mime": blob.type } : {}),
-    },
-  });
+  return { bytes, mimeType: blob.type };
 }

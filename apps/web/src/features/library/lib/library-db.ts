@@ -1,3 +1,4 @@
+import { runDomainWrite, type RunDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { AppError, normalizeBookRemovalCleanupQuery, type BookRemovalCleanupPage, type BookRemovalCleanupQuery, type EventOrigin } from "@read-aware/core";
 import { removeBookBatch, releaseRemovedBookFiles } from "./book-removal";
@@ -66,12 +67,12 @@ async function deleteBookRecords(bookIds: string[], origin?: EventOrigin) {
   assertDesktop("Removing books");
   // `book.removed` drops the row and its annotations on apply; the blobs
   // (file + cover) are object-storage content and are released separately.
-  return removeBookBatch(bookIds, {
+  return runDomainWrite(() => removeBookBatch(bookIds, {
     commit: ids => commitDomainEvents(...ids.map(bookId => ({ type: "book.removed" as const, payload: { bookId }, origin }))),
     releaseFiles: ids => invoke("library_release_book_files", { ids }),
     removed: bookId => emitAppEvent("book-removed", { bookId }),
     warn: error => createLogger("library").warn("Books removed but local file release failed", error),
-  });
+  }));
 }
 
 async function getAllCollectionRecords(): Promise<Collection[]> {
@@ -417,10 +418,10 @@ export async function removeLibraryBooks(bookIds: string[], origin?: EventOrigin
 
 export async function retryLibraryBookFileRelease(bookIds: string[]) {
   assertDesktop("Releasing removed book files");
-  return releaseRemovedBookFiles(bookIds, {
+  return runDomainWrite(() => releaseRemovedBookFiles(bookIds, {
     releaseFiles: ids => invoke("library_release_book_files", { ids }),
     warn: error => createLogger("library").warn("Removed book file release retry failed", error),
-  });
+  }));
 }
 
 export async function listLibraryRemovalCleanup(query?: BookRemovalCleanupQuery): Promise<BookRemovalCleanupPage> {
@@ -446,9 +447,9 @@ export async function removeLibraryBook(bookId: string, origin?: EventOrigin) {
 
 // --- Restore (import a previously-exported bundle; ids preserved) ------------
 
-async function putBookFileBytes(bookId: string, bytes: Uint8Array): Promise<void> {
+async function putBookFileBytes(bookId: string, bytes: Uint8Array, run: RunDomainWrite): Promise<void> {
   assertDesktop("Restoring a book file");
-  await putDesktopBlob(bookFileKey(bookId), bytes);
+  await putDesktopBlob(bookFileKey(bookId), bytes, undefined, run);
 }
 
 /**
@@ -463,18 +464,23 @@ async function putBookFileBytes(bookId: string, bytes: Uint8Array): Promise<void
 export async function restoreLibraryBook(
   book: LibraryBook,
   fileBytes: Uint8Array | null,
+  run: RunDomainWrite = runDomainWrite,
 ): Promise<void> {
-  await putBookRecord(book);
-  try {
-    if (fileBytes) await putBookFileBytes(book.id, fileBytes);
-  } finally {
-    // The row already committed even when restoring its file fails.
-    emitAppEvent("projections-invalidated", { source: "restore" });
-  }
+  return run(async () => {
+    await putBookRecord(book);
+    try {
+      if (fileBytes) await putBookFileBytes(book.id, fileBytes, run);
+    } finally {
+      // The row already committed even when restoring its file fails.
+      emitAppEvent("projections-invalidated", { source: "restore" });
+    }
+  });
 }
 
 /** Upsert a collection record verbatim (id preserved). */
-export async function restoreCollection(collection: Collection): Promise<void> {
-  await putCollectionRecord(collection);
-  emitAppEvent("projections-invalidated", { source: "restore" });
+export async function restoreCollection(collection: Collection, run: RunDomainWrite = runDomainWrite): Promise<void> {
+  return run(async () => {
+    await putCollectionRecord(collection);
+    emitAppEvent("projections-invalidated", { source: "restore" });
+  });
 }

@@ -182,12 +182,12 @@ async function importBackupContents(json: string, run: RunDomainWrite): Promise<
   await restoreLocalKV(kv, run);
   if (profile) await restoreUserProfile(summary!, profile.revision, run);
   // Collections first so book membership resolves against existing rows.
-  for (const collection of collections) await restoreCollection(collection);
+  for (const collection of collections) await restoreCollection(collection, run);
   for (const book of parsed.books) {
     const encoded = files[book.id];
-    await restoreLibraryBook(book, encoded ? base64ToBytes(encoded) : null);
+    await restoreLibraryBook(book, encoded ? base64ToBytes(encoded) : null, run);
   }
-  for (const annotation of annotations) await saveAnnotation(annotation);
+  for (const annotation of annotations) await saveAnnotation(annotation, run);
 
   return {
     settings,

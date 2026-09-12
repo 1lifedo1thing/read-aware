@@ -6,6 +6,7 @@
  * empty states, writes throw instead of pretending to persist.
  */
 
+import { runDomainWrite, type RunDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { normalizeAnnotationPageQuery, type AnnotationPageQuery, type EventOrigin } from "@read-aware/core";
 import type { Annotation, AnnotationFilters, Ask, Highlight, Note } from "./annotation-types";
@@ -46,10 +47,12 @@ function filterAndSortAnnotations(
 // boot. Every intent-level function below states its change as an event and
 // lets `commitDomainEvents` append + apply it in one transaction, then reads
 // the stored row back — the projection is derived, never written here.
-export async function saveAnnotation(annotation: Annotation): Promise<Annotation> {
+export async function saveAnnotation(annotation: Annotation, run: RunDomainWrite = runDomainWrite): Promise<Annotation> {
   assertDesktop("Saving an annotation");
-  await invoke("annotation_put", { annotation });
-  return annotation;
+  return run(async () => {
+    await invoke("annotation_put", { annotation });
+    return annotation;
+  });
 }
 
 export async function getAnnotation(id: string): Promise<Annotation | null> {

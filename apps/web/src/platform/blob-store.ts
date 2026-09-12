@@ -27,6 +27,7 @@
  * `library-db.ts` and never call these.
  */
 import { invoke } from "./ipc";
+import { runDomainWrite, type RunDomainWrite } from "./domain-write-gate";
 import { isMobileOS } from "./environment";
 import { createLogger } from "./logger";
 
@@ -159,8 +160,8 @@ async function putBlobChunked(
       mimeType: mimeType ?? null,
     });
   } catch (error) {
-    // Failed cleanup leaks a native write session — worth a trace, never a throw.
-    void invoke("blob_write_abort", { key }).catch((abortError: unknown) => {
+    // Keep the write receipt through cleanup; preserve the original failure.
+    await invoke("blob_write_abort", { key }).catch((abortError: unknown) => {
       log.warn("blob_write_abort failed; native write session may leak", abortError);
     });
     throw error;
@@ -201,7 +202,7 @@ export async function openDesktopBlobFile(
 
 /** Remove a blob (bytes + registry row). Missing keys are a no-op. */
 export async function deleteDesktopBlob(key: string): Promise<void> {
-  await invoke("delete_blob", { key });
+  await runDomainWrite(() => invoke("delete_blob", { key }));
 }
 
 
@@ -228,8 +229,8 @@ async function putBlobChunkedRaw(
       mimeType: mimeType ?? null,
     });
   } catch (error) {
-    // Failed cleanup leaks a native write session — worth a trace, never a throw.
-    void invoke("blob_write_abort", { key }).catch((abortError: unknown) => {
+    // Keep the write receipt through cleanup; preserve the original failure.
+    await invoke("blob_write_abort", { key }).catch((abortError: unknown) => {
       log.warn("blob_write_abort failed; native write session may leak", abortError);
     });
     throw error;
@@ -251,7 +252,9 @@ export type DesktopBlobWriter = {
 };
 
 export async function openDesktopBlobWriter(key: string): Promise<DesktopBlobWriter> {
-  await invoke("blob_write_open", { key });
+  // Native open/append only fill an in-memory buffer. Disk and SQLite change
+  // at commit, which acquires fresh admission; sync owns the network lifetime.
+  await runDomainWrite(() => invoke("blob_write_open", { key }));
   const mobile = isMobileOS();
   return {
     async append(bytes) {
@@ -271,7 +274,7 @@ export async function openDesktopBlobWriter(key: string): Promise<DesktopBlobWri
       }
     },
     commit(mimeType) {
-      return invoke<BlobPutResult>("blob_write_commit", { key, mimeType: mimeType ?? null });
+      return runDomainWrite(() => invoke<BlobPutResult>("blob_write_commit", { key, mimeType: mimeType ?? null }));
     },
     async abort() {
       await invoke("blob_write_abort", { key }).catch((abortError: unknown) => {
@@ -286,13 +289,16 @@ export async function putDesktopBlob(
   key: string,
   data: Uint8Array,
   mimeType?: string,
+  run: RunDomainWrite = runDomainWrite,
 ): Promise<BlobPutResult> {
-  if (isMobileOS()) return putBlobChunked(key, data, mimeType);
-  if (data.length > DESKTOP_ONESHOT_MAX_BYTES) return putBlobChunkedRaw(key, data, mimeType);
-  return invoke<BlobPutResult>("put_blob", data, {
-    headers: {
-      [BLOB_KEY_HEADER]: key,
-      ...(mimeType ? { [BLOB_MIME_HEADER]: mimeType } : {}),
-    },
+  return run(() => {
+    if (isMobileOS()) return putBlobChunked(key, data, mimeType);
+    if (data.length > DESKTOP_ONESHOT_MAX_BYTES) return putBlobChunkedRaw(key, data, mimeType);
+    return invoke<BlobPutResult>("put_blob", data, {
+      headers: {
+        [BLOB_KEY_HEADER]: key,
+        ...(mimeType ? { [BLOB_MIME_HEADER]: mimeType } : {}),
+      },
+    });
   });
 }

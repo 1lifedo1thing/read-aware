@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { isTauri } from "../../../platform/environment";
 import { commitDomainEvents, type DomainEventDraft } from "../../../platform/domain-events";
@@ -194,26 +195,29 @@ export async function saveConversation(
     memoryStore.set(conversationId, messages);
     return;
   }
-  try {
-    // The events carry the conversation facts (role/seq/content/attachments)
-    // and the store applies them to `ai_messages` as it appends. The upsert
-    // that follows re-states the same transcript plus the columns no event
-    // describes: `parts_json` (rendered structure) and `error` (a failed turn's
-    // stub, replaced on retry). Both are presentation state — see DIFF_SPECS in
-    // storage/apply.rs, which excludes them from the consistency check. Rows
-    // this webview doesn't know (merged from a peer device) are left alone.
-    const drafts = await conversationEventDrafts(conversationId, messages);
-    if (drafts.length > 0) await commitDomainEvents(...drafts);
-    await invoke("ai_chat_replace", {
-      conversationId,
-      messages: messages.map((message, seq) => messageToRow(conversationId, message, seq)),
-    });
-    knownEventIds.set(conversationId, new Set(eventable(messages).map((m) => m.id)));
-  } catch (err) {
-    // Keep the live transcript, but do not report durable completion on failure.
-    log.error("persist failed", err);
-    throw err;
-  }
+  const captured = structuredClone(messages);
+  return runDomainWrite(async () => {
+    try {
+      // The events carry the conversation facts (role/seq/content/attachments)
+      // and the store applies them to `ai_messages` as it appends. The upsert
+      // that follows re-states the same transcript plus the columns no event
+      // describes: `parts_json` (rendered structure) and `error` (a failed turn's
+      // stub, replaced on retry). Both are presentation state — see DIFF_SPECS in
+      // storage/apply.rs, which excludes them from the consistency check. Rows
+      // this webview doesn't know (merged from a peer device) are left alone.
+      const drafts = await conversationEventDrafts(conversationId, captured);
+      if (drafts.length > 0) await commitDomainEvents(...drafts);
+      await invoke("ai_chat_replace", {
+        conversationId,
+        messages: captured.map((message, seq) => messageToRow(conversationId, message, seq)),
+      });
+      knownEventIds.set(conversationId, new Set(eventable(captured).map((m) => m.id)));
+    } catch (err) {
+      // Keep the live transcript, but do not report durable completion on failure.
+      log.error("persist failed", err);
+      throw err;
+    }
+  });
 }
 
 export async function clearConversation(conversationId: string, origin: EventOrigin = "user"): Promise<void> {
@@ -221,12 +225,14 @@ export async function clearConversation(conversationId: string, origin: EventOri
     memoryStore.delete(conversationId);
     return;
   }
-  // Applying the event drops the messages and tombstones the conversation;
-  // `ai_chat_clear` additionally removes any error stubs, which are local-only
-  // rows the log never described.
-  await commitDomainEvents({ type: "aiConversation.cleared", payload: { conversationId }, origin });
-  await invoke("ai_chat_clear", { conversationId });
-  knownEventIds.set(conversationId, new Set());
+  return runDomainWrite(async () => {
+    // Applying the event drops the messages and tombstones the conversation;
+    // `ai_chat_clear` additionally removes any error stubs, which are local-only
+    // rows the log never described.
+    await commitDomainEvents({ type: "aiConversation.cleared", payload: { conversationId }, origin });
+    await invoke("ai_chat_clear", { conversationId });
+    knownEventIds.set(conversationId, new Set());
+  });
 }
 
 /** 全局线程列表（非空会话，按最近活动排序）。 */

@@ -1,3 +1,5 @@
+import { withDomainBackup } from "../../../platform/domain-write-gate";
+import * as ipc from "../../../platform/ipc";
 import { afterEach, expect, spyOn, test } from "bun:test";
 import { AppError } from "@read-aware/core";
 import * as library from "./library-db";
@@ -38,4 +40,36 @@ test("parsed metadata keeps observed custom fields and retry eligibility covers 
   expect(enrichmentQueue.snapshot(f.book.id)).toMatchObject({ phase: "skipped", reason: "not-needed" });
   expect(metadataNeedsEnrichment({ ...f.book, format: "epub" })).toBe(true);
   expect(metadataNeedsEnrichment({ ...latest, format: "epub" })).toBe(false);
+});
+
+test("cover preparation may await backup, but file persistence and its verdict drain together", async () => {
+  const f = fixture(), entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  let prepared = false;
+  const parsed = { metadata: {}, sections: [], getCover: async () => {
+    await withDomainBackup(async () => { prepared = true; });
+    return new Blob(["cover"], { type: "image/png" });
+  } } as unknown as FoliateBook;
+  const invoke = spyOn(ipc, "invoke").mockImplementation(async <T>() => {
+    entered.resolve(); await release.promise; return { coverBlobKey: `cover:${f.book.id}` } as T;
+  });
+  restore.push(() => invoke.mockRestore());
+  const work = enrichFromOpenBook(f.book, parsed);
+  await entered.promise; expect(prepared).toBe(true);
+  let captured = false;
+  const backup = withDomainBackup(async () => { captured = true; expect(f.commit).toHaveBeenCalled(); });
+  await Bun.sleep(0); expect(captured).toBe(false);
+  release.resolve(); await work; await backup;
+  expect(f.commit.mock.calls[0]?.[0]).toMatchObject({ type: "book.coverExtracted", payload: { status: "ready" } });
+});
+
+test("a book removed during cover preparation is rechecked before writing any cover or verdict", async () => {
+  const f = fixture();
+  const parsed = { metadata: {}, sections: [], getCover: async () => {
+    f.get.mockResolvedValue(null); return new Blob(["cover"]);
+  } } as unknown as FoliateBook;
+  const invoke = spyOn(ipc, "invoke").mockImplementation(async () => { throw Error("must not write a removed book"); });
+  restore.push(() => invoke.mockRestore());
+  await enrichFromOpenBook(f.book, parsed);
+  expect(invoke).not.toHaveBeenCalled(); expect(f.commit).not.toHaveBeenCalled();
+  expect(enrichmentQueue.snapshot(f.book.id)).toMatchObject({ phase: "skipped", reason: "book-removed" });
 });
