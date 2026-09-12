@@ -4,6 +4,7 @@ import { getDefaultStore } from "jotai";
 import type { Id } from "@read-aware/core";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
 import { createLibraryDomain, getExtractedChapters } from "../../src/domain/library";
+import { getDigestContentVersion } from "../../src/domain/book-digest";
 import { readingRuntime } from "../../src/domain/reading-runtime";
 import { commitDomainEvents } from "../../src/platform/domain-events";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
@@ -36,9 +37,10 @@ export async function prepareMemoryDomainProbe() {
   bookId = (await library.commands.books.importBook({ fileName: `${marker}.fb2`, data: new TextEncoder().encode(xml) })).id;
   const chapters = await getExtractedChapters(bookId);
   if (chapters.length !== 3) throw Error(`Expected three chapters, got ${chapters.length}`);
+  const contentVersion = await getDigestContentVersion(bookId);
   await commitDomainEvents({ type: "book.narrativityClassified", payload: { bookId: bookId as Id, narrativity: "narrative" }, origin: "user" });
   for (const [index, chapter] of chapters.entries()) await commitDomainEvents({ type: "book.chapterDigested", origin: "agent", payload: {
-    bookId: bookId as Id, chapterIndex: index, chapterHref: chapter.hrefs?.[0], summary: `Synthetic chapter ${index + 1}: ${["Ada", "Ben", "Hidden"][index]}`,
+    bookId: bookId as Id, contentVersion, chapterIndex: index, chapterHref: chapter.hrefs?.[0], summary: `Synthetic chapter ${index + 1}: ${["Ada", "Ben", "Hidden"][index]}`,
     characters: [{ name: ["Ada", "Ben", "Hidden"][index], ...(index === 2 ? { aliases: ["Ada"], note: "Secret future identity" } : {}) }],
     relations: index === 1 ? [{ from: "Ada", kind: "knows", to: "Ben" }] : [], digestVersion: 2, flavor: "narrative",
   } });

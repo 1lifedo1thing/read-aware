@@ -219,3 +219,23 @@ playing/advancing，并从第一章推进到第二章。Stop 后状态 stopped�
 描述为正文开头、后续又纠正为版权信息，且回答过长，主 Agent 评分3，不能用
 机器通过掩盖表达与选项标注问题。全量首轮《乌合之众》33/37机器通过、4失败，
 尚需主 Agent 全部失败复核和通过抽查；第4本《如何用提问解决问题》运行中。
+
+## 第八个流程：记忆并发巩固与进度受限图谱
+
+真实 Tauri SQLite 中，受控巩固运行期间由真实 Worker 修订同一记忆：旧快照巩固与
+强化都返回 memory/conflict，保留用户修订。以新 revision 合并后成功，剩余一条
+active 记忆、evidenceCount=2。这里用受控模型完成值检查事务，不代表模型巩固质量。
+
+三章合成书的摘要绑定当前 contentVersion；进度在第3章时，Plugin 与 Agent 图谱
+只包含前两章 Ada、Ben 和一条关系，当前章 Hidden 不泄露；指定当前章不命中，
+插件自行声称剧透确认返回 memory/invalid-query。改为论述类后旧叙事摘要被过滤，
+恢复叙事类后返回两章；进度归零时图谱为空。Agent 带 bookId 的 memory 查询覆盖
+三种 scope，插件仅返回授权书范围。全部自有书、记忆和贡献已清理。
+
+首次探针摘要未绑定源版本，空图谱属于过期 fixture；修正探针后复跑上述原生路径，
+桌面类型检查通过。见 memory-maintenance-observations.json；不代替真实书摘要的
+语义质量、身份投影的大规模处理或跨设备竞争验收。
+
+桌面解锁后补拍按句阅读前台画面，标题高亮与 Listening Desk 控件实际显示：
+
+![前台按句阅读](./listening-foreground.png)

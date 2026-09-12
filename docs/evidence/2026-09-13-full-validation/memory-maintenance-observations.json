@@ -1,0 +1,275 @@
+{
+  "profile": "com.readaware.app.capability-e2e",
+  "maintenance": {
+    "empty": {
+      "status": "ok",
+      "value": {
+        "memory": false
+      }
+    },
+    "merge": {
+      "committed": true,
+      "snapshots": [
+        {
+          "memory": {
+            "content": "Corrected by real Worker",
+            "createdAt": "2026-09-12T18:46:52.073Z",
+            "evidenceCount": 2,
+            "id": "57c429a6-ec74-40eb-b7e0-3a3cadb32291",
+            "importance": 0.6,
+            "kind": "preference",
+            "pinned": false,
+            "scope": "user",
+            "status": "active",
+            "updatedAt": "2026-09-12T18:47:07.614Z"
+          },
+          "revision": "mem1:077d72d1f51fc2382d885cfad2a6e0f0dbbafe43226fe1a396947679df3a4a8e"
+        }
+      ]
+    },
+    "race": {
+      "after": [
+        {
+          "memory": {
+            "content": "Corrected by real Worker",
+            "createdAt": "2026-09-12T18:46:52.073Z",
+            "evidenceCount": 1,
+            "id": "57c429a6-ec74-40eb-b7e0-3a3cadb32291",
+            "importance": 0.5,
+            "kind": "preference",
+            "pinned": false,
+            "scope": "user",
+            "status": "active",
+            "updatedAt": "2026-09-12T18:47:07.575Z"
+          },
+          "revision": "mem1:292fd795f52edd35a66c4cddc0f4a194303484a74eb1376df6288a82a87fb637"
+        },
+        {
+          "memory": {
+            "content": "Memory Domain Probe 4db874bc-cbf8-477b-98a1-708a6673b8e9: global evidence",
+            "createdAt": "2026-09-12T18:46:52.079Z",
+            "evidenceCount": 1,
+            "id": "667fa42b-f1cd-45c1-a0b3-22790e5b483b",
+            "importance": 0.5,
+            "kind": "preference",
+            "pinned": false,
+            "scope": "global",
+            "status": "active",
+            "updatedAt": "2026-09-12T18:46:52.079Z"
+          },
+          "revision": "mem1:d5228d37d18a9e8089a04e5491ae5cf217b2df8efd80000981715e39293ccb3a"
+        }
+      ],
+      "before": [
+        {
+          "memory": {
+            "content": "Memory Domain Probe 4db874bc-cbf8-477b-98a1-708a6673b8e9: user evidence",
+            "createdAt": "2026-09-12T18:46:52.073Z",
+            "evidenceCount": 1,
+            "id": "57c429a6-ec74-40eb-b7e0-3a3cadb32291",
+            "importance": 0.5,
+            "kind": "preference",
+            "pinned": false,
+            "scope": "user",
+            "status": "active",
+            "updatedAt": "2026-09-12T18:46:52.073Z"
+          },
+          "revision": "mem1:888db51011031fd79edf0d41ca69c0ddb9de1e6f7a98077610633070c443c728"
+        },
+        {
+          "memory": {
+            "content": "Memory Domain Probe 4db874bc-cbf8-477b-98a1-708a6673b8e9: global evidence",
+            "createdAt": "2026-09-12T18:46:52.079Z",
+            "evidenceCount": 1,
+            "id": "667fa42b-f1cd-45c1-a0b3-22790e5b483b",
+            "importance": 0.5,
+            "kind": "preference",
+            "pinned": false,
+            "scope": "global",
+            "status": "active",
+            "updatedAt": "2026-09-12T18:46:52.079Z"
+          },
+          "revision": "mem1:d5228d37d18a9e8089a04e5491ae5cf217b2df8efd80000981715e39293ccb3a"
+        }
+      ],
+      "reinforcement": {
+        "code": "memory/conflict"
+      },
+      "result": {
+        "code": "memory/conflict"
+      }
+    },
+    "read": {
+      "status": "ok",
+      "value": {
+        "commands": false,
+        "memory": true
+      }
+    },
+    "selfSpoiler": {
+      "code": "memory/invalid-query",
+      "status": "error"
+    },
+    "fixtureNote": "Initial graph probe omitted contentVersion and was invalid for current digest reads; corrected and rerun separately."
+  },
+  "maintenanceCleanup": {
+    "ownedBooks": 0,
+    "contributions": 0,
+    "feedbackContributions": 0
+  },
+  "sourceBoundGraph": {
+    "agentMemory": {
+      "items": [
+        {
+          "content": "Memory Domain Probe 4069c7dc-bdb8-4da2-a545-d1ed983a92c1: book:9374e72a-c156-4e7a-9f80-6807d9d91d9f evidence",
+          "createdAt": "2026-09-12T18:48:16.841Z",
+          "evidenceCount": 1,
+          "id": "e1e0b445-f1a2-4860-a4e3-a114411d5927",
+          "importance": 0.5,
+          "kind": "preference",
+          "pinned": false,
+          "scope": "book:9374e72a-c156-4e7a-9f80-6807d9d91d9f",
+          "status": "active",
+          "updatedAt": "2026-09-12T18:48:16.841Z"
+        },
+        {
+          "content": "Memory Domain Probe 4069c7dc-bdb8-4da2-a545-d1ed983a92c1: global evidence",
+          "createdAt": "2026-09-12T18:48:16.840Z",
+          "evidenceCount": 1,
+          "id": "848c644a-281c-41d9-8dd5-f29e812d79a0",
+          "importance": 0.5,
+          "kind": "preference",
+          "pinned": false,
+          "scope": "global",
+          "status": "active",
+          "updatedAt": "2026-09-12T18:48:16.840Z"
+        },
+        {
+          "content": "Memory Domain Probe 4069c7dc-bdb8-4da2-a545-d1ed983a92c1: user evidence",
+          "createdAt": "2026-09-12T18:48:16.838Z",
+          "evidenceCount": 1,
+          "id": "7b493969-cc90-4d22-867a-25d5ab029032",
+          "importance": 0.5,
+          "kind": "preference",
+          "pinned": false,
+          "scope": "user",
+          "status": "active",
+          "updatedAt": "2026-09-12T18:48:16.838Z"
+        }
+      ],
+      "nextOffset": null,
+      "offset": 0,
+      "revision": "mpg2:5596f451c312e1cfbbe87eed940a8a5e1182c3df92b8c35bcb9937d8f342b7a4",
+      "searchedScopes": [
+        "book:9374e72a-c156-4e7a-9f80-6807d9d91d9f",
+        "user",
+        "global"
+      ],
+      "total": 3
+    },
+    "cleanup": {
+      "contributions": 0,
+      "ownedBooks": 0
+    },
+    "early": {
+      "status": "ok",
+      "value": {
+        "fence": "graph clamped to chapters before the reader's position (chapter index 0)",
+        "graph": "empty",
+        "note": "No chapter digests are available within this boundary and flavor. Use the book text for evidence."
+      }
+    },
+    "graph": {
+      "status": "ok",
+      "value": {
+        "chapterRange": [
+          0,
+          1
+        ],
+        "chaptersDigested": 2,
+        "edgeCount": 1,
+        "entities": [
+          {
+            "chapters": 1,
+            "name": "Ada"
+          },
+          {
+            "chapters": 1,
+            "name": "Ben"
+          }
+        ],
+        "entityCount": 2,
+        "fence": "graph clamped to chapters before the reader's position (chapter index 2)",
+        "graph": "overview",
+        "note": "Pass names for profiles with relations and provenance chapters. This is distilled memory, not verbatim source text.",
+        "truncated": false
+      }
+    },
+    "hidden": {
+      "status": "ok",
+      "value": {
+        "fence": "graph clamped to chapters before the reader's position (chapter index 2)",
+        "graph": "miss",
+        "note": "No visible, current-flavor digest for that chapter; it may be absent or beyond the reader's position."
+      }
+    },
+    "memory": {
+      "status": "ok",
+      "value": [
+        {
+          "content": "Memory Domain Probe 4069c7dc-bdb8-4da2-a545-d1ed983a92c1: book:9374e72a-c156-4e7a-9f80-6807d9d91d9f evidence",
+          "createdAt": "2026-09-12T18:48:16.841Z",
+          "evidenceCount": 1,
+          "id": "e1e0b445-f1a2-4860-a4e3-a114411d5927",
+          "importance": 0.5,
+          "kind": "preference",
+          "pinned": false,
+          "scope": "book:9374e72a-c156-4e7a-9f80-6807d9d91d9f",
+          "status": "active",
+          "updatedAt": "2026-09-12T18:48:16.841Z"
+        }
+      ]
+    },
+    "reclassified": {
+      "status": "ok",
+      "value": {
+        "graph": "empty",
+        "note": "No chapter digests are available within this boundary and flavor. Use the book text for evidence."
+      }
+    },
+    "restored": {
+      "status": "ok",
+      "value": {
+        "chapterRange": [
+          0,
+          1
+        ],
+        "chaptersDigested": 2,
+        "edgeCount": 1,
+        "entities": [
+          {
+            "chapters": 1,
+            "name": "Ada"
+          },
+          {
+            "chapters": 1,
+            "name": "Ben"
+          }
+        ],
+        "entityCount": 2,
+        "fence": "graph clamped to chapters before the reader's position (chapter index 2)",
+        "graph": "overview",
+        "note": "Pass names for profiles with relations and provenance chapters. This is distilled memory, not verbatim source text.",
+        "truncated": false
+      }
+    },
+    "selfSpoiler": {
+      "code": "memory/invalid-query",
+      "status": "error"
+    }
+  },
+  "boundaries": {
+    "model": "synthetic digests and controlled consolidation output; real Worker/SQLite race, not live model generation",
+    "visual": "pending locked desktop"
+  }
+}
