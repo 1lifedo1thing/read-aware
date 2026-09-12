@@ -6769,3 +6769,23 @@ dispatches. Both priorities respect reader activity cooldown. Cancelling a
 running parser does not release capacity until it settles. These are process
 local controls, not durable task history or forced parser interruption.
 Text Desk 0.13 and the Agent priority tool consume the same public path.
+
+
+### Virtual book text indexes (Library 1.23)
+
+Virtual books now use the same derived text repository as file-backed books.
+Read-only status does not call the provider. An active source without a resolved
+content hash is `unprepared`; a missing binding or retired provider is
+`unavailable`. Preparation acquires content through the existing guarded parser
+path, derives the actual content hash, and persists normal section checkpoints
+and the final chapter index. Text Desk 0.14 and Agent chapter/TOC reads consume
+this path.
+
+The provider must announce saved content changes through `invalidateVirtualBook`.
+Invalidation, rebinding or a new provider registration invalidates the known
+source token. A fresh source must be resolved before reusing persisted chapters;
+matching content hashes may reuse them. In-flight work also checks its source
+generation, so an old activation cannot publish merely because hashes match.
+Provider unavailability does not delete retained derived bytes or authorize
+reading stale chapters. DOM/provider/public task/Agent tests use controlled
+storage; real Worker/Tauri and restart acceptance remain pending.

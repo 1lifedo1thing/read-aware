@@ -5,7 +5,7 @@ import { parseBookTextRecord, snapshotFromText, textComplete, type BookTextRecor
 
 import { BookTextScheduler } from "./book-text-scheduler";
 
-export type TextSource = { contentVersion: string | null; format: string };
+export type TextSource = { contentVersion: string | null; format: string; revision?: string; available?: boolean };
 export type BookTextDependencies = {
   source(bookId: string, fetchMissing: boolean): Promise<TextSource>;
   read(bookId: string): Promise<unknown>;
@@ -25,13 +25,13 @@ export type TextPreparationOptions = {
   /** Internal request checkpoint: reset completed, so a resumed rebuild must not erase new progress. */
   onRebuildReset?(): void;
 };
-type Job = { version: string; controller: AbortController; snapshot: BookTextSnapshot; promise: Promise<PreparedText>;
+type Job = { version: string; sourceRevision?: string; controller: AbortController; snapshot: BookTextSnapshot; promise: Promise<PreparedText>;
   settled: boolean; waitReason: BookTextWaitReason; consumers: Map<symbol, TextPreparationOptions> };
 
 /** Owns extraction, durable verdicts and current-source reads. No independent chapter cache. */
 export class BookTextRepository {
   private jobs = new Map<string, Job>();
-  private failures = new Map<string, { version: string; code: string }>();
+  private failures = new Map<string, { version: string; sourceRevision?: string; code: string }>();
   private writes = new Map<string, Promise<void>>();
   private readonly scheduler: BookTextScheduler;
   constructor(private readonly deps: BookTextDependencies) { this.scheduler = new BookTextScheduler(deps.yieldToReader); }
@@ -43,9 +43,10 @@ export class BookTextRepository {
   private async record(bookId: string, version: string): Promise<BookTextRecord | null> {
     return parseBookTextRecord(await this.deps.read(bookId), bookId, version);
   }
-  private async checkSource(bookId: string, version: string, signal?: AbortSignal): Promise<void> {
+  private async checkSource(bookId: string, version: string, signal?: AbortSignal, revision?: string): Promise<void> {
     signal?.throwIfAborted();
-    if ((await this.source(bookId)).contentVersion !== version) throw new AppError("reader/stale-location", "Text source changed during extraction");
+    const source = await this.source(bookId);
+    if (source.contentVersion !== version || source.revision !== revision) throw new AppError("reader/stale-location", "Text source changed during extraction");
     signal?.throwIfAborted();
   }
   private queueWrite(bookId: string, write: () => Promise<void>): Promise<void> {
@@ -59,23 +60,23 @@ export class BookTextRepository {
   async snapshot(bookId: string): Promise<BookTextSnapshot> {
     const source = await this.source(bookId);
     const base: BookTextSnapshot = { bookId, contentVersion: source.contentVersion, status: "unprepared", text: "unknown", chapterCount: 0, progress: null };
-    if (source.format === "virtual") return { ...base, status: "unsupported" };
+    if (source.format === "virtual" && !source.contentVersion && source.available) return base;
     if (!source.contentVersion) return { ...base, status: "unavailable", errorCode: "library/content-unavailable" };
     const job = this.jobs.get(bookId);
-    if (job?.version === source.contentVersion) return structuredClone(job.snapshot);
+    if (job?.version === source.contentVersion && job.sourceRevision === source.revision) return structuredClone(job.snapshot);
     const record = await this.record(bookId, source.contentVersion);
-    await this.checkSource(bookId, source.contentVersion);
+    await this.checkSource(bookId, source.contentVersion, undefined, source.revision);
     const state = record ? snapshotFromText(record) : base;
     const failure = this.failures.get(bookId);
-    if (failure?.version === source.contentVersion) return { ...state, status: state.status === "partial" || state.status === "unsupported" ? state.status : "error", errorCode: failure.code };
+    if (failure?.version === source.contentVersion && failure.sourceRevision === source.revision) return { ...state, status: state.status === "partial" || state.status === "unsupported" ? state.status : "error", errorCode: failure.code };
     return state;
   }
 
   async persisted(bookId: string): Promise<ExtractedChapter[] | null> {
     const source = await this.source(bookId);
-    if (!source.contentVersion || source.format === "virtual") return null;
+    if (!source.contentVersion) return null;
     const record = await this.record(bookId, source.contentVersion);
-    await this.checkSource(bookId, source.contentVersion);
+    await this.checkSource(bookId, source.contentVersion, undefined, source.revision);
     if (this.jobs.has(bookId)) return null;
     return record && textComplete(record) ? record.chapters : null;
   }
@@ -136,14 +137,13 @@ export class BookTextRepository {
     options.signal?.throwIfAborted();
     const source = await this.source(bookId, true);
     options.signal?.throwIfAborted();
-    if (source.format === "virtual") return { chapters: [], state: { bookId, contentVersion: null, status: "unsupported", text: "unknown", chapterCount: 0, progress: null } };
     const version = source.contentVersion;
     if (!version) throw new AppError("library/content-unavailable", "Book source is unavailable");
     const prior = await this.record(bookId, version);
-    await this.checkSource(bookId, version);
+    await this.checkSource(bookId, version, undefined, source.revision);
     options.signal?.throwIfAborted();
     let job = this.jobs.get(bookId);
-    if (job && job.version !== version) {
+    if (job && (job.version !== version || job.sourceRevision !== source.revision)) {
       job.controller.abort(new AppError("reader/stale-location", "Text source changed"));
       job = undefined;
     }
@@ -155,7 +155,7 @@ export class BookTextRepository {
     if (!job) {
       // Install before asynchronous extraction, so callers share one parser.
       const controller = new AbortController();
-      const next: Job = { version, controller,
+      const next: Job = { version, sourceRevision: source.revision, controller,
         snapshot: { bookId, contentVersion: version, status: "preparing", text: "unknown", chapterCount: 0, progress: null },
         settled: false, waitReason: null, consumers: new Map(), promise: Promise.resolve({ chapters: [], state: { bookId, contentVersion: version, status: "preparing", text: "unknown", chapterCount: 0, progress: null } }) };
       this.jobs.set(bookId, next); this.failures.delete(bookId);
@@ -163,7 +163,7 @@ export class BookTextRepository {
       const current = async () => {
         signal.throwIfAborted();
         if (this.jobs.get(bookId) !== next) throw new AppError("reader/stale-location", "Text extraction was replaced");
-        await this.checkSource(bookId, version, signal);
+        await this.checkSource(bookId, version, signal, source.revision);
       };
       next.promise = (async () => {
         await current();
@@ -191,7 +191,7 @@ export class BookTextRepository {
         if (!textComplete(result)) throw new AppError(result.failures[0]?.code ?? (result.unsupported.length || !result.required.length ? "library/text-unsupported" : "library/text-extraction-failed"), "Book text extraction did not read every required section", { retryable: result.failures.length > 0 });
         return { chapters: result.chapters, state: snapshotFromText(result) };
       })().catch(error => {
-        if (this.jobs.get(bookId) === next && !signal.aborted) this.failures.set(bookId, { version, code: errorCode(error) ?? "library/text-extraction-failed" });
+        if (this.jobs.get(bookId) === next && !signal.aborted) this.failures.set(bookId, { version, sourceRevision: source.revision, code: errorCode(error) ?? "library/text-extraction-failed" });
         if (!signal.aborted) this.deps.warn("Book text extraction failed", error);
         throw error;
       }).finally(() => { next.settled = true; if (this.jobs.get(bookId) === next) this.jobs.delete(bookId); });

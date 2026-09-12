@@ -7,6 +7,7 @@ import type { FoliateBook } from "../../reader/lib/foliate-engine";
 import { withBookContent } from "./book-content-source";
 import { getBookRecord, getStoredBookFile } from "./library-db";
 import { BookTextRepository } from "./book-text-repository";
+import { getVirtualTextSource, forgetVirtualTextSource } from "./virtual-text-source";
 import { BookTextTaskOwner } from "./book-text-tasks";
 export type { ExtractedChapter } from "./book-text-record";
 
@@ -27,7 +28,7 @@ const repository = new BookTextRepository({
   source: async (bookId, fetchMissing) => {
     const book = await getBookRecord(bookId);
     if (!book) throw new AppError("library/book-not-found", "Book is not in the library");
-    if (book.format === "virtual") return { format: book.format, contentVersion: null };
+    if (book.format === "virtual") return getVirtualTextSource(bookId, fetchMissing);
     let info = await getDesktopBlobInfo(`bookfile:${bookId}`);
     if (!info?.sha256 && fetchMissing) {
       if (!await getStoredBookFile(book)) throw new AppError("library/content-unavailable", "Book source is missing locally and could not be retrieved");
@@ -59,6 +60,7 @@ const repository = new BookTextRepository({
 });
 
 onAppEvent("book-removed", ({ bookId }) => {
+  forgetVirtualTextSource(bookId);
   void repository.remove(bookId).catch(error => log.warn("Removed book text cleanup failed", error));
 });
 

@@ -149,9 +149,9 @@ test("unsupported or absent linear sections cannot masquerade as successfully re
     await expect(h.repo.ensure("book")).rejects.toMatchObject({ code: "library/text-unsupported" });
     expect(await h.repo.snapshot("book")).toMatchObject({ status: "unsupported", text: "unknown" });
   }
-  const virtual = harness(); virtual.source({ format: "virtual", contentVersion: null });
-  expect(await virtual.repo.snapshot("book")).toMatchObject({ status: "unsupported", text: "unknown" });
-  expect(await virtual.repo.ensure("book")).toEqual([]); expect(virtual.parses()).toBe(0);
+  const virtual = harness(); virtual.source({ format: "virtual", contentVersion: null, available: true });
+  expect(await virtual.repo.snapshot("book")).toMatchObject({ status: "unprepared", text: "unknown" });
+  await expect(virtual.repo.ensure("book")).rejects.toMatchObject({ code: "library/content-unavailable" }); expect(virtual.parses()).toBe(0);
 });
 
 test("preparing persists until the exact durable write completes; read failures remain errors", async () => {
@@ -298,4 +298,22 @@ test("shared extraction inherits live consumer priority and cancellation downgra
   gates.get("b")!.resolve(prose); await settle(); expect(entered.at(-1)).toBe("shared");
   expect(entered.filter(id => id === "shared")).toHaveLength(1);
   for (const gate of gates.values()) gate.resolve(prose); await Promise.all(requests);
+});
+
+test("virtual content uses the same durable index and validates generation changes even when bytes match", async () => {
+  const h = harness();
+  h.source({ format: "virtual", contentVersion: "virtual:sha256:a", revision: "provider-1" });
+  expect(await h.repo.prepare("book")).toMatchObject({ status: "ready", text: "available" });
+  expect((await h.repo.persisted("book"))![0]!.text).toBe(prose); expect(h.parses()).toBe(1);
+  h.source({ format: "virtual", contentVersion: null, available: true, revision: "provider-2" });
+  expect((await h.repo.snapshot("book")).status).toBe("unprepared"); expect(await h.repo.persisted("book")).toBeNull();
+  // A fresh provider must first resolve content; equal resolved bytes may reuse
+  // the durable index, but a previous in-flight generation cannot publish.
+  h.source({ format: "virtual", contentVersion: "virtual:sha256:a", revision: "provider-2" });
+  expect(await h.repo.prepare("book")).toMatchObject({ status: "ready" }); expect(h.parses()).toBe(1);
+  const entered = deferred(), gate = deferred<string>();
+  h.book(makeBook([async () => { entered.resolve(); return gate.promise; }]));
+  const pending = h.repo.prepare("book", { rebuild: true }).catch(e => e); await entered.promise;
+  h.source({ format: "virtual", contentVersion: "virtual:sha256:a", revision: "provider-3" }); gate.resolve(prose);
+  expect(await pending).toMatchObject({ code: "reader/stale-location" }); expect(await h.repo.persisted("book")).toBeNull();
 });
