@@ -107,6 +107,12 @@ const SURFACE_CASES: Record<string, Record<string, unknown>> = {
   list_plugin_contributions: {},
   copy_to_clipboard: { text: "Requested text" },
   export_text_file: { filename: "reading.txt", content: "Requested text" },
+  read_book_image: { image: { bookId: BOOK_ID, contentVersion: "v1", sectionIndex: 0, index: 0 } },
+  open_resource_external: { id: "surface-file" },
+  pick_resource_directory: {},
+  list_resource_directory: { id: "surface-directory" },
+  open_directory_resource: { id: "surface-directory", relativePath: "book.txt" },
+  release_resource_directory: { id: "surface-directory" },
   open_external_url: { url: "https://readaware.app/" },
   get_host_environment: {},
   get_host_capabilities: {},
@@ -272,7 +278,12 @@ describe("tool surface contract", () => {
         const resources = deps.resources("surface");
         deps.downloadResource = async () => ({ status: "downloaded", resource: { id: "downloaded", name: "book.txt", mimeType: "text/plain",
           size: 10, state: "ready", source: "created", expiresAt: Date.parse("2026-09-10T12:00:00Z") } });
-        deps.resources = () => ({ ...resources, copyImage: async () => ({ copied: true, width: 2, height: 3 }) });
+        deps.bookText.readImageInput = async (_owner, input) => ({ status: "missing", image: { image: input.image, alt: "Missing illustration" } });
+        deps.resources = () => ({ ...resources,
+          pickDirectory: async () => ({ cancelled: false, directory: { id: "surface-directory", name: "Reading", expiresAt: Date.parse("2026-09-13T12:00:00Z") } }),
+          listDirectory: async () => ({ entries: [{ name: "book.txt", relativePath: "book.txt", kind: "file", size: 10 }], nextCursor: null, omittedCount: 0 }),
+          openDirectoryFile: async () => ({ id: "surface-file", name: "book.txt", mimeType: "text/plain", size: 10, source: "picked", state: "ready", expiresAt: Date.parse("2026-09-13T12:00:00Z") }),
+          releaseDirectory: async () => {}, openAssociated: async () => ({ opened: true }), copyImage: async () => ({ copied: true, width: 2, height: 3 }) });
         deps.library.inspectResource = async () => ({ status: "parsed", coverage: "initialization", formatHint: "epub", sectionCount: 3, errorCode: null });
         deps.settings.resetReading = async () => ({ changed: [], settings: await deps.settings.getSettings({ section: "reading" }) });
         const importTask: import("@read-aware/core").BookImportTaskSnapshot = { taskId: "import-task", sourceName: "book.epub", phase: "completed", revision: 3,

@@ -3,7 +3,7 @@ import { Type } from "@earendil-works/pi-ai";
 import { AppError, RESOURCE_EXTERNAL_EXTENSIONS, type ResourcePickOptions, type ResourceDirectoryQuery } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import { threadScopeKey, type ThreadScope } from "../thread-scope";
-import { textResult } from "./tool-result";
+import { resourceTextResult as textResult } from "./tool-result";
 import { requestUserInteraction } from "./user-interaction";
 
 export function buildResourceTools(scope: ThreadScope, deps: RuntimeDeps): AgentTool[] {

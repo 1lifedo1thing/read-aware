@@ -6,7 +6,7 @@ import { threadScopeKey, type ThreadScope } from "../thread-scope";
 import type { AgentTurnState } from "./turn-state";
 import { assertSpoilerPermission, confirmSpoilerSchema, spoilerGranted } from "./book-text-tools";
 import { resolveBookId } from "./current-book";
-import { textResult } from "./tool-result";
+import { resourceTextResult as textResult } from "./tool-result";
 
 const imageParameters = Type.Object({ image: Type.Object({ bookId: Type.String({ minLength: 1, maxLength: 512 }),
   contentVersion: Type.String({ minLength: 1, maxLength: 256 }), sectionIndex: Type.Integer({ minimum: 0 }), index: Type.Integer({ minimum: 0 }) }, { additionalProperties: false }),
