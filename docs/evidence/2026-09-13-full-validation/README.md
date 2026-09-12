@@ -955,3 +955,32 @@ Message焦点；Remove passage恢复普通输入且Send禁用，随后关闭Chat
 用户确认解锁后CUA仍返回Mac locked，随后状态读取超时；复制和菜单编辑器保留
 待验。已有标注浮层曾在截图可见但完整AX树缺失，未操作其编辑动作，不冒称
 可访问性通过。其他格式/重绑/模型回答另列，无源码改动，不重复全量测试。
+
+## 第三十七流程：Text Desk 多查询/跨书搜索和真实 Agent 正文端口
+
+macOS debug Tauri，复用现有导入驱动和编译Text Desk 0.22.0真实Worker。新增两本
+自有FB2，原有两份隔离资料保持。先从未准备书进入Search this book；空输入实际
+显示1–12条、每条1024字符限制。提交三条查询Deterministic acceptance / second
+source / Red left，搜索完成并显示两章exact命中；同章相近命中按现有200字符桶
+合并，非丢失一章。第二章详情显示Second sectionA second source section for navigation.。
+点击Open book打开同一书，后续会话ready、href=0、正文range available且不截断。
+该动作定义为开书，不按搜索片段自动定位第二章，不把片段当作CFI。
+
+准备伴随书后从Search indexed books提交相同短语，两本书各一个exact命中，
+书名/章节/片段与原生存储端口重新读取一致；global Agent工具返回同样两条。
+Back恢复原查询草稿；替换为唯一不存在词，显示No matches in the searched index，
+没有宣称所有未索引资料都无此词。
+
+另通过实际Tauri RuntimeDeps执行book/global get_toc和read_chapter：目录两项的
+chapterIndex=0/1、chapterNumber=1/2、chars=102/53；第二章正文相同、part=0、
+totalParts=1。源导航目录由宿主和book Agent读取，包含两个正文节和一个脚注节，
+ordinal=1/2/3、href=0/1/2、同一contentVersion。抽取目录没有暴露源href。
+设置测试turnState的throughChapterIndex=-1后，读第0章明确拒绝，搜索返回0命中
+并保留该围栏。这里是直接执行真实端口工具，未运行模型回合，不计语义评分。
+
+证据：[text-query-composition-observations.json](./text-query-composition-observations.json)。
+清理两本精确自有ID均committed/files released，书库恢复原两书、会话idle，
+导入驱动book=null/collections空，Library Desk和Text Desk恢复贡献各5项。
+本轮WebView hidden，验的是真实Worker/索引/端口/DOM，不计前台像素或release。
+长章分段、嵌套目录、其他格式、取消/背压/分页及跨Worker/进程重启仍待验。
+无产品代码改动，无重复全量门禁。
