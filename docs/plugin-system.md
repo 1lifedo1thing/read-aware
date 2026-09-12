@@ -6878,3 +6878,20 @@ Accepted native writes drain during retirement; undispatched retired work fails.
 RSS Reader 0.16 uses this through its existing subscription/ensure-book flow.
 The RSS private subscription and host deletion still need their separate recovery
 flow. SQLite/host contract checks are not actual Tauri/Worker startup acceptance.
+
+
+### Interrupted RSS removal (Library 1.27; RSS Reader 0.17)
+
+`removeVirtualBook` accepts an optional `expectedBookId`. A different current
+binding rejects before deletion; an already unbound target can finish cleanup.
+RSS saves a unique removal intent with its private document revision before
+requesting host removal. Its final private delete checks the same book, intent
+and current document revision. A replaced subscription is retained.
+
+Pending entries show a finish-unsubscribe action and `list_feeds` exposes
+`removalPending`. Opening, automatic refresh and stale refresh buttons cannot
+recreate these books. The first actual operation after activation and scheduled
+refresh recover pending removals, completing the scan before writing; failed
+intents remain retryable. No work is started from staging. This recovery does
+not make host, binding, file and private document operations one transaction.
+New actual Worker/Tauri interruption/restart acceptance is still pending.

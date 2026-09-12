@@ -1,4 +1,4 @@
-import { subscribe } from "./feed-library";
+import { refreshFeed } from "./feed-library";
 import { loadFeeds, reclaimFeedContent } from "./storage";
 import { tr } from "./strings";
 import type { RssPluginContext } from "./types";
@@ -11,7 +11,7 @@ async function refreshFeeds(ctx: RssPluginContext) {
   let refreshed = 0, failed = 0, firstError: unknown;
   await Promise.all(Array.from({ length: Math.min(REFRESH_CONCURRENCY, total) }, async () => {
     for (let feed = queue.shift(); feed; feed = queue.shift()) {
-      try { await subscribe(ctx, feed.url); refreshed++; }
+      try { if (await refreshFeed(ctx, feed.url)) refreshed++; }
       catch (error) {
         if (failed === 0) firstError = error;
         failed++;

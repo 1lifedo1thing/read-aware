@@ -94,9 +94,12 @@ export async function invalidateOwnedVirtualBook(
 export async function removeOwnedVirtualBook(
   binding: VirtualBookBinding,
   removeBook: (bookId: string) => Promise<void>,
+  expectedBookId?: string,
 ): Promise<void> {
   const bookId = await afterLocalKVWrites(() => findVirtualBookId(binding));
+  if (expectedBookId !== undefined && (typeof expectedBookId !== "string" || !expectedBookId.trim() || expectedBookId.length > 256)) throw new AppError("plugin/invalid-argument", "Invalid expected virtual book ID");
   if (!bookId) return;
+  if (expectedBookId !== undefined && bookId !== expectedBookId) throw new AppError("reader/superseded", "Virtual book binding changed since removal was requested");
   await removeBook(bookId);
   await unbindVirtualBookDurably(bookId, binding);
 }

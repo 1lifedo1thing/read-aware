@@ -98,3 +98,13 @@ test("corrupt registry is a failed read, never a successful no-op deletion or ov
     expect(values.get(registryKey)).toBe(raw);
   }
 });
+
+
+test("an expected book guard refuses a replacement binding before deleting and allows already-unbound recovery", async () => {
+  bindVirtualBook("replacement", binding);
+  let removed = false;
+  await expect(removeOwnedVirtualBook(binding, async () => { removed = true; }, "old-book")).rejects.toMatchObject({ code: "reader/superseded" });
+  expect(removed).toBe(false); expect(getVirtualBookBinding("replacement")).toEqual(binding);
+  await removeOwnedVirtualBook(binding, async () => { removed = true; }, "replacement"); expect(removed).toBe(true);
+  await removeOwnedVirtualBook(binding, async () => { throw Error("must not repeat deletion"); }, "replacement");
+});

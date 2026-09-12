@@ -52,6 +52,8 @@ test("public virtual creation waits for its atomic receipt, coalesces duplicate 
     await Bun.sleep(0);expect(creates).toBe(1);expect(settled).toBe(false);expect(books.size).toBe(0);
     release!();const [a,b]=await Promise.all([first,second]);expect(a.id).toBe(b.id);expect(b.title).toBe("Updated");expect(books.size).toBe(1);
     expect(getVirtualBookBinding(a.id)).toEqual({pluginId:"binding-owner",providerId:"feed",key:"one"});
+    await expect(api.removeVirtualBook({providerId:"feed",key:"one",expectedBookId:"old-book"})).rejects.toMatchObject({code:"reader/superseded"});
+    expect(books.has(a.id)).toBe(true);
     const foreign=await other.context.domains.library!.commands!.books.addVirtualBook({providerId:"feed",key:"one",title:"Foreign"});
     expect(foreign.id).not.toBe(a.id);
     reject=true;

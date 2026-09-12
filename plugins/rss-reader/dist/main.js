@@ -3698,7 +3698,7 @@ function readArticle(value) {
   };
 }
 function readFeed(value) {
-  if (!isRecord(value) || typeof value.url !== "string" || typeof value.title !== "string" || typeof value.bookId !== "string") {
+  if (!isRecord(value) || typeof value.url !== "string" || typeof value.title !== "string" || typeof value.bookId !== "string" || value.removalId !== undefined && (typeof value.removalId !== "string" || !value.removalId || value.removalId.length > 80)) {
     return null;
   }
   const articles = Array.isArray(value.articles) ? value.articles.map(readArticle).filter((article) => article !== null) : [];
@@ -3710,7 +3710,8 @@ function readFeed(value) {
     lastFetched: typeof value.lastFetched === "string" ? value.lastFetched : "",
     articles,
     ...typeof value.contentId === "string" ? { contentId: value.contentId } : {},
-    ...value.contentPending === true ? { contentPending: true } : {}
+    ...value.contentPending === true ? { contentPending: true } : {},
+    ...typeof value.removalId === "string" ? { removalId: value.removalId } : {}
   };
 }
 async function loadFeeds(ctx) {
@@ -3719,7 +3720,10 @@ async function loadFeeds(ctx) {
 }
 async function getFeed(ctx, url) {
   const document = await ctx.services.storage.collection(COLLECTION).get(url);
-  return document ? readFeed(document.data) : null;
+  const feed = document ? readFeed(document.data) : null;
+  if (document && !feed)
+    throw Object.assign(new Error("Invalid RSS subscription"), { code: "plugin/invalid-data" });
+  return feed;
 }
 var conflict = () => Object.assign(new Error("RSS storage changed; retry the operation"), { code: "plugin/storage-conflict" });
 async function upsertFeed(ctx, feed, content) {
@@ -3738,13 +3742,15 @@ async function upsertFeed(ctx, feed, content) {
   if (result.status !== "applied")
     throw conflict();
 }
-async function removeFeed(ctx, url) {
+async function removeFeed(ctx, url, expected) {
   const document = await ctx.services.storage.collection(COLLECTION).get(url);
   if (!document)
     return;
   const feed = readFeed(document.data);
   if (!feed)
     throw Object.assign(new Error("Invalid RSS subscription"), { code: "plugin/invalid-data" });
+  if (expected && (feed.bookId !== expected.bookId || feed.removalId !== expected.removalId))
+    throw conflict();
   const result = await ctx.services.storage.applyDocuments([{ kind: "delete", collection: COLLECTION, id: url, expectedRevision: document.revision }]);
   if (result.status !== "applied")
     throw conflict();
@@ -3810,6 +3816,48 @@ async function reclaimFeedContent(ctx) {
       removed++;
   return { scanned: candidates.length, removed };
 }
+async function markFeedRemoval(ctx, url, expectedBookId) {
+  const document = await ctx.services.storage.collection(COLLECTION).get(url);
+  if (!document)
+    return null;
+  const feed = readFeed(document.data);
+  if (!feed)
+    throw Object.assign(new Error("Invalid RSS subscription"), { code: "plugin/invalid-data" });
+  if (expectedBookId !== undefined && feed.bookId !== expectedBookId)
+    throw Object.assign(new Error("RSS subscription changed since approval"), { code: "reader/superseded" });
+  if (feed.removalId)
+    return feed;
+  const marked = { ...feed, removalId: crypto.randomUUID() };
+  const result = await ctx.services.storage.applyDocuments([{
+    kind: "put",
+    collection: COLLECTION,
+    id: url,
+    expectedRevision: document.revision,
+    data: marked,
+    bookId: feed.bookId
+  }]);
+  if (result.status !== "applied")
+    throw conflict();
+  return marked;
+}
+async function pendingFeedRemovals(ctx) {
+  const pending = [];
+  let cursor;
+  do {
+    const page = await ctx.services.storage.collection(COLLECTION).page({ limit: 100, cursor });
+    if (page.status === "stale-cursor")
+      throw conflict();
+    for (const row of page.items) {
+      const feed = readFeed(row.data);
+      if (!feed || feed.url !== row.id)
+        throw Object.assign(new Error("Invalid RSS subscription"), { code: "plugin/invalid-data" });
+      if (feed.removalId)
+        pending.push(feed);
+    }
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor !== undefined);
+  return pending;
+}
 
 // src/feed-library.ts
 var recoveries = new WeakMap;
@@ -3819,7 +3867,9 @@ function serial(ctx, url, work) {
   if (!queue) {
     queue = new Map;
     queues.set(ctx, queue);
-    const recovery = reclaimFeedContent(ctx).catch((error) => {
+    const recovery = recoverFeedRemovals(ctx).catch((error) => {
+      console.warn("RSS removal recovery deferred", error);
+    }).then(() => reclaimFeedContent(ctx)).catch((error) => {
       console.warn("RSS cache recovery deferred", error);
     });
     recoveries.set(ctx, recovery);
@@ -3835,6 +3885,7 @@ function serial(ctx, url, work) {
 }
 async function saveRefresh(ctx, url, notify) {
   const existing = await getFeed(ctx, url);
+  assertNotRemoving(existing);
   const { title, articles, content } = await fetchFeed(ctx, url);
   const book = await ctx.domains.library.commands.books.addVirtualBook({ providerId: PROVIDER_ID, key: url, title, author: "RSS" });
   const prepared = await prepareContent(url, content);
@@ -3882,6 +3933,7 @@ function subscribeIfMissing(ctx, url) {
     return Promise.reject(Object.assign(new Error("Invalid feed URL"), { code: "plugin/invalid-input" }));
   return serial(ctx, url, async () => {
     const existing = await getFeed(ctx, url);
+    assertNotRemoving(existing);
     if (existing)
       return { created: false, feed: existing };
     return { created: true, feed: await saveRefresh(ctx, url, true) };
@@ -3892,6 +3944,7 @@ function ensureBook(ctx, input) {
     const feed = await getFeed(ctx, input.url);
     if (!feed)
       throw Object.assign(new Error("RSS subscription was removed"), { code: "library/book-not-found" });
+    assertNotRemoving(feed);
     const book = await ctx.domains.library.commands.books.addVirtualBook({ providerId: PROVIDER_ID, key: feed.url, title: feed.title, author: "RSS" });
     if (book.id === feed.bookId)
       return feed;
@@ -3905,6 +3958,7 @@ function loadFeedContent(ctx, url) {
     const feed = await getFeed(ctx, url);
     if (!feed)
       throw Object.assign(new Error("RSS subscription was removed"), { code: "library/book-not-found" });
+    assertNotRemoving(feed);
     const cached = await cachedContent(ctx, feed);
     if (cached)
       return cached;
@@ -3917,11 +3971,11 @@ function loadFeedContent(ctx, url) {
 }
 function unsubscribeFeed(ctx, url, expectedBookId) {
   return serial(ctx, url, async () => {
-    if (expectedBookId !== undefined && (await getFeed(ctx, url))?.bookId !== expectedBookId) {
-      throw Object.assign(new Error("RSS subscription changed since approval"), { code: "reader/superseded" });
-    }
-    await ctx.domains.library.commands.books.removeVirtualBook({ providerId: PROVIDER_ID, key: url });
-    await removeFeed(ctx, url);
+    const feed = await markFeedRemoval(ctx, url, expectedBookId);
+    if (feed)
+      await finishFeedRemoval(ctx, feed);
+    else
+      await ctx.domains.library.commands.books.removeVirtualBook({ providerId: PROVIDER_ID, key: url, expectedBookId });
   });
 }
 async function forgetRemovedBook(ctx, bookId) {
@@ -3929,9 +3983,10 @@ async function forgetRemovedBook(ctx, bookId) {
   if (!feed)
     return null;
   return serial(ctx, feed.url, async () => {
-    if ((await getFeed(ctx, feed.url))?.bookId !== bookId)
+    const current = await getFeed(ctx, feed.url);
+    if (current?.bookId !== bookId)
       return null;
-    await removeFeed(ctx, feed.url);
+    await removeFeed(ctx, feed.url, { bookId, removalId: current.removalId });
     return feed;
   });
 }
@@ -3954,6 +4009,45 @@ async function openFeed(ctx, input, articleId) {
   session = await ctx.domains.reading.queries.session();
   if (articleId)
     await ctx.domains.reading.commands.goTo({ bookId: feed.bookId, href: articleId, contentVersion: session.location?.contentVersion });
+}
+function assertNotRemoving(feed) {
+  if (feed?.removalId)
+    throw Object.assign(new Error("RSS removal is pending; finish unsubscribe before opening or refreshing"), { code: "plugin/storage-conflict" });
+}
+async function finishFeedRemoval(ctx, feed) {
+  const current = await getFeed(ctx, feed.url);
+  if (!current)
+    return;
+  if (!feed.removalId || current.removalId !== feed.removalId || current.bookId !== feed.bookId) {
+    throw Object.assign(new Error("RSS removal intent was replaced"), { code: "plugin/storage-conflict" });
+  }
+  await ctx.domains.library.commands.books.removeVirtualBook({ providerId: PROVIDER_ID, key: feed.url, expectedBookId: feed.bookId });
+  await removeFeed(ctx, feed.url, { bookId: feed.bookId, removalId: feed.removalId });
+}
+async function recoverFeedRemovals(ctx) {
+  let failure;
+  for (const feed of await pendingFeedRemovals(ctx)) {
+    try {
+      await finishFeedRemoval(ctx, feed);
+    } catch (error) {
+      failure ??= error;
+      console.warn("RSS pending removal failed", error);
+    }
+  }
+  if (failure)
+    throw failure;
+}
+function refreshFeed(ctx, url) {
+  return serial(ctx, url, async () => {
+    const feed = await getFeed(ctx, url);
+    if (!feed)
+      return null;
+    if (feed.removalId) {
+      await finishFeedRemoval(ctx, feed);
+      return null;
+    }
+    return saveRefresh(ctx, url, true);
+  });
 }
 
 // src/opml.ts
@@ -4064,7 +4158,7 @@ function registerAgentTools(ctx) {
     label: "Unsubscribe from RSS",
     contexts: ["global"],
     approval: "required",
-    description: "Unsubscribe from this exact RSS URL and bookId returned by list_feeds. Removes the virtual book, its associated reading data and plugin-cached articles. This cannot be undone. A recreated subscription with a different bookId is refused.",
+    description: "Unsubscribe from this exact RSS URL and bookId returned by list_feeds. Removes the virtual book, its associated reading data and plugin-cached articles. This cannot be undone. A recreated subscription with a different bookId is refused. The deletion intent is saved before host removal and retried after interruptions; list_feeds exposes removalPending. Pending removal is not a completed unsubscribe, and refresh/open will not recreate its book.",
     parameters: { type: "object", properties: {
       url: { type: "string", minLength: 1, maxLength: 2048 },
       bookId: { type: "string", minLength: 1, maxLength: 256 }
@@ -4099,6 +4193,7 @@ function registerAgentTools(ctx) {
         url: feed.url,
         bookId: feed.bookId,
         lastFetched: feed.lastFetched,
+        removalPending: !!feed.removalId,
         articleCount: feed.articles.length,
         articles: feed.articles.slice(0, limit).map((article) => ({
           title: article.title,
@@ -4125,7 +4220,7 @@ function registerAgentTools(ctx) {
       const url = typeof params.url === "string" ? params.url.trim() : "";
       const existing = await getFeed(ctx, url);
       if (existing) {
-        return { subscribed: false, reason: "already subscribed", feed: existing.title };
+        return { subscribed: false, reason: existing.removalId ? "unsubscribe pending" : "already subscribed", feed: existing.title };
       }
       const feed = await subscribe(ctx, url);
       return {
@@ -4160,6 +4255,7 @@ function registerAgentTools(ctx) {
         title: feed.title,
         url: feed.url,
         lastFetched: feed.lastFetched,
+        removalPending: !!feed.removalId,
         articles: feed.articles.map((article) => ({
           title: article.title,
           link: article.link,
@@ -4172,6 +4268,17 @@ function registerAgentTools(ctx) {
 
 // src/strings.ts
 var STRINGS = {
+  pendingRemoval: {
+    default: "Unsubscribe is pending. Opening and refresh are disabled until its saved removal finishes. It can be retried without recreating the book.",
+    "zh-Hans": "退订尚未完成。已保存的删除完成前暂停打开和刷新，可重试完成退订，不会重新创建书籍。",
+    "zh-Hant": "退訂尚未完成。已儲存的刪除完成前暫停開啟及重新整理，可重試完成退訂，不會重新建立書籍。",
+    ja: "購読解除が未完了です。保存済みの削除が完了するまで表示・更新できません。本を再作成せずに再試行できます。",
+    ru: "Отмена подписки не завершена. Открытие и обновление приостановлены до завершения сохранённого удаления. Повтор не создаст книгу заново.",
+    fr: "Désabonnement en attente. L’ouverture et l’actualisation sont suspendues jusqu’à la fin de la suppression enregistrée. Réessayer ne recrée pas le livre.",
+    de: "Abbestellung ausstehend. Öffnen und Aktualisieren sind bis zum Abschluss der gespeicherten Löschung gesperrt. Ein neuer Versuch erstellt das Buch nicht erneut.",
+    es: "Baja pendiente. La apertura y actualización están pausadas hasta terminar la eliminación guardada. Reintentar no vuelve a crear el libro."
+  },
+  finishRemoval: { default: "Finish unsubscribe", "zh-Hans": "完成退订", "zh-Hant": "完成退訂", ja: "購読解除を完了", ru: "Завершить отмену", fr: "Terminer le désabonnement", de: "Abbestellung abschließen", es: "Completar baja" },
   chooseOpmlFile: {
     default: "Choose OPML file",
     "zh-Hans": "选择 OPML 文件",
@@ -4608,8 +4715,8 @@ async function refreshFeeds(ctx) {
   await Promise.all(Array.from({ length: Math.min(REFRESH_CONCURRENCY, total) }, async () => {
     for (let feed = queue.shift();feed; feed = queue.shift()) {
       try {
-        await subscribe(ctx, feed.url);
-        refreshed++;
+        if (await refreshFeed(ctx, feed.url))
+          refreshed++;
       } catch (error) {
         if (failed === 0)
           firstError = error;
@@ -4853,6 +4960,16 @@ function opmlResultView(ctx, text, result) {
   };
 }
 function feedDetailView(ctx, feed) {
+  if (feed.removalId)
+    return {
+      kind: "detail",
+      title: feed.title,
+      content: [{ kind: "text", text: tr(ctx.locale, "pendingRemoval") }],
+      actions: [{ id: "remove", label: tr(ctx.locale, "finishRemoval"), icon: "trash", variant: "danger", run: async () => {
+        await unsubscribeFeed(ctx, feed.url, feed.bookId);
+        return { toast: tr(ctx.locale, "unsubscribedFrom", { title: feed.title }), view: await rssPageView(ctx), navigation: "reset" };
+      } }]
+    };
   const articleItems = feed.articles.map((article) => ({
     id: article.id,
     title: article.title,
@@ -4895,7 +5012,9 @@ function feedDetailView(ctx, feed) {
         label: tr(ctx.locale, "refresh"),
         icon: "arrows-clockwise",
         run: async () => {
-          const fresh = await subscribe(ctx, feed.url);
+          const fresh = await refreshFeed(ctx, feed.url);
+          if (!fresh)
+            return { view: await rssPageView(ctx), navigation: "reset" };
           return {
             toast: tr(ctx.locale, "feedRefreshed"),
             view: feedDetailView(ctx, fresh),
@@ -4909,7 +5028,7 @@ function feedDetailView(ctx, feed) {
         icon: "trash",
         variant: "danger",
         run: async () => {
-          await unsubscribeFeed(ctx, feed.url);
+          await unsubscribeFeed(ctx, feed.url, feed.bookId);
           return {
             toast: tr(ctx.locale, "unsubscribedFrom", { title: feed.title }),
             view: await rssPageView(ctx),
@@ -4938,7 +5057,7 @@ async function rssPageView(ctx) {
     icon: "globe",
     keywords: feed.articles.slice(0, 40).map((article) => article.title),
     accessories: [
-      { kind: "tag", text: articlesTag(ctx.locale, feed.articles.length) },
+      { kind: "tag", text: feed.removalId ? tr(ctx.locale, "finishRemoval") : articlesTag(ctx.locale, feed.articles.length) },
       ...formatWhen(ctx, feed.lastFetched, "date") ? [{ kind: "text", text: formatWhen(ctx, feed.lastFetched, "date") }] : []
     ],
     onSelect: () => ({ view: feedDetailView(ctx, feed) })

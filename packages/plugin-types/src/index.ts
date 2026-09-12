@@ -1463,7 +1463,7 @@ export type PluginLibraryDomain = {
         title: string;
         author?: string;
       }): Promise<PluginBook>;
-      removeVirtualBook(input: { providerId: string; key: string }): Promise<void>;
+      removeVirtualBook(input: { providerId: string; key: string; expectedBookId?: string }): Promise<void>;
       /** Announce already-saved source changes. Does not reload or move the reader.
        * revision is a process-local invalidation fence, not a content hash. Library 1.15. */
       invalidateVirtualBook(input: { providerId: string; key: string }): Promise<{ bookId: string; revision: string }>;

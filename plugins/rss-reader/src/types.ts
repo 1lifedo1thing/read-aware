@@ -24,6 +24,8 @@ export type FeedSubscription = {
   contentId?: string;
   /** Durable retry intent if publishing the saved source to the host failed. */
   contentPending?: boolean;
+  /** Persisted deletion intent; prevents refresh/open from recreating its book. */
+  removalId?: string;
 };
 
 export type FeedResult = {

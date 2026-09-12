@@ -769,9 +769,10 @@ export function buildPluginContext(
             >[0],
           ) => {
             const binding = { pluginId: manifest.id, providerId: String(input.providerId), key: String(input.key) };
+            const expectedBookId = input.expectedBookId;
             await lifecycle.storageWrite("library.removeVirtualBook", () => withVirtualBookBinding(binding, async () => {
               lifecycle.assertActive("library.removeVirtualBook");
-              await removeOwnedVirtualBook(binding, library.commands!.books.remove);
+              await removeOwnedVirtualBook(binding, library.commands!.books.remove, expectedBookId);
             }));
           },
           invalidateVirtualBook: (input: { providerId: string; key: string }) => invalidateOwnedVirtualBook({

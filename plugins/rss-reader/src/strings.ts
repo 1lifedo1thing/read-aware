@@ -6,6 +6,17 @@
 type Localized = { default: string; [locale: string]: string };
 
 const STRINGS = {
+  pendingRemoval: {
+    default: "Unsubscribe is pending. Opening and refresh are disabled until its saved removal finishes. It can be retried without recreating the book.",
+    "zh-Hans": "退订尚未完成。已保存的删除完成前暂停打开和刷新，可重试完成退订，不会重新创建书籍。",
+    "zh-Hant": "退訂尚未完成。已儲存的刪除完成前暫停開啟及重新整理，可重試完成退訂，不會重新建立書籍。",
+    ja: "購読解除が未完了です。保存済みの削除が完了するまで表示・更新できません。本を再作成せずに再試行できます。",
+    ru: "Отмена подписки не завершена. Открытие и обновление приостановлены до завершения сохранённого удаления. Повтор не создаст книгу заново.",
+    fr: "Désabonnement en attente. L’ouverture et l’actualisation sont suspendues jusqu’à la fin de la suppression enregistrée. Réessayer ne recrée pas le livre.",
+    de: "Abbestellung ausstehend. Öffnen und Aktualisieren sind bis zum Abschluss der gespeicherten Löschung gesperrt. Ein neuer Versuch erstellt das Buch nicht erneut.",
+    es: "Baja pendiente. La apertura y actualización están pausadas hasta terminar la eliminación guardada. Reintentar no vuelve a crear el libro.",
+  },
+  finishRemoval: { default: "Finish unsubscribe", "zh-Hans": "完成退订", "zh-Hant": "完成退訂", ja: "購読解除を完了", ru: "Завершить отмену", fr: "Terminer le désabonnement", de: "Abbestellung abschließen", es: "Completar baja" },
   chooseOpmlFile: {
     default: "Choose OPML file", "zh-Hans": "选择 OPML 文件", "zh-Hant": "選擇 OPML 檔案", ja: "OPMLファイルを選択",
     ru: "Выбрать файл OPML", fr: "Choisir un fichier OPML", de: "OPML-Datei auswählen", es: "Elegir archivo OPML",

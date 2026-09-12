@@ -12,7 +12,7 @@ import type {
   PluginListView,
 } from "@read-aware/plugin-types";
 import { isHttpFeedUrl } from "./feed";
-import { openFeed, subscribe, unsubscribeFeed } from "./feed-library";
+import { openFeed, refreshFeed, subscribe, unsubscribeFeed } from "./feed-library";
 import { feedUrlsFromOpml } from "./opml";
 import { importOpml, type OpmlImportResult } from "./opml-import";
 import { pickOpmlText } from "./opml-file";
@@ -131,6 +131,14 @@ export function feedDetailView(
   ctx: RssPluginContext,
   feed: FeedSubscription,
 ): PluginDetailView {
+  if (feed.removalId) return {
+    kind: "detail", title: feed.title,
+    content: [{ kind: "text", text: tr(ctx.locale, "pendingRemoval") }],
+    actions: [{ id: "remove", label: tr(ctx.locale, "finishRemoval"), icon: "trash", variant: "danger", run: async () => {
+      await unsubscribeFeed(ctx, feed.url, feed.bookId);
+      return { toast: tr(ctx.locale, "unsubscribedFrom", { title: feed.title }), view: await rssPageView(ctx), navigation: "reset" };
+    } }],
+  };
   const articleItems: PluginListItem[] = feed.articles.map((article) => ({
     id: article.id,
     title: article.title,
@@ -174,7 +182,8 @@ export function feedDetailView(
         label: tr(ctx.locale, "refresh"),
         icon: "arrows-clockwise",
         run: async () => {
-          const fresh = await subscribe(ctx, feed.url);
+          const fresh = await refreshFeed(ctx, feed.url);
+          if (!fresh) return { view: await rssPageView(ctx), navigation: "reset" };
           return {
             toast: tr(ctx.locale, "feedRefreshed"),
             view: feedDetailView(ctx, fresh),
@@ -188,7 +197,7 @@ export function feedDetailView(
         icon: "trash",
         variant: "danger",
         run: async () => {
-          await unsubscribeFeed(ctx, feed.url);
+          await unsubscribeFeed(ctx, feed.url, feed.bookId);
           return {
             toast: tr(ctx.locale, "unsubscribedFrom", { title: feed.title }),
             view: await rssPageView(ctx),
@@ -219,7 +228,7 @@ export async function rssPageView(ctx: RssPluginContext): Promise<PluginListView
     // Find a feed by what it published; the host caps keywords at 40.
     keywords: feed.articles.slice(0, 40).map((article) => article.title),
     accessories: [
-      { kind: "tag", text: articlesTag(ctx.locale, feed.articles.length) },
+      { kind: "tag", text: feed.removalId ? tr(ctx.locale, "finishRemoval") : articlesTag(ctx.locale, feed.articles.length) },
       ...(formatWhen(ctx, feed.lastFetched, "date")
         ? [{ kind: "text" as const, text: formatWhen(ctx, feed.lastFetched, "date")! }]
         : []),

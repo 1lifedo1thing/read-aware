@@ -2,11 +2,11 @@ import { expect, test } from "bun:test";
 import type { PluginBookContent, PluginDocumentChange, PluginDocumentPageFilter, PluginToolDefinition } from "@read-aware/plugin-types";
 import plugin from "../src/index";
 import { parseFeed } from "../src/feed";
-import { forgetRemovedBook, loadFeedContent, openFeed, subscribe, unsubscribeFeed } from "../src/feed-library";
+import { ensureBook, forgetRemovedBook, loadFeedContent, openFeed, recoverFeedRemovals, refreshFeed, subscribe, unsubscribeFeed } from "../src/feed-library";
 import { getFeed, reclaimFeedContent, upsertFeed } from "../src/storage";
 import type { RssPluginContext } from "../src/types";
 import { importOpml } from "../src/opml-import";
-import { importOpmlView } from "../src/views";
+import { feedDetailView, importOpmlView } from "../src/views";
 import { refreshAllFeeds, REFRESH_SCHEDULE } from "../src/refresh";
 
 const url = "https://example.com/feed";
@@ -20,7 +20,7 @@ function fixture() {
   const writes = new Map<string, number>();
   const revision = (name: string, id: string) => table(name).has(id) ? `${writes.get(`${name}:${id}`) ?? 0}:${JSON.stringify(table(name).get(id))}` : null;
   const state = { xml: xml(item("one")), fetches: 0, notifications: 0, offline: false, failIndex: false, failNotify: false, failedUrls: new Set<string>(),
-    bookId: "book-1", failRemove: false, failCleanup: false, failRead: false, sourceRevision: "new", readingRevision: "old", readingBook: "book-1", events: [] as string[], hold: undefined as Promise<void> | undefined };
+    bookId: "book-1", adds: 0, removes: 0, removalTargets: [] as (string | undefined)[], failFeedDelete: false, removeHold: undefined as Promise<void> | undefined, failRemove: false, failCleanup: false, failRead: false, sourceRevision: "new", readingRevision: "old", readingBook: "book-1", events: [] as string[], hold: undefined as Promise<void> | undefined };
   let provider: ((key: string) => Promise<PluginBookContent>) | undefined;
   let scheduled: (() => void | Promise<void>) | undefined;
   const ctx = {
@@ -33,6 +33,7 @@ function fixture() {
             if (revision(change.collection, change.id) !== change.expectedRevision) return { status: "conflict", index };
           }
           if (changes.some(c => c.collection === "feeds" && c.kind === "put") && state.failIndex) throw Object.assign(Error("Index write failed"), { code: "db/locked" });
+          if (changes.some(c => c.collection === "feeds" && c.kind === "delete") && state.failFeedDelete) throw Object.assign(Error("Feed deletion failed"), { code: "db/locked" });
           if (changes.some(c => c.collection === "feed-content" && c.kind === "delete") && state.failCleanup) throw Object.assign(Error("Cleanup failed"), { code: "db/locked" });
           for (const change of changes) {
             if (change.kind === "put") table(change.collection).set(change.id, structuredClone(change.data));
@@ -64,8 +65,8 @@ function fixture() {
     domains: {
       library: {
         commands: { books: {
-          addVirtualBook: async () => ({ id: state.bookId }),
-          removeVirtualBook: async () => { if (state.failRemove) throw Object.assign(new Error("Removal failed"), { code: "db/locked" }); },
+          addVirtualBook: async () => { state.adds++; return { id: state.bookId }; },
+          removeVirtualBook: async (input: { expectedBookId?: string }) => { state.removes++; state.removalTargets.push(input.expectedBookId); if (state.removeHold) await state.removeHold; if (state.failRemove) throw Object.assign(new Error("Removal failed"), { code: "db/locked" }); },
           invalidateVirtualBook: async ({ key }: { key: string }) => {
             state.notifications++;
             const feed = await getFeed(ctx, key);
@@ -340,4 +341,58 @@ test("a collector winning the publication race leaves no dangling reference and 
   expect((await subscribe(f.ctx, url)).contentId).toBe(prior.contentId);
   f.state.offline = true;
   expect((await loadFeedContent(f.ctx, url)).sections[0]!.html).toBe("one");
+});
+
+
+test("durable unsubscribe survives host success plus document failure and never reopens or refreshes the removed book", async () => {
+  const f = fixture(); await plugin.activate(f.ctx); const feed = await subscribe(f.ctx, url);
+  const oldView = feedDetailView(f.ctx, feed), before = { adds: f.state.adds, fetches: f.state.fetches };
+  f.state.failFeedDelete = true;
+  await expect(unsubscribeFeed(f.ctx, url, feed.bookId)).rejects.toMatchObject({ code: "db/locked" });
+  const pending = (await getFeed(f.ctx, url))!; expect(pending.removalId).toBeString();
+  expect(f.state.removalTargets[0]).toBe(feed.bookId);
+  expect(feedDetailView(f.ctx, pending).actions!.map(action => action.id)).toEqual(["remove"]);
+  const listed = await f.tools.find(tool => tool.name === "list_feeds")!.execute({});
+  expect(listed).toMatchObject([{ removalPending: true, bookId: feed.bookId }]);
+  await expect(ensureBook(f.ctx, feed)).rejects.toMatchObject({ code: "plugin/storage-conflict" });
+  await expect(loadFeedContent(f.ctx, url)).rejects.toMatchObject({ code: "plugin/storage-conflict" });
+  await expect(refreshFeed(f.ctx, url)).rejects.toMatchObject({ code: "db/locked" });
+  expect({ adds: f.state.adds, fetches: f.state.fetches }).toEqual(before);
+  f.state.failFeedDelete = false; f.state.offline = true;
+  // New activation object consumes the same persisted private documents.
+  const restarted = { ...f.ctx };
+  await refreshAllFeeds(restarted);
+  expect(await getFeed(f.ctx, url)).toBeNull(); expect(f.table("feed-content").size).toBe(0);
+  await oldView.actions!.find(action => action.id === "refresh")!.run();
+  expect({ adds: f.state.adds, fetches: f.state.fetches }).toEqual(before);
+});
+
+test("the removal decision must persist before host deletion; late cleanup preserves a replacement subscription", async () => {
+  const f = fixture(); const feed = await subscribe(f.ctx, url);
+  f.state.failIndex = true;
+  await expect(unsubscribeFeed(f.ctx, url, feed.bookId)).rejects.toMatchObject({ code: "db/locked" });
+  expect(f.state.removes).toBe(0); expect((await getFeed(f.ctx, url))!.removalId).toBeUndefined();
+  f.state.failIndex = false;
+  let release!: () => void; f.state.removeHold = new Promise<void>(resolve => { release = resolve; });
+  const removal = unsubscribeFeed(f.ctx, url, feed.bookId); await Bun.sleep(0);
+  expect(f.state.removes).toBe(1);
+  const replacement = { ...feed, bookId: "replacement-book" };
+  f.table("feeds").set(url, replacement); release();
+  await expect(removal).rejects.toMatchObject({ code: "plugin/storage-conflict" });
+  expect(await getFeed(f.ctx, url)).toEqual(replacement);
+});
+
+test("pending removal recovery scans every page before mutation and retains ordinary subscriptions", async () => {
+  const f = fixture(); await subscribe(f.ctx, url);
+  for (let index = 0; index < 205; index++) {
+    const target = `${url}/pending-${index}`;
+    f.table("feeds").set(target, { url: target, title: "Pending", bookId: `book-${index}`, addedAt: "", lastFetched: "", articles: [], removalId: `remove-${index}` });
+  }
+  await recoverFeedRemovals(f.ctx);
+  expect(f.state.removes).toBe(205); expect(f.table("feeds").size).toBe(1); expect(await getFeed(f.ctx, url)).not.toBeNull();
+  const malformed = `${url}/malformed`;
+  f.table("feeds").set(malformed, { url: malformed, title: "Invalid", bookId: "invalid", removalId: [] });
+  await expect(getFeed(f.ctx, malformed)).rejects.toMatchObject({ code: "plugin/invalid-data" });
+  await expect(recoverFeedRemovals(f.ctx)).rejects.toMatchObject({ code: "plugin/invalid-data" });
+  expect(f.state.removes).toBe(205); expect(f.table("feeds").has(malformed)).toBe(true);
 });

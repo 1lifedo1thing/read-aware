@@ -26,7 +26,7 @@ export function registerAgentTools(ctx: RssPluginContext): void {
   });
   ctx.contributions.agentTools.register({
     name: "unsubscribe_feed", label: "Unsubscribe from RSS", contexts: ["global"], approval: "required",
-    description: "Unsubscribe from this exact RSS URL and bookId returned by list_feeds. Removes the virtual book, its associated reading data and plugin-cached articles. This cannot be undone. A recreated subscription with a different bookId is refused.",
+    description: "Unsubscribe from this exact RSS URL and bookId returned by list_feeds. Removes the virtual book, its associated reading data and plugin-cached articles. This cannot be undone. A recreated subscription with a different bookId is refused. The deletion intent is saved before host removal and retried after interruptions; list_feeds exposes removalPending. Pending removal is not a completed unsubscribe, and refresh/open will not recreate its book.",
     parameters: { type: "object", properties: {
       url: { type: "string", minLength: 1, maxLength: 2048 }, bookId: { type: "string", minLength: 1, maxLength: 256 },
     }, required: ["url", "bookId"], additionalProperties: false },
@@ -62,6 +62,7 @@ export function registerAgentTools(ctx: RssPluginContext): void {
         url: feed.url,
         bookId: feed.bookId,
         lastFetched: feed.lastFetched,
+        removalPending: !!feed.removalId,
         articleCount: feed.articles.length,
         articles: feed.articles.slice(0, limit).map((article) => ({
           title: article.title,
@@ -89,7 +90,7 @@ export function registerAgentTools(ctx: RssPluginContext): void {
       const url = typeof params.url === "string" ? params.url.trim() : "";
       const existing = await getFeed(ctx, url);
       if (existing) {
-        return { subscribed: false, reason: "already subscribed", feed: existing.title };
+        return { subscribed: false, reason: existing.removalId ? "unsubscribe pending" : "already subscribed", feed: existing.title };
       }
       const feed = await subscribe(ctx, url);
       return {
@@ -125,6 +126,7 @@ export function registerAgentTools(ctx: RssPluginContext): void {
         title: feed.title,
         url: feed.url,
         lastFetched: feed.lastFetched,
+        removalPending: !!feed.removalId,
         articles: feed.articles.map((article) => ({
           title: article.title,
           link: article.link,
