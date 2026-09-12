@@ -441,3 +441,18 @@ PDF destination解析现在仅把非法JSON输入作为未解析目标，保留P
 不将其记为整组导航通过；已请求保持测试窗口可见。之前PDF可见正文不可用，另一次
 重开得到available/pdf-text-layer及761字符，保留两次观察，不据此宣称时序问题已修复。
 见[pdf-navigation-observations.json](./pdf-navigation-observations.json)。
+
+## 第十八个桌面流程：网络重试、延迟执行与流量隔离
+
+复用现有探针，仅将profile白名单扩展到本轮独立capability-e2e。真实Worker的原生HTTP
+GET经过本机loopback服务连续两次503、第三次200；服务端计数3且响应正文一致。
+派发后将调用侧options.retry改为none不改变已提交的safe策略。没有公网/TLS/断网证明。
+
+延迟idle任务同requestId两次提交分别queued/retained、dueAt相同。实际到期运行写入
+lastRun，状态succeeded；Worker退役重启后requestId、startedAt、成功历史保持。
+本轮未验周期任务、失败重试或进程中断后的待执行恢复。
+
+另一个真实Worker故意连续postMessage四万次，宿主报告transport traffic budget exceeded，
+违规者调用收到plugin/unavailable且贡献移除；同伴仍返回alive。最终四个测试Worker贡献
+均0、两条自有延迟任务KV删除重读为空，本地HTTP服务已停止。桌面探针类型检查通过。
+见[观察记录](./background-network-observations.json)。

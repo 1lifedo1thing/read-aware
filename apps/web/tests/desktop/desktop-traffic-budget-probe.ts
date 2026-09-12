@@ -10,7 +10,8 @@ const instances: { runtime: SandboxedPlugin; owned: PluginDisposable[] }[] = [];
 const errors: string[] = [];
 let outcome: unknown = null;
 export async function startTrafficProbe() {
-  if (!(await appDataDir()).replace(/\\/g, "/").replace(/\/$/, "").endsWith("/com.readaware.app.capability-onboarding-20260911")) throw Error("Isolated data required");
+  const profile = (await appDataDir()).replace(/\\/g, "/").replace(/\/$/, "");
+  if (!["/com.readaware.app.capability-onboarding-20260911", "/com.readaware.app.capability-e2e"].some(id => profile.endsWith(id))) throw Error("Isolated data required");
   if (instances.length) throw Error("Probe already running");
   errors.length = 0; outcome = null;
   for (const suffix of ["offender", "peer"]) {

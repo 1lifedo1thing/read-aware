@@ -5,7 +5,8 @@ import { startPluginWorker } from "../../src/features/plugins/runtime/plugin-wor
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 
 export async function runNetworkRetryProbe() {
-  if (!(await appDataDir()).replace(/\\/g, "/").replace(/\/$/, "").endsWith("/com.readaware.app.capability-onboarding-20260911")) throw Error("Isolated data required");
+  const profile = (await appDataDir()).replace(/\\/g, "/").replace(/\/$/, "");
+  if (!["/com.readaware.app.capability-onboarding-20260911", "/com.readaware.app.capability-e2e"].some(id => profile.endsWith(id))) throw Error("Isolated data required");
   const owned: PluginDisposable[] = [];
   const runtime = await startPluginWorker({ id: "network-retry-probe", name: "Network retry probe", version: "1.0.0", schemaVersion: 1,
     description: "http://127.0.0.1:5188/retry", permissions: ["service:network"], networkAccess: { origins: ["http://127.0.0.1:5188"] },

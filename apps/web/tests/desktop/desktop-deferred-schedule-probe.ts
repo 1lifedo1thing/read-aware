@@ -9,7 +9,8 @@ let sandbox: SandboxedPlugin | undefined;
 const disposables: PluginDisposable[] = [];
 const id = "deferred-desktop-probe";
 export async function startDeferredProbe() {
-  if (!(await appDataDir()).replace(/\\/g, "/").replace(/\/$/, "").endsWith("/com.readaware.app.capability-onboarding-20260911")) throw Error("Isolated data required");
+  const profile = (await appDataDir()).replace(/\\/g, "/").replace(/\/$/, "");
+  if (!["/com.readaware.app.capability-onboarding-20260911", "/com.readaware.app.capability-e2e"].some(id => profile.endsWith(id))) throw Error("Isolated data required");
   if (sandbox) throw Error("Probe already running");
   sandbox = await startPluginWorker({ id, name: "Deferred probe", version: "1.0.0", schemaVersion: 1,
     requires: { services: { schedules: "^2.0.0" } }, schedules: [{ id: "work", label: "Work", mode: "deferred" }] }, "0.5.4", disposables,
