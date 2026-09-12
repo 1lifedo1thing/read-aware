@@ -2,7 +2,7 @@
 //! SQLite orders scoped candidates; native code streams matching rows into the
 //! result identity and retains only the requested page. Exact content identity
 //! still requires a scan: this is not a constant-time or durable snapshot API.
-use super::{memories::row_to_memory, Db, Memory};
+use super::{memories::bounded_memory_row, Db, Memory};
 use crate::error::CommandError;
 use rusqlite::{params, Connection};
 use serde::Serialize;
@@ -12,7 +12,7 @@ use sha2::{Digest, Sha256};
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MemoryPage {
-    items: Vec<Memory>,
+    pub(crate) items: Vec<Memory>,
     offset: usize,
     next_offset: Option<usize>,
     total: usize,
@@ -141,17 +141,30 @@ pub(crate) fn memory_page_inner(
     conn: &mut Connection,
     input: &Value,
 ) -> Result<MemoryPage, CommandError> {
+    let tx = conn.transaction()?;
+    let result = memory_page_read(&tx, input)?;
+    tx.commit()?;
+    Ok(result)
+}
+
+pub(crate) fn memory_page_read(
+    conn: &Connection,
+    input: &Value,
+) -> Result<MemoryPage, CommandError> {
     let query = normalize(input)?;
     let terms = search_terms(&query.query);
-    let tx = conn.transaction()?;
     let mut hash = Sha256::new();
     hash.update(b"readaware-memory-page-v2");
     hash_value(&mut hash, &query.scopes)?;
     hash_value(&mut hash, &query.query)?;
     let mut items = Vec::with_capacity(query.limit);
     let mut total = 0;
+    let mut scanned = 0;
+    let mut read_bytes = 0usize;
+    let mut page_bytes = 0usize;
+    let mut page_full = false;
     {
-        let mut stmt = tx.prepare(
+        let mut stmt = conn.prepare(
             "SELECT * FROM memories
             WHERE status = 'active' AND scope IN (SELECT value FROM json_each(?1))
             ORDER BY (pinned <> 0) DESC, importance DESC, updated_at DESC, id ASC",
@@ -160,7 +173,22 @@ pub(crate) fn memory_page_inner(
             .map_err(|error| CommandError::internal(error.to_string()))?;
         let mut rows = stmt.query(params![scope_json])?;
         while let Some(row) = rows.next()? {
-            let memory = row_to_memory(row)?;
+            scanned += 1;
+            if scanned > 10000 {
+                return Err(CommandError::new(
+                    "memory/input-budget-exceeded",
+                    "Memory scan exceeds its row budget",
+                ));
+            }
+            let memory = bounded_memory_row(row)?;
+            let size = serde_json::to_vec(&memory)?.len();
+            read_bytes = read_bytes.saturating_add(size);
+            if read_bytes > 8 * 1024 * 1024 {
+                return Err(CommandError::new(
+                    "memory/input-budget-exceeded",
+                    "Memory scan exceeds its byte budget",
+                ));
+            }
             if !terms.is_empty() {
                 let content = memory.content.to_lowercase();
                 if !terms.iter().any(|term| content.contains(term)) {
@@ -168,8 +196,13 @@ pub(crate) fn memory_page_inner(
                 }
             }
             hash_value(&mut hash, &memory)?;
-            if total >= query.offset && items.len() < query.limit {
-                items.push(memory);
+            if total >= query.offset && items.len() < query.limit && !page_full {
+                if page_bytes + size > 1024 * 1024 {
+                    page_full = true;
+                } else {
+                    page_bytes += size;
+                    items.push(memory);
+                }
             }
             total += 1;
         }
@@ -185,7 +218,6 @@ pub(crate) fn memory_page_inner(
         return Err(invalid());
     }
     let end = query.offset + items.len();
-    tx.commit()?;
     Ok(MemoryPage {
         items,
         offset: query.offset,

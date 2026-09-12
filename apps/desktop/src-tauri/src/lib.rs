@@ -1067,6 +1067,7 @@ pub fn run() {
             storage::book_classification_commit,
             storage::book_digest_inspect,
             storage::book_digest_commit,
+            storage::memory_create,
             storage::memories_snapshot,
             storage::memory_maintenance_commit,
             storage::chapter_digests_list,

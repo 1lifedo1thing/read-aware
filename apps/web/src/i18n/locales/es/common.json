@@ -46,6 +46,7 @@
     "bookRangeUnsupported": "Este contenido no admite la lectura de rangos de texto.",
     "bookRangeForbidden": "Este pasaje está fuera del límite de lectura permitido.",
     "annotationObserverLimit": "Hay demasiadas suscripciones activas a las anotaciones.",
+    "memoryForgottenSuppressed": "Esta memoria se olvidó anteriormente y no se volvió a crear automáticamente.",
     "memoryInputBudgetExceeded": "La entrada de esta operación de memoria es demasiado grande.",
     "memoryOutputBudgetExceeded": "La generación de memoria superó el límite de salida.",
     "annotationReadBudgetExceeded": "Las anotaciones superan el límite de tamaño. Use páginas o acorte la nota demasiado grande en el lector.",

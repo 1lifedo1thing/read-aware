@@ -33,7 +33,7 @@ export async function persistExtensionMemory(input: {
       settle(candidate, { status: "saved" });
     } catch (error) {
       settle(candidate, { status: "failed", errorCode: errorCode(error) ?? "ipc/unknown" });
-      throw error;
+      if (errorCode(error) !== "memory/forgotten-suppressed") throw error;
     }
   });
   try {

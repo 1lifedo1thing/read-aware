@@ -28,15 +28,50 @@ fn conflict() -> CommandError {
 }
 
 pub(crate) fn snapshots_inner(conn: &mut Connection) -> Result<Vec<MemorySnapshot>, CommandError> {
+    snapshots_query_inner(conn, None)
+}
+
+fn snapshots_query_inner(
+    conn: &mut Connection,
+    query: Option<serde_json::Value>,
+) -> Result<Vec<MemorySnapshot>, CommandError> {
     let tx = conn.transaction()?;
-    let ids = tx
-        .prepare("SELECT id FROM memories WHERE status='active' ORDER BY id")?
-        .query_map([], |row| row.get::<_, String>(0))?
-        .collect::<Result<Vec<_>, _>>()?;
-    let snapshots = ids
-        .iter()
-        .map(|id| read_snapshot(&tx, id)?.ok_or_else(conflict))
-        .collect::<Result<Vec<_>, _>>()?;
+    let ids = if let Some(query) = query {
+        super::memory_page::memory_page_read(&tx, &query)?
+            .items
+            .into_iter()
+            .map(|memory| memory.id)
+            .collect::<Vec<_>>()
+    } else {
+        let mut stmt =
+            tx.prepare("SELECT id FROM memories WHERE status='active' ORDER BY id LIMIT 1001")?;
+        let mut rows = stmt.query([])?;
+        let mut ids = Vec::new();
+        while let Some(row) = rows.next()? {
+            let id = row.get_ref(0)?.as_str().map_err(|_| invalid())?;
+            if id.len() > 1024 || ids.len() == 1000 {
+                return Err(CommandError::new(
+                    "memory/input-budget-exceeded",
+                    "Memory maintenance read set exceeds its row budget",
+                ));
+            }
+            ids.push(id.to_string());
+        }
+        ids
+    };
+    let mut snapshots = Vec::new();
+    let mut bytes = 0usize;
+    for id in ids {
+        let snapshot = read_snapshot(&tx, &id)?.ok_or_else(conflict)?;
+        bytes += serde_json::to_vec(&snapshot)?.len();
+        if bytes > 8 * 1024 * 1024 {
+            return Err(CommandError::new(
+                "memory/input-budget-exceeded",
+                "Memory snapshot exceeds its byte budget",
+            ));
+        }
+        snapshots.push(snapshot);
+    }
     tx.commit()?;
     Ok(snapshots)
 }
@@ -166,12 +201,17 @@ pub(crate) fn commit_inner(
 
 #[tauri::command]
 pub async fn memories_snapshot(
+    query: Option<serde_json::Value>,
     app: tauri::AppHandle,
 ) -> Result<Vec<MemorySnapshot>, CommandError> {
     crate::storage::blocking("memories_snapshot", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
-        snapshots_inner(&mut conn)
+        if query.is_some() {
+            snapshots_query_inner(&mut conn, query)
+        } else {
+            snapshots_inner(&mut conn)
+        }
     })
     .await
 }

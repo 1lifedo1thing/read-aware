@@ -1,5 +1,5 @@
 //! User feedback changes only existing active memories, inside the event transaction.
-use super::{events::commit_events_in_transaction, row_to_memory, Db, EventRow, Memory};
+use super::{events::commit_events_in_transaction, Db, EventRow, Memory};
 use crate::error::CommandError;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior};
 use serde::Serialize;
@@ -30,16 +30,18 @@ fn invalid() -> CommandError {
 fn valid_id(id: &str) -> bool {
     !id.trim().is_empty() && id.encode_utf16().count() <= 256
 }
-pub(crate) fn read_snapshot(conn: &Connection, id: &str) -> Result<Option<MemorySnapshot>, CommandError> {
-    let Some(memory) = conn
-        .query_row(
-            "SELECT * FROM memories WHERE id=?1 AND status='active'",
-            [id],
-            row_to_memory,
-        )
-        .optional()?
-    else {
-        return Ok(None);
+pub(crate) fn read_snapshot(
+    conn: &Connection,
+    id: &str,
+) -> Result<Option<MemorySnapshot>, CommandError> {
+    let memory = {
+        let mut statement =
+            conn.prepare("SELECT * FROM memories WHERE id=?1 AND status='active'")?;
+        let mut rows = statement.query([id])?;
+        let Some(row) = rows.next()? else {
+            return Ok(None);
+        };
+        super::memories::bounded_memory_row(row)?
     };
     // Event identity closes equal-timestamp ABA and changes with equal projected bytes.
     let event: Option<String> = conn.query_row(

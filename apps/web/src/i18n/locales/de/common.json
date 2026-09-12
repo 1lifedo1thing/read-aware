@@ -46,6 +46,7 @@
     "bookRangeUnsupported": "Dieser Inhalt unterstützt das Lesen von Textbereichen nicht.",
     "bookRangeForbidden": "Diese Textstelle liegt außerhalb des erlaubten Lesebereichs.",
     "annotationObserverLimit": "Zu viele Anmerkungsabonnements sind aktiv.",
+    "memoryForgottenSuppressed": "Diese Erinnerung wurde zuvor vergessen und nicht automatisch erneut angelegt.",
     "memoryInputBudgetExceeded": "Die Eingabe für diesen Speichervorgang ist zu groß.",
     "memoryOutputBudgetExceeded": "Die Speichergenerierung hat das Ausgabelimit überschritten.",
     "annotationReadBudgetExceeded": "Die Anmerkungsdaten sind zu groß. Sammlungen seitenweise lesen; übergroße Notizen zuerst im Reader kürzen.",

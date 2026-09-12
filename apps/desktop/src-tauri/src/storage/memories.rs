@@ -2,8 +2,8 @@
 //!
 //! Split out of `storage/mod.rs`; `use super::*` keeps the shared types in
 //! scope, so this is a move rather than a rewrite.
-use crate::error::CommandError;
 use super::*;
+use crate::error::CommandError;
 
 // --- Memories projection (agent long-term memory; docs/data-model.md §5.2) ---
 
@@ -44,19 +44,31 @@ pub(crate) fn row_to_memory(row: &rusqlite::Row) -> rusqlite::Result<Memory> {
     })
 }
 
+pub(crate) fn bounded_memory_row(row: &rusqlite::Row) -> Result<Memory, CommandError> {
+    let mut bytes = 0usize;
+    for index in 0..row.as_ref().column_count() {
+        if let rusqlite::types::ValueRef::Text(value) | rusqlite::types::ValueRef::Blob(value) =
+            row.get_ref(index)?
+        {
+            bytes = bytes.saturating_add(value.len());
+        }
+        if bytes > 128 * 1024 {
+            return Err(CommandError::new(
+                "memory/input-budget-exceeded",
+                "Memory row exceeds its read budget",
+            ));
+        }
+    }
+    Ok(row_to_memory(row)?)
+}
+
 #[tauri::command]
-pub async fn memories_list_all(
-    app: tauri::AppHandle,
-) -> Result<Vec<Memory>, CommandError> {
+pub async fn memories_list_all(app: tauri::AppHandle) -> Result<Vec<Memory>, CommandError> {
     crate::storage::blocking("memories_list_all", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        let mut stmt = conn
-            .prepare("SELECT * FROM memories")
-            ?;
-        let rows = stmt
-            .query_map([], row_to_memory)
-            ?;
+        let mut stmt = conn.prepare("SELECT * FROM memories")?;
+        let rows = stmt.query_map([], row_to_memory)?;
         let mut out = Vec::new();
         for r in rows {
             out.push(r?);
@@ -67,10 +79,7 @@ pub async fn memories_list_all(
 }
 
 #[tauri::command]
-pub async fn memory_get(
-    id: String,
-    app: tauri::AppHandle,
-) -> Result<Option<Memory>, CommandError> {
+pub async fn memory_get(id: String, app: tauri::AppHandle) -> Result<Option<Memory>, CommandError> {
     crate::storage::blocking("memory_get", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
@@ -88,10 +97,7 @@ pub async fn memory_get(
 }
 
 #[tauri::command]
-pub async fn memory_put(
-    memory: Memory,
-    app: tauri::AppHandle,
-) -> Result<(), CommandError> {
+pub async fn memory_put(memory: Memory, app: tauri::AppHandle) -> Result<(), CommandError> {
     crate::storage::blocking("memory_put", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
@@ -117,13 +123,11 @@ pub async fn memory_put(
                 memory.created_at,
                 memory.updated_at,
             ],
-        )
-        ?;
+        )?;
         Ok(())
     })
     .await
 }
-
 
 // --- Chapter digests projection (book memory; book.chapterDigested) ---
 

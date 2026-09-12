@@ -885,11 +885,8 @@ export class AgentThread {
     });
     if (this.disposed) return summary;
     for (const candidate of inherited.newMemories) {
-      await deps.memory.saveMemory({
-        ...candidate,
-        origin: "extraction",
-        sourceThreadKey: this.key,
-      });
+      try { await deps.memory.saveMemory({ ...candidate, origin: "extraction", sourceThreadKey: this.key }); }
+      catch (error) { if (errorCode(error) !== "memory/forgotten-suppressed") throw error; deps.log?.warn("Previously forgotten extraction candidate suppressed"); }
     }
     for (const id of inherited.reinforcedIds) {
       const snapshot = snapshots.find(item => item.memory.id === id);
@@ -939,11 +936,8 @@ export class AgentThread {
       });
       if (this.disposed) return;
       for (const candidate of result.newMemories) {
-        await deps.memory.saveMemory({
-          ...candidate,
-          origin: "extraction",
-          sourceThreadKey: this.key,
-        });
+        try { await deps.memory.saveMemory({ ...candidate, origin: "extraction", sourceThreadKey: this.key }); }
+        catch (error) { if (errorCode(error) !== "memory/forgotten-suppressed") throw error; deps.log?.warn("Previously forgotten extraction candidate suppressed"); }
       }
       for (const id of result.reinforcedIds) {
         const snapshot = snapshots.find(item => item.memory.id === id);

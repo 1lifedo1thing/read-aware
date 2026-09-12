@@ -46,6 +46,7 @@
     "bookRangeUnsupported": "このコンテンツはテキスト範囲の読み取りに対応していません。",
     "bookRangeForbidden": "この文章は許可された読書範囲を超えています。",
     "annotationObserverLimit": "注釈の購読数が上限に達しました。",
+    "memoryForgottenSuppressed": "この記憶は削除済みのため、自動抽出では再作成しませんでした。",
     "memoryInputBudgetExceeded": "記憶処理の入力サイズが上限を超えています。",
     "memoryOutputBudgetExceeded": "記憶生成の出力サイズが上限を超えました。",
     "annotationReadBudgetExceeded": "注釈の読み込み上限を超えています。一覧はページ単位で読み込み、大きすぎるノートはリーダーで短くしてください。",

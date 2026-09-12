@@ -1,3 +1,4 @@
+import { boundedMemoryComplete } from "./model-budget";
 import { AppError, ERR_AI_MEMORY_DISABLED } from "@read-aware/core";
 import type { CompleteFn } from "../models/complete";
 import type { RuntimeDeps } from "../ports";
@@ -47,7 +48,7 @@ export async function runMemoryBuild<T>(
       assertAllowed,
       guard,
       commit,
-      complete: complete => (model, context, options) => guard(() => complete(model, context, { ...options,
+      complete: complete => (model, context, options) => guard(() => boundedMemoryComplete(complete)(model, context, { ...options,
         signal: options?.signal ? AbortSignal.any([options.signal, call.signal]) : call.signal }))(),
       protect: original => ({
         ...original,

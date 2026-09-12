@@ -5,6 +5,7 @@
  * 由宿主在空闲时触发（AgentRuntime.consolidate()）；所有变更经
  * MemoryPort.applyMemoryChanges 落库，实现方翻译成 memory.* 事件。
  */
+import { boundedMemoryComplete } from "./model-budget";
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import type { CompleteFn } from "../models/complete";
 import type { MemorySnapshot } from "@read-aware/core";
@@ -84,10 +85,10 @@ async function judgementChanges(
     .join("\n");
   let parsed: Record<string, unknown> | undefined;
   try {
-    const message = await complete(model, {
+    const message = await boundedMemoryComplete(complete)(model, {
       systemPrompt: CONSOLIDATION_PROMPT,
       messages: [{ role: "user", content: listing, timestamp: Date.now() }],
-    });
+    }, { maxTokens: 4096 });
     if (message.stopReason !== "stop") {
       log?.warn("memory consolidation judgement did not complete", { stopReason: message.stopReason, error: message.errorMessage });
       return { changes: [], succeeded: false };

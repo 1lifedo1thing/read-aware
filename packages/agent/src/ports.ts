@@ -294,6 +294,8 @@ export interface MemoryPort {
   listMemories(): Promise<MemoryRecord[]>;
   /** Read revisions before model work; feedback must never be rebased onto a newer row. */
   snapshotMemories(filter?: MemoryQuery): Promise<import("@read-aware/core").MemorySnapshot[]>;
+  /** Local atomic admission deduplicates normalized same-scope text. Automatic/plugin
+   * candidates cannot recreate user-forgotten text; explicit remember may do so. */
   saveMemory(input: NewMemoryInput): Promise<MemoryRecord>;
   /** 提炼命中已有记忆 → 证据 +1（doc §4：反复出现才强化） */
   reinforceMemory(snapshot: import("@read-aware/core").MemorySnapshot, signal?: AbortSignal): Promise<void>;

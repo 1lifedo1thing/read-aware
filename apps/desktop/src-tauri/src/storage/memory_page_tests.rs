@@ -156,3 +156,38 @@ fn invalid_requests_old_revisions_and_database_failures_are_not_empty_pages() {
         "db/error"
     );
 }
+
+#[test]
+fn byte_shortened_pages_keep_contiguous_offsets_and_full_result_revision() {
+    let mut conn = db();
+    conn.execute("DELETE FROM memories WHERE id >= 'm0020'", [])
+        .unwrap();
+    // UTF-8 byte accounting, not character counting; each item is about 90 KiB.
+    conn.execute("UPDATE memories SET content=?1", ["字".repeat(30000)])
+        .unwrap();
+    let first = memory_page_inner(&mut conn, &json!({"scopes":["user"],"limit":100})).unwrap();
+    assert_eq!(first.total, 20);
+    assert!(first.items.len() > 0 && first.items.len() < 20);
+    let offset = first.next_offset.unwrap();
+    assert_eq!(offset, first.items.len());
+    let second = memory_page_inner(
+        &mut conn,
+        &json!({"scopes":["user"],"limit":100,"offset":offset,"expectedRevision":first.revision}),
+    )
+    .unwrap();
+    assert_eq!(second.revision, first.revision);
+    assert_eq!(second.items[0].id, format!("m{offset:04}"));
+    assert_eq!(offset + second.items.len(), 20);
+    assert_eq!(second.next_offset, None);
+    conn.execute(
+        "UPDATE memories SET content=?1 WHERE id='m0019'",
+        ["x".repeat(128 * 1024 + 1)],
+    )
+    .unwrap();
+    assert_eq!(
+        memory_page_inner(&mut conn, &json!({"scopes":["user"]}))
+            .unwrap_err()
+            .code,
+        "memory/input-budget-exceeded"
+    );
+}

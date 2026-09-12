@@ -3,6 +3,7 @@ import { normalizeMemoryQuery, type MemoryQuery, type MemoryRecord } from "./mem
 
 export type MemoryPageQuery = MemoryQuery & { offset?: number; expectedRevision?: string };
 export type MemoryPage = {
+  /** Native payload budget may shorten a page below limit; always use nextOffset. */
   items: MemoryRecord[];
   offset: number;
   nextOffset: number | null;

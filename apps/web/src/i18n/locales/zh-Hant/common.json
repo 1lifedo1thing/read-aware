@@ -46,6 +46,7 @@
     "bookRangeUnsupported": "此內容不支援讀取文字範圍。",
     "bookRangeForbidden": "此段文字超出了允許讀取的邊界。",
     "annotationObserverLimit": "標註訂閱數量已達上限。",
+    "memoryForgottenSuppressed": "使用者已遺忘這條記憶，自動提煉未重新建立它。",
     "memoryInputBudgetExceeded": "本次記憶操作的輸入超過大小上限。",
     "memoryOutputBudgetExceeded": "記憶生成結果超過輸出上限。",
     "annotationReadBudgetExceeded": "批註讀取超出大小上限。批次讀取請使用分頁；單筆過大時請先在閱讀器中縮短筆記。",

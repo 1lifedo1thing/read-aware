@@ -46,6 +46,7 @@
     "bookRangeUnsupported": "此内容不支持读取文本范围。",
     "bookRangeForbidden": "此段文字超出了允许读取的边界。",
     "annotationObserverLimit": "标注订阅数量已达上限。",
+    "memoryForgottenSuppressed": "用户已遗忘这条记忆，自动提炼未重新创建它。",
     "memoryInputBudgetExceeded": "本次记忆操作的输入超过大小上限。",
     "memoryOutputBudgetExceeded": "记忆生成结果超过输出上限。",
     "annotationReadBudgetExceeded": "批注读取超出大小上限。批量读取请使用分页；单条过大时请先在阅读器中缩短笔记。",

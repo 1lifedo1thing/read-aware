@@ -9,9 +9,9 @@ function assertAllowed(signal?: AbortSignal) {
   if (!isTauri()) throw new AppError("memory/unavailable", "Memory maintenance requires desktop storage");
   if (signal?.aborted) throw new AppError("memory/cancelled", "Memory maintenance cancelled");
 }
-export async function snapshotMemories(): Promise<MemorySnapshot[]> {
+export async function snapshotMemories(query?: import("@read-aware/core").MemoryQuery): Promise<MemorySnapshot[]> {
   assertAllowed();
-  return invoke("memories_snapshot");
+  return invoke("memories_snapshot", { query });
 }
 async function commitMaintenance(conditions: { memoryId: string; revision: string }[], drafts: DomainEventDraft[], signal?: AbortSignal) {
   assertAllowed(signal);

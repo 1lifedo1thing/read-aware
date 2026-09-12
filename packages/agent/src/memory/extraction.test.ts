@@ -84,3 +84,25 @@ describe("extractMemories", () => {
     expect(thrown).toEqual({ newMemories: [], reinforcedIds: [] });
   });
 });
+
+test("candidate normalization reinforces known text and removes within-response duplicates", async () => {
+  const existing = seedMemory({ id: "known", scope: "user", kind: "fact", content: "Likes tea" });
+  const result = await extractMemories({ ...BASE, scope: GLOBAL_SCOPE, existing: [existing],
+    complete: completeWith(JSON.stringify({ new: [
+      { scope: "user", kind: "fact", content: " likes  TEA " },
+      { scope: "user", kind: "fact", content: "Walks daily" },
+      { scope: "user", kind: "fact", content: "walks\ndaily" },
+    ], reinforced: [] })) });
+  expect(result.reinforcedIds).toEqual(["known"]);
+  expect(result.newMemories).toHaveLength(1);
+});
+
+test("oversized and incomplete extraction output cannot become persisted candidates", async () => {
+  let calls = 0;
+  const complete = async () => { calls++; return fauxAssistantMessage('{"new":[{"scope":"user","kind":"fact","content":"Incomplete"}],"reinforced":[]}', { stopReason: "length" }); };
+  expect(await extractMemories({ ...BASE, scope: GLOBAL_SCOPE, userText: "x".repeat(64001), complete })).toEqual({ newMemories: [], reinforcedIds: [] });
+  expect(calls).toBe(0);
+  expect(await extractMemories({ ...BASE, scope: GLOBAL_SCOPE, complete })).toEqual({ newMemories: [], reinforcedIds: [] });
+  expect(calls).toBe(1);
+  expect(await extractMemories({ ...BASE, scope: GLOBAL_SCOPE, complete: completeWith("x".repeat(16001)) })).toEqual({ newMemories: [], reinforcedIds: [] });
+});

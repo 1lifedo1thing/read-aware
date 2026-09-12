@@ -11,7 +11,8 @@ export interface MemoryRecord {
   status?: MemoryStatus;
   createdAt: string; updatedAt: string;
 }
-/** A query selects explicit scopes; permission to read memory is separately granted by the host. */
+/** Native scans are bounded to 10000 rows/8 MiB and 128 KiB per row; oversize fails explicitly.
+ * A query selects explicit scopes; permission to read memory is separately granted by the host. */
 export type MemoryQuery = { scopes: MemoryScope[]; query?: string; limit?: number };
 export function normalizeMemoryQuery(input: MemoryQuery): MemoryQuery {
   const fail = (): never => { throw new AppError("memory/invalid-query", "Expected explicit memory scopes and a bounded query"); };

@@ -5,13 +5,14 @@
  * memories 投影因此可从日志重放，写决策本身成为可同步事实
  * （docs/data-model.md：consolidation as events）。
  */
-import { matchesMemoryQuery, type MemoryPort, type MemoryRecord } from "@read-aware/agent";
+import { type MemoryPort, type MemoryRecord } from "@read-aware/agent";
 import { normalizeMemoryPageQuery, normalizeMemoryQuery } from "@read-aware/core";
-import { commitDomainEvents } from "../../../../platform/domain-events";
-import { listAllMemoryRows, pageMemoryRows } from "./memory-store";
+import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../../../../platform/domain-events";
+import { runDomainWrite } from "../../../../platform/domain-write-gate";
+import { invoke } from "../../../../platform/ipc";
+import { pageMemoryRows } from "./memory-store";
 import { applyMemoryChanges, reinforceMemory, snapshotMemories } from "./memory-maintenance";
 
-const isActive = (memory: MemoryRecord) => (memory.status ?? "active") === "active";
 
 /** agent 的 scope（"user" | "global" | `book:<id>`）→ 事件目录的 scope 字段。 */
 function eventScope(scope: MemoryRecord["scope"]): {
@@ -32,7 +33,7 @@ export function createMemoryPort(): MemoryPort {
       const query = normalizeMemoryPageQuery(input);
       return pageMemoryRows(query);
     },
-    listMemories: async () => (await listAllMemoryRows()).filter(isActive),
+    listMemories: async () => (await snapshotMemories()).map(snapshot => snapshot.memory),
     saveMemory: async (input) => {
       const now = new Date().toISOString();
       const record: MemoryRecord = {
@@ -47,7 +48,7 @@ export function createMemoryPort(): MemoryPort {
         createdAt: now,
         updatedAt: now,
       };
-      await commitDomainEvents({
+      const draft: DomainEventDraft = {
         type: "memory.promoted",
         payload: {
           memoryId: record.id,
@@ -57,18 +58,15 @@ export function createMemoryPort(): MemoryPort {
           importance: record.importance,
         },
         origin: "agent",
+      };
+      return runDomainWrite(async () => {
+        const [event] = await mintEventRows([draft]);
+        const result = await invoke<{ memory: MemoryRecord; inserted: boolean }>("memory_create", { event, automatic: input.origin === "extraction" || input.origin === "plugin" });
+        if (result.inserted) broadcastDomainEventDrafts([draft]);
+        return result.memory;
       });
-      return record;
     },
-    snapshotMemories: async (filter) => {
-      const snapshots = await snapshotMemories();
-      if (!filter) return snapshots;
-      const query = normalizeMemoryQuery(filter);
-      const scopes = new Set<string>(query.scopes);
-      return snapshots.filter(({ memory }) => scopes.has(memory.scope) && (!query.query || matchesMemoryQuery(memory.content, query.query)))
-        .sort((a, b) => Number(b.memory.pinned ?? false) - Number(a.memory.pinned ?? false) || b.memory.importance - a.memory.importance || b.memory.updatedAt.localeCompare(a.memory.updatedAt))
-        .slice(0, query.limit);
-    },
+    snapshotMemories: async filter => snapshotMemories(filter ? normalizeMemoryQuery(filter) : undefined),
     reinforceMemory,
     applyMemoryChanges,
   };

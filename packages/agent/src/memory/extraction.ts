@@ -5,6 +5,7 @@
  * 保守闸门：一轮最多 3 条候选；区分用户自述 / 引用书内容 / 假设性发言，
  * 只有自述能成为 user scope 证据；命中已有记忆报 reinforced 而不是重复写入。
  */
+import { boundedMemoryComplete } from "./model-budget";
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import type { CompleteFn } from "../models/complete";
 import type { AgentLogPort, MemoryKind, MemoryRecord, MemoryScope } from "../ports";
@@ -126,7 +127,8 @@ async function runExtraction(
 ): Promise<ExtractionResult> {
   let message: AssistantMessage;
   try {
-    message = await input.complete(input.model, {
+    if (content.length > 64000 || input.existing.length > 100) { input.log?.warn("memory extraction input exceeds its budget"); return EMPTY; }
+    message = await boundedMemoryComplete(input.complete)(input.model, {
       systemPrompt: buildExtractionPrompt(input.scope, input.existing),
       messages: [
         {
@@ -135,7 +137,7 @@ async function runExtraction(
           timestamp: Date.now(),
         },
       ],
-    });
+    }, { maxTokens: 1024 });
   } catch (error) {
     // Degrading to "nothing extracted" is the right behavior, but the failure
     // must leave a trace — a silently dead extraction pipeline looks exactly
@@ -144,6 +146,10 @@ async function runExtraction(
     return EMPTY;
   }
 
+  if (message.stopReason !== "stop") { input.log?.warn("memory extraction did not complete", { stopReason: message.stopReason }); return EMPTY; }
+  let output = 0;
+  for (const block of message.content) if (block.type === "text") output += block.text.length;
+  if (output > 16000) { input.log?.warn("memory extraction output exceeds its budget"); return EMPTY; }
   const parsed = parseJson(extractText(message));
   if (!parsed || typeof parsed !== "object") {
     input.log?.warn("memory extraction output was not parseable JSON");
@@ -159,6 +165,9 @@ async function runExtraction(
     ? [...new Set(rawReinforced.filter((id): id is string => typeof id === "string" && knownIds.has(id)))]
     : [];
 
+  const canonical = (value: string) => value.trim().replace(/\s+/gu, " ").toLowerCase();
+  const known = new Map(input.existing.map(memory => [canonical(memory.content), memory.id]));
+  const seen = new Set<string>();
   const newMemories: MemoryCandidate[] = [];
   if (Array.isArray(rawNew)) {
     for (const item of rawNew.slice(0, 3)) {
@@ -167,7 +176,10 @@ async function runExtraction(
       const memoryScope = normalizeScope(rawScope, input.scope);
       if (!memoryScope) continue;
       if (typeof kind !== "string" || !KINDS.includes(kind)) continue;
-      if (typeof content !== "string" || !content.trim()) continue;
+      if (typeof content !== "string" || !content.trim() || content.length > 16000) continue;
+      const key = canonical(content), existingId = known.get(key);
+      if (existingId) { if (!reinforcedIds.includes(existingId)) reinforcedIds.push(existingId); continue; }
+      if (seen.has(key)) continue; seen.add(key);
       newMemories.push({ scope: memoryScope, kind: kind as MemoryKind, content: content.trim() });
     }
   }

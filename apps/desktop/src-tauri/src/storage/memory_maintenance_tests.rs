@@ -244,3 +244,19 @@ fn memory_maintenance_rejects_unconditioned_or_arbitrary_mutations() {
     );
     assert_eq!(count(&conn, "domain_events"), 4);
 }
+
+#[test]
+fn memory_snapshot_queries_bound_in_native_storage_without_collecting_the_whole_active_set() {
+    let mut conn = db();
+    conn.execute_batch("WITH RECURSIVE ids(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM ids WHERE n<1001) INSERT INTO memories(id,scope,kind,content,importance,evidence_count,created_at,updated_at) SELECT 'bulk-'||n,'global','fact','Short fact',0.2,1,'now','now' FROM ids;").unwrap();
+    assert_eq!(
+        snapshots_inner(&mut conn).unwrap_err().code,
+        "memory/input-budget-exceeded"
+    );
+    let scoped =
+        snapshots_query_inner(&mut conn, Some(json!({"scopes":["user"],"limit":20}))).unwrap();
+    assert_eq!(scoped.len(), 2);
+    let bounded =
+        snapshots_query_inner(&mut conn, Some(json!({"scopes":["global"],"limit":20}))).unwrap();
+    assert_eq!(bounded.len(), 20);
+}

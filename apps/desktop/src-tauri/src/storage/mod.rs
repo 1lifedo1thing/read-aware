@@ -57,6 +57,8 @@ mod book_merge;
 pub use book_merge::*;
 mod book_digest;
 pub use book_digest::*;
+mod memory_creation;
+pub use memory_creation::*;
 mod memory_maintenance;
 pub use memory_maintenance::*;
 mod identity_consolidation;
