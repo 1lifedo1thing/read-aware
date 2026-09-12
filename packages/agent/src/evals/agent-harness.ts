@@ -227,6 +227,11 @@ export function createAgentEvalVariant(
         transformSystemPrompt: options.transformSystemPrompt,
       });
       const rawTurns: Array<{ input: AgentEvalTurn; chunks: AgentEvalObservation["turns"][number]["chunks"] }> = [];
+      context.capturePartial?.(() => {
+        const observation = buildAgentObservation({ turns: rawTurns, modelRequests,
+          wallTimeMs: performance.now() - startedAt });
+        return { observation, telemetry: observation.telemetry };
+      });
 
       try {
         for (const [index, turn] of scenario.turns.entries()) {
@@ -234,10 +239,10 @@ export function createAgentEvalVariant(
           activeTurn = index + 1;
           activeRound = 0;
           const chunks: AgentEvalObservation["turns"][number]["chunks"] = [];
+          rawTurns.push({ input: turn, chunks });
           for await (const chunk of thread.sendTurn({ ...turn, signal: context.signal })) {
             chunks.push(chunk);
           }
-          rawTurns.push({ input: turn, chunks });
         }
         await thread.flushBackgroundWork();
         const state = await scenario.observeState?.(setupContext);

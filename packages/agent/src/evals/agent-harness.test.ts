@@ -3,6 +3,7 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 import { registerFauxProvider, streamSimple } from "@earendil-works/pi-ai/compat";
 import { fauxAssistantMessage, type FauxProviderRegistration } from "@earendil-works/pi-ai/providers/faux";
 import { createAgentEvalVariant, defineAgentEvalScenario } from "./agent-harness";
+import type { AgentEvalObservation, EvalHarnessOutput } from "./types";
 
 describe("agent eval harness", () => {
   let faux: FauxProviderRegistration | undefined;
@@ -47,5 +48,27 @@ describe("agent eval harness", () => {
     expect(JSON.stringify(result.observation.modelRequests[0]?.context.messages)).toContain(
       "What time is shown?",
     );
+  });
+
+  test("captures the active turn and request when execution is interrupted", async () => {
+    faux = registerFauxProvider({ tokensPerSecond: 1 });
+    faux.setResponses([fauxAssistantMessage("A slow answer that will be interrupted.")]);
+    const model = faux.getModel() as Model<Api>;
+    const controller = new AbortController();
+    const variant = createAgentEvalVariant({ id: "interrupted", modelId: model.id, resolveModel: () => model,
+      getApiKey: () => "test-key", thinkingLevel: "off", streamFn: (m, c, options) => {
+        queueMicrotask(() => controller.abort(Error("evaluation deadline")));
+        return streamSimple(m, c, options);
+      } });
+    let snapshot: (() => EvalHarnessOutput<unknown>) | undefined;
+    const scenario = defineAgentEvalScenario({ id: "interrupt", description: "interrupt",
+      scope: { kind: "global", threadId: "interrupted" }, turns: [{ text: "Explain this slowly." }] });
+    await expect(variant.run(scenario, { repetition: 1, signal: controller.signal,
+      capturePartial: capture => { snapshot = capture; } })).rejects.toThrow();
+    const partial = snapshot!().observation as AgentEvalObservation;
+    expect(partial.turns).toHaveLength(1);
+    expect(partial.turns[0]?.input.text).toBe("Explain this slowly.");
+    expect(partial.modelRequests).toHaveLength(1);
+    expect(partial.state).toBeUndefined();
   });
 });

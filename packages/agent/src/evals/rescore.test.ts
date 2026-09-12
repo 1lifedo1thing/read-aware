@@ -60,6 +60,7 @@ describe("eval artifact rescoring", () => {
     const failed = record({
       status: "error",
       output: undefined,
+      partialOutput: { answer: "correct", tools: [{ name: "unfinished-tool" }] },
       error: { stage: "execution", name: "Error", message: "provider unavailable" },
     });
     const result = await rescoreEvalRecords(

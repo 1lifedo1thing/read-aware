@@ -12,6 +12,7 @@ import {
   type EvalSuite,
   type EvalSummary,
   type EvalVariant,
+  type JsonValue,
 } from "./types";
 
 export interface RunEvalSuiteOptions {
@@ -121,12 +122,14 @@ async function executeRun<TObservation, TScenario extends EvalScenario<TObservat
   const startedAt = new Date();
   const startedPerformance = performance.now();
   let harnessOutput: EvalHarnessOutput<TObservation> | undefined;
+  let capturePartial: (() => EvalHarnessOutput<unknown>) | undefined;
   let executionError: unknown;
   let errorStage: EvalErrorStage = "execution";
 
   try {
     harnessOutput = await runWithTimeout(input.timeoutMs, (signal) =>
-      input.variant.run(input.scenario, { repetition: input.repetition, signal }),
+      input.variant.run(input.scenario, { repetition: input.repetition, signal,
+        capturePartial: snapshot => { capturePartial = snapshot; } }),
     );
   } catch (error) {
     executionError = error;
@@ -153,10 +156,17 @@ async function executeRun<TObservation, TScenario extends EvalScenario<TObservat
   const wallTimeMs = performance.now() - startedPerformance;
 
   if (executionError || !harnessOutput) {
+    let partial: EvalHarnessOutput<unknown> | undefined;
+    let partialOutput: JsonValue | undefined;
+    try {
+      partial = capturePartial?.();
+      if (partial) partialOutput = toJsonValue(partial.observation);
+    } catch { /* Diagnostics must not replace the original execution error. */ }
     return {
       ...base,
       status: "error",
-      telemetry: { wallTimeMs },
+      ...(partialOutput === undefined ? {} : { partialOutput }),
+      telemetry: { ...partial?.telemetry, wallTimeMs },
       error: errorDetails(executionError ?? new Error("harness returned no output"), errorStage),
     };
   }

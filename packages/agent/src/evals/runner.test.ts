@@ -136,6 +136,36 @@ describe("eval runner", () => {
     ).rejects.toThrow("variants contains duplicate id");
   });
 
+  test("retains timeout diagnostics without grading an interrupted observation", async () => {
+    const interrupted: EvalVariant<Scenario, Observation> = {
+      id: "interrupted", metadata: {},
+      run: async (_scenario, context) => {
+        context.capturePartial?.(() => ({ observation: { value: 7 }, telemetry: { wallTimeMs: 3, rounds: 2 } }));
+        return new Promise((_resolve, reject) => {
+          context.signal.addEventListener("abort", () => reject(context.signal.reason), { once: true });
+        });
+      },
+    };
+    let graded = false;
+    const result = await runEvalSuite({ id: "partial", displayName: "Partial", code: "S00", description: "partial",
+      scenarios: [scenario(() => { graded = true; return assessmentFromChecks([]); })] }, [interrupted], { timeoutMs: 5 });
+    expect(graded).toBe(false);
+    expect(result.records[0]).toMatchObject({ status: "error", partialOutput: { value: 7 },
+      error: { stage: "timeout" }, telemetry: { rounds: 2 } });
+    expect(result.records[0]?.output).toBeUndefined();
+  });
+
+  test("a broken diagnostic snapshot preserves the original failure", async () => {
+    const broken: EvalVariant<Scenario, Observation> = { id: "broken", metadata: {}, run: async (_scenario, context) => {
+      context.capturePartial?.(() => { throw Error("snapshot failed"); });
+      throw Error("provider failed");
+    } };
+    const result = await runEvalSuite({ id: "partial", displayName: "Partial", code: "S00", description: "partial",
+      scenarios: [scenario(() => assessmentFromChecks([]))] }, [broken]);
+    expect(result.records[0]?.error?.message).toBe("provider failed");
+    expect(result.records[0]?.partialOutput).toBeUndefined();
+  });
+
   test("bounds scoring and aborts the judge signal", async () => {
     let aborted = false;
     const result = await runEvalSuite(

@@ -113,6 +113,8 @@ export interface EvalScenario<TObservation> {
 export interface EvalHarnessContext {
   repetition: number;
   signal: AbortSignal;
+  /** Diagnostic snapshot on execution failure only; never a completed observation. */
+  capturePartial?: (snapshot: () => EvalHarnessOutput<unknown>) => void;
 }
 
 export interface EvalHarnessOutput<TObservation> {
@@ -170,6 +172,8 @@ export interface EvalRunRecord {
   finishedAt: string;
   input: JsonValue;
   output?: JsonValue;
+  /** Interrupted execution evidence. Not eligible for scoring or rescore. */
+  partialOutput?: JsonValue;
   assessment?: EvalAssessment;
   telemetry: EvalTelemetry;
   error?: EvalRunError;
