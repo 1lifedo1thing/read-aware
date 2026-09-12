@@ -456,3 +456,15 @@ lastRun，状态succeeded；Worker退役重启后requestId、startedAt、成功�
 违规者调用收到plugin/unavailable且贡献移除；同伴仍返回alive。最终四个测试Worker贡献
 均0、两条自有延迟任务KV删除重读为空，本地HTTP服务已停止。桌面探针类型检查通过。
 见[观察记录](./background-network-observations.json)。
+
+## 第十九个桌面流程：回调生命周期、文档保真和合成凭据
+
+真实Worker连续20次注册临时命令、写入/读回带__fn和__disposable普通字段的文档、
+执行回调并两次dispose；字段保持原样，已释放回调均plugin/unavailable，cleanup owner
+维持1，退役后无贡献。测试文档随后清理并原生重读数量0。
+
+另在关闭sync且原测试slot/master-key为空的隔离实例，使用合成密钥和凭据执行
+first→second→remote→删除。最终观察到本地first/second/删除三条可解密事件；
+remote来源写入没有回传，当前slot为空，临时slot/master-key清理后均不存在。
+这只证明本机原生命令与加密事件发布，不是跨设备传输，也不证明UI失效：此批changed计数为0。
+原有凭据未读取或使用。详情见[观察记录](./callback-credential-observations.json)。
