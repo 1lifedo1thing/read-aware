@@ -15,6 +15,7 @@
  * then the caller reloads, and boot runs as a fresh install.
  */
 import { invoke } from "../../../platform/ipc";
+import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { isTauri } from "../../../platform/environment";
 import { createLogger } from "../../../platform/logger";
 import { syncRelayClient } from "../../../platform/sync/sync-scheduler";
@@ -34,33 +35,37 @@ export async function deleteAllData(): Promise<void> {
     // Offline or never connected — the local wipe must proceed regardless.
   }
 
-  await invoke("wipe_all_data");
+  // Relay logout is preparation, outside the local write receipt. Never hold
+  // a transaction across a transport callback that can itself request backup.
+  return runDomainWrite(async () => {
+    await invoke("wipe_all_data");
 
-  for (const flag of ONE_TIME_IMPORT_FLAGS) {
-    await invoke("set_kv", { key: flag, value: "1" });
-  }
+    for (const flag of ONE_TIME_IMPORT_FLAGS) {
+      await invoke("set_kv", { key: flag, value: "1" });
+    }
 
-  try {
-    localStorage.clear();
-    const databases = await indexedDB.databases();
-    await Promise.allSettled(
-      databases
-        .map((db) => db.name)
-        .filter((name): name is string => Boolean(name))
-        .map(
-          (name) =>
-            new Promise<void>((resolve, reject) => {
-              const request = indexedDB.deleteDatabase(name);
-              request.onsuccess = () => resolve();
-              request.onerror = () => reject(request.error);
-              // Another tab/handle keeping it open must not hang the wipe.
-              request.onblocked = () => resolve();
-            }),
-        ),
-    );
-  } catch (error) {
-    // Legacy webview storage is best-effort: the import flags above already
-    // prevent it from ever being read back into SQLite.
-    log.warn("webview storage cleanup incomplete", error);
-  }
+    try {
+      localStorage.clear();
+      const databases = await indexedDB.databases();
+      await Promise.allSettled(
+        databases
+          .map((db) => db.name)
+          .filter((name): name is string => Boolean(name))
+          .map(
+            (name) =>
+              new Promise<void>((resolve, reject) => {
+                const request = indexedDB.deleteDatabase(name);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+                // Another tab/handle keeping it open must not hang the wipe.
+                request.onblocked = () => resolve();
+              }),
+          ),
+      );
+    } catch (error) {
+      // Legacy webview storage is best-effort: the import flags above already
+      // prevent it from ever being read back into SQLite.
+      log.warn("webview storage cleanup incomplete", error);
+    }
+  });
 }

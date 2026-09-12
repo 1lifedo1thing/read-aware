@@ -12,6 +12,7 @@
  * Desktop-only: `hydrateLocalStore()` only calls this under Tauri.
  */
 import { invoke } from "./ipc";
+import { runDomainWrite } from "./domain-write-gate";
 import { createLogger } from "./logger";
 import { putDesktopBlob } from "./blob-store";
 
@@ -79,18 +80,21 @@ async function importLocalStorage(): Promise<void> {
       // SQLite as-is, the API key to encrypted storage. The localStorage copy
       // is dropped only after that write lands, so a failure retries on the
       // next launch instead of losing the user's key.
+      let cfg: { apiKey?: unknown } & Record<string, unknown>;
       try {
-        const cfg = JSON.parse(value) as { apiKey?: unknown } & Record<string, unknown>;
-        const { apiKey, ...nonSecret } = cfg;
-        await invoke("set_kv", { key: AI_CONFIG_KEY, value: JSON.stringify(nonSecret) });
-        if (typeof apiKey === "string" && apiKey) {
-          await invoke("secret_set", { key: "ai-api-key", value: apiKey });
-          localStorage.removeItem(AI_KEY_KEY);
-        }
+        cfg = JSON.parse(value) as typeof cfg;
+        if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) throw new Error("Invalid legacy AI config object");
       } catch (error) {
-        // Malformed legacy blob: the connection fields are re-enterable, but
-        // record that the carried-over key (if any) was NOT migrated.
+        // Unparseable connection fields keep the existing skip policy. Native
+        // write failures below must instead prevent the migration-complete flag.
         log.warn("legacy AI config blob unreadable; skipped", error);
+        continue;
+      }
+      const { apiKey, ...nonSecret } = cfg;
+      await invoke("set_kv", { key: AI_CONFIG_KEY, value: JSON.stringify(nonSecret) });
+      if (typeof apiKey === "string" && apiKey) {
+        await invoke("secret_set", { key: "ai-api-key", value: apiKey });
+        localStorage.removeItem(AI_KEY_KEY);
       }
       continue;
     }
@@ -147,10 +151,12 @@ async function importAnnotations(): Promise<void> {
  * is safe.
  */
 export async function importDesktopDataIntoSqlite(): Promise<void> {
-  await importLocalStorage();
-  await importLibrary();
-  await importAnnotations();
-  await invoke("set_kv", { key: MIGRATED_FLAG, value: "1" });
+  return runDomainWrite(async () => {
+    await importLocalStorage();
+    await importLibrary();
+    await importAnnotations();
+    await invoke("set_kv", { key: MIGRATED_FLAG, value: "1" });
+  });
 }
 
 const MEMORIES_DB = "read-aware-memories";
@@ -162,43 +168,45 @@ const MEMORIES_DB = "read-aware-memories";
  * once this resolves, which is what makes it once-only.
  */
 export async function importKvConversationsIntoSqlite(raw: string): Promise<void> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    // Must NOT resolve here: the caller deletes the kv key once this returns,
-    // and a malformed blob may still be a truncated-but-recoverable transcript
-    // store. Throwing keeps the key in place for the next launch (and for
-    // manual recovery); the sibling migrations follow the same rule.
-    throw new Error("legacy conversations blob is not valid JSON", { cause: err });
-  }
-  if (!parsed || typeof parsed !== "object") return;
-  for (const [conversationId, messages] of Object.entries(parsed as Record<string, unknown>)) {
-    if (!Array.isArray(messages)) continue;
-    await invoke("ai_chat_replace", {
-      conversationId,
-      messages: messages.map((message, seq) => {
-        const m = message as {
-          id?: string;
-          role?: string;
-          content?: string;
-          createdAt?: string;
-          attachments?: unknown;
-          parts?: unknown;
-        };
-        return {
-          id: m.id ?? `imported-${conversationId}-${seq}`,
-          conversationId,
-          role: m.role ?? "user",
-          seq,
-          content: m.content ?? "",
-          createdAt: m.createdAt ?? new Date(0).toISOString(),
-          attachmentsJson: m.attachments ? JSON.stringify(m.attachments) : undefined,
-          partsJson: m.parts ? JSON.stringify(m.parts) : undefined,
-        };
-      }),
-    });
-  }
+  return runDomainWrite(async () => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      // Must NOT resolve here: the caller deletes the kv key once this returns,
+      // and a malformed blob may still be a truncated-but-recoverable transcript
+      // store. Throwing keeps the key in place for the next launch (and for
+      // manual recovery); the sibling migrations follow the same rule.
+      throw new Error("legacy conversations blob is not valid JSON", { cause: err });
+    }
+    if (!parsed || typeof parsed !== "object") return;
+    for (const [conversationId, messages] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!Array.isArray(messages)) continue;
+      await invoke("ai_chat_replace", {
+        conversationId,
+        messages: messages.map((message, seq) => {
+          const m = message as {
+            id?: string;
+            role?: string;
+            content?: string;
+            createdAt?: string;
+            attachments?: unknown;
+            parts?: unknown;
+          };
+          return {
+            id: m.id ?? `imported-${conversationId}-${seq}`,
+            conversationId,
+            role: m.role ?? "user",
+            seq,
+            content: m.content ?? "",
+            createdAt: m.createdAt ?? new Date(0).toISOString(),
+            attachmentsJson: m.attachments ? JSON.stringify(m.attachments) : undefined,
+            partsJson: m.parts ? JSON.stringify(m.parts) : undefined,
+          };
+        }),
+      });
+    }
+  });
 }
 
 /**
@@ -207,14 +215,16 @@ export async function importKvConversationsIntoSqlite(raw: string): Promise<void
  * Upserts, so retry-after-partial-failure is safe.
  */
 export async function importWebviewMemoriesIntoSqlite(): Promise<void> {
-  const db = await openExistingIdb(MEMORIES_DB);
-  if (!db) return;
-  try {
-    const memories = await idbGetAll<Record<string, unknown>>(db, "memories");
-    for (const memory of memories) {
-      await invoke("memory_put", { memory });
+  return runDomainWrite(async () => {
+    const db = await openExistingIdb(MEMORIES_DB);
+    if (!db) return;
+    try {
+      const memories = await idbGetAll<Record<string, unknown>>(db, "memories");
+      for (const memory of memories) {
+        await invoke("memory_put", { memory });
+      }
+    } finally {
+      db.close();
     }
-  } finally {
-    db.close();
-  }
+  });
 }

@@ -9,6 +9,7 @@
  * shell the feature libs keep their localStorage fallbacks.
  */
 import { invoke } from "./ipc";
+import { runDomainWrite } from "./domain-write-gate";
 import { isTauri } from "./environment";
 import { createLogger } from "./logger";
 import { flushPendingReadingSessions } from "./reading-session";
@@ -137,24 +138,26 @@ async function migrateReadingStatsKv(kv: LegacyKvAccess): Promise<void> {
  */
 export async function hydrateInterimProjections(kv: LegacyKvAccess): Promise<void> {
   if (!isTauri()) return;
-  await migrateVocabularyKv(kv);
-  await migrateReadingStatsKv(kv);
-  // Wave 5: the retired core vocabulary projection moves into the built-in
-  // dictionary plugin's document collection (idempotent; empty second run).
-  try {
-    const moved = await invoke<number>("vocabulary_migrate_to_plugin_documents");
-    if (moved > 0) log.info(`moved ${moved} vocabulary entries to the plugin`);
-  } catch (err) {
-    log.error("vocabulary handoff failed; will retry next launch", err);
-  }
-  // Sessions a crash left open become their events BEFORE the projections
-  // are read, so the boot snapshot already includes that time and position.
-  await flushPendingReadingSessions();
-  try {
-    readingTime = await invoke<ReadingTimeWire>("reading_time_load");
-  } catch (err) {
-    log.error("hydrate failed; starting empty", err);
-  }
+  return runDomainWrite(async () => {
+    await migrateVocabularyKv(kv);
+    await migrateReadingStatsKv(kv);
+    // Wave 5: the retired core vocabulary projection moves into the built-in
+    // dictionary plugin's document collection (idempotent; empty second run).
+    try {
+      const moved = await invoke<number>("vocabulary_migrate_to_plugin_documents");
+      if (moved > 0) log.info(`moved ${moved} vocabulary entries to the plugin`);
+    } catch (err) {
+      log.error("vocabulary handoff failed; will retry next launch", err);
+    }
+    // Sessions a crash left open become their events BEFORE the projections
+    // are read, so the boot snapshot already includes that time and position.
+    await flushPendingReadingSessions();
+    try {
+      readingTime = await invoke<ReadingTimeWire>("reading_time_load");
+    } catch (err) {
+      log.error("hydrate failed; starting empty", err);
+    }
+  });
 }
 
 // ─── Reading-time (boot snapshot) ────────────────────────────────────────────
@@ -162,13 +165,6 @@ export async function hydrateInterimProjections(kv: LegacyKvAccess): Promise<voi
 /** The boot snapshot — live truth after boot is the readingStatsAtom. */
 export function getReadingTimeSnapshot(): ReadingTimeWire {
   return readingTime;
-}
-
-export function importReadingTime(wire: ReadingTimeWire): void {
-  readingTime = wire;
-  void invoke("reading_time_import", { wire }).catch((err) => {
-    log.error("reading_time_import failed", err);
-  });
 }
 
 /** Fresh read from SQLite (async consumers, e.g. the reading domain). */

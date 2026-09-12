@@ -18,7 +18,6 @@
 import { isTauri } from "../../../platform/environment";
 import {
   getReadingTimeSnapshot,
-  importReadingTime,
   loadReadingTime,
   type ReadingTimeWire,
 } from "../../../platform/interim-projections";
@@ -90,32 +89,6 @@ export function getReadingStatsStore(): ReadingStatsStore {
 /** Fresh async read of the SQLite projection (the reading domain's `getTime`). */
 export async function loadReadingStatsStore(): Promise<ReadingStatsStore> {
   return storeFromWire(await loadReadingTime());
-}
-
-/** Bulk replace (the stats demo seed). */
-export function replaceReadingStatsStore(store: ReadingStatsStore): void {
-  if (!isTauri()) return;
-  const books = Object.values(store);
-  importReadingTime({
-    totals: books.map((book) => ({
-      bookId: book.bookId,
-      totalMs: book.totalMs,
-      firstStartedAt: book.firstStartedAt,
-      lastReadAt: book.lastReadAt,
-    })),
-    daily: books.flatMap((book) =>
-      Object.entries(book.daily).map(([localDay, ms]) => ({
-        bookId: book.bookId,
-        localDay,
-        ms,
-      })),
-    ),
-    hourly: books.flatMap((book) =>
-      book.byHour.flatMap((ms, localHour) =>
-        ms > 0 ? [{ bookId: book.bookId, localHour, ms }] : [],
-      ),
-    ),
-  });
 }
 
 export function getBookReadingStats(
