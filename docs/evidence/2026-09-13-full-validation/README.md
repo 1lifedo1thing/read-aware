@@ -936,3 +936,22 @@ Most read同书18m。点击单书行进入真实第二章，关书回统计，�
 这覆盖真实前台阅读→结算/正常重启保留→投影→界面组合，不等于独立时钟精度
 校准，也不新增真实跨日、夏令时、跨设备或任意日期边界通过声明；早前两日合成
 测试仍保留自己的证据边界。无产品源码改动，无重复全量测试。
+
+## 第三十六流程：发布包选区快捷键、笔记取消与聊天引用
+
+沿用同一合成FB2，物理拖选第一章首句并按h，黄色高亮实际绘制且原生持久；
+拖选第二段第一行按u，黄色下划线实际绘制且原生持久。拖选been saved.按n，
+笔记编辑器显示正确引用并聚焦Your note，Save禁用；Cancel关闭编辑器及选区栏。
+原生重读共四条标注，其中笔记仍仅第32流程的一条，取消未留下新记录。
+
+拖选未标注的synthetic按l，真实bundled Dictionary打开，显示AI未配置和重试/
+打开设置入口；Escape关闭。本隔离release未配置凭据，词义内容不计通过。
+再次选择synthetic按a，Chat打开并携带同一引用、Ask about this passage占位和
+Message焦点；Remove passage恢复普通输入且Send禁用，随后关闭Chat，未发送。
+原生持久会话仍0，快捷键覆盖仍{}，内容排版仍默认跟随/medium/comfortable。
+
+证据：[packaged-selection-shortcuts-observations.json](./packaged-selection-shortcuts-observations.json)。
+一书四标注保留。准备复制的最后一次拖选输出被截断，未确认选区、未按c或粘贴。
+用户确认解锁后CUA仍返回Mac locked，随后状态读取超时；复制和菜单编辑器保留
+待验。已有标注浮层曾在截图可见但完整AX树缺失，未操作其编辑动作，不冒称
+可访问性通过。其他格式/重绑/模型回答另列，无源码改动，不重复全量测试。

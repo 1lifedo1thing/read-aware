@@ -177,11 +177,11 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET67 | shortcuts.reader-mode-next-unit | F6 | release真实Sentence Reader物理Down推进句/段，计数及实际强调一致；其他格式/重绑待验，见第三十四流程 |
 | SET68 | shortcuts.reader-mode-prev-unit | F6 | release真实Sentence Reader物理Up回前句，计数/强调正确；其他格式/重绑待验，见第三十四流程 |
 | SET69 | shortcuts.selection-copy | F6 | 待验 |
-| SET70 | shortcuts.selection-highlight | F6 | 待验 |
-| SET71 | shortcuts.selection-underline | F6 | 待验 |
-| SET72 | shortcuts.selection-add-note | F6 | 待验 |
-| SET73 | shortcuts.selection-look-up | F6 | 待验 |
-| SET74 | shortcuts.selection-ask-ai | F6 | 待验 |
+| SET70 | shortcuts.selection-highlight | F6 | release物理拖选后按h创建黄色高亮，实际绘制/原生重读通过；重绑/其他格式待验，见第三十六流程 |
+| SET71 | shortcuts.selection-underline | F6 | release物理拖选后按u创建黄色下划线，实际绘制/原生重读通过；重绑/其他格式待验，见第三十六流程 |
+| SET72 | shortcuts.selection-add-note | F6 | release物理选区按n打开正确引用的笔记编辑器并聚焦，Cancel不留记录通过；快捷键路径保存/重绑待验，见第三十六流程 |
+| SET73 | shortcuts.selection-look-up | F6 | release物理选词按l打开真实Dictionary及缺AI配置提示，Escape关闭通过；词义内容环境阻塞，重绑待验，见第三十六流程 |
+| SET74 | shortcuts.selection-ask-ai | F6 | release物理选词按a打开Chat并带入精确引用/输入焦点，移除引用及关闭通过；未发送模型请求，重绑待验，见第三十六流程 |
 | AI01 | 读取书内/全局对话及搜索历史 | F4 | 待验 |
 | AI02 | 创建/切换/清空全局线程和书内聊天 | F4 | 待验 |
 | AI03 | 发送/流式生成/停止/重试聊天回合 | F4 | 待验 |
