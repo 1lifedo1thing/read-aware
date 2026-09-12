@@ -1,0 +1,408 @@
+{
+  "bookId": "5333dc62-a7ff-4d9a-a3cc-0b3317f86774",
+  "cleanup": {
+    "panels": {
+      "bookId": "5333dc62-a7ff-4d9a-a3cc-0b3317f86774",
+      "controlsVisible": false,
+      "layout": "docked",
+      "panels": {
+        "annotations": {
+          "open": false,
+          "visible": false
+        },
+        "appearance": {
+          "open": false,
+          "visible": false
+        },
+        "chat": {
+          "open": false,
+          "visible": false
+        },
+        "toc": {
+          "open": false,
+          "visible": false
+        }
+      },
+      "revision": 9,
+      "sessionId": "7e4c3ecf-b8a5-458b-a04e-101a99afa2f1",
+      "sizes": {
+        "chat": 352,
+        "toc": 288
+      }
+    },
+    "restored": true
+  },
+  "hideControls": {
+    "bookId": "5333dc62-a7ff-4d9a-a3cc-0b3317f86774",
+    "controlsVisible": false,
+    "layout": "docked",
+    "panels": {
+      "annotations": {
+        "open": false,
+        "visible": false
+      },
+      "appearance": {
+        "open": false,
+        "visible": false
+      },
+      "chat": {
+        "open": false,
+        "visible": false
+      },
+      "toc": {
+        "open": true,
+        "visible": false
+      }
+    },
+    "revision": 5,
+    "sessionId": "7e4c3ecf-b8a5-458b-a04e-101a99afa2f1",
+    "sizes": {
+      "chat": 352,
+      "toc": 340
+    }
+  },
+  "libraryCleanup": {
+    "remaining": [
+      {
+        "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+        "title": "Reading Capability Probe"
+      },
+      {
+        "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "title": "Reading Paint Probe"
+      }
+    ],
+    "removed": {
+      "bookIds": [
+        "5333dc62-a7ff-4d9a-a3cc-0b3317f86774"
+      ],
+      "committed": true,
+      "files": {
+        "status": "released"
+      }
+    }
+  },
+  "next": {
+    "availableModes": [
+      {
+        "defaultUnitId": "sentence",
+        "key": "sentence-reader:guided-reading",
+        "label": "Sentence Reader: Read by sentence or paragraph",
+        "units": [
+          {
+            "id": "sentence",
+            "label": "By sentence"
+          },
+          {
+            "id": "paragraph",
+            "label": "By paragraph"
+          }
+        ]
+      }
+    ],
+    "cfiRange": "epubcfi(/6/2!/4/2[first]/4,/1:0,/3:1)",
+    "label": "Sentence Reader: Read by sentence or paragraph",
+    "modeKey": "sentence-reader:guided-reading",
+    "position": {
+      "location": {
+        "bookId": "5333dc62-a7ff-4d9a-a3cc-0b3317f86774",
+        "cfi": "epubcfi(/6/2!/4/2[first]/4,/1:0,/3:1)",
+        "contentVersion": "sha256:b8fc7a3366ff23187e1a8a0b342b5586ac17099de248e5a5af05fb7dc39d426a"
+      },
+      "modeKey": "sentence-reader:guided-reading",
+      "unitId": "sentence"
+    },
+    "progress": {
+      "ordinal": 1,
+      "total": 3
+    },
+    "requestedActive": true,
+    "status": "ready",
+    "unavailableReason": null,
+    "unitId": "sentence",
+    "units": [
+      {
+        "id": "sentence",
+        "label": "By sentence"
+      },
+      {
+        "id": "paragraph",
+        "label": "By paragraph"
+      }
+    ]
+  },
+  "openToc": {
+    "bookId": "5333dc62-a7ff-4d9a-a3cc-0b3317f86774",
+    "controlsVisible": true,
+    "layout": "docked",
+    "panels": {
+      "annotations": {
+        "open": false,
+        "visible": false
+      },
+      "appearance": {
+        "open": false,
+        "visible": false
+      },
+      "chat": {
+        "open": false,
+        "visible": false
+      },
+      "toc": {
+        "open": true,
+        "visible": true
+      }
+    },
+    "revision": 4,
+    "sessionId": "7e4c3ecf-b8a5-458b-a04e-101a99afa2f1",
+    "sizes": {
+      "chat": 352,
+      "toc": 340
+    }
+  },
+  "playbackStates": [
+    {
+      "at": 1789238547420,
+      "playback": {
+        "backend": "plugin",
+        "cfiRange": "epubcfi(/6/2!/4/2[first]/2/2,/1:0,/1:19)",
+        "fallback": false,
+        "owner": "plugin:listening-desk",
+        "status": "preparing",
+        "unavailableReason": null
+      },
+      "progress": {
+        "ordinal": 0,
+        "total": 3
+      }
+    },
+    {
+      "at": 1789238548806,
+      "playback": {
+        "backend": "system",
+        "cfiRange": "epubcfi(/6/2!/4/2[first]/2/2,/1:0,/1:19)",
+        "fallback": true,
+        "owner": "plugin:listening-desk",
+        "status": "preparing",
+        "unavailableReason": null
+      },
+      "progress": {
+        "ordinal": 0,
+        "total": 3
+      }
+    },
+    {
+      "at": 1789238549801,
+      "playback": {
+        "backend": "system",
+        "cfiRange": "epubcfi(/6/2!/4/2[first]/2/2,/1:0,/1:19)",
+        "fallback": true,
+        "owner": "plugin:listening-desk",
+        "status": "playing",
+        "unavailableReason": null
+      },
+      "progress": {
+        "ordinal": 0,
+        "total": 3
+      }
+    },
+    {
+      "at": 1789238556121,
+      "playback": {
+        "backend": "system",
+        "cfiRange": "epubcfi(/6/2!/4/2[first]/4,/1:0,/3:1)",
+        "fallback": true,
+        "owner": "plugin:listening-desk",
+        "status": "advancing",
+        "unavailableReason": null
+      },
+      "progress": {
+        "ordinal": 1,
+        "total": 3
+      }
+    },
+    {
+      "at": 1789238556603,
+      "playback": {
+        "backend": "system",
+        "cfiRange": "epubcfi(/6/2!/4/2[first]/8,/1:0,/1:36)",
+        "fallback": true,
+        "owner": "plugin:listening-desk",
+        "status": "playing",
+        "unavailableReason": null
+      },
+      "progress": {
+        "ordinal": 2,
+        "total": 3
+      }
+    },
+    {
+      "at": 1789238558829,
+      "playback": {
+        "backend": "system",
+        "cfiRange": "epubcfi(/6/2!/4/2[first]/8,/1:0,/1:36)",
+        "fallback": true,
+        "owner": "plugin:listening-desk",
+        "status": "advancing",
+        "unavailableReason": null
+      },
+      "progress": {
+        "ordinal": 2,
+        "total": 3
+      }
+    },
+    {
+      "at": 1789238559805,
+      "playback": {
+        "backend": "system",
+        "cfiRange": "epubcfi(/6/4!/4/2[second]/2/2,/1:0,/1:14)",
+        "fallback": true,
+        "owner": "plugin:listening-desk",
+        "status": "playing",
+        "unavailableReason": null
+      },
+      "progress": {
+        "ordinal": 0,
+        "total": 2
+      }
+    },
+    {
+      "at": 1789238568630,
+      "playback": {
+        "backend": "system",
+        "cfiRange": "epubcfi(/6/4!/4/2[second]/2/2,/1:0,/1:14)",
+        "fallback": true,
+        "owner": "plugin:listening-desk",
+        "status": "advancing",
+        "unavailableReason": null
+      },
+      "progress": {
+        "ordinal": 1,
+        "total": 2
+      }
+    }
+  ],
+  "plugin": "listening-desk@0.10.0",
+  "previous": {
+    "availableModes": [
+      {
+        "defaultUnitId": "sentence",
+        "key": "sentence-reader:guided-reading",
+        "label": "Sentence Reader: Read by sentence or paragraph",
+        "units": [
+          {
+            "id": "sentence",
+            "label": "By sentence"
+          },
+          {
+            "id": "paragraph",
+            "label": "By paragraph"
+          }
+        ]
+      }
+    ],
+    "cfiRange": "epubcfi(/6/2!/4/2[first]/2/2,/1:0,/1:19)",
+    "label": "Sentence Reader: Read by sentence or paragraph",
+    "modeKey": "sentence-reader:guided-reading",
+    "position": {
+      "location": {
+        "bookId": "5333dc62-a7ff-4d9a-a3cc-0b3317f86774",
+        "cfi": "epubcfi(/6/2!/4/2[first]/2/2,/1:0,/1:19)",
+        "contentVersion": "sha256:b8fc7a3366ff23187e1a8a0b342b5586ac17099de248e5a5af05fb7dc39d426a"
+      },
+      "modeKey": "sentence-reader:guided-reading",
+      "unitId": "sentence"
+    },
+    "progress": {
+      "ordinal": 0,
+      "total": 3
+    },
+    "requestedActive": true,
+    "status": "ready",
+    "unavailableReason": null,
+    "unitId": "sentence",
+    "units": [
+      {
+        "id": "sentence",
+        "label": "By sentence"
+      },
+      {
+        "id": "paragraph",
+        "label": "By paragraph"
+      }
+    ]
+  },
+  "profile": "com.readaware.app.capability-e2e",
+  "showControls": {
+    "bookId": "5333dc62-a7ff-4d9a-a3cc-0b3317f86774",
+    "controlsVisible": true,
+    "layout": "docked",
+    "panels": {
+      "annotations": {
+        "open": false,
+        "visible": false
+      },
+      "appearance": {
+        "open": false,
+        "visible": false
+      },
+      "chat": {
+        "open": false,
+        "visible": false
+      },
+      "toc": {
+        "open": true,
+        "visible": true
+      }
+    },
+    "revision": 6,
+    "sessionId": "7e4c3ecf-b8a5-458b-a04e-101a99afa2f1",
+    "sizes": {
+      "chat": 352,
+      "toc": 340
+    }
+  },
+  "stopped": {
+    "backend": null,
+    "cfiRange": "epubcfi(/6/4!/4/2[second]/4,/1:0,/1:39)",
+    "fallback": false,
+    "owner": null,
+    "status": "stopped",
+    "unavailableReason": null
+  },
+  "width": {
+    "bookId": "5333dc62-a7ff-4d9a-a3cc-0b3317f86774",
+    "controlsVisible": false,
+    "layout": "docked",
+    "panels": {
+      "annotations": {
+        "open": false,
+        "visible": false
+      },
+      "appearance": {
+        "open": false,
+        "visible": false
+      },
+      "chat": {
+        "open": false,
+        "visible": false
+      },
+      "toc": {
+        "open": false,
+        "visible": false
+      }
+    },
+    "revision": 2,
+    "sessionId": "7e4c3ecf-b8a5-458b-a04e-101a99afa2f1",
+    "sizes": {
+      "chat": 352,
+      "toc": 340
+    }
+  },
+  "boundaries": {
+    "visibility": "hidden",
+    "audio": "runtime speech start/end/advance observed; audibility and voice quality not reviewed",
+    "pluginSynthesis": "custom endpoint not configured; real system fallback",
+    "mode": "independent follow remains unimplemented"
+  }
+}

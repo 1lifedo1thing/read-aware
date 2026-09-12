@@ -200,3 +200,22 @@ AGE format 2 加密文件，1544230 字节；错误密码明确 backup/unlock-fa
 settings/forbidden，补8语言提示。真实 Worker 定向复验得到该码、整批无写入，
 清理后0贡献。相关测试8 pass、web/桌面类型检查通过。锁屏期间仅计控件状态、
 真实 Worker 和原生持久层；不计视觉。见 settings-observations.json。
+
+## 第七个流程：阅读分段、朗读回退与面板控制
+
+Listening Desk 0.10 + Sentence Reader 真 Worker 在自有 FB2 中启用按句模式，
+0→1→0 单元和对应 CFI 一致。Start 先进入 plugin/preparing；当前自定义 TTS
+端点未配置（原生日志明确该原因），系统语音实际启动，记录 system/fallback、
+playing/advancing，并从第一章推进到第二章。Stop 后状态 stopped、owner=null。
+只证明系统语音事件和播放控制，不证明插件提供者成功合成、实际可听质量或所有语言。
+
+插件控件将目录首选宽度288→340，打开目录会一并显示控制层；隐藏控制层时目录
+保持open但visible=false，再显示恢复visible=true。Current passage 调用成功。
+最后关闭目录，停用模式/恢复原paragraph单元、宽度288/352和隐藏控制层，关书并
+移除自有书，files=released，旧两本书保留。锁屏视觉仍待验；独立follow未实现。
+见 listening-observations.json。
+
+编号修复补验超出范围请求，模型正确报告102个目录条目；但交互选项将第1章
+描述为正文开头、后续又纠正为版权信息，且回答过长，主 Agent 评分3，不能用
+机器通过掩盖表达与选项标注问题。全量首轮《乌合之众》33/37机器通过、4失败，
+尚需主 Agent 全部失败复核和通过抽查；第4本《如何用提问解决问题》运行中。
