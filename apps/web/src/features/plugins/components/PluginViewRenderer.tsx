@@ -29,6 +29,7 @@ import { PluginListViewBody } from "./PluginListViewBody";
 import { PluginTableViewBody } from "./PluginTableViewBody";
 import { PluginTreeViewBody } from "./PluginTreeViewBody";
 import { PluginImageViewBody } from "./PluginImageViewBody";
+import { PluginFileDrop } from "./PluginFileDrop";
 
 type PluginViewRendererProps = {
   /** The root view, or null while the container is still fetching it. */
@@ -153,6 +154,7 @@ export function PluginViewRenderer({
   return (
     <>
       <Stack gap="sm" className={cn("min-h-0", className)}>
+        {current.fileDrop && <PluginFileDrop drop={current.fileDrop} busy={busy} visible={!detailDialog} onResult={handleResult} />}
         {liveFailure && <InlineError onRetry={liveFailure.retryable ? session.retryLive : undefined} retryLabel={t("common:errorBoundary.retry")}>
           {liveFailure.body}
         </InlineError>}

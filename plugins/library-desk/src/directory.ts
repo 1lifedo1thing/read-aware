@@ -3,10 +3,10 @@ import { inspectImportResource } from "./import-book";
 
 const translations: Record<string, [string, string, string, string, string]> = {
   en: ["Browse folder", "Parent folder", "Next page", "Refresh", "Some links, special files or names were omitted"],
-  "zh-CN": ["浏览文件夹", "上级文件夹", "下一页", "刷新", "部分链接、特殊文件或文件名已略过"],
-  "zh-TW": ["瀏覽資料夾", "上層資料夾", "下一頁", "重新整理", "部分連結、特殊檔案或檔名已略過"],
+  "zh-Hans": ["浏览文件夹", "上级文件夹", "下一页", "刷新", "部分链接、特殊文件或文件名已略过"],
+  "zh-Hant": ["瀏覽資料夾", "上層資料夾", "下一頁", "重新整理", "部分連結、特殊檔案或檔名已略過"],
   ja: ["フォルダーを参照", "親フォルダー", "次のページ", "更新", "リンク・特殊ファイル・一部の名前を省略しました"],
-  ko: ["폴더 찾아보기", "상위 폴더", "다음 페이지", "새로 고침", "일부 링크, 특수 파일 또는 이름을 생략했습니다"],
+  ru: ["Открыть папку", "Родительская папка", "Следующая страница", "Обновить", "Некоторые ссылки, специальные файлы или имена пропущены"],
   de: ["Ordner durchsuchen", "Übergeordneter Ordner", "Nächste Seite", "Aktualisieren", "Einige Links, spezielle Dateien oder Namen wurden ausgelassen"],
   fr: ["Parcourir un dossier", "Dossier parent", "Page suivante", "Actualiser", "Certains liens, fichiers spéciaux ou noms ont été omis"],
   es: ["Explorar carpeta", "Carpeta superior", "Página siguiente", "Actualizar", "Se omitieron algunos enlaces, archivos especiales o nombres"],

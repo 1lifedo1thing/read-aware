@@ -854,6 +854,15 @@ function normalizeDetailView(input: Record<string, unknown>, context: string): P
 export function normalizePluginView(input: unknown): PluginView {
   const value = record(input, "view");
   const view = normalizeViewContent(value);
+  if (value.fileDrop != null) {
+    const drop = record(value.fileDrop, "view.fileDrop");
+    if (typeof drop.onDrop !== "function" || drop.multiple !== undefined && typeof drop.multiple !== "boolean") throw new PluginViewError("Invalid file drop declaration");
+    const extensions = drop.extensions === undefined ? undefined : array(drop.extensions, "view.fileDrop.extensions", 32).map(value => {
+      if (typeof value !== "string" || !/^[a-zA-Z0-9]{1,16}$/.test(value)) throw new PluginViewError("Invalid file drop extension");
+      return value.toLowerCase();
+    });
+    view.fileDrop = { multiple: drop.multiple === true, extensions, onDrop: drop.onDrop as NonNullable<PluginView["fileDrop"]>["onDrop"] };
+  }
   if (value.onClose !== undefined) {
     if (typeof value.onClose !== "function") throw new PluginViewError("view.onClose must be a function");
     view.onClose = value.onClose as PluginView["onClose"];

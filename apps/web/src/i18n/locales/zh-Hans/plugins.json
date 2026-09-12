@@ -1,4 +1,5 @@
 {
+  "fileDrop": {"label": "将文件拖到此处，交给 {{name}}", "single": "一次一个文件。此插件将能读取其内容。", "multiple": "最多 16 个文件。此插件将能读取其内容。", "choose": "选择文件"},
   "uri": {"title": "在 {{name}} 中打开链接？", "description": "点击打开后，宿主才会把这条外部链接交给对应插件。", "unavailable": "插件入口不可用或已变更。请关闭提示，启用插件后重新打开链接。", "cancel": "取消", "open": "打开"},
   "viewer": {
     "imageFailed": "无法显示此图片。",

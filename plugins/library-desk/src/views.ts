@@ -5,7 +5,7 @@ import { workspaceStrings, workspaceView } from "./workspace";
 import { assetStrings } from "./assets-strings";
 import { savedCovers } from "./saved-covers";
 import { bookAssets } from "./book-assets";
-import { importBook } from "./import-book";
+import { importBook, inspectImportResource } from "./import-book";
 import { browseDirectory, directoryStrings } from "./directory";
 import { organizeStrings } from "./organize-strings";
 import { organizeBook } from "./organize-books";
@@ -66,7 +66,8 @@ export async function libraryDesk(ctx: PluginContext): Promise<PluginView> {
       ],
     };
   };
-  const content = (): PluginListView => ({ kind: "list", title: `${t[0]} (${selected.size})`, searchable: true,
+  const content = (): PluginListView & Pick<PluginView, "fileDrop"> => ({ kind: "list", title: `${t[0]} (${selected.size})`, searchable: true,
+    fileDrop: { onDrop: async refs => inspectImportResource(ctx, refs[0]!) },
     items: books.map(book => ({ id: book.id, title: book.title, subtitle: book.author, icon: "book-open",
       accessories: selected.has(book.id) ? [{ kind: "icon", icon: "check", label: t[8] }] : [],
       onSelect: async () => {

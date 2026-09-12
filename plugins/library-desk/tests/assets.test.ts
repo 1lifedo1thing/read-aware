@@ -146,6 +146,10 @@ test("compiled header entry reaches selected-book assets and the import review t
   f.ctx.contributions = { agentTools: { register() {} }, commands: { register() {} }, headerActions: { register(value: typeof header) { header = value; } } } as unknown as PluginContext["contributions"];
   await compiled.activate(f.ctx);
   const root = await header!.view!({}) as PluginView & PluginListView;
+  const dropped = (await root.fileDrop!.onDrop([f.resource]))!.view!;
+  expect(action(dropped, "import")).toBeDefined();
+  expect(f.calls.some(call => call[0] === "import")).toBe(false);
+  await dropped.onClose!({ reason: "closed" });
   const subscription = await root.live!.subscribe({ id: "compiled" });
   await (f.updates[f.updates.length - 1] as PluginListView).items[0].onSelect!();
   const selected = f.updates[f.updates.length - 1];

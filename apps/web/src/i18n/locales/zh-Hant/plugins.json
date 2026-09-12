@@ -1,4 +1,5 @@
 {
+  "fileDrop": {"label": "將檔案拖到此處，交給 {{name}}", "single": "一次一個檔案。此插件將能讀取其內容。", "multiple": "最多 16 個檔案。此插件將能讀取其內容。", "choose": "選擇檔案"},
   "uri": {"title": "在 {{name}} 中開啟連結？", "description": "按下開啟後，宿主才會將此外部連結交給對應外掛。", "unavailable": "外掛入口無法使用或已變更。請關閉提示，啟用外掛後重新開啟連結。", "cancel": "取消", "open": "開啟"},
   "viewer": {
     "imageFailed": "無法顯示此圖片。",

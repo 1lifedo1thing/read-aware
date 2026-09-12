@@ -38,6 +38,7 @@ export function useDropBookImport(
 
     function onDragEnter(event: DragEvent) {
       if (!hasFiles(event)) return;
+      if (event.target instanceof Element && event.target.closest("[data-plugin-file-drop]")) return;
       depth += 1;
       setDragActive(true);
     }
@@ -62,15 +63,26 @@ export function useDropBookImport(
       void importRef.current(files.map((file) => ({ kind: "file" as const, file })));
     }
 
+    // A plugin target stops bubbling so it cannot also import into the shelf.
+    // The window overlay must still clear, including a drop rejected by that target.
+    function clearDropOverlay() { depth = 0; setDragActive(false); }
+    function onTargetDrag(event: DragEvent) {
+      if (event.target instanceof Element && event.target.closest("[data-plugin-file-drop]")) clearDropOverlay();
+    }
+
     window.addEventListener("dragenter", onDragEnter);
     window.addEventListener("dragover", onDragOver);
     window.addEventListener("dragleave", onDragLeave);
     window.addEventListener("drop", onDrop);
+    window.addEventListener("drop", clearDropOverlay, true);
+    window.addEventListener("dragenter", onTargetDrag, true);
     return () => {
       window.removeEventListener("dragenter", onDragEnter);
       window.removeEventListener("dragover", onDragOver);
       window.removeEventListener("dragleave", onDragLeave);
       window.removeEventListener("drop", onDrop);
+      window.removeEventListener("drop", clearDropOverlay, true);
+      window.removeEventListener("dragenter", onTargetDrag, true);
     };
   }, []);
 

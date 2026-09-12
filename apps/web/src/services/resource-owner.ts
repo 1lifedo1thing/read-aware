@@ -133,6 +133,35 @@ export class ResourceOwner implements ResourcePort {
   openBook(bookId: string, signal?: AbortSignal) {
     return this.openBookAsset(bookId, "book", signal);
   }
+  /** Host-only: files supplied by a real drop onto a visible plugin target.
+   * No File/Blob or ambient path entrypoint is exposed in the Worker service. */
+  importDroppedFiles(files: readonly File[], signal?: AbortSignal): Promise<ResourceRef[]> {
+    if (!Array.isArray(files) || files.length < 1 || files.length > 16) return Promise.reject(invalid());
+    const accepted = files.map(file => ({ file, name: resourceName(file.name), size: file.size,
+      mimeType: mime(file.type || undefined) }));
+    return this.run(async () => {
+      this.capacity(accepted.map(file => ({ ...file, id: "" })));
+      const native: NativeResource[] = [];
+      try {
+        for (const value of accepted) {
+          this.guard(signal);
+          const next = await this.adapter.create({ name: value.name, mimeType: value.mimeType });
+          native.push({ ...next, size: value.size });
+          for (let offset = 0; offset < value.size; offset += RESOURCE_MAX_CHUNK) {
+            this.guard(signal);
+            const bytes = new Uint8Array(await value.file.slice(offset, offset + RESOURCE_MAX_CHUNK).arrayBuffer());
+            this.guard(signal);
+            if (bytes.length !== Math.min(RESOURCE_MAX_CHUNK, value.size - offset)) throw new AppError("fs/not-found", "Dropped file changed while reading");
+            const size = await this.adapter.append(next.id, offset, bytes);
+            if (size !== offset + bytes.length) throw new AppError("internal", "Unexpected dropped resource size");
+          }
+          this.guard(signal); await this.adapter.commit(next.id);
+        }
+        this.guard(signal);
+        return native.map(value => this.register(value, "picked", "ready"));
+      } catch (error) { await this.cleanNative(native); throw error; }
+    }, signal);
+  }
   openCover(bookId: string, signal?: AbortSignal) {
     return this.openBookAsset(bookId, "cover", signal);
   }

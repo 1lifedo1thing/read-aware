@@ -76,6 +76,24 @@ test("directory retirement drains late picker and file acquisition, rejects extr
   expect(second.files.size).toBe(0); expect(released).toHaveLength(5);
 });
 
+test("host drops copy bounded chunks to immutable owned snapshots and clean partial batches", async () => {
+  const f = fixture();
+  try {
+    const bytes = new Uint8Array(RESOURCE_MAX_CHUNK + 2).fill(9);
+    const refs = await f.owner.importDroppedFiles([new File([bytes], "large.bin"), new File([], "empty.txt")]);
+    expect(refs.map(ref => [ref.name, ref.size, ref.state, ref.source])).toEqual([["large.bin", bytes.length, "ready", "picked"], ["empty.txt", 0, "ready", "picked"]]);
+    expect([...new Uint8Array((await f.owner.read(refs[0]!.id, RESOURCE_MAX_CHUNK, 2)).data)]).toEqual([9, 9]);
+    for (const ref of refs) await f.owner.release(ref.id);
+    f.adapter.commit = async () => { throw Error("disk failed"); };
+    await expect(f.owner.importDroppedFiles([new File(["a"], "a.txt"), new File(["b"], "b.txt")])).rejects.toThrow("disk failed");
+    expect(f.files.size).toBe(0);
+    const stop = new AbortController();
+    f.adapter.append = async () => { stop.abort(Error("view hidden")); return 1; };
+    await expect(f.owner.importDroppedFiles([new File(["a"], "a.txt")], stop.signal)).rejects.toThrow("view hidden");
+    expect(f.files.size).toBe(0);
+  } finally { await f.owner.dispose(); }
+});
+
 test("image previews use only owned sealed non-book resources and recheck expiry and cancellation", async () => {
   const f = fixture(), other = fixture();
   const calls: string[] = [];

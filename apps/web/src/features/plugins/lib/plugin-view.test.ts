@@ -8,6 +8,15 @@ import {
 const noOp = () => undefined;
 
 describe("normalizePluginView", () => {
+  test("file drops freeze bounded filters, preserve the owning callback and reject malformed declarations", () => {
+    const extensions = ["EPUB"];
+    const view = normalizePluginView({ kind: "markdown", markdown: "x", fileDrop: { extensions, onDrop: noOp, hiddenPath: "/private" } });
+    extensions[0] = "TXT";
+    expect(view.fileDrop).toEqual({ multiple: false, extensions: ["epub"], onDrop: noOp });
+    for (const fileDrop of [[], false, {}, { onDrop: "fn" }, { onDrop: noOp, multiple: 1 }, { onDrop: noOp, extensions: ["../a"] }, { onDrop: noOp, extensions: Array(33).fill("txt") }]) {
+      expect(() => normalizePluginView({ kind: "markdown", markdown: "x", fileDrop })).toThrow();
+    }
+  });
   test("progress accepts explicit indeterminate state and bounded cancel actions, never invalid ranges", () => {
     const progress = (block: object) => normalizePluginView({ kind: "blocks", blocks: [{ kind: "progress", ...block }] });
     expect(progress({ value: null, cancel: { id: "job", label: "Cancel", run: noOp } })).toMatchObject({ blocks: [{ value: null, cancel: { id: "job", run: noOp } }] });

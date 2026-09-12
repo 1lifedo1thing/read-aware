@@ -926,7 +926,7 @@ export type PluginRowCell = {
 /** Legacy row cells stay single-block; runtime validation bounds recursion. */
 export type PluginRowCellBlock = PluginBlock;
 
-export type PluginViewContent =
+export type PluginViewContent = (
   | PluginMarkdownView
   | PluginListView
   | PluginTableView
@@ -934,7 +934,17 @@ export type PluginViewContent =
   | PluginImageView
   | PluginFormView
   | PluginBlocksView
-  | PluginDetailView;
+  | PluginDetailView) & {
+  /** Views 1.10: a host-labelled drop zone for this visible view. Dropping grants
+   * this activation read access to the selected file snapshots, never paths.
+   * Defaults to one file; multiple accepts at most 16. Release resources when done.
+   * User drops or the host chooser invoke this; it does not intercept other app surfaces. */
+  fileDrop?: {
+    multiple?: boolean;
+    extensions?: string[];
+    onDrop(resources: import("@read-aware/core").ResourceRef[]): PluginViewResult | Promise<PluginViewResult>;
+  };
+};
 
 /** Issued by the host for one visible frame; never saved or reused after disposal. */
 export type PluginViewChannel = { id: string };

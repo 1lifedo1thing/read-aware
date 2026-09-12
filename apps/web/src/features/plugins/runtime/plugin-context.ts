@@ -53,6 +53,7 @@ import { hostDiagnostics } from "../../../services/diagnostics";
 import { createPluginAssets } from "./plugin-assets";
 import { createResourceOwner } from "../../../services/resources";
 import { registerPluginImageOwner } from "../lib/plugin-image-owner";
+import { registerPluginFileDropOwner } from "../lib/plugin-file-drop";
 import { importResourceBook } from "../../../domain/library-resource-import";
 import { createBookImportTasks } from "../../../domain/library-import-tasks";
 import { inspectResourceBook } from "../../../domain/book-inspection";
@@ -188,6 +189,7 @@ export function buildPluginContext(
     if (!permissions.has("library:read") && !permissions.has("library:write")) throw new AppError("memory/forbidden", "Book resources require library access");
   });
   lifecycle.signal.addEventListener("abort", () => lifecycle.trackCleanup(resources.dispose()), { once: true });
+  registerPluginFileDropOwner(lifecycle.signal, manifest.name, resources);
   const importTasks = createBookImportTasks(resources, selfOrigin, lifecycle.signal, work => lifecycle.trackCleanup(work));
   registerPluginImageOwner(lifecycle.signal, (id, signal) => {
     lifecycle.assertActive("views.image");
