@@ -580,3 +580,35 @@ ui/superseded。只读 Worker 收到17版工作区观察。
 
 仍待验：选区续页读取、全部菜单/快捷键、编译 Library Desk 的本批界面动作、窄窗
 以及每个目标的前台画面；原生回执、DOM 与截图边界分别保留。
+
+## 第二十四个桌面流程：书目、收藏、集合与批准后的删除
+
+编译 Library Desk 0.12.0，在原隔离 Tauri 真 Worker 中通过实际表单操作自有合成书：
+空白标题返回 Enter a name、原书名不变；修改书名和中文作者后重查一致；收藏/取消
+收藏两次状态各自落盘，插件刷新相应显示 Yes/No。创建并改名集合，ID 保持。
+移动表单未确认返回 Confirm this change first，book.collectionId 仍 null；明确选目标
+并确认后，书籍归属与 collections.booksIn 返回的 ID 一致，集合详情显示1名成员。
+
+删除有成员集合：未确认则集合/书都保留；确认后集合消失、书仍存在、归属 null。
+停用/启用 Library Desk 后，修改后的书名/作者/收藏与集合状态保持，列表显示新书目。
+选择该书进入 Review selection 不会删除；明确点击 Remove permanently 后，插件显示
+Books removed / File cleanup complete，原生重查书为 null、原文件不存在。
+
+再复用批量删除探针的两本原生 FB2。无权限不能查，library:read 能查清理记录但无
+removeMany/retry，library:write 可写；空批次返回 library/invalid-removal。实际
+delete_books 工具通过产品 ChatInteractionPrompt 展示两本完整标题：点击 Keep it 后
+返回 deleted:false，两个记录保留；第二次批准返回 committed:true/files:released，
+两个记录为 null、两个原文件均不存在。这是实际 Agent 工具/批准 UI/原生链，未调用模型。
+
+恢复第一本的原书目和文件，再通过真实 Worker 重试旧清理，返回 files:pending、
+errorCode=library/book-reappeared，恢复的记录和文件都保留；不是抛错，也不是清理成功。
+随后正常批量删除已恢复的书和原第二本 ID，返回 committed/released。Worker 和 Agent
+查询清理队列均为空。没有注入磁盘失败，不声称已验证崩溃恢复或真正失败文件的重试。
+
+批量探针给编译 Library Desk 使用独立 ID capability-batch-desk，避免与已启用的
+第一方 Worker 同名。仅探针改动，桌面类型检查通过。清理所有本轮书/集合、恢复启用
+状态，测试贡献0；最终仅余原两本隔离资料。窗口 hidden，本批保存真实操作及 DOM
+证据，不冒充像素/布局已验。详情见 [library-management-observations.json](./library-management-observations.json)。
+
+尚未覆盖：所有 Actor 的书目/收藏入口、大批成员分页、多集合移动、删除文件故障及
+跨进程中断；已通过的第一方插件操作不重复归零。

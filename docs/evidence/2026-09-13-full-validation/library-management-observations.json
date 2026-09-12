@@ -1,0 +1,401 @@
+{
+  "library": {
+    "cleanup": {
+      "remaining": [
+        {
+          "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "title": "Reading Paint Probe"
+        },
+        {
+          "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+          "title": "Reading Capability Probe"
+        }
+      ],
+      "removed": {
+        "bookIds": [
+          "a469c55e-a0c7-422f-a9e3-e7c9dba898d3"
+        ],
+        "committed": true,
+        "files": {
+          "status": "released"
+        }
+      }
+    },
+    "setup": {
+      "bookId": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+      "marker": "Composition 862bd733",
+      "path": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+      "plugins": [
+        {
+          "enabled": true,
+          "id": "library-desk",
+          "version": "0.12.0"
+        },
+        {
+          "enabled": true,
+          "id": "text-desk",
+          "version": "0.22.0"
+        }
+      ]
+    },
+    "status": "completed",
+    "steps": [
+      {
+        "case": "blank-title-rejected",
+        "error": true,
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733",
+            "author": "Fixture Author",
+            "starred": false,
+            "collectionId": null,
+            "format": "fb2"
+          },
+          "collections": []
+        }
+      },
+      {
+        "case": "metadata",
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733 Revised",
+            "author": "验收作者",
+            "starred": false,
+            "collectionId": null,
+            "format": "fb2"
+          },
+          "collections": []
+        }
+      },
+      {
+        "case": "starred",
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733 Revised",
+            "author": "验收作者",
+            "starred": true,
+            "collectionId": null,
+            "format": "fb2"
+          },
+          "collections": []
+        }
+      },
+      {
+        "case": "unstarred",
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733 Revised",
+            "author": "验收作者",
+            "starred": false,
+            "collectionId": null,
+            "format": "fb2"
+          },
+          "collections": []
+        }
+      },
+      {
+        "case": "collection-create",
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733 Revised",
+            "author": "验收作者",
+            "starred": false,
+            "collectionId": null,
+            "format": "fb2"
+          },
+          "collections": [
+            {
+              "createdAt": "2026-09-12T21:11:28.074Z",
+              "id": "1dd34347-dd5b-47fd-92cb-6be865abd8bf",
+              "name": "Composition 862bd733 Collection"
+            }
+          ]
+        }
+      },
+      {
+        "case": "collection-rename",
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733 Revised",
+            "author": "验收作者",
+            "starred": false,
+            "collectionId": null,
+            "format": "fb2"
+          },
+          "collections": [
+            {
+              "createdAt": "2026-09-12T21:11:28.074Z",
+              "id": "1dd34347-dd5b-47fd-92cb-6be865abd8bf",
+              "name": "Composition 862bd733 Renamed"
+            }
+          ]
+        }
+      },
+      {
+        "case": "move-unconfirmed",
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733 Revised",
+            "author": "验收作者",
+            "starred": false,
+            "collectionId": null,
+            "format": "fb2"
+          },
+          "collections": [
+            {
+              "createdAt": "2026-09-12T21:11:28.074Z",
+              "id": "1dd34347-dd5b-47fd-92cb-6be865abd8bf",
+              "name": "Composition 862bd733 Renamed"
+            }
+          ]
+        }
+      },
+      {
+        "case": "move-confirmed",
+        "members": [
+          "a469c55e-a0c7-422f-a9e3-e7c9dba898d3"
+        ],
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733 Revised",
+            "author": "验收作者",
+            "starred": false,
+            "collectionId": "1dd34347-dd5b-47fd-92cb-6be865abd8bf",
+            "format": "fb2"
+          },
+          "collections": [
+            {
+              "createdAt": "2026-09-12T21:11:28.074Z",
+              "id": "1dd34347-dd5b-47fd-92cb-6be865abd8bf",
+              "name": "Composition 862bd733 Renamed"
+            }
+          ]
+        }
+      },
+      {
+        "case": "collection-remove-unconfirmed",
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733 Revised",
+            "author": "验收作者",
+            "starred": false,
+            "collectionId": "1dd34347-dd5b-47fd-92cb-6be865abd8bf",
+            "format": "fb2"
+          },
+          "collections": [
+            {
+              "createdAt": "2026-09-12T21:11:28.074Z",
+              "id": "1dd34347-dd5b-47fd-92cb-6be865abd8bf",
+              "name": "Composition 862bd733 Renamed"
+            }
+          ]
+        }
+      },
+      {
+        "case": "collection-remove-confirmed",
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733 Revised",
+            "author": "验收作者",
+            "starred": false,
+            "collectionId": null,
+            "format": "fb2"
+          },
+          "collections": []
+        }
+      },
+      {
+        "case": "worker-restart",
+        "result": {
+          "book": {
+            "id": "a469c55e-a0c7-422f-a9e3-e7c9dba898d3",
+            "title": "Composition 862bd733 Revised",
+            "author": "验收作者",
+            "starred": false,
+            "collectionId": null,
+            "format": "fb2"
+          },
+          "collections": []
+        }
+      },
+      {
+        "bookExists": true,
+        "case": "review-does-not-remove",
+        "reviewText": "library-deskReview selection (1)This removes the selected books and their source files. This cannot be undone.1. Composition 862bd733 Revised\n验收作者Remove permanentlyClose"
+      },
+      {
+        "case": "single-remove",
+        "fileExists": false,
+        "result": {
+          "book": null,
+          "collections": []
+        }
+      }
+    ]
+  },
+  "batch": {
+    "cleanup": {
+      "batchContributions": 0,
+      "contributions": 0,
+      "remainingBooks": 0
+    },
+    "setup": {
+      "books": {
+        "blank": "a56fc1a2-3f8f-4ff4-8d36-75596de49ad5",
+        "normal": "908f29c5-4213-49e7-8496-13a25d1c8849",
+        "short": "187e91bf-1645-4b89-9092-f575d6f38f4c"
+      },
+      "dataDir": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+      "ids": [
+        "187e91bf-1645-4b89-9092-f575d6f38f4c",
+        "908f29c5-4213-49e7-8496-13a25d1c8849"
+      ],
+      "permissions": {
+        "empty": {
+          "cleanupQuery": false,
+          "read": false,
+          "removeMany": false,
+          "retry": false
+        },
+        "read": {
+          "cleanupQuery": true,
+          "read": true,
+          "removeMany": false,
+          "retry": false
+        },
+        "write": {
+          "cleanupQuery": true,
+          "read": true,
+          "removeMany": true,
+          "retry": true
+        }
+      }
+    },
+    "status": "completed",
+    "steps": [
+      {
+        "case": "empty-batch",
+        "invalid": {
+          "code": "library/invalid-removal"
+        }
+      },
+      {
+        "booksExist": [
+          true,
+          true
+        ],
+        "case": "agent-declined",
+        "result": {
+          "content": [
+            {
+              "text": "{\"deleted\":false,\"reason\":\"User declined.\"}",
+              "type": "text"
+            }
+          ],
+          "details": {
+            "answer": {
+              "optionId": "decline",
+              "text": "Declined"
+            },
+            "id": "global:capability-batch:batch-1",
+            "phase": "response",
+            "type": "user-interaction"
+          }
+        }
+      },
+      {
+        "case": "agent-approved",
+        "filesExist": [
+          false,
+          false
+        ],
+        "records": [
+          null,
+          null
+        ],
+        "result": {
+          "content": [
+            {
+              "text": "{\"bookIds\":[\"187e91bf-1645-4b89-9092-f575d6f38f4c\",\"908f29c5-4213-49e7-8496-13a25d1c8849\"],\"files\":{\"status\":\"released\"},\"committed\":true}",
+              "type": "text"
+            }
+          ],
+          "details": {
+            "answer": {
+              "optionId": "approve",
+              "text": "Approved"
+            },
+            "id": "global:capability-batch:batch-2",
+            "phase": "response",
+            "type": "user-interaction"
+          }
+        }
+      },
+      {
+        "bookExists": true,
+        "case": "restored-book-protected",
+        "fileExists": true,
+        "retry": {
+          "result": {
+            "bookIds": [
+              "187e91bf-1645-4b89-9092-f575d6f38f4c",
+              "908f29c5-4213-49e7-8496-13a25d1c8849"
+            ],
+            "files": {
+              "errorCode": "library/book-reappeared",
+              "status": "pending"
+            }
+          }
+        }
+      },
+      {
+        "case": "worker-remove",
+        "removal": {
+          "result": {
+            "bookIds": [
+              "187e91bf-1645-4b89-9092-f575d6f38f4c",
+              "908f29c5-4213-49e7-8496-13a25d1c8849"
+            ],
+            "committed": true,
+            "files": {
+              "status": "released"
+            }
+          }
+        }
+      },
+      {
+        "agent": {
+          "content": [
+            {
+              "text": "{\"items\":[],\"nextCursor\":null}",
+              "type": "text"
+            }
+          ]
+        },
+        "case": "cleanup-list-after-release",
+        "worker": {
+          "result": {
+            "items": [],
+            "nextCursor": null
+          }
+        }
+      }
+    ]
+  },
+  "environment": {
+    "platform": "macOS aarch64",
+    "runtime": "Tauri debug",
+    "appIdentifier": "com.readaware.app.capability-e2e",
+    "visualBoundary": "DOM and real actions observed; window hidden, no new pixel capture"
+  }
+}
