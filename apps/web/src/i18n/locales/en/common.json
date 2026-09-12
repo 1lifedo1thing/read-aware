@@ -27,6 +27,7 @@
     "pluginQuotaExceeded": "This plugin request exceeds the data limit. Use a smaller batch.",
     "settingsOptionsInvalid": "This setting option query is invalid.",
     "settingsOptionsForbidden": "This plugin is not allowed to list options for that setting.",
+    "settingsForbidden": "This plugin is not allowed to access that setting.",
     "settingsOptionsStale": "The setting options have changed. Start the search again.",
     "settingsOptionsUnavailable": "The plugin's setting options are unavailable. Wait a moment and try again.",
     "settingsFontEnumerationFailed": "Installed fonts could not be listed.",

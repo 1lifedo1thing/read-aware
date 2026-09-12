@@ -27,6 +27,7 @@
     "pluginQuotaExceeded": "Diese Plugin-Anfrage überschreitet das Datenlimit. Verkleinern Sie den Stapel.",
     "settingsOptionsInvalid": "Diese Abfrage von Einstellungsoptionen ist ungültig.",
     "settingsOptionsForbidden": "Dieses Plugin darf die Optionen dieser Einstellung nicht auflisten.",
+    "settingsForbidden": "Dieses Plugin darf auf diese Einstellung nicht zugreifen.",
     "settingsOptionsStale": "Die Optionen haben sich geändert. Starten Sie die Suche erneut.",
     "settingsOptionsUnavailable": "Die Einstellungsoptionen des Plugins sind nicht verfügbar. Versuchen Sie es gleich erneut.",
     "settingsFontEnumerationFailed": "Installierte Schriftarten konnten nicht aufgelistet werden.",

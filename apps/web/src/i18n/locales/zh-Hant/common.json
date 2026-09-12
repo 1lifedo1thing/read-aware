@@ -27,6 +27,7 @@
     "pluginQuotaExceeded": "此插件請求超出資料限制，請縮小批次。",
     "settingsOptionsInvalid": "設定選項查詢無效。",
     "settingsOptionsForbidden": "此外掛無權列出該設定的選項。",
+    "settingsForbidden": "此外掛無權存取該設定。",
     "settingsOptionsStale": "設定選項已變更，請重新開始查詢。",
     "settingsOptionsUnavailable": "暫時無法取得外掛的設定選項，請稍後重試。",
     "settingsFontEnumerationFailed": "無法列出已安裝的字型。",

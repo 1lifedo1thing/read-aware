@@ -51,9 +51,12 @@ describe("Settings Domain actor policy", () => {
     expect(result.settings.settings.map(entry => entry.path)).toEqual(["appearance.theme"]);
     await expect(
       settings.commands.update([
+        { path: "appearance.theme", value: "dark" },
         { path: "appearance.motion", value: "reduced" },
       ]),
-    ).rejects.toThrow("settings write is not permitted");
+    ).rejects.toMatchObject({ code: "settings/forbidden" });
+    expect(getDefaultStore().get(appSettingsAtom).theme).toBe("light");
+    expect(events).toEqual([["appearance.theme"]]);
     unsubscribe();
   });
 
@@ -61,8 +64,6 @@ describe("Settings Domain actor policy", () => {
     const settings = createSettingsDomain("plugin:test");
 
     expect(await settings.queries.discover()).toEqual([]);
-    await expect(settings.queries.read("appearance.theme")).rejects.toThrow(
-      "settings read is not permitted",
-    );
+    await expect(settings.queries.read("appearance.theme")).rejects.toMatchObject({ code: "settings/forbidden" });
   });
 });

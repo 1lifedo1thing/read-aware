@@ -1,0 +1,504 @@
+{
+  "profile": "com.readaware.app.capability-e2e",
+  "writes": {
+    "agent": {
+      "changed": [
+        {
+          "path": "appearance.theme",
+          "target": {
+            "kind": "global"
+          },
+          "value": "dark"
+        },
+        {
+          "path": "general.startView",
+          "target": {
+            "kind": "global"
+          },
+          "value": "resume"
+        }
+      ],
+      "snapshot": {
+        "appearance": {
+          "motion": "system",
+          "theme": "dark"
+        },
+        "events": [
+          {
+            "changes": [
+              {
+                "path": "appearance.theme",
+                "target": {
+                  "kind": "global"
+                },
+                "value": "dark"
+              },
+              {
+                "path": "general.startView",
+                "target": {
+                  "kind": "global"
+                },
+                "value": "resume"
+              }
+            ],
+            "origin": "agent",
+            "type": "settings.changed"
+          }
+        ],
+        "general": {
+          "autoUpdate": true,
+          "crashPrompt": true,
+          "fileAssociations": true,
+          "language": null,
+          "launchAtStartup": false,
+          "startView": "resume",
+          "whatsNewDialog": true
+        }
+      },
+      "status": "committed"
+    },
+    "dom": {
+      "classes": "",
+      "theme": "light",
+      "visibility": "hidden"
+    },
+    "form": {
+      "observed": "[{\"enabled\":true}]",
+      "result": {
+        "status": "committed"
+      }
+    },
+    "pluginAllowed": {
+      "result": {
+        "changed": [
+          {
+            "path": "appearance.theme",
+            "target": {
+              "kind": "global"
+            },
+            "value": "light"
+          },
+          {
+            "path": "appearance.motion",
+            "target": {
+              "kind": "global"
+            },
+            "value": "reduced"
+          }
+        ],
+        "paths": [
+          "general.startView",
+          "appearance.theme",
+          "appearance.motion"
+        ],
+        "status": "committed"
+      },
+      "snapshot": {
+        "appearance": {
+          "motion": "reduced",
+          "theme": "light"
+        },
+        "events": [
+          {
+            "changes": [
+              {
+                "path": "appearance.theme",
+                "target": {
+                  "kind": "global"
+                },
+                "value": "dark"
+              },
+              {
+                "path": "general.startView",
+                "target": {
+                  "kind": "global"
+                },
+                "value": "resume"
+              }
+            ],
+            "origin": "agent",
+            "type": "settings.changed"
+          },
+          {
+            "changes": [
+              {
+                "path": "appearance.theme",
+                "target": {
+                  "kind": "global"
+                },
+                "value": "light"
+              },
+              {
+                "path": "appearance.motion",
+                "target": {
+                  "kind": "global"
+                },
+                "value": "reduced"
+              }
+            ],
+            "origin": "plugin:capability-settings-probe",
+            "type": "settings.changed"
+          }
+        ],
+        "general": {
+          "autoUpdate": true,
+          "crashPrompt": true,
+          "fileAssociations": true,
+          "language": null,
+          "launchAtStartup": false,
+          "startView": "resume",
+          "whatsNewDialog": true
+        }
+      }
+    },
+    "pluginDenied": {
+      "result": {
+        "code": null,
+        "status": "failed"
+      },
+      "snapshot": {
+        "appearance": {
+          "motion": "system",
+          "theme": "dark"
+        },
+        "events": [
+          {
+            "changes": [
+              {
+                "path": "appearance.theme",
+                "target": {
+                  "kind": "global"
+                },
+                "value": "dark"
+              },
+              {
+                "path": "general.startView",
+                "target": {
+                  "kind": "global"
+                },
+                "value": "resume"
+              }
+            ],
+            "origin": "agent",
+            "type": "settings.changed"
+          }
+        ],
+        "general": {
+          "autoUpdate": true,
+          "crashPrompt": true,
+          "fileAssociations": true,
+          "language": null,
+          "launchAtStartup": false,
+          "startView": "resume",
+          "whatsNewDialog": true
+        }
+      }
+    }
+  },
+  "observation": {
+    "catalog": {
+      "empty": {
+        "events": 1,
+        "source": "initial",
+        "status": "ready",
+        "settings": []
+      },
+      "read": {
+        "events": 4,
+        "source": "catalog",
+        "status": "ready",
+        "settings": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "writable": false
+          },
+          {
+            "path": "appearance.theme",
+            "value": "light",
+            "writable": false,
+            "options": [
+              "system",
+              "light",
+              "dark",
+              "plugin:editorial-themes:gutenberg",
+              "plugin:editorial-themes:nocturne",
+              "plugin:capability-settings-observation-theme:test"
+            ]
+          }
+        ]
+      },
+      "write": {
+        "events": 4,
+        "source": "catalog",
+        "status": "ready",
+        "settings": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "writable": true
+          },
+          {
+            "path": "appearance.theme",
+            "value": "light",
+            "writable": true,
+            "options": [
+              "system",
+              "light",
+              "dark",
+              "plugin:editorial-themes:gutenberg",
+              "plugin:editorial-themes:nocturne",
+              "plugin:capability-settings-observation-theme:test"
+            ]
+          }
+        ]
+      }
+    },
+    "initial": {
+      "empty": {
+        "events": 1,
+        "source": "initial",
+        "status": "ready",
+        "settings": []
+      },
+      "read": {
+        "events": 1,
+        "source": "initial",
+        "status": "ready",
+        "settings": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "writable": false
+          },
+          {
+            "path": "appearance.theme",
+            "value": "system",
+            "writable": false,
+            "options": [
+              "system",
+              "light",
+              "dark",
+              "plugin:editorial-themes:gutenberg",
+              "plugin:editorial-themes:nocturne"
+            ]
+          }
+        ]
+      },
+      "write": {
+        "events": 1,
+        "source": "initial",
+        "status": "ready",
+        "settings": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "writable": true
+          },
+          {
+            "path": "appearance.theme",
+            "value": "system",
+            "writable": true,
+            "options": [
+              "system",
+              "light",
+              "dark",
+              "plugin:editorial-themes:gutenberg",
+              "plugin:editorial-themes:nocturne"
+            ]
+          }
+        ]
+      }
+    },
+    "native": {
+      "empty": {
+        "events": 1,
+        "source": "initial",
+        "status": "ready",
+        "settings": []
+      },
+      "read": {
+        "events": 2,
+        "source": "local",
+        "status": "ready",
+        "settings": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "writable": false
+          },
+          {
+            "path": "appearance.theme",
+            "value": "dark",
+            "writable": false,
+            "options": [
+              "system",
+              "light",
+              "dark",
+              "plugin:editorial-themes:gutenberg",
+              "plugin:editorial-themes:nocturne"
+            ]
+          }
+        ]
+      },
+      "write": {
+        "events": 2,
+        "source": "local",
+        "status": "ready",
+        "settings": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "writable": true
+          },
+          {
+            "path": "appearance.theme",
+            "value": "dark",
+            "writable": true,
+            "options": [
+              "system",
+              "light",
+              "dark",
+              "plugin:editorial-themes:gutenberg",
+              "plugin:editorial-themes:nocturne"
+            ]
+          }
+        ]
+      }
+    },
+    "remoteOriginInjection": {
+      "empty": {
+        "events": 1,
+        "source": "initial",
+        "status": "ready",
+        "settings": []
+      },
+      "read": {
+        "events": 3,
+        "source": "remote",
+        "status": "ready",
+        "settings": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "writable": false
+          },
+          {
+            "path": "appearance.theme",
+            "value": "light",
+            "writable": false,
+            "options": [
+              "system",
+              "light",
+              "dark",
+              "plugin:editorial-themes:gutenberg",
+              "plugin:editorial-themes:nocturne"
+            ]
+          }
+        ]
+      },
+      "write": {
+        "events": 3,
+        "source": "remote",
+        "status": "ready",
+        "settings": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "writable": true
+          },
+          {
+            "path": "appearance.theme",
+            "value": "light",
+            "writable": true,
+            "options": [
+              "system",
+              "light",
+              "dark",
+              "plugin:editorial-themes:gutenberg",
+              "plugin:editorial-themes:nocturne"
+            ]
+          }
+        ]
+      }
+    },
+    "restoreInjection": {
+      "empty": {
+        "events": 1,
+        "source": "initial",
+        "status": "ready",
+        "settings": []
+      },
+      "read": {
+        "events": 5,
+        "source": "restore",
+        "status": "ready",
+        "settings": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "writable": false
+          },
+          {
+            "path": "appearance.theme",
+            "value": "system",
+            "writable": false,
+            "options": [
+              "system",
+              "light",
+              "dark",
+              "plugin:editorial-themes:gutenberg",
+              "plugin:editorial-themes:nocturne",
+              "plugin:capability-settings-observation-theme:test"
+            ]
+          }
+        ]
+      },
+      "write": {
+        "events": 5,
+        "source": "restore",
+        "status": "ready",
+        "settings": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "writable": true
+          },
+          {
+            "path": "appearance.theme",
+            "value": "system",
+            "writable": true,
+            "options": [
+              "system",
+              "light",
+              "dark",
+              "plugin:editorial-themes:gutenberg",
+              "plugin:editorial-themes:nocturne",
+              "plugin:capability-settings-observation-theme:test"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "stoppedObserver": {
+    "readBefore": 5,
+    "readAfter": 5,
+    "writeAfter": 6
+  },
+  "cleanup": {
+    "restored": true,
+    "contributions": 0
+  },
+  "denialFix": {
+    "beforeCode": null,
+    "afterCode": "settings/forbidden",
+    "atomicNoChanges": true
+  },
+  "boundaries": {
+    "visual": "pending locked desktop",
+    "remote": "origin injection only, not device sync",
+    "restore": "KV replacement only, not backup apply",
+    "model": "actual Agent tool with native ports, not live LLM"
+  }
+}

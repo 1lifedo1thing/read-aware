@@ -174,6 +174,7 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "settings/invalid-shortcut": { key: "settingsInvalidShortcut", retryable: false },
   "settings/options-invalid": { key: "settingsOptionsInvalid", retryable: false },
   "settings/options-forbidden": { key: "settingsOptionsForbidden", retryable: false },
+  "settings/forbidden": { key: "settingsForbidden", retryable: false },
   "settings/options-stale": { key: "settingsOptionsStale", retryable: false },
   "settings/options-unavailable": { key: "settingsOptionsUnavailable", retryable: true },
   "settings/font-enumeration-failed": { key: "settingsFontEnumerationFailed", retryable: true },

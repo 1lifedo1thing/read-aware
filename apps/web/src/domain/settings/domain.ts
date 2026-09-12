@@ -309,7 +309,7 @@ export function createSettingsDomain(
       read: async (path, target) => {
         const normalizedPath = String(path);
         if (!canAccess(policy, "read", normalizedPath)) {
-          throw new Error(`settings read is not permitted: ${normalizedPath}`);
+          throw new AppError("settings/forbidden", `settings read is not permitted: ${normalizedPath}`);
         }
         const resolvedTarget = target ?? { kind: "global" as const };
         await updateTail;
@@ -351,7 +351,7 @@ export function createSettingsDomain(
         signal?.throwIfAborted();
         for (const change of changes) {
           if (!canAccess(policy, "write", change.path)) {
-            throw new Error(`settings write is not permitted: ${change.path}`);
+            throw new AppError("settings/forbidden", `settings write is not permitted: ${change.path}`);
           }
         }
         const result = await enqueueSettingsChanges(origin, changes, policy, signal);
