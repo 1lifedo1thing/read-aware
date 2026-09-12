@@ -1,0 +1,771 @@
+{
+  "environment": {
+    "baseline": "b3b2097a",
+    "implementation": "2e33a6f9",
+    "platform": "macOS aarch64",
+    "runtime": "Tauri debug 0.5.4",
+    "profile": "com.readaware.app.validation-backup-e2e",
+    "observedAt": "2026-09-12T20:18:00Z"
+  },
+  "consolidation": {
+    "committed": {
+      "emittedEventIds": [
+        "13e42b38-5075-4a94-94a5-cfd8be4a503d"
+      ],
+      "revision": "icg1:73285b6fc05f22f5e383393abdd19f9dc83fa6c04451963fe7eed44f07c2e8f8",
+      "settled": true
+    },
+    "inspected": {
+      "status": "ok",
+      "value": {
+        "derived": {
+          "curatedExists": true,
+          "curatedRevision": "profile2:89149f29cab00d2b5c7025a33c6a2032f56107d9893b99a6eef9051105823027",
+          "derivedStatus": "current",
+          "kind": "summary",
+          "nextOffset": null,
+          "offset": 0,
+          "revision": "pctx1:90018c64e82762b85ef54158dcde71d22d036326714845c2bb0811879fe064d3",
+          "text": "Identity validation inferred preference: concise explanations.",
+          "totalLength": 62
+        },
+        "entities": {
+          "canonicalDefinition": null,
+          "canonicalId": null,
+          "items": [
+            {
+              "definition": {
+                "canonicalName": "Validation Atlas",
+                "kind": "project"
+              },
+              "id": "validation-identity-a"
+            }
+          ],
+          "kind": "identities",
+          "nextOffset": null,
+          "offset": 0,
+          "revision": "entities1:6edc112c374d003316c7affb3d7731c6f8536ab32d63a3ef0c0e15acce3e0c5f",
+          "total": 1
+        },
+        "hasMemory": true,
+        "hasWrite": true,
+        "profile": {
+          "exists": true,
+          "format": "plain-text",
+          "nextOffset": null,
+          "offset": 0,
+          "persistence": "event-log",
+          "revision": "profile2:89149f29cab00d2b5c7025a33c6a2032f56107d9893b99a6eef9051105823027",
+          "text": "Identity validation reader prefers concise explanations.",
+          "totalLength": 56
+        }
+      }
+    },
+    "pinned": {
+      "memoryId": "onboarding:d9ceb71fc7e99db9f4541964dafaac67c97a015e19bf34f1f5ca34ea4a4cf5fb",
+      "revision": "mem1:8afeff96a70e064e85a7954bc1273657eb8b65b4e5a50c891faeefbac0c2e4e2"
+    },
+    "pinnedRead": {
+      "status": "ok",
+      "value": {
+        "content": {
+          "format": "readaware.context",
+          "items": [
+            {
+              "id": "local",
+              "kind": "curated_profile",
+              "label": "Reader-curated profile (takes precedence)",
+              "revision": "profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831",
+              "text": "Identity validation reader prefers concise explanations."
+            }
+          ],
+          "kind": "user_profile_context",
+          "omissions": [],
+          "recipeVersion": 1,
+          "schemaVersion": 1,
+          "scope": {
+            "kind": "user"
+          },
+          "sourceRevision": "pctx1:a87208f8f36859359c90dded43cd63183c176b123d4062e63edadde8eca93af2"
+        },
+        "version": "cb1:e267749fae65b448d407bb735ccb0e8fc8ccf760771c6f2dce032ed0c4fc6ecb"
+      }
+    },
+    "revoked": {
+      "code": "memory/conflict",
+      "status": "error"
+    },
+    "sourceCount": 1
+  },
+  "contextInitial": {
+    "capture": {
+      "status": "ok",
+      "value": {
+        "bundle": {
+          "content": {
+            "format": "readaware.context",
+            "items": [
+              {
+                "id": "local",
+                "kind": "curated_profile",
+                "label": "Reader-curated profile (takes precedence)",
+                "revision": "profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831",
+                "text": "Identity validation reader prefers concise explanations."
+              }
+            ],
+            "kind": "user_profile_context",
+            "omissions": [],
+            "recipeVersion": 1,
+            "schemaVersion": 1,
+            "scope": {
+              "kind": "user"
+            },
+            "sourceRevision": "pctx1:a87208f8f36859359c90dded43cd63183c176b123d4062e63edadde8eca93af2"
+          },
+          "version": "cb1:e267749fae65b448d407bb735ccb0e8fc8ccf760771c6f2dce032ed0c4fc6ecb"
+        },
+        "changed": true,
+        "persistence": "event-log"
+      }
+    },
+    "captureRepeat": {
+      "status": "ok",
+      "value": {
+        "bundle": {
+          "content": {
+            "format": "readaware.context",
+            "items": [
+              {
+                "id": "local",
+                "kind": "curated_profile",
+                "label": "Reader-curated profile (takes precedence)",
+                "revision": "profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831",
+                "text": "Identity validation reader prefers concise explanations."
+              }
+            ],
+            "kind": "user_profile_context",
+            "omissions": [],
+            "recipeVersion": 1,
+            "schemaVersion": 1,
+            "scope": {
+              "kind": "user"
+            },
+            "sourceRevision": "pctx1:a87208f8f36859359c90dded43cd63183c176b123d4062e63edadde8eca93af2"
+          },
+          "version": "cb1:e267749fae65b448d407bb735ccb0e8fc8ccf760771c6f2dce032ed0c4fc6ecb"
+        },
+        "changed": false,
+        "persistence": "event-log"
+      }
+    },
+    "export": {
+      "status": "ok",
+      "value": {
+        "expiresAt": 1789247807106,
+        "id": "6d9f3994-f845-4919-a771-a2c55c0ebbf7",
+        "mimeType": "application/json",
+        "name": "user_profile_context-e267749fae65b448d407bb735ccb0e8fc8ccf760771c6f2dce032ed0c4fc6ecb.json",
+        "size": 574,
+        "source": "context",
+        "state": "ready"
+      }
+    },
+    "history": {
+      "status": "ok",
+      "value": {
+        "items": [
+          {
+            "publishedAt": "2026-09-12T20:16:47.067Z",
+            "version": "cb1:e267749fae65b448d407bb735ccb0e8fc8ccf760771c6f2dce032ed0c4fc6ecb"
+          }
+        ],
+        "nextOffset": null,
+        "offset": 0,
+        "revision": "cbhist1:b0484a6b80234870f264a7d59cf9dbe87b535749f0f309e940154af73a2f4436",
+        "selector": {
+          "kind": "user_profile_context",
+          "scope": {
+            "kind": "user"
+          }
+        },
+        "total": 1
+      }
+    },
+    "read": {
+      "status": "ok",
+      "value": {
+        "content": {
+          "format": "readaware.context",
+          "items": [
+            {
+              "id": "local",
+              "kind": "curated_profile",
+              "label": "Reader-curated profile (takes precedence)",
+              "revision": "profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831",
+              "text": "Identity validation reader prefers concise explanations."
+            }
+          ],
+          "kind": "user_profile_context",
+          "omissions": [],
+          "recipeVersion": 1,
+          "schemaVersion": 1,
+          "scope": {
+            "kind": "user"
+          },
+          "sourceRevision": "pctx1:a87208f8f36859359c90dded43cd63183c176b123d4062e63edadde8eca93af2"
+        },
+        "version": "cb1:e267749fae65b448d407bb735ccb0e8fc8ccf760771c6f2dce032ed0c4fc6ecb"
+      }
+    },
+    "readExport": {
+      "status": "ok",
+      "value": {
+        "byteLength": 574,
+        "eof": true,
+        "nextOffset": 574,
+        "text": "{\"version\":\"cb1:e267749fae65b448d407bb735ccb0e8fc8ccf760771c6f2dce032ed0c4fc6ecb\",\"content\":{\"format\":\"readaware.context\",\"schemaVersion\":1,\"recipeVersion\":1,\"kind\":\"user_profile_context\",\"scope\":{\"kind\":\"user\"},\"sourceRevision\":\"pctx1:a87208f8f36859359c90dded43cd63183c176b123d4062e63edadde8eca93af2\",\"items\":[{\"kind\":\"curated_profile\",\"id\":\"local\",\"revision\":\"profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831\",\"label\":\"Reader-curated profile (takes precedence)\",\"text\":\"Identity validation reader prefers concise explanations.\"}],\"omissions\":[]}}\n"
+      }
+    },
+    "wrongRecipe": {
+      "code": "memory/forbidden",
+      "status": "error"
+    }
+  },
+  "correction": {
+    "corrected": {
+      "memoryId": "onboarding:d9ceb71fc7e99db9f4541964dafaac67c97a015e19bf34f1f5ca34ea4a4cf5fb",
+      "revision": "mem1:4a588d73cc1527615528c3eb161a48b65c69086caa8d918883c6932fc1c854a2"
+    },
+    "current": {
+      "status": "ok",
+      "value": {
+        "bundle": {
+          "content": {
+            "format": "readaware.context",
+            "items": [
+              {
+                "id": "local",
+                "kind": "curated_profile",
+                "label": "Reader-curated profile (takes precedence)",
+                "revision": "profile2:89149f29cab00d2b5c7025a33c6a2032f56107d9893b99a6eef9051105823027",
+                "text": "Identity validation reader prefers concise explanations."
+              },
+              {
+                "id": "local:consolidated",
+                "kind": "derived_profile",
+                "label": "Automatically consolidated profile (inferred)",
+                "revision": "pctx1:90018c64e82762b85ef54158dcde71d22d036326714845c2bb0811879fe064d3",
+                "text": "Identity validation inferred preference: concise explanations."
+              }
+            ],
+            "kind": "user_profile_context",
+            "omissions": [],
+            "recipeVersion": 1,
+            "schemaVersion": 1,
+            "scope": {
+              "kind": "user"
+            },
+            "sourceRevision": "pctx1:90018c64e82762b85ef54158dcde71d22d036326714845c2bb0811879fe064d3"
+          },
+          "version": "cb1:f47475f4c56123c711809272cc36d28d32a197d4bd45334c0b2d4a254f0af76c"
+        },
+        "changed": true,
+        "persistence": "event-log"
+      }
+    },
+    "stale": {
+      "status": "ok",
+      "value": {
+        "derived": {
+          "curatedExists": true,
+          "curatedRevision": "profile2:89149f29cab00d2b5c7025a33c6a2032f56107d9893b99a6eef9051105823027",
+          "derivedStatus": "stale",
+          "kind": "summary",
+          "nextOffset": null,
+          "offset": 0,
+          "revision": "pctx1:5c753fb57563ff56d475535ee7d9e304a472250cd64274c67b848e91debb5108",
+          "text": "Identity validation inferred preference: concise explanations.",
+          "totalLength": 62
+        },
+        "entities": {
+          "canonicalDefinition": null,
+          "canonicalId": null,
+          "items": [
+            {
+              "definition": {
+                "canonicalName": "Validation Atlas",
+                "kind": "project"
+              },
+              "id": "validation-identity-a"
+            }
+          ],
+          "kind": "identities",
+          "nextOffset": null,
+          "offset": 0,
+          "revision": "entities1:6edc112c374d003316c7affb3d7731c6f8536ab32d63a3ef0c0e15acce3e0c5f",
+          "total": 1
+        },
+        "hasMemory": true,
+        "hasWrite": true,
+        "profile": {
+          "exists": true,
+          "format": "plain-text",
+          "nextOffset": null,
+          "offset": 0,
+          "persistence": "event-log",
+          "revision": "profile2:89149f29cab00d2b5c7025a33c6a2032f56107d9893b99a6eef9051105823027",
+          "text": "Identity validation reader prefers concise explanations.",
+          "totalLength": 56
+        }
+      }
+    },
+    "staleCapture": {
+      "status": "ok",
+      "value": {
+        "bundle": {
+          "content": {
+            "format": "readaware.context",
+            "items": [
+              {
+                "id": "local",
+                "kind": "curated_profile",
+                "label": "Reader-curated profile (takes precedence)",
+                "revision": "profile2:89149f29cab00d2b5c7025a33c6a2032f56107d9893b99a6eef9051105823027",
+                "text": "Identity validation reader prefers concise explanations."
+              }
+            ],
+            "kind": "user_profile_context",
+            "omissions": [
+              {
+                "count": 1,
+                "kind": "derived_profile",
+                "reason": "unavailable"
+              }
+            ],
+            "recipeVersion": 1,
+            "schemaVersion": 1,
+            "scope": {
+              "kind": "user"
+            },
+            "sourceRevision": "pctx1:5c753fb57563ff56d475535ee7d9e304a472250cd64274c67b848e91debb5108"
+          },
+          "version": "cb1:1cc232954655ace2668ef47e09c0eb578f545dd0e337a98b481aab154629eb67"
+        },
+        "changed": true,
+        "persistence": "event-log"
+      }
+    }
+  },
+  "entities": {
+    "a": "validation-identity-a",
+    "aliases": {
+      "canonicalDefinition": {
+        "canonicalName": "Validation Atlas",
+        "kind": "project"
+      },
+      "canonicalId": "validation-identity-a",
+      "items": [
+        {
+          "alias": "Atlas",
+          "entityId": "validation-identity-a"
+        },
+        {
+          "alias": "Project Atlas",
+          "entityId": "validation-identity-b"
+        },
+        {
+          "alias": "Validation Atlas",
+          "entityId": "validation-identity-a"
+        },
+        {
+          "alias": "Validation Atlas duplicate",
+          "entityId": "validation-identity-b"
+        }
+      ],
+      "kind": "aliases",
+      "nextOffset": null,
+      "offset": 0,
+      "revision": "entities1:6edc112c374d003316c7affb3d7731c6f8536ab32d63a3ef0c0e15acce3e0c5f",
+      "total": 4
+    },
+    "b": "validation-identity-b",
+    "first": {
+      "canonicalId": "validation-identity-a",
+      "changed": true,
+      "entityId": "validation-identity-a",
+      "revision": "entities1:ca429c46f29e5f0e7a039f5dc6c4d3c6dd3d6c31328a6e0bc909e09c99a7d90e"
+    },
+    "members": {
+      "canonicalDefinition": {
+        "canonicalName": "Validation Atlas",
+        "kind": "project"
+      },
+      "canonicalId": "validation-identity-a",
+      "items": [
+        {
+          "definition": {
+            "canonicalName": "Validation Atlas",
+            "kind": "project"
+          },
+          "id": "validation-identity-a"
+        },
+        {
+          "definition": {
+            "canonicalName": "Validation Atlas duplicate",
+            "kind": "project"
+          },
+          "id": "validation-identity-b"
+        }
+      ],
+      "kind": "members",
+      "nextOffset": null,
+      "offset": 0,
+      "revision": "entities1:6edc112c374d003316c7affb3d7731c6f8536ab32d63a3ef0c0e15acce3e0c5f",
+      "total": 2
+    },
+    "merge": {
+      "canonicalId": "validation-identity-a",
+      "changed": true,
+      "entityId": "validation-identity-a",
+      "revision": "entities1:6edc112c374d003316c7affb3d7731c6f8536ab32d63a3ef0c0e15acce3e0c5f"
+    },
+    "pageBeforeMerge": {
+      "canonicalDefinition": null,
+      "canonicalId": null,
+      "items": [
+        {
+          "definition": {
+            "canonicalName": "Validation Atlas",
+            "kind": "project"
+          },
+          "id": "validation-identity-a"
+        },
+        {
+          "definition": {
+            "canonicalName": "Validation Atlas duplicate",
+            "kind": "project"
+          },
+          "id": "validation-identity-b"
+        }
+      ],
+      "kind": "identities",
+      "nextOffset": null,
+      "offset": 0,
+      "revision": "entities1:28faeb678440ace808a67288b30935dbe8b192ad44a08b542b2f4d16aaa808fc",
+      "total": 2
+    },
+    "second": {
+      "canonicalId": "validation-identity-b",
+      "changed": true,
+      "entityId": "validation-identity-b",
+      "revision": "entities1:28faeb678440ace808a67288b30935dbe8b192ad44a08b542b2f4d16aaa808fc"
+    },
+    "stale": "memory/conflict"
+  },
+  "initial": {
+    "entities": {
+      "canonicalDefinition": null,
+      "canonicalId": null,
+      "items": [],
+      "kind": "identities",
+      "nextOffset": null,
+      "offset": 0,
+      "revision": "entities1:382224ef9f381ecd897a780b5b998007aa780313e26762885d9369342c296fdd",
+      "total": 0
+    },
+    "profile": {
+      "exists": false,
+      "format": "plain-text",
+      "nextOffset": null,
+      "offset": 0,
+      "persistence": "event-log",
+      "revision": "profile2:95cb9b4f84ceff132cc7a875d8c192bf4997016a939ee64141c1fd628c0e8738",
+      "text": "",
+      "totalLength": 0
+    }
+  },
+  "onboarding": {
+    "changedReplay": "memory/conflict",
+    "first": {
+      "memoryIds": [
+        "onboarding:d9ceb71fc7e99db9f4541964dafaac67c97a015e19bf34f1f5ca34ea4a4cf5fb",
+        "onboarding:8b0018a41b2910e668e5a6fb0bf4dae69c8e490236fba456668d4e23dcc7385a"
+      ],
+      "persistence": "event-log",
+      "revision": "profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831",
+      "status": "completed",
+      "submissionId": "validation-20260913-identity"
+    },
+    "input": {
+      "expectedRevision": "profile2:95cb9b4f84ceff132cc7a875d8c192bf4997016a939ee64141c1fd628c0e8738",
+      "seeds": [
+        {
+          "content": "Identity validation prefers concise explanations.",
+          "kind": "preference"
+        },
+        {
+          "content": "Identity validation works with Project Atlas.",
+          "kind": "fact"
+        }
+      ],
+      "submissionId": "validation-20260913-identity",
+      "summary": "Identity validation reader prefers concise explanations."
+    },
+    "repeat": {
+      "memoryIds": [
+        "onboarding:d9ceb71fc7e99db9f4541964dafaac67c97a015e19bf34f1f5ca34ea4a4cf5fb",
+        "onboarding:8b0018a41b2910e668e5a6fb0bf4dae69c8e490236fba456668d4e23dcc7385a"
+      ],
+      "persistence": "event-log",
+      "revision": "profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831",
+      "status": "already-completed",
+      "submissionId": "validation-20260913-identity"
+    }
+  },
+  "permissions": {
+    "empty": {
+      "status": "ok",
+      "value": {
+        "hasMemory": false,
+        "hasWrite": false
+      }
+    },
+    "read": {
+      "status": "ok",
+      "value": {
+        "derived": {
+          "curatedExists": true,
+          "curatedRevision": "profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831",
+          "derivedStatus": "absent",
+          "kind": "summary",
+          "nextOffset": null,
+          "offset": 0,
+          "revision": "pctx1:a87208f8f36859359c90dded43cd63183c176b123d4062e63edadde8eca93af2",
+          "text": null,
+          "totalLength": 0
+        },
+        "entities": {
+          "canonicalDefinition": null,
+          "canonicalId": null,
+          "items": [
+            {
+              "definition": {
+                "canonicalName": "Validation Atlas",
+                "kind": "project"
+              },
+              "id": "validation-identity-a"
+            }
+          ],
+          "kind": "identities",
+          "nextOffset": null,
+          "offset": 0,
+          "revision": "entities1:6edc112c374d003316c7affb3d7731c6f8536ab32d63a3ef0c0e15acce3e0c5f",
+          "total": 1
+        },
+        "hasMemory": true,
+        "hasWrite": false,
+        "profile": {
+          "exists": true,
+          "format": "plain-text",
+          "nextOffset": null,
+          "offset": 0,
+          "persistence": "event-log",
+          "revision": "profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831",
+          "text": "Identity validation reader prefers concise explanations.",
+          "totalLength": 56
+        }
+      }
+    },
+    "write": {
+      "status": "ok",
+      "value": {
+        "derived": {
+          "curatedExists": true,
+          "curatedRevision": "profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831",
+          "derivedStatus": "absent",
+          "kind": "summary",
+          "nextOffset": null,
+          "offset": 0,
+          "revision": "pctx1:a87208f8f36859359c90dded43cd63183c176b123d4062e63edadde8eca93af2",
+          "text": null,
+          "totalLength": 0
+        },
+        "entities": {
+          "canonicalDefinition": null,
+          "canonicalId": null,
+          "items": [
+            {
+              "definition": {
+                "canonicalName": "Validation Atlas",
+                "kind": "project"
+              },
+              "id": "validation-identity-a"
+            }
+          ],
+          "kind": "identities",
+          "nextOffset": null,
+          "offset": 0,
+          "revision": "entities1:6edc112c374d003316c7affb3d7731c6f8536ab32d63a3ef0c0e15acce3e0c5f",
+          "total": 1
+        },
+        "hasMemory": true,
+        "hasWrite": true,
+        "profile": {
+          "exists": true,
+          "format": "plain-text",
+          "nextOffset": null,
+          "offset": 0,
+          "persistence": "event-log",
+          "revision": "profile2:78d280c591a113c1d6e3994e39c5c9dd0f663e2989f11fd2c9e44b214d6d8831",
+          "text": "Identity validation reader prefers concise explanations.",
+          "totalLength": 56
+        }
+      }
+    }
+  },
+  "profileCas": {
+    "cleared": {
+      "changed": true,
+      "persistence": "event-log",
+      "revision": "profile2:66a8ca1197516c83cd6788ad5739bb6f428a46f460d2ca43a40fd278c640bf5a"
+    },
+    "empty": {
+      "exists": true,
+      "format": "plain-text",
+      "nextOffset": null,
+      "offset": 0,
+      "persistence": "event-log",
+      "revision": "profile2:66a8ca1197516c83cd6788ad5739bb6f428a46f460d2ca43a40fd278c640bf5a",
+      "text": "",
+      "totalLength": 0
+    },
+    "history": {
+      "status": "ok",
+      "value": {
+        "items": [
+          {
+            "publishedAt": "2026-09-12T20:17:09.871Z",
+            "version": "cb1:1cc232954655ace2668ef47e09c0eb578f545dd0e337a98b481aab154629eb67"
+          },
+          {
+            "publishedAt": "2026-09-12T20:17:09.833Z",
+            "version": "cb1:f47475f4c56123c711809272cc36d28d32a197d4bd45334c0b2d4a254f0af76c"
+          },
+          {
+            "publishedAt": "2026-09-12T20:16:47.067Z",
+            "version": "cb1:e267749fae65b448d407bb735ccb0e8fc8ccf760771c6f2dce032ed0c4fc6ecb"
+          }
+        ],
+        "nextOffset": null,
+        "offset": 0,
+        "revision": "cbhist1:390be498858a468a14ab4c3a9475de3a680eaf4e478ba2ad31ca9d0cdaa436e3",
+        "selector": {
+          "kind": "user_profile_context",
+          "scope": {
+            "kind": "user"
+          }
+        },
+        "total": 3
+      }
+    },
+    "restored": {
+      "changed": true,
+      "persistence": "event-log",
+      "revision": "profile2:2be7efaa02a49fde6fa30804cbce64bf1f87268b4477311a19ed362685d003c6"
+    },
+    "stale": "memory/conflict"
+  },
+  "retirement": {
+    "contributions": 0
+  },
+  "reload": {
+    "history": {
+      "status": "ok",
+      "value": {
+        "items": [
+          {
+            "publishedAt": "2026-09-12T20:17:09.871Z",
+            "version": "cb1:1cc232954655ace2668ef47e09c0eb578f545dd0e337a98b481aab154629eb67"
+          },
+          {
+            "publishedAt": "2026-09-12T20:17:09.833Z",
+            "version": "cb1:f47475f4c56123c711809272cc36d28d32a197d4bd45334c0b2d4a254f0af76c"
+          },
+          {
+            "publishedAt": "2026-09-12T20:16:47.067Z",
+            "version": "cb1:e267749fae65b448d407bb735ccb0e8fc8ccf760771c6f2dce032ed0c4fc6ecb"
+          }
+        ],
+        "nextOffset": null,
+        "offset": 0,
+        "revision": "cbhist1:390be498858a468a14ab4c3a9475de3a680eaf4e478ba2ad31ca9d0cdaa436e3",
+        "selector": {
+          "kind": "user_profile_context",
+          "scope": {
+            "kind": "user"
+          }
+        },
+        "total": 3
+      }
+    },
+    "inspect": {
+      "status": "ok",
+      "value": {
+        "derived": {
+          "curatedExists": true,
+          "curatedRevision": "profile2:2be7efaa02a49fde6fa30804cbce64bf1f87268b4477311a19ed362685d003c6",
+          "derivedStatus": "stale",
+          "kind": "summary",
+          "nextOffset": null,
+          "offset": 0,
+          "revision": "pctx1:660fdfe78fd7a40a3efe1ae6c93ec9d2e4d4ced5d9272d2308563f13f0f10ff1",
+          "text": "Identity validation inferred preference: concise explanations.",
+          "totalLength": 62
+        },
+        "entities": {
+          "canonicalDefinition": null,
+          "canonicalId": null,
+          "items": [
+            {
+              "definition": {
+                "canonicalName": "Validation Atlas",
+                "kind": "project"
+              },
+              "id": "validation-identity-a"
+            }
+          ],
+          "kind": "identities",
+          "nextOffset": null,
+          "offset": 0,
+          "revision": "entities1:6edc112c374d003316c7affb3d7731c6f8536ab32d63a3ef0c0e15acce3e0c5f",
+          "total": 1
+        },
+        "hasMemory": true,
+        "hasWrite": false,
+        "profile": {
+          "exists": true,
+          "format": "plain-text",
+          "nextOffset": null,
+          "offset": 0,
+          "persistence": "event-log",
+          "revision": "profile2:2be7efaa02a49fde6fa30804cbce64bf1f87268b4477311a19ed362685d003c6",
+          "text": "Identity validation reader prefers concise explanations.",
+          "totalLength": 56
+        }
+      }
+    },
+    "projections": {
+      "consistent": true,
+      "drift": [],
+      "eventsReplayed": 28
+    },
+    "retired": {
+      "contributions": 0
+    }
+  },
+  "limits": [
+    "Synthetic onboarding and consolidation plan use real native domain commands; no interview UI or model inference quality proof.",
+    "WebView and Worker restart only; no process crash or cross-device proof.",
+    "Tagged profile, two onboarding memories, merged identity pair, and three context archives retained in disposable backup profile; original capability-e2e and production data untouched."
+  ]
+}

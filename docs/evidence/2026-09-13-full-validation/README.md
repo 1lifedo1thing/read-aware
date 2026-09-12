@@ -396,3 +396,23 @@ Qwen3 VL 30B实际可调用：Agent第一次连续10次传错bookId被拒后错�
 密钥恢复，单次loopback密钥交接服务已退出。直接Runtime未走产品聊天持久化hooks，
 空转录不作为去除图片字节的持久化证据。WebView隐藏，本批没有画面通过声明。
 详情见real-image-model-observations.json。
+
+## 第十六个桌面流程：画像、身份及版本化上下文
+
+在独立 validation-backup-e2e 实例执行真实原生命令与三个权限不同的 Worker。
+合成 onboarding 首次原子写入画像及两条记忆；相同提交返回 already-completed 且 ID 不变，
+改内容重放返回 memory/conflict。画像旧版本写入被拒，清空后 text 为空但 exists 仍为 true，
+再恢复成功。两身份合并后旧 ID 查询归入同一 canonical，成员与四个别名保留。
+
+无 memory 权限的 Worker 无入口，只读角色没有 commands；写角色捕获画像归档，
+重复捕获 changed=false，固定版本读取一致，导出实际读到574字节JSON。没有 conversation
+权限时跨 recipe 捕获返回 memory/forbidden。置顶源记忆后，以确定性计划经原生 consolidation
+提交推导画像；旧导出读返回 memory/conflict，而旧归档仍可读取。
+纠正源记忆后 derivedStatus=stale，新归档排除该推导并明确记录 omission。
+
+退役三个 Worker 后贡献为0。WebView重载并重新启动 Worker，画像、合并身份与三版归档
+仍可读取；原生 verify_projections 重放28事件，consistent=true、drift为空。桌面探针类型检查通过。
+本批没有模型推导、访谈审批UI、进程崩溃恢复、大规模批处理、跨设备或其他recipe通过声明。
+两条带validation标记的记忆、画像、合并身份和三版归档保留在独立backup验收实例，
+不称该实例已清空；正式资料与原capability-e2e资料未动。
+详情见[原始观察](./identity-context-observations.json)。
