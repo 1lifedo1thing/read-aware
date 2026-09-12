@@ -21,7 +21,7 @@ async function readGoalState(ctx, input) {
   let doc = await collection.get(bookId);
   if (!doc) {
     await storage.flush();
-    const legacy = storage.get(key(bookId));
+    const legacy = await storage.getDurable(key(bookId));
     if (legacy !== null) {
       const goal2 = parseGoal(legacy);
       await storage.applyDocuments([{
@@ -42,7 +42,7 @@ async function readGoalState(ctx, input) {
   if (doc.data?.version !== 1)
     return invalid();
   const goal = doc.data.goal === null ? null : parseGoal(doc.data.goal);
-  if (storage.get(key(bookId)) !== null)
+  if (await storage.getDurable(key(bookId)) !== null)
     await storage.remove(key(bookId));
   return { bookId, goal, revision: doc.revision };
 }
@@ -551,6 +551,34 @@ function registerGoalMemory(ctx) {
   return { provider, view };
 }
 
+// src/context-source.ts
+function readingGoalSource(ctx) {
+  const book = (scope) => {
+    if (scope.kind !== "book")
+      throw Object.assign(Error("Reading Goals has no user-wide intention"), { code: "plugin/invalid-input" });
+    return goalBookId(scope.id);
+  };
+  return {
+    scopes: ["book"],
+    prepare: async (scope) => {
+      await readGoalState(ctx, book(scope));
+      await ctx.services.storage.flush();
+    },
+    read: async (scope) => {
+      const id = book(scope), storage = ctx.services.storage;
+      const doc = await storage.collection("goals").get(id);
+      if (!doc) {
+        if (await storage.getDurable(`goal:${id}`) !== null)
+          throw Object.assign(Error("Goal migration required before capture"), { code: "memory/conflict" });
+        return { revision: null, text: null };
+      }
+      if (doc.data?.version !== 1)
+        throw Object.assign(Error("Invalid reading goal record"), { code: "plugin/invalid-input" });
+      return { revision: doc.revision, text: doc.data.goal === null ? null : parseGoal(doc.data.goal).text };
+    }
+  };
+}
+
 // src/index.ts
 var src_default = {
   activate(ctx) {
@@ -564,7 +592,7 @@ var src_default = {
     ctx.contributions.commands.register({ id: "time", title: timeCopy(ctx.locale).title, icon: "clock", run: async () => ({ view: await readingTimeView(ctx) }) });
     ctx.contributions.commands.register({ id: "insights", title: insightsCopy(ctx.locale).title, icon: "chart-line-up", run: () => ({ view: readingInsightsForm(ctx) }) });
     registerGoalTools(ctx);
-    agentContextProviders.register({ id: "reading-goal", contexts: ["book"], provide: async ({ scope }) => {
+    agentContextProviders.register({ id: "reading-goal", contexts: ["book"], readingIntent: readingGoalSource(ctx), provide: async ({ scope }) => {
       const goal = scope.kind === "book" ? await readGoal(ctx, scope.bookId) : null;
       return goal ? [{ title, content: goal.text }] : [];
     } });
