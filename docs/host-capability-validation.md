@@ -77,10 +77,10 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | READ19 | 完成页、标记读完/撤销读完 | F3 | 待验 |
 | READ20 | 跨书/并发导航的取消、序列化与回执 | F3 | 待验 |
 | ANN01 | 列出/按书按词按类型检索标注 | F3 | 本机插件及 domain 列出两类自有标注通过；检索/分页待验 |
-| ANN02 | 创建高亮 | F3 | 本机真实 Worker 改为高亮并绘制通过；其他入口待验 |
+| ANN02 | 创建高亮 | F3 | 本机真实 Worker 改为高亮并绘制通过；release物理拖选/UI创建黄色高亮及进程重启绘制通过，见第三十二流程 |
 | ANN03 | 创建下划线样式 | F3 | 本机插件创建绿色下划线且实际绘制通过；其他格式待验 |
 | ANN04 | 高亮改色/删除 | F3 | 本机改色/样式并删除、绘制同步通过；其他 actor 待验 |
-| ANN05 | 创建/编辑/删除笔记 | F3 | 本机插件创建引用笔记、冲突拒绝/刷新编辑/删除通过；远端待验 |
+| ANN05 | 创建/编辑/删除笔记 | F3 | 本机插件创建引用笔记、冲突拒绝/刷新编辑/删除通过；release物理拖选创建笔记/焦点/列表定位/重启保留通过，远端待验，见第三十二流程 |
 | ANN06 | 读取/删除 ask 问题轨迹 | F3 | 待验 |
 | ANN07 | 自动记录书内问题轨迹 | F3 | 待验 |
 | ANN08 | 按 ID 读取、分页、批量/版本冲突标注操作 | F3 | 本机两项混合条件删除与旧版本编辑冲突保护通过；大分页待验 |
@@ -143,7 +143,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET33 | menus.shelfHeader.overflow | F6 | Worker溢出排序DOM一致，移入Shelf view仍可打开布局面板；其他动作待验，见第二十九流程 |
 | SET34 | menus.readerHeader.visible | F6 | Worker阅读页头Chat→Jumper，实际DOM一致；固定左侧入口保持，见第二十九流程 |
 | SET35 | menus.readerHeader.overflow | F6 | Worker外观/分句阅读移入溢出并重排，外观入口实际可打开；其他动作待验，见第二十九流程 |
-| SET36 | menus.selection.visible | F6 | 真实FB2 DOM Range触发选区，Underline→Copy及More顺序一致；物理拖选/窄窗待验，见第二十九流程 |
+| SET36 | menus.selection.visible | F6 | 真实FB2 DOM Range触发选区，Underline→Copy及More顺序一致；release物理拖选默认工具栏/高亮笔记通过；自定义物理拖选/窄窗待验，见第二十九/三十二流程 |
 | SET37 | menus.selection.overflow | F6 | 真实选区溢出前七项按Worker配置排序；完整动作执行待验，见第二十九流程 |
 | SET38 | ai.connection.provider | F6 | 待验 |
 | SET39 | ai.connection.primaryModel | F6 | 待验 |
@@ -157,10 +157,10 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET47 | reading.textAlign | F6 | Worker目标覆盖与实际设置UI Justified、预览及FB2正文computed justify、原生KV通过；其他格式待验，见第二十五流程 |
 | SET48 | reading.fixedLayoutColor | F6 | Worker theme/original目标覆盖及重置通过；PDF实际颜色与UI入口待验，见第二十五流程 |
 | SET49 | general.whatsNewDialog | F6 | 待验 |
-| SET50 | appearance.contentTypography.followReader | F6 | Workspace Profiles false→true真实切换，聊天输入框Menlo→Lora且加载通过；消息/笔记待验，见第二十八流程 |
-| SET51 | appearance.contentTypography.fontFamily | F6 | Workspace Profiles搜索Menlo/应用独立字体并关跟随，真实聊天输入框样式通过；消息/笔记/字形质量待验，见第二十八流程 |
-| SET52 | appearance.contentTypography.fontSize | F6 | 待验 |
-| SET53 | appearance.contentTypography.lineSpacing | F6 | 待验 |
+| SET50 | appearance.contentTypography.followReader | F6 | Workspace Profiles false→true切换及输入框字体通过；release实际UI关闭跟随、笔记列表独立字体及进程重启通过，消息/跟随笔记绘制待验，见第二十八/三十二流程 |
+| SET51 | appearance.contentTypography.fontFamily | F6 | Workspace Profiles Menlo输入框样式通过；release设置Lora下载/预览/笔记列表实际字体及重启通过；消息和其他字形待验，见第二十八/三十二流程 |
+| SET52 | appearance.contentTypography.fontSize | F6 | release实际UI medium→XL、预览/笔记列表呈现、原生持久与重启保留并恢复通过；其他字号/消息待验，见第三十二流程 |
+| SET53 | appearance.contentTypography.lineSpacing | F6 | release实际UI comfortable→relaxed、预览/笔记列表呈现、原生持久与重启保留并恢复通过；其他行距/消息待验，见第三十二流程 |
 | SET54 | annotations.defaultColor | F6 | 待验 |
 | SET55 | general.updateChannel | F6 | 待验 |
 | SET56 | shelf.layout | F6 | 本机真实Worker grid→list，命令checked/列表DOM/原生KV一致并恢复；其他入口待验，见第二十三流程 |

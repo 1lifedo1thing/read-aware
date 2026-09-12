@@ -841,3 +841,26 @@ Packaged Lifecycle Probe。正文 Native Reading 的两段合成文字实际绘�
 实际点击 Chat 后 AX 焦点为 Message 输入框，关闭后回到阅读容器，最后回书架。
 这是原生菜单全屏通过；尚未把旧第27流程插件全屏请求计为通过。
 另记录小 FB2 顶栏显示 0 / 1、滑条详情显示 1 / 1（均100%）的显示不一致，未关闭。
+
+## 第三十二流程：发布包物理拖选、高亮/笔记和独立内容排版重启
+
+沿用第31流程的 release `.app` 和自有 FB2。CUA 实际鼠标拖选第二章第一行，
+选区文字与工具栏一致；点击 Highlight 后原生 SQLite 写入 yellow 高亮，随后
+实际显示黄色背景。首张操作后截图尚未绘制，提交后的观察才计通过。
+再次拖选第二行 available in the library.，点击 Add a note，原生 AX 焦点进入
+Your note 输入区；输入合成笔记、Save 后退出编辑器，焦点返回阅读容器。
+正文出现笔记虚线，Notes 2 列表显示两个引用和完整笔记正文；从列表可定位正文。
+
+实际 Theme 设置关闭 Follow the reading settings，选择 Lora、XL、Relaxed。
+观察字体下载提示出现后完成、预览改为衬线字体；笔记列表的引用及正文实际采用
+独立内容字体，书页保持原阅读字体。原生 KV 持久的是对应四项设置。没有把字体
+名称或接口回执单独当成绘制证明，也没有把预览当成实际聊天消息证明。
+
+点击原生窗口关闭，旧 PID 67135 退出，CUA 下一次观察启动 69794。SQLite 中
+两条标注的 ID/类型/引用/CFI/颜色/内容与四项排版值一致；实际重开同书后黄色
+高亮、虚线笔记、完整笔记列表和衬线呈现恢复。最后经实际设置 UI 恢复
+followReader=true、fontFamily=null、medium、comfortable，原生重读一致。
+一份合成书和两条标注保留供后续验收。无产品源码改动，不重复全量测试。
+
+证据：[packaged-annotations-typography-observations.json](./packaged-annotations-typography-observations.json)。
+本轮不证明其他格式/平台、所有字体组合、聊天消息排版或该发布包的编辑/删除入口。

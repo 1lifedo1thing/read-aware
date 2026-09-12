@@ -1,0 +1,115 @@
+{
+  "date": "2026-09-13",
+  "platform": "macOS aarch64 release app",
+  "buildBase": "4b08588d plus bundled Reading Goals source already present at build",
+  "identifier": "com.readaware.app.validation-packaged-e2e",
+  "bookId": "5506162d-7bd7-43c4-bf81-6495ee6067d3",
+  "physicalSelection": {
+    "first": "On reopening, the same synthetic book remains",
+    "second": "available in the library.",
+    "method": "CUA mouse drag across rendered text; no injected DOM Range"
+  },
+  "highlight": {
+    "action": "Highlight toolbar button",
+    "paint": "yellow background observed after asynchronous commit/render"
+  },
+  "note": {
+    "action": "Add a note toolbar button",
+    "focus": "Your note text entry area",
+    "content": "Packaged note: the library passage remains readable after restart.",
+    "save": "Native UI Save; editor closed and focus returned to reader",
+    "paint": "dotted underline on second line",
+    "list": "Notes 2; exact selection and note text visible"
+  },
+  "typography": {
+    "ui": "Theme > Content typography",
+    "initial": {
+      "followReader": true,
+      "fontFamily": null,
+      "fontSize": "medium",
+      "lineSpacing": "comfortable"
+    },
+    "changed": {
+      "followReader": false,
+      "fontFamily": "curated:lora",
+      "fontSize": "x-large",
+      "lineSpacing": "relaxed"
+    },
+    "download": "Downloading font 0% appeared then disappeared",
+    "paint": "Preview and saved note list rendered serif; book remained sans-serif; controls retained own typography",
+    "restored": {
+      "followReader": true,
+      "fontFamily": null,
+      "fontSize": "medium",
+      "lineSpacing": "comfortable"
+    }
+  },
+  "beforeRestart": {
+    "annotations": [
+      [
+        "fda79256-9493-4ddc-b9c6-395b70847e73",
+        "highlight",
+        "On reopening, the same synthetic book remains",
+        "yellow",
+        null,
+        "epubcfi(/6/4!/4/2[second]/4,/1:0,/1:45)"
+      ],
+      [
+        "c17f65b4-ec2d-4e99-95e6-27d06be5a35a",
+        "note",
+        "available in the library.",
+        null,
+        "Packaged note: the library passage remains readable after restart.",
+        "epubcfi(/6/4!/4/2[second]/4,/1:46,/1:71)"
+      ]
+    ],
+    "typography": [
+      [
+        "read-aware-content-typography",
+        "{\"followReader\":false,\"fontFamily\":\"curated:lora\",\"fontSize\":\"x-large\",\"lineSpacing\":\"relaxed\"}"
+      ]
+    ]
+  },
+  "afterRestart": {
+    "annotations": [
+      [
+        "fda79256-9493-4ddc-b9c6-395b70847e73",
+        "highlight",
+        "On reopening, the same synthetic book remains",
+        "yellow",
+        null,
+        "epubcfi(/6/4!/4/2[second]/4,/1:0,/1:45)"
+      ],
+      [
+        "c17f65b4-ec2d-4e99-95e6-27d06be5a35a",
+        "note",
+        "available in the library.",
+        null,
+        "Packaged note: the library passage remains readable after restart.",
+        "epubcfi(/6/4!/4/2[second]/4,/1:46,/1:71)"
+      ]
+    ],
+    "typography": [
+      [
+        "read-aware-content-typography",
+        "{\"followReader\":false,\"fontFamily\":\"curated:lora\",\"fontSize\":\"x-large\",\"lineSpacing\":\"relaxed\"}"
+      ]
+    ]
+  },
+  "restart": {
+    "oldPid": 67135,
+    "oldProcessExited": true,
+    "newPid": 69794,
+    "sameAnnotationRows": true,
+    "sameTypographyValue": true,
+    "actualPaint": "Same yellow highlight/dotted note underline restored; Notes list exact text and serif font restored"
+  },
+  "retained": "One isolated synthetic book plus two annotations retained for subsequent validation; original typography restored",
+  "notProven": [
+    "All formats and platforms",
+    "All typography sizes and fonts",
+    "Chat message typography",
+    "Native export/share/clipboard",
+    "Annotation edit/delete through this packaged UI"
+  ]
+}
