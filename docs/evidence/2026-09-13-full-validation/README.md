@@ -1067,3 +1067,17 @@ Row 45 needle-pagination ends here.，来源range/available且未截断。
 缺失，改用同一真实WebView直接DOM观察/操作；CUA在用户回复已解锁后仍报告Mac
 锁定，不能据此证明前台画面、原生焦点或发布包。背压、换查询退役、实际源替换、
 其他格式及平台保持待验。
+
+## 第四十一流程：查询等待期间返回、换查询与旧结果退役
+
+复用第38流程的真实FB2解析等待点及编译Text Desk Worker，不改产品或驱动。
+旧查询Text preparation probe进入Searching，entered=1/returned=0；点击Back后
+表单恢复旧草稿。替换为qzxvretirementmissing并Search，仍只有一个共享物理读取
+在等待。放行后entered=1/returned=1、索引ready，界面只显示No matches in the
+searched index。通过真实domain重查旧词确有一条exact命中，故新界面无命中并非
+旧查询也为空；再次Back保留新词，旧结果未覆盖新界面或草稿。
+
+证据：[text-search-query-retirement-observations.json](./text-search-query-retirement-observations.json)。
+自有三书、贡献均0，shutdownErrors=[]；原两书保留、导入意图0。本轮证明实际
+Worker视图返回/替换时取消旧请求并共享抽取后的结果隔离，不声称任意并发背压、
+物理强停、其他格式或前台焦点通过。当前CUA仍报告Mac锁定；未重复同一锁定操作。
