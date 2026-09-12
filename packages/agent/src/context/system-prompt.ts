@@ -47,7 +47,7 @@ function readingPositionLine(input: SystemPromptInput): string {
   }
   if (input.currentChapter) {
     parts.push(
-      `currently in chapter #${input.currentChapter.index}${
+      `currently at zero-based chapterIndex ${input.currentChapter.index}${
         input.currentChapter.title ? ` ("${input.currentChapter.title}")` : ""
       } — read_chapter ${input.currentChapter.index} returns its text; treat "this chapter" as that one`,
     );
@@ -107,7 +107,7 @@ function storySoFarSection(digests: ChapterDigest[]): string | undefined {
   if (recent.length) {
     lines.push(
       "Recent finished chapters:",
-      ...recent.map((digest) => `- #${digest.chapterIndex}: ${digest.summary}`),
+      ...recent.map((digest) => `- chapterIndex ${digest.chapterIndex}: ${digest.summary}`),
     );
   }
   return lines.join("\n");
@@ -148,7 +148,7 @@ function subjectSoFarSection(digests: ChapterDigest[]): string | undefined {
   if (recent.length) {
     lines.push(
       "Recent finished chapters (what each argues):",
-      ...recent.map((digest) => `- #${digest.chapterIndex}: ${digest.summary}`),
+      ...recent.map((digest) => `- chapterIndex ${digest.chapterIndex}: ${digest.summary}`),
     );
   }
   return lines.join("\n");
@@ -195,6 +195,7 @@ function sharedRules(scope: ThreadScope): string {
 - Be concise and substantive; no filler.
 - Never use emoji.
 - Internal ids (book ids, annotation ids) are tool parameters only. In prose, always call books and annotations by their titles or text — never print an id to the reader.
+- chapterIndex, reading_cursor.chapter_index and graph provenance are zero-based tool coordinates, not reader-facing chapter numbers. Refer to the chapter title, or use get_toc's matching chapterNumber when giving a numbered location; do not present a raw index as "chapter N" or confuse it with a part/volume's printed numbering.
 
 ## Tool discipline
 - Use your tools to look at the user's actual shelf, books, and annotations before answering questions about them.
