@@ -85,6 +85,14 @@ export class BookTextRepository {
     return (await this.request(bookId, waitForPdf, {})).chapters;
   }
 
+  async chapter(bookId: string, index: number, version: string, signal?: AbortSignal): Promise<ExtractedChapter | undefined> {
+    const result = await this.request(bookId, true, { signal });
+    if (result.state.contentVersion !== version) throw new AppError("memory/conflict", "Chapter text belongs to another source");
+    const chapter = result.chapters[index];
+    if (chapter && chapter.text.length > 2 * 1024 * 1024) throw new AppError("memory/input-budget-exceeded", "Digest chapter exceeds its read budget");
+    return chapter;
+  }
+
   async prepare(bookId: string, options: TextPreparationOptions = {}): Promise<BookTextSnapshot> {
     const result = await this.request(bookId, true, options);
     if (result.state.status !== "ready") throw new AppError("library/text-unsupported", "Derived text preparation is unsupported");

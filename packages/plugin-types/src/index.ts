@@ -1724,6 +1724,7 @@ export type PluginDomains = {
     listGraphTasks(bookId: string): Promise<import("@read-aware/core").BookGraphTaskSnapshot[]>;
     search(input: import("@read-aware/core").MemoryQuery): Promise<import("@read-aware/core").MemoryRecord[]>;
     page(input: import("@read-aware/core").MemoryPageQuery): Promise<import("@read-aware/core").MemoryPage>;
+    /** memory >=2.6 only exposes current-source digests; chapter results carry contentVersion for navigation. */
     bookGraph(bookId: string, query?: import("@read-aware/core").BookGraphQuery): Promise<import("@read-aware/core").BookGraphResult>;
   }; commands?: {
     /** Memory 2.1: resolve an original member or merge known resolved classes using an observed

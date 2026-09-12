@@ -34,9 +34,9 @@ export async function graphView(ctx: PluginContext, bookId: string, query: BookG
     ], actions: [...actions, { id: "source", label: t[15], icon: "book-open", run: async () => {
       // Recheck the fence before navigating from a potentially stale detail view.
       const current = await ctx.domains.memory!.queries.bookGraph(bookId, { chapterIndex: graph.chapterIndex });
-      if (current.graph !== "chapter") return { view: await graphView(ctx, bookId, { chapterIndex: graph.chapterIndex }), navigation: "replace" };
+      if (current.graph !== "chapter" || current.contentVersion !== graph.contentVersion) return { view: await graphView(ctx, bookId, { chapterIndex: graph.chapterIndex }), navigation: "replace" };
       if (!current.chapterHref) return { view: { kind: "detail", title: t[15], content: [{ kind: "error", code: "reader/target-not-found" }] } };
-      await ctx.domains.reading!.commands!.goTo({ bookId, href: current.chapterHref }); return { close: true };
+      await ctx.domains.reading!.commands!.goTo({ bookId, href: current.chapterHref, ...(current.contentVersion ? { contentVersion: current.contentVersion } : {}) }); return { close: true };
     } }] };
   }
   if (graph.graph === "overview") {

@@ -46,6 +46,8 @@
     "bookRangeUnsupported": "This content does not support reading text ranges.",
     "bookRangeForbidden": "This passage is beyond the permitted reading boundary.",
     "annotationObserverLimit": "Too many annotation subscriptions are active.",
+    "memoryInputBudgetExceeded": "Memory input is too large for this operation.",
+    "memoryOutputBudgetExceeded": "Memory generation exceeded its output limit.",
     "annotationReadBudgetExceeded": "This annotation read is too large. Use pages for collections; shorten an oversized note in the reader before retrying.",
     "annotationObservationFailed": "Annotations could not be refreshed. Try again.",
     "memoryTaskNotFound": "This graph task is no longer available. Start a new task.",

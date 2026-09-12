@@ -361,9 +361,9 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
             tx.execute(
                 "INSERT OR IGNORE INTO chapter_digests
                     (book_id, chapter_index, chapter_href, summary,
-                     characters_json, relations_json, digest_version, flavor, updated_at)
+                     characters_json, relations_json, digest_version, flavor, updated_at, content_version)
                     SELECT ?2, chapter_index, chapter_href, summary,
-                           characters_json, relations_json, digest_version, flavor, updated_at
+                           characters_json, relations_json, digest_version, flavor, updated_at, content_version
                       FROM chapter_digests WHERE book_id = ?1",
                 params![merged, keep],
             )
@@ -793,15 +793,15 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
             tx.execute(
                 "INSERT INTO chapter_digests
                     (book_id, chapter_index, chapter_href, summary,
-                     characters_json, relations_json, digest_version, flavor, updated_at)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
+                     characters_json, relations_json, digest_version, flavor, updated_at, content_version)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)
                  ON CONFLICT(book_id, chapter_index) DO UPDATE SET
                     chapter_href=excluded.chapter_href, summary=excluded.summary,
                     characters_json=excluded.characters_json,
                     relations_json=excluded.relations_json,
                     digest_version=excluded.digest_version,
                     flavor=excluded.flavor,
-                    updated_at=excluded.updated_at",
+                    updated_at=excluded.updated_at, content_version=excluded.content_version",
                 params![
                     id,
                     chapter_index,
@@ -812,6 +812,7 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
                     i64_of(p, "digestVersion").unwrap_or(1),
                     str_of(p, "flavor"),
                     at,
+                    str_of(p, "contentVersion"),
                 ],
             )
             ?;

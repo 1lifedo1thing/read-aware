@@ -77,3 +77,20 @@ test("a degraded digest read retries on the next same-chapter turn instead of fr
     expect(f.messageCounts).toEqual([1, 3]);
   } finally { await f.close(); }
 });
+
+
+test("same-chapter source changes refresh cached prompt evidence without erasing the conversation", async () => {
+  const f = fixture(); let version = "sha256:old";
+  f.deps.bookText.getSourceVersion = async () => version;
+  f.deps.bookMemory.listDigests = async () => [{ chapterIndex: 0, contentVersion: version,
+    summary: version === "sha256:old" ? "Old edition evidence" : "Replacement edition evidence", characters: [], relations: [], digestVersion: 2 }];
+  try {
+    await f.send({ readingCursor: { chapter: "ch1" } });
+    version = "sha256:new";
+    await f.send({ readingCursor: { chapter: "ch1" } });
+    expect(f.prompts[0]).toContain("Old edition evidence");
+    expect(f.prompts[1]).not.toContain("Old edition evidence");
+    expect(f.prompts[1]).toContain("Replacement edition evidence");
+    expect(f.messageCounts).toEqual([1, 3]);
+  } finally { await f.close(); }
+});

@@ -183,6 +183,8 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "annotations/conflict": { key: "annotationConflict", retryable: false },
   "annotations/unavailable": { key: "annotationUnavailable", retryable: false },
   "annotations/observer-limit": { key: "annotationObserverLimit", retryable: false },
+  "memory/input-budget-exceeded": { key: "memoryInputBudgetExceeded", retryable: false },
+  "memory/output-budget-exceeded": { key: "memoryOutputBudgetExceeded", retryable: false },
   "annotations/read-budget-exceeded": { key: "annotationReadBudgetExceeded", retryable: false },
   "annotations/observation-failed": { key: "annotationObservationFailed", retryable: true },
   "annotations/cancelled": { key: "annotationCancelled", retryable: false },

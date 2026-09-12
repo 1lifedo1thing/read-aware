@@ -503,7 +503,10 @@ export class AgentThread {
           turnChapter !== undefined &&
           this.sessionChapter !== undefined &&
           turnChapter !== this.sessionChapter;
-        const policyKey = JSON.stringify({ profile: profileContextText(profile) ?? null, classification: currentBook?.narrativity ?? null, status: currentBook?.status ?? null, chapterIndex: cursor?.chapterIndex ?? null,
+        let contentVersion: string | null = null;
+        try { contentVersion = await call.wait(this.deps.bookText.getSourceVersion?.(this.scope.bookId, call.signal) ?? Promise.resolve(null)); }
+        catch (error) { this.deps.log?.warn("chapter source unavailable; prompt cache must refresh", error); this.sessionMemoryPolicy = undefined; }
+        const policyKey = JSON.stringify({ contentVersion, profile: profileContextText(profile) ?? null, classification: currentBook?.narrativity ?? null, status: currentBook?.status ?? null, chapterIndex: cursor?.chapterIndex ?? null,
           policy: chapterMemoryPolicy(currentBook, cursor?.chapterIndex) });
         const newSession = !this.sessionStarted || crossedChapter;
         if (newSession || policyKey !== this.sessionMemoryPolicy) {

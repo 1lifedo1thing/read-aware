@@ -12,6 +12,10 @@ pub(crate) fn book_context_snapshot_inner(
     conn: &mut Connection,
     book_id: &str,
 ) -> Result<Value, CommandError> {
+    book_context_snapshot_versioned(conn, book_id, None)
+}
+
+fn book_context_snapshot_versioned(conn: &mut Connection, book_id: &str, version: Option<&str>) -> Result<Value, CommandError> {
     if book_id.trim().is_empty() || book_id.encode_utf16().count() > 256 || book_id.contains('\0') {
         return Err(invalid());
     }
@@ -46,14 +50,17 @@ pub(crate) fn book_context_snapshot_inner(
             "Invalid persisted reading position",
         ));
     }
+    let file_version = super::book_digest::file_content_version(&tx, book_id)?;
+    if book.3 != "virtual" && version.is_some() && version != file_version.as_deref() { return Err(CommandError::new("memory/conflict", "Context source changed")); }
+    let version = if book.3 == "virtual" { version } else { file_version.as_deref() };
     let scope = format!("book:{book_id}");
     // Bound the complete source set before materializing text, never return a prefix.
     let (count, bytes): (i64, i64) = tx.query_row(
         "SELECT sum(n),sum(b) FROM (
           SELECT count(*) n,coalesce(sum(length(CAST(content AS BLOB))),0) b FROM memories WHERE scope=?1 AND status='active'
           UNION ALL SELECT count(*),coalesce(sum(length(CAST(text AS BLOB))+coalesce(length(CAST(content AS BLOB)),0)),0) FROM annotations WHERE book_id=?2
-          UNION ALL SELECT count(*),coalesce(sum(length(CAST(summary AS BLOB))+length(CAST(characters_json AS BLOB))+length(CAST(relations_json AS BLOB))),0) FROM chapter_digests WHERE book_id=?2)",
-        rusqlite::params![scope, book_id], |r| Ok((r.get(0)?, r.get(1)?)),
+          UNION ALL SELECT count(*),coalesce(sum(length(CAST(summary AS BLOB))+length(CAST(characters_json AS BLOB))+length(CAST(relations_json AS BLOB))),0) FROM chapter_digests WHERE book_id=?2 AND content_version=?3)",
+        rusqlite::params![scope, book_id, version], |r| Ok((r.get(0)?, r.get(1)?)),
     )?;
     if count > 8192 || bytes > 8 * 1024 * 1024 {
         return Err(invalid());
@@ -70,8 +77,8 @@ pub(crate) fn book_context_snapshot_inner(
         rows.collect::<Result<Vec<_>, _>>()?
     };
     let digests = {
-        let mut stmt = tx.prepare("SELECT chapter_index,chapter_href,flavor,summary,characters_json,relations_json,digest_version FROM chapter_digests WHERE book_id=?1 ORDER BY chapter_index")?;
-        let rows = stmt.query_map([book_id], |r| Ok(json!({"index":r.get::<_, i64>(0)?, "href":r.get::<_, Option<String>>(1)?,
+        let mut stmt = tx.prepare("SELECT chapter_index,chapter_href,flavor,summary,characters_json,relations_json,digest_version FROM chapter_digests WHERE book_id=?1 AND content_version=?2 ORDER BY chapter_index")?;
+        let rows = stmt.query_map(rusqlite::params![book_id, version], |r| Ok(json!({"index":r.get::<_, i64>(0)?, "href":r.get::<_, Option<String>>(1)?,
             "flavor":r.get::<_, Option<String>>(2)?, "summary":r.get::<_, String>(3)?, "characters":r.get::<_, String>(4)?,
             "relations":r.get::<_, String>(5)?, "version":r.get::<_, i64>(6)?})))?;
         rows.collect::<Result<Vec<_>, _>>()?
@@ -97,11 +104,12 @@ pub(crate) fn book_context_snapshot_inner(
 pub async fn book_context_snapshot(
     app: tauri::AppHandle,
     book_id: String,
+    content_version: Option<String>,
 ) -> Result<Value, CommandError> {
     super::blocking("book_context_snapshot", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
-        book_context_snapshot_inner(&mut conn, &book_id)
+        if content_version.is_some() { book_context_snapshot_versioned(&mut conn, &book_id, content_version.as_deref()) } else { book_context_snapshot_inner(&mut conn, &book_id) }
     })
     .await
 }

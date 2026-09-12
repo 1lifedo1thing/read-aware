@@ -7,7 +7,8 @@
  */
 import { invoke } from "../../../../platform/ipc";
 import { BookDigestQueue, type BookMemoryPort } from "@read-aware/agent";
-import { inspectBookDigest, saveBookDigest } from "../../../../domain/book-digest";
+import { AppError } from "@read-aware/core";
+import { getDigestContentVersion, inspectBookDigest, saveBookDigest } from "../../../../domain/book-digest";
 import { isTauri } from "../../../../platform/environment";
 import { decodeChapterDigestRows } from "./chapter-digest-row";
 
@@ -18,10 +19,12 @@ export function createBookMemoryPort(): BookMemoryPort {
     runExclusive: (bookId, work, signal) => queue.run(bookId, work, signal),
     listDigests: async (bookId) => {
       if (!isTauri()) return [];
+      const contentVersion = await getDigestContentVersion(bookId);
       const rows = await invoke<unknown>("chapter_digests_list", {
-        bookId: String(bookId),
+        bookId: String(bookId), contentVersion,
       });
-      return decodeChapterDigestRows(rows, bookId);
+      if (await getDigestContentVersion(bookId) !== contentVersion) throw new AppError("memory/conflict", "Digest source changed during read");
+      return decodeChapterDigestRows(rows, bookId).filter(digest => digest.contentVersion === contentVersion);
     },
     inspectDigest: inspectBookDigest,
     saveDigest: saveBookDigest,

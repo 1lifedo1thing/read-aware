@@ -132,6 +132,7 @@ pub async fn memory_put(
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChapterDigest {
+    pub content_version: Option<String>,
     pub book_id: String,
     pub chapter_index: i64,
     pub chapter_href: Option<String>,
@@ -147,22 +148,27 @@ pub struct ChapterDigest {
 #[tauri::command]
 pub async fn chapter_digests_list(
     book_id: String,
+    content_version: Option<String>,
     app: tauri::AppHandle,
 ) -> Result<Vec<ChapterDigest>, CommandError> {
     crate::storage::blocking("chapter_digests_list", move || {
         let db = tauri::Manager::state::<Db>(&app);
-        let conn = db.0.lock()?;
+        let mut guard = db.0.lock()?;
+        let conn = guard.transaction()?;
+        let (count, bytes): (i64, i64) = conn.query_row("SELECT count(*),coalesce(sum(length(CAST(summary AS BLOB))+length(CAST(characters_json AS BLOB))+length(CAST(relations_json AS BLOB))),0) FROM chapter_digests WHERE book_id=?1 AND (?2 IS NULL OR content_version=?2)", params![book_id, content_version], |r| Ok((r.get(0)?,r.get(1)?)))?;
+        if count > 10000 || bytes > 8 * 1024 * 1024 { return Err(CommandError::new("memory/input-budget-exceeded", "Digest collection exceeds its read budget")); }
         let mut stmt = conn
             .prepare(
                 "SELECT book_id, chapter_index, chapter_href, summary,
-                    characters_json, relations_json, digest_version, flavor, updated_at
-               FROM chapter_digests WHERE book_id = ?1
+                    characters_json, relations_json, digest_version, flavor, updated_at, content_version
+               FROM chapter_digests WHERE book_id = ?1 AND (?2 IS NULL OR content_version = ?2)
               ORDER BY chapter_index",
             )
             ?;
         let rows = stmt
-            .query_map(params![book_id], |row| {
+            .query_map(params![book_id, content_version], |row| {
                 Ok(ChapterDigest {
+                    content_version: row.get(9)?,
                     book_id: row.get(0)?,
                     chapter_index: row.get(1)?,
                     chapter_href: row.get(2)?,

@@ -46,6 +46,8 @@
     "bookRangeUnsupported": "Ce contenu ne permet pas de lire des plages de texte.",
     "bookRangeForbidden": "Ce passage dépasse la limite de lecture autorisée.",
     "annotationObserverLimit": "Trop d'abonnements aux annotations sont actifs.",
+    "memoryInputBudgetExceeded": "Les données de cette opération de mémoire sont trop volumineuses.",
+    "memoryOutputBudgetExceeded": "La génération de mémoire a dépassé la limite de sortie.",
     "annotationReadBudgetExceeded": "Les annotations dépassent la taille autorisée. Utilisez la pagination ou raccourcissez la note dans le lecteur.",
     "annotationObservationFailed": "Impossible d'actualiser les annotations. Réessayez.",
     "memoryTaskNotFound": "Cette tâche de graphe n'est plus disponible. Lancez une nouvelle tâche.",

@@ -82,3 +82,17 @@ describe("Memory Desk public composition", () => {
     }
   });
 });
+
+
+test("source navigation refreshes an old edition and passes the current content version", async () => {
+  const f = fixture();
+  const graph: BookGraphResult = { graph: "chapter", contentVersion: "sha256:old", chapterIndex: 0, chapterHref: "one.xhtml", summary: "Old", entities: [], relations: [] };
+  f.setGraph(graph);
+  const view = await graphView(f.ctx, "b", { chapterIndex: 0 }) as PluginDetailView;
+  f.setGraph({ ...graph, contentVersion: "sha256:new" });
+  expect(await view.actions!.find(action => action.id === "source")!.run()).toHaveProperty("navigation", "replace");
+  expect(f.calls.some(value => (value as { href?: string }).href)).toBe(false);
+  const fresh = await graphView(f.ctx, "b", { chapterIndex: 0 }) as PluginDetailView;
+  await fresh.actions!.find(action => action.id === "source")!.run();
+  expect(f.calls).toContainEqual({ bookId: "b", href: "one.xhtml", contentVersion: "sha256:new" });
+});

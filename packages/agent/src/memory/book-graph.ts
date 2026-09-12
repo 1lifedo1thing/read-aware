@@ -43,7 +43,7 @@ export function queryBookGraph(digests: ChapterDigest[], input: BookGraphQuery, 
   if (query.chapterIndex !== undefined) {
     const digest = visible.find(entry => entry.chapterIndex === query.chapterIndex);
     if (!digest) return { ...meta, graph: "miss", note: "No visible, current-flavor digest for that chapter; it may be absent or beyond the reader's position." };
-    return structuredClone({ ...meta, graph: "chapter", chapterIndex: digest.chapterIndex, ...(digest.chapterHref ? { chapterHref: digest.chapterHref } : {}), summary: digest.summary, entities: digest.characters, relations: digest.relations });
+    return structuredClone({ ...meta, graph: "chapter", ...(digest.contentVersion ? { contentVersion: digest.contentVersion } : {}), chapterIndex: digest.chapterIndex, ...(digest.chapterHref ? { chapterHref: digest.chapterHref } : {}), summary: digest.summary, entities: digest.characters, relations: digest.relations });
   }
   if (!visible.length) return { ...meta, graph: "empty", note: "No chapter digests are available within this boundary and flavor. Use the book text for evidence." };
   const registry = mergeCharacterRegistry(visible), edges = mergeRelationGraph(visible);

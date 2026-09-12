@@ -135,3 +135,30 @@ test("two independently generated candidates cannot both replace the same chapte
   await deps.bookMemory.saveDigest("b", digest, other.revision);
   expect((await deps.bookMemory.inspectDigest("b", 0))!.revision).toBe(snapshot.revision);
 });
+
+
+test("versioned digest reads retain provenance and never fall back to unversioned chapter text", async () => {
+  const { deps } = fixture();
+  const inspect = deps.bookMemory.inspectDigest;
+  deps.bookMemory.inspectDigest = async (...args) => ({ ...(await inspect(...args))!, contentVersion: "sha256:current" });
+  deps.bookText.getSourceVersion = async () => "sha256:current";
+  deps.bookText.getChapterText = async () => { throw Error("Unversioned path"); };
+  const reads: string[] = [];
+  deps.bookText.getDigestChapter = async (_id, index, version) => { reads.push(version); return { text: `Current ${index}`, hrefs: [`current-${index}`] }; };
+  const report = await digestMissingChapters({ bookId: "b", bookText: deps.bookText, bookMemory: deps.bookMemory, beforeChapterIndex: 5, maxChapters: 1, model, complete: async () => reply() });
+  expect(report.digested).toBe(1); expect(reads).toEqual(["sha256:current"]);
+  expect((await deps.bookMemory.listDigests("b"))[0]).toMatchObject({ contentVersion: "sha256:current", chapterHref: "current-0" });
+  deps.bookText.getDigestChapter = async () => { throw new AppError("memory/conflict", "Prepared record belongs to another source"); };
+  const failed = await digestMissingChapters({ bookId: "b", bookText: deps.bookText, bookMemory: deps.bookMemory, beforeChapterIndex: 5, maxChapters: 1, model, complete: async () => { throw Error("Must not infer"); } });
+  expect(failed.failures).toEqual([{ chapterIndex: 1, errorCode: "memory/conflict" }]);
+});
+
+test("digest input and model output budgets fail explicitly before persistence", async () => {
+  let calls = 0;
+  const base = { model, chapterIndex: 0, chapterText: "text", knownCharacters: [], complete: async (_model: unknown, _context: unknown, options?: { maxTokens?: number }) => { calls++; expect(options?.maxTokens).toBe(4096); return reply(); } };
+  await expect(extractChapterDigest({ ...base, chapterText: "x".repeat(2 * 1024 * 1024 + 1) })).rejects.toMatchObject({ code: "memory/input-budget-exceeded" });
+  await expect(extractChapterDigest({ ...base, knownCharacters: [{ name: "x".repeat(24001) }] })).rejects.toMatchObject({ code: "memory/input-budget-exceeded" });
+  expect(calls).toBe(0);
+  await extractChapterDigest(base); expect(calls).toBe(1);
+  await expect(extractChapterDigest({ ...base, complete: async () => fauxAssistantMessage("x".repeat(32001)) })).rejects.toMatchObject({ code: "memory/output-budget-exceeded" });
+});

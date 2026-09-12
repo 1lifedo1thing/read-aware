@@ -382,6 +382,9 @@ export interface BookTextPort {
   searchLocations(input: Omit<import("@read-aware/core").BookLocationSearch, "hrefs"> & { throughChapterIndex?: number }, signal?: AbortSignal): Promise<import("@read-aware/core").BookLocationSearchPage>;
   getToc(bookId: Id): Promise<ChapterRef[]>;
   getChapterText(bookId: Id, chapterIndex: number): Promise<string | undefined>;
+  /** Host digest reads carry the prepared record identity, so an ABA source swap cannot relabel text. */
+  getSourceVersion?(bookId: Id, signal?: AbortSignal): Promise<string>;
+  getDigestChapter?(bookId: Id, chapterIndex: number, contentVersion: string, signal?: AbortSignal): Promise<{ text: string; title?: string; hrefs?: string[] } | undefined>;
   /** 一次接收多个查询变体，合并去重后的命中（减少模型的换词重试往返）。 */
   searchText(filter: import("@read-aware/core").BookTextSearch, signal?: AbortSignal): Promise<BookTextHit[]>;
   /**

@@ -128,6 +128,7 @@ export type DomainEvent =
       "book.chapterDigested",
       {
         bookId: Id;
+        contentVersion?: string;
         chapterIndex: number;
         chapterHref?: string;
         /** 一两句话的章节纪要，严格来自该章文本。 */

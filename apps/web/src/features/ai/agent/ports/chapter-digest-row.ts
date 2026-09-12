@@ -56,6 +56,7 @@ export function decodeChapterDigestRows(value: unknown, bookId: string): Chapter
     if (flavor !== null && flavor !== undefined && flavor !== "narrative" && flavor !== "expository") return invalid("flavor");
     return {
       chapterIndex,
+      ...(row.contentVersion == null ? {} : { contentVersion: text(row.contentVersion, "contentVersion", true) }),
       ...(row.chapterHref == null ? {} : { chapterHref: text(row.chapterHref, "chapterHref") }),
       summary: text(row.summary, "summary"),
       characters: jsonArray(row.charactersJson, "charactersJson").map(character),

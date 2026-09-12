@@ -180,6 +180,15 @@ export async function extractChapterDigest(
 ): Promise<ChapterDigest | undefined> {
   const flavor: DigestFlavor = input.flavor ?? "narrative";
   input.signal?.throwIfAborted();
+  if (input.chapterText.length > 2 * 1024 * 1024 || input.knownCharacters.length > 2000) throw new AppError("memory/input-budget-exceeded", "Digest input exceeds its budget");
+  const known = input.knownCharacters;
+  let knownChars = 0;
+  for (const item of known) {
+    knownChars += item.name.length + (item.note?.length ?? 0);
+    for (const alias of item.aliases ?? []) knownChars += alias.length;
+    if (knownChars > 24000) throw new AppError("memory/input-budget-exceeded", "Digest registry exceeds its budget");
+  }
+  if ((input.chapterTitle?.length ?? 0) > 2048) throw new AppError("memory/input-budget-exceeded", "Digest title exceeds its budget");
   const text = input.chapterText.trim();
   if (!text) return undefined;
   const message = await input.complete(input.model, {
@@ -196,9 +205,11 @@ export async function extractChapterDigest(
         timestamp: Date.now(),
       },
     ],
-  }, { signal: input.signal });
+  }, { signal: input.signal, maxTokens: Math.min(4096, input.model.maxTokens || 4096) });
   input.signal?.throwIfAborted();
   if (message.stopReason !== "stop") throw new AppError("ai/provider", "Chapter digest inference did not complete");
+  let outputChars = 0;
+  for (const block of message.content) if (block.type === "text") { outputChars += block.text.length; if (outputChars > 32000) throw new AppError("memory/output-budget-exceeded", "Digest output exceeds its budget"); }
   const parsed = parseJson(extractText(message));
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new AppError("ai/provider", "Invalid chapter digest response");
   const { summary, characters, concepts, relations } = parsed as Record<string, unknown>;

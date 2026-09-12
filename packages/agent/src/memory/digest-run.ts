@@ -11,7 +11,7 @@ export function unavailableDigestReport(reason: "boundary-unknown" | "no-toc"): 
 }
 
 export interface DigestMissingChaptersInput {
-  bookText: Pick<BookTextPort, "getToc" | "getChapterText">;
+  bookText: Pick<BookTextPort, "getToc" | "getChapterText" | "getSourceVersion" | "getDigestChapter">;
   bookMemory: BookMemoryPort;
   complete: CompleteFn;
   model: Model<Api>;
@@ -45,11 +45,13 @@ export async function digestMissingChapters(input: DigestMissingChaptersInput): 
   if (!Number.isSafeInteger(input.beforeChapterIndex) || input.beforeChapterIndex < 0) throw new AppError("memory/invalid-input", "Invalid digest chapter boundary");
   if (input.targets?.some(index => !Number.isSafeInteger(index) || index < 0)) throw new AppError("memory/invalid-input", "Invalid digest targets");
   input.signal?.throwIfAborted();
+  const sourceVersion = await input.bookText.getSourceVersion?.(input.bookId, input.signal);
   const [toc, existing] = await Promise.all([input.bookText.getToc(input.bookId), input.bookMemory.listDigests(input.bookId)]);
   input.signal?.throwIfAborted();
+  if (sourceVersion && await input.bookText.getSourceVersion?.(input.bookId, input.signal) !== sourceVersion) throw new AppError("memory/conflict", "Digest source changed during planning");
   if (!toc.length) return unavailableDigestReport("no-toc");
   const flavor = input.flavor ?? "narrative";
-  const current = new Map(existing.filter(d => d.digestVersion >= DIGEST_VERSION && (d.flavor ?? "narrative") === flavor).map(d => [d.chapterIndex, d]));
+  const current = new Map(existing.filter(d => (!sourceVersion || d.contentVersion === sourceVersion) && d.digestVersion >= DIGEST_VERSION && (d.flavor ?? "narrative") === flavor).map(d => [d.chapterIndex, d]));
   const ceiling = Math.min(input.beforeChapterIndex, toc.length), missing: number[] = [];
   // Retry order puts unattempted work before prior empty/failed chapters, so a small limit cannot starve the tail.
   const targets = input.targets ? [...new Set(input.targets)] : Array.from({ length: ceiling }, (_, index) => index);
@@ -75,7 +77,9 @@ export async function digestMissingChapters(input: DigestMissingChaptersInput): 
         input.signal?.throwIfAborted();
         if (!snapshot) throw new AppError("reader/book-not-found", "Digest book disappeared");
         if (snapshot.flavor !== flavor) throw new AppError("memory/conflict", "Book classification changed before generation");
-        const text = await input.bookText.getChapterText(input.bookId, index);
+        if (sourceVersion && snapshot.contentVersion !== sourceVersion) throw new AppError("memory/conflict", "Digest source changed since planning");
+        const chapter = snapshot.contentVersion && input.bookText.getDigestChapter ? await input.bookText.getDigestChapter(input.bookId, index, snapshot.contentVersion, input.signal) : undefined;
+        const text = input.bookText.getDigestChapter && snapshot.contentVersion ? chapter?.text : await input.bookText.getChapterText(input.bookId, index);
         input.signal?.throwIfAborted();
         if (stopped) return;
         if (text === undefined) throw new AppError("library/content-unavailable", "Chapter text is unavailable");
@@ -83,15 +87,16 @@ export async function digestMissingChapters(input: DigestMissingChaptersInput): 
         await input.checkChapter?.(index);
         input.signal?.throwIfAborted();
         const digest = await extractChapterDigest({ complete: input.complete, model: input.model, chapterIndex: index,
-          chapterHref: toc[index]?.hrefs?.[0], chapterTitle: toc[index]?.title, chapterText: text, flavor, signal: input.signal,
+          chapterHref: chapter?.hrefs?.[0] ?? toc[index]?.hrefs?.[0], chapterTitle: chapter?.title ?? toc[index]?.title, chapterText: text, flavor, signal: input.signal,
           // A repaired early chapter must not inherit names/aliases revealed later.
-          knownCharacters: mergeCharacterRegistry([...current.values()].filter(d => d.chapterIndex < index)),
+          knownCharacters: mergeCharacterRegistry([...current.values()].filter(d => d.chapterIndex < index && d.contentVersion === snapshot.contentVersion)),
         });
         input.signal?.throwIfAborted();
         if (stopped) return;
         if (!digest) throw new AppError("ai/provider", "Nonempty chapter produced no digest");
         await input.checkChapter?.(index);
         input.signal?.throwIfAborted();
+        if (snapshot.contentVersion) digest.contentVersion = snapshot.contentVersion;
         await input.bookMemory.saveDigest(input.bookId, digest, snapshot.revision, input.signal);
         current.set(index, digest); report.digested++; report.remaining--;
         input.onChapterCommitted?.(index);

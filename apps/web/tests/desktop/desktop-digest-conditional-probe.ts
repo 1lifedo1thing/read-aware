@@ -27,7 +27,7 @@ export async function runDigestConditionalPass() { if (!probe) throw Error("Prep
 export async function writeDigestWinner(mode: "normal" | "mutate" | "cancel" = "normal") {
   if (!seed) throw Error("Prepare fixture first");
   const snapshot = await port().inspectDigest(seed.bookId, 0); if (!snapshot) throw Error("Missing fixture book");
-  const digest: ChapterDigest = { chapterIndex: 0, chapterHref: seed.chapters[0]!.hrefs?.[0], summary: "Winner", characters: [{ name: "Winner" }], relations: [], digestVersion: 2, flavor: snapshot.flavor };
+  const digest: ChapterDigest = { contentVersion: snapshot.contentVersion ?? undefined, chapterIndex: 0, chapterHref: seed.chapters[0]!.hrefs?.[0], summary: "Winner", characters: [{ name: "Winner" }], relations: [], digestVersion: 2, flavor: snapshot.flavor };
   const controller = new AbortController();
   const work = port().saveDigest(seed.bookId, digest, snapshot.revision, controller.signal);
   if (mode === "mutate") { digest.summary = "PRIVATE_MUTATED"; digest.characters[0]!.name = "PRIVATE_MUTATED"; }

@@ -1,5 +1,7 @@
 import { AppError, bookContextBoundaryAdmits, bookMemoryContextBundle, establishBookContextBoundary, normalizeBookContextSnapshot,
   normalizeReadingIntentScope, type BookContextBoundary, type BookContextSnapshot, type ContextBundle, type ReadingSessionSnapshot } from "@read-aware/core";
+import { getBookContentState } from "./book-content-state";
+import { getVirtualTextSource } from "../features/library/lib/virtual-text-source";
 import { invoke } from "../platform/ipc";
 import { getDesktopBlob } from "../platform/blob-store";
 import { parseBookTextRecord, textComplete } from "../features/library/lib/book-text-record";
@@ -108,5 +110,14 @@ export function createBookContextSources(host: Host) {
   };
 }
 
-export const bookContextSources = createBookContextSources({ read: bookId => invoke("book_context_snapshot", { bookId }),
+export const bookContextSources = createBookContextSources({ read: async bookId => {
+  const before = await getBookContentState(bookId);
+  // Unresolved virtual content supplies no current digest evidence. Do not fetch
+  // private provider content just to export otherwise available memories/notes.
+  const contentVersion = before.source === "virtual" ? (await getVirtualTextSource(bookId, false)).contentVersion : before.contentVersion;
+  const result = await invoke("book_context_snapshot", { bookId, contentVersion });
+  const after = await getBookContentState(bookId);
+  if (before.sourceRevision !== after.sourceRevision) throw new AppError("memory/conflict", "Context source changed during read");
+  return result;
+},
   blob: getDesktopBlob, reader: readingRuntime });

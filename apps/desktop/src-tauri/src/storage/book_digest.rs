@@ -17,6 +17,7 @@ pub struct BookDigestSnapshot {
     pub chapter_index: i64,
     pub flavor: String,
     pub revision: String,
+    pub content_version: Option<String>,
 }
 type DigestRow = (
     Option<String>,
@@ -26,6 +27,7 @@ type DigestRow = (
     i64,
     Option<String>,
     String,
+    Option<String>,
 );
 fn invalid() -> CommandError {
     CommandError::new("memory/invalid-input", "Invalid conditional chapter digest")
@@ -42,8 +44,14 @@ fn valid_target(id: &str, index: i64) -> bool {
         && (0..=9_007_199_254_740_991).contains(&index)
 }
 fn read_digest(conn: &Connection, id: &str, index: i64) -> Result<Option<DigestRow>, CommandError> {
-    Ok(conn.query_row("SELECT chapter_href,summary,characters_json,relations_json,digest_version,flavor,updated_at FROM chapter_digests WHERE book_id=?1 AND chapter_index=?2", params![id,index], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?))).optional()?)
+    let bytes: i64 = conn.query_row("SELECT coalesce(sum(length(CAST(summary AS BLOB))+length(CAST(characters_json AS BLOB))+length(CAST(relations_json AS BLOB))),0) FROM chapter_digests WHERE book_id=?1 AND chapter_index=?2", params![id,index], |r| r.get(0))?;
+    if bytes > 128 * 1024 { return Err(CommandError::new("memory/input-budget-exceeded", "Digest row exceeds its read budget")); }
+    Ok(conn.query_row("SELECT chapter_href,summary,characters_json,relations_json,digest_version,flavor,updated_at,content_version FROM chapter_digests WHERE book_id=?1 AND chapter_index=?2", params![id,index], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?,r.get(7)?))).optional()?)
 }
+pub(crate) fn file_content_version(conn: &Connection, id: &str) -> Result<Option<String>, CommandError> {
+    Ok(conn.query_row("SELECT sha256 FROM blob_objects WHERE key=?1 AND deleted_at IS NULL", [format!("bookfile:{id}")], |row| row.get::<_, Option<String>>(0)).optional()?.flatten().map(|sha| format!("sha256:{sha}")))
+}
+
 fn snapshot(
     conn: &Connection,
     id: &str,
@@ -54,11 +62,13 @@ fn snapshot(
     };
     let row = read_digest(conn, id, index)?;
     let event: Option<String> = conn.query_row("SELECT id FROM domain_events WHERE aggregate_type='book' AND aggregate_id=?1 AND type='book.chapterDigested' AND json_extract(payload_json,'$.chapterIndex')=?2 ORDER BY rowid DESC LIMIT 1", params![id,index], |r| r.get(0)).optional()?;
-    let bytes = serde_json::to_vec(&(id, index, &classification.revision, row, event))
+    let content_version = file_content_version(conn, id)?;
+    let bytes = serde_json::to_vec(&(id, index, &classification.revision, &content_version, row, event))
         .map_err(|e| CommandError::internal(e.to_string()))?;
     Ok(Some(BookDigestSnapshot {
         book_id: id.into(),
         chapter_index: index,
+        content_version,
         flavor: classification
             .narrativity
             .unwrap_or_else(|| "narrative".into()),
@@ -148,6 +158,7 @@ pub(crate) fn book_digest_commit_inner(
         || p.get("chapterHref").is_some_and(|v| !v.is_string())
         || p.keys().any(|k| {
             ![
+                "contentVersion",
                 "bookId",
                 "chapterIndex",
                 "chapterHref",
@@ -167,7 +178,11 @@ pub(crate) fn book_digest_commit_inner(
     {
         return Err(invalid());
     }
+    let version = p.get("contentVersion").and_then(Value::as_str).ok_or_else(invalid)?;
+    if version.len() > 1024 || !(version.starts_with("sha256:") || version.starts_with("virtual:sha256:")) || event.payload.to_string().len() > 128 * 1024 { return Err(invalid()); }
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let format: String = tx.query_row("SELECT format FROM books WHERE id=?1", [id], |row| row.get(0)).optional()?.ok_or_else(|| CommandError::new("reader/book-not-found", "Book not found"))?;
+    if (format == "virtual" && !version.starts_with("virtual:sha256:")) || (format != "virtual" && file_content_version(&tx, id)?.as_deref() != Some(version)) { return Err(conflict()); }
     let before = snapshot(&tx, id, index)?
         .ok_or_else(|| CommandError::new("reader/book-not-found", "Book not found"))?;
     if before.revision != expected_revision || before.flavor != flavor {
@@ -201,6 +216,7 @@ pub(crate) fn book_digest_commit_inner(
         || row.3 != p["relations"].to_string()
         || Some(row.4) != p["digestVersion"].as_i64()
         || row.5.as_deref() != Some(flavor)
+        || row.7.as_deref() != Some(version)
     {
         return Err(conflict());
     }

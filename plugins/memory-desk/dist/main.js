@@ -17,7 +17,7 @@ async function liveMemoryView(ctx, query, title, render, recovery = []) {
   const memory = ctx.domains.memory;
   let sample, failure;
   try {
-    sample = query.kind === "search" ? { kind: query.kind, memories: await memory.queries.search(query.query) } : query.kind === "page" ? { kind: query.kind, page: await memory.queries.page(query.query) } : query.kind === "profile" ? { kind: query.kind, profile: await memory.queries.profile(query.query) } : query.kind === "inspect" ? { kind: query.kind, snapshot: await memory.queries.inspect(query.memoryId) } : query.kind === "classification" ? { kind: query.kind, snapshot: await memory.queries.classification(query.bookId) } : query.kind === "graphTasks" ? { kind: query.kind, tasks: await memory.queries.listGraphTasks(query.bookId) } : query.kind === "graphTask" ? { kind: query.kind, task: await memory.queries.getGraphTask(query.bookId, query.taskId) } : { kind: query.kind, graph: await memory.queries.bookGraph(query.bookId, query.query) };
+    sample = query.kind === "search" ? { kind: query.kind, memories: await memory.queries.search(query.query) } : query.kind === "page" ? { kind: query.kind, page: await memory.queries.page(query.query) } : query.kind === "profile" ? { kind: query.kind, profile: await memory.queries.profile(query.query) } : query.kind === "profileContext" ? { kind: query.kind, page: await memory.queries.profileContext(query.query) } : query.kind === "inspect" ? { kind: query.kind, snapshot: await memory.queries.inspect(query.memoryId) } : query.kind === "classification" ? { kind: query.kind, snapshot: await memory.queries.classification(query.bookId) } : query.kind === "graphTasks" ? { kind: query.kind, tasks: await memory.queries.listGraphTasks(query.bookId) } : query.kind === "graphTask" ? { kind: query.kind, task: await memory.queries.getGraphTask(query.bookId, query.taskId) } : { kind: query.kind, graph: await memory.queries.bookGraph(query.bookId, query.query) };
   } catch (error) {
     failure = error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "memory/observation-failed";
   }
@@ -170,11 +170,11 @@ async function graphView(ctx, bookId, query = {}, profileName) {
         { kind: "keyValue", rows: graph.relations.map((edge) => ({ label: `${edge.from} / ${edge.to}`, value: `${edge.kind}${edge.note ? `: ${edge.note}` : ""}` })) }
       ], actions: [...actions, { id: "source", label: t[15], icon: "book-open", run: async () => {
         const current = await ctx.domains.memory.queries.bookGraph(bookId, { chapterIndex: graph.chapterIndex });
-        if (current.graph !== "chapter")
+        if (current.graph !== "chapter" || current.contentVersion !== graph.contentVersion)
           return { view: await graphView(ctx, bookId, { chapterIndex: graph.chapterIndex }), navigation: "replace" };
         if (!current.chapterHref)
           return { view: { kind: "detail", title: t[15], content: [{ kind: "error", code: "reader/target-not-found" }] } };
-        await ctx.domains.reading.commands.goTo({ bookId, href: current.chapterHref });
+        await ctx.domains.reading.commands.goTo({ bookId, href: current.chapterHref, ...current.contentVersion ? { contentVersion: current.contentVersion } : {} });
         return { close: true };
       } }] };
     }

@@ -42,7 +42,7 @@ fn book_snapshot_matches_shared_fixture_and_excludes_other_scopes_and_inactive_m
         .unwrap();
     assert_eq!(
         book_context_snapshot_inner(&mut conn, "book-one").unwrap(),
-        fixture()
+        { let mut expected = fixture(); expected["digests"] = json!([]); expected }
     );
     assert_eq!(
         scalar::<i64>(&conn, "SELECT count(*) FROM context_bundles"),
@@ -193,4 +193,15 @@ fn v37_installs_blob_guards_on_existing_databases_atomically() {
         ),
         0
     );
+}
+
+#[test]
+fn book_context_omits_legacy_and_replaced_source_digests() {
+    let mut conn = seeded();
+    assert_eq!(book_context_snapshot_inner(&mut conn, "book-one").unwrap()["digests"], json!([]));
+    conn.execute("UPDATE blob_objects SET sha256='current' WHERE key='bookfile:book-one'", []).unwrap();
+    conn.execute("UPDATE chapter_digests SET content_version='sha256:current' WHERE book_id='book-one'", []).unwrap();
+    assert_eq!(book_context_snapshot_inner(&mut conn, "book-one").unwrap()["digests"].as_array().unwrap().len(), 1);
+    conn.execute("UPDATE blob_objects SET sha256='replacement' WHERE key='bookfile:book-one'", []).unwrap();
+    assert_eq!(book_context_snapshot_inner(&mut conn, "book-one").unwrap()["digests"], json!([]));
 }

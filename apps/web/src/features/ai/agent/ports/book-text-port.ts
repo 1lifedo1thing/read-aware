@@ -2,7 +2,8 @@ import { resourceModelImage } from "../../../../services/model-image";
 /** Agent-specific chapter hrefs and spoiler bounds over shared library reads. */
 import { type BookTextPort, type ChapterRef } from "@read-aware/agent";
 import { getExtractedChapters } from "../../../../domain";
-import { getBookTextStatus } from "../../../library/lib/book-text-store";
+import { getDigestContentVersion } from "../../../../domain/book-digest";
+import { getDigestChapterSource, getBookTextStatus } from "../../../library/lib/book-text-store";
 import { createLibraryDomain } from "../../../../domain/library";
 import { openBookImageResource } from "../../../../domain/library-book-images";
 import { agentResources } from "../../../../services/resources";
@@ -13,6 +14,7 @@ export function createBookTextPort(): BookTextPort {
   return {
     preparation: { history: library.listTextTaskHistory, setPriority: domain.commands.books.setTextTaskPriority, start: domain.commands.books.prepareText, get: library.getTextTask, list: library.listTextTasks, pause: domain.commands.books.pauseTextTask, resume: domain.commands.books.resumeTextTask, cancel: domain.commands.books.cancelTextTask },
     getTextState: library.getTextState,
+    getSourceVersion: (id, signal) => getDigestContentVersion(id, signal, true), getDigestChapter: getDigestChapterSource,
     getNavigationToc: library.getNavigationToc,
     listNavigationTargets: library.listNavigationTargets,
     listImages: async ({ throughChapterIndex, ...input }, signal) => {
