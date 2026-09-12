@@ -263,3 +263,19 @@ ready→selection，同一选择ID持续到切回前台，实际显示选中文�
 见 selection-foreground-observations.json 和下图。自有书最终关闭并删除，文件释放。
 
 ![后台打开后切回前台的选区](./selection-foreground.png)
+
+## 第十个流程：当前版本完整备份 UI 与实际恢复
+
+在空的 validation-backup-e2e 实例导入合成书，经设置表单和 macOS Save 面板
+导出完整加密归档。之后修改书名、加星并建目标独有集合；从 Restore 表单输入
+同一临时口令，在真实 Open 面板选择归档。预检显示1条待选记录；Select backup
+data → Check choices → Confirm and restore 成功，实际回执为3记录/0文件/15插件
+namespace/0凭据。旧界面再修改书名得到 backup/busy。
+
+点击重载后重新读取：原书名恢复、星标恢复false，目标独有集合保留；Foliate
+打开原书并实际显示正文和图片。截图和逐项值见 backup-ui-observations.json。
+本轮文件与插件数据没有变化，因此不证明文件替换/插件迁移；先前的原生错密码
+及来源预检证据另列。最后精确清理合成书与集合，文件释放，库与集合均为空。
+
+![恢复结果与重载入口](./backup-ui-restored.png)
+![重载后实际阅读](./backup-ui-reading.png)

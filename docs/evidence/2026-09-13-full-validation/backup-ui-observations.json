@@ -1,0 +1,52 @@
+{
+  "profile": "com.readaware.app.validation-backup-e2e",
+  "archive": {
+    "path": "/tmp/readaware-validation-20260913-ui-restore.age",
+    "bytes": 1542182,
+    "sha256": "c27e5f1635631f3b2d92c88a52e4d62e6237d63b9c3c5effcd199fe1dd3531a1"
+  },
+  "bookId": "7a2c0d35-0285-48ef-8875-cf6ff75a0a64",
+  "source": {
+    "title": "Composition 8d84e453",
+    "starred": false
+  },
+  "targetBefore": {
+    "title": "Composition 8d84e453 target changed",
+    "starred": true,
+    "targetOnlyCollection": "8c332000-259f-4cd9-95c0-9594681c3c3e"
+  },
+  "nativeUI": [
+    "Settings > Data & Sync > Export complete encrypted backup",
+    "password and confirmation populated with ephemeral random password; never logged",
+    "native Save panel wrote archive",
+    "Restore > password > native Open panel chose archive",
+    "review one conflicting row; Select backup data; Check choices; Confirm and restore"
+  ],
+  "receipt": {
+    "domainRows": 3,
+    "files": 0,
+    "plugins": 15,
+    "credentials": 0
+  },
+  "staleDomainWriteError": "backup/busy",
+  "afterReload": {
+    "title": "Composition 8d84e453",
+    "starred": false,
+    "targetOnlyCollectionRetained": true,
+    "readerStatus": "ready",
+    "visibleText": "Illustrated sectionDeterministic acceptance content with a note 1.Red left, green right, white center."
+  },
+  "boundaries": [
+    "No changed file required restoration in this round",
+    "Plugin namespaces were unchanged; no migration executed",
+    "No credential or cross-device identity changes exercised",
+    "Earlier wrong-password native preflight is separate evidence",
+    "macOS debug; no packaged or cross-platform acceptance"
+  ],
+  "cleanup": {
+    "books": 0,
+    "collections": 0,
+    "files": "released",
+    "ephemeralPassword": "discarded by reload"
+  }
+}
