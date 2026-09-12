@@ -1,0 +1,436 @@
+{
+  "base": "16d11089",
+  "environment": "macOS real Tauri debug 0.5.4; capability-e2e",
+  "current": {
+    "status": "done"
+  },
+  "results": [
+    {
+      "byteLength": 2262,
+      "extraction": {
+        "chapterCount": 0,
+        "contentVersion": "sha256:28ae4b3adaca3a1e04a782a8711ddb4d2b778af92466d9d4e5b0ba588cbb77da",
+        "metadata": {
+          "author": "Ada Writer",
+          "identifier": "fixture-id",
+          "language": "en",
+          "title": "EPUB Engine Fixture"
+        },
+        "sectionCount": 2,
+        "textCharacters": 0,
+        "titles": []
+      },
+      "fileName": "fixture.epub",
+      "imported": {
+        "addedAt": "2026-09-12T20:42:00.470Z",
+        "author": "Ada Writer",
+        "collectionId": null,
+        "fileName": "fixture.epub",
+        "fileSize": 2262,
+        "format": "epub",
+        "id": "3414fbd8-638d-4f44-9d7d-258bd670f0d4",
+        "starred": false,
+        "title": "EPUB Engine Fixture",
+        "updatedAt": "2026-09-12T20:42:00.470Z"
+      },
+      "state": {
+        "bookId": "3414fbd8-638d-4f44-9d7d-258bd670f0d4",
+        "chapterCount": 0,
+        "contentVersion": "sha256:28ae4b3adaca3a1e04a782a8711ddb4d2b778af92466d9d4e5b0ba588cbb77da",
+        "progress": {
+          "completed": 2,
+          "failed": 0,
+          "total": 2,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "available"
+      }
+    },
+    {
+      "byteLength": 862,
+      "extraction": {
+        "chapterCount": 0,
+        "contentVersion": "sha256:b546c43dcc233601c6cf16aefffbaf481e35c4bf37907d63b0920b7180b799ef",
+        "metadata": {
+          "author": [
+            "Ada Writer"
+          ],
+          "description": "",
+          "identifier": "42",
+          "language": [
+            "en"
+          ],
+          "publisher": "",
+          "rights": "",
+          "title": "MOBI & KF8 Fixture"
+        },
+        "sectionCount": 3,
+        "textCharacters": 0,
+        "titles": []
+      },
+      "fileName": "fixture.mobi",
+      "imported": {
+        "addedAt": "2026-09-12T20:42:33.946Z",
+        "author": "Ada Writer",
+        "collectionId": null,
+        "fileName": "fixture.mobi",
+        "fileSize": 862,
+        "format": "mobi",
+        "id": "38b7a763-8ca9-4445-9596-b755e079a78f",
+        "starred": false,
+        "title": "MOBI & KF8 Fixture",
+        "updatedAt": "2026-09-12T20:42:33.946Z"
+      },
+      "state": {
+        "bookId": "38b7a763-8ca9-4445-9596-b755e079a78f",
+        "chapterCount": 0,
+        "contentVersion": "sha256:b546c43dcc233601c6cf16aefffbaf481e35c4bf37907d63b0920b7180b799ef",
+        "progress": {
+          "completed": 3,
+          "failed": 0,
+          "total": 3,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "available"
+      }
+    },
+    {
+      "byteLength": 1173,
+      "extraction": {
+        "chapterCount": 0,
+        "contentVersion": "sha256:f85f8a4f542eac433eb6ddb36d3bccde8ce27aa825f7adf6cb68f12179c670f1",
+        "metadata": {
+          "author": [
+            "Ada Writer"
+          ],
+          "description": "",
+          "identifier": "42",
+          "language": [
+            "en"
+          ],
+          "publisher": "",
+          "rights": "",
+          "title": "MOBI & KF8 Fixture"
+        },
+        "sectionCount": 1,
+        "textCharacters": 0,
+        "titles": []
+      },
+      "fileName": "fixture.azw3",
+      "imported": {
+        "addedAt": "2026-09-12T20:42:34.148Z",
+        "author": "Ada Writer",
+        "collectionId": null,
+        "fileName": "fixture.azw3",
+        "fileSize": 1173,
+        "format": "azw3",
+        "id": "eec034a3-ffd0-4d2e-a94e-5633a227e015",
+        "starred": false,
+        "title": "MOBI & KF8 Fixture",
+        "updatedAt": "2026-09-12T20:42:34.148Z"
+      },
+      "state": {
+        "bookId": "eec034a3-ffd0-4d2e-a94e-5633a227e015",
+        "chapterCount": 0,
+        "contentVersion": "sha256:f85f8a4f542eac433eb6ddb36d3bccde8ce27aa825f7adf6cb68f12179c670f1",
+        "progress": {
+          "completed": 1,
+          "failed": 0,
+          "total": 1,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "available"
+      }
+    },
+    {
+      "byteLength": 803,
+      "extraction": {
+        "chapterCount": 1,
+        "contentVersion": "sha256:19c03f9dea2ddab4376e6c9429edd163072f4b85e43c913e580cc9f4d7c7a4db",
+        "metadata": {
+          "author": [
+            {
+              "name": "Ada Writer",
+              "sortAs": "Writer, Ada"
+            }
+          ],
+          "contributor": [
+            {
+              "name": "Fixture",
+              "role": "bkp"
+            }
+          ],
+          "description": "<p xmlns=\"http://www.w3.org/1999/xhtml\" class=\"p\">A <em class=\"emphasis\">description</em>.</p>",
+          "identifier": "fb2-fixture",
+          "language": "en",
+          "modified": "",
+          "published": "2024-01-02",
+          "publisher": "",
+          "subject": [
+            "fiction"
+          ],
+          "title": "Test Book",
+          "translator": []
+        },
+        "sectionCount": 3,
+        "textCharacters": 76,
+        "titles": [
+          "Chapter One"
+        ]
+      },
+      "fileName": "fixture.fb2.zip",
+      "imported": {
+        "addedAt": "2026-09-12T20:42:34.332Z",
+        "author": "Ada Writer",
+        "collectionId": null,
+        "fileName": "fixture.fb2.zip",
+        "fileSize": 803,
+        "format": "fb2",
+        "id": "e2931229-5911-4509-ba4f-712c591db9d2",
+        "starred": false,
+        "title": "Test Book",
+        "updatedAt": "2026-09-12T20:42:34.332Z"
+      },
+      "state": {
+        "bookId": "e2931229-5911-4509-ba4f-712c591db9d2",
+        "chapterCount": 1,
+        "contentVersion": "sha256:19c03f9dea2ddab4376e6c9429edd163072f4b85e43c913e580cc9f4d7c7a4db",
+        "progress": {
+          "completed": 2,
+          "failed": 0,
+          "total": 2,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "available"
+      }
+    },
+    {
+      "byteLength": 658,
+      "extraction": {
+        "chapterCount": 0,
+        "contentVersion": "sha256:e2c2f0f32785262a1e730aaa06b398a5321f62e5dcb7df9ee9a90b9eb7e2b884",
+        "metadata": {
+          "title": "fixture.cbz"
+        },
+        "sectionCount": 2,
+        "textCharacters": 0,
+        "titles": []
+      },
+      "fileName": "fixture.cbz",
+      "imported": {
+        "addedAt": "2026-09-12T20:42:34.488Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "fixture.cbz",
+        "fileSize": 658,
+        "format": "cbz",
+        "id": "66f7c218-5240-4529-8fdd-487a97a325ff",
+        "starred": false,
+        "title": "Fixture",
+        "updatedAt": "2026-09-12T20:42:34.488Z"
+      },
+      "state": {
+        "bookId": "66f7c218-5240-4529-8fdd-487a97a325ff",
+        "chapterCount": 0,
+        "contentVersion": "sha256:e2c2f0f32785262a1e730aaa06b398a5321f62e5dcb7df9ee9a90b9eb7e2b884",
+        "progress": {
+          "completed": 2,
+          "failed": 0,
+          "total": 2,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "textless"
+      }
+    },
+    {
+      "byteLength": 264,
+      "extraction": {
+        "chapterCount": 1,
+        "contentVersion": "sha256:99550a3c6004ba2eb6718f06e01fa2f8773c0e923f0a132929c777152aa82bef",
+        "metadata": {
+          "author": "",
+          "language": "en",
+          "title": "fixture"
+        },
+        "sectionCount": 1,
+        "textCharacters": 257,
+        "titles": [
+          null
+        ]
+      },
+      "fileName": "fixture.txt",
+      "imported": {
+        "addedAt": "2026-09-12T20:42:34.710Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "fixture.txt",
+        "fileSize": 264,
+        "format": "txt",
+        "id": "15620abd-cdae-4995-9f0e-fb863dc97400",
+        "starred": false,
+        "title": "Fixture",
+        "updatedAt": "2026-09-12T20:42:34.710Z"
+      },
+      "state": {
+        "bookId": "15620abd-cdae-4995-9f0e-fb863dc97400",
+        "chapterCount": 1,
+        "contentVersion": "sha256:99550a3c6004ba2eb6718f06e01fa2f8773c0e923f0a132929c777152aa82bef",
+        "progress": {
+          "completed": 1,
+          "failed": 0,
+          "total": 1,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "available"
+      }
+    },
+    {
+      "byteLength": 202,
+      "extraction": {
+        "chapterCount": 1,
+        "contentVersion": "sha256:45fb2b007fef8064d0f2666b180ef5e863aaf700a7821c81e5649635919dbdc8",
+        "metadata": {
+          "author": "",
+          "language": "en",
+          "title": "HTML Format Fixture"
+        },
+        "sectionCount": 1,
+        "textCharacters": 87,
+        "titles": [
+          null
+        ]
+      },
+      "fileName": "fixture.html",
+      "imported": {
+        "addedAt": "2026-09-12T20:42:34.925Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "fixture.html",
+        "fileSize": 202,
+        "format": "html",
+        "id": "ced45254-cdc5-4c52-b2ed-eb18c1f26923",
+        "starred": false,
+        "title": "Fixture",
+        "updatedAt": "2026-09-12T20:42:34.925Z"
+      },
+      "state": {
+        "bookId": "ced45254-cdc5-4c52-b2ed-eb18c1f26923",
+        "chapterCount": 1,
+        "contentVersion": "sha256:45fb2b007fef8064d0f2666b180ef5e863aaf700a7821c81e5649635919dbdc8",
+        "progress": {
+          "completed": 1,
+          "failed": 0,
+          "total": 1,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "available"
+      }
+    },
+    {
+      "byteLength": 823,
+      "extraction": {
+        "errorCode": "book/unsupported-encryption",
+        "message": "Unsupported MOBI encryption"
+      },
+      "fileName": "encrypted.mobi",
+      "imported": {
+        "addedAt": "2026-09-12T20:42:35.118Z",
+        "author": "Ada Writer",
+        "collectionId": null,
+        "fileName": "encrypted.mobi",
+        "fileSize": 823,
+        "format": "mobi",
+        "id": "de134d4b-94bc-4a67-9458-7c7550b9b519",
+        "starred": false,
+        "title": "MOBI & KF8 Fixture",
+        "updatedAt": "2026-09-12T20:42:35.118Z"
+      },
+      "state": {
+        "bookId": "de134d4b-94bc-4a67-9458-7c7550b9b519",
+        "chapterCount": 0,
+        "contentVersion": "sha256:bf9648aecc2c304d0a5c9e08ab6ef2beec0c60241263d58185387c9e09c7e4fe",
+        "progress": null,
+        "status": "unprepared",
+        "text": "unknown"
+      }
+    }
+  ],
+  "sourceSections": [
+    {
+      "fileName": "fixture.epub",
+      "sections": [
+        {
+          "characters": 18,
+          "index": 0,
+          "text": "Hello EPUB world.1"
+        },
+        {
+          "characters": 14,
+          "index": 1,
+          "text": "Footnote text."
+        }
+      ]
+    },
+    {
+      "fileName": "fixture.mobi",
+      "sections": [
+        {
+          "characters": 11,
+          "index": 0,
+          "text": "中文 opening."
+        },
+        {
+          "characters": 22,
+          "index": 1,
+          "text": "ContentsSecond Chapter"
+        },
+        {
+          "characters": 25,
+          "index": 2,
+          "text": "Hello MOBIA real chapter."
+        }
+      ]
+    },
+    {
+      "fileName": "fixture.azw3",
+      "sections": [
+        {
+          "characters": 12,
+          "index": 0,
+          "text": "Hello KF8 中文"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "remainingBookIds": [
+      "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+      "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+    ],
+    "remainingOwned": 0,
+    "removed": [
+      "3414fbd8-638d-4f44-9d7d-258bd670f0d4",
+      "38b7a763-8ca9-4445-9596-b755e079a78f",
+      "eec034a3-ffd0-4d2e-a94e-5633a227e015",
+      "e2931229-5911-4509-ba4f-712c591db9d2",
+      "66f7c218-5240-4529-8fdd-487a97a325ff",
+      "15620abd-cdae-4995-9f0e-fb863dc97400",
+      "ced45254-cdc5-4c52-b2ed-eb18c1f26923",
+      "de134d4b-94bc-4a67-9458-7c7550b9b519"
+    ]
+  },
+  "limits": [
+    "Seven ordinary synthetic files, plus one encrypted MOBI. CBR and extension aliases not covered.",
+    "Native byte import and actual Foliate source parsing/text persistence; not new visual or packaged proof.",
+    "Short EPUB/MOBI/KF8 sections are available but below chapter indexing threshold; actual source text separately observed.",
+    "Encrypted MOBI import succeeds; source opening rejects book/unsupported-encryption. UI presentation not observed.",
+    "HTML reader metadata title differs from initial filename-derived library title until reader enrichment; no enrichment pass claimed."
+  ]
+}

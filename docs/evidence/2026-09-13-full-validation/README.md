@@ -486,3 +486,18 @@ remote来源写入没有回传，当前slot为空，临时slot/master-key清理�
 和合成secret，原生snapshot为空。policy的usage来自实际原生数据；配额数字仅为策略读取，
 不冒充上限测试。探针类型检查通过。未验安装同意UI、packaged、进程杀死或恢复失败。
 详情见[观察记录](./plugin-data-observations.json)。
+
+## 第二十一个桌面流程：格式导入与实际源正文
+
+通过原生字节导入和产品withBookContent/正文持久管线，EPUB、PalmDOC压缩MOBI、
+KF8/AZW3、fb2.zip、CBZ、TXT、HTML七个合成样本均完成；源节数分别2/3/1/3/2/1/1。
+压缩FB2/TXT/HTML分别有1个索引章节（76/257/87字符）；CBZ两图页正确ready/textless。
+短EPUB/MOBI/KF8状态ready/available但索引章节0；另经实际源章节读取观察到预期英文、
+中文和脚注文本，避免把索引阈值误判为正文丢失。
+
+加密MOBI原生书目录入成功，但源打开返回book/unsupported-encryption，正文仍unprepared。
+不声称导入时拒绝，也不声称已显示正确错误UI。HTML源title为HTML Format Fixture，
+初始书架title仍取文件名，未验打开后的元数据补全。八本自有测试书均清理，只余原两本。
+探针类型检查通过；本批不是各格式前台阅读/选择器/packaged证明，CBR、扩展名别名和损坏
+文件仍待验。生成命令：bun apps/web/tests/desktop/create-format-fixtures.ts，原文件位于私有
+.eval/validation-20260913-formats。详情见[观察记录](./format-observations.json)。

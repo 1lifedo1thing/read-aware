@@ -30,8 +30,8 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | LIB03 | 收藏/取消收藏 | F1 | 待验 |
 | LIB04 | 删除单本书 | F1 | 待验 |
 | LIB05 | 批量删除书籍 | F1 | 待验 |
-| LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机 FB2 user 与真 Worker 原生选择器导入/取消通过；其他格式/各 actor 待验 |
-| LIB07 | 识别格式/DRM/损坏文件并报告 | F1 | 待验 |
+| LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机FB2 user/Worker选择器、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML原生字节导入与源解析通过；CBR/别名/其他actor待验，见第二十一流程 |
+| LIB07 | 识别格式/DRM/损坏文件并报告 | F1 | 部分通过：合成加密MOBI入库后源打开明确book/unsupported-encryption，未冒充可读；损坏文件/UI提示待验，见第二十一流程 |
 | LIB08 | 查询/读取书籍原文件与本地可用性 | F1 | 本机 Library Desk 原文件状态、原生导出字节一致及取消通过；其他格式/actor待验 |
 | LIB09 | 提取/显示封面与封面可用状态 | F1 | 本机 FB2 封面显示/解码、PNG原生保存及插件副本重读通过；其他格式待验 |
 | LIB10 | 缺失封面/元数据后台补齐 | F1 | 待验 |
@@ -46,7 +46,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | TXT01 | 读取抽取章节目录 | F2 | 待验 |
 | TXT02 | 读取原书分层导航目录及 href | F2 | 待验 |
 | TXT03 | 按抽取章节读正文/分段 | F2 | 待验 |
-| TXT04 | 查询本地正文准备状态与文本存在性 | F2 | 本机短/正常FB2和空白PDF分别ready/available、ready/available、ready/textless；Worker权限及Agent双scope一致；缺源/换源转unavailable/unprepared通过；其他格式待验 |
+| TXT04 | 查询本地正文准备状态与文本存在性 | F2 | 本机短/正常FB2及空白PDF、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML正文准备与available/textless一致；短章节另读源文本确认存在；Worker权限/Agent双scope和缺源/换源通过；CBR等待验 |
 | TXT05 | 启动、重建、暂停让路正文抽取 | F2 | 本机准备/重建、共享取消/退役隔离、激活期禁止、宿主忙拒绝通过；Worker重启历史已有证据；让路/截止/进程重启待验 |
 | TXT06 | 当前书及跨书多查询正文检索 | F2 | 待验 |
 | TXT07 | 引擎全文精确搜索并返回 CFI | F2 | 本机 FB2 真 Worker 搜索命中及 CFI 通过；其他格式/分页待验 |
