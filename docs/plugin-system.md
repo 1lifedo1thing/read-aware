@@ -6895,3 +6895,25 @@ refresh recover pending removals, completing the scan before writing; failed
 intents remain retryable. No work is started from staging. This recovery does
 not make host, binding, file and private document operations one transaction.
 New actual Worker/Tauri interruption/restart acceptance is still pending.
+
+
+### Storage 2.5: persisted usage and per-store policy
+
+`services.storage.policy()` reads only the activation's own namespace. Its native
+SQLite snapshot counts KV/document UTF-8 payload bytes and declared private asset
+bytes; identifiers, indexes, reserved host document collections and credentials
+are excluded. Call `flush()` first to await the activation's accepted writes.
+Read failures reject and retirement discards delayed results.
+
+KV preferences are eligible for roaming, except host schedule receipts. Documents,
+assets and plugin credentials remain local. Complete app backups contain KV,
+documents and assets, not plugin credentials; OPML/reading exports are different.
+Uninstall retains KV/credentials and removes documents/assets. Null total quotas
+mean no enforced namespace limit, not unlimited disk. Legacy document `put` has
+no per-document budget; `applyDocuments` enforces 4 MiB/document, 8 MiB/batch and
+100 changes. Asset limits remain 64 MiB/item, 512 MiB/plugin and 256 items.
+`syncStatus: "not-measured"` explicitly separates eligibility from delivery.
+The separate authorized sync service owns overall connection status; this query
+introduces no per-key remote acknowledgement protocol. Migration contexts do not
+expose live usage. RSS 0.18 consumes this query in its stored-data view and global
+plugin Agent tool; these implementation checks are not Tauri or remote acceptance.

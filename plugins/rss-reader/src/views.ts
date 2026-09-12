@@ -1,3 +1,4 @@
+import { storageCopy, storageView } from "./storage-view";
 /**
  * Host-rendered surfaces. The root is the subscriptions themselves — a
  * searchable list with its management commands at the list edge; adding and
@@ -249,6 +250,7 @@ export async function rssPageView(ctx: RssPluginContext): Promise<PluginListView
         icon: "plus",
         run: () => ({ view: addFeedView(ctx) }),
       },
+      { id: "storage", label: storageCopy(ctx.locale)[0]!, icon: "database", run: async () => ({ view: await storageView(ctx) }) },
       { id: "schedule", label: scheduleCopy(ctx.locale).title, icon: "clock", run: async () => ({ view: await refreshScheduleView(ctx) }) },
       {
         id: "import",

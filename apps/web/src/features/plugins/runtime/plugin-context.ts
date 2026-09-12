@@ -1,3 +1,4 @@
+import { createPluginStoragePolicy } from "./plugin-storage-policy";
 import { assertToolApproval } from "../lib/plugin-tool-approval";
 import { resolvePluginBookCards } from "./plugin-book-cards";
 import { wrapReadingIntent } from "./plugin-reading-intents";
@@ -492,6 +493,7 @@ export function buildPluginContext(
     },
     services: {
       storage: {
+        policy: createPluginStoragePolicy(manifest.id, lifecycle),
         getDurable: pluginDurableKV(lifecycle, storagePrefix),
         get: (key) => {
           const raw = localKV.getItem(storagePrefix + key);

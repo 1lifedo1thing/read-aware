@@ -145,7 +145,7 @@ fn rows(conn: &Connection, id: &str) -> Result<Vec<PluginDocumentRow>, CommandEr
         Some(true),
     )
 }
-fn totals(conn: &Connection, id: &str) -> Result<(usize, u64), CommandError> {
+pub(crate) fn totals(conn: &Connection, id: &str) -> Result<(usize, u64), CommandError> {
     let rows = rows(conn, id)?;
     let bytes = rows
         .iter()

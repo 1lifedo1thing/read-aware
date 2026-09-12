@@ -8,8 +8,8 @@ import type { PluginLifecycleController } from "./plugin-lifecycle";
 import { PluginDocumentObserver } from "./plugin-document-observer";
 
 const encoder = new TextEncoder();
-const DOCUMENT_BYTES = 4 * 1024 * 1024;
-const BATCH_BYTES = 8 * 1024 * 1024;
+export const DOCUMENT_BYTES = 4 * 1024 * 1024;
+export const BATCH_BYTES = 8 * 1024 * 1024;
 
 function invalid(message: string): never { throw new AppError(ERR_PLUGIN_INVALID_ARGUMENT, message); }
 function key(value: unknown, max: number): string {

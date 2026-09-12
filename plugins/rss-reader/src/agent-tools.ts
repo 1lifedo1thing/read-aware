@@ -11,6 +11,12 @@ export function feedToolLimit(value: unknown): number {
 
 export function registerAgentTools(ctx: RssPluginContext): void {
   ctx.contributions.agentTools.register({
+    name: "storage_policy", label: "RSS stored data", contexts: ["global"],
+    description: "Query this RSS plugin's persisted payload usage, actual write limits and per-store backup/roaming policy. No other plugin data or credential values. Full app backup differs from OPML URL export. Roaming eligibility does not prove sync delivery; null quotas mean no enforced total limit, not infinite disk. Document usage includes feed metadata and article caches.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+    execute: async () => { await ctx.services.storage.flush(); return ctx.services.storage.policy(); },
+  });
+  ctx.contributions.agentTools.register({
     name: "import_opml", label: "Import OPML", contexts: ["global"], approval: "required",
     description: "Import one page of RSS/Atom subscriptions from user-provided OPML XML after host approval. Fetches the selected feed URLs and adds virtual books with cached articles. Existing subscriptions are skipped, not refreshed. Each page is separately approved; pass the unchanged XML and returned nextOffset to continue. Results distinguish added/existing/failed; failures may have persisted a subscription or pending source notification, so this is not an atomic transaction. XML input is at most 8000 characters for the confirmation surface; larger files use the RSS plugin's native file-import action. Does not open a book, change the current reading position or remove existing subscriptions.",
     parameters: { type: "object", properties: {

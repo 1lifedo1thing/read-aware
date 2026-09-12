@@ -1751,7 +1751,30 @@ export type PluginDomains = {
 
 // ─── Context handed to activate() ────────────────────────────────────────────
 
+/** Persisted payload bytes, excluding identifiers, indexes, SQLite allocation,
+ * reserved host document collections and encrypted credential values. */
+export type PluginStorageUsage = {
+  kv: { items: number; valueBytes: number };
+  documents: { items: number; valueBytes: number };
+  assets: { items: number; valueBytes: number };
+};
+export type PluginStoragePolicy = {
+  usage: PluginStorageUsage;
+  kv: { roaming: "preference-events"; localOnlyKeys: string[]; backup: "complete"; uninstall: "retain"; maxBytes: null };
+  documents: { roaming: "none"; backup: "complete"; uninstall: "delete"; maxBytes: null;
+    putMaxDocumentBytes: null; applyMaxDocumentBytes: number; applyMaxBatchBytes: number; applyMaxChanges: number };
+  secrets: { roaming: "none"; backup: "excluded"; uninstall: "retain"; maxBytes: null; usage: null };
+  assets: { roaming: "none"; backup: "complete"; uninstall: "delete"; maxBytes: number; maxItems: number; maxItemBytes: number };
+  /** Eligibility is not delivery: this query does not inspect remote sync. */
+  syncStatus: "not-measured";
+};
+
 export type PluginStorage = {
+  /** Storage 2.5: own persisted usage and actual per-store policy. Null quota
+   * means no enforced total limit, not unlimited disk. Call flush first when
+   * awaiting this activation's pending writes. No names or secret values.
+   * Complete backup refers to full app backup, not reading/OPML exports. */
+  policy(): Promise<PluginStoragePolicy>;
   get<T = unknown>(key: string): T | null;
   /** 2.4: keys up to 1024 UTF-16 units, no NUL. Settle accepted writes, then read this private key from SQLite, not
    * the optimistic mirror. Corrupt JSON rejects; null means absent or JSON null. */
@@ -1788,7 +1811,7 @@ export type PluginStorage = {
   onChange(handler: () => void): PluginDisposable;
 };
 
-export type PluginMigrationStorage = Omit<PluginStorage, "onChange" | "observeDocuments">;
+export type PluginMigrationStorage = Omit<PluginStorage, "onChange" | "observeDocuments" | "policy">;
 
 export type PluginLifecyclePhase = "activating" | "migrating" | "active";
 

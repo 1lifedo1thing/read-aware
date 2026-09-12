@@ -228,6 +228,7 @@ function buildContext(
   // host, mirroring how `localKV` behaves on the other side.
   const services = ctx.services as Record<string, unknown>;
   services.storage = {
+    policy: () => callHost("services.storage.policy", []),
     get<T = unknown>(key: string): T | null {
       const raw = storageSnapshot.get(key);
       if (raw === undefined) return null;

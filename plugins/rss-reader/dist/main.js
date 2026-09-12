@@ -4136,6 +4136,17 @@ function feedToolLimit(value) {
 }
 function registerAgentTools(ctx) {
   ctx.contributions.agentTools.register({
+    name: "storage_policy",
+    label: "RSS stored data",
+    contexts: ["global"],
+    description: "Query this RSS plugin's persisted payload usage, actual write limits and per-store backup/roaming policy. No other plugin data or credential values. Full app backup differs from OPML URL export. Roaming eligibility does not prove sync delivery; null quotas mean no enforced total limit, not infinite disk. Document usage includes feed metadata and article caches.",
+    parameters: { type: "object", properties: {}, additionalProperties: false },
+    execute: async () => {
+      await ctx.services.storage.flush();
+      return ctx.services.storage.policy();
+    }
+  });
+  ctx.contributions.agentTools.register({
     name: "import_opml",
     label: "Import OPML",
     contexts: ["global"],
@@ -4666,6 +4677,44 @@ function articlesTag(locale, count) {
   return count === 1 ? tr(locale, "articlesTagOne") : tr(locale, "articlesTag", { n: count });
 }
 
+// src/storage-view.ts
+var en = [
+  "Stored data",
+  "Preferences",
+  "Subscriptions and cached articles",
+  "Private files",
+  "Refresh",
+  "Preferences can sync. Subscriptions, cached articles and private files stay on this device. Sync delivery has not been checked.",
+  "Full app backups include preferences, documents and private files, but exclude plugin credentials. OPML exports contain subscription URLs, not cached articles.",
+  "There is no total quota for preferences or documents. Batch document writes have a per-document and per-batch limit. Figures below count persisted payload bytes, not total disk use.",
+  "Document / batch write limit"
+];
+var copies = {
+  en,
+  "zh-Hans": ["存储数据", "偏好设置", "订阅与文章缓存", "私有文件", "刷新", "偏好设置可漫游；订阅、文章缓存和私有文件仅保存在本机。此处未检查同步是否送达。", "完整应用备份包含偏好、文档和私有文件，但不含插件凭据。OPML 导出仅含订阅地址，不含文章缓存。", "偏好和文档未设总配额。批量文档写入有单文档和单批限制。以下仅统计已落盘的内容字节，不代表磁盘总占用。", "单文档 / 单批写入限制"],
+  "zh-Hant": ["儲存資料", "偏好設定", "訂閱與文章快取", "私人檔案", "重新整理", "偏好設定可漫遊；訂閱、文章快取與私人檔案僅存在本機。此處未檢查同步是否送達。", "完整應用程式備份包含偏好、文件與私人檔案，但不含外掛憑證。OPML 僅匯出訂閱網址，不含文章快取。", "偏好與文件未設總配額。批次文件寫入有單文件與單批限制。以下僅統計已保存的內容位元組，不代表磁碟總用量。", "單文件 / 單批寫入限制"],
+  ja: ["保存データ", "設定", "購読と記事キャッシュ", "非公開ファイル", "更新", "設定は同期対象です。購読・記事キャッシュ・非公開ファイルは端末内のみです。同期の到達状況は未確認です。", "アプリ全体のバックアップには設定・文書・非公開ファイルが含まれますが、プラグイン認証情報は含まれません。OPML は購読 URL のみです。", "設定と文書には合計容量制限がありません。文書の一括書き込みには文書単位と一括単位の制限があります。表示は保存済み本文のバイト数で、ディスク使用量全体ではありません。", "文書 / 一括書き込み制限"],
+  de: ["Gespeicherte Daten", "Einstellungen", "Abonnements und Artikelcache", "Private Dateien", "Aktualisieren", "Einstellungen können synchronisiert werden. Abonnements, Artikelcache und private Dateien bleiben lokal. Die Übertragung wurde nicht geprüft.", "Vollständige App-Backups enthalten Einstellungen, Dokumente und private Dateien, aber keine Plugin-Zugangsdaten. OPML exportiert nur Abonnement-URLs.", "Für Einstellungen und Dokumente gilt kein Gesamtkontingent. Dokumentstapel haben Einzel- und Stapellimits. Angezeigt werden gespeicherte Nutzdatenbytes, nicht der gesamte Speicherbedarf.", "Limit pro Dokument / Stapel"],
+  fr: ["Données stockées", "Préférences", "Abonnements et cache d’articles", "Fichiers privés", "Actualiser", "Les préférences peuvent être synchronisées. Abonnements, cache et fichiers privés restent locaux. La livraison de la synchronisation n’a pas été vérifiée.", "Les sauvegardes complètes incluent préférences, documents et fichiers privés, mais pas les identifiants du plugin. OPML exporte uniquement les URL d’abonnement.", "Aucun quota total pour les préférences et documents. Les écritures groupées ont des limites par document et par lot. Les chiffres comptent les octets de contenu enregistrés, pas l’espace disque total.", "Limite par document / lot"],
+  es: ["Datos almacenados", "Preferencias", "Suscripciones y caché de artículos", "Archivos privados", "Actualizar", "Las preferencias pueden sincronizarse. Suscripciones, caché y archivos privados son locales. No se ha comprobado la entrega de la sincronización.", "Las copias completas incluyen preferencias, documentos y archivos privados, pero no credenciales del plugin. OPML solo exporta las URL de suscripción.", "No hay cuota total para preferencias y documentos. Las escrituras por lotes tienen límites por documento y lote. Las cifras cuentan bytes de contenido guardado, no el uso total del disco.", "Límite por documento / lote"],
+  ru: ["Сохранённые данные", "Настройки", "Подписки и кэш статей", "Личные файлы", "Обновить", "Настройки могут синхронизироваться. Подписки, кэш и личные файлы остаются на устройстве. Доставка синхронизации не проверена.", "Полная резервная копия включает настройки, документы и личные файлы, но не учётные данные плагина. OPML экспортирует только URL подписок.", "Общей квоты настроек и документов нет. Пакетная запись ограничена размером документа и пакета. Показаны байты сохранённого содержимого, а не полный объём на диске.", "Лимит документа / пакета"]
+};
+var storageCopy = (locale) => copies[locale] ?? copies[locale.split("-")[0]] ?? en;
+var bytes = (value) => `${(value / 1024 / 1024).toFixed(2)} MiB`;
+async function storageView(ctx) {
+  await ctx.services.storage.flush();
+  const policy = await ctx.services.storage.policy(), t = storageCopy(ctx.locale);
+  return { kind: "detail", title: t[0], content: [
+    { kind: "keyValue", rows: [
+      { label: t[1], value: bytes(policy.usage.kv.valueBytes) },
+      { label: t[2], value: `${policy.usage.documents.items} · ${bytes(policy.usage.documents.valueBytes)}` },
+      { label: t[3], value: `${policy.usage.assets.items} / ${policy.assets.maxItems} · ${bytes(policy.usage.assets.valueBytes)} / ${bytes(policy.assets.maxBytes)}` },
+      { label: t[8], value: `${bytes(policy.documents.applyMaxDocumentBytes)} / ${bytes(policy.documents.applyMaxBatchBytes)}` }
+    ] },
+    ...[5, 6, 7].map((index) => ({ kind: "text", text: t[index] }))
+  ], actions: [{ id: "refresh", label: t[4], icon: "arrows-clockwise", run: async () => ({ view: await storageView(ctx), navigation: "replace" }) }] };
+}
+
 // src/opml-file.ts
 async function pickOpmlText(ctx) {
   const picked = await ctx.services.resources.pick({ multiple: false, extensions: ["opml", "xml"] });
@@ -4746,7 +4795,7 @@ async function refreshScheduledFeeds(ctx) {
 }
 
 // src/schedule-strings.ts
-var en = {
+var en2 = {
   title: "Automatic refresh",
   enabled: "Enabled",
   paused: "Paused",
@@ -4772,8 +4821,8 @@ var en = {
   completed: "Scheduled refresh completed",
   alreadyRunning: "Refresh is already running"
 };
-var copies = {
-  en,
+var copies2 = {
+  en: en2,
   "zh-Hans": { title: "自动刷新", enabled: "已启用", paused: "已暂停", running: "运行中", state: "计划", attempt: "上次执行", started: "上次开始", finished: "上次结束", succeededAt: "上次成功刷新", interval: "间隔（分钟）", none: "无", succeeded: "成功", failed: "失败", cancelled: "已取消", interrupted: "已中断", unavailable: "计划不可用", pause: "暂停", resume: "恢复", run: "立即运行", refresh: "刷新状态", pausedReceipt: "自动刷新已暂停", resumedReceipt: "自动刷新已恢复", completed: "计划刷新已完成", alreadyRunning: "刷新已在运行" },
   "zh-Hant": { title: "自動重新整理", enabled: "已啟用", paused: "已暫停", running: "執行中", state: "排程", attempt: "上次執行", started: "上次開始", finished: "上次結束", succeededAt: "上次成功重新整理", interval: "間隔（分鐘）", none: "無", succeeded: "成功", failed: "失敗", cancelled: "已取消", interrupted: "已中斷", unavailable: "排程無法使用", pause: "暫停", resume: "恢復", run: "立即執行", refresh: "重新整理狀態", pausedReceipt: "已暫停自動重新整理", resumedReceipt: "已恢復自動重新整理", completed: "排程重新整理已完成", alreadyRunning: "重新整理正在執行" },
   ja: { title: "自動更新", enabled: "有効", paused: "一時停止", running: "実行中", state: "スケジュール", attempt: "前回の実行", started: "前回の開始", finished: "前回の終了", succeededAt: "前回の更新成功", interval: "間隔（分）", none: "なし", succeeded: "成功", failed: "失敗", cancelled: "キャンセル済み", interrupted: "中断", unavailable: "スケジュールは利用できません", pause: "一時停止", resume: "再開", run: "今すぐ実行", refresh: "状態を更新", pausedReceipt: "自動更新を一時停止しました", resumedReceipt: "自動更新を再開しました", completed: "定期更新が完了しました", alreadyRunning: "更新は実行中です" },
@@ -4782,7 +4831,7 @@ var copies = {
   es: { title: "Actualización automática", enabled: "Activada", paused: "En pausa", running: "En curso", state: "Programación", attempt: "Último intento", started: "Último inicio", finished: "Última finalización", succeededAt: "Última actualización correcta", interval: "Intervalo (minutos)", none: "Ninguno", succeeded: "Correcto", failed: "Fallido", cancelled: "Cancelado", interrupted: "Interrumpido", unavailable: "Programación no disponible", pause: "Pausar", resume: "Reanudar", run: "Ejecutar ahora", refresh: "Actualizar estado", pausedReceipt: "Actualización automática pausada", resumedReceipt: "Actualización automática reanudada", completed: "Actualización programada completada", alreadyRunning: "La actualización ya está en curso" },
   ru: { title: "Автообновление", enabled: "Включено", paused: "Приостановлено", running: "Выполняется", state: "Расписание", attempt: "Последняя попытка", started: "Последний запуск", finished: "Последнее завершение", succeededAt: "Последнее успешное обновление", interval: "Интервал (минуты)", none: "Нет", succeeded: "Успешно", failed: "Ошибка", cancelled: "Отменено", interrupted: "Прервано", unavailable: "Расписание недоступно", pause: "Приостановить", resume: "Возобновить", run: "Запустить сейчас", refresh: "Обновить статус", pausedReceipt: "Автообновление приостановлено", resumedReceipt: "Автообновление возобновлено", completed: "Плановое обновление завершено", alreadyRunning: "Обновление уже выполняется" }
 };
-var scheduleCopy = (locale) => copies[locale] ?? copies[locale.split("-")[0]] ?? en;
+var scheduleCopy = (locale) => copies2[locale] ?? copies2[locale.split("-")[0]] ?? en2;
 
 // src/schedule-view.ts
 function when(time, locale, none) {
@@ -5075,6 +5124,7 @@ async function rssPageView(ctx) {
         icon: "plus",
         run: () => ({ view: addFeedView(ctx) })
       },
+      { id: "storage", label: storageCopy(ctx.locale)[0], icon: "database", run: async () => ({ view: await storageView(ctx) }) },
       { id: "schedule", label: scheduleCopy(ctx.locale).title, icon: "clock", run: async () => ({ view: await refreshScheduleView(ctx) }) },
       {
         id: "import",

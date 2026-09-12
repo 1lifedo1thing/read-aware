@@ -40,6 +40,7 @@ export function createBackupProgramStorage(pluginId: string, initial: Record<str
     snapshot: () => Object.fromEntries(mirror),
     create(lifecycle): PluginStorage {
       return {
+        policy: async () => { throw new AppError("plugin/not-supported", "Live storage policy is unavailable in backup migration"); },
         get: key => parse(mirror.get(key)),
         getDurable: key => lifecycle.read("services.storage.getDurable", async () => parse(await call<string | null>({ kind: "get", key }))),
         set(key, value) {

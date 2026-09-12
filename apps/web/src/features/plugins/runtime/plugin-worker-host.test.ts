@@ -19,6 +19,7 @@ import * as entityDomain from "../../../domain/entity-registry";
 import * as identityDomain from "../../../domain/identity-consolidation";
 import * as contextAccess from "../../../domain/context-bundle-access";
 import { AppError } from "@read-aware/core";
+import * as storagePolicyIpc from "../../../platform/ipc";
 import { identityHost } from "../../../../tests/helpers/identity-host";
 import { deferred, entityHost, entityRevision } from "../../../../tests/helpers/entity-host";
 import { PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
@@ -50,6 +51,20 @@ test.each(["read", "before-write", "committed", "conflict"])("entity Worker RPC 
 });
 
 type WireMessage = { t: string; id?: number; handle?: string; handles?: string[]; disposable?: string; [key: string]: unknown };
+
+test("storage policy Worker RPC stamps its own namespace and propagates storage failure", async () => {
+  const usage = { kv:{items:1,valueBytes:2}, documents:{items:3,valueBytes:4}, assets:{items:0,valueBytes:0} };
+  const native = spyOn(storagePolicyIpc,"invoke").mockResolvedValue(usage);
+  const {worker,close}=await hostFixture();
+  try {
+    await worker.deliver({t:"call",id:998,method:"services.storage.policy",args:worker.callbacks.encode([{pluginId:"foreign"}])});
+    expect(native).toHaveBeenLastCalledWith("plugin_storage_usage",{pluginId:"callback-host-test"});
+    expect(worker.sent.find(m=>m.t==="result"&&m.id===998)).toMatchObject({ok:true,value:{usage,syncStatus:"not-measured"}});
+    native.mockRejectedValue(new AppError("db/locked","Storage locked"));
+    await worker.deliver({t:"call",id:999,method:"services.storage.policy",args:worker.callbacks.encode([])});
+    expect(worker.sent.find(m=>m.t==="result"&&m.id===999)).toMatchObject({ok:false,code:"db/locked"});
+  } finally { await close(); native.mockRestore(); }
+});
 
 test.each(["calls", "registrations", "callbacks"] as const)("global %s capacity rejects before contribution replacement and recovers", async kind => {
   const { worker, close } = await hostFixture();

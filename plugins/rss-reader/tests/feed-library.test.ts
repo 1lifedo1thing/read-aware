@@ -1,3 +1,4 @@
+import { registerAgentTools } from "../src/agent-tools";
 import { expect, test } from "bun:test";
 import type { PluginBookContent, PluginDocumentChange, PluginDocumentPageFilter, PluginToolDefinition } from "@read-aware/plugin-types";
 import plugin from "../src/index";
@@ -395,4 +396,20 @@ test("pending removal recovery scans every page before mutation and retains ordi
   await expect(getFeed(f.ctx, malformed)).rejects.toMatchObject({ code: "plugin/invalid-data" });
   await expect(recoverFeedRemovals(f.ctx)).rejects.toMatchObject({ code: "plugin/invalid-data" });
   expect(f.state.removes).toBe(205); expect(f.table("feeds").has(malformed)).toBe(true);
+});
+
+
+test("RSS storage view and Agent query await durable writes and propagate failures", async () => {
+  const { ctx, tools } = fixture();
+  const { storageView } = await import("../src/storage-view");
+  const calls: string[] = [];
+  const policy = { usage: { kv:{items:1,valueBytes:2},documents:{items:3,valueBytes:4},assets:{items:0,valueBytes:0} }, assets:{maxItems:256,maxBytes:536870912}, documents:{applyMaxDocumentBytes:4194304,applyMaxBatchBytes:8388608} };
+  ctx.services.storage.flush=async()=>{calls.push("flush");};
+  ctx.services.storage.policy=async()=>{calls.push("policy");return policy as Awaited<ReturnType<typeof ctx.services.storage.policy>>;};
+  const view=await storageView(ctx);expect(calls).toEqual(["flush","policy"]);expect(view.title).toBe("Stored data");
+  expect(JSON.stringify(view.content)).toContain("not cached articles");
+  registerAgentTools(ctx);
+  expect(await tools.find(tool=>tool.name==="storage_policy")!.execute({})).toEqual(policy);
+  ctx.services.storage.flush=async()=>{throw Object.assign(Error("Write failed"),{code:"db/locked"});};
+  calls.length=0;await expect(storageView(ctx)).rejects.toMatchObject({code:"db/locked"});expect(calls).toEqual([]);
 });

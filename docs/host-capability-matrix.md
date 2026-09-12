@@ -20,9 +20,9 @@
 
 ## 计数与口径
 
-- 宿主：实装 209、部分 32、非桌面 1、待建 1。
+- 宿主：实装 210、部分 31、非桌面 1、待建 1。
 - Agent：接通 151、接通（待 E2E） 20、扩展 11、部分 35、自动 13、未接 13。
-- 插件：接通 166、接通（待 E2E） 24、部分 48、未接 5。
+- 插件：接通 166、接通（待 E2E） 25、部分 47、未接 5。
 
 不提供一个虚假的“整体覆盖率”：这里既有功能族也有逐字段行，且自动管线、插件条件扩展、禁止开放、宿主未建不应混为一个分母。上面的数量是本表状态分布，不是通过率。当前可调用具体入口的库存另列，入口数也不代表语义完整。
 
@@ -305,7 +305,7 @@
 | <a id="SYS02"></a>SYS02 | 插件私有文档 CRUD/搜索/分页/条件事务 | 实装 | **扩展**：Dictionary/RSS/Jumper/Workspace Profiles 工具通过插件访问<br>[设计] 插件工具封装其自有数据 Storage2.2 observeDocuments支持自有collection的get/page初始及变化快照，错误/恢复按稳定code通知，单激活64个活动订阅，读与callback串行结算后每秒复核。停用/退订丢迟到结果，迁移不开放观察，sequence不是CAS或可重放日志；沿用page游标失效。Jumper0.7书签列表/详情实时刷新，读失败清旧内容/动作，后页过期要求从头刷新；命名和删除表单固定原revision，Agent工具仍间接访问自有文档。基础和真实Bun Worker协议通过，原生Tauri集中后置。 Storage2.3的page.query/observeDocuments页查询已接原生JSON键与标量值搜索，含嵌套对象/数组、转义后字符串；Unicode lowercase字面子串，不是正则/分词/去重音或元数据检索。最大1024 UTF-8字节、禁控制字符、空白清过滤；先过滤后分页，同事务读取集合代，游标绑定规范化query。Jumper0.8 UI与全局list_bookmarks共享查询，翻页/刷新/观察保留bookId和query，取消过滤回第一页；不再把当前40条本地筛选当集合搜索。SQLite内存库跨108条/转义/隔离/失效及Worker/编译插件基础测试通过，原生Tauri组合后置；当前按需扫描JSON，无搜索索引或全量CPU预算。 | **接通**：storage 2.3 page.query/observeDocuments + revision/applyDocuments<br>[设计] 隔离文档服务 | Dictionary words；RSS feeds；Jumper 0.6 书签及全局Agent工具；文档基础传输测试 | page默认50/最多200条、4MiB JSON，绑定命名空间/过滤/排序和集合变更代；任何集合写令续页stale-cursor重读，不拼不同快照。applyDocuments一次比较1..100条跨自有集合put/delete/check，null要求不存在，revision要求准确写版本；SQLite事务冲突不写/故障全回滚，单文档4MiB/批8MiB。旧API及恢复同样轮换身份，候选激活不可写、迁移可写，读参与退休清理、已派发写排空。Jumper已组合版本化位置/选区书签、40项分页、命名/改名/确认删除和共享goTo，创建/改删分别比较不存在/所见写版本；旧源拒绝而不猜位置。0.6四个global工具以最多20项查询、位置指纹检查及宿主确认保存/管理消费同一私有存储；新增agent:tools，不增加宿主接口或书内工具。38项插件测试/232断言、既有批准回归及构建/类型通过，编译入口使用受控存储与导航，不是原生重启/跨书/模型批准证明。原生SQLite和Bun Worker基础测试通过，不是组合插件Tauri验收。KV/文档联合事务和跨设备仍缺；bookId/anchor是索引不是自动删除所有权。 Workspace Profiles0.6 已消费相同存储与宿主批准：只读list/inspect/current、确认保存/应用/删除；保存复核十项设置指纹，应用与删除校验所见文档revision，删除为条件事务。UI40项/Agent最多20项分页，旧游标失效重读，v1/v2可用；34项插件测试、编译注册/构建/类型通过，新协议原生Worker/SQLite/批准与模型组合待集中验收，不将设置与文档当联合事务。 Reading Goals0.4新增双scope get/set/clear_reading_goal，写入经宿主确认并比较所见revision；UI共用goals文档条件写，下一轮上下文/候选读取同一数据。schema2首次按书提升旧KV，文档/空目标墓碑优先，旧KV清理失败拒绝并可重试。新增agent:tools，沿用Storage2.1而非新宿主API；新协议原生升级/批准/持久化与模型组合待集中验收，不等于直接写入或删除已提升记忆。 | [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) [DOCS](../apps/web/src/features/plugins/runtime/plugin-backend.ts) [DOCSEARCH](../apps/desktop/src-tauri/src/storage/plugin_document_search.rs) [API](../packages/plugin-types/src/index.ts) [DICT](../plugins/dictionary/src/index.ts) [RSS](../plugins/rss-reader/src/index.ts) [JUMPERBOOKMARKS](../plugins/jumper/src/bookmarks.ts) [JUMPERBOOKMARKVIEWS](../plugins/jumper/src/bookmark-views.ts) [JUMPERBOOKMARKPROOF](../plugins/jumper/tests/bookmarks.test.ts) [JUMPERBOOKMARKTOOLS](../plugins/jumper/src/bookmark-tools.ts) [JUMPERBOOKMARKTOOLPROOF](../plugins/jumper/tests/bookmark-tools.test.ts) [WORKSPACEPROFILETOOLS](../plugins/workspace-profiles/src/tools.ts) [WORKSPACEPROFILETOOLPROOF](../plugins/workspace-profiles/tests/tools.test.ts) [WORKSPACEPROFILEVIEWPROOF](../plugins/workspace-profiles/tests/views.test.ts) [READINGGOALTOOLS](../plugins/reading-goals/src/tools.ts) [READINGGOALSTORE](../plugins/reading-goals/src/goals.ts) [READINGGOALTOOLPROOF](../plugins/reading-goals/tests/tools.test.ts) | O01, O02 |
 | <a id="SYS03"></a>SYS03 | 插件 schema 迁移/快照/更新回滚 | 部分 | **未接**：宿主管理安装生命周期<br>[设计] 不开放：模型操作迁移存储 | **部分**：migrate storage-only；quiesce/drain 后原生联合 snapshot/restore<br>[设计] quiescent + durable migration | RSS legacy feeds 迁移；插件更新 | 健康检查失败不误恢复，旧实例先排空。KV/docs/schema 现从同一 SQLite 读事务取基线，并在一个 IMMEDIATE 事务联合恢复；失败全回滚，不再三个 IPC 部分成功。基线绑定插件 ID，保留原始 schema 值，恢复沿用 KV 写队列及镜像回滚、单一 restore 通知，不漫游重发；已排队后续写不被旧回执覆盖。候选清理失败不在潜在写者下恢复，文件或数据恢复失败不启动旧代码，错误保留稳定 code。外部设置写现按插件隔离：更新/激活迁移先关准入并等待已受理表单、Agent/授权插件批次和同步KV写完成，再快照；范围持续到候选清理、恢复与旧实例重启。忙批次全拒绝，其他插件独立，旧/迁移期表单失效；同步回填等结束后重读投影。启动迁移的teardown失败也不再恢复。纯控制器与生产host结合受控Worker/IPC验证通过，八语稳定错误。迁移KV以持久回执隔离，中间值与catch-up不可旁路。schema41本机journal在文件切换前保存独立文件备份和KV/docs/schema基线；最终事件净差异与accepted决定在同一原生事务提交，KV/schema漂移有限重读、事件/决定失败全回滚。准备与接受回执丢失按宿主预生成ID查询，不重复发布或误判尚未开始；普通接受后保存仍沿既有进程内重试，并非通用耐久outbox。原生启动在IPC/KV加载/同步之前恢复prepared文件与数据，accepted仅清理；失败保留不可消耗旧副本与记录、隔离目标，其他插件继续。webview重载仅查状态；卸载拒绝prepared，wipe不复活数据，孤儿清理失败不阻断启动。任意KV后缀含换行/NUL不漏隔离或错恢复。真实WAL/文件子进程退出重开、原子失败及owner隔离定向通过，受控生产host验证回执丢失/CAS与事件失败回滚；现有v1备份读写已接全局迁移互斥，先同步保留所有owner准入再排空既有外部保存；迁移/隔离namespace拒绝备份，新迁移及外部插件设置拒绝，同步回填等待重读，导入前后表单失效，失败导出等待并发读取排空。非插件设置不阻断，文件对话框不占锁。完整备份引擎仍归OPS08，普通插件写/全领域一致快照及真实Tauri/packaged跨平台故障待验；GAP01/02不整体关闭 | [HOST](../apps/web/src/features/plugins/runtime/plugin-host.ts) [WIRE](../apps/web/src/features/plugins/runtime/plugin-worker-host.ts) [WORKER](../apps/web/src/features/plugins/runtime/plugin-sandbox.worker.ts) [RUST](../apps/desktop/src-tauri/src/lib.rs) [PLUGINDATAROLLBACK](../apps/desktop/src-tauri/src/storage/plugin_data.rs) [PLUGINDATAROLLBACKPROOF](../apps/desktop/src-tauri/src/storage/plugin_data_tests.rs) [PLUGINDATASNAPSHOT](../apps/web/src/features/plugins/runtime/plugin-data-snapshot.ts) [PLUGINDATASNAPSHOTPROOF](../apps/web/tests/plugin-data-snapshot.test.ts) [PLUGINDATAACCESS](../apps/web/src/platform/plugin-data-access.ts) [PLUGINSETTINGSISOLATION](../apps/web/src/features/plugins/runtime/plugin-settings-isolation.test.ts) [PLUGINDATAACCESSPROOF](../apps/web/src/platform/plugin-data-access.test.ts) [PLUGINPREFERENCEPUBLICATION](../apps/web/src/platform/plugin-preference-publication.ts) [PLUGINPREFERENCEPUBLICATIONPROOF](../apps/web/src/platform/plugin-preference-publication.test.ts) [PLUGINUPDATEJOURNAL](../apps/desktop/src-tauri/src/storage/plugin_update_journal.rs) [PLUGINUPDATERECOVERY](../apps/desktop/src-tauri/src/plugin_updates.rs) [PLUGINUPDATERECOVERYPROOF](../apps/desktop/src-tauri/src/plugin_updates_tests.rs) [PLUGINUPDATEACCEPT](../apps/web/src/features/plugins/runtime/plugin-update-journal.ts) [PLUGINUPDATEBOOT](../apps/web/src/platform/plugin-update-recovery.ts) [PLUGINUPDATEBOOTPROOF](../apps/web/src/platform/plugin-update-recovery.test.ts) [BACKUP](../apps/web/src/features/settings/lib/backup-io.ts) [BACKUPISOLATION](../apps/web/src/features/settings/lib/backup-isolation.test.ts) | O05, R01 |
 | <a id="SYS04"></a>SYS04 | 插件自有 secret get/set/remove | 实装 | **未接**：不提供密钥读取工具<br>[设计] 不开放：密钥进模型上下文 | **接通**：services.secrets namespace<br>[设计] 隔离凭据服务 | TTS；WebDAV | 私有 secret 不等于可读宿主 AI key/同步解密 key | [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) [SECRETS](../apps/web/src/platform/secret-store.ts) [TTS](../plugins/tts/src/index.ts) [WEBDAV](../plugins/webdav-sync/src/index.ts) | O03 |
-| <a id="SYS05"></a>SYS05 | 插件数据导入导出/配额/同步策略 | 部分 | **扩展**：仅插件自定义工具<br>[设计] 插件拥有的数据操作 | **部分**：exportFile + 私有 CRUD；无通用配额/同步状态<br>[设计] 隔离数据生命周期 | Dictionary CSV；RSS OPML | KV、plugin_docs、secrets、blob 的漫游/备份边界不同，不能统一宣称可同步 | [API](../packages/plugin-types/src/index.ts) [DOCS](../apps/web/src/features/plugins/runtime/plugin-backend.ts) [ROAM](../apps/web/src/platform/roaming-preferences.ts) [BACKUP](../apps/web/src/features/settings/lib/backup-io.ts) | O06 |
+| <a id="SYS05"></a>SYS05 | 插件数据导入导出/配额/同步策略 | 实装 | **扩展**：RSS storage_policy 插件工具及各格式导出工具<br>[设计] 只读自身数据策略，不授予任意插件数据访问 | **接通（待 E2E）**：storage2.5 policy + 私有 CRUD/格式导入导出<br>[设计] 隔离数据生命周期 | Dictionary CSV；RSS0.18 OPML/存储数据页与Agent工具 | storage.policy原生单SQLite快照统计自有KV/公开文档JSON的UTF-8内容字节及资产声明字节，不读取其他插件/凭据值，也不把索引/文件系统占用当payload。KV可进入偏好漫游事件（宿主schedule-state/runs除外），文档/私有文件/插件凭据不漫游；完整应用备份含KV/文档/资产而非secret，卸载保留KV/secret并删除文档/资产。无KV/文档/secret总配额返回null；文档put未设单文档限制，applyDocuments仍为4MiB单文档/8MiB单批/100变更；资产64MiB单项/512MiB总量/256项。调用方flush可等待自身持久写，失败不当零；退休丢弃迟到结果。Worker固定owner，RSS页面和全局插件工具消费同入口。syncStatus明确not-measured，策略资格不表示逐键远端已送达；未新增逐键同步确认协议，现有整体同步状态仍属service:sync。原生/宿主/RPC/消费者定向检查通过，真实Tauri/跨设备/完整备份组合待集中验收。 | [API](../packages/plugin-types/src/index.ts) [DOCS](../apps/web/src/features/plugins/runtime/plugin-backend.ts) [ROAM](../apps/web/src/platform/roaming-preferences.ts) [BACKUP](../apps/web/src/features/settings/lib/backup-io.ts) [STORAGEPOLICY](../apps/web/src/features/plugins/runtime/plugin-storage-policy.ts) [STORAGEUSAGE](../apps/desktop/src-tauri/src/storage/plugin_storage_usage.rs) [RSSSTORAGEVIEW](../plugins/rss-reader/src/storage-view.ts) | O06 |
 | <a id="SYS06"></a>SYS06 | 原生网络 HTTP 请求与响应 | 实装 | **接通**：download_resource 全局批准 HTTPS 下载，无通用 fetch<br>[设计] 有用途/域名约束网络工具 | **接通**：services.network 2.1：Request/二进制/取消/逐跳授权；有界响应所有权<br>[设计] 完整有界 HTTP 服务 | RSS 0.8/TTS 0.6/WebDAV 0.3；旧隔离 Tauri wire probe | fetch保留64 MiB正文，激活8/全部插件32个请求，120秒绝对请求寿命覆盖头/跳转/正文；并发槽等原生收尾才释放，取消不回滚远端效果。networkAccess逐跳授权、最多10跳、拒HTTPS降级，禁原生自动跟随/共享Cookie；标准认证头跨来源去除，方法/正文转换和最终URL/redirected保真。fetch经同一响应owner，不绕过流的预算；2.0插件无需改调用。基础及Worker桥接检查通过，接通不表示新原生链路/实际大文件/生产CSP已验；Agent download_resource 每次批准准确URL/文件名，HTTPS GET无凭据/自定义头/自动跳转，重定向返回目标后重新批准；64 MiB/120秒，会话1个/全局4个并发并计共享32槽，清理结算才退槽。200正文分块封口为会话临时资源，仅回元数据，检查/导入/读取/保存独立调用；失败释放，无DNS/私网隔离或自动执行。基础测试通过，真实下载组合待集中Tauri验收。 | [HTTP](../apps/web/src/platform/http-client.ts) [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) [WIRE](../apps/web/src/features/plugins/runtime/plugin-worker-host.ts) [WORKER](../apps/web/src/features/plugins/runtime/plugin-sandbox.worker.ts) [RSS](../plugins/rss-reader/src/index.ts) [TTS](../plugins/tts/src/index.ts) [NETWORKSERVICE](../apps/web/src/features/plugins/runtime/plugin-network.ts) [NETWORKPROOF](../apps/web/src/features/plugins/runtime/plugin-network.test.ts) [NETWORKREQUESTS](../apps/web/src/features/plugins/runtime/plugin-network-requests.ts) [NETWORKSTREAMPROOF](../apps/web/src/features/plugins/runtime/plugin-network-requests.test.ts) [DOWNLOAD](../apps/web/src/services/resource-download.ts) [DOWNLOADTOOLS](../packages/agent/src/tools/download-tools.ts) [DOWNLOADPROOF](../apps/web/src/services/resource-download.test.ts) | P03 |
 | <a id="SYS07"></a>SYS07 | 网络域名授权、预算、下载流和离线重试 | 实装 | **接通（待 E2E）**：download_resource 批准下载+共享累计额度/限定原URL重试<br>[设计] 用途受限任务 | **接通（待 E2E）**：network2.2 policy/流所有权+显式safe重试/累计额度<br>[设计] 授权/任务/缓存原语 | RSS0.14安全重试；安装/更新授权；真实Worker原生HTTP探针 | 最多32个精确origin或单独*，缺省拒绝、逐跳检查、拒HTTPS降级。响应句柄本激活所有，offset顺序拉取，默认64KiB/最大1MiB，单流一个在途读，不可重放；下载1GiB，上传/fetch64MiB，8/32并发和120秒寿命，等原生收尾才退槽。network2.2与Agent下载共享每owner60秒120次/2GiB、全App480次/8GiB，plugin ID跨换代同计、Agent跨对话同计，最多1024未过期owner；每次尝试/跳转派发前计请求及上传，读出块计下载，溢出不交付但不退款。不是网卡流量/平滑限速/原生预读/峰值内存保证。插件第三参数retry:safe显式开启原始无正文GET/HEAD最多2次重试，跨跳转总计，仅传输失败/429/502/503/504，500/1000ms退避，Retry-After超过30秒交付错误；默认不重试，POST转GET也不重试，已交付正文/offset永不重放。退避受原取消/期限约束，每次再检查授权/激活/额度，Worker复制选项防异步篡改。RSS0.14用原15秒期限；Agent只重试已批准HTTPS URL，重定向重新批准，200后才建临时资源。窗口/错误/取消/共享额度/编译消费者和真实Bun Worker验证；隔离Tauri原生HTTP503→重试成功、服务端2次通过。大下载/慢网、真实模型下载、packaged跨平台仍待验；socket/耐久离线队列/断点续传非当前宿主能力。 | [API](../packages/plugin-types/src/index.ts) [HTTP](../apps/web/src/platform/http-client.ts) [WIRE](../apps/web/src/features/plugins/runtime/plugin-worker-host.ts) [CATALOG](../packages/core/src/capabilities.ts) [NETWORKPOLICY](../apps/web/src/features/plugins/lib/plugin-network-policy.ts) [NETWORKSERVICE](../apps/web/src/features/plugins/runtime/plugin-network.ts) [NETWORKPROOF](../apps/web/src/features/plugins/runtime/plugin-network.test.ts) [NETWORKREQUESTS](../apps/web/src/features/plugins/runtime/plugin-network-requests.ts) [NETWORKSTREAMPROOF](../apps/web/src/features/plugins/runtime/plugin-network-requests.test.ts) [DOWNLOAD](../apps/web/src/services/resource-download.ts) [DOWNLOADTOOLS](../packages/agent/src/tools/download-tools.ts) [DOWNLOADPROOF](../apps/web/src/services/resource-download.test.ts) [NETWORKTRANSFER](../apps/web/src/services/network-transfer-budget.ts) [NETWORKTRANSFERPROOF](../apps/web/src/services/network-transfer-budget.test.ts) [NETWORKRETRY](../apps/web/src/services/network-retry.ts) [NETWORKRETRYPROOF](../apps/web/src/services/network-retry.test.ts) [NETWORKRETRYDESKTOP](../apps/web/tests/desktop/desktop-network-retry-probe.ts) | P04, P06 |
 | <a id="SYS08"></a>SYS08 | 剪贴板写文本 | 实装 | **接通**：copy_to_clipboard[双域]<br>[设计] 用户触发的复制意图 | **接通**：services.clipboard.writeText<br>[设计] 受权剪贴板写 | 选择复制；插件动作；Agent | 共享写入限 1000000 字符，插件需 service:clipboard；取消阻止未派发写，不回滚已派发写。只接受明确复制意图，不读取剪贴板或复制图片。定向测试通过；新双端组合 E2E 待集中进行。 | [API](../packages/plugin-types/src/index.ts) [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) [TEXTACTIONS](../apps/web/src/features/reader/hooks/useReaderTextActions.ts) [HOSTIO](../apps/web/src/services/host-io.ts) [HOSTIOTOOLS](../packages/agent/src/tools/host-io-tools.ts) | P05 |
@@ -400,7 +400,7 @@
 | Memory Desk | 个人/跨书/本书记忆检索、保护图谱、来源导航、条件纠错/置顶/遗忘 | 同源 search_memory / query_book_graph / manage_memory；管理逐次批准，不注册重复插件工具 | memory:read 非按书授权；有查询观察，缺来源版本校验；非内置 |
 | WebDAV Sync | 密文 transport | 无专属工具；非敏感设置可改 | 连接/断开/同步状态，必须使用宿主控制面 |
 
-[代码] Reading Goals 同时注册 agentContextProviders 与 memoryCandidateProviders：每轮按请求书籍提供私有阅读目标，用户选择后提出书内偏好；实际宿主裁决、入库与 buildMemory 取消已在隔离 Tauri 验证。Dictionary 提供检索贡献，运行时会生成一个额外 retrieve 工具。具体带命名空间的 24 个插件 Agent 入口在库存表中列出。
+[代码] Reading Goals 同时注册 agentContextProviders 与 memoryCandidateProviders：每轮按请求书籍提供私有阅读目标，用户选择后提出书内偏好；实际宿主裁决、入库与 buildMemory 取消已在隔离 Tauri 验证。Dictionary 提供检索贡献，运行时会生成一个额外 retrieve 工具。具体带命名空间的 25 个插件 Agent 入口在库存表中列出。
 
 [代码/范围补充] 邻接仓库 `readaware-plugins` 在本轮查看的提交为 `441e3c9b2403c086459b1d4611efad6e8e1ceb72`：Theme Schedule 1.0.1 已通过 settings discover/update 与 Worker clock 组合主题定时切换，没有专属 Agent 工具；WebDAV 0.1.0 是另一个分发位置。此补充不另计主仓插件，不证明线上 marketplace 已发布或用户已安装；生成器不依赖邻接仓库。
 
@@ -408,14 +408,14 @@
 
 - Agent global：132 个。
 - Agent book：111 个。
-- Plugin ctx：252 个。
+- Plugin ctx：253 个。
 - Plugin returned interface：28 个。
 - Capability domains：6 个。
 - Capability contributions：15 个。
 - Capability services：14 个。
 - Capability schemas：3 个。
 - Settings path：74 个。
-- Native command：220 个。
+- Native command：221 个。
 - Native plugin：12 个。
 - Menu placement：16 个。
 - Shortcut：19 个。
@@ -429,11 +429,11 @@
 - Domain subscription CONVERSATION_EVENTS：4 个。
 - Feature owner：14 个。
 - First-party source plugin：15 个。
-- Plugin Agent contribution：24 个。
+- Plugin Agent contribution：25 个。
 - Plugin setting declaration：24 个。
 - Native bundled plugin：6 个。
 
-以下“已映射”只保证注册项可追到矩阵行，不意味着目标已实现。Plugin ctx 是授予当前全部 manifest 权限后的 252 个顶层可调用路径；返回的 collection/session 方法单列。Settings 74 路径是在 custom + 主/快模型配置的完整条件快照中生成，不表示未配置 AI 时也显示全部路径。Native command 包含 cfg/no-op 历史项，见 SYS18，不能算桌面能力全部对插件开放。
+以下“已映射”只保证注册项可追到矩阵行，不意味着目标已实现。Plugin ctx 是授予当前全部 manifest 权限后的 253 个顶层可调用路径；返回的 collection/session 方法单列。Settings 74 路径是在 custom + 主/快模型配置的完整条件快照中生成，不表示未配置 AI 时也显示全部路径。Native command 包含 cfg/no-op 历史项，见 SYS18，不能算桌面能力全部对插件开放。
 
 ### Agent global
 
@@ -835,6 +835,7 @@
 | `domains.memory.commands.startGraphTask` | [MEM10](#MEM10) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `domains.memory.commands.retryGraphTask` | [MEM10](#MEM10) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `domains.memory.commands.cancelGraphTask` | [MEM10](#MEM10) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `services.storage.policy` | [SYS05](#SYS05) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.storage.getDurable` | [SYS01](#SYS01) [MEM13](#MEM13) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.storage.get` | [SYS01](#SYS01) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.storage.set` | [SYS01](#SYS01) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -1250,6 +1251,7 @@
 | `storage::ai_chat_list` | [AI01](#AI01) [AI02](#AI02) [AI03](#AI03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::ai_chat_replace` | [AI01](#AI01) [AI02](#AI02) [AI03](#AI03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::ai_chat_clear` | [AI01](#AI01) [AI02](#AI02) [AI03](#AI03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::plugin_storage_usage::plugin_storage_usage` | [SYS05](#SYS05) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::plugin_docs_put` | [SYS02](#SYS02) [SYS03](#SYS03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::plugin_docs_get` | [SYS02](#SYS02) [SYS03](#SYS03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::plugin_docs_delete` | [SYS02](#SYS02) [SYS03](#SYS03) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
@@ -1573,7 +1575,7 @@
 | `maintenance-desk` | [CFG08](#CFG08) [SYS15](#SYS15) [OPS03](#OPS03) [OPS08](#OPS08) [OPS11](#OPS11) [EXT02](#EXT02) [EXT05](#EXT05) | [代码] 源码版本 0.4.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `memory-desk` | [MEM01](#MEM01) [MEM04](#MEM04) [MEM05](#MEM05) [MEM09](#MEM09) [MEM10](#MEM10) [MEM11](#MEM11) [READ01](#READ01) [EXT02](#EXT02) [EXT05](#EXT05) | [代码] 源码版本 0.11.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `reading-goals` | [AI11](#AI11) [MEM03](#MEM03) [SET23](#SET23) [STAT02](#STAT02) [STAT05](#STAT05) [STAT03](#STAT03) [EXT07](#EXT07) [EXT02](#EXT02) [EXT05](#EXT05) [SYS01](#SYS01) [SYS02](#SYS02) | [代码] 源码版本 0.5.0；源码存在不等于打包、安装、启用或模型可调用 |
-| `rss-reader` | [EXT10](#EXT10) | [代码] 源码版本 0.17.0；源码存在不等于打包、安装、启用或模型可调用 |
+| `rss-reader` | [EXT10](#EXT10) | [代码] 源码版本 0.18.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `sentence-reader` | [READ15](#READ15) [READ16](#READ16) | [代码] 源码版本 1.1.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `text-desk` | [TXT04](#TXT04) [TXT05](#TXT05) [TXT06](#TXT06) [TXT07](#TXT07) [TXT10](#TXT10) [TXT11](#TXT11) [TXT12](#TXT12) [TXT13](#TXT13) [LIB01](#LIB01) [READ01](#READ01) [READ13](#READ13) [EXT01](#EXT01) [EXT02](#EXT02) [EXT05](#EXT05) [EXT06](#EXT06) [SYS09](#SYS09) [SYS13](#SYS13) | [代码] 源码版本 0.18.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `tts` | [READ17](#READ17) [READ18](#READ18) | [代码] 源码版本 0.6.0；源码存在不等于打包、安装、启用或模型可调用 |
@@ -1600,6 +1602,7 @@
 | `plugin_reading_goals_get_reading_goal` | [AI11](#AI11) [MEM03](#MEM03) [SET23](#SET23) [STAT02](#STAT02) [STAT05](#STAT05) [STAT03](#STAT03) [EXT07](#EXT07) [EXT02](#EXT02) [EXT05](#EXT05) [SYS01](#SYS01) [SYS02](#SYS02) | [代码] global/book；插件启用后才进入工具集；来源 plugins/reading-goals/src/tools.ts |
 | `plugin_reading_goals_set_reading_goal` | [AI11](#AI11) [MEM03](#MEM03) [SET23](#SET23) [STAT02](#STAT02) [STAT05](#STAT05) [STAT03](#STAT03) [EXT07](#EXT07) [EXT02](#EXT02) [EXT05](#EXT05) [SYS01](#SYS01) [SYS02](#SYS02) | [代码] global/book；插件启用后才进入工具集；来源 plugins/reading-goals/src/tools.ts |
 | `plugin_reading_goals_clear_reading_goal` | [AI11](#AI11) [MEM03](#MEM03) [SET23](#SET23) [STAT02](#STAT02) [STAT05](#STAT05) [STAT03](#STAT03) [EXT07](#EXT07) [EXT02](#EXT02) [EXT05](#EXT05) [SYS01](#SYS01) [SYS02](#SYS02) | [代码] global/book；插件启用后才进入工具集；来源 plugins/reading-goals/src/tools.ts |
+| `plugin_rss_reader_storage_policy` | [EXT10](#EXT10) | [代码] 仅 global；插件启用后才进入工具集；来源 plugins/rss-reader/src/agent-tools.ts |
 | `plugin_rss_reader_import_opml` | [EXT10](#EXT10) | [代码] 仅 global；插件启用后才进入工具集；来源 plugins/rss-reader/src/agent-tools.ts |
 | `plugin_rss_reader_unsubscribe_feed` | [EXT10](#EXT10) | [代码] 仅 global；插件启用后才进入工具集；来源 plugins/rss-reader/src/agent-tools.ts |
 | `plugin_rss_reader_list_feeds` | [EXT10](#EXT10) | [代码] 仅 global；插件启用后才进入工具集；来源 plugins/rss-reader/src/agent-tools.ts |
