@@ -172,8 +172,8 @@ export type StoredBookFileResult =
 
 /** Pull a book's bytes off the relay into the local store, mapping the typed
  *  fetch outcome onto the reader-facing missing reasons. */
-async function fetchBookFile(bookId: string): Promise<{ ok: true } | { ok: false; reason: BookFileMissingReason }> {
-  const fetched = await fetchRemoteBlob(bookFileKey(bookId));
+async function fetchBookFile(bookId: string, fetchBlob = fetchRemoteBlob): Promise<{ ok: true } | { ok: false; reason: BookFileMissingReason }> {
+  const fetched = await fetchBlob(bookFileKey(bookId));
   switch (fetched.outcome) {
     case "fetched":
       return { ok: true };
@@ -194,13 +194,13 @@ async function fetchBookFile(bookId: string): Promise<{ ok: true } | { ok: false
   }
 }
 
-export async function getStoredBookBlob(bookId: string): Promise<Blob | null> {
+export async function getStoredBookBlob(bookId: string, fetchBlob = fetchRemoteBlob): Promise<Blob | null> {
   if (!isTauri()) return null;
   let bytes = await getDesktopBlob(bookFileKey(bookId));
   // Not on this device — the new-device bootstrap case: the manifest row came
   // from replaying `book.imported`, the bytes live on the relay. Lazy-fetch
   // decrypts into the local store, so this path runs once per book.
-  if (!bytes && (await fetchBookFile(bookId)).ok) {
+  if (!bytes && (await fetchBookFile(bookId, fetchBlob)).ok) {
     bytes = await getDesktopBlob(bookFileKey(bookId));
   }
   return bytes ? new Blob([bytes]) : null;

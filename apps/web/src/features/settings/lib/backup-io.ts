@@ -1,7 +1,8 @@
 /**
- * Legacy v1 subset: KV, books, collections, annotations and locally available
- * original files. The profile summary occupies its legacy KV wire key but is
- * read/restored through the event projection, not raw KV. Other profile fields,
+ * Legacy v1 subset: KV, books, collections, annotations and available original
+ * files (including lazy downloads when connected). The profile summary uses
+ * its legacy KV wire key but is read/restored through the event projection,
+ * not raw KV. Other profile fields,
  * entities, independent chats, memories, plugin documents, secrets and
  * the event log are NOT included. This is not a whole-device backup.
  * Import upserts preserved keys/IDs and may overwrite existing records; its
@@ -11,6 +12,7 @@
  */
 import { dumpLocalKV, restoreLocalKV } from "../../../platform/local-store";
 import { withPluginDataBackup } from "../../../platform/plugin-data-access";
+import { withSyncBackup, type fetchRemoteBlob } from "../../../platform/sync/sync-scheduler";
 import { withReadingBackup } from "../../reader/lib/reading-trace-runtime";
 import { LEGACY_PROFILE_KEY, readUserProfileSnapshot, restoreUserProfile } from "../../../domain/user-profile";
 import {
@@ -73,10 +75,11 @@ function settledValue<T>(result: PromiseSettledResult<T>): T {
 
 /** Serialize the v1 backup subset into one portable JSON string. */
 export async function exportBackup(signal?: AbortSignal): Promise<string> {
-  return withPluginDataBackup("export", () => withReadingBackup(exportBackupContents, signal), signal);
+  return withSyncBackup(fetchBlob => withPluginDataBackup("export",
+    () => withReadingBackup(() => exportBackupContents(fetchBlob), signal), signal), signal);
 }
 
-async function exportBackupContents(): Promise<string> {
+async function exportBackupContents(fetchBlob: typeof fetchRemoteBlob): Promise<string> {
   // Retain the backup boundary until every dispatched read settles, even when
   // one fails. A rejected export must not release still-running native work.
   const results = await Promise.allSettled([
@@ -100,7 +103,7 @@ async function exportBackupContents(): Promise<string> {
 
   const files: Record<string, string> = {};
   for (const book of books) {
-    const blob = await getStoredBookBlob(book.id);
+    const blob = await getStoredBookBlob(book.id, fetchBlob);
     if (blob) files[book.id] = bytesToBase64(new Uint8Array(await blob.arrayBuffer()));
   }
 
@@ -126,7 +129,8 @@ async function exportBackupContents(): Promise<string> {
 export async function importBackup(json: string, signal?: AbortSignal): Promise<BackupImportResult> {
   // Cancellation can stop admission/draining, but does not revoke a merge
   // which has begun writing. Its legacy partial-write behavior is unchanged.
-  return withPluginDataBackup("import", () => withReadingBackup(() => importBackupContents(json), signal), signal);
+  return withSyncBackup(() => withPluginDataBackup("import",
+    () => withReadingBackup(() => importBackupContents(json), signal), signal), signal);
 }
 
 async function importBackupContents(json: string): Promise<BackupImportResult> {

@@ -19,10 +19,12 @@ import { emitAppEvent } from "../app-events";
 import { hydrateMissingCovers, stopCoverHydration } from "./cover-hydrator";
 import { reconcileDuplicateBooks } from "../book-dedupe";
 import { localDeviceId, observeRemoteHlcStamps, onDomainEventBroadcast } from "../domain-events";
-import { localKV } from "../local-store";
+import { localKV, flushLocalKV } from "../local-store";
+import { durableWrites } from "../write-settlement";
+import { SyncWorkGate } from "./sync-work-gate";
 import { createLogger } from "../logger";
 import { refreshRoamingPreferences, republishRoamingSecrets } from "../roaming-preferences";
-import { deleteSecret, deleteSecretAsync, getSecret, setSecretAsync } from "../secret-store";
+import { deleteSecretAsync, getSecret, setSecretAsync } from "../secret-store";
 import { fromBase64 } from "../sync-envelope";
 import { classifySyncError } from "./classify-sync-error";
 import { clearReauthNoticeDismissal } from "./reauth-notice";
@@ -254,12 +256,17 @@ async function resolveEngine(): Promise<SyncEngine> {
 const isAuthRejection = (error: unknown): boolean =>
   error instanceof RelayError && error.status === 401;
 
+const syncWork = new SyncWorkGate();
 let running = false;
 
 /** How soon the next cycle runs while a bootstrap's backfill is still owed. */
 const BACKFILL_FOLLOW_UP_MS = 1_500;
 
-async function runCycle(): Promise<SyncCycleOutcome | null> {
+function runCycle(isCurrent = () => true): Promise<SyncCycleOutcome | null> {
+  return syncWork.run(() => isCurrent() ? runAcceptedCycle() : Promise.resolve(null));
+}
+
+async function runAcceptedCycle(): Promise<SyncCycleOutcome | null> {
   if (running) return null;
   running = true;
   // Denominators first: what the outbox holds now is what this cycle's push
@@ -352,7 +359,11 @@ export type RemoteBlobFetch =
       detail: string;
     };
 
-export async function fetchRemoteBlob(key: string): Promise<RemoteBlobFetch> {
+export function fetchRemoteBlob(key: string): Promise<RemoteBlobFetch> {
+  return syncWork.run(() => fetchAcceptedRemoteBlob(key));
+}
+
+async function fetchAcceptedRemoteBlob(key: string): Promise<RemoteBlobFetch> {
   if (!isTauri()) return { outcome: "unavailable", reason: "not-tauri" };
   const profile = await getSyncProfile();
   if (!profile.syncEnabled) return { outcome: "unavailable", reason: "sync-off" };
@@ -385,6 +396,22 @@ export async function fetchRemoteBlob(key: string): Promise<RemoteBlobFetch> {
   } finally {
     if (restoreState !== null) setStatus({ state: restoreState, progress: null });
   }
+}
+
+/** Host-only backup admission. Acquire BEFORE plugin-data exclusion: an
+ * accepted cycle may still need to finish its roaming preference overlay.
+ * The supplied fetcher is valid only within this operation, allowing the v1
+ * exporter to retrieve missing source bytes without waiting behind itself. */
+export function withSyncBackup<T>(operation: (fetchBlob: typeof fetchRemoteBlob) => Promise<T>, signal?: AbortSignal): Promise<T> {
+  return syncWork.withPaused(async runOwned => {
+    // Transport journals use the write-through KV queue; commit observers can
+    // enqueue events after their native receipts. Preserve that causal tail.
+    await flushLocalKV();
+    // Cancelling backup must not release a cycle's still-dispatched event tail.
+    await durableWrites.settle();
+    signal?.throwIfAborted();
+    return operation(key => runOwned(() => fetchAcceptedRemoteBlob(key)));
+  }, signal);
 }
 
 // ── Scheduler lifecycle ──────────────────────────────────────────────────────
@@ -470,15 +497,17 @@ export function startSyncScheduler(): () => void {
   };
 
   const tick = () => {
-    if (sessionRejected) return;
-    void runCycle()
+    if (disposed || sessionRejected) return;
+    void runCycle(() => !disposed && !sessionRejected)
       .then((outcome) => {
+        if (disposed) return;
         failures = 0;
         // A bootstrapped device owes the pre-frontier log: keep cycling
         // briskly (each cycle backfills a bounded slice) until it is whole.
         schedule(outcome && outcome.backfillRemaining > 0 ? BACKFILL_FOLLOW_UP_MS : PULL_INTERVAL_MS);
       })
       .catch((error) => {
+        if (disposed) return;
         if (isAuthRejection(error)) {
           onAuthRejected();
           return;
@@ -595,7 +624,7 @@ export function startSyncScheduler(): () => void {
     });
     // Duplicates that predate this build (or arrived while sync was off)
     // reconcile once at start; pull-time detection covers everything after.
-    void reconcileDuplicateBooks();
+    void syncWork.run(() => disposed ? Promise.resolve(0) : reconcileDuplicateBooks());
     if (!connection) {
       // The doorbell socket is a relay feature; transports poll.
       void openWatch();
@@ -649,51 +678,55 @@ export async function persistConnection(options: {
   accountId: string;
   masterKeyBase64: string;
 }): Promise<void> {
-  await setSecretAsync("sync.session", options.session);
-  await setSecretAsync("sync.master-key", options.masterKeyBase64);
-  // Before the scheduler wakes up against this account: if the bookkeeping
-  // belongs to a different one, it resets here — otherwise "already pushed"
-  // marks earned against the OLD account's mailbox would silently withhold
-  // the entire history from the new one.
-  await adoptSyncAccount(options.accountId);
-  const profile = await getSyncProfile();
-  await setSyncProfile({
-    ...profile,
-    syncEnabled: true,
-    remoteAccountId: options.accountId,
-    encryptionKeyRef: "sync.master-key",
+  return syncWork.run(async () => {
+    await setSecretAsync("sync.session", options.session);
+    await setSecretAsync("sync.master-key", options.masterKeyBase64);
+    // Before the scheduler wakes up against this account: if the bookkeeping
+    // belongs to a different one, it resets here — otherwise "already pushed"
+    // marks earned against the OLD account's mailbox would silently withhold
+    // the entire history from the new one.
+    await adoptSyncAccount(options.accountId);
+    const profile = await getSyncProfile();
+    await setSyncProfile({
+      ...profile,
+      syncEnabled: true,
+      remoteAccountId: options.accountId,
+      encryptionKeyRef: "sync.master-key",
+    });
+    // Credentials that predate this connection (an API key entered while
+    // offline) get sealed into the log now, so they roam without waiting for
+    // their next edit.
+    await republishRoamingSecrets();
+    // A fresh session opens a fresh epoch: if THIS one ever dies, the "sign in
+    // again" notice must prompt anew, whatever the user dismissed before.
+    clearReauthNoticeDismissal();
+    restartSyncScheduler();
   });
-  // Credentials that predate this connection (an API key entered while
-  // offline) get sealed into the log now, so they roam without waiting for
-  // their next edit.
-  await republishRoamingSecrets();
-  // A fresh session opens a fresh epoch: if THIS one ever dies, the "sign in
-  // again" notice must prompt anew, whatever the user dismissed before.
-  clearReauthNoticeDismissal();
-  restartSyncScheduler();
 }
 
 export async function disconnectSync(): Promise<void> {
-  const profile = await getSyncProfile();
-  // Only a relay connection has a server session to revoke; a transport
-  // connection tears down locally (its remote is dumb storage).
-  if (!parseTransportAccountId(profile.remoteAccountId)) {
-    try {
-      await syncRelayClient().logout();
-    } catch {
-      // Best effort — the local teardown must succeed regardless.
+  return syncWork.run(async () => {
+    const profile = await getSyncProfile();
+    // Only a relay connection has a server session to revoke; a transport
+    // connection tears down locally (its remote is dumb storage).
+    if (!parseTransportAccountId(profile.remoteAccountId)) {
+      try {
+        await syncRelayClient().logout();
+      } catch {
+        // Best effort — the local teardown must succeed regardless.
+      }
     }
-  }
-  deleteSecret("sync.session");
-  deleteSecret("sync.master-key");
-  clearReauthNoticeDismissal();
-  await setSyncProfile({
-    ...profile,
-    syncEnabled: false,
-    remoteAccountId: null,
-    encryptionKeyRef: null,
+    await deleteSecretAsync("sync.session");
+    await deleteSecretAsync("sync.master-key");
+    clearReauthNoticeDismissal();
+    await setSyncProfile({
+      ...profile,
+      syncEnabled: false,
+      remoteAccountId: null,
+      encryptionKeyRef: null,
+    });
+    restartSyncScheduler();
   });
-  restartSyncScheduler();
 }
 
 /**
@@ -709,23 +742,25 @@ export async function persistTransportConnection(options: {
   endpointId: string;
   masterKeyBase64: string;
 }): Promise<void> {
-  await setSecretAsync("sync.master-key", options.masterKeyBase64);
-  // No relay session in transport mode; a leftover one must not linger as a
-  // phantom credential.
-  await deleteSecretAsync("sync.session");
-  // Different mailbox ⇒ wholesale outbox/cursor reset, same as switching
-  // relay accounts — "already pushed" was only ever true of the old remote.
-  await adoptSyncAccount(transportAccountId(options.ref, options.endpointId));
-  const profile = await getSyncProfile();
-  await setSyncProfile({
-    ...profile,
-    syncEnabled: true,
-    remoteAccountId: transportAccountId(options.ref, options.endpointId),
-    encryptionKeyRef: "sync.master-key",
+  return syncWork.run(async () => {
+    await setSecretAsync("sync.master-key", options.masterKeyBase64);
+    // No relay session in transport mode; a leftover one must not linger as a
+    // phantom credential.
+    await deleteSecretAsync("sync.session");
+    // Different mailbox ⇒ wholesale outbox/cursor reset, same as switching
+    // relay accounts — "already pushed" was only ever true of the old remote.
+    await adoptSyncAccount(transportAccountId(options.ref, options.endpointId));
+    const profile = await getSyncProfile();
+    await setSyncProfile({
+      ...profile,
+      syncEnabled: true,
+      remoteAccountId: transportAccountId(options.ref, options.endpointId),
+      encryptionKeyRef: "sync.master-key",
+    });
+    // Credentials that predate this connection (an API key entered while
+    // offline) get sealed into the log now, so they roam without waiting for
+    // their next edit.
+    await republishRoamingSecrets();
+    restartSyncScheduler();
   });
-  // Credentials that predate this connection (an API key entered while
-  // offline) get sealed into the log now, so they roam without waiting for
-  // their next edit.
-  await republishRoamingSecrets();
-  restartSyncScheduler();
 }
