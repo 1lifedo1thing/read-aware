@@ -5,6 +5,7 @@
 use super::*;
 use rusqlite::backup::{Backup, StepResult};
 use std::collections::BTreeMap;
+#[cfg(test)]
 use tempfile::TempDir;
 
 #[path = "backup_snapshot_files.rs"]
@@ -53,7 +54,7 @@ pub(crate) struct BackupManifest {
 /// over IPC and no partial preparation is published. Drop cleans failures/results.
 #[derive(Debug)]
 pub(crate) struct BackupSnapshot {
-    directory: TempDir,
+    directory: super::backup_staging::BackupDirectory,
     pub manifest: BackupManifest,
 }
 impl BackupSnapshot {
@@ -122,7 +123,7 @@ fn program_inventory(
 pub(crate) fn capture(
     conn: &mut Connection,
     data_dir: &Path,
-    staging_root: &Path,
+    staging_root: &super::backup_staging::BackupStaging,
     bundled: &crate::plugins::BundledPrograms,
     mut progress: impl FnMut(CaptureProgress) -> Result<(), CommandError>,
 ) -> Result<BackupSnapshot, CommandError> {
@@ -144,9 +145,7 @@ pub(crate) fn capture(
             "plugin update must finish before full backup",
         ));
     }
-    let directory = tempfile::Builder::new()
-        .prefix("readaware-backup-")
-        .tempdir_in(staging_root)?;
+    let directory = super::backup_staging::BackupDirectory::new(staging_root)?;
     // tempfile directories are private on Unix; make the confidentiality
     // requirement explicit because the prepared snapshot includes secret.key.
     #[cfg(unix)]
@@ -258,6 +257,7 @@ pub(crate) fn capture(
             "logs",
             "caches",
             "temporary-resources",
+            "private-backup-staging",
             "staged-plugin-candidates",
             "plugin-update-backups",
         ]
@@ -298,7 +298,7 @@ pub(crate) fn capture_fixture(
     capture(
         conn,
         data_dir,
-        staging_root,
+        &super::backup_staging::BackupStaging::fixture(staging_root),
         &crate::plugins::BundledPrograms::fixture(data_dir),
         progress,
     )

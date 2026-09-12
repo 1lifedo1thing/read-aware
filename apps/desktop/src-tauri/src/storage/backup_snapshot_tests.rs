@@ -78,6 +78,18 @@ fn full_backup_snapshot_preserves_database_blobs_plugins_and_credentials_without
     })
     .unwrap();
     assert_eq!(snapshot.manifest.tables, original_tables);
+    assert_eq!(
+        crate::storage::backup_staging::BackupStaging::fixture(staging.path())
+            .cleanup()
+            .unwrap()
+            .active,
+        1
+    );
+    assert!(!snapshot
+        .manifest
+        .files
+        .iter()
+        .any(|file| file.path.contains(".lease.sqlite") || file.path.contains(".control")));
     assert_eq!(table_counts(&conn).unwrap(), original_tables);
     assert_eq!(snapshot.manifest.files.len(), 6); // DB, source blob, three plugin files, credential key
     assert!(reported >= bytes.len() as u64);
@@ -208,7 +220,12 @@ fn full_backup_snapshot_missing_or_changed_blob_never_publishes_partial_preparat
             Ok(())
         });
         assert!(result.is_err(), "{mode}");
-        assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
+        assert_eq!(
+            crate::storage::backup_staging::fixture_entries(staging.path())
+                .unwrap()
+                .count(),
+            0
+        );
         assert!(conn.is_autocommit());
     }
 }
@@ -234,7 +251,12 @@ fn full_backup_snapshot_blocks_pending_updates_and_does_not_generate_missing_sec
         "secrets/unavailable"
     );
     assert!(!data.path().join("secret.key").exists());
-    assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(staging.path())
+            .unwrap()
+            .count(),
+        0
+    );
 }
 
 #[test]
@@ -249,7 +271,12 @@ fn full_backup_snapshot_cancel_and_staged_tampering_are_detected() {
             Ok(())
         });
         assert_eq!(result.unwrap_err().code, CODE_CANCELLED);
-        assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
+        assert_eq!(
+            crate::storage::backup_staging::fixture_entries(staging.path())
+                .unwrap()
+                .count(),
+            0
+        );
     }
     let snapshot = capture_fixture(&mut conn, data.path(), staging.path(), |_| Ok(())).unwrap();
     assert_eq!(
@@ -279,5 +306,10 @@ fn full_backup_snapshot_rejects_symlink_sources_and_never_reads_the_target() {
             .code,
         CODE_INCOMPLETE
     );
-    assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 1); // only the original outside file
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(staging.path())
+            .unwrap()
+            .count(),
+        1
+    ); // only the original outside file
 }

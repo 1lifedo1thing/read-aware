@@ -3,7 +3,7 @@ use super::*;
 pub(crate) fn read_archive(
     source: impl Read,
     password: SecretString,
-    staging_root: &Path,
+    staging_root: &crate::storage::backup_staging::BackupStaging,
     mut check: impl FnMut() -> Result<(), CommandError>,
 ) -> Result<AuthenticatedBackup, CommandError> {
     password_policy(&password)?;
@@ -32,12 +32,10 @@ pub(crate) fn read_archive(
 /// extracted member is exposed and no SQLite file opened until authenticated EOF.
 pub(super) fn extract(
     decrypted: impl Read,
-    staging_root: &Path,
+    staging_root: &crate::storage::backup_staging::BackupStaging,
     check: &mut impl FnMut() -> Result<(), CommandError>,
 ) -> Result<AuthenticatedBackup, CommandError> {
-    let directory = tempfile::Builder::new()
-        .prefix("readaware-backup-read-")
-        .tempdir_in(staging_root)?;
+    let directory = crate::storage::backup_staging::BackupDirectory::new(staging_root)?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

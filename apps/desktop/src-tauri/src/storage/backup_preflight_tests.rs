@@ -44,7 +44,7 @@ fn fixture() -> AuthenticatedBackup {
         fs::copy(snapshot.directory().join(&file.path), to).unwrap();
     }
     AuthenticatedBackup {
-        directory,
+        directory: crate::storage::backup_staging::BackupDirectory::fixture(directory),
         manifest: snapshot.manifest.clone(),
     }
 }

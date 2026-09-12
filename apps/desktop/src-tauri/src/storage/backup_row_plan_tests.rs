@@ -32,7 +32,7 @@ fn incoming(edit: impl FnOnce(&Connection, &std::path::Path)) -> backup_archive:
     }
     backup_archive::preflight(
         AuthenticatedBackup {
-            directory,
+            directory: crate::storage::backup_staging::BackupDirectory::fixture(directory),
             manifest: snapshot.manifest.clone(),
         },
         Arc::new(AtomicBool::new(false)),
@@ -70,7 +70,7 @@ fn backup_row_plan_covers_every_current_table_and_preserves_actual_legacy_and_pr
         document(conn, "notes", "one");
         conn.execute_batch("INSERT INTO ai_conversations(id,created_at,updated_at) VALUES ('chat','now','now'); INSERT INTO ai_messages(id,conversation_id,role,seq,content,created_at,parts_json,error) VALUES ('message','chat','assistant',0,'same content','now','[]','source presentation'); INSERT INTO vocabulary_entries(id,term,language,entry_json,added_at) VALUES ('old-word','word','en','{}','now');").unwrap();
     });
-    let plan = backup_archive::plan_events(source, &mut target, stage.path(), || Ok(()))
+    let plan = backup_archive::plan_events_fixture(source, &mut target, stage.path(), || Ok(()))
         .unwrap()
         .plan_rows(&mut target, || Ok(()))
         .unwrap();
@@ -201,7 +201,7 @@ fn backup_row_plan_routes_credentials_runtime_bindings_and_arbitrary_plugin_keys
         document(conn, "a|b", "c");
         document(conn, "a", "b|c");
     });
-    let plan = backup_archive::plan_events(source, &mut target, stage.path(), || Ok(()))
+    let plan = backup_archive::plan_events_fixture(source, &mut target, stage.path(), || Ok(()))
         .unwrap()
         .plan_rows(&mut target, || Ok(()))
         .unwrap();
@@ -261,7 +261,7 @@ fn backup_row_plan_rejects_unknown_tables_unsettled_updates_and_stale_targets_an
         if case == 1 {
             target.execute_batch("INSERT INTO plugin_update_journal(update_id,plugin_id,baseline_json,phase) VALUES ('pending','proof','{}','prepared')").unwrap();
         }
-        let events = backup_archive::plan_events(
+        let events = backup_archive::plan_events_fixture(
             incoming(|conn, _| memory(conn, "source", "private")),
             &mut target,
             stage.path(),
@@ -300,7 +300,7 @@ fn backup_row_plan_rejects_unknown_tables_unsettled_updates_and_stale_targets_an
             }
         );
         assert!(!source_path.exists());
-        assert_eq!(fs::read_dir(stage.path()).unwrap().count(), 0);
+        assert_eq!(crate::storage::backup_staging::fixture_entries(stage.path()).unwrap().count(), 0);
         assert!(target.is_autocommit());
     }
 }
@@ -312,7 +312,7 @@ fn backup_row_plan_reuses_the_event_target_view_during_concurrent_wal_changes() 
     let path = root.path().join("db");
     let mut target = db(&path);
     kv(&target, "shared", "same");
-    let events = backup_archive::plan_events(
+    let events = backup_archive::plan_events_fixture(
         incoming(|conn, _| kv(conn, "shared", "same")),
         &mut target,
         stage.path(),

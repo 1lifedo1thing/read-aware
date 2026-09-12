@@ -795,6 +795,20 @@ pub fn run() {
                 app.deep_link().register_all()?;
             }
 
+            // Disposable plaintext preparation is independent of DB recovery.
+            // Cross-process leases protect live tasks; cleanup never blocks boot.
+            let backup_staging = storage::backup_staging::BackupStaging::for_app(&app.path().app_data_dir()?);
+            app.manage(backup_staging.clone());
+            tauri::async_runtime::spawn_blocking(move || {
+                match backup_staging.cleanup() {
+                    Ok(report) if report.skipped > 0 || report.failed > 0 =>
+                        log::warn!("backup staging cleanup incomplete: removed={}, active={}, skipped={}, failed={}", report.removed, report.active, report.skipped, report.failed),
+                    Ok(report) if report.removed > 0 => log::info!("backup staging cleanup: removed={}, active={}", report.removed, report.active),
+                    Ok(_) => {},
+                    Err(error) => log::warn!("backup staging cleanup deferred: {error}"),
+                }
+            });
+
             // A failed migration or unreadable database is the most likely
             // real-world "app dies at launch" cause — make sure it is the
             // first thing the log file explains before the process goes down.

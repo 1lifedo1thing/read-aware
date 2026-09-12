@@ -72,6 +72,7 @@ mod plugin_docs;
 pub use plugin_docs::*;
 mod plugin_data;
 pub use plugin_data::*;
+pub(crate) mod backup_staging;
 pub(crate) mod backup_reading;
 pub(crate) use backup_reading::*;
 mod credential_crypto;

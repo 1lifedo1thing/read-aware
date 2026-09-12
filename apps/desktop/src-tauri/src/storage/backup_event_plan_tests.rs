@@ -28,7 +28,8 @@ fn source(events: &[(&str, i64, &str, &str)]) -> PreflightedBackup {
         insert(&conn, id, *wall, device, payload);
     }
     let snapshot =
-        backup_snapshot::capture_fixture(&mut conn, root.path(), staging.path(), |_| Ok(())).unwrap();
+        backup_snapshot::capture_fixture(&mut conn, root.path(), staging.path(), |_| Ok(()))
+            .unwrap();
     let directory = tempfile::tempdir().unwrap();
     fs::copy(
         snapshot.directory().join("database.sqlite"),
@@ -37,7 +38,7 @@ fn source(events: &[(&str, i64, &str, &str)]) -> PreflightedBackup {
     .unwrap();
     backup_archive::preflight(
         AuthenticatedBackup {
-            directory,
+            directory: crate::storage::backup_staging::BackupDirectory::fixture(directory),
             manifest: snapshot.manifest.clone(),
         },
         Arc::new(AtomicBool::new(false)),
@@ -77,7 +78,8 @@ fn backup_event_plan_distinguishes_duplicate_id_clock_and_double_conflicts_witho
         ("e-both", 50, "source", "{}"),
     ]);
     let source_path = source.archive().directory().to_owned();
-    let plan = plan_events(source, &mut target, staging.path(), || Ok(())).unwrap();
+    let plan = backup_archive::plan_events_fixture(source, &mut target, staging.path(), || Ok(()))
+        .unwrap();
     let plan_path = plan.directory.path().to_owned();
     assert_eq!(
         (
@@ -145,7 +147,9 @@ fn backup_event_plan_full_database_revision_covers_private_state_schema_types_an
     let staging = tempfile::tempdir().unwrap();
     let mut target = database(&root.path().join("db"));
     target.execute_batch("CREATE TABLE extra_local(id TEXT PRIMARY KEY, value); INSERT INTO extra_local VALUES ('one',X'6162');").unwrap();
-    let plan = plan_events(source(&[]), &mut target, staging.path(), || Ok(())).unwrap();
+    let plan =
+        backup_archive::plan_events_fixture(source(&[]), &mut target, staging.path(), || Ok(()))
+            .unwrap();
     for sql in [
         "UPDATE extra_local SET value='ab'", // same bytes, different SQLite type
         "UPDATE local_device SET device_id='changed'",
@@ -170,7 +174,7 @@ fn backup_event_plan_uses_one_wal_view_and_rejects_a_changed_target_at_decision_
     insert(&target, "same", 10, "device", "{}");
     let writer = Connection::open(&path).unwrap();
     let mut steps = 0;
-    let plan = plan_events(
+    let plan = backup_archive::plan_events_fixture(
         source(&[("same", 10, "device", "{}")]),
         &mut target,
         staging.path(),
@@ -212,13 +216,18 @@ fn backup_event_plan_cancellation_and_malformed_target_never_publish_partial_pla
     let source = source(&[("bad", 1, "device", "{}")]);
     let source_path = source.archive().directory().to_owned();
     assert_eq!(
-        plan_events(source, &mut target, staging.path(), || Ok(()))
+        backup_archive::plan_events_fixture(source, &mut target, staging.path(), || Ok(()))
             .unwrap_err()
             .code,
         "db/error"
     );
     assert!(!source_path.exists());
-    assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(staging.path())
+            .unwrap()
+            .count(),
+        0
+    );
     assert!(target.is_autocommit());
     target.execute("DELETE FROM domain_events", []).unwrap();
     let rows: Vec<_> = (0..200)
@@ -232,15 +241,18 @@ fn backup_event_plan_cancellation_and_malformed_target_never_publish_partial_pla
     );
     let source_path = source.archive().directory().to_owned();
     let mut saw_partial = false;
-    let error = plan_events(source, &mut target, staging.path(), || {
+    let error = backup_archive::plan_events_fixture(source, &mut target, staging.path(), || {
         // Cancel during actual comparison, after the private plan DB exists.
-        if fs::read_dir(staging.path()).unwrap().any(|entry| {
-            entry
-                .unwrap()
-                .path()
-                .join("event-plan.sqlite-journal")
-                .exists()
-        }) {
+        if crate::storage::backup_staging::fixture_entries(staging.path())
+            .unwrap()
+            .any(|entry| {
+                entry
+                    .unwrap()
+                    .path()
+                    .join("event-plan.sqlite-journal")
+                    .exists()
+            })
+        {
             saw_partial = true;
             return Err(CommandError::new("backup/cancelled", "cancelled"));
         }
@@ -250,7 +262,12 @@ fn backup_event_plan_cancellation_and_malformed_target_never_publish_partial_pla
     assert!(saw_partial);
     assert_eq!(error.code, "backup/cancelled");
     assert!(!source_path.exists());
-    assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(staging.path())
+            .unwrap()
+            .count(),
+        0
+    );
     assert!(target.is_autocommit());
 }
 
@@ -275,7 +292,7 @@ fn backup_event_plan_normalizes_json_spelling_but_preserves_large_numbers_arrays
             [],
         )
         .unwrap();
-    let plan = plan_events(
+    let plan = backup_archive::plan_events_fixture(
         source(&[
             ("decimal", 1, "device", r#"{"z":-0.0,"b":1e3,"a":1.0}"#),
             ("large", 2, "device", r#"{"value":9007199254740993}"#),
@@ -314,7 +331,7 @@ fn backup_event_plan_requires_target_to_close_its_own_pending_reading_first() {
     let source = source(&[]);
     let source_path = source.archive().directory().to_owned();
     assert_eq!(
-        plan_events(source, &mut target, staging.path(), || Ok(()))
+        backup_archive::plan_events_fixture(source, &mut target, staging.path(), || Ok(()))
             .unwrap_err()
             .code,
         "backup/incomplete"
@@ -334,5 +351,10 @@ fn backup_event_plan_requires_target_to_close_its_own_pending_reading_first() {
             .unwrap(),
         0
     );
-    assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(staging.path())
+            .unwrap()
+            .count(),
+        0
+    );
 }

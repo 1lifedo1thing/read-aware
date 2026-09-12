@@ -14,7 +14,7 @@ use std::{
     path::Path,
     rc::Rc,
 };
-use tempfile::{NamedTempFile, TempDir};
+use tempfile::NamedTempFile;
 
 #[path = "backup_archive_read.rs"]
 mod reader;
@@ -348,7 +348,7 @@ pub(crate) fn write_archive(
 /// validate SQLite schema, event identities and data references before applying.
 #[derive(Debug)]
 pub(crate) struct AuthenticatedBackup {
-    directory: TempDir,
+    directory: super::backup_staging::BackupDirectory,
     pub manifest: BackupManifest,
 }
 impl AuthenticatedBackup {
@@ -384,3 +384,18 @@ mod tests;
 #[cfg(all(test, debug_assertions))]
 #[path = "backup_runtime_programs_tests.rs"]
 mod runtime_programs_tests;
+
+#[cfg(test)]
+pub(crate) fn plan_events_fixture(
+    source: PreflightedBackup,
+    target: &mut rusqlite::Connection,
+    staging_root: &Path,
+    check: impl FnMut() -> Result<(), CommandError>,
+) -> Result<event_plan::EventPlan, CommandError> {
+    plan_events(
+        source,
+        target,
+        &super::backup_staging::BackupStaging::fixture(staging_root),
+        check,
+    )
+}

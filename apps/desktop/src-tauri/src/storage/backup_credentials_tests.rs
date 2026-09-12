@@ -302,7 +302,7 @@ fn backup_credentials_rejects_missing_extra_sync_or_locked_choices_and_cleans_pa
         );
         assert!(!root.path().join("secret.key").exists());
         assert!(!source_dir.exists());
-        assert_eq!(fs::read_dir(stage.path()).unwrap().count(), 0);
+        assert_eq!(crate::storage::backup_staging::fixture_entries(stage.path()).unwrap().count(), 0);
         assert_eq!(
             tx.query_row("SELECT count(*) FROM app_kv", [], |row| row
                 .get::<_, i64>(0))

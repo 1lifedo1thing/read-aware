@@ -1,5 +1,5 @@
 use crate::error::CommandError;
-use crate::storage::backup_snapshot::{capture, files, BackupSnapshot};
+use crate::storage::backup_snapshot::{files, BackupSnapshot};
 use crate::{
     plugins::BundledPrograms,
     storage::{
@@ -41,7 +41,7 @@ fn authenticated(snapshot: &BackupSnapshot) -> backup_archive::PreflightedBackup
     }
     backup_archive::preflight(
         AuthenticatedBackup {
-            directory,
+            directory: crate::storage::backup_staging::BackupDirectory::fixture(directory),
             manifest: snapshot.manifest.clone(),
         },
         Arc::new(AtomicBool::new(false)),
@@ -87,13 +87,17 @@ fn backup_runtime_programs_capture_and_plan_use_real_dist_not_stale_app_data() {
         .files
         .iter()
         .any(|f| f.path == "bundled-plugins/proof/assets/nested.txt"));
-    let plan =
-        backup_archive::plan_events(authenticated(&snapshot), &mut conn, stage.path(), || Ok(()))
-            .unwrap()
-            .plan_rows(&mut conn, || Ok(()))
-            .unwrap()
-            .plan_files(&mut conn, app.path(), runtime, || Ok(()))
-            .unwrap();
+    let plan = backup_archive::plan_events_fixture(
+        authenticated(&snapshot),
+        &mut conn,
+        stage.path(),
+        || Ok(()),
+    )
+    .unwrap()
+    .plan_rows(&mut conn, || Ok(()))
+    .unwrap()
+    .plan_files(&mut conn, app.path(), runtime, || Ok(()))
+    .unwrap();
     let tx = conn.transaction().unwrap();
     let facts = plan.program_facts(&tx, app.path(), || Ok(())).unwrap();
     assert!(
@@ -128,13 +132,17 @@ fn backup_runtime_programs_revalidation_sees_new_and_removed_dist_trees() {
     plugin(&repo.path().join("proof/dist"), "proof", "Proof", "one");
     let runtime = BundledPrograms::repo_fixture(repo.path());
     let snapshot = capture(&mut conn, app.path(), stage.path(), &runtime, |_| Ok(())).unwrap();
-    let plan =
-        backup_archive::plan_events(authenticated(&snapshot), &mut conn, stage.path(), || Ok(()))
-            .unwrap()
-            .plan_rows(&mut conn, || Ok(()))
-            .unwrap()
-            .plan_files(&mut conn, app.path(), runtime, || Ok(()))
-            .unwrap();
+    let plan = backup_archive::plan_events_fixture(
+        authenticated(&snapshot),
+        &mut conn,
+        stage.path(),
+        || Ok(()),
+    )
+    .unwrap()
+    .plan_rows(&mut conn, || Ok(()))
+    .unwrap()
+    .plan_files(&mut conn, app.path(), runtime, || Ok(()))
+    .unwrap();
     let tx = conn.transaction().unwrap();
     plugin(
         &repo.path().join("extra/dist"),
@@ -180,7 +188,12 @@ fn backup_runtime_programs_linked_or_cancelled_roots_never_publish_a_snapshot() 
         std::os::unix::fs::symlink(repo.path().join("original"), repo.path().join("proof/dist"))
             .unwrap();
         assert!(capture(&mut conn, app.path(), stage.path(), &runtime, |_| Ok(())).is_err());
-        assert_eq!(fs::read_dir(stage.path()).unwrap().count(), 0);
+        assert_eq!(
+            crate::storage::backup_staging::fixture_entries(stage.path())
+                .unwrap()
+                .count(),
+            0
+        );
     }
 }
 
@@ -207,9 +220,30 @@ fn backup_runtime_programs_rebuild_during_copy_cannot_publish_a_mixed_program() 
     }).unwrap_err();
     assert!(rebuilt);
     assert_eq!(error.code, "backup/changed");
-    assert_eq!(fs::read_dir(stage.path()).unwrap().count(), 0);
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(stage.path())
+            .unwrap()
+            .count(),
+        0
+    );
     assert_eq!(
         fs::read_to_string(repo.path().join("proof/dist/main.js")).unwrap(),
         "rebuilt code"
     );
+}
+
+fn capture(
+    conn: &mut Connection,
+    data_dir: &Path,
+    staging: &Path,
+    bundled: &BundledPrograms,
+    progress: impl FnMut(crate::storage::backup_snapshot::CaptureProgress) -> Result<(), CommandError>,
+) -> Result<BackupSnapshot, CommandError> {
+    crate::storage::backup_snapshot::capture(
+        conn,
+        data_dir,
+        &crate::storage::backup_staging::BackupStaging::fixture(staging),
+        bundled,
+        progress,
+    )
 }

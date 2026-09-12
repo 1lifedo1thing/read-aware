@@ -75,6 +75,8 @@ fn backup_archive_real_password_roundtrip_authenticates_all_members_and_preserve
     })
     .unwrap();
     assert_eq!(restored.manifest, snapshot.manifest);
+    let read_staging = crate::storage::backup_staging::BackupStaging::fixture(read_root.path());
+    assert_eq!(read_staging.cleanup().unwrap().active, 1);
     for member in &snapshot.manifest.files {
         assert_eq!(
             fs::read(restored.directory().join(&member.path)).unwrap(),
@@ -102,8 +104,34 @@ fn backup_archive_real_password_roundtrip_authenticates_all_members_and_preserve
     .unwrap();
     assert_eq!(inspected.report.credentials, 1);
     assert_eq!(inspected.report.blobs, 1);
-    drop(inspected);
+    assert_eq!(read_staging.cleanup().unwrap().active, 1);
+    let mut target = rusqlite::Connection::open_in_memory().unwrap();
+    storage::apply_connection_pragmas(&target).unwrap();
+    storage::register_sql_functions(&target).unwrap();
+    storage::run_migrations(&mut target).unwrap();
+    storage::ensure_local_device(&target).unwrap();
+    let plan_root = tempfile::tempdir().unwrap();
+    let plan = plan_events_fixture(inspected, &mut target, plan_root.path(), || Ok(())).unwrap();
+    assert_eq!(
+        read_staging.cleanup().unwrap().active,
+        1,
+        "source lease survives into planning"
+    );
+    assert_eq!(
+        crate::storage::backup_staging::BackupStaging::fixture(plan_root.path())
+            .cleanup()
+            .unwrap()
+            .active,
+        1
+    );
+    drop(plan);
     assert!(!restored_path.exists());
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(plan_root.path())
+            .unwrap()
+            .count(),
+        0
+    );
     let mut checked = 0;
     assert_eq!(
         write_archive(&snapshot, password(), &destination, || {
@@ -179,7 +207,12 @@ fn backup_archive_real_password_roundtrip_authenticates_all_members_and_preserve
         .code,
         CODE_UNLOCK
     );
-    assert_eq!(fs::read_dir(read_root.path()).unwrap().count(), 0);
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(read_root.path())
+            .unwrap()
+            .count(),
+        0
+    );
 }
 
 fn manifest(entries: &[(&str, &[u8])]) -> BackupManifest {
@@ -253,8 +286,18 @@ fn backup_archive_rejects_bad_members_and_unbounded_metadata_without_extracting_
     duplicate.files.push(duplicate.files[0].clone());
     cases.push(plain_tar(&duplicate, &[]));
     for bytes in cases {
-        assert!(reader::extract(Cursor::new(bytes), staging.path(), &mut || Ok(())).is_err());
-        assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
+        assert!(reader::extract(
+            Cursor::new(bytes),
+            &crate::storage::backup_staging::BackupStaging::fixture(staging.path()),
+            &mut || Ok(())
+        )
+        .is_err());
+        assert_eq!(
+            crate::storage::backup_staging::fixture_entries(staging.path())
+                .unwrap()
+                .count(),
+            0
+        );
     }
     for path in [
         "../escape",
@@ -291,19 +334,28 @@ fn backup_archive_cancellation_and_header_limits_do_not_leave_plaintext() {
     let bytes = plain_tar(&good, &[("database.sqlite", b"test")]);
     let mut calls = 0;
     assert_eq!(
-        reader::extract(bytes.as_slice(), staging.path(), &mut || {
-            calls += 1;
-            if calls > 2 {
-                Err(CommandError::new(CODE_CANCELLED, "cancelled"))
-            } else {
-                Ok(())
+        reader::extract(
+            bytes.as_slice(),
+            &crate::storage::backup_staging::BackupStaging::fixture(staging.path()),
+            &mut || {
+                calls += 1;
+                if calls > 2 {
+                    Err(CommandError::new(CODE_CANCELLED, "cancelled"))
+                } else {
+                    Ok(())
+                }
             }
-        })
+        )
         .unwrap_err()
         .code,
         CODE_CANCELLED
     );
-    assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(staging.path())
+            .unwrap()
+            .count(),
+        0
+    );
     let huge_header = [
         b"age-encryption.org/v1\n-> scrypt ".as_slice(),
         &vec![b'A'; 1024 * 1024],
@@ -316,7 +368,12 @@ fn backup_archive_cancellation_and_header_limits_do_not_leave_plaintext() {
         || Ok(())
     )
     .is_err());
-    assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(staging.path())
+            .unwrap()
+            .count(),
+        0
+    );
     assert_eq!(
         password_policy(&SecretString::from("short".to_owned()))
             .unwrap_err()
@@ -341,4 +398,18 @@ fn backup_archive_rejects_the_unreleased_v1_format_without_closed_reading_identi
     assert!(manifest_members(&manifest).is_ok());
     manifest.format = 1;
     assert_eq!(manifest_members(&manifest).unwrap_err().code, CODE_INVALID);
+}
+
+fn read_archive(
+    source: impl Read,
+    password: SecretString,
+    staging: &Path,
+    check: impl FnMut() -> Result<(), CommandError>,
+) -> Result<AuthenticatedBackup, CommandError> {
+    super::read_archive(
+        source,
+        password,
+        &crate::storage::backup_staging::BackupStaging::fixture(staging),
+        check,
+    )
 }

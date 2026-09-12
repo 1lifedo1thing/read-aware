@@ -4,7 +4,6 @@ use super::PreflightedBackup;
 use crate::error::CommandError;
 use rusqlite::{params, Connection, Transaction};
 use std::path::Path;
-use tempfile::TempDir;
 
 #[path = "backup_plan_events.rs"]
 mod events;
@@ -74,7 +73,7 @@ pub(crate) struct EventMatchPage {
 pub(crate) struct EventPlan {
     entries: Connection,
     source: PreflightedBackup,
-    directory: TempDir,
+    directory: crate::storage::backup_staging::BackupDirectory,
     target_revision: String,
     pub report: EventPlanReport,
 }
@@ -151,16 +150,14 @@ impl EventPlan {
 pub(crate) fn plan_events(
     source: PreflightedBackup,
     target: &mut Connection,
-    staging_root: &Path,
+    staging_root: &crate::storage::backup_staging::BackupStaging,
     mut check: impl FnMut() -> Result<(), CommandError>,
 ) -> Result<EventPlan, CommandError> {
     check()?;
     let target_tx = target.transaction()?;
     crate::storage::backup_reading::require_closed(&target_tx)?;
     let target_revision = revision::database(&target_tx, &mut check)?;
-    let directory = tempfile::Builder::new()
-        .prefix("readaware-backup-plan-")
-        .tempdir_in(staging_root)?;
+    let directory = crate::storage::backup_staging::BackupDirectory::new(staging_root)?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
