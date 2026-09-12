@@ -26,6 +26,33 @@ describe("live model tool snapshots", () => {
   let faux: FauxProviderRegistration;
   afterEach(() => faux?.unregister());
 
+  for (const scope of [{ kind: "book", bookId: "book" }, { kind: "global", threadId: "ambient" }] satisfies ThreadScope[]) {
+    test(`${scope.kind}: live host readiness revokes cached tools and returns after recovery without resetting history`, async () => {
+      faux = registerFauxProvider({ tokensPerSecond: 100_000 });
+      const { deps } = createInMemoryDeps({ books: [{ id: "book", title: "Book", progressPercent: 0 }] });
+      let ready = true, calls = 0;
+      deps.reader.toolContext = () => ({bookId:"book",session:true,ready,selection:true,controls:true,panels:true,modes:true,playback:true,imageBookId:null});
+      deps.reader.focus = async () => { calls++; throw Error("Must not reach host"); };
+      const seen: string[][] = [], history: string[] = [];
+      const thread = new AgentThread({ scope, deps, resolveModel: () => faux.getModel() as Model<Api>, getApiKey: () => "test",
+        completeFn: async () => fauxAssistantMessage('{"new": [], "reinforced": []}'),
+        streamFn: (model, context, options) => {
+          seen.push(context.tools?.map(tool=>tool.name) ?? []);history.push(JSON.stringify(context.messages));
+          ready = false;
+          return streamSimple(model, context, options);
+        },
+      });
+      faux.setResponses([fauxAssistantMessage([fauxToolCall("focus_reader", {target:"content"})], {stopReason:"toolUse"}),fauxAssistantMessage("Reader is unavailable.")]);
+      try {
+        const chunks=await collect(thread.sendTurn({text:"Focus the reader"}));
+        expect(seen[0]).toContain("focus_reader");expect(seen[1]).not.toContain("focus_reader");
+        expect(chunks.find(chunk=>chunk.type==="tool-step"&&chunk.phase==="end")).toMatchObject({isError:true});expect(calls).toBe(0);
+        ready=true;faux.setResponses([fauxAssistantMessage("Reader is ready again.")]);
+        await collect(thread.sendTurn({text:"Continue after recovery"}));expect(seen[2]).toContain("focus_reader");expect(history[2]).toContain("Focus the reader");
+      } finally { await thread.flushBackgroundWork();thread.dispose(); }
+    });
+  }
+
   for (const scope of [{ kind: "book", bookId: "book" }, { kind: "global", threadId: "reading-features" }] satisfies ThreadScope[]) {
     test(`${scope.kind}: disabled reading actions disappear on the next request and retained definitions cannot execute`, async () => {
       faux = registerFauxProvider({ tokensPerSecond: 100_000 });

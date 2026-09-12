@@ -36,6 +36,7 @@ import { buildReadingAiTools } from "./reading-ai-tools";
 import { buildContextBundleTools } from "./context-bundle-tools";
 import { buildOnboardingTool } from "./onboarding-tool";
 import type { AgentTurnState } from "./turn-state";
+import { prepareHostTools } from "./tool-availability";
 
 export type { AgentTurnState, SpoilerFence } from "./turn-state";
 export { createAgentTurnState } from "./turn-state";
@@ -82,5 +83,6 @@ export function buildAgentTools(
     ...buildSettingsTools(scope, deps),
   ];
   const extensions = deps.extraTools?.(scope) ?? [];
-  return [...hostTools, buildCapabilityTool(scope, hostTools, extensions), ...extensions];
+  const prepared = prepareHostTools(hostTools, scope, deps, turnState);
+  return [...prepared.enabled, buildCapabilityTool(scope, prepared.enabled, extensions, prepared.all), ...extensions];
 }

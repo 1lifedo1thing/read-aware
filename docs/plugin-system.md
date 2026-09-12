@@ -6917,3 +6917,22 @@ The separate authorized sync service owns overall connection status; this query
 introduces no per-key remote acknowledgement protocol. Migration contexts do not
 expose live usage. RSS 0.18 consumes this query in its stored-data view and global
 plugin Agent tool; these implementation checks are not Tauri or remote acceptance.
+
+
+### Host Agent tool readiness
+
+Built-in Agent tools now share ambient availability metadata and recheck it before
+execution. The product reader port supplies synchronous, content-free metadata
+from the current reader, controls, panels, mode, playback and image viewer. Each
+model request filters unavailable actions in both scopes. Queries, opening a book
+and navigation recovery remain discoverable. Input-specific authorization,
+approval and action readiness still belong to the existing domain operations.
+
+The tool catalog's `includeUnavailable` option explains withheld host tools from
+that request snapshot; `registered: false` does not grant a callable entrypoint.
+Its pagination revision includes availability. Non-product adapters without the
+snapshot report unknown readiness. Selection tools respect captured turn privacy
+as well as current preferences. Plugin contributions retain their own registration
+identity and updateState guards; host filtering cannot redirect an old plugin
+call to a same-name replacement. Scripted model/port checks are implementation
+evidence; native and autonomous-model acceptance remains pending.

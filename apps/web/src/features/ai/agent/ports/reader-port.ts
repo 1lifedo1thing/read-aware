@@ -8,12 +8,20 @@ import { readBookImage } from "../../../library/lib/book-images";
 import { getExtractedChapters } from "../../../../domain";
 import { readerReferencePreview } from "../../../../services/reader-reference-preview";
 import { createBookTextPort } from "./book-text-port";
+import { readingRuntime } from "../../../../domain/reading-runtime";
 
 /** The model and plugins consume the same host-owned reading controller. */
 export function createReaderPort(): ReaderPort {
   const reading = createReadingDomain("agent");
   const bookText = createBookTextPort();
   return { getSession: reading.queries.session, ...reading.commands,
+    toolContext: () => {
+      const session = readingRuntime.snapshot();
+      return { bookId: session.bookId, session: !!session.sessionId, ready: session.status === "ready",
+        selection: !!session.selection, controls: !!session.controls, panels: !!readerPanels.snapshot(),
+        modes: session.mode.availableModes.length > 0 || session.mode.requestedActive,
+        playback: session.playback.status !== "unavailable", imageBookId: readerImage.snapshot()?.bookId ?? null };
+    },
     getImage: async () => readerImage.snapshot(),
     openImage: ({ throughChapterIndex, ...query }, signal, guard) => readerImageOpen.open(query, async (input, requestSignal) => {
       const hrefs = throughChapterIndex === undefined ? undefined : (await getExtractedChapters(input.image.bookId))

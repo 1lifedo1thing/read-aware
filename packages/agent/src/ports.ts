@@ -161,7 +161,23 @@ export interface AnnotationsPort {
   }): Promise<void>;
 }
 
+/** Ambient capability metadata only; no text, locations or provider labels. */
+export type ReaderToolContext = {
+  bookId: string | null;
+  session: boolean;
+  ready: boolean;
+  selection: boolean;
+  controls: boolean;
+  panels: boolean;
+  modes: boolean;
+  playback: boolean;
+  imageBookId: string | null;
+};
+
 export interface ReaderPort {
+  /** Synchronous host snapshot used for discovery and immediately before tool
+   * dispatch. Omitted by non-product adapters: readiness remains unknown. */
+  toolContext?(): ReaderToolContext;
   focus(target: import("@read-aware/core").ReaderFocusTarget, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderFocusReceipt>;
   openImage(input: import("@read-aware/core").BookImageQuery & { throughChapterIndex?: number }, signal?: AbortSignal, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderImageOpenReceipt>;
   getImage(): Promise<import("@read-aware/core").ReaderImageSnapshot | null>;
