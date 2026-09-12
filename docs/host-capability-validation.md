@@ -95,7 +95,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | UI03 | 发现/执行宿主命令与可用条件 | F6 | 本机真实Worker按权限发现commands/checked/不可用原因，执行及缺失目标/旧revision/无阅读控制拒绝通过；完整命令集待验，见第二十三流程 |
 | UI04 | 快捷键查询、重绑、冲突与重置 | F6 | 编译Workspace Profiles表单冲突拒绝、mod+alt+p绑定/实际WebView派发、默认恢复通过；其他快捷键/输入上下文待验，见第二十七流程 |
 | UI05 | 菜单可见/溢出位置及自定义重排 | F6 | 真实Worker配置四表visible/overflow，书架/阅读器/选区菜单顺序与移动一致；溢出视图/外观入口可用；用户编辑器/退役恢复/窄窗待验，见第二十九流程 |
-| CFG01 | 设置 discover/read/update 与动态选项 | F6 | 本机Agent/Worker设置查询/原子修改/动态主题、编译Workspace Profiles v2十项预设保存/应用/确认删除、宿主批准与过期保护/真分页通过；字体实际翻页/搜索/应用通过；完整目录及预设重启/v1待验，见第二十六/二十八流程 |
+| CFG01 | 设置 discover/read/update 与动态选项 | F6 | 本机Agent/Worker设置查询/原子修改/动态主题、编译Workspace Profiles v2十项预设保存/应用/确认删除、宿主批准与过期保护/真分页通过；字体实际翻页/搜索/应用、预设跨Worker重启/v1七项与v2十项应用/本书覆盖保留通过；完整目录及应用进程重启待验，见第二十六/二十八/三十流程 |
 | CFG02 | 全局/本书/全书阅读设置覆盖 | F6 | 本机真实Worker全局/两书覆盖/全书修改及原生重读通过；FB2外观作用域切换及正文21px↔17px通过；其他呈现与进程重启待验，见第二十五流程 |
 | CFG03 | 清除覆盖/恢复默认/查询值来源 | F6 | Worker三目标defaults、单书/全书inherit、值来源及非法global inherit拒绝；Agent当前书重置/继承通过，实际外观UI无独立重置按钮；双scope另一端及进程重启待验，见第二十五流程 |
 | CFG04 | 阅读对齐 reading.textAlign | F6 | Worker三目标与实际设置UI Justified、预览computed justify、原生重读通过；FB2实际正文justify↔start通过；其他格式待验，见第二十五流程 |

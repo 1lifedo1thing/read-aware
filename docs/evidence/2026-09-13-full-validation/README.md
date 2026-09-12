@@ -773,3 +773,27 @@ Look up、Ask AI、Add note、Highlight、New highlight、New note、Inspect pas
 未改源代码、未重复基础门禁。详见 [menu-observations.json](./menu-observations.json)。
 仍待验：用户菜单编辑器拖动、隐藏主导航项的发现、插件退役/恢复保留位置、
 完整动作执行/窄窗口/进程重启及打包与其他平台。
+
+## 第三十个桌面流程：预设跨Worker重启与v1兼容
+
+给现有desktop-workspace-profiles-probe补单一restart入口：等待旧Worker终止、
+释放原贡献，然后重新启动编译0.6.0，不清除原生文档。cleanup仍明确清文档。
+桌面类型检查通过。开始前核实上轮测试Worker/弹窗/阅读器均0，再改源代码，
+没有让热更新丢失在途测试所有权。
+
+实际插件保存界面创建v2十项预设；另以原生plugin_docs_put插入明确标注的
+v1七项合成旧文档，不冒充从真实历史版本安装升级。预先设置全局Lora、
+独立Menlo/不跟随阅读，以及现有FB2的x-large本书覆盖。
+
+真正终止并启动Worker后，两条原生文档的ID、json、revision和时间完全保持。
+旧注册工具回调返回plugin/unavailable / Contribution registration has retired，
+新Worker list正常返回valid的v1/v2，实际界面均可打开。
+
+实际Apply v1：书架list、全局字号small/行距compact等七项按旧预设应用，新增
+Lora/Menlo/followReader=false三项保持。实际Apply v2：十项全部回到保存快照。
+两次应用后本书字号仍x-large且来源book，证明全局预设未覆盖本书设置。
+
+最后恢复原十项和原覆盖null，文档/工具/命令0。只有探针与证据改动，无产品
+修复，无重复全量门禁。详见
+[workspace-profile-restart-observations.json](./workspace-profile-restart-observations.json)。
+仍待验：真正应用进程重启/崩溃恢复、其他设置组合与实际模型选择、打包和其他平台。

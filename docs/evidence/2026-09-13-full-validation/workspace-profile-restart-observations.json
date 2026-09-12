@@ -1,0 +1,484 @@
+{
+  "date": "2026-09-13",
+  "testedHead": "413e9237 plus restart-only probe extension",
+  "environment": "macOS isolated Tauri :9223, hidden",
+  "consumer": "compiled Workspace Profiles 0.6.0",
+  "fixtureProvenance": {
+    "v2": "saved through real plugin UI",
+    "v1": "synthetic legacy seven-field document inserted through native plugin_docs_put in isolated plugin collection"
+  },
+  "checks": {
+    "preservedDocuments": true,
+    "retiredRejected": true,
+    "bothVersions": true,
+    "legacySeven": true,
+    "legacyPreservesNewFields": true,
+    "v2Ten": true,
+    "bookOverridePreserved": true,
+    "restored": true,
+    "cleanup": true
+  },
+  "steps": [
+    {
+      "name": "v1-applied-after-restart",
+      "current": {
+        "changes": [
+          {
+            "path": "shelf.layout",
+            "value": "list",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "shelf.group",
+            "value": "none",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "shelf.sort",
+            "value": "recent",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "appearance.theme",
+            "value": "system",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "appearance.motion",
+            "value": "system",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "reading.fontSize",
+            "value": "small",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "reading.lineSpacing",
+            "value": "compact",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "reading.fontFamily",
+            "value": "curated:lora",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "appearance.contentTypography.fontFamily",
+            "value": "system:Menlo",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "appearance.contentTypography.followReader",
+            "value": false,
+            "target": {
+              "kind": "global"
+            }
+          }
+        ],
+        "workspaceToken": "wp1:3bb4ead0bc2f5431ac92b8349c96dfe6653d08bd14956cc9338c3831b2d6a41e"
+      },
+      "book": {
+        "path": "reading.fontSize",
+        "value": "x-large",
+        "target": {
+          "kind": "book",
+          "bookId": "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+        },
+        "reading": {
+          "source": "book",
+          "override": "active",
+          "defaultValue": "medium"
+        }
+      }
+    },
+    {
+      "name": "v2-applied-after-restart",
+      "current": {
+        "changes": [
+          {
+            "path": "shelf.layout",
+            "value": "grid",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "shelf.group",
+            "value": "none",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "shelf.sort",
+            "value": "recent",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "appearance.theme",
+            "value": "system",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "appearance.motion",
+            "value": "system",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "reading.fontSize",
+            "value": "medium",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "reading.lineSpacing",
+            "value": "comfortable",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "reading.fontFamily",
+            "value": "curated:inter",
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "appearance.contentTypography.fontFamily",
+            "value": null,
+            "target": {
+              "kind": "global"
+            }
+          },
+          {
+            "path": "appearance.contentTypography.followReader",
+            "value": true,
+            "target": {
+              "kind": "global"
+            }
+          }
+        ],
+        "workspaceToken": "wp1:e2f7a47264786a3483a72561c726bcb9bc858fe3cda56267c5579d6765fee8cb"
+      },
+      "book": {
+        "path": "reading.fontSize",
+        "value": "x-large",
+        "target": {
+          "kind": "book",
+          "bookId": "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+        },
+        "reading": {
+          "source": "book",
+          "override": "active",
+          "defaultValue": "medium"
+        }
+      }
+    }
+  ],
+  "original": [
+    {
+      "path": "shelf.layout",
+      "value": "grid",
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "shelf.group",
+      "value": "none",
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "shelf.sort",
+      "value": "recent",
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "appearance.theme",
+      "value": "system",
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "appearance.motion",
+      "value": "system",
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "reading.fontSize",
+      "value": "medium",
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "reading.lineSpacing",
+      "value": "comfortable",
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "reading.fontFamily",
+      "value": "curated:inter",
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "appearance.contentTypography.fontFamily",
+      "value": null,
+      "target": {
+        "kind": "global"
+      }
+    },
+    {
+      "path": "appearance.contentTypography.followReader",
+      "value": true,
+      "target": {
+        "kind": "global"
+      }
+    }
+  ],
+  "originalOverrides": null,
+  "status": "done",
+  "v2Id": "315c16d5-30bb-4cf3-a075-5e71355f51bf",
+  "v1Id": "b628c6a8-4b9a-491b-89e6-d0e054a3db24",
+  "beforeRestart": {
+    "view": {
+      "layout": "grid",
+      "group": "none",
+      "sort": "recent"
+    },
+    "storedView": {
+      "layout": "grid",
+      "group": "none",
+      "sort": "recent"
+    },
+    "appearance": {
+      "theme": "system",
+      "motion": "system"
+    },
+    "profiles": [
+      {
+        "id": "b628c6a8-4b9a-491b-89e6-d0e054a3db24",
+        "json": "{\"version\":1,\"name\":\"Validation Legacy V1\",\"changes\":[{\"path\":\"shelf.layout\",\"value\":\"list\",\"target\":{\"kind\":\"global\"}},{\"path\":\"shelf.group\",\"value\":\"none\",\"target\":{\"kind\":\"global\"}},{\"path\":\"shelf.sort\",\"value\":\"recent\",\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.theme\",\"value\":\"system\",\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.motion\",\"value\":\"system\",\"target\":{\"kind\":\"global\"}},{\"path\":\"reading.fontSize\",\"value\":\"small\",\"target\":{\"kind\":\"global\"}},{\"path\":\"reading.lineSpacing\",\"value\":\"compact\",\"target\":{\"kind\":\"global\"}}]}",
+        "bookId": null,
+        "anchor": null,
+        "updatedAt": "2026-09-12T22:04:10.401Z",
+        "revision": "04951fb31fdff85d35f975888b0b2f0c"
+      },
+      {
+        "id": "315c16d5-30bb-4cf3-a075-5e71355f51bf",
+        "json": "{\"version\":2,\"name\":\"Validation Restart V2\",\"changes\":[{\"path\":\"shelf.layout\",\"value\":\"grid\",\"target\":{\"kind\":\"global\"}},{\"path\":\"shelf.group\",\"value\":\"none\",\"target\":{\"kind\":\"global\"}},{\"path\":\"shelf.sort\",\"value\":\"recent\",\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.theme\",\"value\":\"system\",\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.motion\",\"value\":\"system\",\"target\":{\"kind\":\"global\"}},{\"path\":\"reading.fontSize\",\"value\":\"medium\",\"target\":{\"kind\":\"global\"}},{\"path\":\"reading.lineSpacing\",\"value\":\"comfortable\",\"target\":{\"kind\":\"global\"}},{\"path\":\"reading.fontFamily\",\"value\":\"curated:inter\",\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.contentTypography.fontFamily\",\"value\":null,\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.contentTypography.followReader\",\"value\":true,\"target\":{\"kind\":\"global\"}}]}",
+        "bookId": null,
+        "anchor": null,
+        "updatedAt": "2026-09-12T22:03:45.175Z",
+        "revision": "e245ebc0d035e721ea4b38a9cae9b1ed"
+      }
+    ]
+  },
+  "legacy": {
+    "version": 1,
+    "name": "Validation Legacy V1",
+    "changes": [
+      {
+        "path": "shelf.layout",
+        "value": "list",
+        "target": {
+          "kind": "global"
+        }
+      },
+      {
+        "path": "shelf.group",
+        "value": "none",
+        "target": {
+          "kind": "global"
+        }
+      },
+      {
+        "path": "shelf.sort",
+        "value": "recent",
+        "target": {
+          "kind": "global"
+        }
+      },
+      {
+        "path": "appearance.theme",
+        "value": "system",
+        "target": {
+          "kind": "global"
+        }
+      },
+      {
+        "path": "appearance.motion",
+        "value": "system",
+        "target": {
+          "kind": "global"
+        }
+      },
+      {
+        "path": "reading.fontSize",
+        "value": "small",
+        "target": {
+          "kind": "global"
+        }
+      },
+      {
+        "path": "reading.lineSpacing",
+        "value": "compact",
+        "target": {
+          "kind": "global"
+        }
+      }
+    ]
+  },
+  "afterRestart": {
+    "view": {
+      "layout": "grid",
+      "group": "none",
+      "sort": "recent"
+    },
+    "storedView": {
+      "layout": "grid",
+      "group": "none",
+      "sort": "recent"
+    },
+    "appearance": {
+      "theme": "system",
+      "motion": "system"
+    },
+    "profiles": [
+      {
+        "id": "b628c6a8-4b9a-491b-89e6-d0e054a3db24",
+        "json": "{\"version\":1,\"name\":\"Validation Legacy V1\",\"changes\":[{\"path\":\"shelf.layout\",\"value\":\"list\",\"target\":{\"kind\":\"global\"}},{\"path\":\"shelf.group\",\"value\":\"none\",\"target\":{\"kind\":\"global\"}},{\"path\":\"shelf.sort\",\"value\":\"recent\",\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.theme\",\"value\":\"system\",\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.motion\",\"value\":\"system\",\"target\":{\"kind\":\"global\"}},{\"path\":\"reading.fontSize\",\"value\":\"small\",\"target\":{\"kind\":\"global\"}},{\"path\":\"reading.lineSpacing\",\"value\":\"compact\",\"target\":{\"kind\":\"global\"}}]}",
+        "bookId": null,
+        "anchor": null,
+        "updatedAt": "2026-09-12T22:04:10.401Z",
+        "revision": "04951fb31fdff85d35f975888b0b2f0c"
+      },
+      {
+        "id": "315c16d5-30bb-4cf3-a075-5e71355f51bf",
+        "json": "{\"version\":2,\"name\":\"Validation Restart V2\",\"changes\":[{\"path\":\"shelf.layout\",\"value\":\"grid\",\"target\":{\"kind\":\"global\"}},{\"path\":\"shelf.group\",\"value\":\"none\",\"target\":{\"kind\":\"global\"}},{\"path\":\"shelf.sort\",\"value\":\"recent\",\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.theme\",\"value\":\"system\",\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.motion\",\"value\":\"system\",\"target\":{\"kind\":\"global\"}},{\"path\":\"reading.fontSize\",\"value\":\"medium\",\"target\":{\"kind\":\"global\"}},{\"path\":\"reading.lineSpacing\",\"value\":\"comfortable\",\"target\":{\"kind\":\"global\"}},{\"path\":\"reading.fontFamily\",\"value\":\"curated:inter\",\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.contentTypography.fontFamily\",\"value\":null,\"target\":{\"kind\":\"global\"}},{\"path\":\"appearance.contentTypography.followReader\",\"value\":true,\"target\":{\"kind\":\"global\"}}]}",
+        "bookId": null,
+        "anchor": null,
+        "updatedAt": "2026-09-12T22:03:45.175Z",
+        "revision": "e245ebc0d035e721ea4b38a9cae9b1ed"
+      }
+    ]
+  },
+  "retiredCallback": {
+    "code": "plugin/unavailable",
+    "message": "Contribution registration has retired"
+  },
+  "restartedList": {
+    "status": "ready",
+    "nextCursor": null,
+    "items": [
+      {
+        "id": "b628c6a8-4b9a-491b-89e6-d0e054a3db24",
+        "revision": "04951fb31fdff85d35f975888b0b2f0c",
+        "valid": true,
+        "name": "Validation Legacy V1",
+        "version": 1
+      },
+      {
+        "id": "315c16d5-30bb-4cf3-a075-5e71355f51bf",
+        "revision": "e245ebc0d035e721ea4b38a9cae9b1ed",
+        "valid": true,
+        "name": "Validation Restart V2",
+        "version": 2
+      }
+    ]
+  },
+  "cleanup": {
+    "status": "done",
+    "worker": {
+      "profiles": 0,
+      "tools": 0,
+      "commands": 0
+    },
+    "actual": [
+      {
+        "path": "shelf.layout",
+        "value": "grid"
+      },
+      {
+        "path": "shelf.group",
+        "value": "none"
+      },
+      {
+        "path": "shelf.sort",
+        "value": "recent"
+      },
+      {
+        "path": "appearance.theme",
+        "value": "system"
+      },
+      {
+        "path": "appearance.motion",
+        "value": "system"
+      },
+      {
+        "path": "reading.fontSize",
+        "value": "medium"
+      },
+      {
+        "path": "reading.lineSpacing",
+        "value": "comfortable"
+      },
+      {
+        "path": "reading.fontFamily",
+        "value": "curated:inter"
+      },
+      {
+        "path": "appearance.contentTypography.fontFamily",
+        "value": null
+      },
+      {
+        "path": "appearance.contentTypography.followReader",
+        "value": true
+      }
+    ],
+    "overridesRestored": true
+  },
+  "pending": [
+    "actual application process restart / crash recovery",
+    "all profile setting combinations and models",
+    "packaged and other platforms"
+  ]
+}

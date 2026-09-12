@@ -46,10 +46,17 @@ export async function openWorkspaceProfilesProbe() {
   if (!command) throw Error("Workspace command unavailable");
   await runPluginContribution(id, manifest.name, () => command.run(), { presentation: "dialog", owner: command.run });
 }
-export async function cleanupWorkspaceProfilesProbe() {
+async function stopWorkspaceProfilesProbe() {
   await isolated();
   await worker?.terminate(); worker = undefined;
   for (const disposable of owned.splice(0).reverse()) disposable.dispose();
+}
+export async function restartWorkspaceProfilesProbe() {
+  await stopWorkspaceProfilesProbe();
+  return prepareWorkspaceProfilesProbe();
+}
+export async function cleanupWorkspaceProfilesProbe() {
+  await stopWorkspaceProfilesProbe();
   await pluginDocsClear(id);
   return { profiles: (await pluginDocsList(id, "profiles")).length,
     tools: getDefaultStore().get(pluginToolsAtom).filter(tool => tool.pluginId === id).length,
