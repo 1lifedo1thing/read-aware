@@ -7,7 +7,7 @@ import { afterLocalKVWrites } from "../../../platform/local-store";
 import { readerModesAtom, setActiveReaderMode, releaseActiveReaderMode } from "../../plugins/state/plugin-store";
 import { resolvePluginText } from "../../plugins/lib/plugin-i18n";
 import { ReadingModeController } from "../lib/reading-mode-controller";
-import { readTextUnitModeState, readTextUnitModeSettings, writeTextUnitModeConfiguration, isTextUnitModeStateCompatible } from "../lib/text-unit-mode-state";
+import { readTextUnitModeState, readTextUnitModeSettings, ReadingModeConfigurationWrites, isTextUnitModeStateCompatible } from "../lib/text-unit-mode-state";
 
 /** One mode owner for native controls and both external actors. */
 export function useReadingModeControl(bookId: string, supported: boolean) {
@@ -21,6 +21,7 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
     controller.requireDurability();
     return controller;
   }, [bookId]);
+  const configurationWrites = useMemo(() => new ReadingModeConfigurationWrites(controller.configurationConfirmed), [controller]);
   const request = useSyncExternalStore(controller.observe, controller.requested);
   const snapshot = useSyncExternalStore(controller.observe, controller.snapshot);
   const mode = modes.find(mode => mode.kind === "text-unit-navigator" && mode.key === request.modeKey) ?? null;
@@ -35,12 +36,12 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
       if (controller.requested() !== requested) return;
       const { modeKey: key, unitId } = requested;
       const saved = readTextUnitModeState(bookId);
-      return writeTextUnitModeConfiguration(bookId, {
+      return configurationWrites.write(requested.revision, bookId, {
         ...saved, active: requested.active, modeKey: key, unitId,
         resting: requested.active && key && unitId && isTextUnitModeStateCompatible(saved, key, unitId, saved.contentVersion) ? saved.resting : null,
       }, controller.snapshot().units.some(unit => unit.id === unitId));
     }));
-  }, [bookId, controller]);
+  }, [bookId, controller, configurationWrites]);
   const retire = useCallback(() => {
     // The navigator/subscription may already be unmounting. Retain cancellation.
     if (controller.retire()) persistRequest();
@@ -89,8 +90,8 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
         step: (direction, signal) => controller.step(direction, signal),
         configure: (input, signal) => controller.configure(input, signal), retire });
     });
-    return () => { unobserve(); release?.(); retire(); };
-  }, [bookId, controller, retire]);
+    return () => { unobserve(); release?.(); retire(); void afterLocalKVWrites(() => configurationWrites.release()); };
+  }, [bookId, controller, retire, configurationWrites]);
 
   const setActive = useCallback((active: boolean) => controller.choose(active), [controller]);
   const setUnit = useCallback((unitId: string) => controller.choose(controller.requested().active, unitId), [controller]);

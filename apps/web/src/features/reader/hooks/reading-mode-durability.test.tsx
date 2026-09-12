@@ -21,12 +21,14 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
   let globals: Map<string, PropertyDescriptor | undefined>;
   let contribution: ReturnType<typeof registerReaderModeContribution>;
   let hold = false;
+  let feedbackEnabled = true;
+  let second: ReturnType<typeof registerReaderModeContribution>;
   const disk = new Map<string, string>();
   const pending: { entries: [string, string | null][]; commit(): void; reject(error: unknown): void }[] = [];
   function Harness() {
     state = useReadingModeControl(bookId, true);
     useEffect(() => {
-      state.controller.feedback(state.request.revision, modeKey, state.request.unitId,
+      if (feedbackEnabled) state.controller.feedback(state.request.revision, state.request.modeKey, state.request.unitId,
         { status: state.request.active ? "ready" : "inactive", cfiRange: null, progress: null });
     }, [state.request]);
     return null;
@@ -47,12 +49,16 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
         });
       },
     } });
-    hold = false;
+    hold = false; feedbackEnabled = true;
     await localKV.removeItemAsync(legacyKey);
     await localKV.setItemAsync(settingsKey, JSON.stringify({ unitId: "sentence", tapToAdvance: false }));
     await localKV.setItemAsync(bookKey, JSON.stringify({ active: false, resting: null, modeKey, unitId: "sentence", contentVersion: "v1" }));
     contribution = registerReaderModeContribution({ id: "reader", key: modeKey, pluginId: "mode-durability",
       pluginName: "Durability", kind: "text-unit-navigator", defaultUnitId: "sentence", units: sentenceReaderUnits,
+      copy: sentenceReaderCopy, segmentText: ({ text }) => [{ start: 0, end: text.length }] });
+    await localKV.setItemAsync("read-aware-plugin.mode-second.settings", JSON.stringify({ unitId: "sentence", tapToAdvance: false }));
+    second = registerReaderModeContribution({ id: "reader", key: "mode-second:reader", pluginId: "mode-second",
+      pluginName: "Second", kind: "text-unit-navigator", defaultUnitId: "sentence", units: sentenceReaderUnits,
       copy: sentenceReaderCopy, segmentText: ({ text }) => [{ start: 0, end: text.length }] });
     root = createRoot(dom.window.document.getElementById("root")!);
     await act(async () => { root.render(<Harness />); await tick(); });
@@ -63,7 +69,7 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     hold = false;
     await act(async () => {
       for (const write of pending.splice(0)) write.commit();
-      await tick(); root.unmount(); contribution.dispose(); await flushLocalKV();
+      await tick(); root.unmount(); contribution.dispose(); second.dispose(); await flushLocalKV();
     });
     dom.window.close();
     for (const [key, value] of globals) {
@@ -143,6 +149,41 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     expect(JSON.parse(disk.get(settingsKey)!)).toMatchObject({ unitId: "paragraph", scrollToStep: true, tapToAdvance: false });
   });
 
+  test("cross-provider cancellation compensates the abandoned destination after its late commit", async () => {
+    feedbackEnabled = false;
+    const owner = new AbortController();
+    let result!: Promise<unknown>;
+    await act(async () => {
+      result = state.controller.configure({ active: true, selectModeKey: "mode-second:reader", unitId: "paragraph" }, owner.signal).catch(error => error);
+      await tick();
+      owner.abort(new Error("cancel switch")); await result;
+      pending.shift()!.commit(); await tick();
+    });
+    const secondKey = "read-aware-plugin.mode-second.settings";
+    expect(JSON.parse(disk.get(secondKey)!).unitId).toBe("paragraph");
+    expect(pending[0].entries.map(([key]) => key)).toContain(secondKey);
+    await act(async () => { pending.shift()!.commit(); await tick(); });
+    expect(JSON.parse(disk.get(secondKey)!)).toEqual({ unitId: "sentence", tapToAdvance: false });
+    expect(JSON.parse(disk.get(bookKey)!)).toMatchObject({ modeKey, active: false });
+  });
+
+  test("later settings ownership survives cancellation compensation", async () => {
+    feedbackEnabled = false;
+    const owner = new AbortController();
+    let result!: Promise<unknown>;
+    const secondKey = "read-aware-plugin.mode-second.settings";
+    await act(async () => {
+      result = state.controller.configure({ active: true, selectModeKey: "mode-second:reader", unitId: "paragraph" }, owner.signal).catch(error => error);
+      await tick(); pending.shift()!.commit(); await tick();
+      void localKV.setItemAsync(secondKey, JSON.stringify({ unitId: "paragraph", tapToAdvance: true }));
+      owner.abort(new Error("cancel switch")); await result;
+      pending.shift()!.commit(); await tick();
+      pending.shift()!.commit(); await tick();
+    });
+    expect(JSON.parse(disk.get(secondKey)!)).toEqual({ unitId: "paragraph", tapToAdvance: true });
+    expect(JSON.parse(disk.get(bookKey)!)).toMatchObject({ modeKey, active: false });
+  });
+
   test("late persistence after cancellation cannot dispatch an obsolete position write", async () => {
     const abort = new AbortController();
     let result!: Promise<unknown>;
@@ -168,6 +209,6 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     });
     const output = await new Response(child.stderr).text();
     expect(await child.exited, output).toBe(0);
-    expect(output).toContain("4 pass");
+    expect(output).toContain("6 pass");
   }, 30_000);
 }

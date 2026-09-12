@@ -37,6 +37,7 @@ export class ReadingModeController {
 
   requested = (): ModeRequest => this.request;
   generation = (): number => this.request.revision;
+  configurationConfirmed = (revision: number): boolean => this.confirmedRevision === revision;
   snapshot = (): ReadingModeSnapshot => this.result;
   observe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
 
