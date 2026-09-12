@@ -41,7 +41,7 @@ export function buildMemoryTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
       ),
       limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
       offset: Type.Optional(Type.Integer({ minimum: 0 })),
-      expectedRevision: Type.Optional(Type.String({ pattern: "^mpg1:[a-f0-9]{64}$" })),
+      expectedRevision: Type.Optional(Type.String({ pattern: "^mpg[12]:[a-f0-9]{64}$" })),
     }, { additionalProperties: false }),
     execute: async (_id, params) => {
       if (!params || typeof params !== "object" || Array.isArray(params)

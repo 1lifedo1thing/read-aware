@@ -18,7 +18,7 @@ export function normalizeMemoryPageQuery(input: MemoryPageQuery): MemoryPageQuer
   const { offset = 0, expectedRevision, ...filter } = input;
   const query = normalizeMemoryQuery(filter);
   if (!Number.isSafeInteger(offset) || offset < 0
-    || expectedRevision !== undefined && (typeof expectedRevision !== "string" || !/^mpg1:[a-f0-9]{64}$/.test(expectedRevision))
+    || expectedRevision !== undefined && (typeof expectedRevision !== "string" || !/^mpg[12]:[a-f0-9]{64}$/.test(expectedRevision))
     || offset > 0 && expectedRevision === undefined) return fail();
   return { ...query, offset, limit: query.limit!, ...(expectedRevision === undefined ? {} : { expectedRevision }) };
 }

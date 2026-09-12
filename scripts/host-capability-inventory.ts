@@ -254,7 +254,7 @@ const nativeMap = pairs([
   ["library_list_collections library_put_collection", "LIB15 LIB16 LIB17 LIB18"], ["library_duplicate_book_groups", "LIB11"],
   ["annotations_list annotations_search annotations_page annotation_get annotation_put annotation_delete", "ANN01 ANN08"],
   ["annotation_inspect annotations_commit", "ANN08"],
-  ["memories_list_all memory_get memory_put", "MEM01 MEM02 MEM04"], ["chapter_digests_list", "MEM10 MEM11"],
+  ["memories_list_all memories_page memory_get memory_put", "MEM01 MEM02 MEM04"], ["chapter_digests_list", "MEM10 MEM11"],
   ["memory_inspect memory_commit", "MEM01 MEM04 MEM05"],
   ["profile_inspect profile_initialize profile_commit", "MEM06 MEM07 MEM08"],
   ["onboarding_commit", "MEM07"],

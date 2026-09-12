@@ -1032,6 +1032,7 @@ pub fn run() {
             storage::annotation_put,
             storage::annotation_delete,
             storage::memories_list_all,
+            storage::memories_page,
             storage::memory_inspect,
             storage::memory_commit,
             storage::profile_inspect,

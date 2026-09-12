@@ -1,4 +1,5 @@
 import { expect, spyOn, test } from "bun:test";
+import { pageMemoryRows } from "@read-aware/agent";
 import { seedMemory } from "@read-aware/agent/testing";
 import { createMemoryPort } from "../features/ai/agent/ports/memory-port";
 import * as store from "../features/ai/agent/ports/memory-store";
@@ -7,7 +8,7 @@ import type { PluginPermission } from "@read-aware/plugin-types";
 
 test("public page uses the production memory port with domain authorization and retirement", async () => {
   const rows = Array.from({ length: 105 }, (_, index) => seedMemory({ id: `m${String(index).padStart(3, "0")}`, scope: "user", content: `Memory ${index}` }));
-  const read = spyOn(store, "listAllMemoryRows").mockImplementation(async () => structuredClone(rows));
+  const read = spyOn(store, "pageMemoryRows").mockImplementation(input => pageMemoryRows(structuredClone(rows), input));
   const runtimes: ReturnType<typeof buildPluginContext>[] = [];
   const actor = (permissions: PluginPermission[]) => {
     const runtime = buildPluginContext({ id: "memory-page-test", name: "Memory Page", version: "1.0.0", schemaVersion: 1,

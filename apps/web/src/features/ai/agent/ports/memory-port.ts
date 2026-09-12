@@ -5,10 +5,10 @@
  * memories 投影因此可从日志重放，写决策本身成为可同步事实
  * （docs/data-model.md：consolidation as events）。
  */
-import { matchesMemoryQuery, pageMemoryRows, selectMemoryRows, type MemoryPort, type MemoryRecord } from "@read-aware/agent";
+import { matchesMemoryQuery, type MemoryPort, type MemoryRecord } from "@read-aware/agent";
 import { normalizeMemoryPageQuery, normalizeMemoryQuery } from "@read-aware/core";
 import { commitDomainEvents } from "../../../../platform/domain-events";
-import { listAllMemoryRows } from "./memory-store";
+import { listAllMemoryRows, pageMemoryRows } from "./memory-store";
 import { applyMemoryChanges, reinforceMemory, snapshotMemories } from "./memory-maintenance";
 
 const isActive = (memory: MemoryRecord) => (memory.status ?? "active") === "active";
@@ -26,11 +26,11 @@ export function createMemoryPort(): MemoryPort {
   return {
     searchMemories: async (filter) => {
       const query = normalizeMemoryQuery(filter);
-      return selectMemoryRows(await listAllMemoryRows(), query).slice(0, query.limit);
+      return (await pageMemoryRows(query)).items;
     },
     pageMemories: async input => {
       const query = normalizeMemoryPageQuery(input);
-      return pageMemoryRows(await listAllMemoryRows(), query);
+      return pageMemoryRows(query);
     },
     listMemories: async () => (await listAllMemoryRows()).filter(isActive),
     saveMemory: async (input) => {

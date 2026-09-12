@@ -5,6 +5,7 @@
  */
 import { invoke } from "../../../../platform/ipc";
 import type { MemoryRecord } from "@read-aware/agent";
+import { normalizeMemoryPageQuery, type MemoryPageQuery, type MemoryPage } from "@read-aware/core";
 import { isTauri } from "../../../../platform/environment";
 
 function assertDesktop(): void {
@@ -19,6 +20,11 @@ type MemoryRow = MemoryRecord & { pinned: boolean; status: NonNullable<MemoryRec
 export async function listAllMemoryRows(): Promise<MemoryRecord[]> {
   assertDesktop();
   return invoke<MemoryRow[]>("memories_list_all");
+}
+
+export async function pageMemoryRows(input: MemoryPageQuery): Promise<MemoryPage> {
+  assertDesktop();
+  return invoke<MemoryPage>("memories_page", { query: normalizeMemoryPageQuery(input) });
 }
 
 export async function getMemoryRow(id: string): Promise<MemoryRecord | undefined> {

@@ -65,6 +65,8 @@ pub use identity_consolidation_commit::*;
 mod identity_work;
 pub use identity_work::*;
 mod memories;
+mod memory_page;
+pub use memory_page::*;
 pub use memories::*;
 mod chat;
 pub use chat::*;
