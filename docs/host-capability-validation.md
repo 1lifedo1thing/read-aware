@@ -90,9 +90,9 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | STAT03 | 已持久的未结算时长/会话与采样时钟 | F3 | 本机合成待结算2桶分页、12秒总计、订阅和落盘后清零通过；实际采样时钟待验 |
 | STAT04 | 计时/位置累积、小时结算和重启恢复 | F3 | 本机合成两日两桶结算及重复flush不重复通过；隐藏阅读20.7秒未新增；前台采样/重启恢复待验 |
 | STAT05 | book.sessionRecorded 正式事件 | F3 | 本机真实Worker收到2条book.sessionRecorded，日/时段/ms正确；跨进程待验 |
-| UI01 | 书架/Agent/统计/设置与集合页面导航 | F6 | 待验 |
-| UI02 | 命令面板搜索/书架布局/排序/分组/多选 | F6 | 待验 |
-| UI03 | 发现/执行宿主命令与可用条件 | F6 | 待验 |
+| UI01 | 书架/Agent/统计/设置与集合页面导航 | F6 | 本机真实Worker导航书架/集合/Agent/统计/阅读设置/预填搜索、Agent双scope导航回执通过；集合DOM核实，其他前台画面待验，见第二十三流程 |
+| UI02 | 命令面板搜索/书架布局/排序/分组/多选 | F6 | 本机集合两书多选在列表/标题排序/作者分组后保持，DOM/原生持久值一致；搜索结果/多选续页等待验，见第二十三流程 |
+| UI03 | 发现/执行宿主命令与可用条件 | F6 | 本机真实Worker按权限发现commands/checked/不可用原因，执行及缺失目标/旧revision/无阅读控制拒绝通过；完整命令集待验，见第二十三流程 |
 | UI04 | 快捷键查询、重绑、冲突与重置 | F6 | 待验 |
 | UI05 | 菜单可见/溢出位置及自定义重排 | F6 | 待验 |
 | CFG01 | 设置 discover/read/update 与动态选项 | F6 | 本机 Agent/Worker 设置查询与原子修改、动态主题观察通过；完整目录/其他目标待验 |
@@ -163,9 +163,9 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET53 | appearance.contentTypography.lineSpacing | F6 | 待验 |
 | SET54 | annotations.defaultColor | F6 | 待验 |
 | SET55 | general.updateChannel | F6 | 待验 |
-| SET56 | shelf.layout | F6 | 待验 |
-| SET57 | shelf.group | F6 | 待验 |
-| SET58 | shelf.sort | F6 | 待验 |
+| SET56 | shelf.layout | F6 | 本机真实Worker grid→list，命令checked/列表DOM/原生KV一致并恢复；其他入口待验，见第二十三流程 |
+| SET57 | shelf.group | F6 | 本机真实Worker none→author，作者分组DOM/原生KV一致并恢复；其他分组/入口待验，见第二十三流程 |
+| SET58 | shelf.sort | F6 | 本机真实Worker recent→title，列表顺序/原生KV一致并恢复；其他排序/入口待验，见第二十三流程 |
 | SET59 | shortcuts.search | F6 | 待验 |
 | SET60 | shortcuts.settings | F6 | 待验 |
 | SET61 | shortcuts.new-conversation | F6 | 待验 |

@@ -1,0 +1,1176 @@
+{
+  "additional": [
+    {
+      "action": "host-missing-book",
+      "error": "reader/book-not-found"
+    },
+    {
+      "action": "host-missing-collection",
+      "error": "ui/target-not-found"
+    },
+    {
+      "action": "without-reading-control",
+      "commands": [
+        {
+          "enabled": false,
+          "id": "go-shelf",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "title": "Library",
+          "unavailableReason": "reader-control"
+        },
+        {
+          "enabled": true,
+          "id": "open-settings",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "title": "Settings"
+        },
+        {
+          "enabled": false,
+          "id": "layout-list",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "settingsPath": "shelf.layout",
+          "title": "Switch to list view",
+          "unavailableReason": "permission"
+        }
+      ]
+    },
+    {
+      "action": "unauthorized-close",
+      "error": "ui/reading-permission"
+    },
+    {
+      "action": "authorized-close",
+      "result": {
+        "snapshot": {
+          "collectionId": null,
+          "revision": 18,
+          "search": {
+            "open": false,
+            "query": "Workspace Probe"
+          },
+          "selection": {
+            "active": false,
+            "bookIds": [],
+            "nextCursor": null,
+            "total": 0
+          },
+          "settings": {
+            "open": false,
+            "section": null
+          },
+          "surface": "shelf"
+        },
+        "status": "completed"
+      }
+    },
+    {
+      "action": "agent-book-scope",
+      "result": {
+        "snapshot": {
+          "collectionId": null,
+          "revision": 19,
+          "search": {
+            "open": false,
+            "query": "Workspace Probe",
+            "queryTruncated": false
+          },
+          "selection": {
+            "active": false,
+            "bookIds": [],
+            "nextCursor": null,
+            "total": 0
+          },
+          "settings": {
+            "open": false,
+            "section": null
+          },
+          "surface": "stats"
+        },
+        "status": "completed"
+      }
+    },
+    {
+      "action": "agent-global-scope",
+      "result": {
+        "snapshot": {
+          "collectionId": null,
+          "revision": 20,
+          "search": {
+            "open": false,
+            "query": "Workspace Probe",
+            "queryTruncated": false
+          },
+          "selection": {
+            "active": false,
+            "bookIds": [],
+            "nextCursor": null,
+            "total": 0
+          },
+          "settings": {
+            "open": false,
+            "section": null
+          },
+          "surface": "shelf"
+        },
+        "status": "completed"
+      }
+    },
+    {
+      "action": "stale-revision",
+      "error": "ui/superseded"
+    }
+  ],
+  "durableShelf": {
+    "group": "author",
+    "layout": "list",
+    "sort": "title"
+  },
+  "hostChanges": [
+    {
+      "action": "host-layout-list",
+      "checked": [
+        "layout-list",
+        "sort-recent",
+        "group-none"
+      ],
+      "dom": {
+        "headings": [
+          "Workspace Probe Collection"
+        ],
+        "listRows": 0,
+        "selected": true
+      },
+      "result": {
+        "commandId": "layout-list",
+        "completed": [
+          "settings",
+          "workspace"
+        ],
+        "status": "completed"
+      }
+    },
+    {
+      "action": "host-sort-title",
+      "checked": [
+        "layout-list",
+        "sort-title",
+        "group-none"
+      ],
+      "dom": {
+        "headings": [
+          "Workspace Probe Collection"
+        ],
+        "listRows": 0,
+        "selected": true
+      },
+      "result": {
+        "commandId": "sort-title",
+        "completed": [
+          "settings",
+          "workspace"
+        ],
+        "status": "completed"
+      }
+    },
+    {
+      "action": "host-group-author",
+      "checked": [
+        "layout-list",
+        "sort-title",
+        "group-author"
+      ],
+      "dom": {
+        "headings": [
+          "Workspace Probe Collection"
+        ],
+        "listRows": 0,
+        "selected": true
+      },
+      "result": {
+        "commandId": "group-author",
+        "completed": [
+          "settings",
+          "workspace"
+        ],
+        "status": "completed"
+      }
+    }
+  ],
+  "hostPermissions": {
+    "empty": {
+      "readable": false,
+      "writable": false
+    },
+    "read": {
+      "commands": [
+        {
+          "enabled": false,
+          "id": "go-shelf",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "title": "Library",
+          "unavailableReason": "permission"
+        },
+        {
+          "enabled": false,
+          "id": "layout-list",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "settingsPath": "shelf.layout",
+          "title": "Switch to list view",
+          "unavailableReason": "permission"
+        },
+        {
+          "enabled": false,
+          "id": "open-book",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "bookId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "bookId"
+            ],
+            "type": "object"
+          },
+          "title": "Open book",
+          "unavailableReason": "permission"
+        }
+      ],
+      "readable": true,
+      "writable": false
+    },
+    "reader": {
+      "commands": [
+        {
+          "enabled": true,
+          "id": "go-shelf",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "title": "Library"
+        },
+        {
+          "checked": false,
+          "enabled": true,
+          "id": "layout-list",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "settingsPath": "shelf.layout",
+          "title": "Switch to list view"
+        },
+        {
+          "enabled": true,
+          "id": "open-book",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "bookId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "bookId"
+            ],
+            "type": "object"
+          },
+          "title": "Open book"
+        }
+      ],
+      "readable": true,
+      "writable": true
+    },
+    "write": {
+      "commands": [
+        {
+          "enabled": true,
+          "id": "go-shelf",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "title": "Library"
+        },
+        {
+          "enabled": false,
+          "id": "layout-list",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {},
+            "type": "object"
+          },
+          "settingsPath": "shelf.layout",
+          "title": "Switch to list view",
+          "unavailableReason": "permission"
+        },
+        {
+          "enabled": false,
+          "id": "open-book",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "bookId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "bookId"
+            ],
+            "type": "object"
+          },
+          "title": "Open book",
+          "unavailableReason": "reader-control"
+        }
+      ],
+      "readable": true,
+      "writable": true
+    }
+  },
+  "observation": [
+    {
+      "collectionId": null,
+      "revision": 5,
+      "search": {
+        "open": false,
+        "query": ""
+      },
+      "selection": {
+        "active": false,
+        "bookIds": [],
+        "nextCursor": null,
+        "total": 0
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "shelf"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 6,
+      "search": {
+        "open": false,
+        "query": ""
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "shelf"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 7,
+      "search": {
+        "open": false,
+        "query": ""
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "stats"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 8,
+      "search": {
+        "open": false,
+        "query": ""
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "agent"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 9,
+      "search": {
+        "open": false,
+        "query": ""
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": true,
+        "section": null
+      },
+      "surface": "agent"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 10,
+      "search": {
+        "open": false,
+        "query": ""
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": true,
+        "section": "general"
+      },
+      "surface": "agent"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 11,
+      "search": {
+        "open": false,
+        "query": ""
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": true,
+        "section": "reading"
+      },
+      "surface": "agent"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 12,
+      "search": {
+        "open": true,
+        "query": "Workspace Probe"
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "agent"
+    },
+    {
+      "collectionId": null,
+      "revision": 13,
+      "search": {
+        "open": false,
+        "query": "Workspace Probe"
+      },
+      "selection": {
+        "active": false,
+        "bookIds": [],
+        "nextCursor": null,
+        "total": 0
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "shelf"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 14,
+      "search": {
+        "open": false,
+        "query": "Workspace Probe"
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "shelf"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 15,
+      "search": {
+        "open": false,
+        "query": "Workspace Probe"
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "stats"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 16,
+      "search": {
+        "open": false,
+        "query": "Workspace Probe"
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "reader"
+    },
+    {
+      "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+      "revision": 17,
+      "search": {
+        "open": false,
+        "query": "Workspace Probe"
+      },
+      "selection": {
+        "active": true,
+        "bookIds": [
+          "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+        ],
+        "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+        "total": 2
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "stats"
+    },
+    {
+      "collectionId": null,
+      "revision": 18,
+      "search": {
+        "open": false,
+        "query": "Workspace Probe"
+      },
+      "selection": {
+        "active": false,
+        "bookIds": [],
+        "nextCursor": null,
+        "total": 0
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "shelf"
+    },
+    {
+      "collectionId": null,
+      "revision": 19,
+      "search": {
+        "open": false,
+        "query": "Workspace Probe"
+      },
+      "selection": {
+        "active": false,
+        "bookIds": [],
+        "nextCursor": null,
+        "total": 0
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "stats"
+    },
+    {
+      "collectionId": null,
+      "revision": 20,
+      "search": {
+        "open": false,
+        "query": "Workspace Probe"
+      },
+      "selection": {
+        "active": false,
+        "bookIds": [],
+        "nextCursor": null,
+        "total": 0
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "shelf"
+    },
+    {
+      "collectionId": null,
+      "revision": 21,
+      "search": {
+        "open": false,
+        "query": "Workspace Probe"
+      },
+      "selection": {
+        "active": false,
+        "bookIds": [],
+        "nextCursor": null,
+        "total": 0
+      },
+      "settings": {
+        "open": false,
+        "section": null
+      },
+      "surface": "stats"
+    }
+  ],
+  "originalSettings": [
+    {
+      "path": "shelf.layout",
+      "value": "grid"
+    },
+    {
+      "path": "shelf.group",
+      "value": "none"
+    },
+    {
+      "path": "shelf.sort",
+      "value": "recent"
+    }
+  ],
+  "roles": {
+    "empty": {
+      "readable": false,
+      "writable": false
+    },
+    "read": {
+      "readable": true,
+      "snapshot": {
+        "collectionId": null,
+        "revision": 5,
+        "search": {
+          "open": false,
+          "query": ""
+        },
+        "selection": {
+          "active": false,
+          "bookIds": [],
+          "nextCursor": null,
+          "total": 0
+        },
+        "settings": {
+          "open": false,
+          "section": null
+        },
+        "surface": "shelf"
+      },
+      "writable": false
+    },
+    "reader": {
+      "readable": true,
+      "snapshot": {
+        "collectionId": null,
+        "revision": 5,
+        "search": {
+          "open": false,
+          "query": ""
+        },
+        "selection": {
+          "active": false,
+          "bookIds": [],
+          "nextCursor": null,
+          "total": 0
+        },
+        "settings": {
+          "open": false,
+          "section": null
+        },
+        "surface": "shelf"
+      },
+      "writable": true
+    },
+    "write": {
+      "readable": true,
+      "snapshot": {
+        "collectionId": null,
+        "revision": 5,
+        "search": {
+          "open": false,
+          "query": ""
+        },
+        "selection": {
+          "active": false,
+          "bookIds": [],
+          "nextCursor": null,
+          "total": 0
+        },
+        "settings": {
+          "open": false,
+          "section": null
+        },
+        "surface": "shelf"
+      },
+      "writable": true
+    }
+  },
+  "settingsBeforeRestore": [
+    {
+      "path": "shelf.layout",
+      "value": "list"
+    },
+    {
+      "path": "shelf.group",
+      "value": "author"
+    },
+    {
+      "path": "shelf.sort",
+      "value": "title"
+    }
+  ],
+  "setup": {
+    "bookIds": [
+      "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+      "e40442c9-9519-4a65-a31b-a86d90ee4feb"
+    ],
+    "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+    "path": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e"
+  },
+  "status": "completed-with-visual-pending",
+  "steps": [
+    {
+      "action": "selection",
+      "result": {
+        "snapshot": {
+          "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+          "revision": 6,
+          "search": {
+            "open": false,
+            "query": ""
+          },
+          "selection": {
+            "active": true,
+            "bookIds": [
+              "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+              "e40442c9-9519-4a65-a31b-a86d90ee4feb"
+            ],
+            "nextCursor": null,
+            "total": 2
+          },
+          "settings": {
+            "open": false,
+            "section": null
+          },
+          "surface": "shelf"
+        },
+        "status": "completed"
+      },
+      "state": {
+        "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+        "revision": 6,
+        "search": {
+          "open": false,
+          "query": ""
+        },
+        "selection": {
+          "active": true,
+          "bookIds": [
+            "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+          ],
+          "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+          "total": 2
+        },
+        "settings": {
+          "open": false,
+          "section": null
+        },
+        "surface": "shelf"
+      }
+    },
+    {
+      "action": "missing",
+      "result": {
+        "error": "ui/target-not-found",
+        "message": "Collection does not exist"
+      },
+      "state": {
+        "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+        "revision": 6,
+        "search": {
+          "open": false,
+          "query": ""
+        },
+        "selection": {
+          "active": true,
+          "bookIds": [
+            "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+          ],
+          "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+          "total": 2
+        },
+        "settings": {
+          "open": false,
+          "section": null
+        },
+        "surface": "shelf"
+      }
+    },
+    {
+      "action": "stats",
+      "result": {
+        "snapshot": {
+          "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+          "revision": 7,
+          "search": {
+            "open": false,
+            "query": ""
+          },
+          "selection": {
+            "active": true,
+            "bookIds": [
+              "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+              "e40442c9-9519-4a65-a31b-a86d90ee4feb"
+            ],
+            "nextCursor": null,
+            "total": 2
+          },
+          "settings": {
+            "open": false,
+            "section": null
+          },
+          "surface": "stats"
+        },
+        "status": "completed"
+      },
+      "state": {
+        "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+        "revision": 7,
+        "search": {
+          "open": false,
+          "query": ""
+        },
+        "selection": {
+          "active": true,
+          "bookIds": [
+            "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+          ],
+          "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+          "total": 2
+        },
+        "settings": {
+          "open": false,
+          "section": null
+        },
+        "surface": "stats"
+      }
+    },
+    {
+      "action": "agent",
+      "result": {
+        "snapshot": {
+          "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+          "revision": 8,
+          "search": {
+            "open": false,
+            "query": ""
+          },
+          "selection": {
+            "active": true,
+            "bookIds": [
+              "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+              "e40442c9-9519-4a65-a31b-a86d90ee4feb"
+            ],
+            "nextCursor": null,
+            "total": 2
+          },
+          "settings": {
+            "open": false,
+            "section": null
+          },
+          "surface": "agent"
+        },
+        "status": "completed"
+      },
+      "state": {
+        "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+        "revision": 8,
+        "search": {
+          "open": false,
+          "query": ""
+        },
+        "selection": {
+          "active": true,
+          "bookIds": [
+            "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+          ],
+          "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+          "total": 2
+        },
+        "settings": {
+          "open": false,
+          "section": null
+        },
+        "surface": "agent"
+      }
+    },
+    {
+      "action": "settings",
+      "result": {
+        "snapshot": {
+          "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+          "revision": 11,
+          "search": {
+            "open": false,
+            "query": ""
+          },
+          "selection": {
+            "active": true,
+            "bookIds": [
+              "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+              "e40442c9-9519-4a65-a31b-a86d90ee4feb"
+            ],
+            "nextCursor": null,
+            "total": 2
+          },
+          "settings": {
+            "open": true,
+            "section": "reading"
+          },
+          "surface": "agent"
+        },
+        "status": "completed"
+      },
+      "state": {
+        "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+        "revision": 11,
+        "search": {
+          "open": false,
+          "query": ""
+        },
+        "selection": {
+          "active": true,
+          "bookIds": [
+            "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+          ],
+          "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+          "total": 2
+        },
+        "settings": {
+          "open": true,
+          "section": "reading"
+        },
+        "surface": "agent"
+      }
+    },
+    {
+      "action": "search",
+      "result": {
+        "snapshot": {
+          "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+          "revision": 12,
+          "search": {
+            "open": true,
+            "query": "Workspace Probe"
+          },
+          "selection": {
+            "active": true,
+            "bookIds": [
+              "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+              "e40442c9-9519-4a65-a31b-a86d90ee4feb"
+            ],
+            "nextCursor": null,
+            "total": 2
+          },
+          "settings": {
+            "open": false,
+            "section": null
+          },
+          "surface": "agent"
+        },
+        "status": "completed"
+      },
+      "state": {
+        "collectionId": "d8d6a7ac-f436-4610-bb03-3b9574d1b27c",
+        "revision": 12,
+        "search": {
+          "open": true,
+          "query": "Workspace Probe"
+        },
+        "selection": {
+          "active": true,
+          "bookIds": [
+            "6756b264-e9f2-4da1-9dc3-4cbb94654d5d"
+          ],
+          "nextCursor": "6756b264-e9f2-4da1-9dc3-4cbb94654d5d",
+          "total": 2
+        },
+        "settings": {
+          "open": false,
+          "section": null
+        },
+        "surface": "agent"
+      }
+    },
+    {
+      "action": "shelf",
+      "result": {
+        "snapshot": {
+          "collectionId": null,
+          "revision": 13,
+          "search": {
+            "open": false,
+            "query": "Workspace Probe"
+          },
+          "selection": {
+            "active": false,
+            "bookIds": [],
+            "nextCursor": null,
+            "total": 0
+          },
+          "settings": {
+            "open": false,
+            "section": null
+          },
+          "surface": "shelf"
+        },
+        "status": "completed"
+      },
+      "state": {
+        "collectionId": null,
+        "revision": 13,
+        "search": {
+          "open": false,
+          "query": "Workspace Probe"
+        },
+        "selection": {
+          "active": false,
+          "bookIds": [],
+          "nextCursor": null,
+          "total": 0
+        },
+        "settings": {
+          "open": false,
+          "section": null
+        },
+        "surface": "shelf"
+      }
+    }
+  ],
+  "cleanup": {
+    "contributions": [
+      {
+        "count": 0,
+        "role": "empty"
+      },
+      {
+        "count": 0,
+        "role": "read"
+      },
+      {
+        "count": 0,
+        "role": "write"
+      },
+      {
+        "count": 0,
+        "role": "reader"
+      },
+      {
+        "count": 0,
+        "role": "desk"
+      }
+    ],
+    "durableShelf": {
+      "group": "none",
+      "layout": "grid",
+      "sort": "recent"
+    },
+    "ownedBooks": 0,
+    "ownedCollection": false,
+    "remainingBookIds": [
+      "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+      "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+    ],
+    "verifiedAfterWebviewReload": true
+  },
+  "domPendingReason": "WebView hidden stalled requestAnimationFrame; no screenshot pass. Owned fixtures removed and settings restored; post-reload verification confirmed cleanup."
+}

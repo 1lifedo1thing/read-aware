@@ -553,3 +553,30 @@ read_book_image ready。实际 AgentThread 经 Tauri 图片端口收到图像并
 调用链恢复通过，精细视觉语义未通过，不扩为所有模型的循环防护保证。私有记录
 .eval/validation-20260913-desktop-vision/qwen-stale-error-recovery.json，未提交模型正文。
 五条图片工具检查及 Agent 类型检查通过；本轮自有书、临时配置/密钥清理恢复。
+
+## 第二十三个桌面流程：应用导航、集合多选与宿主命令
+
+同一隔离 Tauri，复用 desktop-workspace-probe：原生导入两本自有 FB2、创建一个集合
+并分配成员，四个真实 Worker 使用无权限/只读/书库写/书库写+阅读写及 shelf 设置授权。
+无权限没有 workspace/commands，只读可查不可导航；仅书库写不能修改未授权 shelf
+设置或打开书。阅读中其 go-shelf 被标为 reader-control 不可用，直接导航返回
+ui/reading-permission；有阅读写权限则可正常关书返回书架。
+
+Worker 依次导航集合及两书多选、统计、Agent、阅读设置、预填搜索和书架。多选快照
+总数2、limit1返回1项和续页游标；缺失集合返回 ui/target-not-found 且状态/revision
+不变。DOM 确认集合名、两本按下的书按钮和“2 selected”。列表/标题排序/作者分组
+各完成 settings+workspace，已选书保持；DOM 出现作者分组和按标题排列的列表正文。
+原生 load_kv_all 重读 list/author/title，与命令 checked 状态一致。
+
+缺失书/集合宿主命令分别返回 reader/book-not-found、ui/target-not-found。Agent
+book/global scope 均经真实端口导航完成；旧 expectedWorkspaceRevision 返回
+ui/superseded。只读 Worker 收到17版工作区观察。
+
+窗口重新 hidden，使按 requestAnimationFrame 连续采集的画面步骤未完成；不声称
+所有目标的像素呈现通过。清理时一次工具观察超时，随后重载核实仅余原两本测试书、
+集合0、五个测试 Worker 贡献0，原生 shelf 已恢复 grid/none/recent。该重载清除了
+未完成的测试画面采集；未把超时本身当作清理失败或成功证据。未运行新全量门禁，
+本轮没有修改产品或探针代码。详情见 [workspace-observations.json](./workspace-observations.json)。
+
+仍待验：选区续页读取、全部菜单/快捷键、编译 Library Desk 的本批界面动作、窄窗
+以及每个目标的前台画面；原生回执、DOM 与截图边界分别保留。
