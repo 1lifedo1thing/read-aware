@@ -234,9 +234,11 @@ function broadcastDomainEvents(drafts: DomainEventDraft[]): void {
  */
 export async function appendDomainEvents(drafts: DomainEventDraft[]): Promise<void> {
   if (!isTauri() || drafts.length === 0) return;
-  const { deviceId } = await getDeviceInfo();
-  const events = drafts.map((draft) => toEventRow(draft, deviceId));
-  await durableWrites.track(invoke("append_events", { events }));
+  return durableWrites.run(async () => {
+    const { deviceId } = await getDeviceInfo();
+    const events = drafts.map((draft) => toEventRow(draft, deviceId));
+    await invoke("append_events", { events });
+  });
 }
 
 /** What the store did with a commit — see the Rust `CommitReport`. */
@@ -265,13 +267,15 @@ export async function commitDomainEvents(
     broadcastDomainEvents(drafts);
     return { appended: 0, applied: 0 };
   }
-  const { deviceId } = await getDeviceInfo();
-  const events = drafts.map((draft) => toEventRow(draft, deviceId));
-  const report = await durableWrites.track(invoke<CommitReport>("commit_events", { events }));
-  // Broadcast only after the write succeeded — in-app observers must never see
-  // a change the store rejected.
-  broadcastDomainEvents(drafts);
-  return report;
+  return durableWrites.run(async () => {
+    const { deviceId } = await getDeviceInfo();
+    const events = drafts.map((draft) => toEventRow(draft, deviceId));
+    const report = await invoke<CommitReport>("commit_events", { events });
+    // Broadcast only after the write succeeded — in-app observers must never see
+    // a change the store rejected.
+    broadcastDomainEvents(drafts);
+    return report;
+  });
 }
 
 /**

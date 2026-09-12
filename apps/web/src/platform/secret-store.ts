@@ -81,6 +81,11 @@ export function afterSecretWrites<T>(operation: () => T | Promise<T>): Promise<T
   return isTauri() ? writes.afterPending(operation) : Promise.resolve().then(operation);
 }
 
+/** Wait for accepted credential writes and propagate their persistence failures. */
+export async function flushSecretWrites(): Promise<void> {
+  if (isTauri()) await writes.flush();
+}
+
 /**
  * Fill the in-memory snapshot, and move any key an older build left in
  * localStorage into the encrypted store. Local decryption only — no user

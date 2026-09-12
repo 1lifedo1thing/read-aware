@@ -1,14 +1,15 @@
 import { AppError, errorCode } from "@read-aware/core";
 import { createLogger } from "../platform/logger";
 
-export type ShutdownPhase = "settle" | "persist";
+export type ShutdownPhase = "settle" | "persist" | "receipts";
 export type ShutdownOwnerReport = { name: string; phase: ShutdownPhase; status: "flushed" | "failed" | "timed-out"; code?: string };
 export type ShutdownReceipt = { status: "ready" | "degraded"; owners: ShutdownOwnerReport[]; elapsedMs: number };
 type Owner = { name: string; phase: ShutdownPhase; flush: (signal: AbortSignal) => Promise<void> };
 export const SHUTDOWN_DEADLINE_MS = 8_000;
 
 /** One coordinated flush before the process goes away. Owners settle in-flight work first
- * (reading traces, plugin quiescence, dispatched events), then persistence queues drain.
+ * (reading traces, plugin quiescence), then persistence queues drain, then the
+ * event receipts they generated. Owners within a phase run concurrently.
  * A slow or failing owner is reported, never allowed to trap the user in a window that will not close. */
 export class ShutdownCoordinator {
   private readonly owners = new Map<symbol, Owner>();
@@ -18,7 +19,7 @@ export class ShutdownCoordinator {
   constructor(private readonly report: (message: string, error?: unknown) => void, private readonly now: () => number = Date.now) {}
 
   register(name: string, phase: ShutdownPhase, flush: (signal: AbortSignal) => Promise<void>): () => void {
-    if (typeof name !== "string" || !name.trim() || typeof flush !== "function" || phase !== "settle" && phase !== "persist") {
+    if (typeof name !== "string" || !name.trim() || typeof flush !== "function" || phase !== "settle" && phase !== "persist" && phase !== "receipts") {
       throw new AppError("ui/invalid-target", "Invalid shutdown owner");
     }
     if (this.owners.size >= 64) throw new AppError("ui/observer-limit", "Too many shutdown owners");
@@ -45,7 +46,7 @@ export class ShutdownCoordinator {
     signal?.throwIfAborted();
     const started = this.now(), owners = [...this.owners.values()], reports: ShutdownOwnerReport[] = [];
     const remaining = () => Math.max(0, deadlineMs - (this.now() - started));
-    for (const phase of ["settle", "persist"] as const) {
+    for (const phase of ["settle", "persist", "receipts"] as const) {
       const batch = owners.filter(owner => owner.phase === phase);
       if (!batch.length) continue;
       const controller = new AbortController();

@@ -12,7 +12,7 @@ let active: Promise<void> | null = null;
 export function flushRestoredCredentialPublications(): Promise<void> {
   if (!isTauri()) return Promise.resolve();
   if (active) return active;
-  active = afterSecretWrites(async () => {
+  active = durableWrites.run(() => afterSecretWrites(async () => {
     if (!getDurableSecret("sync.master-key")) return;
     let conflicts = 0;
     while (true) {
@@ -24,7 +24,7 @@ export function flushRestoredCredentialPublications(): Promise<void> {
         type: "preference.changed", origin: "system", payload: { key: `secret:${slot}`, value: null },
       })));
       try {
-        const report = await durableWrites.track(invoke<Report>("restored_credentials_publish", { events }));
+        const report = await invoke<Report>("restored_credentials_publish", { events });
         if (report.awaitingConnection) return;
         broadcastDomainEventDrafts(report.events);
         conflicts = 0;
@@ -33,6 +33,6 @@ export function flushRestoredCredentialPublications(): Promise<void> {
         throw error; // Caller logs/surfaces; native pending markers remain.
       }
     }
-  }).finally(() => { active = null; });
+  })).finally(() => { active = null; });
   return active;
 }

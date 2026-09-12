@@ -139,12 +139,14 @@ export async function flushReadingSessions(
 ): Promise<CommitReport> {
   const worth = buckets.filter((b) => b.ms > 0 || b.progress !== null);
   if (!isTauri() || worth.length === 0) return { appended: 0, applied: 0 };
-  const drafts = worth.map(draftFor);
-  const events = await mintEventRows(drafts);
-  const report = await durableWrites.track(invoke<CommitReport>("reading_session_flush", { events }));
-  // In-app observers (plugins) see the events the store accepted.
-  broadcastDomainEventDrafts(drafts);
-  return report;
+  return durableWrites.run(async () => {
+    const drafts = worth.map(draftFor);
+    const events = await mintEventRows(drafts);
+    const report = await invoke<CommitReport>("reading_session_flush", { events });
+    // In-app observers (plugins) see the events the store accepted.
+    broadcastDomainEventDrafts(drafts);
+    return report;
+  });
 }
 
 /** Boot recovery: close whatever a previous session left open. */
@@ -170,19 +172,21 @@ export async function flushPendingReadingSessions(): Promise<number> {
  * capture/planning ends; native capture also refuses any newly opened bucket. */
 export async function closeReadingSessionsForBackup(): Promise<number> {
   if (!isTauri()) return 0;
-  for (let attempt = 0; ; attempt++) {
-    const buckets = await listPendingReadingSessions();
-    if (buckets.length === 0) return 0;
-    const drafts: DomainEventDraft[] = buckets.filter(b => b.ms > 0 || b.progress !== null)
-      .map(bucket => ({ ...draftFor(bucket), origin: "system" }));
-    const events = await mintEventRowsAfterCurrentFrontier(drafts);
-    try {
-      const closed = await durableWrites.track(invoke<DomainEventDraft[]>("backup_close_reading_sessions", { events }));
-      broadcastDomainEventDrafts(closed);
-      return closed.length;
-    } catch (error) {
-      if (errorCode(error) === "backup/changed" && attempt < 2) continue;
-      throw error; // Strict backup preparation never swallows a failed close.
+  return durableWrites.run(async () => {
+    for (let attempt = 0; ; attempt++) {
+      const buckets = await listPendingReadingSessions();
+      if (buckets.length === 0) return 0;
+      const drafts: DomainEventDraft[] = buckets.filter(b => b.ms > 0 || b.progress !== null)
+        .map(bucket => ({ ...draftFor(bucket), origin: "system" }));
+      const events = await mintEventRowsAfterCurrentFrontier(drafts);
+      try {
+        const closed = await invoke<DomainEventDraft[]>("backup_close_reading_sessions", { events });
+        broadcastDomainEventDrafts(closed);
+        return closed.length;
+      } catch (error) {
+        if (errorCode(error) === "backup/changed" && attempt < 2) continue;
+        throw error; // Strict backup preparation never swallows a failed close.
+      }
     }
-  }
+  });
 }
