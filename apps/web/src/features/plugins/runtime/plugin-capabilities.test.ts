@@ -20,21 +20,24 @@ function manifest(patch: Partial<PluginManifest> = {}): PluginManifest {
 describe("plugin capability negotiation", () => {
   test("memory 2 rejects profile1 clients rather than silently changing their persistence contract", () => {
     for (const permission of ["memory:read", "memory:write"] as const) {
-      expect(resolvePluginCapabilities(manifest({ permissions: [permission] })).domains.memory).toBe("2.5.0");
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^1.8.0" } } }))).toThrow(/host provides 2.5.0/);
+      expect(resolvePluginCapabilities(manifest({ permissions: [permission] })).domains.memory).toBe("2.7.0");
+      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^1.8.0" } } }))).toThrow(/host provides 2.7.0/);
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.0.0" } } }))).not.toThrow();
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.1.0" } } }))).not.toThrow();
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.2.0" } } }))).not.toThrow();
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.3.0" } } }))).not.toThrow();
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: "^2.4.0" } } }))).not.toThrow();
+      for (const version of ["^2.5.0", "^2.6.0", "^2.7.0"])
+        expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { memory: version } } }))).not.toThrow();
     }
   });
   test("annotation 2 requires conditional edits and rejects clients expecting legacy aliases", () => {
     for (const permission of ["annotations:read", "annotations:write"] as const) {
-      expect(resolvePluginCapabilities(manifest({ permissions: [permission] })).domains.annotations).toBe("2.1.0");
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^1.4.0" } } }))).toThrow(/host provides 2.1.0/);
+      expect(resolvePluginCapabilities(manifest({ permissions: [permission] })).domains.annotations).toBe("2.2.0");
+      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^1.4.0" } } }))).toThrow(/host provides 2.2.0/);
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^2.0.0" } } }))).not.toThrow();
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^2.1.0" } } }))).not.toThrow();
+      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^2.2.0" } } }))).not.toThrow();
     }
   });
   test("metadata service does not grant reading access and legacy event contracts are rejected", () => {
@@ -96,11 +99,11 @@ describe("plugin capability negotiation", () => {
   });
 
   test("negotiates paged table, tree and image declarations without adding data permissions", () => {
-    for (const version of ["^1.5.0", "^1.6.0", "^1.7.0", "^1.8.0"]) {
+    for (const version of ["^1.5.0", "^1.6.0", "^1.7.0", "^1.8.0", "^1.9.0", "^1.10.0"]) {
       const request = manifest({ requires: { schemas: { views: version } } });
       expect(() => assertPluginCapabilityRequirements(request)).not.toThrow();
       const visible = resolvePluginCapabilities(request);
-      expect(visible.schemas.views).toBe("1.9.0");
+      expect(visible.schemas.views).toBe("1.10.0");
       expect(visible.domains.library).toBeUndefined();
       expect(visible.domains.reading).toBeUndefined();
     }

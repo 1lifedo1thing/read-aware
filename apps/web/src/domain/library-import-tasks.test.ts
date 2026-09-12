@@ -23,7 +23,10 @@ function fixture() {
   const get = spyOn(library, "getBookRecord").mockResolvedValue(book);
   const put = spyOn(blobs, "putDesktopBlob").mockResolvedValue({ sha256: "hash", byteSize: 4 });
   const staged = { sha256: "hash", byteSize: 4, duplicateOf: null, title: "Book", author: null, cover: "none", metadataDeferred: false };
-  const invoke = spyOn(ipc, "invoke").mockResolvedValue(staged);
+  // A mounted library observer also refreshes reading statistics after import.
+  // Keep its projection response distinct from the native staging receipt.
+  const invoke = spyOn(ipc, "invoke").mockImplementation(async command =>
+    (command === "reading_time_load" ? { totals: [], daily: [], hourly: [] } : staged) as never);
   const commit = spyOn(events, "commitDomainEvents").mockResolvedValue({ appended: 2, applied: 2 });
   for (const spy of [native, list, get, put, invoke, commit]) restore.push(() => spy.mockRestore());
   return { tasks, resources, book, staged, list, put, invoke, commit, get released() { return released; } };
@@ -31,7 +34,10 @@ function fixture() {
 
 test("resource task milestones follow native staging and commit; cancellation cannot erase accepted completion", async () => {
   const f = fixture(), entered = Promise.withResolvers<void>(), finish = Promise.withResolvers<void>();
-  f.invoke.mockImplementation(async () => { entered.resolve(); await finish.promise; return f.staged as never; });
+  f.invoke.mockImplementation(async command => {
+    if (command === "reading_time_load") return { totals: [], daily: [], hourly: [] } as never;
+    entered.resolve(); await finish.promise; return f.staged as never;
+  });
   try {
     const ref = await f.resources.create({ name: "book.txt" }); await f.resources.commit(ref.id);
     const task = await f.tasks.start({ kind: "resource", resourceId: ref.id }); expect(task.phase).toBe("queued");

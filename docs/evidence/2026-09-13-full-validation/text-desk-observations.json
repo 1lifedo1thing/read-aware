@@ -1,0 +1,37 @@
+{
+  "scope": "macOS aarch64 debug Tauri; compiled Text Desk 0.22.0; synthetic FB2",
+  "bookId": "0746281c-ce28-4fae-a99a-694833643f98",
+  "prepared": {
+    "content": [
+      {
+        "type": "text",
+        "text": "# Scoped to: [role=dialog]\n- dialog text-desk [modal] [ref=e0]:\n  - heading text-desk [level=2] [ref=e1]:\n    - text: text-desk\n  - button Back [ref=e5]\n  - paragraph [ref=e6]:\n    - text: Composition af0657ed\n  - list [ref=e11]:\n    - term [ref=e13]:\n      - text: Request\n    - definition [ref=e14]:\n      - text: Completed\n    - term [ref=e16]:\n      - text: Deadline\n    - definition [ref=e17]:\n      - text: \"9/13/2026, 2:01:06 AM\"\n    - term [ref=e19]:\n      - text: Priority\n    - definition [ref=e20]:\n      - text: Normal priority\n    - term [ref=e22]:\n      - text: Operation\n    - definition [ref=e23]:\n      - text: Prepare text\n    - term [ref=e25]:\n      - text: Last text state\n    - definition [ref=e26]:\n      - text: Prepared\n    - term [ref=e28]:\n      - text: Text layer\n    - definition [ref=e29]:\n      - text: Text found\n    - term [ref=e31]:\n      - text: Indexed chapters\n    - definition [ref=e32]:\n      - text: \"2\"\n    - term [ref=e34]:\n      - text: Saved request history\n    - definition [ref=e35]:\n      - text: Milestone saved\n    - term [ref=e37]:\n      - text: Read sections\n    - definition [ref=e38]:\n      - text: \"2 / 2\"\n    - term [ref=e40]:\n      - text: Failed sections\n    - definition [ref=e41]:\n      - text: \"0\"\n    - term [ref=e43]:\n      - text: Unsupported sections\n    - definition [ref=e44]:\n      - text: \"0\"\n  - separator [ref=e46]\n  - button Refresh [ref=e49]:\n    - text: Refresh\n  - button My requests [ref=e50]:\n    - text: My requests\n  - button Close [ref=e51]:\n    - text: Close\n\n# ───────────────────────────────────────\n# Generated: 2026-09-12T17:31:22.287Z\n# Elements indexed: 52\n# Use [ref=eN] with other webview tools"
+      }
+    ]
+  },
+  "historyAfterWorkerRestart": {
+    "content": [
+      {
+        "type": "text",
+        "text": "# Scoped to: [role=dialog]\n- dialog text-desk [modal] [ref=e0]:\n  - heading text-desk [level=2] [ref=e1]:\n    - text: text-desk\n  - button Back [ref=e5]\n  - paragraph [ref=e6]:\n    - text: Composition af0657ed · Saved request history\n  - button Refresh [ref=e12]\n  - tooltip Refresh [ref=e13]:\n    - text: Refresh\n  - list [ref=e17]:\n    - listitem [ref=e18]:\n      - button Prepare text Completed [ref=e19]:\n        - text: Prepare text\n        - text: Completed\n  - separator [ref=e25]\n  - button Close [ref=e27]:\n    - text: Close\n\n# ───────────────────────────────────────\n# Generated: 2026-09-12T17:35:29.891Z\n# Elements indexed: 28\n# Use [ref=eN] with other webview tools"
+      }
+    ]
+  },
+  "footnote": {
+    "content": [
+      {
+        "type": "text",
+        "text": "# Scoped to: [role=dialog]\n- dialog text-desk [modal] [ref=e0]:\n  - heading text-desk [level=2] [ref=e1]:\n    - text: text-desk\n  - button Back [ref=e5]\n  - paragraph [ref=e6]:\n    - text: \"1\"\n  - paragraph [ref=e11]:\n    - text: Internal reference\n  - figure \"1-54 / 54\" [ref=e12]:\n    - blockquote [ref=e13]:\n      - text: \"1Acceptance footnote: the source is a local test book.\"\n    - caption [ref=e14]:\n      - text: \"1-54 / 54\"\n  - separator [ref=e16]\n  - button Open passage [ref=e19]:\n    - text: Open passage\n  - button Show reader note [ref=e20]:\n    - text: Show reader note\n  - button Close [ref=e21]:\n    - text: Close\n\n# ───────────────────────────────────────\n# Generated: 2026-09-12T17:34:21.885Z\n# Elements indexed: 22\n# Use [ref=eN] with other webview tools"
+      }
+    ]
+  },
+  "cleanup": {
+    "bookRemovalCommitted": true,
+    "files": "released",
+    "remainingBooks": [
+      "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+      "8ced004f-efe3-408f-80a8-a0ebffec84d3"
+    ],
+    "pluginsRestoredToRoundBaseline": true
+  }
+}
