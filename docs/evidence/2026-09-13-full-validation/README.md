@@ -279,3 +279,16 @@ namespace/0凭据。旧界面再修改书名得到 backup/busy。
 
 ![恢复结果与重载入口](./backup-ui-restored.png)
 ![重载后实际阅读](./backup-ui-reading.png)
+
+## 第十一个流程：导航、历史与只读边界
+
+复用原有隔离三章FB2，真实测试Worker依次打开、按45%/80%定位、后退/前进、
+下一页/上一页，共7个完成回执。不存在href、旧源版本、非法进度分别返回
+reader/target-not-found、reader/stale-location、reader/invalid-target；只读Worker
+没有写commands。Agent原生端口打开指定进度、读取会话、关闭到idle通过。
+
+编译Jumper真实Worker：非法章节号不移动原位置；宿主挂载实时搜索视图后找到
+Beta paragraph 17，实际点击定位，后退/前进重回相同CFI；Agent精确定位Gamma
+paragraph 23，旧版本拒绝。首轮探针仍按旧同步列表契约调用，现改为真实宿主
+订阅并等待启用状态后操作；当前冷开重验及桌面类型检查通过。导航完关书，保留
+原隔离资料。见 navigation-observations.json；不代替其他格式或跨进程恢复。

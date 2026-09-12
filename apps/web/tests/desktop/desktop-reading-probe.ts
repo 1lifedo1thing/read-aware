@@ -7,6 +7,7 @@ import { localKV } from "../../src/platform/local-store";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { startPluginWorker } from "../../src/features/plugins/runtime/plugin-worker-host";
+import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
 import { buildReaderTools } from "../../../../packages/agent/src/tools/reader-tools";
 import { buildNavigationTools } from "../../../../packages/agent/src/tools/navigation-tools";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
@@ -71,9 +72,20 @@ export async function runDesktopJumperProbe(bookId: string) {
   const dataDir = await assertIsolated();
   const deps = buildRuntimeDeps();
   const library = createLibraryDomain("user").queries.books;
+  const until = async (check: () => boolean) => {
+    const deadline = Date.now() + 8_000;
+    while (!check()) {
+      if (Date.now() > deadline) throw new Error("Jumper live view did not settle");
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+  };
+  const readyCommand = async (id: string) => {
+    const current = () => getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === "jumper" && item.id === id);
+    await until(() => current()?.state?.enabled === true);
+    return current()!;
+  };
   await deps.reader.goTo({ bookId, fraction: 0 });
-  const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === "jumper" && command.id === "open");
-  if (!command) throw new Error("Installed Jumper command is unavailable");
+  const command = await readyCommand("open");
   const root = await command.run();
   if (!root || root.view?.kind !== "blocks") throw new Error("Jumper did not return its root view");
   const form = root.view.blocks.find(block => block.kind === "form");
@@ -85,14 +97,20 @@ export async function runDesktopJumperProbe(bookId: string) {
   if (beforeMissing.location?.cfi !== afterMissing.location?.cfi) throw new Error("Missing chapter moved the reader");
   const toc = await library.getNavigationToc(bookId);
   const search = await form.onSubmit({ mode: "text", query: "Beta paragraph 17", matchCase: true, wholeWords: false });
-  if (!search || search.view?.kind !== "list" || search.view.items.length !== 1) throw new Error("Expected one precise passage");
-  const selected = await search.view.items[0].onSelect?.();
-  if (!selected?.close) throw new Error("Jumper did not acknowledge completed navigation");
+  if (!search?.view) throw new Error("Expected a search view");
+  // Search now starts after its real host view subscribes. Calling onSubmit
+  // alone only returns a progress view, not the asynchronously published hits.
+  await runPluginContribution("jumper", "Jumper", async () => search, { presentation: "dialog", owner: command.run });
+  const hits = () => [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] li button')]
+    .filter(button => button.textContent?.includes("Beta paragraph 17"));
+  await until(() => hits().length === 1);
+  const match = hits()[0]!.textContent!;
+  hits()[0]!.click();
+  await until(() => !document.querySelector('[role="dialog"]'));
   const atMatch = await deps.reader.getSession();
-  const back = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === "jumper" && command.id === "back");
-  const forward = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === "jumper" && command.id === "forward");
-  if (!back || !forward) throw new Error("Jumper history commands missing");
+  const back = await readyCommand("back");
   await back.run(); const afterBack = await deps.reader.getSession();
+  const forward = await readyCommand("forward");
   await forward.run(); const afterForward = await deps.reader.getSession();
   if (afterBack.location?.cfi === atMatch.location?.cfi || afterForward.location?.cfi !== atMatch.location?.cfi) throw new Error("Jumper history did not retrace actual locations");
   const tools = [...buildNavigationTools({ kind: "book", bookId }, deps), ...buildReaderTools({ kind: "book", bookId }, deps)];
@@ -109,7 +127,7 @@ export async function runDesktopJumperProbe(bookId: string) {
   catch (error) { stale = (error as { code?: string }).code; }
   if (stale !== "reader/stale-location") throw new Error("Stale navigation was not rejected");
   return { dataDir, toc, missing, beforeMissing: beforeMissing.location, afterMissing: afterMissing.location,
-    match: search.view.items[0].title, atMatch: atMatch.location, afterBack: afterBack.location, afterForward: afterForward.location,
+    match, atMatch: atMatch.location, afterBack: afterBack.location, afterForward: afterForward.location,
     agentSearch, agentNavigation, stale };
 }
 
