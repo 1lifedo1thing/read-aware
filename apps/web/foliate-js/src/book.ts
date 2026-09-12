@@ -74,6 +74,9 @@ export type BookSection = {
     createDocument?: () => MaybePromise<Document>
     /** Read an image from this section's detached source DOM; never fetch external URLs. */
     loadImage?: (element: Element) => MaybePromise<Blob | null>
+    getImageStyles?: (doc: Document, signal?: AbortSignal) => MaybePromise<{ text: string; resolveHref: (href: string) => string }[]>
+    getImages?: (signal?: AbortSignal) => MaybePromise<{ alt: string }[]>
+    readImage?: (index: number, signal?: AbortSignal) => MaybePromise<Blob | null>
     getReferences?: (signal?: AbortSignal) => MaybePromise<SectionReference[]>
     getText?: (signal?: AbortSignal) => MaybePromise<string>
     linear?: string | null

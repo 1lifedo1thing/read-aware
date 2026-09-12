@@ -1,6 +1,7 @@
 import type { Book, BookFile, PageColors, PageSource } from './book.js'
 import * as pdfjsLib from './vendor/pdfjs/pdf.mjs'
 import type { PDFPage, PDFDestination, LoadingTask } from './vendor/pdfjs/pdf.mjs'
+import { pdfImageCandidates, readPDFImage } from './pdf-images.js'
 import { readPDFReferences, readPDFPageText } from './pdf-content.js'
 import { getPDFMetadata } from './pdf-metadata.js'
 import { BookRangeTransport } from './pdf-transport.js'
@@ -484,6 +485,16 @@ export const makePDF = async (file: BookFile) => {
             })
             cache.set(i, pending)
             return pending
+        },
+        getImages: async (signal?: AbortSignal) => {
+            signal?.throwIfAborted()
+            if (destroyed) throw new Error('PDF document was closed')
+            return (await pdfImageCandidates(await pdf.getPage(i + 1), signal)).map(() => ({ alt: '' }))
+        },
+        readImage: async (index: number, signal?: AbortSignal) => {
+            signal?.throwIfAborted()
+            if (destroyed) throw new Error('PDF document was closed')
+            return readPDFImage(await pdf.getPage(i + 1), index, signal)
         },
         getReferences: async (signal?: AbortSignal) => {
             signal?.throwIfAborted()

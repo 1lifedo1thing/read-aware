@@ -1,3 +1,4 @@
+import { ContentBudgetError } from './content-budget.js'
 import type { Book, BookMetadata, BookSection, MediaMetadata, Rendition, TOCFragment, TOCItem } from './book.js'
 import { NS, MIME, isExternal, resolveURL } from './epub-dom.js'
 import { getMetadata } from './epub-metadata.js'
@@ -81,6 +82,33 @@ export class EPUB implements Book {
             },
             unload: () => loader.unloadItem(item),
             createDocument: () => this.loadDocument(item),
+            getImageStyles: async (doc, signal) => {
+                const sheets: { text: string; resolveHref: (href: string) => string }[] = []
+                const visited = new Set<string>()
+                let chars = 0
+                const imports = (text: string) => Array.from(text.matchAll(/@import\s+(?:url\(\s*)?["']([^"'\n]+)["']/gi), match => match[1])
+                const load = async (src: string, base: string): Promise<void> => {
+                    signal?.throwIfAborted()
+                    const href = resolveURL(src, base).split('#')[0]
+                    if (isExternal(href) || href.startsWith('//') || visited.has(href)) return
+                    const item = this.resources.getItemByHref(href)
+                    if (item?.mediaType !== 'text/css') return
+                    visited.add(href)
+                    if (visited.size > 32 || (this.getSize(href) ?? 0) > 512 * 1024) throw new ContentBudgetError()
+                    const text = await this.loadText(href)
+                    signal?.throwIfAborted()
+                    if (text == null) throw new Error('Book image stylesheet is missing')
+                    if ((chars += text.length) > 512 * 1024) throw new ContentBudgetError()
+                    sheets.push({ text, resolveHref: source => {
+                        const target = resolveURL(source, href)
+                        return isExternal(target) || target.startsWith('//') ? target : '/' + target
+                    } })
+                    for (const source of imports(text)) await load(source, href)
+                }
+                for (const link of doc.querySelectorAll('link[rel~="stylesheet"][href]')) await load(link.getAttribute('href')!, item.href)
+                for (const style of doc.querySelectorAll('style')) for (const href of imports(style.textContent ?? '')) await load(href, item.href)
+                return sheets
+            },
             loadImage: async element => {
                 const src = element.getAttribute('src') ?? element.getAttribute('href')
                     ?? element.getAttributeNS(NS.XLINK, 'href')

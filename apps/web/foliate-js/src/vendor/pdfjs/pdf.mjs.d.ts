@@ -6,7 +6,7 @@ import type { PageViewport } from 'pdfjs-dist'
 export type PDFDestination = [number | { num: number; gen: number }, ...unknown[]]
 export type PDFOutline = { title: string; dest: string | PDFDestination | null; url?: string | null; items: PDFOutline[] }
 export type PDFMetadata = { get(name: string): unknown }
-export type PDFPage = Pick<PDFPageProxy, 'getViewport' | 'render'> & {
+export type PDFPage = Pick<PDFPageProxy, 'getViewport' | 'render'> & import('../../pdf-images.js').PDFImagePage & {
     streamTextContent(): ReadableStream<TextContent>
     getAnnotations(): Promise<Array<Record<string, unknown>>>
 }

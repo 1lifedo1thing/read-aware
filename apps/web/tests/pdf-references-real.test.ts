@@ -31,3 +31,23 @@ test("real PDF.js parses PDF link destinations, notes and target text through th
       .toMatchObject({ status: "resolved", label: "Writer", text: "Actual note" });
   } finally { await pdf.destroy(); }
 });
+
+test("real PDF.js embedded image objects reach the bounded pixel encoder without page rendering", async () => {
+  const source = await PDFDocument.create();
+  const png = await source.embedPng("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5XcAAAAASUVORK5CYII=");
+  source.addPage().drawImage(png, { x: 20, y: 20, width: 100, height: 100 });
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const { pdfImageCandidates, readPDFImage } = await import("../foliate-js/src/pdf-images");
+  const pdf = await getDocument({ data: await source.save(), isEvalSupported: false }).promise;
+  try {
+    const page = await pdf.getPage(1);
+    expect(await pdfImageCandidates(page)).toHaveLength(1);
+    let dimensions: number[] = [];
+    const result = await readPDFImage(page, 0, undefined, async pixels => {
+      dimensions = [pixels.width, pixels.height, pixels.rgba?.length ?? 0];
+      return new Blob(["encoded by test"], { type: "image/png" });
+    });
+    expect(dimensions).toEqual([1, 1, 4]);
+    expect(result?.type).toBe("image/png");
+  } finally { await pdf.destroy(); }
+});

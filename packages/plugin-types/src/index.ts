@@ -1416,7 +1416,7 @@ export type PluginLibraryDomain = {
     readRange(input: import("@read-aware/core").BookRangeQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").BookRangePage>;
     /** Library 1.12: versioned section references, not extracted chapter indices. */
     listReferences(input: import("@read-aware/core").BookReferencesQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").BookReferencesPage>;
-    /** Library 1.13: section-local img/SVG image discovery; never fetches remote images. */
+    /** Library 1.29: section-local img/SVG, srcset/authored CSS and PDF image candidates. No remote fetch; PDF operator inspection can decode objects. */
     listImages(input: import("@read-aware/core").BookImagesQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").BookImagesPage>;
     /** Seal an embedded image as this activation's ResourceRef; does not display it or decode pixels. */
     openImageResource(input: import("@read-aware/core").BookImageQuery): Promise<import("@read-aware/core").BookImageResource>;
