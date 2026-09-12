@@ -1,7 +1,9 @@
-import { AppError, errorCode, type BookTextSnapshot } from "@read-aware/core";
+import { AppError, errorCode, type BookTextPriority, type BookTextWaitReason, type BookTextSnapshot } from "@read-aware/core";
 import type { FoliateBook } from "../../reader/lib/foliate-engine";
 import { extractBookText } from "./book-text-extraction";
 import { parseBookTextRecord, snapshotFromText, textComplete, type BookTextRecord, type ExtractedChapter } from "./book-text-record";
+
+import { BookTextScheduler } from "./book-text-scheduler";
 
 export type TextSource = { contentVersion: string | null; format: string };
 export type BookTextDependencies = {
@@ -10,26 +12,29 @@ export type BookTextDependencies = {
   write(record: BookTextRecord): Promise<void>;
   remove(bookId: string): Promise<void>;
   content<T>(bookId: string, version: string, signal: AbortSignal, read: (book: FoliateBook) => Promise<T>): Promise<T>;
-  yieldToReader(signal: AbortSignal): Promise<void>;
+  yieldToReader(signal: AbortSignal, waiting?: (value: boolean) => void): Promise<void>;
   warn(message: string, error: unknown): void;
 };
 type PreparedText = { chapters: ExtractedChapter[]; state: BookTextSnapshot };
 export type TextPreparationOptions = {
   rebuild?: boolean;
+  priority?(): BookTextPriority;
+  scheduling?(reason: BookTextWaitReason): void;
   signal?: AbortSignal;
   progress?(snapshot: BookTextSnapshot): void;
   /** Internal request checkpoint: reset completed, so a resumed rebuild must not erase new progress. */
   onRebuildReset?(): void;
 };
 type Job = { version: string; controller: AbortController; snapshot: BookTextSnapshot; promise: Promise<PreparedText>;
-  settled: boolean; consumers: Map<symbol, TextPreparationOptions["progress"]> };
+  settled: boolean; waitReason: BookTextWaitReason; consumers: Map<symbol, TextPreparationOptions> };
 
 /** Owns extraction, durable verdicts and current-source reads. No independent chapter cache. */
 export class BookTextRepository {
   private jobs = new Map<string, Job>();
   private failures = new Map<string, { version: string; code: string }>();
   private writes = new Map<string, Promise<void>>();
-  constructor(private readonly deps: BookTextDependencies) {}
+  private readonly scheduler: BookTextScheduler;
+  constructor(private readonly deps: BookTextDependencies) { this.scheduler = new BookTextScheduler(deps.yieldToReader); }
 
   private async source(bookId: string, fetchMissing = false): Promise<TextSource> {
     if (typeof bookId !== "string" || !bookId.trim()) throw new AppError("library/invalid-input", "A book ID is required");
@@ -87,7 +92,7 @@ export class BookTextRepository {
 
   private notify(job: Job): void {
     for (const notify of job.consumers.values()) {
-      try { notify?.(structuredClone(job.snapshot)); }
+      try { notify.progress?.(structuredClone(job.snapshot)); }
       catch (error) { this.deps.warn("Text preparation observer failed", error); }
     }
   }
@@ -95,7 +100,7 @@ export class BookTextRepository {
   /** A cancelled request releases its lease, not another reader's work. */
   private join(bookId: string, job: Job, options: TextPreparationOptions): Promise<PreparedText> {
     const token = Symbol();
-    job.consumers.set(token, options.progress);
+    job.consumers.set(token, options);
     return new Promise((resolve, reject) => {
       let finished = false;
       const release = () => {
@@ -121,7 +126,7 @@ export class BookTextRepository {
       });
       if (options.signal?.aborted) abort();
       else {
-        try { options.progress?.(structuredClone(job.snapshot)); }
+        try { options.progress?.(structuredClone(job.snapshot)); options.scheduling?.(job.waitReason); }
         catch (error) { this.deps.warn("Text preparation observer failed", error); }
       }
     });
@@ -152,7 +157,7 @@ export class BookTextRepository {
       const controller = new AbortController();
       const next: Job = { version, controller,
         snapshot: { bookId, contentVersion: version, status: "preparing", text: "unknown", chapterCount: 0, progress: null },
-        settled: false, consumers: new Map(), promise: Promise.resolve({ chapters: [], state: { bookId, contentVersion: version, status: "preparing", text: "unknown", chapterCount: 0, progress: null } }) };
+        settled: false, waitReason: null, consumers: new Map(), promise: Promise.resolve({ chapters: [], state: { bookId, contentVersion: version, status: "preparing", text: "unknown", chapterCount: 0, progress: null } }) };
       this.jobs.set(bookId, next); this.failures.delete(bookId);
       const signal = controller.signal;
       const current = async () => {
@@ -167,7 +172,17 @@ export class BookTextRepository {
         });
         const result = await this.deps.content(bookId, version, signal, book => extractBookText(book, {
           bookId, contentVersion: version, prior: options.rebuild ? null : prior, signal,
-          yieldToReader: () => this.deps.yieldToReader(signal),
+          yieldToReader: async () => {},
+          readSection: read => this.scheduler.read(signal,
+            () => [...next.consumers.values()].some(consumer => (consumer.priority?.() ?? "normal") === "normal") ? "normal" : "background",
+            reason => {
+              if (next.waitReason === reason) return;
+              next.waitReason = reason;
+              for (const consumer of next.consumers.values()) {
+                try { consumer.scheduling?.(reason); }
+                catch (error) { this.deps.warn("Text scheduling observer failed", error); }
+              }
+            }, read),
           save: record => this.queueWrite(bookId, async () => { await current(); await this.deps.write(record); await current(); }),
           progress: snapshot => { if (!signal.aborted) { next.snapshot = { ...snapshot, status: "preparing", chapterCount: 0 }; this.notify(next); } },
           warn: this.deps.warn,

@@ -6751,3 +6751,21 @@ three global Agent tools return metadata and require approval for changes or
 export; saving a copy does not modify the library cover. Native file/SQLite,
 controlled host/Worker cancellation protocol and compiled plugin tests cover the
 implementation; actual Tauri/Worker and full restore UI acceptance are pending.
+
+
+### Text preparation scheduling (Library 1.22)
+
+`prepareText` accepts `priority: "normal" | "background"` (default normal).
+`setTextTaskPriority(bookId, taskId, priority)` changes an owned active/paused
+request in place. Task snapshots expose its priority and `waitReason`:
+`queue`, `reader`, or null. Paused/terminal snapshots clear that waiting state.
+Shared extraction uses its highest live consumer priority; cancelling or
+pausing one consumer removes only that lease. Changes apply between sections,
+without rebuilding or discarding saved checkpoints.
+
+At most two actual section reads run at once, with 64 waiting entries. Priority
+is FIFO within each tier; waiting background work gets a turn after four normal
+dispatches. Both priorities respect reader activity cooldown. Cancelling a
+running parser does not release capacity until it settles. These are process
+local controls, not durable task history or forced parser interruption.
+Text Desk 0.13 and the Agent priority tool consume the same public path.

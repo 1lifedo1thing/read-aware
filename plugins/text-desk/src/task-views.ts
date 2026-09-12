@@ -17,6 +17,8 @@ function requestSnapshot(ctx: PluginContext, title: string, task: BookTextTaskSn
   const progress = task.textState.progress;
   const rows = [
     { label: tr(ctx.locale, "request"), value: tr(ctx.locale, `task_${task.status}`) },
+    { label: tr(ctx.locale, "priority"), value: tr(ctx.locale, task.priority === "background" ? "backgroundPriority" : "normalPriority") },
+    ...(task.waitReason ? [{ label: tr(ctx.locale, "waiting"), value: tr(ctx.locale, task.waitReason === "reader" ? "readerWait" : "queueWait") }] : []),
     { label: tr(ctx.locale, "mode"), value: tr(ctx.locale, task.mode) },
     { label: tr(ctx.locale, "observedState"), value: tr(ctx.locale, task.textState.status) },
     { label: tr(ctx.locale, "text"), value: tr(ctx.locale, task.textState.text) },
@@ -34,7 +36,11 @@ function requestSnapshot(ctx: PluginContext, title: string, task: BookTextTaskSn
     { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({
       view: await requestDetail(ctx, bookId, title, taskId), navigation: "replace",
     }) },
-    ...(active(task) ? [{ id: task.status === "paused" ? "resume" : "pause",
+    ...(active(task) ? [{ id: "priority", label: tr(ctx.locale, task.priority === "background" ? "normalPriority" : "backgroundPriority"), icon: "sort-ascending",
+      run: async () => {
+        await ctx.domains.library!.commands!.books.setTextTaskPriority(bookId, taskId, task.priority === "background" ? "normal" : "background");
+        return { view: await requestDetail(ctx, bookId, title, taskId), navigation: "replace" as const };
+      } }, { id: task.status === "paused" ? "resume" : "pause",
       label: tr(ctx.locale, task.status === "paused" ? "resumeRequest" : "pauseRequest"), icon: task.status === "paused" ? "play" : "pause",
       run: async () => {
         const commands = ctx.domains.library!.commands!.books;

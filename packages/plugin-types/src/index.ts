@@ -97,7 +97,7 @@ import type {
 // depending on @read-aware/core directly.
 export type { BookTextSearch, BookTextHit } from "@read-aware/core";
 export type { BookImportPhase, BookImportReceipt, BookImportRequest, BookImportTaskSnapshot } from "@read-aware/core";
-export type { BookTextRange, BookRangeQuery, BookRangePage, BookTextSnapshot, BookTextTaskSnapshot, BookTextPrepareOptions, AnnotationSnapshot, AnnotationMutation, AnnotationCommitResult, AnnotationPage, AnnotationPageQuery, BookTocEntry, BookNavigationToc, BookLocationSearch, BookLocationSearchPage, BookLocationHit,
+export type { BookTextRange, BookRangeQuery, BookRangePage, BookTextSnapshot, BookTextTaskSnapshot, BookTextPrepareOptions, BookTextPriority, BookTextWaitReason, AnnotationSnapshot, AnnotationMutation, AnnotationCommitResult, AnnotationPage, AnnotationPageQuery, BookTocEntry, BookNavigationToc, BookLocationSearch, BookLocationSearchPage, BookLocationHit,
   ReadingLocation, ReadingTarget, ReadingSessionSnapshot, ReadingPaginationSnapshot, ReadingSelectionSnapshot, ReadingSelectionReceipt, ReadingSessionGuard, ReadingNavigationReceipt, ReadingPlaybackSnapshot, ReadingPlaybackReceipt, ReadingModeConfiguration, ReadingModeDescriptor, ReadingModeSnapshot, ReadingModeReceipt, ReadingModePosition, ReadingModeStepOutcome, ReadingModeStepReceipt } from "@read-aware/core";
 export type {
   BookFormat,
@@ -1428,6 +1428,7 @@ export type PluginLibraryDomain = {
       /** Conditional record merge with the host's deterministic keeper; not file deletion or undo. */
       mergeDuplicates(input: import("@read-aware/core").BookMergeRequest): Promise<import("@read-aware/core").BookMergeReceipt>;
       /** Library 1.21: pauses only this request by releasing its lease; other consumers and dispatched I/O may continue. */
+      setTextTaskPriority(bookId: string, taskId: string, priority: import("@read-aware/core").BookTextPriority): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       pauseTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       /** Library 1.21: reacquires this paused request using saved checkpoints and the same handle. */
       resumeTextTask(bookId: string, taskId: string): Promise<import("@read-aware/core").BookTextTaskSnapshot>;

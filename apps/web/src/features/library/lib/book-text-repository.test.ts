@@ -270,3 +270,32 @@ test("resuming a paused rebuild preserves completed sections and rejects the old
   expect(owner.get("book", task.taskId).status).toBe("completed");
   owner.dispose();
 });
+
+test("shared extraction inherits live consumer priority and cancellation downgrades only that lease", async () => {
+  const gates = new Map<string, ReturnType<typeof deferred<string>>>();
+  const entered: string[] = [], priorities = new Map<string, "normal" | "background">();
+  const repo = new BookTextRepository({
+    source: async () => ({ format: "txt", contentVersion: "v" }), read: async () => null,
+    write: async () => {}, remove: async () => {}, warn: () => {}, yieldToReader: async () => {},
+    content: async (id, _version, _signal, read) => read(makeBook([async () => {
+      entered.push(id); return gates.get(id)!.promise;
+    }])),
+  });
+  const requests: Promise<unknown>[] = [];
+  const start = (id: string, priority: "normal" | "background", signal?: AbortSignal) => {
+    if (!gates.has(id)) gates.set(id, deferred<string>());
+    priorities.set(id, priority);
+    const request = repo.prepare(id, { signal, priority: () => priorities.get(id)! }); requests.push(request.catch(e => e)); return request;
+  };
+  const settle = async () => { for (let i = 0; i < 45; i++) await Promise.resolve(); };
+  start("a", "normal"); start("b", "normal"); await settle(); expect(entered).toEqual(["a", "b"]);
+  start("shared", "background"); start("other", "normal"); await settle();
+  const high = new AbortController();
+  requests.push(repo.prepare("shared", { signal: high.signal, priority: () => "normal" }).catch(e => e)); await settle();
+  // Cancelling its high-priority consumer must not cancel the background owner.
+  high.abort(Error("reader left")); await settle();
+  gates.get("a")!.resolve(prose); await settle(); expect(entered.at(-1)).toBe("other");
+  gates.get("b")!.resolve(prose); await settle(); expect(entered.at(-1)).toBe("shared");
+  expect(entered.filter(id => id === "shared")).toHaveLength(1);
+  for (const gate of gates.values()) gate.resolve(prose); await Promise.all(requests);
+});

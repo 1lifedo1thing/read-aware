@@ -12,15 +12,15 @@ export function buildBookTextTaskTools(scope: ThreadScope, deps: RuntimeDeps): A
   const book = (bookId: string | undefined) => resolveBookId(scope, normalizeBookIdParam(bookId));
   return [{
     name: "prepare_book_text", label: "Prepare book text",
-    description: "Start a background derived-text preparation request for a book (defaults to current book). This returns a task receipt, not completed text: check get_book_text_tasks later instead of polling repeatedly in this turn. Default resumes successful checkpoints or reuses the final index. Set rebuild=true only when the reader explicitly requests a fresh index: it discards the prior derived index and rereads all required sections; busy shared work rejects rebuild rather than interrupting others. It may download a missing source, never performs OCR, and does not rebuild book memory. Tasks are local to this app process.",
-    parameters: Type.Object({ bookId: Type.Optional(Type.String()), rebuild: Type.Optional(Type.Boolean()) }),
+    description: "Start a background derived-text preparation request for a book (defaults to current book). This returns a task receipt, not completed text: check get_book_text_tasks later instead of polling repeatedly in this turn. Default resumes successful checkpoints or reuses the final index. Set rebuild=true only when the reader explicitly requests a fresh index: it discards the prior derived index and rereads all required sections; busy shared work rejects rebuild rather than interrupting others. It may download a missing source, never performs OCR, and does not rebuild book memory. Tasks are local to this app process. priority defaults to normal; background yields to normal section requests. Both always yield during reader activity; this is not an override of reader responsiveness.",
+    parameters: Type.Object({ bookId: Type.Optional(Type.String()), rebuild: Type.Optional(Type.Boolean()), priority: Type.Optional(Type.Union([Type.Literal("normal"), Type.Literal("background")])) }),
     execute: async (_id, params) => {
-      const input = params as { bookId?: string; rebuild?: boolean };
-      return textResult(await tasks.start(book(input.bookId), { rebuild: input.rebuild }));
+      const input = params as { bookId?: string; rebuild?: boolean; priority?: "normal" | "background" };
+      return textResult(await tasks.start(book(input.bookId), { rebuild: input.rebuild, priority: input.priority }));
     },
   }, {
     name: "get_book_text_tasks", label: "Book text requests",
-    description: "Read this Agent's local text preparation requests for a book, or one taskId returned by prepare_book_text. Lists newest first, 10 per page by default (maximum 20); nextOffset is null at the end. Offset pages are snapshots, not stable across new requests or eviction. Returns queued/running/paused/completed/failed/cancelled, revision, source text-state and stable failure code. Does not start work or download. Other plugins' tasks are not exposed. Task handles expire on app restart and old terminal tasks may be evicted; use get_book_text_status for current source availability.",
+    description: "Read this Agent's local text preparation requests for a book, or one taskId returned by prepare_book_text. Lists newest first, 10 per page by default (maximum 20); nextOffset is null at the end. Offset pages are snapshots, not stable across new requests or eviction. Returns queued/running/paused/completed/failed/cancelled, revision, priority, waitReason (queue/reader or null), source text-state and stable failure code. Does not start work or download. Other plugins' tasks are not exposed. Task handles expire on app restart and old terminal tasks may be evicted; use get_book_text_status for current source availability.",
     parameters: Type.Object({ bookId: Type.Optional(Type.String()), taskId: Type.Optional(Type.String()),
       offset: Type.Optional(Type.Integer({ minimum: 0 })), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })) }),
     execute: async (_id, params) => {
@@ -42,6 +42,15 @@ export function buildBookTextTaskTools(scope: ThreadScope, deps: RuntimeDeps): A
     execute: async (_id, params) => {
       const input = params as { bookId?: string; taskId: string };
       return textResult(await tasks.cancel(book(input.bookId), input.taskId));
+    },
+  }, {
+    name: "set_book_text_task_priority", label: "Set text request priority",
+    description: "Change normal/background priority of this Agent-owned active or paused text request. Applies at the next section dispatch, without restarting or discarding checkpoints. Shared extraction uses the highest live consumer priority; another reader can keep it normal. Both priorities yield to reader activity. At most two section reads run at once; pending background work receives a turn after four normal dispatches. Terminal requests are unchanged.",
+    parameters: Type.Object({ bookId: Type.Optional(Type.String()), taskId: Type.String(), priority: Type.Union([Type.Literal("normal"), Type.Literal("background")]) }),
+    executionMode: "sequential",
+    execute: async (_id, params) => {
+      const input = params as { bookId?: string; taskId: string; priority: "normal" | "background" };
+      return textResult(await tasks.setPriority(book(input.bookId), input.taskId, input.priority));
     },
   }, ...(["pause", "resume"] as const).map(action => ({
     name: `${action}_book_text_task`, label: `${action === "pause" ? "Pause" : "Resume"} text request`,

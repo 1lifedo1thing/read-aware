@@ -44,16 +44,16 @@ const repository = new BookTextRepository({
   write: async record => { await putDesktopBlob(blobKey(record.bookId), new TextEncoder().encode(JSON.stringify(record)), "application/json"); },
   remove: bookId => deleteDesktopBlob(blobKey(bookId)),
   content: (bookId, version, signal, read) => withBookContent(bookId, version, signal, ({ book }) => read(book)),
-  yieldToReader: async signal => {
+  yieldToReader: async (signal, waiting) => {
     while (Date.now() - lastReaderDemandAt < 1500) {
-      signal.throwIfAborted();
+      signal.throwIfAborted(); waiting?.(true);
       await new Promise<void>((resolve, reject) => {
         const abort = () => { clearTimeout(timer); reject(signal.reason); };
         const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, 1500 - (Date.now() - lastReaderDemandAt));
         signal.addEventListener("abort", abort, { once: true });
       });
     }
-    signal.throwIfAborted(); await yieldToUi(); signal.throwIfAborted();
+    signal.throwIfAborted(); waiting?.(false); await yieldToUi(); signal.throwIfAborted();
   },
   warn: (message, error) => log.warn(message, error),
 });

@@ -140,3 +140,21 @@ test("paused handles still consume the bounded live quota and can be cancelled o
   lifetime.abort();
   expect(() => h.owner.resume("book", first.taskId)).toThrow();
 });
+
+test("priority changes preserve the same lease and checkpoints; waiting reasons clear on pause and ignore old runs", async () => {
+  const h = harness(); const started = await h.owner.start("book", { priority: "background" });
+  expect(started.priority).toBe("background"); expect(h.work[0]!.options.priority!()).toBe("background");
+  h.work[0]!.options.scheduling!("reader"); expect(h.owner.get("book", started.taskId).waitReason).toBe("reader");
+  const promoted = h.owner.setPriority("book", started.taskId, "normal");
+  expect(promoted.priority).toBe("normal"); expect(h.work).toHaveLength(1); expect(h.work[0]!.options.priority!()).toBe("normal");
+  expect(() => h.owner.setPriority("other", started.taskId, "background")).toThrow();
+  expect(() => h.owner.setPriority("book", started.taskId, "urgent" as never)).toThrow();
+  expect(h.owner.pause("book", started.taskId).waitReason).toBeNull();
+  h.owner.setPriority("book", started.taskId, "background"); h.owner.resume("book", started.taskId);
+  h.work[0]!.options.scheduling!("queue"); expect(h.owner.get("book", started.taskId).waitReason).toBeNull();
+  expect(h.work[1]!.options.priority!()).toBe("background");
+  h.work[1]!.result.resolve(state("book", "ready")); await settle();
+  expect(h.owner.setPriority("book", started.taskId, "normal").priority).toBe("background");
+  await expect(h.owner.start("book", { priority: "urgent" } as never)).rejects.toMatchObject({ code: "library/invalid-input" });
+  h.owner.dispose();
+});

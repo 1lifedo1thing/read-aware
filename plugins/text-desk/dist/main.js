@@ -1,6 +1,12 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  priority: ["Priority", "优先级", "優先順序", "優先度", "Приоритет", "Priorité", "Priorität", "Prioridad"],
+  normalPriority: ["Normal priority", "普通优先级", "一般優先順序", "通常優先度", "Обычный приоритет", "Priorité normale", "Normale Priorität", "Prioridad normal"],
+  backgroundPriority: ["Background priority", "后台优先级", "背景優先順序", "バックグラウンド優先度", "Фоновый приоритет", "Priorité en arrière-plan", "Hintergrundpriorität", "Prioridad de fondo"],
+  waiting: ["Waiting", "等待原因", "等待原因", "待機理由", "Ожидание", "Attente", "Wartegrund", "En espera"],
+  readerWait: ["Yielding to reading", "正在为阅读让路", "正在為閱讀讓路", "読書を優先しています", "Уступает чтению", "Priorité à la lecture", "Lesen hat Vorrang", "Cediendo a la lectura"],
+  queueWait: ["Waiting for an extraction slot", "等待抽取空位", "等待擷取空位", "抽出枠を待機中", "Ожидание очереди извлечения", "En attente d'une place d'extraction", "Wartet auf Extraktionsplatz", "Esperando turno de extracción"],
   task_paused: ["Paused", "已暂停", "已暫停", "一時停止中", "Приостановлено", "En pause", "Pausiert", "En pausa"],
   pauseRequest: ["Pause request", "暂停此请求", "暫停此請求", "リクエストを一時停止", "Приостановить запрос", "Mettre la requête en pause", "Anfrage pausieren", "Pausar solicitud"],
   resumeRequest: ["Resume request", "恢复此请求", "恢復此請求", "リクエストを再開", "Возобновить запрос", "Reprendre la requête", "Anfrage fortsetzen", "Reanudar solicitud"],
@@ -138,6 +144,8 @@ function requestSnapshot(ctx, title, task) {
   const progress = task.textState.progress;
   const rows = [
     { label: tr(ctx.locale, "request"), value: tr(ctx.locale, `task_${task.status}`) },
+    { label: tr(ctx.locale, "priority"), value: tr(ctx.locale, task.priority === "background" ? "backgroundPriority" : "normalPriority") },
+    ...task.waitReason ? [{ label: tr(ctx.locale, "waiting"), value: tr(ctx.locale, task.waitReason === "reader" ? "readerWait" : "queueWait") }] : [],
     { label: tr(ctx.locale, "mode"), value: tr(ctx.locale, task.mode) },
     { label: tr(ctx.locale, "observedState"), value: tr(ctx.locale, task.textState.status) },
     { label: tr(ctx.locale, "text"), value: tr(ctx.locale, task.textState.text) },
@@ -153,6 +161,14 @@ function requestSnapshot(ctx, title, task) {
       navigation: "replace"
     }) },
     ...active(task) ? [{
+      id: "priority",
+      label: tr(ctx.locale, task.priority === "background" ? "normalPriority" : "backgroundPriority"),
+      icon: "sort-ascending",
+      run: async () => {
+        await ctx.domains.library.commands.books.setTextTaskPriority(bookId, taskId, task.priority === "background" ? "normal" : "background");
+        return { view: await requestDetail(ctx, bookId, title, taskId), navigation: "replace" };
+      }
+    }, {
       id: task.status === "paused" ? "resume" : "pause",
       label: tr(ctx.locale, task.status === "paused" ? "resumeRequest" : "pauseRequest"),
       icon: task.status === "paused" ? "play" : "pause",

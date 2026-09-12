@@ -14,7 +14,7 @@ describe("agent tool registry", () => {
 
     const tools = names(buildAgentTools(book, deps));
 
-    expect(tools).toHaveLength(109);
+    expect(tools).toHaveLength(110);
     expect(tools).toContain("capture_context_bundle");
     expect(tools).toContain("export_context_bundle");
     expect(tools).toContain("inspect_user_profile");
@@ -40,6 +40,7 @@ describe("agent tool registry", () => {
     expect(tools).toContain("get_software_update");
     expect(tools).toContain("verify_local_data");
     expect(tools).toContain("request_projection_repair");
+    expect(tools).toContain("set_book_text_task_priority");
     expect(tools).toContain("pause_book_text_task");
     expect(tools).toContain("resume_book_text_task");
     expect(tools).toContain("request_diagnostics_report");
@@ -103,7 +104,7 @@ describe("agent tool registry", () => {
 
     const tools = names(buildAgentTools(global, deps));
 
-    expect(tools).toHaveLength(130);
+    expect(tools).toHaveLength(131);
     expect(tools).toContain("onboard_reader");
     expect(tools).toContain("read_context_bundle");
     expect(tools).toContain("list_context_bundles");

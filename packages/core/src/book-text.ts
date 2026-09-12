@@ -10,12 +10,16 @@ export type BookTextSnapshot = {
   errorCode?: string;
 };
 
-export type BookTextPrepareOptions = { rebuild?: boolean };
+export type BookTextPriority = "normal" | "background";
+export type BookTextWaitReason = "queue" | "reader" | null;
+export type BookTextPrepareOptions = { rebuild?: boolean; priority?: BookTextPriority };
 /** One caller's ephemeral request, not ownership of all extraction for this book. */
 export type BookTextTaskSnapshot = {
   taskId: string;
   bookId: string;
   mode: "prepare" | "rebuild";
+  priority: BookTextPriority;
+  waitReason: BookTextWaitReason;
   revision: number;
   status: "queued" | "running" | "paused" | "completed" | "failed" | "cancelled";
   createdAt: string;

@@ -130,6 +130,7 @@ export type LibraryCommands = {
     prepareText(bookId: string, options?: BookTextPrepareOptions): Promise<BookTextTaskSnapshot>;
     retryEnrichment(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookEnrichmentReceipt>;
     mergeDuplicates(input: import("@read-aware/core").BookMergeRequest, signal?: AbortSignal): Promise<import("@read-aware/core").BookMergeReceipt>;
+    setTextTaskPriority(bookId: string, taskId: string, priority: import("@read-aware/core").BookTextPriority): Promise<BookTextTaskSnapshot>;
     pauseTextTask(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>;
     resumeTextTask(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>;
     cancelTextTask(bookId: string, taskId: string): Promise<BookTextTaskSnapshot>;
@@ -222,6 +223,7 @@ export function createLibraryDomain(origin: EventOrigin, lifetime?: AbortSignal)
       prepareText: (bookId, options) => textTasks.start(bookId, options),
       mergeDuplicates: (input, signal) => mergeDuplicateBooks(input, origin, signal ?? lifetime),
       retryEnrichment: (bookId, signal) => retryBookEnrichment(bookId, origin, signal ?? lifetime),
+      setTextTaskPriority: async (bookId, taskId, priority) => textTasks.setPriority(bookId, taskId, priority),
       pauseTextTask: async (bookId, taskId) => textTasks.pause(bookId, taskId),
       resumeTextTask: async (bookId, taskId) => textTasks.resume(bookId, taskId),
       cancelTextTask: async (bookId, taskId) => textTasks.cancel(bookId, taskId),

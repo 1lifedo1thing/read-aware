@@ -5,7 +5,7 @@ import { rebuildForm, requestDetail, requestList, startRequest } from "../src/ta
 function harness() {
   const starts: unknown[] = [], cancelled: string[] = [];
   let fails = false;
-  const task: BookTextTaskSnapshot = { taskId: "task", bookId: "book", mode: "prepare", status: "running", revision: 1,
+  const task: BookTextTaskSnapshot = { taskId: "task", bookId: "book", mode: "prepare", priority: "normal", waitReason: null, status: "running", revision: 1,
     createdAt: "2026-09-09T00:00:00Z", updatedAt: "2026-09-09T00:00:00Z",
     textState: { bookId: "book", contentVersion: "v", status: "preparing", text: "unknown", chapterCount: 0,
       progress: { completed: 1, failed: 0, unsupported: 0, total: 3 } } };
@@ -16,6 +16,9 @@ function harness() {
     }, listTextTasks: async () => [structuredClone(task)],
   } }, commands: { books: {
     prepareText: async (bookId: string, options: unknown) => { starts.push({ bookId, options }); return structuredClone(task); },
+    setTextTaskPriority: async (bookId: string, taskId: string, priority: "normal" | "background") => {
+      if (fails) throw Error("priority failed"); expect([bookId, taskId]).toEqual(["book", "task"]); task.priority = priority;
+    },
     pauseTextTask: async (bookId: string, taskId: string) => {
       if (fails) throw Error("pause failed"); expect([bookId, taskId]).toEqual(["book", "task"]); task.status = "paused";
     },
@@ -104,4 +107,17 @@ test("Text Desk pauses and resumes the same request and retains cancel while pau
   h.fail();
   await expect(resumed.actions!.find(a => a.id === "pause")!.run()).rejects.toThrow("pause failed");
   expect(h.task.status).toBe("running");
+});
+
+
+test("Text Desk shows reader waiting and changes only the selected request priority", async () => {
+  const h = harness(); h.task.waitReason = "reader";
+  const view = await requestDetail(h.ctx, "book", "Book", "task");
+  expect(view.content[0]).toMatchObject({ rows: expect.arrayContaining([{ label: "Waiting", value: "Yielding to reading" }]) });
+  const action = view.actions!.find(a => a.id === "priority")!; expect(action.label).toBe("Background priority");
+  const next = (await action.run())!.view as PluginDetailView;
+  expect(h.task.priority).toBe("background"); expect(h.starts).toHaveLength(0);
+  expect(next.actions!.find(a => a.id === "priority")!.label).toBe("Normal priority");
+  h.fail(); await expect(next.actions!.find(a => a.id === "priority")!.run()).rejects.toThrow("priority failed");
+  expect(h.task.priority).toBe("background");
 });

@@ -717,6 +717,7 @@ export function buildPluginContext(
           prepareText: library.commands.books.prepareText,
           retryEnrichment: (bookId: string) => library.commands!.books.retryEnrichment(bookId, lifecycle.signal),
           mergeDuplicates: (input: import("@read-aware/core").BookMergeRequest) => library.commands!.books.mergeDuplicates(input, lifecycle.signal),
+          setTextTaskPriority: library.commands.books.setTextTaskPriority,
           pauseTextTask: library.commands.books.pauseTextTask,
           resumeTextTask: library.commands.books.resumeTextTask,
           cancelTextTask: library.commands.books.cancelTextTask,

@@ -14,7 +14,7 @@ export function createMemoryTextPreparation(chapters: ReadonlyMap<string, readon
       const text = chapters.get(bookId);
       const now = new Date().toISOString();
       const task: BookTextTaskSnapshot = { taskId: crypto.randomUUID(), bookId, mode: options?.rebuild ? "rebuild" : "prepare",
-        status: text ? "completed" : "failed", revision: 1, createdAt: now, updatedAt: now,
+        status: text ? "completed" : "failed", priority: options?.priority ?? "normal", waitReason: null, revision: 1, createdAt: now, updatedAt: now,
         textState: { bookId, contentVersion: "fixture", status: text ? "ready" : "unprepared", text: text ? text.some(c => c.text.length) ? "available" : "textless" : "unknown", chapterCount: text?.length ?? 0, progress: null },
         ...(!text ? { errorCode: "library/content-unavailable" } : {}),
       };
@@ -22,6 +22,7 @@ export function createMemoryTextPreparation(chapters: ReadonlyMap<string, readon
     },
     get: async (bookId, taskId) => get(bookId, taskId),
     list: async bookId => [...tasks.values()].filter(t => t.bookId === bookId).map(t => structuredClone(t)),
+    setPriority: async (bookId, taskId) => get(bookId, taskId),
     pause: async (bookId, taskId) => get(bookId, taskId),
     resume: async (bookId, taskId) => get(bookId, taskId),
     cancel: async (bookId, taskId) => get(bookId, taskId),

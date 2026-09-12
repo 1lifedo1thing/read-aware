@@ -65,3 +65,15 @@ test("pause and resume tools preserve the resolved book, exact handle and host f
   deps.bookText.preparation!.resume = async () => { throw Error("Retired owner"); };
   await expect(tools.find(t => t.name === "resume_book_text_task")!.execute("test", { taskId: task.taskId })).rejects.toThrow("Retired owner");
 });
+
+
+test("priority tooling resolves the current book and forwards the exact handle without restarting work", async () => {
+  const { deps } = createInMemoryDeps({ chapters: { book: [{ text: "Fixture" }] } });
+  const task = await deps.bookText.preparation!.start("book");
+  const calls: unknown[] = [];
+  deps.bookText.preparation!.setPriority = async (bookId, taskId, priority) => { calls.push([bookId, taskId, priority]); return { ...task, priority }; };
+  const tool = buildBookTextTaskTools({ kind: "book", bookId: "book" }, deps).find(t => t.name === "set_book_text_task_priority")!;
+  const result = await tool.execute("test", { bookId: "current", taskId: task.taskId, priority: "background" });
+  expect(calls).toEqual([["book", task.taskId, "background"]]);
+  expect(result.content[0]).toMatchObject({ type: "text", text: expect.stringContaining('"priority":"background"') });
+});

@@ -9,6 +9,7 @@ type ExtractionOptions = {
   prior: BookTextRecord | null;
   signal: AbortSignal;
   yieldToReader(): Promise<void>;
+  readSection?(read: () => Promise<string>): Promise<string>;
   save(record: BookTextRecord): Promise<void>;
   progress(snapshot: BookTextSnapshot): void;
   warn(message: string, error: unknown): void;
@@ -54,7 +55,8 @@ export async function extractBookText(book: FoliateBook, options: ExtractionOpti
     }
     await options.yieldToReader(); signal.throwIfAborted();
     try {
-      const raw = section.getText ? await section.getText() : (await section.createDocument!()).body?.textContent ?? "";
+      const read = async () => section.getText ? section.getText() : (await section.createDocument!()).body?.textContent ?? "";
+      const raw = options.readSection ? await options.readSection(read) : await read();
       signal.throwIfAborted();
       const text = raw.replace(/\s+/g, " ").trim();
       hasText ||= text.length > 0;

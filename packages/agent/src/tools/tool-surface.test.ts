@@ -155,6 +155,7 @@ const SURFACE_CASES: Record<string, Record<string, unknown>> = {
   get_book_text_status: { bookId: BOOK_ID },
   prepare_book_text: { bookId: BOOK_ID },
   get_book_text_tasks: { bookId: BOOK_ID },
+  set_book_text_task_priority: { bookId: BOOK_ID, taskId: "prepared-in-test", priority: "background" },
   pause_book_text_task: { bookId: BOOK_ID, taskId: "prepared-in-test" },
   resume_book_text_task: { bookId: BOOK_ID, taskId: "prepared-in-test" },
   cancel_book_text_task: { bookId: BOOK_ID, taskId: "prepared-in-test" },
@@ -300,7 +301,7 @@ describe("tool surface contract", () => {
           id, title: id, enabled: true, parameters: { type: "object", properties: {}, additionalProperties: false },
         })) });
         deps.hostCommands.execute = async request => ({ commandId: request.id, status: "completed", completed: ["workspace"] });
-        if (["cancel_book_text_task", "pause_book_text_task", "resume_book_text_task"].includes(name)) params.taskId = (await deps.bookText.preparation!.start(BOOK_ID)).taskId;
+        if (["cancel_book_text_task", "pause_book_text_task", "resume_book_text_task", "set_book_text_task_priority"].includes(name)) params.taskId = (await deps.bookText.preparation!.start(BOOK_ID)).taskId;
         if (name === "edit_annotation") params.expectedRevision = (await deps.annotations.inspectAnnotation(String(params.annotationId)))!.revision;
         if (name === "apply_annotation_changes") {
           for (const change of params.changes as Record<string, unknown>[]) change.expectedRevision = (await deps.annotations.inspectAnnotation(String(change.annotationId)))!.revision;
