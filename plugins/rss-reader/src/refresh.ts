@@ -1,5 +1,5 @@
 import { subscribe } from "./feed-library";
-import { loadFeeds } from "./storage";
+import { loadFeeds, reclaimFeedContent } from "./storage";
 import { tr } from "./strings";
 import type { RssPluginContext } from "./types";
 
@@ -30,6 +30,10 @@ export async function refreshAllFeeds(ctx: RssPluginContext): Promise<string> {
 
 export async function refreshScheduledFeeds(ctx: RssPluginContext): Promise<void> {
   const result = await refreshFeeds(ctx);
+  // Revisit orphaned rows even when the network refresh failed.
+  let cleanupError: unknown;
+  try { await reclaimFeedContent(ctx); } catch (error) { cleanupError = error; }
   // Finish the batch, but never let partial failure advance the host's last success.
   if (result.failed > 0) throw result.firstError ?? new Error("RSS refresh failed");
+  if (cleanupError) throw cleanupError;
 }

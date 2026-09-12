@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
-import type { PluginBookContent, PluginToolDefinition } from "@read-aware/plugin-types";
+import type { PluginBookContent, PluginDocumentChange, PluginDocumentPageFilter, PluginToolDefinition } from "@read-aware/plugin-types";
 import plugin from "../src/index";
 import { parseFeed } from "../src/feed";
 import { forgetRemovedBook, loadFeedContent, openFeed, subscribe, unsubscribeFeed } from "../src/feed-library";
-import { getFeed } from "../src/storage";
+import { getFeed, reclaimFeedContent, upsertFeed } from "../src/storage";
 import type { RssPluginContext } from "../src/types";
 import { importOpml } from "../src/opml-import";
 import { importOpmlView } from "../src/views";
@@ -17,21 +17,46 @@ function fixture() {
   const tools: PluginToolDefinition[] = [];
   const tables = new Map<string, Map<string, unknown>>();
   const table = (name: string) => { let values = tables.get(name); if (!values) { values = new Map(); tables.set(name, values); } return values; };
+  const writes = new Map<string, number>();
+  const revision = (name: string, id: string) => table(name).has(id) ? `${writes.get(`${name}:${id}`) ?? 0}:${JSON.stringify(table(name).get(id))}` : null;
   const state = { xml: xml(item("one")), fetches: 0, notifications: 0, offline: false, failIndex: false, failNotify: false, failedUrls: new Set<string>(),
-    bookId: "book-1", failRemove: false, sourceRevision: "new", readingRevision: "old", readingBook: "book-1", events: [] as string[], hold: undefined as Promise<void> | undefined };
+    bookId: "book-1", failRemove: false, failCleanup: false, failRead: false, sourceRevision: "new", readingRevision: "old", readingBook: "book-1", events: [] as string[], hold: undefined as Promise<void> | undefined };
   let provider: ((key: string) => Promise<PluginBookContent>) | undefined;
   let scheduled: (() => void | Promise<void>) | undefined;
   const ctx = {
     locale: "en",
     services: {
-      storage: { get: () => null, collection: (name: string) => ({
+      storage: { get: () => null,
+        applyDocuments: async (changes: PluginDocumentChange[]) => {
+          for (let index = 0; index < changes.length; index++) {
+            const change = changes[index]!;
+            if (revision(change.collection, change.id) !== change.expectedRevision) return { status: "conflict", index };
+          }
+          if (changes.some(c => c.collection === "feeds" && c.kind === "put") && state.failIndex) throw Object.assign(Error("Index write failed"), { code: "db/locked" });
+          if (changes.some(c => c.collection === "feed-content" && c.kind === "delete") && state.failCleanup) throw Object.assign(Error("Cleanup failed"), { code: "db/locked" });
+          for (const change of changes) {
+            if (change.kind === "put") table(change.collection).set(change.id, structuredClone(change.data));
+            if (change.kind === "delete") table(change.collection).delete(change.id);
+            if (change.kind !== "check") writes.set(`${change.collection}:${change.id}`, (writes.get(`${change.collection}:${change.id}`) ?? 0) + 1);
+          }
+          return { status: "applied", documents: changes.filter(c => c.kind !== "check").map(c => ({ collection: c.collection, id: c.id, revision: revision(c.collection, c.id) })) };
+        }, collection: (name: string) => ({
         put: async (id: string, data: unknown) => {
           if (name === "feeds" && state.failIndex) throw Object.assign(Error("Index write failed"), { code: "db/locked" });
           table(name).set(id, structuredClone(data));
+          writes.set(`${name}:${id}`, (writes.get(`${name}:${id}`) ?? 0) + 1);
         },
-        get: async (id: string) => table(name).has(id) ? { id, data: structuredClone(table(name).get(id)), updatedAt: "" } : null,
+        get: async (id: string) => { if (state.failRead) throw Error("Read failed"); return table(name).has(id) ? { id, data: structuredClone(table(name).get(id)), revision: revision(name, id), updatedAt: "" } : null; },
         delete: async (id: string) => { table(name).delete(id); },
-        list: async () => [...table(name)].map(([id, data]) => ({ id, data: structuredClone(data), updatedAt: "" })),
+        list: async () => [...table(name)].map(([id, data]) => ({ id, data: structuredClone(data), revision: revision(name, id), updatedAt: "" })),
+        page: async ({ limit = 50, cursor }: { limit?: number; cursor?: string }) => {
+          const rows = [...table(name)].sort(([a], [b]) => a.localeCompare(b)).map(([id, data]) => ({ id, data: structuredClone(data), revision: revision(name, id), updatedAt: "" }));
+          const signature = JSON.stringify(rows.map(r => [r.id, r.revision]));
+          const previous = cursor ? JSON.parse(cursor) as { offset: number; signature: string } : null;
+          if (previous && previous.signature !== signature) return { status: "stale-cursor" };
+          const offset = previous?.offset ?? 0;
+          return { status: "ready", items: rows.slice(offset, offset + limit), nextCursor: offset + limit < rows.length ? JSON.stringify({ offset: offset + limit, signature }) : null };
+        },
       }) },
       network: { fetch: async (url: string) => { state.fetches++; if (state.hold) await state.hold; if (state.offline || state.failedUrls.has(url)) throw Object.assign(Error("Offline"), { code: "plugin/network-timeout" }); return new Response(state.xml); } },
       ui: { showToast: () => {} }, schedules: { bind: (id: string, run: () => void | Promise<void>) => { expect(id).toBe(REFRESH_SCHEDULE); scheduled = run; return { dispose() {} }; } },
@@ -234,4 +259,85 @@ test("explicit article open reloads an outdated current source before versioned 
   await openFeed(f.ctx, feed); expect(f.state.events).toEqual(["open"]);
   await expect(openFeed(f.ctx, feed, "article-0")).rejects.toMatchObject({ code: "reader/target-not-found" });
   expect(f.state.fetches).toBe(1);
+});
+
+
+test("first use after reactivation reclaims paged orphans and keeps every published snapshot", async () => {
+  const f = fixture(); const feed = await subscribe(f.ctx, url);
+  for (let index = 0; index < 205; index++) f.table("feed-content").set(`orphan-${index}`, { version: 1, url: `${url}/${index}`, content: {} });
+  await plugin.activate({ ...f.ctx });
+  expect(f.table("feed-content").size).toBe(206); // Staging must not write.
+  f.state.offline = true;
+  expect((await f.provider()(url)).sections[0]!.html).toBe("one");
+  expect([...f.table("feed-content").keys()]).toEqual([feed.contentId!]);
+  expect(f.state.fetches).toBe(1);
+});
+
+test("failed cleanup remains discoverable and scheduled recovery retries even while offline", async () => {
+  const f = fixture(); await plugin.activate(f.ctx); await subscribe(f.ctx, url);
+  f.state.failCleanup = true;
+  await unsubscribeFeed(f.ctx, url);
+  expect(await getFeed(f.ctx, url)).toBeNull(); expect(f.table("feed-content").size).toBe(1);
+  await expect(Promise.resolve(f.scheduled())).rejects.toMatchObject({ code: "db/locked" });
+  f.state.failCleanup = false; f.state.offline = true;
+  await f.scheduled();
+  expect(f.table("feed-content").size).toBe(0);
+});
+
+test("collector cannot delete a source published after its read or silently treat bad reads as absence", async () => {
+  const f = fixture(); const feed = await subscribe(f.ctx, url);
+  f.table("feeds").delete(url);
+  const apply = f.ctx.services.storage.applyDocuments;
+  let once = true;
+  f.ctx.services.storage.applyDocuments = async changes => {
+    if (once && changes.some(c => c.kind === "delete" && c.collection === "feed-content")) {
+      once = false;
+      await upsertFeed(f.ctx, feed);
+    }
+    return apply(changes);
+  };
+  await expect(reclaimFeedContent(f.ctx)).rejects.toMatchObject({ code: "plugin/storage-conflict" });
+  expect(f.table("feed-content").has(feed.contentId!)).toBe(true);
+  f.state.failRead = true;
+  await expect(reclaimFeedContent(f.ctx)).rejects.toThrow("Read failed");
+  expect(f.table("feed-content").size).toBe(1);
+  f.state.failRead = false;
+  f.table("feeds").set(url, { malformed: true });
+  await expect(reclaimFeedContent(f.ctx)).rejects.toMatchObject({ code: "plugin/invalid-data" });
+  expect(f.table("feed-content").size).toBe(1);
+});
+
+test("collector does not commit partial snapshots after cursor invalidation", async () => {
+  const f = fixture();
+  for (let index = 0; index < 101; index++) f.table("feed-content").set(`orphan-${index}`, { url: `${url}/${index}` });
+  const collection = f.ctx.services.storage.collection;
+  f.ctx.services.storage.collection = name => {
+    const value = collection(name);
+    return { ...value, page: async <T>(filter?: PluginDocumentPageFilter) => {
+      const page = await value.page<T>(filter);
+      if (!filter?.cursor) f.table("feed-content").set("new", { url });
+      return page;
+    } };
+  };
+  await expect(reclaimFeedContent(f.ctx)).rejects.toMatchObject({ code: "plugin/storage-conflict" });
+  expect(f.table("feed-content").size).toBe(102);
+});
+
+test("a collector winning the publication race leaves no dangling reference and explicit retry republishes atomically", async () => {
+  const f = fixture(); const prior = await subscribe(f.ctx, url);
+  f.table("feeds").delete(url);
+  const apply = f.ctx.services.storage.applyDocuments;
+  let once = true;
+  f.ctx.services.storage.applyDocuments = async changes => {
+    if (once && changes.some(c => c.kind === "put" && c.collection === "feed-content")) {
+      once = false;
+      await reclaimFeedContent(f.ctx);
+    }
+    return apply(changes);
+  };
+  await expect(subscribe(f.ctx, url)).rejects.toMatchObject({ code: "plugin/storage-conflict" });
+  expect(await getFeed(f.ctx, url)).toBeNull(); expect(f.table("feed-content").size).toBe(0);
+  expect((await subscribe(f.ctx, url)).contentId).toBe(prior.contentId);
+  f.state.offline = true;
+  expect((await loadFeedContent(f.ctx, url)).sections[0]!.html).toBe("one");
 });

@@ -6,7 +6,7 @@
  */
 import type { PluginMigrationStorage } from "@read-aware/plugin-types";
 import type { FeedArticle, FeedSubscription } from "./types";
-import { discardUnreferencedContent } from "./content-cache";
+import { CONTENT_COLLECTION, type CachedFeedContent } from "./content-cache";
 
 const COLLECTION = "feeds";
 
@@ -73,14 +73,31 @@ export async function getFeed(
   return document ? readFeed(document.data) : null;
 }
 
-export async function upsertFeed(ctx: StorageCtx, feed: FeedSubscription): Promise<void> {
-  await ctx.services.storage.collection(COLLECTION).put(feed.url, feed, { bookId: feed.bookId });
+const conflict = () => Object.assign(new Error("RSS storage changed; retry the operation"), { code: "plugin/storage-conflict" });
+export async function upsertFeed(ctx: StorageCtx, feed: FeedSubscription, content?: CachedFeedContent): Promise<void> {
+  // Cache and its published reference share one private-document transaction.
+  // Re-publication after a collector ran must recreate/check the cache too.
+  if (!feed.contentId) { await ctx.services.storage.collection(COLLECTION).put(feed.url, feed, { bookId: feed.bookId }); return; }
+  const current = await ctx.services.storage.collection(COLLECTION).get(feed.url);
+  const cached = await ctx.services.storage.collection(CONTENT_COLLECTION).get(feed.contentId);
+  if (!content && !cached) throw Object.assign(new Error("Referenced RSS cache is missing"), { code: "library/content-unavailable" });
+  const result = await ctx.services.storage.applyDocuments([
+    { kind: "put", collection: COLLECTION, id: feed.url, expectedRevision: current?.revision ?? null, data: feed, bookId: feed.bookId },
+    content
+      ? { kind: "put", collection: CONTENT_COLLECTION, id: feed.contentId, expectedRevision: cached?.revision ?? null, data: content, bookId: feed.bookId }
+      : { kind: "check", collection: CONTENT_COLLECTION, id: feed.contentId, expectedRevision: cached!.revision },
+  ]);
+  if (result.status !== "applied") throw conflict();
 }
 
 export async function removeFeed(ctx: StorageCtx, url: string): Promise<void> {
-  const feed = await getFeed(ctx, url);
-  await ctx.services.storage.collection(COLLECTION).delete(url);
-  if (feed?.contentId) await discardUnreferencedContent(ctx, feed.contentId);
+  const document = await ctx.services.storage.collection(COLLECTION).get(url);
+  if (!document) return;
+  const feed = readFeed(document.data);
+  if (!feed) throw Object.assign(new Error("Invalid RSS subscription"), { code: "plugin/invalid-data" });
+  const result = await ctx.services.storage.applyDocuments([{ kind: "delete", collection: COLLECTION, id: url, expectedRevision: document.revision }]);
+  if (result.status !== "applied") throw conflict();
+  if (feed.contentId) await discardUnreferencedContent(ctx, feed.contentId);
 }
 
 /**
@@ -98,4 +115,44 @@ export async function migrateLegacyFeeds(ctx: StorageCtx): Promise<void> {
     if (!existing) await upsertFeed(ctx, feed);
   }
   await ctx.services.storage.remove("feeds");
+}
+
+
+/** Conditional collection cleanup never deletes a currently published source. */
+async function discardIfUnreferenced(ctx: StorageCtx, id: string, expectedRevision?: string): Promise<boolean> {
+  const cached = await ctx.services.storage.collection(CONTENT_COLLECTION).get<{ url?: unknown }>(id);
+  if (!cached || expectedRevision && cached.revision !== expectedRevision) return false;
+  const url = cached.data?.url;
+  if (typeof url !== "string" || !url) throw Object.assign(new Error("Invalid RSS cache owner"), { code: "plugin/invalid-data" });
+  const document = await ctx.services.storage.collection(COLLECTION).get(url);
+  const feed = document ? readFeed(document.data) : null;
+  if (document && (!feed || feed.url !== url)) throw Object.assign(new Error("Invalid RSS subscription"), { code: "plugin/invalid-data" });
+  if (feed?.contentId === id) return false;
+  const result = await ctx.services.storage.applyDocuments([
+    { kind: "check", collection: COLLECTION, id: url, expectedRevision: document?.revision ?? null },
+    { kind: "delete", collection: CONTENT_COLLECTION, id, expectedRevision: cached.revision },
+  ]);
+  if (result.status !== "applied") throw conflict();
+  return true;
+}
+
+export async function discardUnreferencedContent(ctx: StorageCtx, id: string): Promise<void> {
+  try { await discardIfUnreferenced(ctx, id); }
+  catch (error) { console.warn("RSS unreferenced content cleanup deferred", error); }
+}
+
+/** Scan without writes so pagination remains valid; retain only identities,
+ * never the article bodies. Failures leave rows discoverable on the next run. */
+export async function reclaimFeedContent(ctx: StorageCtx): Promise<{ scanned: number; removed: number }> {
+  const candidates: { id: string; revision: string }[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await ctx.services.storage.collection(CONTENT_COLLECTION).page({ limit: 100, cursor });
+    if (page.status === "stale-cursor") throw conflict();
+    for (const row of page.items) candidates.push({ id: row.id, revision: row.revision });
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor !== undefined);
+  let removed = 0;
+  for (const candidate of candidates) if (await discardIfUnreferenced(ctx, candidate.id, candidate.revision)) removed++;
+  return { scanned: candidates.length, removed };
 }

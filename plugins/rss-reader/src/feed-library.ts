@@ -1,13 +1,20 @@
 import { fetchFeed, isHttpFeedUrl } from "./feed";
-import { cachedContent, discardUnreferencedContent, storeContent } from "./content-cache";
-import { getFeed, loadFeeds, removeFeed, upsertFeed } from "./storage";
+import { cachedContent, prepareContent } from "./content-cache";
+import { discardUnreferencedContent, getFeed, loadFeeds, reclaimFeedContent, removeFeed, upsertFeed } from "./storage";
 import { PROVIDER_ID, type FeedSubscription, type RssPluginContext } from "./types";
 
+const recoveries = new WeakMap<RssPluginContext, Promise<unknown>>();
 const queues = new WeakMap<RssPluginContext, Map<string, Promise<unknown>>>();
 function serial<T>(ctx: RssPluginContext, url: string, work: () => Promise<T>): Promise<T> {
   let queue = queues.get(ctx);
-  if (!queue) { queue = new Map(); queues.set(ctx, queue); }
-  const next = (queue.get(url) ?? Promise.resolve()).catch(() => { /* A failed operation must not block later explicit retries. */ }).then(work);
+  if (!queue) {
+    queue = new Map(); queues.set(ctx, queue);
+    // activate() is staging and cannot mutate storage. First actual work runs
+    // after promotion; a failed recovery must not disable offline reading.
+    const recovery = reclaimFeedContent(ctx).catch(error => { console.warn("RSS cache recovery deferred", error); });
+    recoveries.set(ctx, recovery);
+  }
+  const next = (queue.get(url) ?? recoveries.get(ctx)!).catch(() => { /* A failed operation must not block later explicit retries. */ }).then(work);
   queue.set(url, next);
   const cleanup = () => { if (queue.get(url) === next) queue.delete(url); };
   void next.then(cleanup, cleanup);
@@ -18,12 +25,13 @@ async function saveRefresh(ctx: RssPluginContext, url: string, notify: boolean):
   const existing = await getFeed(ctx, url);
   const { title, articles, content } = await fetchFeed(ctx, url);
   const book = await ctx.domains.library.commands.books.addVirtualBook({ providerId: PROVIDER_ID, key: url, title, author: "RSS" });
-  const contentId = await storeContent(ctx, url, content, book.id);
+  const prepared = await prepareContent(url, content);
+  const contentId = prepared.id;
   const now = new Date().toISOString();
   const pending = notify && (contentId !== existing?.contentId || existing.contentPending === true);
   let feed: FeedSubscription = { url, title, bookId: book.id, addedAt: existing?.addedAt || now, lastFetched: now, articles, contentId,
     ...(pending ? { contentPending: true } : {}) };
-  try { await upsertFeed(ctx, feed); }
+  try { await upsertFeed(ctx, feed, prepared.data); }
   catch (error) {
     if (contentId !== existing?.contentId) await discardUnreferencedContent(ctx, contentId);
     throw error;

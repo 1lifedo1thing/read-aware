@@ -69,7 +69,7 @@ test("compiled subscriptions command exposes schedule controls even with no feed
     commands: { register: (value: { run: typeof run }) => { run = value.run; } }, headerActions: { register() {} },
     contentProviders: { register() {} }, agentTools: { register() {} },
   } });
-  Object.assign(f.ctx.services, { network: {}, storage: { collection: () => ({ list: async () => [] }) } });
+  Object.assign(f.ctx.services, { network: {}, storage: { collection: () => ({ list: async () => [], page: async () => ({ status: "ready", items: [], nextCursor: null }) }) } });
   Object.assign(f.ctx.services.schedules, { bind() {} });
   const built = await Bun.build({ entrypoints: [new URL("../src/index.ts", import.meta.url).pathname], target: "browser" });
   expect(built.success).toBe(true);

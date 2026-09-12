@@ -3659,36 +3659,25 @@ async function fetchFeed(ctx, url) {
 }
 
 // src/content-cache.ts
-var collection = "feed-content";
+var CONTENT_COLLECTION = "feed-content";
 var unavailable = () => Object.assign(new Error("Cached feed content is missing or invalid"), { code: "library/content-unavailable" });
-async function storeContent(ctx, url, content, bookId) {
+async function prepareContent(url, content) {
   const value = { version: 1, url, content };
   const json = JSON.stringify(value);
   if (new TextEncoder().encode(json).byteLength > 4 * 1024 * 1024) {
     throw Object.assign(new Error("Cached feed exceeds 4 MiB"), { code: "plugin/payload-too-large" });
   }
   const id = await digest(json);
-  await ctx.services.storage.collection(collection).put(id, value, { bookId });
-  return id;
+  return { id, data: value };
 }
 async function cachedContent(ctx, feed) {
   if (!feed.contentId)
     return null;
-  const row = await ctx.services.storage.collection(collection).get(feed.contentId);
+  const row = await ctx.services.storage.collection(CONTENT_COLLECTION).get(feed.contentId);
   const value = row?.data;
   if (!value || value.version !== 1 || value.url !== feed.url || !value.content || !Array.isArray(value.content.sections) || value.content.sections.length !== feed.articles.length || value.content.sections.some((section, index) => !section || typeof section.html !== "string" || section.id !== feed.articles[index]?.id) || await digest(JSON.stringify(value)) !== feed.contentId)
     throw unavailable();
   return structuredClone(value.content);
-}
-async function discardContent(ctx, id) {
-  await ctx.services.storage.collection(collection).delete(id);
-}
-async function discardUnreferencedContent(ctx, id) {
-  try {
-    await discardContent(ctx, id);
-  } catch (error) {
-    console.warn("RSS unreferenced content cleanup failed", error);
-  }
 }
 
 // src/storage.ts
@@ -3732,13 +3721,34 @@ async function getFeed(ctx, url) {
   const document = await ctx.services.storage.collection(COLLECTION).get(url);
   return document ? readFeed(document.data) : null;
 }
-async function upsertFeed(ctx, feed) {
-  await ctx.services.storage.collection(COLLECTION).put(feed.url, feed, { bookId: feed.bookId });
+var conflict = () => Object.assign(new Error("RSS storage changed; retry the operation"), { code: "plugin/storage-conflict" });
+async function upsertFeed(ctx, feed, content) {
+  if (!feed.contentId) {
+    await ctx.services.storage.collection(COLLECTION).put(feed.url, feed, { bookId: feed.bookId });
+    return;
+  }
+  const current = await ctx.services.storage.collection(COLLECTION).get(feed.url);
+  const cached = await ctx.services.storage.collection(CONTENT_COLLECTION).get(feed.contentId);
+  if (!content && !cached)
+    throw Object.assign(new Error("Referenced RSS cache is missing"), { code: "library/content-unavailable" });
+  const result = await ctx.services.storage.applyDocuments([
+    { kind: "put", collection: COLLECTION, id: feed.url, expectedRevision: current?.revision ?? null, data: feed, bookId: feed.bookId },
+    content ? { kind: "put", collection: CONTENT_COLLECTION, id: feed.contentId, expectedRevision: cached?.revision ?? null, data: content, bookId: feed.bookId } : { kind: "check", collection: CONTENT_COLLECTION, id: feed.contentId, expectedRevision: cached.revision }
+  ]);
+  if (result.status !== "applied")
+    throw conflict();
 }
 async function removeFeed(ctx, url) {
-  const feed = await getFeed(ctx, url);
-  await ctx.services.storage.collection(COLLECTION).delete(url);
-  if (feed?.contentId)
+  const document = await ctx.services.storage.collection(COLLECTION).get(url);
+  if (!document)
+    return;
+  const feed = readFeed(document.data);
+  if (!feed)
+    throw Object.assign(new Error("Invalid RSS subscription"), { code: "plugin/invalid-data" });
+  const result = await ctx.services.storage.applyDocuments([{ kind: "delete", collection: COLLECTION, id: url, expectedRevision: document.revision }]);
+  if (result.status !== "applied")
+    throw conflict();
+  if (feed.contentId)
     await discardUnreferencedContent(ctx, feed.contentId);
 }
 async function migrateLegacyFeeds(ctx) {
@@ -3755,16 +3765,66 @@ async function migrateLegacyFeeds(ctx) {
   }
   await ctx.services.storage.remove("feeds");
 }
+async function discardIfUnreferenced(ctx, id, expectedRevision) {
+  const cached = await ctx.services.storage.collection(CONTENT_COLLECTION).get(id);
+  if (!cached || expectedRevision && cached.revision !== expectedRevision)
+    return false;
+  const url = cached.data?.url;
+  if (typeof url !== "string" || !url)
+    throw Object.assign(new Error("Invalid RSS cache owner"), { code: "plugin/invalid-data" });
+  const document = await ctx.services.storage.collection(COLLECTION).get(url);
+  const feed = document ? readFeed(document.data) : null;
+  if (document && (!feed || feed.url !== url))
+    throw Object.assign(new Error("Invalid RSS subscription"), { code: "plugin/invalid-data" });
+  if (feed?.contentId === id)
+    return false;
+  const result = await ctx.services.storage.applyDocuments([
+    { kind: "check", collection: COLLECTION, id: url, expectedRevision: document?.revision ?? null },
+    { kind: "delete", collection: CONTENT_COLLECTION, id, expectedRevision: cached.revision }
+  ]);
+  if (result.status !== "applied")
+    throw conflict();
+  return true;
+}
+async function discardUnreferencedContent(ctx, id) {
+  try {
+    await discardIfUnreferenced(ctx, id);
+  } catch (error) {
+    console.warn("RSS unreferenced content cleanup deferred", error);
+  }
+}
+async function reclaimFeedContent(ctx) {
+  const candidates = [];
+  let cursor;
+  do {
+    const page = await ctx.services.storage.collection(CONTENT_COLLECTION).page({ limit: 100, cursor });
+    if (page.status === "stale-cursor")
+      throw conflict();
+    for (const row of page.items)
+      candidates.push({ id: row.id, revision: row.revision });
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor !== undefined);
+  let removed = 0;
+  for (const candidate of candidates)
+    if (await discardIfUnreferenced(ctx, candidate.id, candidate.revision))
+      removed++;
+  return { scanned: candidates.length, removed };
+}
 
 // src/feed-library.ts
+var recoveries = new WeakMap;
 var queues = new WeakMap;
 function serial(ctx, url, work) {
   let queue = queues.get(ctx);
   if (!queue) {
     queue = new Map;
     queues.set(ctx, queue);
+    const recovery = reclaimFeedContent(ctx).catch((error) => {
+      console.warn("RSS cache recovery deferred", error);
+    });
+    recoveries.set(ctx, recovery);
   }
-  const next = (queue.get(url) ?? Promise.resolve()).catch(() => {}).then(work);
+  const next = (queue.get(url) ?? recoveries.get(ctx)).catch(() => {}).then(work);
   queue.set(url, next);
   const cleanup = () => {
     if (queue.get(url) === next)
@@ -3777,7 +3837,8 @@ async function saveRefresh(ctx, url, notify) {
   const existing = await getFeed(ctx, url);
   const { title, articles, content } = await fetchFeed(ctx, url);
   const book = await ctx.domains.library.commands.books.addVirtualBook({ providerId: PROVIDER_ID, key: url, title, author: "RSS" });
-  const contentId = await storeContent(ctx, url, content, book.id);
+  const prepared = await prepareContent(url, content);
+  const contentId = prepared.id;
   const now = new Date().toISOString();
   const pending = notify && (contentId !== existing?.contentId || existing.contentPending === true);
   let feed = {
@@ -3791,7 +3852,7 @@ async function saveRefresh(ctx, url, notify) {
     ...pending ? { contentPending: true } : {}
   };
   try {
-    await upsertFeed(ctx, feed);
+    await upsertFeed(ctx, feed, prepared.data);
   } catch (error) {
     if (contentId !== existing?.contentId)
       await discardUnreferencedContent(ctx, contentId);
@@ -4565,8 +4626,16 @@ async function refreshAllFeeds(ctx) {
 }
 async function refreshScheduledFeeds(ctx) {
   const result = await refreshFeeds(ctx);
+  let cleanupError;
+  try {
+    await reclaimFeedContent(ctx);
+  } catch (error) {
+    cleanupError = error;
+  }
   if (result.failed > 0)
     throw result.firstError ?? new Error("RSS refresh failed");
+  if (cleanupError)
+    throw cleanupError;
 }
 
 // src/schedule-strings.ts
