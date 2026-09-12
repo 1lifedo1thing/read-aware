@@ -58,8 +58,15 @@ pub(crate) fn annotation_inspect_inner(
     if id.trim().is_empty() || id.encode_utf16().count() > 512 {
         return Err(invalid());
     }
+    annotation_inspect_with_budget(conn, id, false)
+}
+
+fn annotation_inspect_with_budget(conn: &mut Connection, id: &str, bounded: bool) -> Result<Option<AnnotationSnapshot>, CommandError> {
+    if id.trim().is_empty() || id.encode_utf16().count() > 512 { return Err(invalid()); }
     let tx = conn.transaction()?;
-    let snapshot = read_snapshot(&tx, id)?;
+    let snapshot = if bounded {
+        super::annotation_pages::bounded_annotation_get(&tx, id)?.map(|item| snapshot_for_annotation(&tx, item)).transpose()?
+    } else { read_snapshot(&tx, id)? };
     tx.commit()?;
     Ok(snapshot)
 }
@@ -222,12 +229,13 @@ pub(crate) fn annotations_commit_inner(
 #[tauri::command]
 pub async fn annotation_inspect(
     id: String,
+    bounded: Option<bool>,
     app: tauri::AppHandle,
 ) -> Result<Option<AnnotationSnapshot>, CommandError> {
     crate::storage::blocking("annotation_inspect", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
-        annotation_inspect_inner(&mut conn, &id)
+        if bounded.unwrap_or(false) { annotation_inspect_with_budget(&mut conn, &id, true) } else { annotation_inspect_inner(&mut conn, &id) }
     })
     .await
 }

@@ -5,12 +5,13 @@ export type AnnotationPageQuery = {
   bookId?: string;
   kind?: AnnotationItem["kind"];
   query?: string;
-  /** 1..100 rows; defaults to 20. */
+  /** 1..100 rows; defaults to 20. Page may stop earlier at 1 MiB; follow nextCursor. */
   limit?: number;
   /** Opaque bookmark bound to bookId, kind and normalized query, not a grant. */
   cursor?: string;
 };
 export type AnnotationPage = {
+  /** Each complete item is limited to 512 KiB encoded native JSON. Oversize rejects, never truncates. */
   items: AnnotationItem[];
   nextCursor: string | null;
   /**

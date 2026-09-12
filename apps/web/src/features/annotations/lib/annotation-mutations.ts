@@ -5,10 +5,10 @@ import { isTauri } from "../../../platform/environment";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../../../platform/domain-events";
 import type { Annotation } from "./annotation-types";
 
-export async function inspectAnnotation(id: string): Promise<{ annotation: Annotation; revision: string } | null> {
+export async function inspectAnnotation(id: string, bounded = false): Promise<{ annotation: Annotation; revision: string } | null> {
   if (typeof id !== "string" || !id.trim() || id.length > 512) throw new AppError("annotations/invalid-input", "Invalid annotation ID");
   if (!isTauri()) throw new AppError("annotations/unavailable", "Annotation storage requires the desktop shell");
-  return invoke("annotation_inspect", { id });
+  return invoke("annotation_inspect", { id, bounded });
 }
 
 export async function commitAnnotationMutations(changes: AnnotationMutation[], origin: EventOrigin, signal?: AbortSignal): Promise<AnnotationCommitResult> {

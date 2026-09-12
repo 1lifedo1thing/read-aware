@@ -46,6 +46,7 @@
     "bookRangeUnsupported": "Dieser Inhalt unterstützt das Lesen von Textbereichen nicht.",
     "bookRangeForbidden": "Diese Textstelle liegt außerhalb des erlaubten Lesebereichs.",
     "annotationObserverLimit": "Zu viele Anmerkungsabonnements sind aktiv.",
+    "annotationReadBudgetExceeded": "Die Anmerkungsdaten sind zu groß. Sammlungen seitenweise lesen; übergroße Notizen zuerst im Reader kürzen.",
     "annotationObservationFailed": "Anmerkungen konnten nicht aktualisiert werden. Bitte erneut versuchen.",
     "memoryTaskNotFound": "Diese Graph-Aufgabe ist nicht mehr verfügbar. Starten Sie eine neue Aufgabe.",
     "memoryTaskLimit": "Zu viele Graphanfragen sind aktiv. Warte, bis eine Anfrage abgeschlossen ist.",

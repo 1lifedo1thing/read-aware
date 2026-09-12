@@ -50,3 +50,13 @@ test("disposal during async rendering drops the late result and the query is fro
   await Promise.resolve(); sub.dispose(); resolve!(); await work;
   expect(f.updates).toHaveLength(0);
 });
+
+
+test("oversized annotation errors render without editable partial text", async () => {
+  const f = fixture();
+  f.ctx.domains.annotations.queries.page = async () => { throw Object.assign(Error("PRIVATE_LARGE_NOTE"), { code: "annotations/read-budget-exceeded" }); };
+  const view = await liveAnnotationPage(f.ctx, {}, async () => ({ kind: "list", items: [] }));
+  expect(view).toMatchObject({ kind: "detail", content: [{ kind: "error", code: "annotations/read-budget-exceeded" }] });
+  expect(JSON.stringify(view)).not.toContain("PRIVATE_LARGE_NOTE");
+  expect(view).not.toHaveProperty("actions");
+});

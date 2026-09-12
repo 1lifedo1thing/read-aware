@@ -54,7 +54,7 @@ export function buildThreadTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
     name: "get_annotations",
     label: "Annotations",
     description:
-      "Read a page of the user's highlights, notes, and recorded questions: {items,nextCursor,consistency}. bookId defaults to the current book. Follow nextCursor with the SAME bookId/kind/query to continue. Newest first; live pages are not a frozen export snapshot. Pass annotationId for one exact ID (zero or one items) plus its revision token, required for editing/batch changes; do not combine it with query/cursor. kind filters the annotation type. Omit query to browse without a text filter.",
+      "Read a page of the user's highlights, notes, and recorded questions: {items,nextCursor,consistency}. bookId defaults to the current book. Follow nextCursor with the SAME bookId/kind/query to continue. Newest first; live pages are not a frozen export snapshot. Byte limits can produce shorter pages; always follow nextCursor. Oversized individual annotations reject with annotations/read-budget-exceeded, never truncated text. Pass annotationId for one exact ID (zero or one items) plus its revision token, required for editing/batch changes; do not combine it with query/cursor. kind filters the annotation type. Omit query to browse without a text filter.",
     parameters: Type.Object({
       bookId: Type.Optional(Type.String({ description: "Book id; defaults to the current book" })),
       annotationId: Type.Optional(Type.String({ description: "Exact annotation ID; does not scan the annotation list" })),

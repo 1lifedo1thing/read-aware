@@ -1561,6 +1561,8 @@ export type { AnnotationObservationQuery, AnnotationObservationResult, Annotatio
 /**
  * Annotations — highlights, notes, and asks. Ask creation belongs to the
  * agent runtime; authorized writers may erase the user's existing traces.
+ * Since 2.2, reads reject oversized items (512 KiB), pages are bounded to 1 MiB,
+ * and list rejects collections requiring multiple pages. Use page and nextCursor.
  */
 export type PluginAnnotationsDomain = {
   queries: {

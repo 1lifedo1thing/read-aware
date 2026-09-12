@@ -46,6 +46,7 @@
     "bookRangeUnsupported": "此內容不支援讀取文字範圍。",
     "bookRangeForbidden": "此段文字超出了允許讀取的邊界。",
     "annotationObserverLimit": "標註訂閱數量已達上限。",
+    "annotationReadBudgetExceeded": "批註讀取超出大小上限。批次讀取請使用分頁；單筆過大時請先在閱讀器中縮短筆記。",
     "annotationObservationFailed": "無法重新整理標註，請重試。",
     "memoryTaskNotFound": "此圖譜工作已無法使用，請建立新工作。",
     "memoryTaskLimit": "圖譜請求過多，請等待現有請求結束。",

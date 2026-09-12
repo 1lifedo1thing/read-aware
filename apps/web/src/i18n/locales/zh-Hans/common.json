@@ -46,6 +46,7 @@
     "bookRangeUnsupported": "此内容不支持读取文本范围。",
     "bookRangeForbidden": "此段文字超出了允许读取的边界。",
     "annotationObserverLimit": "标注订阅数量已达上限。",
+    "annotationReadBudgetExceeded": "批注读取超出大小上限。批量读取请使用分页；单条过大时请先在阅读器中缩短笔记。",
     "annotationObservationFailed": "无法刷新标注，请重试。",
     "memoryTaskNotFound": "此图谱任务已不可用，请创建新任务。",
     "memoryTaskLimit": "图谱请求过多，请等待现有请求结束。",

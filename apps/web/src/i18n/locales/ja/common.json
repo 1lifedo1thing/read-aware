@@ -46,6 +46,7 @@
     "bookRangeUnsupported": "このコンテンツはテキスト範囲の読み取りに対応していません。",
     "bookRangeForbidden": "この文章は許可された読書範囲を超えています。",
     "annotationObserverLimit": "注釈の購読数が上限に達しました。",
+    "annotationReadBudgetExceeded": "注釈の読み込み上限を超えています。一覧はページ単位で読み込み、大きすぎるノートはリーダーで短くしてください。",
     "annotationObservationFailed": "注釈を更新できませんでした。もう一度お試しください。",
     "memoryTaskNotFound": "このグラフのタスクは利用できません。新しいタスクを開始してください。",
     "memoryTaskLimit": "グラフのリクエストが多すぎます。処理が完了するまでお待ちください。",

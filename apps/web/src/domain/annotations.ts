@@ -26,7 +26,6 @@ import {
   createAsk,
   createHighlight,
   createNote,
-  getAnnotation,
   listAnnotations,
   pageAnnotations,
 } from "../features/annotations/lib/annotation-db";
@@ -155,13 +154,13 @@ export type AnnotationsDomain = {
 
 export function createAnnotationsDomain(origin: EventOrigin, lifetime?: AbortSignal): AnnotationsDomain {
   const annotationId = (id: string) => {
-    if (typeof id !== "string" || !id.trim()) throw new AppError("annotations/invalid-input", "A non-empty annotation ID is required");
+    if (typeof id !== "string" || !id.trim() || id.length > 512) throw new AppError("annotations/invalid-input", "A non-empty annotation ID is required");
     return id;
   };
 
   const queries: AnnotationQueries = {
     inspect: async (id) => {
-      const snapshot = await inspectAnnotation(id);
+      const snapshot = await inspectAnnotation(annotationId(id), true);
       return snapshot ? { ...snapshot, annotation: toAnnotationItem(snapshot.annotation) } : null;
     },
     page: async (input) => {
@@ -169,17 +168,14 @@ export function createAnnotationsDomain(origin: EventOrigin, lifetime?: AbortSig
       return { ...page, items: page.items.map(toAnnotationItem) };
     },
     get: async (id) => {
-      const annotation = await getAnnotation(annotationId(id));
+      const annotation = (await inspectAnnotation(annotationId(id), true))?.annotation;
       return annotation ? toAnnotationItem(annotation) : null;
     },
-    list: async (filter) =>
-      (
-        await listAnnotations({
-          bookId: filter?.bookId ? String(filter.bookId) : undefined,
-          type: filter?.kind,
-          searchQuery: filter?.query,
-        })
-      ).map(toAnnotationItem),
+    list: async (filter) => {
+      const page = await queries.page(filter ? { bookId: filter.bookId, kind: filter.kind, query: filter.query, limit: 100 } : { limit: 100 });
+      if (page.nextCursor) throw new AppError("annotations/read-budget-exceeded", "Use annotation pages for a larger collection");
+      return page.items;
+    },
   };
 
   const commands: AnnotationCommands = {

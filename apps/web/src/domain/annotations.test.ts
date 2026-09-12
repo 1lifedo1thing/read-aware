@@ -22,12 +22,13 @@ function plugin(permission?: PluginPermission, extra: PluginPermission[] = []) {
   return runtime;
 }
 
-test("exact domain and Agent reads use annotation_get, preserve null and propagate failures", async () => {
-  const read = own(spyOn(db, "getAnnotation").mockResolvedValue(ask));
+test("exact domain and Agent reads request bounded atomic inspection, preserve null and propagate failures", async () => {
+  const read = own(spyOn(mutations, "inspectAnnotation").mockResolvedValue({ annotation: ask, revision: "ann1:test" }));
   const list = own(spyOn(db, "listAnnotations").mockRejectedValue(new Error("Must not scan")));
   expect(await createAnnotationsDomain("user").queries.get("ask")).toMatchObject({ kind: "ask", id: "ask" });
   expect(await createAnnotationsPort().getAnnotation("ask")).toMatchObject({ kind: "ask", id: "ask" });
   expect(list).not.toHaveBeenCalled();
+  expect(read).toHaveBeenLastCalledWith("ask", true);
   read.mockResolvedValue(null);
   expect(await createAnnotationsPort().getAnnotation("missing")).toBeNull();
   read.mockRejectedValue(new AppError("db/locked", "Locked"));
@@ -37,12 +38,12 @@ test("exact domain and Agent reads use annotation_get, preserve null and propaga
 
 test("Agent adapter preserves underline style and kind filters", async () => {
   const create = own(spyOn(db, "createHighlight").mockResolvedValue(highlight));
-  const list = own(spyOn(db, "listAnnotations").mockResolvedValue([ask]));
+  const list = own(spyOn(db, "pageAnnotations").mockResolvedValue({ items: [ask], nextCursor: null, consistency: "live" }));
   const port = createAnnotationsPort();
   expect(await port.createHighlight({ bookId: "book", text: "Passage", style: "underline", color: "blue" })).toMatchObject({ style: "underline" });
   expect(create).toHaveBeenCalledWith("book", null, null, "Passage", "blue", "underline", "agent", undefined);
   await port.listAnnotations({ bookId: "book", kind: "ask" });
-  expect(list).toHaveBeenCalledWith({ bookId: "book", type: "ask", searchQuery: undefined });
+  expect(list).toHaveBeenCalledWith({ bookId: "book", kind: "ask", query: undefined, limit: 100 });
 });
 
 test("Agent and authorized plugins share native pages and preserve query/storage errors", async () => {
@@ -64,7 +65,7 @@ test("Agent and authorized plugins share native pages and preserve query/storage
 });
 
 test("only annotation writers receive conditional mutation; no plugin receives ask creation or unconditional aliases", async () => {
-  own(spyOn(db, "getAnnotation").mockResolvedValue(ask));
+  own(spyOn(mutations, "inspectAnnotation").mockResolvedValue({ annotation: ask, revision: "ann1:test" }));
   const apply = own(spyOn(mutations, "commitAnnotationMutations").mockResolvedValue({ atomic: true, changes: [{ annotationId: "ask", revision: null }] }));
   expect(plugin().context.domains.annotations).toBeUndefined();
   const reader = plugin("annotations:read").context.domains.annotations!;
@@ -140,4 +141,15 @@ test("versioned creation requires library permission and returns source through 
   prepare.mockRejectedValue(new AppError("reader/stale-location", "Changed"));
   await expect(createAnnotationsPort().createHighlight({ bookId: "book", text: "Quote", range })).rejects.toMatchObject({ code: "reader/stale-location" });
   expect(create).toHaveBeenCalledTimes(2);
+});
+
+
+test("legacy list refuses an incomplete payload and bounded read errors survive both actors", async () => {
+  const native = own(spyOn(db, "pageAnnotations").mockResolvedValue({ items: [ask], nextCursor: "more", consistency: "live" }));
+  const domain = plugin("annotations:read").context.domains.annotations!;
+  await expect(domain.queries.list()).rejects.toMatchObject({ code: "annotations/read-budget-exceeded" });
+  expect(native).toHaveBeenLastCalledWith({ limit: 100 });
+  native.mockRejectedValue(new AppError("annotations/read-budget-exceeded", "Huge row"));
+  await expect(domain.queries.page()).rejects.toMatchObject({ code: "annotations/read-budget-exceeded" });
+  await expect(createAnnotationsPort().pageAnnotations({})).rejects.toMatchObject({ code: "annotations/read-budget-exceeded" });
 });
