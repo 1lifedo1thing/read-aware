@@ -2328,6 +2328,9 @@ export type PluginHostServices = {
     append(id: string, offset: number, data: Uint8Array | ArrayBuffer): Promise<import("@read-aware/core").ResourceRef>;
     commit(id: string): Promise<import("@read-aware/core").ResourceRef>;
     save(id: string, filename?: string): Promise<{ saved: boolean }>;
+    /** Resources 1.5: host confirmation then OS association for a temporary document/media copy.
+     * No edit-back, arbitrary program/path, or context bundles. True is dispatch, not rendering. */
+    openAssociated(id: string, options?: PluginCallOptions): Promise<{ opened: boolean }>;
     /** Also aborts uncommitted writes. */
     release(id: string): Promise<void>;
   };

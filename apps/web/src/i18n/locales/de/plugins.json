@@ -1,4 +1,5 @@
 {
+  "externalResource": {"title": "Datei in einer anderen App öffnen?", "description": "„{{name}}“ mit der zugeordneten App öffnen? Eine temporäre Kopie wird geteilt und nach einer Stunde oder beim Beenden/Neustart zur Löschung vorgesehen. Änderungen aktualisieren die Bibliothek nicht.", "open": "Öffnen", "cancel": "Abbrechen"},
   "fileDrop": {"label": "Dateien hier ablegen und mit {{name}} teilen", "single": "Eine Datei. Dieses Plugin kann ihren Inhalt lesen.", "multiple": "Bis zu 16 Dateien. Dieses Plugin kann deren Inhalt lesen.", "choose": "Dateien auswählen"},
   "uri": {"title": "Link in {{name}} öffnen?", "description": "Erst nach dem Öffnen wird dieser externe Link an das ausgewählte Plugin übergeben.", "unavailable": "Der Plugin-Eintrag ist nicht verfügbar oder wurde geändert. Schließen Sie den Dialog, aktivieren Sie das Plugin und öffnen Sie den Link erneut.", "cancel": "Abbrechen", "open": "Öffnen"},
   "viewer": {

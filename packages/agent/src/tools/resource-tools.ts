@@ -1,6 +1,6 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { AppError, type ResourcePickOptions, type ResourceDirectoryQuery } from "@read-aware/core";
+import { AppError, RESOURCE_EXTERNAL_EXTENSIONS, type ResourcePickOptions, type ResourceDirectoryQuery } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import { threadScopeKey, type ThreadScope } from "../thread-scope";
 import { textResult } from "./tool-result";
@@ -9,6 +9,11 @@ import { requestUserInteraction } from "./user-interaction";
 export function buildResourceTools(scope: ThreadScope, deps: RuntimeDeps): AgentTool[] {
   const port = () => deps.resources(threadScopeKey(scope), scope.kind === "book" ? scope.bookId : undefined);
   const tools: AgentTool[] = [{
+    name: "open_resource_external", label: "Open file in associated app", executionMode: "sequential",
+    description: `Only on user intent, request host confirmation to open this conversation's sealed file resource in the OS associated application. The host shares a temporary copy, scheduled for cleanup after one hour or app exit/restart. External edits do not update the library. opened:false means declined; true means OS dispatch, NOT proof the application loaded it. No arbitrary program, path, URL or context-bundle resources. Accepted file extensions: ${RESOURCE_EXTERNAL_EXTENSIONS.join(", ")}. Extensions are routing hints, not content validation. Cancellation after dispatch cannot recall the shared copy. Release the original resource when finished; it does not revoke the copy already handed to another app.`,
+    parameters: Type.Object({ id: Type.String({ minLength: 1, maxLength: 256 }) }, { additionalProperties: false }),
+    execute: async (_id, params, signal) => textResult(await port().openAssociated((params as { id: string }).id, signal)),
+  }, {
     name: "pick_resource_directory", label: "Choose directory", executionMode: "sequential",
     description: "Only in response to a user folder request, ask them to choose a local directory in the native dialog. Returns an opaque read-only grant, never an absolute path. Four grants per conversation, valid for one hour. Choosing grants access to file names and selected file contents below that directory; nothing is imported automatically. Release when finished.",
     parameters: Type.Object({}, { additionalProperties: false }),

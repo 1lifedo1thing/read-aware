@@ -7,6 +7,7 @@ import { createLogger } from "../platform/logger";
 import { listLibraryBooks } from "../features/library/lib/library-db";
 import { fileNameFromPath } from "../features/library/lib/pick-book-files";
 import { ResourceOwner, type ResourceAdapter, type NativeResource } from "./resource-owner";
+import { openAssociatedResource } from "../platform/resource-external";
 
 const log = createLogger("resources");
 type NativeInfo = { id: string; size: number };
@@ -82,6 +83,7 @@ export const resourceAdapter: ResourceAdapter = {
     return nativeResourceFiles.save(id, filename, signal, beforeWrite);
   },
   release,
+  openAssociated: openAssociatedResource,
   copyImage: nativeResourceFiles.copyImage,
   imagePreview: nativeResourceFiles.imagePreview,
 };

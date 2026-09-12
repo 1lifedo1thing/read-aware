@@ -1,9 +1,11 @@
 import type { PluginBook, PluginContext, PluginDetailView, PluginView, PluginViewResult } from "@read-aware/plugin-types";
 import { coverKey, saveCover } from "./saved-covers";
 import { assetStrings } from "./assets-strings";
+import { externalStrings } from "./external-strings";
 
 export async function bookAssets(ctx: PluginContext, book: PluginBook): Promise<PluginView> {
   const library = ctx.domains.library!, resources = ctx.services.resources, t = assetStrings(ctx.locale);
+  const external = externalStrings(ctx.locale);
   let snapshot = await library.queries.books.getEnrichment(book.id), failure: string | undefined;
   const unavailable = (): PluginViewResult => ({ toast: t.unavailable });
   const saveOriginal = async (): Promise<PluginViewResult> => {
@@ -21,6 +23,8 @@ export async function bookAssets(ctx: PluginContext, book: PluginBook): Promise<
     return { view: { kind: "detail", title: book.title,
       content: [{ kind: "image", resourceId: resource.id, alt: book.title, aspectRatio: 2 / 3 }],
       actions: [
+        { id: "open-cover", label: external.open, icon: "arrow-square-out", run: async () =>
+          (await resources.openAssociated(resource.id)).opened ? { toast: external.dispatched } : null },
         { id: "keep-cover", label: t.keepPrivate, icon: "floppy-disk", run: async () => {
           const receipt = await saveCover(ctx, book, resource, expectedRevision);
           expectedRevision = receipt.asset.revision;
@@ -48,6 +52,12 @@ export async function bookAssets(ctx: PluginContext, book: PluginBook): Promise<
       { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await bookAssets(ctx, book), navigation: "replace" }) },
       ...(!failure && snapshot.cover.local ? [{ id: "cover", label: t.preview, icon: "book-bookmark", run: cover }] : []),
       ...(!failure && snapshot.sourceLocal ? [{ id: "export", label: t.export, icon: "download-simple", run: saveOriginal }] : []),
+      ...(!failure && snapshot.sourceLocal ? [{ id: "open-original", label: external.open, icon: "arrow-square-out", run: async (): Promise<PluginViewResult> => {
+        const resource = await resources.openBook!(book.id);
+        if (!resource) return unavailable();
+        try { return (await resources.openAssociated(resource.id)).opened ? { toast: external.dispatched } : null; }
+        finally { await resources.release(resource.id); }
+      } }] : []),
       ...(!failure && snapshot.supported && snapshot.sourceLocal && snapshot.job.phase !== "queued" && snapshot.job.phase !== "running"
         && (snapshot.metadataPending || snapshot.cover.status === "unchecked") ? [{ id: "enrich", label: t.retry, icon: "arrows-clockwise", run: async () => {
           await library.commands!.books.retryEnrichment(book.id);

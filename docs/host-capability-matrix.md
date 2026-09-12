@@ -21,8 +21,8 @@
 ## 计数与口径
 
 - 宿主：实装 210、部分 31、非桌面 1、待建 1。
-- Agent：接通 151、接通（待 E2E） 22、扩展 11、部分 33、自动 13、未接 13。
-- 插件：接通 166、接通（待 E2E） 27、部分 45、未接 5。
+- Agent：接通 151、接通（待 E2E） 23、扩展 11、部分 32、自动 13、未接 13。
+- 插件：接通 166、接通（待 E2E） 28、部分 44、未接 5。
 
 不提供一个虚假的“整体覆盖率”：这里既有功能族也有逐字段行，且自动管线、插件条件扩展、禁止开放、宿主未建不应混为一个分母。上面的数量是本表状态分布，不是通过率。当前可调用具体入口的库存另列，入口数也不代表语义完整。
 
@@ -312,7 +312,7 @@
 | <a id="SYS09"></a>SYS09 | 图片复制/导出原生图片资源 | 实装 | **接通**：copy_resource_image/save_resource[双域]<br>[设计] 用户触发的图像导出 | **接通**：clipboard 1.1 writeImage；resources.save<br>[设计] Image ResourceRef + 受权复制/导出 | ReaderImageLightbox；封面/选中/自建图片引用 | 剪贴板需独立 service:clipboard，仅本 owner 封口非原书引用；原生按字节解码 PNG/JPEG/GIF/BMP/WebP 默认静态图，SVG 不支持。限 16 MiB 编码、8192 单边、16,777,216 像素与 64 MiB 解码分配，失败不先清剪贴板，完成返回 copied/width/height。不读剪贴板、不向模型发图；晚取消不回滚。桌面灯箱 PNG 复制共用后端。library 1.13 与 UI 1.13 已接书内图片发现、资源读取与程序化灯箱打开；真实剪贴板粘贴和多格式/Worker E2E 待集中验收。 | [READER](../apps/web/src/features/reader/components/FoliateReaderView.tsx) [EXPORT](../apps/web/src/platform/export-file.ts) [RUST](../apps/desktop/src-tauri/src/lib.rs) [RESOURCEOWNER](../apps/web/src/services/resource-owner.ts) [RESOURCEIMAGES](../apps/desktop/src-tauri/src/resource_images.rs) [RESOURCEEXPORT](../apps/web/src/platform/resource-export.ts) [RESOURCETOOLS](../packages/agent/src/tools/resource-tools.ts) [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) | J08, P05 |
 | <a id="SYS10"></a>SYS10 | 保存文本/二进制文件与取消回执 | 实装 | **接通**：export_text_file/save_resource[双域]<br>[设计] 原生文本/二进制资源导出 | **接通**：ui.exportFile；resources.save<br>[设计] 用户确认的文件导出 | Dictionary CSV；Annotation Desk；原生保存；Agent | exportFile 保留插件 64 MiB 便利入口，桌面已统一为资源暂存/封口/保存/释放；输入先快照，分块追加。原生保存从匿名文件复制到目标同目录暂存文件，sync_all 后替换，失败不先截断已有文件，二进制不经模型。原生保存对话框后重验取消；saved:false 为用户取消，已派发写不回滚。filename 仅 basename 不是路径授权。原生文件单测通过，真实 Tauri 保存、磁盘故障与多窗口验收待集中进行；移动端历史导出和 Storybook 浏览器降级不变。 | [EXPORT](../apps/web/src/platform/export-file.ts) [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) [API](../packages/plugin-types/src/index.ts) [DICTEXPORT](../plugins/dictionary/src/export.ts) [DESKEXPORT](../plugins/annotation-desk/src/export.ts) [DESKRELEASE](../docs/evidence/packaged-annotation-desk-2026-09-09.json) [HOSTIO](../apps/web/src/services/host-io.ts) [HOSTIOTOOLS](../packages/agent/src/tools/host-io-tools.ts) [RESOURCEOWNER](../apps/web/src/services/resource-owner.ts) [RESOURCEFILES](../apps/desktop/src-tauri/src/resources.rs) [RESOURCETOOLS](../packages/agent/src/tools/resource-tools.ts) [RESOURCEEXPORT](../apps/web/src/platform/resource-export.ts) | P02 |
 | <a id="SYS11"></a>SYS11 | 用户选文件/目录、拖放和流式文件句柄 | 实装 | **接通（待 E2E）**：选文件/目录、目录分页/子文件快照/释放[双域]；import_resource_book[global]<br>[设计] 用户授予 FileRef 后导入 | **接通（待 E2E）**：resources1.4目录；views1.10显式文件接收区；library importResource<br>[设计] 受控文件选择/句柄服务 | 书籍导入；插件安装选择 ZIP；正式资源选择 | 单/多文件原生选择和扩展名过滤已接，取消显式返回，不返回路径；快照只读、1 小时 TTL，不是文件监视。FileRef 已能直接进入原生书库导入，不需整本字节在 Worker 往返；resources1.4原生选择目录后只返回owner隔离的目录引用，4/owner、16/host、1小时；cap-std目录描述符限定子目录/文件读取，拒绝越界，不以路径检查后再打开授权。直接子项最多扫描5000、每页100，变动使metadata游标失效；链接/特殊/不支持名称显式omittedCount。子文件复制入现有只读FileRef，可检查/导入，释放目录不破坏已复制快照。Library Desk0.11浏览文件夹、选择文件后走原检查/提交；views1.10 fileDrop只接可见宿主标明插件名的接收区真实用户文件拖入，过滤/单次1或最多16项，宿主分块快照后仅给本激活引用，普通区域仍书库导入，禁止重复导入。键盘选择入口走同一接收回调；页面隐藏/替换取消尚未交付文件，失败清理，已交付引用由插件释放或TTL/退役回收。Library Desk仅先检查、确认后导入；Agent无需伪造拖放事件，后续已有插件/资源消费同源。接线/定向检查完成，Tauri 对话框和实际组合导入验收集中执行。 | [PICKER](../apps/web/src/features/library/lib/pick-book-files.ts) [IMPORT](../apps/web/src/features/library/lib/book-import.ts) [RUST](../apps/desktop/src-tauri/src/lib.rs) [RESOURCEOWNER](../apps/web/src/services/resource-owner.ts) [RESOURCES](../apps/web/src/services/resources.ts) [RESOURCEFILES](../apps/desktop/src-tauri/src/resources.rs) [RESOURCETOOLS](../packages/agent/src/tools/resource-tools.ts) [RESOURCEIMPORT](../apps/web/src/domain/library-resource-import.ts) [RESOURCEDIRECTORIES](../apps/desktop/src-tauri/src/resource_directories.rs) [LIBRARYDIRECTORY](../plugins/library-desk/src/directory.ts) [DIRECTORYPROOF](../apps/web/src/features/plugins/runtime/plugin-directories.test.ts) [PLUGINFILEDROP](../apps/web/src/features/plugins/hooks/usePluginFileDrop.ts) [FILEDROPPROOF](../apps/web/src/features/plugins/components/plugin-file-drop.test.tsx) | P01 |
-| <a id="SYS12"></a>SYS12 | 打开外部 URL/系统关联打开/深链接路由 | 实装 | **部分**：open_external_url[双域]<br>[设计] 用户意图下的受控 URL 打开 | **部分**：ui 1.7 openExternal；要求 service:network<br>[设计] HTTP(S)外链与自有uriHandlers1.0入口 | 账号登录/购买链接；系统打开书籍；RSS0.19订阅草稿深链接 | HTTP(S) 外链已接共享 opener，拒绝嵌入凭据、控制字符及 file/data/javascript/自定义 scheme；成功表示交给 OS，不表示网页加载。uriHandlers1.0只接readaware://plugin/<pluginId>/<handlerId>，不注册新OS scheme，不截获sync/billing/file链接。宿主先收原生启动/运行事件，插件初始化后显示具体链接/目标；确认前不调用插件，取消不执行。精确注册callback与状态复核，替换/停用不能继承旧批准，结果走原插件Dialog所有权；未知/不可用入口不调用。URL至多4096UTF-16、24参数、key64/value2048，拒绝凭据/端口/片段/控制字符和编码/遍历路由；队列8项、近期32URL/5秒去重，非耐久或exactly-once。RSS0.19只预填HTTP订阅表单，fetch/写库等用户提交，list_feeds提供该订阅链接供用户分享。宿主parser/注册/确认hook及RSS源码/编译回归通过，真实OS/Worker入口留集中验收；关联文件句柄仍未接，OAuth ticket不给插件。定向权限和参数测试通过，集中桌面验收待做。 | [EXTERNAL](../apps/web/src/platform/external-link.ts) [APP](../apps/web/src/App.tsx) [RUST](../apps/desktop/src-tauri/src/lib.rs) [HOSTIO](../apps/web/src/services/host-io.ts) [HOSTIOTOOLS](../packages/agent/src/tools/host-io-tools.ts) [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) [PLUGINURI](../apps/web/src/features/plugins/lib/plugin-uri.ts) [PLUGINURIPROMPT](../apps/web/src/features/plugins/hooks/usePluginUriPrompt.ts) [PLUGINURIPROOF](../apps/web/src/features/plugins/lib/plugin-uri.test.ts) | P05 |
+| <a id="SYS12"></a>SYS12 | 打开外部 URL/系统关联打开/深链接路由 | 实装 | **接通（待 E2E）**：open_external_url/open_resource_external[双域]<br>[设计] 用户意图下的受控 URL 打开 | **接通（待 E2E）**：HTTP外链需network；resources1.5宿主确认关联打开；uriHandlers1.0<br>[设计] HTTP(S)外链与自有uriHandlers1.0入口 | 账号登录/购买链接；系统打开书籍；RSS0.19订阅草稿深链接 | HTTP(S) 外链已接共享 opener，拒绝嵌入凭据、控制字符及 file/data/javascript/自定义 scheme；成功表示交给 OS，不表示网页加载。uriHandlers1.0只接readaware://plugin/<pluginId>/<handlerId>，不注册新OS scheme，不截获sync/billing/file链接。宿主先收原生启动/运行事件，插件初始化后显示具体链接/目标；确认前不调用插件，取消不执行。精确注册callback与状态复核，替换/停用不能继承旧批准，结果走原插件Dialog所有权；未知/不可用入口不调用。URL至多4096UTF-16、24参数、key64/value2048，拒绝凭据/端口/片段/控制字符和编码/遍历路由；队列8项、近期32URL/5秒去重，非耐久或exactly-once。RSS0.19只预填HTTP订阅表单，fetch/写库等用户提交，list_feeds提供该订阅链接供用户分享。宿主parser/注册/确认hook及RSS源码/编译回归通过，真实OS/Worker入口留集中验收；resources1.5 openAssociated已消费本owner封口文件：宿主原生确认后复制到私有临时目录，按共享文档/媒体扩展名白名单交给系统默认应用，不给程序/路径选择，也不开放context资源。最多16份/初始副本总2GiB/单份1GiB，计划1小时/退出/启动清理，失败清理保留配额，外部持有副本不承诺强制撤回。逐call取消传至host并在确认后派发前复核，派发后保留实际结果；opened只表示OS受理、不证明渲染、外部编辑不回写。Library Desk0.12的原书/封面动作同源，原引用释放独立于临时副本；OAuth ticket不给插件。定向权限和参数测试通过，集中桌面验收待做。 | [EXTERNAL](../apps/web/src/platform/external-link.ts) [APP](../apps/web/src/App.tsx) [RUST](../apps/desktop/src-tauri/src/lib.rs) [HOSTIO](../apps/web/src/services/host-io.ts) [HOSTIOTOOLS](../packages/agent/src/tools/host-io-tools.ts) [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) [PLUGINURI](../apps/web/src/features/plugins/lib/plugin-uri.ts) [PLUGINURIPROMPT](../apps/web/src/features/plugins/hooks/usePluginUriPrompt.ts) [PLUGINURIPROOF](../apps/web/src/features/plugins/lib/plugin-uri.test.ts) [RESOURCEEXTERNAL](../apps/desktop/src-tauri/src/resource_external.rs) [EXTERNALRESOURCEPROOF](../apps/web/src/platform/resource-external.test.ts) | P05 |
 | <a id="SYS13"></a>SYS13 | Blob 范围读取/流式读写/提交/中止 | 实装 | **部分**：read_resource_text/release_resource；原书只导出<br>[设计] 受权 ResourceRef，不读任意 blob | **部分**：resources.create/stat/read/append/commit/release<br>[设计] 临时资源范围读写/封口/中止 | 原书阅读；同步分片；封面；正式资源服务 | 临时资源分块读写已接：单块 1 MiB，每 owner 16 引用/1 GiB，宿主 64 文件/2 GiB，32 个串行队列；追加 offset 防重复写，commit 后不可写，release 兼 abort，退休等待在途任务后清理。选中/原书独立副本与自建匿名文件不进入同步、备份或数据库；不开放原始 blob key。书内嵌图片已可获取临时资源；跨激活持久化资源、其他书内资产与 transferable 桥优化仍缺，当前桥是有界 structured clone；Agent UTF-8 读取保持码点及字节游标。原生与定向测试通过，组合/Tauri E2E 待集中进行。 resources1.3另接assets私有持久保存/条件重开/删除与配额，沿用临时ResourceRef消费，不把临时租期改为永久。MORE07记录本地存储/完整备份/升级与回收边界；Library Desk0.9消费及定向文件/协议检查通过，真实组合后置。 | [BLOB](../apps/web/src/platform/blob-store.ts) [RUST](../apps/desktop/src-tauri/src/lib.rs) [API](../packages/plugin-types/src/index.ts) [PLUGINASSETS](../apps/web/src/features/plugins/runtime/plugin-assets.ts) [PLUGINASSETNATIVE](../apps/desktop/src-tauri/src/storage/plugin_assets.rs) [PLUGINASSETNATIVEPROOF](../apps/desktop/src-tauri/src/storage/plugin_assets_tests.rs) [RESOURCEOWNER](../apps/web/src/services/resource-owner.ts) [RESOURCEFILES](../apps/desktop/src-tauri/src/resources.rs) [RESOURCETOOLS](../packages/agent/src/tools/resource-tools.ts) | P01 |
 | <a id="SYS14"></a>SYS14 | 系统字体枚举和字体资产加载 | 实装 | **接通**：get_setting_options[双域] + update_settings；选中后自动加载<br>[设计] 受支持字体列表 | **接通**：settings 1.8 queries.options/update + fonts manifest<br>[设计] 已有字体选择/加载能力 | 原生FontField；Agent；editorial-themes | 按精确设置路径搜索/分页选项，reading.fontFamily与appearance.contentTypography.fontFamily合并curated/已启用插件/本机系统字体，source=system、system:<family>可直接用于既有update。沿用discover授权（read/write包含发现），不返回当前值、覆盖、字体路径/字节，也不调用秘密字段动态选项回调；通用snapshot保持紧凑。宿主默认25/最大100项，Agent20/50，后续页须同revision；设置目录变化重查。系统枚举与原生选择器共用单飞会话缓存，去隐藏/无效/重复名、返回副本，失败保留错误可重试；安装/删除OS字体需重启刷新。选择后的curated下载/插件字体注入复用已有消费者，不新增预取、字体文件访问或解码/显示就绪回执。基础/双端接线检查通过，真实系统枚举、字体生效与Worker/Tauri组合仍待集中验收；接通不等于端到端已验。 Workspace Profiles 0.4 已组合字体搜索/固定版本40项分页/预览与应用、独立内容字体跟随开关和v2十项预设；v1七项原样保留。16项插件测试、构建和类型检查通过，实际字体生效与Worker/Tauri新路径待集中验收。 | [RUST](../apps/desktop/src-tauri/src/lib.rs) [SETTINGS](../apps/web/src/domain/settings/catalog.ts) [API](../packages/plugin-types/src/index.ts) [SETTINGOPTIONS](../packages/core/src/settings-options.ts) [FONTOPTIONS](../apps/web/src/domain/settings/font-options.ts) [SYSTEMFONTS](../apps/web/src/features/settings/lib/system-fonts.ts) [FONTOPTIONSPROOF](../apps/web/src/domain/settings/options.test.ts) [WORKSPACEFONTS](../plugins/workspace-profiles/src/fonts.ts) [WORKSPACEFONTSPROOF](../plugins/workspace-profiles/tests/fonts.test.ts) | 新增盘点 |
 | <a id="SYS15"></a>SYS15 | 原生日志/诊断包/崩溃报告导出与发送 | 实装 | **接通**：request_diagnostics_report / verify_local_data[双域]<br>[设计] 宿主预览确认与最终回执 | **接通**：diagnostics1.1 requestReport/verifyProjections；logging1.0 write/policy<br>[设计] 诊断流程、汇总计数及自有日志 | 设置About Diagnostics；CrashFollowUpPrompt；正式双端服务 | requestReport(export/send)与双域Agent共用宿主完整预览，导出和发送都须用户确认；不返回包/日志/路径/报告ID，不允许指定内容或收件人。exported等保存成功，sent等固定报告接口HTTP成功及ok:true/非空有界ID，取消预览或文件选择器返回cancelled；失败拒绝不假报成功，sent非开发者处理。日志/投影样本可能含个人书籍/笔记/对话，八语言告知已纠正，不承诺自动脱敏；确认后发送同一包。与sync共用宿主流程控制器；一次一个流程，未确认取消丢弃迟到采集，已确认源结束才释放、不回滚，无耐久TaskRef/重启恢复。原投影计数/共享校验与自有日志限流语义不变，logging accepted仍非落盘保证。基础授权/回执/挂载与同步回归通过；Maintenance Desk真实Worker/Tauri已验export/send两种宿主预览及取消回执，未导出诊断包或发送，真实落盘/上传和完整Agent组合仍待验。 | [DIAG](../apps/web/src/features/settings/lib/diagnostics.ts) [ERRORS](../packages/core/src/errors.ts) [RUST](../apps/desktop/src-tauri/src/lib.rs) [HOSTMAINTENANCE](../apps/web/src/services/maintenance.ts) [MAINTENANCETOOLS](../packages/agent/src/tools/maintenance-tools.ts) [PLUGINLOGGING](../apps/web/src/features/plugins/runtime/plugin-logging.ts) [DIAGNOSTICS](../apps/web/src/services/diagnostics.ts) [DIAGNOSTICSPROOF](../apps/web/src/services/diagnostics-controller.test.ts) [DIAGNOSTICSGRANT](../apps/web/src/features/plugins/runtime/plugin-diagnostics.test.ts) [DIAGNOSTICFLOW](../apps/web/src/features/settings/hooks/useDiagnosticsReport.ts) [HOSTACTIONFLOW](../apps/web/src/services/host-action-flow.ts) [MAINTENANCEDESKNATIVE](../docs/evidence/maintenance-desk-2026-09-11.json) | R05, R06 |
@@ -406,16 +406,16 @@
 
 ## 注册库存与覆盖反查
 
-- Agent global：136 个。
-- Agent book：115 个。
-- Plugin ctx：258 个。
+- Agent global：137 个。
+- Agent book：116 个。
+- Plugin ctx：259 个。
 - Plugin returned interface：30 个。
 - Capability domains：6 个。
 - Capability contributions：16 个。
 - Capability services：14 个。
 - Capability schemas：3 个。
 - Settings path：74 个。
-- Native command：225 个。
+- Native command：226 个。
 - Native plugin：12 个。
 - Menu placement：16 个。
 - Shortcut：19 个。
@@ -433,7 +433,7 @@
 - Plugin setting declaration：24 个。
 - Native bundled plugin：6 个。
 
-以下“已映射”只保证注册项可追到矩阵行，不意味着目标已实现。Plugin ctx 是授予当前全部 manifest 权限后的 258 个顶层可调用路径；返回的 collection/session 方法单列。Settings 74 路径是在 custom + 主/快模型配置的完整条件快照中生成，不表示未配置 AI 时也显示全部路径。Native command 包含 cfg/no-op 历史项，见 SYS18，不能算桌面能力全部对插件开放。
+以下“已映射”只保证注册项可追到矩阵行，不意味着目标已实现。Plugin ctx 是授予当前全部 manifest 权限后的 259 个顶层可调用路径；返回的 collection/session 方法单列。Settings 74 路径是在 custom + 主/快模型配置的完整条件快照中生成，不表示未配置 AI 时也显示全部路径。Native command 包含 cfg/no-op 历史项，见 SYS18，不能算桌面能力全部对插件开放。
 
 ### Agent global
 
@@ -470,6 +470,7 @@
 | `request_diagnostics_report` | [SYS15](#SYS15) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `get_software_update` | [SYS16](#SYS16) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `open_maintenance_settings` | [SYS15](#SYS15) [SYS16](#SYS16) [EXT12](#EXT12) [OPS08](#OPS08) [OPS09](#OPS09) [OPS10](#OPS10) [CFG08](#CFG08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `open_resource_external` | [SYS12](#SYS12) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `pick_resource_directory` | [SYS11](#SYS11) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `list_resource_directory` | [SYS11](#SYS11) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `open_directory_resource` | [SYS11](#SYS11) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -610,6 +611,7 @@
 | `request_diagnostics_report` | [SYS15](#SYS15) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `get_software_update` | [SYS16](#SYS16) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `open_maintenance_settings` | [SYS15](#SYS15) [SYS16](#SYS16) [EXT12](#EXT12) [OPS08](#OPS08) [OPS09](#OPS09) [OPS10](#OPS10) [CFG08](#CFG08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `open_resource_external` | [SYS12](#SYS12) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `pick_resource_directory` | [SYS11](#SYS11) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `list_resource_directory` | [SYS11](#SYS11) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `open_directory_resource` | [SYS11](#SYS11) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -920,6 +922,7 @@
 | `services.resources.append` | [SYS13](#SYS13) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.resources.commit` | [SYS13](#SYS13) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.resources.save` | [SYS10](#SYS10) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `services.resources.openAssociated` | [SYS12](#SYS12) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.resources.release` | [SYS13](#SYS13) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.session.environment` | [MORE03](#MORE03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.session.observeEnvironment` | [MORE03](#MORE03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -1311,6 +1314,7 @@
 | `read_book_head` | [LIB06](#LIB06) [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `write_export_file` | [SYS10](#SYS10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `resources::resource_open_file` | [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `resources::external::resource_open_associated` | [SYS12](#SYS12) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `resources::directories::resource_open_directory` | [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `resources::directories::resource_list_directory` | [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `resources::directories::resource_open_directory_file` | [SYS11](#SYS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
@@ -1590,7 +1594,7 @@
 | `dictionary` | [EXT09](#EXT09) [AI12](#AI12) [READ07](#READ07) [LIB01](#LIB01) | [代码] 源码版本 1.4.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `editorial-themes` | [EXT08](#EXT08) | [代码] 源码版本 1.0.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `jumper` | [TXT02](#TXT02) [TXT07](#TXT07) [READ01](#READ01) [READ06](#READ06) [READ07](#READ07) [READ13](#READ13) [EXT02](#EXT02) [SYS02](#SYS02) [AI05](#AI05) | [代码] 源码版本 0.8.0；源码存在不等于打包、安装、启用或模型可调用 |
-| `library-desk` | [LIB01](#LIB01) [LIB02](#LIB02) [LIB03](#LIB03) [LIB05](#LIB05) [LIB06](#LIB06) [LIB07](#LIB07) [LIB08](#LIB08) [LIB09](#LIB09) [LIB10](#LIB10) [LIB11](#LIB11) [LIB15](#LIB15) [LIB16](#LIB16) [LIB17](#LIB17) [LIB18](#LIB18) [READ01](#READ01) [UI01](#UI01) [UI02](#UI02) [UI03](#UI03) [EXT02](#EXT02) [EXT03](#EXT03) [EXT05](#EXT05) [EXT06](#EXT06) [SYS09](#SYS09) [SYS11](#SYS11) [SYS13](#SYS13) [MORE05](#MORE05) [MORE07](#MORE07) | [代码] 源码版本 0.11.0；源码存在不等于打包、安装、启用或模型可调用 |
+| `library-desk` | [LIB01](#LIB01) [LIB02](#LIB02) [LIB03](#LIB03) [LIB05](#LIB05) [LIB06](#LIB06) [LIB07](#LIB07) [LIB08](#LIB08) [LIB09](#LIB09) [LIB10](#LIB10) [LIB11](#LIB11) [LIB15](#LIB15) [LIB16](#LIB16) [LIB17](#LIB17) [LIB18](#LIB18) [READ01](#READ01) [UI01](#UI01) [UI02](#UI02) [UI03](#UI03) [EXT02](#EXT02) [EXT03](#EXT03) [EXT05](#EXT05) [EXT06](#EXT06) [SYS09](#SYS09) [SYS11](#SYS11) [SYS13](#SYS13) [MORE05](#MORE05) [MORE07](#MORE07) | [代码] 源码版本 0.12.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `listening-desk` | [READ16](#READ16) [READ18](#READ18) [READ06](#READ06) [EXT02](#EXT02) [MORE03](#MORE03) | [代码] 源码版本 0.10.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `maintenance-desk` | [CFG08](#CFG08) [SYS15](#SYS15) [OPS03](#OPS03) [OPS08](#OPS08) [OPS11](#OPS11) [EXT02](#EXT02) [EXT05](#EXT05) | [代码] 源码版本 0.4.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `memory-desk` | [MEM01](#MEM01) [MEM04](#MEM04) [MEM05](#MEM05) [MEM09](#MEM09) [MEM10](#MEM10) [MEM11](#MEM11) [READ01](#READ01) [EXT02](#EXT02) [EXT05](#EXT05) | [代码] 源码版本 0.11.0；源码存在不等于打包、安装、启用或模型可调用 |

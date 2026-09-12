@@ -15,6 +15,8 @@ use tauri::Manager;
 mod context;
 #[path = "resource_directories.rs"]
 pub mod directories;
+#[path = "resource_external.rs"]
+pub mod external;
 
 const MAX_FILE: u64 = 1024 * 1024 * 1024;
 const MAX_TOTAL: u64 = 2 * MAX_FILE;

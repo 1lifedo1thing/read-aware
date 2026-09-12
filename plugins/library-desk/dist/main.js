@@ -338,9 +338,26 @@ async function savedCovers(ctx, after) {
   };
 }
 
+// src/external-strings.ts
+var text = {
+  en: ["Open in another app", "Open request sent to the system"],
+  "zh-Hans": ["用其他应用打开", "已向系统发送打开请求"],
+  "zh-Hant": ["用其他應用程式開啟", "已向系統傳送開啟請求"],
+  ja: ["別のアプリで開く", "システムに開くリクエストを送信しました"],
+  de: ["In anderer App öffnen", "Öffnungsanfrage an das System gesendet"],
+  fr: ["Ouvrir dans une autre application", "Demande d’ouverture envoyée au système"],
+  es: ["Abrir en otra aplicación", "Solicitud de apertura enviada al sistema"],
+  ru: ["Открыть в другом приложении", "Запрос на открытие отправлен системе"]
+};
+function externalStrings(locale) {
+  const [open, dispatched] = text[locale] ?? text[locale.split("-")[0]] ?? text.en;
+  return { open, dispatched };
+}
+
 // src/book-assets.ts
 async function bookAssets(ctx, book) {
   const library = ctx.domains.library, resources = ctx.services.resources, t = assetStrings(ctx.locale);
+  const external = externalStrings(ctx.locale);
   let snapshot = await library.queries.books.getEnrichment(book.id), failure;
   const unavailable = () => ({ toast: t.unavailable });
   const saveOriginal = async () => {
@@ -365,6 +382,7 @@ async function bookAssets(ctx, book) {
         title: book.title,
         content: [{ kind: "image", resourceId: resource.id, alt: book.title, aspectRatio: 2 / 3 }],
         actions: [
+          { id: "open-cover", label: external.open, icon: "arrow-square-out", run: async () => (await resources.openAssociated(resource.id)).opened ? { toast: external.dispatched } : null },
           { id: "keep-cover", label: t.keepPrivate, icon: "floppy-disk", run: async () => {
             const receipt = await saveCover(ctx, book, resource, expectedRevision);
             expectedRevision = receipt.asset.revision;
@@ -399,6 +417,16 @@ async function bookAssets(ctx, book) {
       { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await bookAssets(ctx, book), navigation: "replace" }) },
       ...!failure && snapshot.cover.local ? [{ id: "cover", label: t.preview, icon: "book-bookmark", run: cover }] : [],
       ...!failure && snapshot.sourceLocal ? [{ id: "export", label: t.export, icon: "download-simple", run: saveOriginal }] : [],
+      ...!failure && snapshot.sourceLocal ? [{ id: "open-original", label: external.open, icon: "arrow-square-out", run: async () => {
+        const resource = await resources.openBook(book.id);
+        if (!resource)
+          return unavailable();
+        try {
+          return (await resources.openAssociated(resource.id)).opened ? { toast: external.dispatched } : null;
+        } finally {
+          await resources.release(resource.id);
+        }
+      } }] : [],
       ...!failure && snapshot.supported && snapshot.sourceLocal && snapshot.job.phase !== "queued" && snapshot.job.phase !== "running" && (snapshot.metadataPending || snapshot.cover.status === "unchecked") ? [{ id: "enrich", label: t.retry, icon: "arrows-clockwise", run: async () => {
         await library.commands.books.retryEnrichment(book.id);
         return { view: await bookAssets(ctx, book), navigation: "replace" };
@@ -955,7 +983,7 @@ function string(input) {
     return invalid();
   return input;
 }
-var text = { type: "string", minLength: 1, maxLength: 128 };
+var text2 = { type: "string", minLength: 1, maxLength: 128 };
 var revision = { type: "string", pattern: "^[a-f0-9]{32}$" };
 function registerSavedCoverTools(ctx) {
   if (!ctx.contributions.agentTools)
@@ -965,7 +993,7 @@ function registerSavedCoverTools(ctx) {
     label: "List saved covers",
     contexts: ["global"],
     description: "List a bounded key-ordered page of Library Desk's private saved cover assets. Returns names, keys, exact revisions, sizes and nextAfter, never image bytes, paths or resource handles. Assets survive app restart, remain local, are included in full backups and are removed on plugin uninstall. Pages are not an immutable snapshot. Saving a cover does not change the book's cover.",
-    parameters: { type: "object", properties: { after: text, limit: { type: "integer", minimum: 1, maximum: 20 } }, additionalProperties: false },
+    parameters: { type: "object", properties: { after: text2, limit: { type: "integer", minimum: 1, maximum: 20 } }, additionalProperties: false },
     execute: async (params) => {
       if (Object.keys(params).some((k) => !["after", "limit"].includes(k)))
         return invalid();
@@ -982,7 +1010,7 @@ function registerSavedCoverTools(ctx) {
     contexts: ["global"],
     approval: "required",
     description: "After host approval, copy the book's currently available local cover into Library Desk's private assets. Use bookId from library discovery and expectedRevision from list_saved_covers for cover:<bookId>, or null if not present. Refuses a changed destination. No download, original cover modification or system file write. Returns the durable asset metadata and whether old-byte cleanup remains pending. Local-only, full-backup included, removed on plugin uninstall.",
-    parameters: { type: "object", properties: { bookId: text, expectedRevision: { anyOf: [revision, { type: "null" }] } }, required: ["bookId", "expectedRevision"], additionalProperties: false },
+    parameters: { type: "object", properties: { bookId: text2, expectedRevision: { anyOf: [revision, { type: "null" }] } }, required: ["bookId", "expectedRevision"], additionalProperties: false },
     execute: async (params) => {
       if (Object.keys(params).some((k) => !["bookId", "expectedRevision"].includes(k)))
         return invalid();
@@ -1008,7 +1036,7 @@ function registerSavedCoverTools(ctx) {
     contexts: ["global"],
     approval: "required",
     description: "After host approval, delete a Library Desk private saved cover or export it through the user's native file dialog. Use an exact cover key and revision from list_saved_covers; changed assets reject. Delete affects only the private saved copy, never the original book or its cover. Export returns saved:false on dialog cancellation. No bytes, paths or handles enter the model. Cancellation cannot undo a dispatched durable operation.",
-    parameters: { type: "object", properties: { key: text, expectedRevision: revision, action: { type: "string", enum: ["delete", "export"] } }, required: ["key", "expectedRevision", "action"], additionalProperties: false },
+    parameters: { type: "object", properties: { key: text2, expectedRevision: revision, action: { type: "string", enum: ["delete", "export"] } }, required: ["key", "expectedRevision", "action"], additionalProperties: false },
     execute: async (params) => {
       if (Object.keys(params).some((k) => !["key", "expectedRevision", "action"].includes(k)))
         return invalid();

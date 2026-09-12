@@ -1,3 +1,6 @@
+import externalFormats from "./resource-external-formats.json";
+/** Document/media extensions accepted for a host-confirmed OS handoff. Not format validation. */
+export const RESOURCE_EXTERNAL_EXTENSIONS: readonly string[] = Object.freeze(externalFormats);
 /** Opaque, activation/thread-local reference. Never a path or native storage key. */
 export type ResourceRef = {
   id: string; name: string; mimeType: string; size: number;
@@ -35,6 +38,9 @@ export type ResourcePort = {
   append(id: string, offset: number, data: Uint8Array | ArrayBuffer, signal?: AbortSignal): Promise<ResourceRef>;
   commit(id: string, signal?: AbortSignal): Promise<ResourceRef>;
   save(id: string, filename?: string, signal?: AbortSignal): Promise<{ saved: boolean }>;
+  /** Host confirmation, then a temporary copy opened by the system association.
+   * opened means OS dispatch, not rendering. No edit-back; context bundles are excluded. */
+  openAssociated(id: string, signal?: AbortSignal): Promise<{ opened: boolean }>;
   /** Decode a sealed image in the host and replace the image clipboard. No bytes enter the model. */
   copyImage(id: string, signal?: AbortSignal): Promise<ResourceImageReceipt>;
   /** Aborts an unfinished writer or releases a sealed reference. Both are idempotent. */

@@ -1,4 +1,5 @@
 {
+  "externalResource": {"title": "¿Abrir en otra aplicación?", "description": "¿Abrir «{{name}}» con la aplicación asociada? Se compartirá una copia temporal, cuya limpieza está prevista después de una hora o al salir/reiniciar. Los cambios no actualizarán la biblioteca.", "open": "Abrir", "cancel": "Cancelar"},
   "fileDrop": {"label": "Suelta archivos aquí para compartirlos con {{name}}", "single": "Un archivo. Este plugin podrá leer su contenido.", "multiple": "Hasta 16 archivos. Este plugin podrá leer su contenido.", "choose": "Elegir archivos"},
   "uri": {"title": "¿Abrir el enlace en {{name}}?", "description": "Este enlace externo se entregará al plugin seleccionado cuando lo abra.", "unavailable": "La entrada del plugin no está disponible o ha cambiado. Cierre el aviso, active el plugin y vuelva a abrir el enlace.", "cancel": "Cancelar", "open": "Abrir"},
   "viewer": {

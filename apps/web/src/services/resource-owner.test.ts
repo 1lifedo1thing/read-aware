@@ -94,6 +94,28 @@ test("host drops copy bounded chunks to immutable owned snapshots and clean part
   } finally { await f.owner.dispose(); }
 });
 
+test("associated opening requires an owned sealed document and rechecks before dispatch, preserving accepted effects", async () => {
+  const f = fixture(), other = fixture(), signal = new AbortController(); let dispatched = 0;
+  f.adapter.openAssociated = async (_id, _name, _signal, beforeWrite) => { beforeWrite!(); dispatched++; return false; };
+  try {
+    const text = await f.owner.create({ name: "note.txt" });
+    await expect(f.owner.openAssociated(text.id)).rejects.toMatchObject({ code: "ui/invalid-target" });
+    await f.owner.commit(text.id);
+    await expect(other.owner.openAssociated(text.id)).rejects.toMatchObject({ code: "fs/not-found" });
+    expect(await f.owner.openAssociated(text.id)).toEqual({ opened: false });
+    const executable = await f.owner.create({ name: "run.exe" }); await f.owner.commit(executable.id);
+    await expect(f.owner.openAssociated(executable.id)).rejects.toMatchObject({ code: "ui/invalid-target" });
+    expect(dispatched).toBe(1);
+    f.adapter.openAssociated = async (_id, _name, _signal, beforeWrite) => { signal.abort(Error("cancel")); beforeWrite!(); dispatched++; return true; };
+    await expect(f.owner.openAssociated(text.id, signal.signal)).rejects.toThrow("cancel"); expect(dispatched).toBe(1);
+    const late = new AbortController();
+    f.adapter.openAssociated = async (_id, _name, _signal, beforeWrite) => { beforeWrite!(); dispatched++; late.abort(); return true; };
+    expect(await f.owner.openAssociated(text.id, late.signal)).toEqual({ opened: true });
+    f.adapter.openAssociated = async () => { throw Error("No associated app"); };
+    await expect(f.owner.openAssociated(text.id)).rejects.toThrow("No associated app");
+  } finally { await f.owner.dispose(); await other.owner.dispose(); }
+});
+
 test("image previews use only owned sealed non-book resources and recheck expiry and cancellation", async () => {
   const f = fixture(), other = fixture();
   const calls: string[] = [];

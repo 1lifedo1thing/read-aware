@@ -18,9 +18,9 @@ test("every supported option slot strips local signals, preserves guards and rec
     injectPluginCallSignal(method, prepared.args, host.signal);
     expect(prepared.args[index]).toEqual({ signal: host.signal });
   }
-  expect(Object.keys(PLUGIN_CALL_OPTIONS)).toHaveLength(53);
+  expect(Object.keys(PLUGIN_CALL_OPTIONS)).toHaveLength(54);
   for (const method of ["domains.library.commands.books.importBook", "domains.library.commands.books.importResource",
-    "services.resources.assets.store", "services.resources.assets.delete"]) {
+    "services.resources.assets.store", "services.resources.assets.delete", "services.resources.openAssociated"]) {
     expect(pluginCallDrainsCancellation(method)).toBe(true);
   }
   const args = ["not an options slot"];

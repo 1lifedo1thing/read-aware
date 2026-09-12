@@ -21,6 +21,7 @@ export const PLUGIN_CALL_OPTIONS = {
   "services.diagnostics.requestReport": 1,
   "services.diagnostics.requestProjectionRepair": 0,
   "services.resources.assets.policy": 0,
+  "services.resources.openAssociated": 1,
   "services.resources.assets.list": 1,
   "services.resources.assets.get": 1,
   "services.resources.assets.store": 2,
@@ -66,7 +67,8 @@ export function pluginCallDrainsCancellation(method: string): boolean {
     || method === "services.schedules.defer" || method === "services.schedules.cancelDeferred"
     || method === "domains.library.commands.books.importBook" || method === "domains.library.commands.books.importResource"
     || method === "domains.library.commands.books.startImport"
-    || method === "services.resources.assets.store" || method === "services.resources.assets.delete";
+    || method === "services.resources.assets.store" || method === "services.resources.assets.delete"
+    || method === "services.resources.openAssociated";
 }
 
 function position(method: string): number | undefined {

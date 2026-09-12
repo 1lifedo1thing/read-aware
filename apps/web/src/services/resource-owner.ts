@@ -1,4 +1,4 @@
-import { AppError, BOOK_IMAGE_MAX_BYTES, RESOURCE_LIFETIME_MS, RESOURCE_MAX_CHUNK, RESOURCE_MAX_SIZE,
+import { AppError, BOOK_IMAGE_MAX_BYTES, RESOURCE_LIFETIME_MS, RESOURCE_MAX_CHUNK, RESOURCE_MAX_SIZE, RESOURCE_EXTERNAL_EXTENSIONS,
   type ResourcePort, type ResourceRef, type ResourcePickOptions, type ResourceCreateOptions, type ResourceImageReceipt,
   type ResourceDirectoryRef, type ResourceDirectoryQuery, type ResourceDirectoryPage } from "@read-aware/core";
 import { retainResourceAccess, type ContextResourceAccess } from "./resource-access";
@@ -21,6 +21,7 @@ export type ResourceAdapter = {
   commitContext(id: string, expectedReadRevision: string): Promise<void>;
   /** Must run beforeWrite immediately before dispatch, after any dialog. */
   save(id: string, filename: string, signal?: AbortSignal, beforeWrite?: () => void): Promise<boolean>;
+  openAssociated?(id: string, filename: string, signal?: AbortSignal, beforeWrite?: () => void): Promise<boolean>;
   copyImage(id: string): Promise<ResourceImageReceipt>;
   imagePreview(id: string): Promise<ArrayBuffer>;
   release(id: string): Promise<void>;
@@ -319,6 +320,18 @@ export class ResourceOwner implements ResourcePort {
   release(id: string): Promise<void> {
     idValue(id);
     return this.run(async () => { await this.remove(id); });
+  }
+  openAssociated(id: string, signal?: AbortSignal): Promise<{ opened: boolean }> {
+    return this.run(async () => {
+      const entry = this.get(id, true);
+      const extension = entry.ref.name.includes(".") ? entry.ref.name.split(".").at(-1)!.toLowerCase() : "";
+      if (entry.ref.source === "context" || !RESOURCE_EXTERNAL_EXTENSIONS.includes(extension)) throw new AppError("ui/invalid-target", "Resource format is not supported for external opening");
+      if (!this.adapter.openAssociated) throw new AppError("ui/unavailable", "Associated applications unavailable");
+      const opened = await this.adapter.openAssociated(entry.nativeId, entry.ref.name, signal,
+        () => { this.guard(signal); this.get(id, true); });
+      // Once dispatched, preserve the real OS result; abort cannot recall a shared copy.
+      return { opened };
+    }, signal);
   }
   copyImage(id: string, signal?: AbortSignal): Promise<ResourceImageReceipt> {
     return this.run(async () => {

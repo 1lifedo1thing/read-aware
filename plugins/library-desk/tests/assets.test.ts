@@ -117,6 +117,20 @@ test("cancelled picker performs no inspection or import", async () => {
   expect(await importBook(f.ctx)).toBeNull(); expect(f.calls).toEqual([]);
 });
 
+test("associated opening preserves decline and failure, releases originals, and reports only OS dispatch", async () => {
+  const f = fixture(); let dispatched = 0;
+  f.ctx.services.resources.openAssociated = async id => { expect(id).toBe("owned"); dispatched++; return { opened: false }; };
+  const view = await bookAssets(f.ctx, f.book);
+  expect(await action(view, "open-original").run()).toBeNull();
+  expect(f.calls[f.calls.length - 1]).toEqual(["release", "owned"]);
+  f.ctx.services.resources.openAssociated = async () => ({ opened: true });
+  expect(await action(view, "open-original").run()).toEqual({ toast: "Open request sent to the system" });
+  f.ctx.services.resources.openAssociated = async () => { throw Error("association failed"); };
+  await expect(action(view, "open-original").run()).rejects.toThrow("association failed");
+  expect(f.calls.filter(call => call[0] === "release")).toHaveLength(3);
+  expect(dispatched).toBe(1);
+});
+
 test("encrypted inspection shows only a safe error and closing releases; parser rejection also releases", async () => {
   const f = fixture();
   f.ctx.domains.library!.queries.books.inspectResource = async () => ({ status: "encrypted", coverage: "initialization", formatHint: "epub", sectionCount: null, errorCode: "book/encrypted" });

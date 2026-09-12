@@ -3,6 +3,18 @@ import { AppError, type Id, type ResourceRef, type BookImportTaskSnapshot } from
 import { createInMemoryDeps } from "../testing/fixtures";
 import { buildResourceTools } from "./resource-tools";
 
+test("external resource opening delegates host confirmation in both conversation scopes without turning dispatch into rendering", async () => {
+  const { deps, stores } = createInMemoryDeps(), base = deps.resources("base"), seen: unknown[] = [];
+  deps.resources = (...scope) => ({ ...base, openAssociated: async id => { seen.push([scope, id]); return { opened: false }; } });
+  for (const scope of [{ kind: "global", threadId: "mine" } as const, { kind: "book", bookId: "book" as Id } as const]) {
+    const tool = buildResourceTools(scope, deps).find(tool => tool.name === "open_resource_external")!;
+    expect(JSON.stringify(await tool.execute("open", { id: "own" }, new AbortController().signal))).toContain("false");
+    expect(tool.description).toContain("NOT proof");
+  }
+  expect(seen).toEqual([[["global:mine", undefined], "own"], [["book:book", "book"], "own"]]);
+  expect(stores.interactions).toHaveLength(0);
+});
+
 test("directory tools stay in their conversation in both scopes and preserve paging failure", async () => {
   for (const scope of [{ kind: "global", threadId: "mine" } as const, { kind: "book", bookId: "book" as Id } as const]) {
     const { deps } = createInMemoryDeps(), original = deps.resources("fixture"), seen: unknown[] = [];

@@ -662,6 +662,7 @@ export function buildPluginContext(
         append: (id, offset, data) => { lifecycle.assertActive("services.resources.append"); return resources.append(id, offset, data, lifecycle.signal); },
         commit: id => { lifecycle.assertActive("services.resources.commit"); return resources.commit(id, lifecycle.signal); },
         save: (id, filename) => { lifecycle.assertActive("services.resources.save"); return resources.save(id, filename, lifecycle.signal); },
+        openAssociated: (id, options) => { lifecycle.assertActive("services.resources.openAssociated"); return resources.openAssociated(id, callSignal(options)); },
         release: id => { lifecycle.assertActive("services.resources.release"); return resources.release(id); },
       },
       session: {

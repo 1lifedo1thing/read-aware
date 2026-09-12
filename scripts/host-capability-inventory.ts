@@ -52,6 +52,7 @@ const agentMap = pairs([
   ["copy_resource_image", "SYS09"],
   ["read_resource_text release_resource", "SYS13"],
   ["save_resource", "SYS10"],
+  ["open_resource_external", "SYS12"],
   ["list_installed_plugins", "EXT11"],
   ["list_plugin_contributions", "EXT11 MORE06"],
   ["copy_to_clipboard", "SYS08"],
@@ -231,6 +232,7 @@ const pluginMap = pairs([
   ["services.clipboard.writeImage", "SYS09"],
   ["services.resources.create services.resources.stat services.resources.read services.resources.append services.resources.commit services.resources.release", "SYS13"],
   ["services.resources.save", "SYS10"],
+  ["services.resources.openAssociated", "SYS12"],
   ["services.sync.openSettings", "OPS01 OPS04 OPS06 OPS07"],
 ]);
 const catalogMap: Record<string, Record<string, string[]>> = {
@@ -294,6 +296,7 @@ const nativeMap = pairs([
   ["resource_open_book", "LIB08"],
   ["resource_create resource_append resource_commit resource_read resource_release", "SYS13"],
   ["resource_save", "SYS10"],
+  ["resource_open_associated", "SYS12"],
   ["resource_commit_context", "MEM13"],
   ["desktop_update_check desktop_update_install", "SYS16"], ["set_traffic_lights_visible app_exit_confirm", "SYS17"], ["list_system_fonts", "SYS14"],
   ["desktop_startup_enabled", "SET04"],

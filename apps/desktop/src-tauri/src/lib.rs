@@ -762,7 +762,11 @@ pub fn run() {
         .manage(storage::BlobWriteSessions::default())
         .manage(resources::ResourceFiles::default())
         .manage(resources::directories::DirectoryGrants::default())
+        .manage(resources::external::ExternalPreviews::default())
         .setup(|app| {
+            if let Err(error) = resources::external::initialize(app.handle()) {
+                log::warn!("External resource startup cleanup pending: {error}");
+            }
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_autostart::Builder::new()
                 .app_name(app.config().identifier.clone())
@@ -1116,6 +1120,7 @@ pub fn run() {
             read_book_head,
             write_export_file,
             resources::resource_open_file,
+            resources::external::resource_open_associated,
             resources::directories::resource_open_directory,
             resources::directories::resource_list_directory,
             resources::directories::resource_open_directory_file,
