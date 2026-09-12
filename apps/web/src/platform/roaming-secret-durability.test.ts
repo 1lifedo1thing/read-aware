@@ -11,7 +11,7 @@ if (process.env.ROAMING_SECRET_DURABILITY === "1") {
   Object.defineProperty(globalThis, "window", { configurable: true, value: { __TAURI_INTERNALS__: {
     invoke: (command: string, args: { key: string; value: string; events: typeof events }) => {
       commands.push(command);
-      if (command === "secret_keys") return Promise.resolve([]);
+      if (command === "secret_keys" || command === "restored_credentials_pending") return Promise.resolve([]);
       if (command === "local_device_get") return Promise.resolve({ deviceId: "secret-proof", lastHlcWallMs: null, lastHlcCounter: null });
       if (command === "preferences_load_all") return Promise.resolve(rows);
       if (command === "commit_events") { events.push(...args.events); return Promise.resolve({ appended: args.events.length, applied: args.events.length }); }

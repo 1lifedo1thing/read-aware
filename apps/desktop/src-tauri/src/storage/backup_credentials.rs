@@ -2,14 +2,13 @@
 //! plaintext/key is serialized or inserted into a queryable staging database.
 use super::FilePlan;
 use crate::error::CommandError;
+use crate::storage::credential_crypto as crypto;
 use rusqlite::{Connection, Transaction};
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::Path,
 };
 use zeroize::Zeroizing;
-#[path = "backup_credential_crypto.rs"]
-mod crypto;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CredentialChoice {
@@ -30,6 +29,8 @@ pub(crate) struct CredentialFacts {
     pub slot: String,
     pub source_local: bool,
     pub target_local: bool,
+    pub source_pending_publication: bool,
+    pub target_pending_publication: bool,
     pub local_equal: Option<bool>,
     pub source_roaming: RoamingState,
     pub target_roaming: RoamingState,
@@ -41,8 +42,9 @@ pub(crate) struct CredentialFacts {
 #[derive(Debug)]
 pub(crate) enum RoamingPublication {
     NotRoaming,
-    /// A NEW preference.changed payload. Never edits a historical envelope.
-    EventPayload(serde_json::Value),
+    /// Current connection can publish after the local restore decision. Sealing
+    /// is deferred to the durable publisher so later edits/key changes win.
+    Ready,
     /// Persist this obligation in the eventual restore decision and republish
     /// after connecting. Especially important for deletions absent from local KV.
     PendingConnection,
@@ -66,6 +68,19 @@ pub(crate) struct PreparedCredentials {
     /// Only present for a fresh target that needs a key. Install atomically with
     /// the DB decision; never invoke normal first-use key creation while planning.
     pub new_key: Option<Zeroizing<Vec<u8>>>,
+}
+impl PreparedCredentials {
+    /// Must be called in the SAME restore transaction as the selected local KV
+    /// mutations. The durable publisher seals the final local value only after
+    /// that decision, under the then-current connection key.
+    pub(crate) fn enqueue_publications(&self, tx: &Transaction<'_>) -> Result<(), CommandError> {
+        for op in &self.operations {
+            if !matches!(op.roaming, RoamingPublication::NotRoaming) {
+                crate::storage::restored_credentials::enqueue(tx, &op.slot)?;
+            }
+        }
+        Ok(())
+    }
 }
 impl std::fmt::Debug for PreparedCredentials {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -92,9 +107,15 @@ fn slots(
         for (table, prefix) in [
             ("app_kv", "read-aware-secret:"),
             ("synced_preferences", "secret:"),
+            ("restored_credential_publications", ""),
         ] {
+            let column = if table == "restored_credential_publications" {
+                "slot"
+            } else {
+                "key"
+            };
             let mut statement = conn.prepare(&format!(
-                "SELECT key FROM {table} WHERE substr(key,1,?1)=?2 ORDER BY key"
+                "SELECT {column} FROM {table} WHERE substr({column},1,?1)=?2 ORDER BY {column}"
             ))?;
             let mut rows = statement.query(rusqlite::params![prefix.len(), prefix])?;
             while let Some(row) = rows.next()? {
@@ -104,7 +125,7 @@ fn slots(
                     .strip_prefix(prefix)
                     .ok_or_else(|| invalid("invalid credential prefix"))?;
                 if slot.starts_with("sync.") {
-                    if table == "synced_preferences" {
+                    if table != "app_kv" {
                         return Err(invalid("sync identities cannot be roaming credentials"));
                     }
                     continue;
@@ -112,7 +133,7 @@ fn slots(
                 if slot.is_empty() || slot.len() > 4096 || slot.contains('\0') {
                     return Err(invalid("invalid credential slot"));
                 }
-                if table == "synced_preferences" && !roaming_slot(slot) {
+                if table != "app_kv" && !roaming_slot(slot) {
                     return Err(invalid("unsupported roaming credential contract"));
                 }
                 if result.insert(slot.to_owned()) {
@@ -194,9 +215,13 @@ pub(super) fn inspect(
         let ar = roamed(source, a_master.as_deref().map(Vec::as_slice), &slot)?;
         let br = roamed(tx, b_master.as_deref().map(Vec::as_slice), &slot)?;
         facts.push(CredentialFacts {
-            slot,
+            slot: slot.clone(),
             source_local: a.is_some(),
             target_local: b.is_some(),
+            source_pending_publication: crate::storage::restored_credentials::contains(
+                source, &slot,
+            )?,
+            target_pending_publication: crate::storage::restored_credentials::contains(tx, &slot)?,
             local_equal: a.as_ref().zip(b.as_ref()).map(|(a, b)| a == b),
             source_local_matches_roaming: equality(&a, &ar),
             target_local_matches_roaming: equality(&b, &br),
@@ -232,13 +257,10 @@ pub(super) fn prepare(
     let mut operations = Vec::new();
     for (slot, choice) in choices {
         check()?;
+        // Selecting a side's absence is explicit deletion/keep-absent; the
+        // catalog itself never infers deletion merely from a missing source row.
         let plaintext = match choice {
-            CredentialChoice::SourceLocal => Some(
-                crypto::local(source, archive.directory(), slot)?
-                    .ok_or_else(|| invalid("source local credential is absent"))?,
-            ),
-            // Explicit selection of target absence is a deletion/keep-absent
-            // decision; missing source data alone never implies deletion.
+            CredentialChoice::SourceLocal => crypto::local(source, archive.directory(), slot)?,
             CredentialChoice::TargetLocal => crypto::local(tx, root, slot)?,
             CredentialChoice::SourceRoaming | CredentialChoice::TargetRoaming => {
                 let candidate = if *choice == CredentialChoice::SourceRoaming {
@@ -266,16 +288,8 @@ pub(super) fn prepare(
         };
         let roaming = if !roaming_slot(slot) {
             RoamingPublication::NotRoaming
-        } else if let Some(key) = &target_master {
-            let value = match &plaintext {
-                Some(value) if !value.is_empty() => {
-                    serde_json::json!({"sealed": crypto::seal(key, slot, value)?})
-                }
-                _ => serde_json::Value::Null,
-            };
-            RoamingPublication::EventPayload(
-                serde_json::json!({"key": format!("secret:{slot}"), "value": value}),
-            )
+        } else if target_master.is_some() {
+            RoamingPublication::Ready
         } else {
             RoamingPublication::PendingConnection
         };

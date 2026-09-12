@@ -8,6 +8,7 @@
  * focus pulls (the other device may have moved while we were away); failures
  * back off exponentially (nextSyncDelayMs) instead of hammering the relay.
  */
+import { flushRestoredCredentialPublications } from "../restored-credential-publication";
 import {
   AppError,
   ERR_SYNC_NETWORK,
@@ -290,6 +291,7 @@ async function runCycle(): Promise<SyncCycleOutcome | null> {
     cycleTotals,
   });
   try {
+    await flushRestoredCredentialPublications();
     const outcome = await (await resolveEngine()).syncOnce();
     const { pulled, pushed, blobs, bootstrapped } = outcome;
     if (pulled > 0 || bootstrapped) {

@@ -14,7 +14,7 @@ pub struct PreferenceRow {
 
 pub(crate) fn preferences_load_all_inner(conn: &Connection) -> Result<Vec<PreferenceRow>, CommandError> {
     let mut stmt = conn
-        .prepare("SELECT key, value_json FROM synced_preferences ORDER BY key")
+        .prepare("SELECT key, value_json FROM synced_preferences WHERE NOT EXISTS (SELECT 1 FROM restored_credential_publications r WHERE r.slot=substr(synced_preferences.key,8) AND synced_preferences.key='secret:'||r.slot) ORDER BY key")
         ?;
     let iter = stmt
         .query_map([], |row| {

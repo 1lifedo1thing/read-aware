@@ -3,6 +3,18 @@
 目标：实现统一模型中 Agent / 插件尚未接通或只部分接通的应开放能力，完成遗漏重扫，使用真实组合插件和 Tauri 桌面端到端验收。此文件是执行账本，不替代[统一模型](./host-capability-model.md)或[当前矩阵](./host-capability-matrix.md)。
 
 
+## 2026-09-12：OPS08 离线凭据耐久发布与覆盖保护
+
+[实现] Schema42新增仅存slot/时间的本机restored_credential_publications，PreparedCredentials提供与最终KV同事务的入队钩子，在线/离线统一排空。当前凭据目录包含仅有队列的删除，不从缺行自动推断；原队列不跨设备克隆，重放保留、wipe清除。准备时不再生成可能过期的漫游payload，crypto移为storage共享模块。
+
+[原子边界] 原生pending/publish注册为宿主内部IPC（各批至多100，累计16MiB明文预算，单个更大合法值独立发布、尾部保留）。publish只接受仍待发布的ai-api-key项、本机新HLC和system/preference envelope，调用方payload不可信；在IMMEDIATE事务重读最新本机凭据/当前master key，生成密文或null，正式事件追加/投影/outbox与队列退役全成功或全回滚。未连接保留、回执丢失后无重复项、离线后新写不回退。此前恢复旧历史不原地改密文；新时钟须晚于日志/检查点。
+
+[宿主] 原生偏好读取暂时屏蔽队列对应旧漫游行；启动/刷新覆盖前、连接后republish前和同步周期pull前排空。afterSecretWrites顺序、single-flight、durableWrites跟踪与提交后广播均沿既有seam；重读持久frontier再用既有JS时钟分配，竞争backup/changed至多三次重新生成，不新增第二个分配器。失败沿既有日志/同步错误路径，队列保留。未向Actor开放任意入队/凭据值。
+
+[验证] 真实WAL重开、无key/删除、用户后来值优先、旧投影屏蔽、事件/投影/outbox/退役故障回滚、旧时钟/外来身份/类型拒绝、重复请求、大值批次尾部保留、重放/wipe通过；仅队列删除的备份选择与入队事务回滚通过。宿主定向及既有凭据持久顺序回归通过，schema42预检/行规划、web/desktop类型与原生编译通过。库存增加两个内部IPC并更新映射，不跑全仓审计或提前集中Tauri组合。
+
+[状态] 关闭耐久发布、删除留存及旧投影覆盖保护的接线缺口；完整恢复事务仍待调用本机操作+入队钩子，OPS08继续部分。领域合并/程序选择、文件与DB原子决定/跨重启恢复、宿主密码/选择/回执及集中真实组合未完成，总目标active，不推送。
+
 ## 2026-09-12：OPS08 凭据选择与重新密封准备
 
 [实现] FilePlan新增凭据facts与prepare_credentials，当前两侧本机/漫游项按实际明文比较，显式显示设备内本机与漫游不一致。完整目录每项选择来源本机/来源漫游/目标本机/目标漫游，遗漏/额外/同步身份选择拒绝；来源缺行不自动删目标，漫游tombstone或目标缺省是显式删除。locked漫游候选不能被冒称可用，正常本机候选仍可选。

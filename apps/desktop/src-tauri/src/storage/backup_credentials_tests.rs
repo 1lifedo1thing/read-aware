@@ -60,7 +60,7 @@ fn backup_credentials_opens_production_typescript_vectors_and_binds_slot_key_and
     }
 }
 #[test]
-fn backup_credentials_compares_plaintext_and_prepares_new_target_keyed_events_without_mutating_history(
+fn backup_credentials_compares_plaintext_and_prepares_target_keyed_values_without_mutating_history(
 ) {
     let root = tempfile::tempdir().unwrap();
     let stage = tempfile::tempdir().unwrap();
@@ -131,16 +131,7 @@ fn backup_credentials_compares_plaintext_and_prepares_new_target_keyed_events_wi
         crate::secrets::decrypt_existing(root.path(), op.local_sealed.as_ref().unwrap()).unwrap(),
         "source roamed"
     );
-    let RoamingPublication::EventPayload(payload) = &op.roaming else {
-        panic!("missing new event payload")
-    };
-    assert_eq!(payload["key"], format!("secret:{slot}"));
-    let translated = payload["value"]["sealed"].as_str().unwrap();
-    assert_eq!(
-        crypto::open(&[2; 32], slot, translated).unwrap().as_str(),
-        "source roamed"
-    );
-    assert!(crypto::open(&[1; 32], slot, translated).is_err());
+    assert!(matches!(op.roaming, RoamingPublication::Ready));
     let source = prepared.plan.rows().events().source().connection();
     assert_eq!(
         source
@@ -359,10 +350,7 @@ fn backup_credentials_target_choices_preserve_absence_or_translate_its_roaming_v
         .unwrap();
     let absent = &prepared.operations[0];
     assert!(absent.local_sealed.is_none());
-    let RoamingPublication::EventPayload(payload) = &absent.roaming else {
-        panic!("missing deletion publication")
-    };
-    assert!(payload["value"].is_null());
+    assert!(matches!(absent.roaming, RoamingPublication::Ready));
     assert_eq!(
         crate::secrets::decrypt_existing(
             root.path(),
@@ -372,4 +360,44 @@ fn backup_credentials_target_choices_preserve_absence_or_translate_its_roaming_v
         "target value"
     );
     tx.rollback().unwrap();
+}
+
+#[test]
+fn backup_credentials_preserves_a_pending_deletion_with_no_local_or_roaming_row() {
+    let root = tempfile::tempdir().unwrap();
+    let stage = tempfile::tempdir().unwrap();
+    let mut target = db(root.path());
+    let input = source(|conn, _| {
+        conn.execute(
+            "INSERT INTO restored_credential_publications VALUES ('ai-api-key.deleted','now')",
+            [],
+        )
+        .unwrap();
+    });
+    let plan = plan(input, &mut target, root.path(), stage.path());
+    let tx = target.transaction().unwrap();
+    let facts = plan.credential_facts(&tx, root.path(), || Ok(())).unwrap();
+    assert_eq!(facts.len(), 1);
+    assert!(!facts[0].source_local);
+    assert!(facts[0].source_pending_publication);
+    assert!(!facts[0].target_pending_publication);
+    assert_eq!(facts[0].source_roaming, RoamingState::Absent);
+    let prepared = plan
+        .prepare_credentials(
+            &tx,
+            root.path(),
+            &BTreeMap::from([(
+                "ai-api-key.deleted".to_owned(),
+                CredentialChoice::SourceLocal,
+            )]),
+            || Ok(()),
+        )
+        .unwrap();
+    assert!(prepared.operations[0].local_sealed.is_none());
+    prepared.enqueue_publications(&tx).unwrap();
+    assert!(crate::storage::restored_credentials::contains(&tx, "ai-api-key.deleted").unwrap());
+    tx.rollback().unwrap();
+    assert!(
+        !crate::storage::restored_credentials::contains(&target, "ai-api-key.deleted").unwrap()
+    );
 }

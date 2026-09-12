@@ -91,8 +91,12 @@ pub(super) fn table(name: &str) -> Result<RowPolicy, CommandError> {
         "synced_preferences" => RoamingPreferences,
         "blob_objects" => BlobFiles,
         "reading_sessions_pending" => RecoverReading,
-        "local_device" | "sync_profile" | "sync_cursors" | "event_sync_state"
-        | "blob_sync_state" => PreserveDevice,
+        "local_device"
+        | "sync_profile"
+        | "sync_cursors"
+        | "event_sync_state"
+        | "blob_sync_state"
+        | "restored_credential_publications" => PreserveDevice,
         "identity_consolidation_work" | "identity_consolidation_pages" => ReviewRuntimeHistory,
         "identity_consolidation_checkpoint"
         | "context_bundle_source_clock"

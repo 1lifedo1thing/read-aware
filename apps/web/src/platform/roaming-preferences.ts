@@ -19,6 +19,7 @@
  * language. Credentials DO roam, but only sealed — see "Roaming secrets"
  * below: plaintext never enters the log or any queryable table.
  */
+import { flushRestoredCredentialPublications } from "./restored-credential-publication";
 import { PluginPreferencePublication } from "./plugin-preference-publication";
 import { errorCode } from "@read-aware/core";
 import { waitForPluginDataUpdates, withPluginDataWrites } from "./plugin-data-access";
@@ -153,6 +154,7 @@ onLocalSecretWrite(publishRoamingSecret);
  */
 export async function republishRoamingSecrets(): Promise<void> {
   if (!isTauri()) return;
+  await flushRestoredCredentialPublications();
   await afterSecretWrites(() => {
     for (const prefix of ROAMING_SECRET_SLOT_PREFIXES) {
       for (const slot of listSecretSlots(prefix)) {
@@ -333,6 +335,7 @@ async function overlayRows(rows: PreferenceRow[]): Promise<string[]> {
 async function loadAndOverlayRows(): Promise<{ rows: PreferenceRow[]; changed: string[] }> {
   while (true) {
     await PluginPreferencePublication.flushAccepted();
+    await flushRestoredCredentialPublications();
     const rows = await invoke<PreferenceRow[]>("preferences_load_all");
     const eligible = rows.filter(row => !PluginPreferencePublication.suppressesOverlay(row.key));
     if (eligible.length !== rows.length) log.warn("Skipped plugin preferences awaiting update recovery or accepted publication");
