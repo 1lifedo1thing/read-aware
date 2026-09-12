@@ -738,15 +738,19 @@ pub async fn rebuild_projections(app: AppHandle) -> Result<RebuildReport, Comman
     tauri::async_runtime::spawn_blocking(move || {
         let db = app.state::<Db>();
         let mut conn = db.0.lock()?;
-        require_complete_log(&conn)?;
-        let tx = conn.transaction()?;
-        let report = replay_into(&tx)?;
-        set_projections_stale(&tx, false)?;
-        tx.commit()?;
-        Ok(report)
+        rebuild_projections_inner(&mut conn)
     })
     .await
     .map_err(|e| format!("rebuild_projections task failed: {e}"))?
+}
+
+pub(crate) fn rebuild_projections_inner(conn: &mut Connection) -> Result<RebuildReport, CommandError> {
+    require_complete_log(conn)?;
+    let tx = conn.transaction()?;
+    let report = replay_into(&tx)?;
+    set_projections_stale(&tx, false)?;
+    tx.commit()?;
+    Ok(report)
 }
 
 /// One table's disagreement between the live projection and a fresh replay.

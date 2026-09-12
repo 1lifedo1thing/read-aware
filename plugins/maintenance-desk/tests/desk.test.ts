@@ -37,6 +37,7 @@ function fixture() {
   const requestConnectionTest = mock((_options: { signal: AbortSignal }) => connection.promise);
   const requestBackup = mock((_action: "import" | "export", _options: { signal: AbortSignal }) => backup.promise);
   const requestReport = mock((_action: "export" | "send", _options: { signal: AbortSignal }) => report.promise);
+  const requestProjectionRepair = mock(async (_options: { signal: AbortSignal }) => ({ action: "repair", status: "rebuilt-reload-required", private: "not-for-plugin" }));
   const verifyProjections = mock((_options: { signal: AbortSignal }) => verification.promise);
   const modelCatalog = mock(async (_query: Record<string, unknown>) => catalogPage);
   const refreshModelCatalog = mock(async (_provider: string, _options: { signal: AbortSignal }) => catalogPage);
@@ -45,10 +46,10 @@ function fixture() {
     locale: "en", domains: { settings: { queries: { modelCatalog }, commands: { refreshModelCatalog } } },
     contributions: { headerActions: { register: (value: PluginHeaderAction) => { header = value; } },
       commands: { register: (value: PluginCommand) => { command = value; } } },
-    services: { maintenance: { requestConnectionTest, requestBackup }, diagnostics: { requestReport, verifyProjections },
+    services: { maintenance: { requestConnectionTest, requestBackup }, diagnostics: { requestReport, verifyProjections, requestProjectionRepair },
       ui: { publishView }, logging: { write: mock(async () => ({ status: "accepted" })) } },
   } as unknown as PluginContext;
-  return { ctx, connection, backup, report, verification, requestConnectionTest, requestBackup, requestReport, verifyProjections,
+  return { ctx, connection, backup, report, verification, requestConnectionTest, requestBackup, requestReport, verifyProjections, requestProjectionRepair,
     modelCatalog, refreshModelCatalog, publishView, header: () => header, command: () => command };
 }
 afterEach(() => { plugin.deactivate(); });
@@ -218,4 +219,18 @@ test("built entry activates without host imports and completes a public receipt 
     await tick();
     expect(JSON.stringify(await select(view(await f.command().run()), "results"))).toContain("Empty test response");
   } finally { compiled.deactivate(); }
+});
+
+
+test("repair opens native review and keeps only the committed reload-required outcome", async () => {
+  const f = fixture(); plugin.activate(f.ctx);
+  const home = view(await f.command().run());
+  const review = await select(home, "repair");
+  expect(f.requestProjectionRepair).not.toHaveBeenCalled();
+  expect(JSON.stringify(review)).toContain("confirmation");
+  expect(await action(review, "continue").run()).toEqual({ close: true });
+  expect(f.requestProjectionRepair.mock.calls[0]![0].signal).toBeInstanceOf(AbortSignal);
+  await tick();
+  const result = JSON.stringify(await select(home, "results"));
+  expect(result).toContain("reload required"); expect(result).not.toContain("not-for-plugin");
 });

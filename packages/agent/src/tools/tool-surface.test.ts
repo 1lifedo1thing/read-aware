@@ -73,6 +73,7 @@ const SURFACE_CASES: Record<string, Record<string, unknown>> = {
   get_sync_status: {},
   get_software_update: {},
   verify_local_data: {},
+  request_projection_repair: {},
   request_diagnostics_report: { action: "export" },
   request_backup: { action: "export" },
   request_ai_connection_test: {},
@@ -154,6 +155,8 @@ const SURFACE_CASES: Record<string, Record<string, unknown>> = {
   get_book_text_status: { bookId: BOOK_ID },
   prepare_book_text: { bookId: BOOK_ID },
   get_book_text_tasks: { bookId: BOOK_ID },
+  pause_book_text_task: { bookId: BOOK_ID, taskId: "prepared-in-test" },
+  resume_book_text_task: { bookId: BOOK_ID, taskId: "prepared-in-test" },
   cancel_book_text_task: { bookId: BOOK_ID, taskId: "prepared-in-test" },
   get_navigation_toc: { bookId: BOOK_ID },
   list_book_navigation_targets: { bookId: BOOK_ID, contentVersion: "v1", kind: "pages" },
@@ -279,6 +282,7 @@ describe("tool surface contract", () => {
         deps.library.listImportTasks = async () => [importTask];
         deps.library.cancelImportTask = async () => importTask;
         deps.hostIO.openExternal = async () => {};
+        deps.diagnostics.requestProjectionRepair = async () => ({ action: "repair", status: "cancelled" });
         deps.diagnostics.requestReport = async action => ({ action, status: "cancelled" });
         deps.diagnostics.verifyProjections = async () => ({ scope: "event-projections", checkedAt: "2026-09-11T00:00:00Z",
           consistent: false, eventsReplayed: 20, driftedTables: 1, onlyLiveRows: 2, onlyReplayedRows: 0 });
@@ -296,7 +300,7 @@ describe("tool surface contract", () => {
           id, title: id, enabled: true, parameters: { type: "object", properties: {}, additionalProperties: false },
         })) });
         deps.hostCommands.execute = async request => ({ commandId: request.id, status: "completed", completed: ["workspace"] });
-        if (name === "cancel_book_text_task") params.taskId = (await deps.bookText.preparation!.start(BOOK_ID)).taskId;
+        if (["cancel_book_text_task", "pause_book_text_task", "resume_book_text_task"].includes(name)) params.taskId = (await deps.bookText.preparation!.start(BOOK_ID)).taskId;
         if (name === "edit_annotation") params.expectedRevision = (await deps.annotations.inspectAnnotation(String(params.annotationId)))!.revision;
         if (name === "apply_annotation_changes") {
           for (const change of params.changes as Record<string, unknown>[]) change.expectedRevision = (await deps.annotations.inspectAnnotation(String(change.annotationId)))!.revision;

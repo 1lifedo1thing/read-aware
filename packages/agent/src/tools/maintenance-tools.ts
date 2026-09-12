@@ -35,6 +35,14 @@ export function buildMaintenanceTools(deps: RuntimeDeps): AgentTool[] {
       signal?.throwIfAborted(); return textResult(result);
     },
   }, {
+    name: "request_projection_repair", label: "Request local projection repair", executionMode: "sequential",
+    description: "Only when the user requests repair of local event projections, open the host difference preview and wait for the user's explicit repair confirmation. The host atomically replays the complete current event log and then pauses writes until reload. Projection-only edits absent from the event log are discarded; original files, backups and other devices are not repaired. Incomplete event logs reject. Returns rebuilt-reload-required only after the native transaction commits; this does not prove reload completed. The caller cannot approve, provide SQL/events, or select arbitrary data. Cancelling an unconfirmed request prevents it; cancellation after confirmation only stops waiting and cannot undo repair. The host retains its result and reload prompt.",
+    parameters: Type.Object({}, { additionalProperties: false }),
+    execute: async (_id, _params, signal) => {
+      signal?.throwIfAborted();
+      return textResult(await deps.diagnostics.requestProjectionRepair(signal));
+    },
+  }, {
     name: "request_diagnostics_report", label: "Request diagnostic report", executionMode: "sequential",
     description: "On explicit user request, open a host-owned diagnostic bundle preview for export or send. Logs and integrity samples can contain personal data; the user must inspect and confirm in the native UI. Never receives the bundle, logs, file path or report ID. exported means the save completed; sent means the report endpoint acknowledged it, not that developers reviewed it. cancelled means no confirmed completion. Cancellation closes an unconfirmed flow but cannot undo a confirmed save/upload. No automatic sending, repairs, arbitrary recipient or raw diagnostics access.",
     parameters: Type.Object({ action: Type.Union([Type.Literal("export"), Type.Literal("send")]) }, { additionalProperties: false }),

@@ -649,7 +649,20 @@
       "noticeError": "Une erreur est survenue",
       "exportSuccess": "Paquet de diagnostic enregistré.",
       "exportError": "Le paquet n'a pas pu être créé ou enregistré.",
-      "reportError": "Le rapport n'a pas pu être envoyé. Vous pouvez exporter le paquet et l'envoyer par e-mail."
+      "reportError": "Le rapport n'a pas pu être envoyé. Vous pouvez exporter le paquet et l'envoyer par e-mail.",
+      "repair": {
+        "title": "Réparer les projections locales",
+        "description": "Comparer les données locales au journal des événements avant de réparer.",
+        "check": "Vérifier les différences",
+        "checking": "Vérification des projections locales…",
+        "working": "Reconstruction des projections locales…",
+        "consistent": "Les projections correspondent au journal. Aucune réparation nécessaire.",
+        "preview": "Différences : {{tables}} tables, {{live}} lignes uniquement dans les données actuelles et {{replay}} uniquement dans les données rejouées.",
+        "warning": "La réparation reconstruit les projections à partir du journal complet au moment de la confirmation. Les modifications absentes du journal seront perdues. Les fichiers originaux, sauvegardes et autres appareils ne sont pas réparés. Les écritures sont suspendues jusqu’au rechargement.",
+        "done": "Projections reconstruites. Les écritures restent suspendues jusqu’au rechargement de l’application.",
+        "reload": "Recharger l’application",
+        "confirm": "Confirmer la réparation"
+      }
     }
   },
   "menus": {

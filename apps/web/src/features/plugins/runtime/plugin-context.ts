@@ -612,6 +612,8 @@ export function buildPluginContext(
       },
       logging: createPluginLogging(manifest.id, manifest.version, lifecycle),
       ...(canUseHostService("diagnostics", permissions) ? { diagnostics: {
+        requestProjectionRepair: options => lifecycle.read("services.diagnostics.requestProjectionRepair",
+          signal => hostDiagnostics.requestProjectionRepair(signal), pluginOperationSignal(lifecycle.signal, options)),
         requestReport: (action, options) => lifecycle.read("services.diagnostics.requestReport",
           signal => hostDiagnostics.requestReport(action, signal), pluginOperationSignal(lifecycle.signal, options)),
         verifyProjections: (options?: PluginCallOptions) => lifecycle.read("services.diagnostics.verifyProjections",

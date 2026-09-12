@@ -1,5 +1,8 @@
 // src/strings.ts
 var en = {
+  repair: "Repair local projections",
+  "rebuilt-reload-required": "Projections rebuilt; reload required",
+  repairReview: "The host previews differences and requires your confirmation. Repair replays the complete local event log and discards projection-only changes. Writes then pause until app reload. Cancelling this wait cannot undo a confirmed repair.",
   title: "Maintenance Desk",
   catalog: "Model catalog",
   provider: "Catalog provider",
@@ -68,6 +71,9 @@ var en = {
   verifyReview: "Checks event-log projections on this device only. This does not repair data or verify backups and other devices."
 };
 var zh = {
+  repair: "修复本机投影",
+  "rebuilt-reload-required": "投影已重建；需要重新载入",
+  repairReview: "宿主将显示差异并要求确认。修复按完整事件日志重建本机投影，丢弃仅存在于投影的修改，之后暂停写入直至重新载入应用。取消等待不能撤销已确认的修复。",
   title: "维护工作台",
   catalog: "模型目录",
   provider: "目录提供者",
@@ -889,7 +895,7 @@ function maintenanceDesk(ctx) {
   const t = copy(ctx.locale), operations = new Operations, lifetime = new AbortController;
   const catalog = catalogViews(ctx, lifetime.signal);
   const admin = adminCopy(ctx.locale), directory = pluginDirectory(ctx, lifetime.signal), updates = updateViews(ctx, lifetime.signal);
-  const actions = ["connection", "backupExport", "backupImport", "reportExport", "reportSend", "verify"];
+  const actions = ["connection", "backupExport", "backupImport", "reportExport", "reportSend", "verify", "repair"];
   const run = async (operation, signal) => {
     const options = { signal };
     if (operation === "connection") {
@@ -904,6 +910,8 @@ function maintenanceDesk(ctx) {
       const result2 = await ctx.services.diagnostics.requestReport(operation === "reportExport" ? "export" : "send", options);
       return { status: result2.status };
     }
+    if (operation === "repair")
+      return { status: (await ctx.services.diagnostics.requestProjectionRepair(options)).status };
     const result = await ctx.services.diagnostics.verifyProjections(options);
     return { status: result.consistent ? "consistent" : "drifted", counts: {
       events: result.eventsReplayed,
@@ -917,14 +925,14 @@ function maintenanceDesk(ctx) {
     kind: "detail",
     title: t[operation],
     content: [
-      { kind: "text", text: operation === "connection" ? t.connectionReview : operation === "verify" ? t.verifyReview : operation.startsWith("backup") ? t.backupReview : t.reportReview },
+      { kind: "text", text: operation === "connection" ? t.connectionReview : operation === "verify" ? t.verifyReview : operation === "repair" ? t.repairReview : operation.startsWith("backup") ? t.backupReview : t.reportReview },
       ...operation === "backupImport" ? [{ kind: "text", text: t.importReview }] : []
     ],
     actions: [{
       id: "continue",
       label: t.continue,
       icon: "arrow-right",
-      variant: operation === "backupImport" ? "danger" : "solid",
+      variant: operation === "backupImport" || operation === "repair" ? "danger" : "solid",
       run: () => {
         if (!operations.start(operation, (signal) => run(operation, signal)))
           return { toast: t.busy };

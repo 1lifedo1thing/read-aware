@@ -736,7 +736,20 @@
       "noticeError": "Something went wrong",
       "exportSuccess": "Diagnostics bundle saved.",
       "exportError": "The bundle could not be assembled or saved.",
-      "reportError": "The report could not be sent. You can export the bundle and email it instead."
+      "reportError": "The report could not be sent. You can export the bundle and email it instead.",
+      "repair": {
+        "title": "Repair local projections",
+        "description": "Compare local data with the event log before repairing.",
+        "check": "Check for differences",
+        "checking": "Checking local projections…",
+        "working": "Rebuilding local projections…",
+        "consistent": "Local projections match the event log. No repair is needed.",
+        "preview": "Differences: {{tables}} tables, {{live}} rows only in current data, {{replay}} rows only in replayed data.",
+        "warning": "Repair rebuilds local projections from the complete event log at confirmation time. Edits absent from the log will be discarded. Original files, backups and other devices are not repaired. Writes pause until you reload.",
+        "done": "Projections rebuilt. Writes remain paused until you reload the app.",
+        "reload": "Reload app",
+        "confirm": "Confirm repair"
+      }
     }
   },
   "menus": {

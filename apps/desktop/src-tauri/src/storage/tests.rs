@@ -2793,6 +2793,7 @@ fn rebuild_and_verify_refuse_an_incomplete_log() {
     let (mut b, dir_b) = conn_with_dir();
     put_blob_inner(&b, &dir_b, &published.blob_key, None, &bytes).unwrap();
     restore_bootstrap_checkpoint(&mut b, &dir_b, &published.blob_key).unwrap();
+    assert_eq!(events::rebuild_projections_inner(&mut b).unwrap_err().code, CODE_SYNC_LOG_INCOMPLETE);
     // A publish from B would be a lie (its log is incomplete); refused.
     assert_eq!(create_publish_checkpoint(&mut b, &dir_b).unwrap_err().code, CODE_SYNC_CHECKPOINT_PRECONDITION);
     // Settling without backfill progress changes nothing.
@@ -3256,4 +3257,22 @@ fn quota_refusals_are_listed_covers_first_and_requeue_into_the_outbox() {
     // A manifest-only row (no local bytes) has nothing to push, whatever refused it.
     conn.execute("UPDATE blob_objects SET storage_uri = NULL WHERE key = 'bookfile:b1'", []).unwrap();
     assert!(sync_quota_rejected_blobs_inner(&conn).unwrap().is_empty());
+}
+
+
+#[test]
+fn projection_repair_commits_drift_correction_and_rolls_back_failed_replay() {
+    let mut conn = migrated_conn();
+    commit_events_inner(&mut conn, &[imported("repair-e1", 1000, "b1", "source title")]).unwrap();
+    conn.execute("UPDATE books SET title='projection drift' WHERE id='b1'", []).unwrap();
+    let repaired = events::rebuild_projections_inner(&mut conn).unwrap();
+    assert_eq!(repaired.events_replayed, 1);
+    assert_eq!(scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"), "source title");
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 1);
+    conn.execute("UPDATE books SET title='kept on failure' WHERE id='b1'", []).unwrap();
+    // A damaged history record makes replay fail after clearing derived tables.
+    conn.execute("UPDATE domain_events SET payload_json='{}' WHERE id='repair-e1'", []).unwrap();
+    assert!(events::rebuild_projections_inner(&mut conn).is_err());
+    assert_eq!(scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"), "kept on failure");
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 1);
 }

@@ -15,6 +15,7 @@ import { SettingsRow } from "../components/SettingsRow";
 import { useMaintenanceSurface } from "../hooks/useMaintenanceSurface";
 import { useDiagnosticsReport } from "../hooks/useDiagnosticsReport";
 import { diagnosticsLogDir } from "../lib/diagnostics";
+import { ProjectionRepair } from "./ProjectionRepair";
 
 const log = createLogger("diagnostics");
 
@@ -81,6 +82,7 @@ export function DiagnosticsGroup() {
           />
         )}
       </SettingsGroup>
+      {isTauri() && <SettingsGroup title={t("about.diagnostics.repair.title")}><ProjectionRepair /></SettingsGroup>}
 
       <Dialog
         open={report !== null}

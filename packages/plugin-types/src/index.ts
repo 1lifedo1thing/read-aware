@@ -2247,6 +2247,8 @@ export type PluginHostServices = {
   };
   /** Requires service:diagnostics. Counts or host-confirmed report outcomes only. */
   diagnostics?: {
+    /** Diagnostics 1.2: opens host confirmation; a committed repair requires reload. */
+    requestProjectionRepair(options?: PluginCallOptions): Promise<import("@read-aware/core").ProjectionRepairReceipt>;
     requestReport(action: import("@read-aware/core").DiagnosticsReportAction, options?: PluginCallOptions): Promise<import("@read-aware/core").DiagnosticsReportReceipt>;
     verifyProjections(options?: PluginCallOptions): Promise<import("@read-aware/core").ProjectionVerification>;
   };

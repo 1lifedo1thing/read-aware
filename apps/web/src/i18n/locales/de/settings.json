@@ -645,7 +645,20 @@
       "noticeError": "Etwas ist schiefgelaufen",
       "exportSuccess": "Diagnosepaket gespeichert.",
       "exportError": "Das Paket konnte nicht erstellt oder gespeichert werden.",
-      "reportError": "Der Bericht konnte nicht gesendet werden. Du kannst das Paket stattdessen exportieren und per E-Mail schicken."
+      "reportError": "Der Bericht konnte nicht gesendet werden. Du kannst das Paket stattdessen exportieren und per E-Mail schicken.",
+      "repair": {
+        "title": "Lokale Projektionen reparieren",
+        "description": "Lokale Daten vor der Reparatur mit dem Ereignisprotokoll vergleichen.",
+        "check": "Unterschiede prüfen",
+        "checking": "Lokale Projektionen werden geprüft…",
+        "working": "Lokale Projektionen werden neu aufgebaut…",
+        "consistent": "Die Projektionen entsprechen dem Ereignisprotokoll. Keine Reparatur nötig.",
+        "preview": "Unterschiede: {{tables}} Tabellen, {{live}} Zeilen nur in aktuellen Daten, {{replay}} Zeilen nur in wiedergegebenen Daten.",
+        "warning": "Die Reparatur erstellt Projektionen aus dem vollständigen Ereignisprotokoll zum Bestätigungszeitpunkt neu. Änderungen ohne Protokolleintrag gehen verloren. Originaldateien, Sicherungen und andere Geräte werden nicht repariert. Schreibvorgänge bleiben bis zum Neuladen pausiert.",
+        "done": "Projektionen neu aufgebaut. Schreibvorgänge bleiben bis zum Neuladen der App pausiert.",
+        "reload": "App neu laden",
+        "confirm": "Reparatur bestätigen"
+      }
     }
   },
   "menus": {

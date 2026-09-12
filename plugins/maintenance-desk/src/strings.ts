@@ -1,4 +1,6 @@
 const en = {
+  repair: "Repair local projections", "rebuilt-reload-required": "Projections rebuilt; reload required",
+  repairReview: "The host previews differences and requires your confirmation. Repair replays the complete local event log and discards projection-only changes. Writes then pause until app reload. Cancelling this wait cannot undo a confirmed repair.",
   title: "Maintenance Desk", catalog: "Model catalog", provider: "Catalog provider", search: "Search models",
   syncNow: "Synchronize now", syncConnect: "Connect synchronization", syncDisconnect: "Disconnect synchronization",
   syncDelete: "Delete Relay account", syncUpgrade: "Choose a plan", syncBilling: "Manage billing",
@@ -24,6 +26,8 @@ const en = {
   verifyReview: "Checks event-log projections on this device only. This does not repair data or verify backups and other devices.",
 };
 const zh: typeof en = {
+  repair: "修复本机投影", "rebuilt-reload-required": "投影已重建；需要重新载入",
+  repairReview: "宿主将显示差异并要求确认。修复按完整事件日志重建本机投影，丢弃仅存在于投影的修改，之后暂停写入直至重新载入应用。取消等待不能撤销已确认的修复。",
   title: "维护工作台", catalog: "模型目录", provider: "目录提供者", search: "搜索模型",
   syncNow: "立即同步", syncConnect: "连接同步", syncDisconnect: "断开同步",
   syncDelete: "删除 Relay 账户", syncUpgrade: "选择套餐", syncBilling: "管理账单",

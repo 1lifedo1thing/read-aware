@@ -649,7 +649,20 @@
       "noticeError": "Algo ha salido mal",
       "exportSuccess": "Paquete de diagnóstico guardado.",
       "exportError": "No se pudo crear o guardar el paquete.",
-      "reportError": "No se pudo enviar el informe. Puedes exportar el paquete y enviarlo por correo."
+      "reportError": "No se pudo enviar el informe. Puedes exportar el paquete y enviarlo por correo.",
+      "repair": {
+        "title": "Reparar proyecciones locales",
+        "description": "Comparar los datos locales con el registro de eventos antes de reparar.",
+        "check": "Comprobar diferencias",
+        "checking": "Comprobando proyecciones locales…",
+        "working": "Reconstruyendo proyecciones locales…",
+        "consistent": "Las proyecciones coinciden con el registro. No es necesario repararlas.",
+        "preview": "Diferencias: {{tables}} tablas, {{live}} filas solo en los datos actuales y {{replay}} solo en los datos reproducidos.",
+        "warning": "La reparación reconstruye las proyecciones desde el registro completo al confirmar. Los cambios ausentes del registro se perderán. No repara archivos originales, copias de seguridad ni otros dispositivos. La escritura se pausa hasta recargar.",
+        "done": "Proyecciones reconstruidas. La escritura seguirá pausada hasta recargar la aplicación.",
+        "reload": "Recargar aplicación",
+        "confirm": "Confirmar reparación"
+      }
     }
   },
   "menus": {

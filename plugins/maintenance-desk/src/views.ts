@@ -11,7 +11,7 @@ export function maintenanceDesk(ctx: PluginContext) {
   const t = copy(ctx.locale), operations = new Operations(), lifetime = new AbortController();
   const catalog = catalogViews(ctx, lifetime.signal);
   const admin = adminCopy(ctx.locale), directory = pluginDirectory(ctx, lifetime.signal), updates = updateViews(ctx, lifetime.signal);
-  const actions = ["connection", "backupExport", "backupImport", "reportExport", "reportSend", "verify"] as const satisfies readonly Operation[];
+  const actions = ["connection", "backupExport", "backupImport", "reportExport", "reportSend", "verify", "repair"] as const satisfies readonly Operation[];
   type ReviewOperation = typeof actions[number];
   const run = async (operation: ReviewOperation, signal: AbortSignal): Promise<Outcome> => {
     const options = { signal };
@@ -27,6 +27,7 @@ export function maintenanceDesk(ctx: PluginContext) {
       const result = await ctx.services.diagnostics!.requestReport(operation === "reportExport" ? "export" : "send", options);
       return { status: result.status };
     }
+    if (operation === "repair") return { status: (await ctx.services.diagnostics!.requestProjectionRepair(options)).status };
     const result = await ctx.services.diagnostics!.verifyProjections(options);
     return { status: result.consistent ? "consistent" : "drifted", counts: {
       events: result.eventsReplayed, tables: result.driftedTables, liveRows: result.onlyLiveRows, replayRows: result.onlyReplayedRows,
@@ -36,9 +37,9 @@ export function maintenanceDesk(ctx: PluginContext) {
   const review = (operation: ReviewOperation): PluginView => ({
     kind: "detail", title: t[operation], content: [
       { kind: "text", text: operation === "connection" ? t.connectionReview : operation === "verify" ? t.verifyReview
-        : operation.startsWith("backup") ? t.backupReview : t.reportReview },
+        : operation === "repair" ? t.repairReview : operation.startsWith("backup") ? t.backupReview : t.reportReview },
       ...(operation === "backupImport" ? [{ kind: "text" as const, text: t.importReview }] : []),
-    ], actions: [{ id: "continue", label: t.continue, icon: "arrow-right", variant: operation === "backupImport" ? "danger" : "solid",
+    ], actions: [{ id: "continue", label: t.continue, icon: "arrow-right", variant: operation === "backupImport" || operation === "repair" ? "danger" : "solid",
       run: (): PluginViewResult => {
         if (!operations.start(operation, signal => run(operation, signal))) return { toast: t.busy };
         // Leave native controls accessible; the wait belongs to this activation.

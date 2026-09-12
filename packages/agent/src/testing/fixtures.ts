@@ -399,6 +399,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
       openSettings: async surface => ({ status: "opened", surface }),
     },
     diagnostics: {
+      requestProjectionRepair: async () => { throw new AppError("ui/unavailable", "Attach a projection repair fixture"); },
       requestReport: async () => { throw new AppError("ui/unavailable", "Attach a diagnostic report fixture"); },
       verifyProjections: async () => { throw new AppError("ui/unavailable", "Attach a diagnostics fixture"); },
     },

@@ -19,6 +19,7 @@ export const PLUGIN_CALL_OPTIONS = {
   "services.maintenance.requestBackup": 1,
   "services.diagnostics.verifyProjections": 0,
   "services.diagnostics.requestReport": 1,
+  "services.diagnostics.requestProjectionRepair": 0,
   "services.sync.requestFlow": 1,
   "domains.library.queries.books.inspectResource": 1,
   "domains.library.commands.books.importBook": 1,

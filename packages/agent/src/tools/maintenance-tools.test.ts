@@ -85,3 +85,17 @@ test("Agent verification uses the shared port, preserves cancellation and never 
   deps.diagnostics.verifyProjections = async () => { throw failure; };
   await expect(tool.execute("test", {}, signal)).rejects.toBe(failure);
 });
+
+test("projection repair tool waits for native confirmation receipt and exposes no approval handle", async () => {
+  const { deps } = createInMemoryDeps();
+  const signal = new AbortController().signal;
+  let received: AbortSignal | undefined;
+  const pending = Promise.withResolvers<import("@read-aware/core").ProjectionRepairReceipt>();
+  deps.diagnostics.requestProjectionRepair = next => { received = next; return pending.promise; };
+  const tool = buildMaintenanceTools(deps).find(tool => tool.name === "request_projection_repair")!;
+  const result = tool.execute("repair", {}, signal);
+  expect(received).toBe(signal);
+  pending.resolve({ action: "repair", status: "rebuilt-reload-required" });
+  expect(JSON.stringify(await result)).toContain("rebuilt-reload-required");
+  await expect(tool.execute("repair", {}, AbortSignal.abort(Error("cancel")))).rejects.toThrow("cancel");
+});
