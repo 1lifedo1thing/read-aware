@@ -73,3 +73,5 @@ export * from "./memory-candidate";
 export * from "./memory-page";
 
 export * from "./plugin-assets";
+
+export * from "./model-image";

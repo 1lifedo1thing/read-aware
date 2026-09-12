@@ -174,3 +174,16 @@ test("both source and compiled entry expose image and reference workflows from b
   expect((preview as PluginDetailView).content[0]).toMatchObject({ kind: "image", resourceId: "image-resource" });
   await preview.onClose!({ reason: "closed" });
 });
+
+test("image description sends the owned image ID only on explicit action and cancels when the view closes", async () => {
+  const f = fixture(), inputs: unknown[] = [];
+  f.ctx.services.llm = { ask: async input => { inputs.push(input); return "Visible diagram"; } } as NonNullable<PluginContext["services"]["llm"]>;
+  const view = await imageDetail(f.ctx, f.image) as PluginView & PluginDetailView;
+  expect(inputs).toEqual([]);
+  const result = await view.actions!.find(action => action.id === "describe-image")!.run();
+  expect(inputs[0]).toMatchObject({ images: [{ resourceId: "image-resource" }], model: "smart", maxOutputTokens: 1200 });
+  expect(result).toMatchObject({ view: { kind: "detail", content: [{ kind: "text", text: "Visible diagram" }] } });
+  await view.onClose!({ reason: "closed" });
+  expect((inputs[0] as { signal: AbortSignal }).signal.aborted).toBe(true);
+  expect(f.calls[f.calls.length - 1]).toEqual(["release", "image-resource"]);
+});

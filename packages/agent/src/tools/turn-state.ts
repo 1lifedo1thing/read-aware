@@ -15,6 +15,9 @@ export interface AgentTurnState {
   /** Automatic reading context grants captured when this turn began. */
   readingContextPermissions?: import("../runtime/reading-context-policy").ReadingContextPermissions;
   presentedBookIds: Set<string>;
+  modelSupportsImages?: boolean;
+  modelImageCount?: number;
+  modelImageBytes?: number;
   spoilerFence?: SpoilerFence;
   /** Completed-chapter memory boundary, separate from the inclusive prose fence. */
   bookMemoryBoundary?: import("../memory/book-memory-policy").BookGraphBoundary;

@@ -265,3 +265,17 @@ test("AgentRuntime forwards its host policy to one-shot calls", async () => {
   await expect(runtime.askDetailed({ prompt: "typed", readingContext: { selection: "private", required: ["selection"] } }))
     .rejects.toMatchObject({ code: "ai/context-withheld" });
 });
+
+test("vision inputs reach each structured model attempt as image blocks; text-only models fail before network", async () => {
+  const contexts: unknown[] = [];
+  const f = fixture(async (_model, context) => { contexts.push(context); return fauxAssistantMessage(contexts.length === 1 ? "bad JSON" : '{"answer":"image"}'); });
+  f.deps.resolveModel = () => ({ ...model, input: ["text", "image"] });
+  const images = [{ mimeType: "image/png" as const, data: "AAAA" }];
+  expect(await askOneShot({ prompt: "describe", images, schema: { type: "object", required: ["answer"] } }, f.deps)).toEqual({ answer: "image" });
+  expect(contexts).toHaveLength(2);
+  for (const context of contexts) expect(context).toMatchObject({ messages: [{ role: "user", content: [{ type: "text" }, { type: "image", ...images[0] }] }] });
+  f.deps.resolveModel = () => ({ ...model, input: ["text"] });
+  await expect(askOneShot({ prompt: "describe", images }, f.deps)).rejects.toMatchObject({ code: "ai/image-unsupported" });
+  await expect(askOneShot({ prompt: "describe", images: Array(5).fill(images[0]) }, f.deps)).rejects.toMatchObject({ code: "ai/image-budget-exceeded" });
+  expect(contexts).toHaveLength(2);
+});

@@ -26,9 +26,15 @@ export async function imageDetail(ctx: PluginContext, image: Image): Promise<Plu
     content: [{ kind: "text", text: tr(ctx.locale, `image_${result.status}`) }],
   };
   const resource = result.resource;
+  const inference = new AbortController();
   return { kind: "detail", title,
     content: [{ kind: "image", resourceId: resource.id, alt: result.image.alt || title }],
     actions: [
+      ...(ctx.services.llm ? [{ id: "describe-image", label: tr(ctx.locale, "describeImage"), icon: "sparkle", run: async () => {
+        const description = await ctx.services.llm!.ask({ prompt: `Describe this illustration in ${ctx.locale}. Discuss only visible content; mark uncertainty. Do not invent surrounding book context.`,
+          images: [{ resourceId: resource.id }], model: "smart", maxOutputTokens: 1200, signal: inference.signal });
+        return { view: { kind: "detail" as const, title: tr(ctx.locale, "describeImage"), content: [{ kind: "text" as const, text: description }] } };
+      } }] : []),
       { id: "image-controls", label: tr(ctx.locale, "imageControls"), icon: "magnifying-glass",
         run: () => openImageControls(ctx, query) },
       { id: "native-image", label: tr(ctx.locale, "nativeImage"), icon: "arrow-square-out", run: async () => {
@@ -44,6 +50,6 @@ export async function imageDetail(ctx: PluginContext, image: Image): Promise<Plu
       ...(result.image.location ? [{ id: "open-source", label: tr(ctx.locale, "openPassage"), icon: "book-open", run: async () => {
         await ctx.domains.reading!.commands!.goTo(result.image.location!); return { close: "all" as const };
       } }] : []),
-    ], onClose: () => resources.release(resource.id),
+    ], onClose: () => { inference.abort(); return resources.release(resource.id); },
   };
 }

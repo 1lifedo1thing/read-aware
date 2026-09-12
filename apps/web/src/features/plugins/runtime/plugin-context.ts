@@ -1,3 +1,4 @@
+import { resourceModelImage } from "../../../services/model-image";
 import { createPluginStoragePolicy } from "./plugin-storage-policy";
 import { pluginUriRegistry } from "../lib/plugin-uri";
 import { normalizeActionState } from "../lib/plugin-action-state";
@@ -1005,7 +1006,7 @@ export function buildPluginContext(
   }
 
   if (canUseHostService("llm", permissions)) {
-    ctx.services.llm = createPluginLlm(manifest.id, lifecycle, getAgentRuntime);
+    ctx.services.llm = createPluginLlm(manifest.id, lifecycle, getAgentRuntime, undefined, (id, signal) => resourceModelImage(resources, id, signal));
   }
 
   if (canUseHostService("clipboard", permissions)) {

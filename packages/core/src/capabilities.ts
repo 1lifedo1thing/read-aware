@@ -44,7 +44,7 @@ export const HOST_SERVICE_CATALOG = {
   resources: { version: "1.5.0", permission: null },
   sync: { version: "1.1.0", permission: "service:sync" },
   network: { version: "2.2.0", permission: "service:network" },
-  llm: { version: "1.4.0", permission: "service:llm" },
+  llm: { version: "1.5.0", permission: "service:llm" },
   clipboard: { version: "1.1.0", permission: "service:clipboard" },
 } as const;
 

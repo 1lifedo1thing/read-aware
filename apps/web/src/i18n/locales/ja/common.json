@@ -145,7 +145,11 @@
     "syncCheckpointPrecondition": "同期待ちの変更があるため、今はチェックポイントを保存できません。自動的に再試行します。",
     "localSaveFailedTitle": "変更が保存されていません",
     "localSaveFailed": "この変更をローカルストレージに書き込めませんでした。再起動後に失われる可能性があります。",
-    "pluginAssetConflict": "保存したリソースが変更または削除されました。一覧を更新してから操作してください。"
+    "pluginAssetConflict": "保存したリソースが変更または削除されました。一覧を更新してから操作してください。",
+    "aiImageUnsupported": "画像入力に対応したモデルを選択してください。",
+    "aiImageInvalid": "この画像はAI入力として使用できません。",
+    "aiImageBudget": "画像入力の上限に達しました。画像の数やサイズを減らしてください。",
+    "bookContentBudget": "このセクションは読み取り上限を超えています。"
   },
   "crashPrompt": {
     "title": "前回 ReadAware に問題が発生しました",

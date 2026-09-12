@@ -341,7 +341,7 @@ export class ResourceOwner implements ResourcePort {
       this.guard(signal); return receipt;
     }, signal);
   }
-  /** Host-rendered views only. Native decoding returns a bounded, inert PNG;
+  /** Host-rendered views and explicit model inputs. Native decoding returns a bounded, inert PNG;
    * original books stay export-only and source MIME hints are not trusted. */
   imagePreview(id: string, signal?: AbortSignal): Promise<Blob> {
     return this.run(async () => {

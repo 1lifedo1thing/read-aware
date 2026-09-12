@@ -97,7 +97,7 @@ const agentMap = pairs([
   ["focus_reader", "READ11"],
   ["get_app_window control_app_window", "SYS17"],
   ["get_reader_image control_reader_image", "READ12"],
-  ["list_book_images open_book_image_resource show_book_image", "TXT12"],
+  ["list_book_images open_book_image_resource show_book_image read_book_image", "TXT12"],
   ["get_user_profile", "MEM06"],
   ["explain_selection", "SET18"], ["define_term", "SET19"], ["translate_selection", "SET20"], ["summarize_chapter", "SET21"],
   ["inspect_user_profile", "MEM08"],

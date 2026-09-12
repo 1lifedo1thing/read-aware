@@ -307,3 +307,17 @@ test("image copy requires own sealed non-book resource and preserves failures an
     await expect(f.owner.copyImage(ref.id)).rejects.toMatchObject({ code: "ui/unavailable" });
   } finally { await f.owner.dispose(); }
 });
+
+test("model image input uses the same native decoder, rejects foreign/book references and bounds decoded PNG bytes", async () => {
+  const { resourceModelImage } = await import("./model-image");
+  const a = fixture(), b = fixture();
+  try {
+    const ref = await a.owner.openCover("book");
+    expect(await resourceModelImage(a.owner, ref!.id)).toEqual({ mimeType: "image/png", data: "AQID" });
+    await expect(resourceModelImage(b.owner, ref!.id)).rejects.toMatchObject({ code: "fs/not-found" });
+    const original = await a.owner.openBook("book");
+    await expect(resourceModelImage(a.owner, original!.id)).rejects.toMatchObject({ code: "ui/invalid-target" });
+    a.adapter.imagePreview = async () => new ArrayBuffer(8 * 1024 * 1024 + 1);
+    await expect(resourceModelImage(a.owner, ref!.id)).rejects.toMatchObject({ code: "ai/image-budget-exceeded" });
+  } finally { await a.owner.dispose(); await b.owner.dispose(); }
+});

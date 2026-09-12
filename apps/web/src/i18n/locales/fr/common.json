@@ -145,7 +145,11 @@
     "syncCheckpointPrecondition": "Impossible d’enregistrer un point de contrôle pour l’instant : des modifications attendent encore d’être synchronisées. Nouvelle tentative automatique.",
     "localSaveFailedTitle": "Modification non enregistrée",
     "localSaveFailed": "Cette modification n'a pas pu être écrite dans le stockage local et pourrait être perdue après un redémarrage.",
-    "pluginAssetConflict": "Cette ressource enregistrée a été modifiée ou supprimée. Actualisez la liste avant de continuer."
+    "pluginAssetConflict": "Cette ressource enregistrée a été modifiée ou supprimée. Actualisez la liste avant de continuer.",
+    "aiImageUnsupported": "Choisissez un modèle acceptant les images.",
+    "aiImageInvalid": "Cette image ne peut pas être transmise à l’IA.",
+    "aiImageBudget": "Limite d’images atteinte. Réduisez leur nombre ou leur taille.",
+    "bookContentBudget": "Cette section dépasse la limite de lecture."
   },
   "crashPrompt": {
     "title": "ReadAware a rencontré un problème la dernière fois",

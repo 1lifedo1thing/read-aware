@@ -41,3 +41,37 @@ test("show_book_image keeps the reading fence and uses a host-derived session gu
   await expect(show.execute("show", { image: { ...image, bookId: "other" } })).rejects.toMatchObject({ code: "memory/forbidden" });
   await expect(show.execute("show", { image, throughChapterIndex: 99 })).rejects.toMatchObject({ code: "library/invalid-query" });
 });
+
+test("vision tool emits actual bounded image content, enforces reading scope and rejects text-only models", async () => {
+  const { deps } = createInMemoryDeps(), state = createAgentTurnState();
+  state.modelSupportsImages = true; state.spoilerFence = { throughChapterIndex: 0 };
+  const image = { bookId: "book", contentVersion: "v1", sectionIndex: 0, index: 0 };
+  const calls: unknown[] = [];
+  deps.bookText.readImageInput = async (...args) => { calls.push(args); return { status: "ready", image: { image, alt: "" }, input: { mimeType: "image/png", data: "AAAA" } }; };
+  const read = buildBookImageTools({ kind: "book", bookId: "book" }, deps, state).find(tool => tool.name === "read_book_image")!;
+  const result = await read.execute("vision", { image });
+  expect(result.content[1]).toEqual({ type: "image", mimeType: "image/png", data: "AAAA" });
+  expect(result.content[0]).not.toHaveProperty("data");
+  expect(calls[0]).toEqual(["book:book", { image, throughChapterIndex: 0 }, undefined]);
+  await expect(read.execute("vision", { image, confirmSpoiler: true })).rejects.toThrow("not explicitly granted");
+  await expect(read.execute("vision", { image: { ...image, bookId: "other" } })).rejects.toMatchObject({ code: "memory/forbidden" });
+  for (let i = 0; i < 3; i++) await read.execute("vision", { image });
+  // Tool rebuild between requests must not reset the per-turn budget.
+  await expect(buildBookImageTools({ kind: "book", bookId: "book" }, deps, state).find(tool => tool.name === "read_book_image")!.execute("again", { image }))
+    .rejects.toMatchObject({ code: "ai/image-budget-exceeded" });
+  state.modelSupportsImages = false;
+  await expect(read.execute("vision", { image })).rejects.toMatchObject({ code: "ai/image-unsupported" });
+  expect(calls).toHaveLength(4);
+});
+
+test("tool discovery explains why vision is withheld for a text-only model", async () => {
+  const { prepareHostTools, toolAvailability } = await import("./tool-availability");
+  const { deps } = createInMemoryDeps(), state = createAgentTurnState();
+  deps.bookText.readImageInput = async () => { throw new Error("not expected"); };
+  state.modelSupportsImages = false;
+  const scope = { kind: "book" as const, bookId: "book" };
+  const prepared = prepareHostTools(buildBookImageTools(scope, deps, state), scope, deps, state);
+  expect(prepared.enabled.some(tool => tool.name === "read_book_image")).toBe(false);
+  expect(toolAvailability(prepared.all.find(tool => tool.name === "read_book_image")!))
+    .toEqual({ state: "unavailable", reason: "model-image-unsupported" });
+});

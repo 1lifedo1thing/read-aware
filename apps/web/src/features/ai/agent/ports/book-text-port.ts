@@ -1,3 +1,4 @@
+import { resourceModelImage } from "../../../../services/model-image";
 /** Agent-specific chapter hrefs and spoiler bounds over shared library reads. */
 import { type BookTextPort, type ChapterRef } from "@read-aware/agent";
 import { getExtractedChapters } from "../../../../domain";
@@ -23,6 +24,15 @@ export function createBookTextPort(): BookTextPort {
       const hrefs = throughChapterIndex === undefined ? undefined : (await getExtractedChapters(input.image.bookId))
         .slice(0, Math.max(0, throughChapterIndex + 1)).flatMap(chapter => chapter.hrefs ?? []);
       return openBookImageResource(agentResources(ownerKey, ownerKey.startsWith("book:") ? ownerKey.slice(5) : undefined), input, signal, hrefs);
+    },
+    readImageInput: async (ownerKey, { throughChapterIndex, ...input }, signal) => {
+      const hrefs = throughChapterIndex === undefined ? undefined : (await getExtractedChapters(input.image.bookId))
+        .slice(0, Math.max(0, throughChapterIndex + 1)).flatMap(chapter => chapter.hrefs ?? []);
+      const owner = agentResources(ownerKey, ownerKey.startsWith("book:") ? ownerKey.slice(5) : undefined);
+      const result = await openBookImageResource(owner, input, signal, hrefs);
+      if (result.status !== "ready") return result;
+      try { return { status: "ready", image: result.image, input: await resourceModelImage(owner, result.resource.id, signal) }; }
+      finally { await owner.release(result.resource.id); }
     },
     listReferences: async ({ throughChapterIndex, ...input }, signal) => {
       const hrefs = throughChapterIndex === undefined ? undefined : (await getExtractedChapters(input.bookId))

@@ -3,6 +3,10 @@ import type { PluginModule } from "@read-aware/plugin-types";
 export default {
   activate(ctx) {
     ctx.contributions.commands.register({ id: "ask", title: "Ask", async run() {
+      if (ctx.manifest.description === "image") {
+        const value = await ctx.services.llm!.ask({ prompt: "describe", images: [{ resourceId: "owned-image" }], model: "smart" });
+        return { toast: value };
+      }
       if (ctx.manifest.description === "receipt") {
         const controller = new AbortController();
         const pending = ctx.services.llm!.ask({ prompt: "probe", requestId: "probe-request", signal: controller.signal });

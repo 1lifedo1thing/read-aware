@@ -36,15 +36,26 @@ export function elideStaleToolResults(
       (sum, block) => sum + (block.type === "text" ? (block.text?.length ?? 0) : 0),
       0,
     );
-    if (total <= keepChars) return message;
+    const hasImages = result.content.some(block => block.type === "image");
+    if (total <= keepChars && !hasImages) return message;
 
     const joined = result.content
       .filter((block) => block.type === "text" && block.text)
       .map((block) => block.text)
       .join("\n");
-    const stub = `${joined.slice(0, keepChars)}\n…[${total - keepChars} chars of this earlier ${
+    const stub = `${joined.slice(0, keepChars)}\n…[${Math.max(0, total - keepChars)} chars${hasImages ? " and image inputs" : ""} of this earlier ${
       result.toolName ?? "tool"
     } result were trimmed from context; call the tool again if you need the full data]`;
     return { ...message, content: [{ type: "text", text: stub }] } as AgentMessage;
+  });
+}
+
+/** Release pixel payloads from the retained agent state when a turn has ended. */
+export function releaseToolImages(messages: AgentMessage[]): AgentMessage[] {
+  return messages.map(message => {
+    const result = message as ToolResultLike;
+    if (result.role !== "toolResult" || !result.content?.some(block => block.type === "image")) return message;
+    return { ...message, content: [...result.content.filter(block => block.type !== "image"),
+      { type: "text", text: "[Image input released after this turn; reread its descriptor for visual inspection.]" }] } as AgentMessage;
   });
 }

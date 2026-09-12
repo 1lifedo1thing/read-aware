@@ -2169,6 +2169,10 @@ export type PluginLoggingService = {
 
 export type PluginInferenceInput = {
   prompt: string;
+  /** llm 1.5: up to four sealed image resource IDs owned by this activation.
+   * Native PNG decode, 8 MiB each/16 MiB total; original-book/context exports rejected.
+   * Sends pixels to the selected vision-capable model, never URLs or arbitrary bytes. */
+  images?: { resourceId: string }[];
   /** llm 1.4: optional caller-generated ID (1..64 ASCII letters/digits/_/-).
    * Retains metadata independently of the cancellable RPC. IDs must be unique
    * among retained requests; this is not a retry/idempotency key. */
@@ -2397,7 +2401,7 @@ export type PluginHostServices = {
   };
   llm?: {
     /** Plugin inference limits, not billing quotas. maxOutputTokensLimit since 1.3. */
-    policy(): Promise<{ defaultTimeoutMs: number; maxTimeoutMs: number; perPluginLimit: number; appLimit: number; maxOutputTokensLimit: number }>;
+    policy(): Promise<{ defaultTimeoutMs: number; maxTimeoutMs: number; perPluginLimit: number; appLimit: number; maxOutputTokensLimit: number; maxImageCount: number; maxImageBytes: number; maxImageTotalBytes: number }>;
     ask(input: PluginInferenceInput & { schema?: never; onText?: (delta: string) => void }): Promise<string>;
     ask(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never }): Promise<unknown>;
     /** llm 1.3: same execution as ask, with per-attempt metadata on success.

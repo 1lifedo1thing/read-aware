@@ -1,14 +1,14 @@
 import type { AgentRuntime, OneShotInput } from "@read-aware/agent";
-import { AppError, ERR_AI_BUSY, ERR_AI_REQUEST_CANCELLED, ERR_AI_REQUEST_TIMEOUT, ERR_PLUGIN_INVALID_ARGUMENT } from "@read-aware/core";
+import { validateModelImages, MODEL_IMAGES_MAX_COUNT, MODEL_IMAGE_MAX_BYTES, MODEL_IMAGES_MAX_BYTES, type ModelImageInput, AppError, ERR_AI_BUSY, ERR_AI_REQUEST_CANCELLED, ERR_AI_REQUEST_TIMEOUT, ERR_PLUGIN_INVALID_ARGUMENT } from "@read-aware/core";
 import type { PluginHostServices } from "@read-aware/plugin-types";
 import { AiNotConfiguredError } from "../../ai/lib/ai-errors";
 import { createLogger } from "../../../platform/logger";
 import type { PluginLifecycleController } from "./plugin-lifecycle";
 import { PluginInferenceReceipts } from "./plugin-inference-receipts";
 
-const LIMITS = { defaultTimeoutMs: 60_000, maxTimeoutMs: 110_000, perPluginLimit: 2, appLimit: 8, maxOutputTokensLimit: 65_536 };
+const LIMITS = { defaultTimeoutMs: 60_000, maxTimeoutMs: 110_000, perPluginLimit: 2, appLimit: 8, maxOutputTokensLimit: 65_536, maxImageCount: MODEL_IMAGES_MAX_COUNT, maxImageBytes: MODEL_IMAGE_MAX_BYTES, maxImageTotalBytes: MODEL_IMAGES_MAX_BYTES };
 const log = createLogger("plugin-llm");
-type Input = Omit<OneShotInput, "trackSource" | "onAttempt"> & { timeoutMs?: number; requestId?: string };
+type Input = Omit<OneShotInput, "trackSource" | "onAttempt" | "images"> & { images?: { resourceId: string }[]; timeoutMs?: number; requestId?: string };
 
 export class PluginInferenceSlots {
   private total = 0;
@@ -44,9 +44,12 @@ function normalize(input: Input): Input {
   if (input.signal !== undefined && !(input.signal instanceof AbortSignal)) return invalid();
   if (input.requestId !== undefined && (typeof input.requestId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(input.requestId))) return invalid();
   if (input.maxOutputTokens !== undefined && (!Number.isSafeInteger(input.maxOutputTokens) || input.maxOutputTokens < 1 || input.maxOutputTokens > LIMITS.maxOutputTokensLimit)) return invalid();
+  if (input.images !== undefined && (!Array.isArray(input.images) || input.images.length > MODEL_IMAGES_MAX_COUNT
+    || Array.from(input.images).some(image => !image || typeof image !== "object" || typeof image.resourceId !== "string" || !image.resourceId.length
+      || image.resourceId.length > 256 || Object.keys(image).some(key => key !== "resourceId")))) return invalid();
   const timeoutMs = input.timeoutMs ?? LIMITS.defaultTimeoutMs;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > LIMITS.maxTimeoutMs) return invalid();
-  return { prompt: input.prompt, system: input.system, model: input.model ?? "fast", timeoutMs, signal: input.signal,
+  return { images: input.images?.map(image => ({ resourceId: image.resourceId })), prompt: input.prompt, system: input.system, model: input.model ?? "fast", timeoutMs, signal: input.signal,
     maxOutputTokens: input.maxOutputTokens, requestId: input.requestId,
     schema: input.schema === undefined ? undefined : structuredClone(input.schema),
     readingContext: input.readingContext === undefined ? undefined : structuredClone(input.readingContext), onText: input.onText };
@@ -57,6 +60,7 @@ export function createPluginLlm(
   lifecycle: PluginLifecycleController,
   getRuntime: () => Pick<AgentRuntime, "ask" | "askDetailed"> | null,
   capacity = slots,
+  readImage?: (id: string, signal: AbortSignal) => Promise<ModelImageInput>,
 ): NonNullable<PluginHostServices["llm"]> {
   const receipts = new PluginInferenceReceipts(lifecycle);
   const run = async (raw: Input, detailed: boolean): Promise<unknown> => {
@@ -85,9 +89,16 @@ export function createPluginLlm(
           }
         });
       };
-      const work = Promise.resolve().then(() => {
+      const work = Promise.resolve().then(async () => {
         controller.signal.throwIfAborted();
-        const base = { prompt: input.prompt, system: input.system, model: input.model,
+        const images: ModelImageInput[] = [];
+        for (const image of input.images ?? []) {
+          if (!readImage) throw new AppError("ai/invalid-image", "Image input is unavailable");
+          images.push(await readImage(image.resourceId, controller.signal));
+          validateModelImages(images);
+          controller.signal.throwIfAborted();
+        }
+        const base = { images, prompt: input.prompt, system: input.system, model: input.model,
           readingContext: input.readingContext, signal: controller.signal, trackSource, maxOutputTokens: input.maxOutputTokens,
           onAttempt: receipt?.attempt };
         if (detailed) return input.schema ? runtime.askDetailed({ ...base, schema: input.schema }) : runtime.askDetailed({ ...base, onText: input.onText });

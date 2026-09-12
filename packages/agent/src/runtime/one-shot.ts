@@ -1,4 +1,5 @@
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
+import { AppError, validateModelImages } from "@read-aware/core";
 import type { InferenceAttemptReceipt, InferenceResult, ModelReadingContext } from "@read-aware/core";
 import type { CompleteFn, StreamFn, InferenceSourceTracking } from "../models/complete";
 import { classifyModelFailure } from "../models/failure";
@@ -10,6 +11,8 @@ import { inferenceReceipt } from "./inference-receipt";
 
 export type OneShotInput = InferenceSourceTracking & {
   prompt: string;
+  /** Host-decoded bounded image inputs; never raw plugin URLs. */
+  images?: import("@read-aware/core").ModelImageInput[];
   system?: string;
   model?: ModelRole;
   readingContext?: ModelReadingContext;
@@ -39,6 +42,7 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
   if (input.maxOutputTokens !== undefined && (!Number.isSafeInteger(input.maxOutputTokens) || input.maxOutputTokens < 1)) {
     throw new Error("ask: maxOutputTokens must be a positive safe integer");
   }
+  const images = input.images === undefined ? [] : validateModelImages(input.images);
   const attempts: InferenceAttemptReceipt[] = [];
   const reading = input.readingContext === undefined ? undefined : validateModelReadingContext(input.readingContext);
   const failed = new AbortController();
@@ -51,9 +55,10 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
       call?.assertAllowed();
       const role = input.model ?? "fast";
       const model = deps.resolveModel(role);
+      if (images.length && !model.input?.includes("image")) throw new AppError("ai/image-unsupported", "Selected model does not support images");
       const maxTokens = input.maxOutputTokens === undefined ? undefined
         : Math.min(input.maxOutputTokens, Number.isSafeInteger(model.maxTokens) && model.maxTokens > 0 ? model.maxTokens : input.maxOutputTokens);
-      const context = { systemPrompt: system, messages: [{ role: "user" as const, content: prompt, timestamp: Date.now() }] };
+      const context = { systemPrompt: system, messages: [{ role: "user" as const, content: images.length ? [{ type: "text" as const, text: prompt }, ...images.map(image => ({ type: "image" as const, ...image }))] : prompt, timestamp: Date.now() }] };
       let recorded = false;
       const record = (message?: AssistantMessage) => {
         if (recorded) return;

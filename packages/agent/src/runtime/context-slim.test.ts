@@ -44,3 +44,21 @@ describe("elideStaleToolResults", () => {
     expect(elideStaleToolResults(messages, 100)).toBe(messages);
   });
 });
+
+test("earlier image blocks are removed even when their text metadata is short", () => {
+  const image = { ...toolResult("image metadata"), content: [{ type: "image", mimeType: "image/png", data: "AAAA" }, { type: "text", text: "image metadata" }] } as AgentMessage;
+  const messages = [user("q1"), image, user("q2"), image];
+  const result = elideStaleToolResults(messages);
+  expect(JSON.stringify(result[1])).not.toContain("AAAA");
+  expect(resultText(result[1])).toContain("image inputs");
+  expect(result[3]).toBe(image);
+});
+
+test("completed turns release pixel payloads from retained state while preserving tool identity and metadata", async () => {
+  const { releaseToolImages } = await import("./context-slim");
+  const message = { ...toolResult("descriptor", "read_book_image"), content: [{ type: "text", text: "descriptor" }, { type: "image", mimeType: "image/png", data: "AAAA" }] } as AgentMessage;
+  const [released] = releaseToolImages([message]);
+  expect(released).toMatchObject({ toolCallId: "t1", toolName: "read_book_image", content: [{ type: "text", text: "descriptor" }, { type: "text" }] });
+  expect(JSON.stringify(released)).not.toContain("AAAA");
+  expect(JSON.stringify(message)).toContain("AAAA");
+});

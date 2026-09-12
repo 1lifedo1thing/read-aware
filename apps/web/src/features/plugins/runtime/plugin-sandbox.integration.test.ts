@@ -389,3 +389,11 @@ test("real Worker action handles update before and after acknowledgement and ret
     second: { status: "applied" }, retired: { status: "inactive" }, disposedBeforeAck: { status: "inactive" } }) } });
   expect(s.messages.some(message => message.method === "$registration.updateState")).toBe(false);
 });
+
+test("Worker image inference transports owned resource IDs without image bytes or paths", async () => {
+  const s = await command("image", "llm-probe.ts");
+  const call = await s.next(message => message.method === "services.llm.ask");
+  expect(data(call.args!)).toEqual([{ prompt: "describe", images: [{ resourceId: "owned-image" }], model: "smart" }]);
+  s.worker.postMessage({ t: "result", id: call.id, ok: true, value: "Visible diagram" });
+  expect(resultData(await s.next(message => message.t === "result" && message.id === 900))).toMatchObject({ ok: true, value: { toast: "Visible diagram" } });
+});

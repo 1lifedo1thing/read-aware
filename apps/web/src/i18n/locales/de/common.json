@@ -145,7 +145,11 @@
     "syncCheckpointPrecondition": "Ein Prüfpunkt konnte gerade nicht gespeichert werden, weil noch Änderungen auf die Synchronisierung warten. Es wird automatisch erneut versucht.",
     "localSaveFailedTitle": "Änderung nicht gespeichert",
     "localSaveFailed": "Diese Änderung konnte nicht lokal gespeichert werden und geht nach einem Neustart möglicherweise verloren.",
-    "pluginAssetConflict": "Diese gespeicherte Ressource wurde geändert oder gelöscht. Aktualisieren Sie die Liste."
+    "pluginAssetConflict": "Diese gespeicherte Ressource wurde geändert oder gelöscht. Aktualisieren Sie die Liste.",
+    "aiImageUnsupported": "Wählen Sie ein Modell mit Bildeingabe.",
+    "aiImageInvalid": "Dieses Bild kann nicht an die KI übergeben werden.",
+    "aiImageBudget": "Bildlimit erreicht. Verwenden Sie weniger oder kleinere Bilder.",
+    "bookContentBudget": "Dieser Abschnitt überschreitet das Leselimit."
   },
   "crashPrompt": {
     "title": "ReadAware hatte beim letzten Mal ein Problem",

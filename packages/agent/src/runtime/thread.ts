@@ -31,7 +31,7 @@ import { buildAgentTools, createAgentTurnState } from "../tools/registry";
 import { hasExplicitSpoilerPermission } from "../tools/spoiler-permission";
 import { interactionFromToolDetails } from "../tools/user-interaction";
 import { AsyncQueue } from "./async-queue";
-import { elideStaleToolResults } from "./context-slim";
+import { elideStaleToolResults, releaseToolImages } from "./context-slim";
 import {
   formatUserTurn,
   lastAssistantText,
@@ -414,6 +414,9 @@ export class AgentThread {
     // 不可信，下一轮从持久记录重建基线（等价于今天的无状态装配）。
     let turnCompleted = false;
     this.turnState.presentedBookIds.clear();
+    this.turnState.modelSupportsImages = false;
+    this.turnState.modelImageCount = 0;
+    this.turnState.modelImageBytes = 0;
     this.turnState.spoilerPermissionGranted = hasExplicitSpoilerPermission(input.text);
     this.turnState.spoilerPermissionDenied = false;
     this.turnState.spoilerGranted = false;
@@ -421,6 +424,7 @@ export class AgentThread {
     this.turnState.readingContextPermissions = call.permissions;
     try {
       call.assertAllowed();
+      this.turnState.modelSupportsImages = (this.resolveModel("smart").input?.includes("image") ?? false);
       // 游标章节坐标归一：宿主（阅读器）只带 href——抽取章节 index 由 agent 用
       // 自己的权威映射反查（与 read_chapter 同一坐标系）。eval 等直接给 index
       // 的调用方原样通过。围栏与接地装配都以归一后的游标为准。
@@ -827,6 +831,7 @@ export class AgentThread {
       // 助手消息连同本轮用户消息留在 state.messages 里。两种线程都整体丢弃，
       // 下一轮从持久转录重建（书线程回到会话基线，全局线程 ensureAgent 重水化）。
       if (!turnCompleted) this.discardAgent();
+      else if (this.agent) this.agent.state.messages = releaseToolImages(this.agent.state.messages);
       unsubscribe?.();
       this.busy = false;
     }

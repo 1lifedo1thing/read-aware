@@ -145,7 +145,11 @@
     "syncCheckpointPrecondition": "A checkpoint could not be saved right now because some changes are still waiting to sync. It will be retried automatically.",
     "localSaveFailedTitle": "Change not saved",
     "localSaveFailed": "This change couldn't be written to local storage and may be lost after a restart.",
-    "pluginAssetConflict": "This saved asset changed or was deleted. Refresh the list before continuing."
+    "pluginAssetConflict": "This saved asset changed or was deleted. Refresh the list before continuing.",
+    "aiImageUnsupported": "Choose a model that supports image inputs.",
+    "aiImageInvalid": "This image cannot be used as an AI input.",
+    "aiImageBudget": "The image input limit was reached. Use fewer or smaller images.",
+    "bookContentBudget": "This section exceeds the content query limit."
   },
   "crashPrompt": {
     "title": "ReadAware had a problem last time",

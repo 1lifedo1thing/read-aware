@@ -40,6 +40,7 @@ const labels = {
   task_paused: ["Paused", "已暂停", "已暫停", "一時停止中", "Приостановлено", "En pause", "Pausiert", "En pausa"],
   pauseRequest: ["Pause request", "暂停此请求", "暫停此請求", "リクエストを一時停止", "Приостановить запрос", "Mettre la requête en pause", "Anfrage pausieren", "Pausar solicitud"],
   resumeRequest: ["Resume request", "恢复此请求", "恢復此請求", "リクエストを再開", "Возобновить запрос", "Reprendre la requête", "Anfrage fortsetzen", "Reanudar solicitud"],
+  describeImage: ["Describe with AI", "用 AI 描述图片", "用 AI 描述圖片", "AIで画像を説明", "Описать с ИИ", "Décrire avec l’IA", "Mit KI beschreiben", "Describir con IA"],
   imageControls: ["Image controls", "图片控制", "圖片控制", "画像操作", "Управление изображением", "Commandes de l'image", "Bildsteuerung", "Controles de imagen"],
   noOpenImage: ["No image viewer open", "尚未打开图片查看器", "尚未開啟圖片檢視器", "画像ビューアは開いていません", "Просмотр изображения не открыт", "Aucune visionneuse ouverte", "Kein Bildbetrachter geöffnet", "No hay un visor de imágenes abierto"],
   zoomIn: ["Zoom in", "放大", "放大", "拡大", "Увеличить", "Agrandir", "Vergrößern", "Acercar"],

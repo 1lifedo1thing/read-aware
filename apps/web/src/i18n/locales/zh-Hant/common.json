@@ -145,7 +145,11 @@
     "syncCheckpointPrecondition": "尚有變更等待同步，暫時無法儲存檢查點，稍後會自動重試。",
     "localSaveFailedTitle": "變更未儲存",
     "localSaveFailed": "這次變更沒能寫入本機儲存空間，重新啟動後可能遺失。",
-    "pluginAssetConflict": "已儲存的資源已變更或刪除，請重新整理清單後再操作。"
+    "pluginAssetConflict": "已儲存的資源已變更或刪除，請重新整理清單後再操作。",
+    "aiImageUnsupported": "請選擇支援圖片輸入的模型。",
+    "aiImageInvalid": "這張圖片無法用作 AI 輸入。",
+    "aiImageBudget": "圖片輸入已達到上限，請減少圖片數量或大小。",
+    "bookContentBudget": "本節內容超過查詢讀取上限。"
   },
   "crashPrompt": {
     "title": "ReadAware 上次執行發生了問題",

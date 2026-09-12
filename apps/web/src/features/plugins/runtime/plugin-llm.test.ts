@@ -39,7 +39,7 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
 test("LLM policy, validation and pre-cancellation reject before inference", async () => {
   const f = fixture();
-  expect(await f.api.policy()).toEqual({ defaultTimeoutMs: 60000, maxTimeoutMs: 110000, perPluginLimit: 2, appLimit: 8, maxOutputTokensLimit: 65536 });
+  expect(await f.api.policy()).toEqual({ defaultTimeoutMs: 60000, maxTimeoutMs: 110000, perPluginLimit: 2, appLimit: 8, maxOutputTokensLimit: 65536, maxImageCount: 4, maxImageBytes: 8 * 1024 * 1024, maxImageTotalBytes: 16 * 1024 * 1024 });
   for (const maxOutputTokens of [0, -1, 65537, 1.5, NaN, Infinity]) {
     await expect(f.api.ask({ prompt: "p", maxOutputTokens })).rejects.toMatchObject({ code: "plugin/invalid-argument" });
     await expect(f.api.askDetailed({ prompt: "p", maxOutputTokens })).rejects.toMatchObject({ code: "plugin/invalid-argument" });
@@ -174,4 +174,31 @@ test("named receipts cover timeouts, pre-dispatch failures and bounded oldest-se
   await expect(api.ask({ prompt: "p", requestId: "pre", signal: controller.signal })).rejects.toMatchObject({ code: "ai/request-cancelled" });
   expect(await api.getRequest("pre")).toMatchObject({ status: "cancelled", settled: true });
   lifecycle.stop(); f.lifecycle.stop();
+});
+
+test("plugin inference resolves only owned IDs before dispatch, snapshots input, and drains cancelled decoding", async () => {
+  const lifecycle = new PluginLifecycleController([]); lifecycle.promote();
+  const calls: OneShotInput[] = [], decoded: string[] = [];
+  const runtime = { ask: async (input: OneShotInput) => { calls.push(input); return "description"; }, askDetailed: async () => ({ value: "", attempts: [] }) } as Pick<AgentRuntime, "ask" | "askDetailed">;
+  let release!: () => void;
+  const api = createPluginLlm("vision", lifecycle, () => runtime, new PluginInferenceSlots(), async id => {
+    decoded.push(id);
+    if (id === "foreign") throw new AppError("fs/not-found", "Not owned");
+    if (id === "wait") await new Promise<void>(resolve => { release = resolve; });
+    return { mimeType: "image/png", data: "AAAA" };
+  });
+  const images = [{ resourceId: "owned" }];
+  const first = api.ask({ prompt: "describe", images }); images[0].resourceId = "foreign";
+  expect(await first).toBe("description");
+  expect(decoded).toEqual(["owned"]);
+  expect(calls[0].images).toEqual([{ mimeType: "image/png", data: "AAAA" }]);
+  await expect(api.ask({ prompt: "describe", images: [{ resourceId: "foreign" }] })).rejects.toMatchObject({ code: "fs/not-found" });
+  await expect(api.ask({ prompt: "describe", images: [{ resourceId: "owned", data: "untrusted bytes" }] as unknown as { resourceId: string }[] }))
+    .rejects.toMatchObject({ code: "plugin/invalid-argument" });
+  const controller = new AbortController();
+  const pending = api.ask({ prompt: "describe", images: [{ resourceId: "wait" }], signal: controller.signal });
+  await tick(); controller.abort();
+  await expect(pending).rejects.toMatchObject({ code: "ai/request-cancelled" });
+  release(); await tick();
+  expect(calls).toHaveLength(1);
 });

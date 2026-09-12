@@ -1,6 +1,6 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { AppError, normalizeBookImageQuery, normalizeBookImagesQuery, type BookImageQuery, type BookImagesQuery } from "@read-aware/core";
+import { validateModelImages, MODEL_IMAGES_MAX_COUNT, MODEL_IMAGES_MAX_BYTES, AppError, normalizeBookImageQuery, normalizeBookImagesQuery, type BookImageQuery, type BookImagesQuery } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import { threadScopeKey, type ThreadScope } from "../thread-scope";
 import type { AgentTurnState } from "./turn-state";
@@ -19,6 +19,7 @@ export function buildBookImageTools(scope: ThreadScope, deps: RuntimeDeps, state
     assertSpoilerPermission(grant, state, current);
     return { current, grant, fence: current && state?.spoilerFence && !grant ? { throughChapterIndex: state.spoilerFence.throughChapterIndex } : {} };
   }
+  let imageCount = 0, imageBytes = 0;
   return [{
     name: "list_book_images", label: "Book illustrations",
     description: "List authored image candidates in one versioned book section without navigating or fetching remote URLs; PDF operator inspection may decode embedded objects. Use sectionIndex/contentVersion from get_navigation_toc, not extracted chapter numbering. Returns up to 20 bounded alt labels, source locations and opaque image descriptors; continue with nextOffset. Covers img/SVG, srcset/picture alternatives, authored CSS image URLs and PDF embedded bitmaps. CSS candidates are declarations, not the active viewport/cascade. PDF masks depending on page paint state return unsupported when read. Footnote marker images are excluded. Unsupported is distinct from an empty supported section. Current narrative sections remain behind the reading fence.",
@@ -59,6 +60,28 @@ export function buildBookImageTools(scope: ThreadScope, deps: RuntimeDeps, state
       const result = await deps.reader.openImage({ ...query, ...fence }, signal, { sessionId: session.sessionId, bookId: query.image.bookId });
       signal?.throwIfAborted(); if (state && current && grant) state.spoilerGranted = true;
       return textResult(result);
+    },
+  }, {
+    name: "read_book_image", label: "Read book illustration", executionMode: "sequential",
+    description: "Inspect one versioned illustration from list_book_images with the current vision model. Rechecks original source/version and narrative fence; no remote image fetch or original-book bypass. The host decodes a bounded PNG and returns an actual image block to the model. Missing/external/unsupported remain explicit. Maximum 4 images/16 MiB per turn, 8 MiB per image; source decoding also has dimension limits. The temporary resource is released automatically. Image blocks are omitted from later turns; reread a descriptor when needed. This does not open a viewer or guarantee semantic recognition.",
+    parameters: imageParameters,
+    execute: async (_id, params, signal) => {
+      signal?.throwIfAborted();
+      const { confirmSpoiler, ...input } = params as BookImageQuery & { confirmSpoiler?: unknown };
+      const query = normalizeBookImageQuery(input), { current, grant, fence } = access(query.image.bookId, confirmSpoiler);
+      if (state?.modelSupportsImages === false) throw new AppError("ai/image-unsupported", "Current model does not support image inputs");
+      if (!deps.bookText.readImageInput) throw new AppError("library/content-unavailable", "Image model input is unavailable");
+      if ((state?.modelImageCount ?? imageCount) >= MODEL_IMAGES_MAX_COUNT) throw new AppError("ai/image-budget-exceeded", "This turn has reached its image input limit");
+      const result = await deps.bookText.readImageInput(threadScopeKey(scope), { ...query, ...fence }, signal);
+      signal?.throwIfAborted();
+      if (result.status !== "ready") return textResult(result);
+      const [image] = validateModelImages([result.input]);
+      const bytes = image.data.length / 4 * 3 - (image.data.endsWith("==") ? 2 : image.data.endsWith("=") ? 1 : 0);
+      if ((state?.modelImageBytes ?? imageBytes) + bytes > MODEL_IMAGES_MAX_BYTES) throw new AppError("ai/image-budget-exceeded", "This turn has reached its image byte limit");
+      if (state) { state.modelImageCount = (state.modelImageCount ?? 0) + 1; state.modelImageBytes = (state.modelImageBytes ?? 0) + bytes; }
+      else { imageCount++; imageBytes += bytes; }
+      if (state && current && grant) state.spoilerGranted = true;
+      return { content: [{ type: "text" as const, text: JSON.stringify({ status: "ready", image: result.image }) }, { type: "image" as const, ...image }], details: undefined };
     },
   }];
 }

@@ -145,7 +145,11 @@
     "syncCheckpointPrecondition": "No se pudo guardar un punto de control ahora porque hay cambios pendientes de sincronizar. Se reintentará automáticamente.",
     "localSaveFailedTitle": "Cambio no guardado",
     "localSaveFailed": "Este cambio no se pudo escribir en el almacenamiento local y podría perderse tras reiniciar.",
-    "pluginAssetConflict": "Este recurso guardado cambió o se eliminó. Actualiza la lista antes de continuar."
+    "pluginAssetConflict": "Este recurso guardado cambió o se eliminó. Actualiza la lista antes de continuar.",
+    "aiImageUnsupported": "Elige un modelo que admita imágenes.",
+    "aiImageInvalid": "Esta imagen no se puede enviar a la IA.",
+    "aiImageBudget": "Se alcanzó el límite de imágenes. Reduce su número o tamaño.",
+    "bookContentBudget": "Esta sección supera el límite de lectura."
   },
   "crashPrompt": {
     "title": "ReadAware tuvo un problema la última vez",

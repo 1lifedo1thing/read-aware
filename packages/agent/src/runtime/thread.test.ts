@@ -83,6 +83,28 @@ describe("AgentThread", () => {
     faux?.unregister();
   });
 
+  test("vision tool pixels reach the current model turn and are released before the next turn", async () => {
+    const { faux, model } = makeFaux();
+    const { deps, turns } = makeDeps();
+    const image = { bookId: "b1", contentVersion: "v1", sectionIndex: 0, index: 0 };
+    deps.bookText.readImageInput = async () => ({ status: "ready", image: { image, alt: "" }, input: { mimeType: "image/png", data: "AQID" } });
+    const contexts: string[] = [];
+    faux.setResponses([
+      fauxAssistantMessage([fauxToolCall("read_book_image", { image })], { stopReason: "toolUse" }),
+      context => { contexts.push(JSON.stringify(context)); return fauxAssistantMessage("Visible diagram."); },
+      context => { contexts.push(JSON.stringify(context)); return fauxAssistantMessage("Next answer."); },
+    ]);
+    const thread = makeThread(deps, { ...model, input: ["text", "image"] });
+    try {
+      await collect(thread.sendTurn({ text: "Describe this illustration." }));
+      await collect(thread.sendTurn({ text: "Thanks." }));
+      expect(contexts[0]).toContain('"type":"image"');
+      expect(contexts[0]).toContain('"data":"AQID"');
+      expect(contexts[1]).not.toContain('"data":"AQID"');
+      expect(JSON.stringify(turns.get("book:b1"))).not.toContain("AQID");
+    } finally { thread.dispose(); await thread.flushBackgroundWork(); }
+  });
+
   test("chapter-memory failure is logged and omitted, with a fresh session recovering the projection", async () => {
     const { faux, model } = makeFaux();
     const prompts: string[] = [], warnings: string[] = [];

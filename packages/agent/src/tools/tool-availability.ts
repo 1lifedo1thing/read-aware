@@ -21,6 +21,8 @@ function readContext(deps: RuntimeDeps): ReaderToolContext | null | undefined {
   try { return deps.reader.toolContext(); } catch { return null; }
 }
 function check(name: string, scope: ThreadScope, deps: RuntimeDeps, context: ReturnType<typeof readContext>, turnState?: AgentTurnState): ToolAvailability {
+  if (name === "read_book_image") return !deps.bookText.readImageInput ? unavailable("image-input-unavailable")
+    : turnState?.modelSupportsImages === false ? unavailable("model-image-unsupported") : available;
   if (selectionTools.has(name) && (turnState?.readingContextPermissions?.selection === false || deps.readingContextPolicy?.snapshot().selection === false)) return unavailable("selection-private");
   if (!readerTools.has(name) && name !== "control_reader_image") return available;
   if (context === undefined) return { state: "unknown", reason: "host-readiness-unavailable" };
