@@ -29,6 +29,7 @@ pub(crate) use event_plan::{
     FileMatchKind, FilePlan, ReviewPage, ReviewQuery, RowChoiceReceipt, RowChoiceRequest,
     RowStructureReceipt,
 };
+pub(crate) use event_plan::{RestoreRequest, RestoreReceipt};
 const MAX_FILES: usize = 100_000;
 const MAX_BYTES: u64 = 512 * 1024 * 1024 * 1024;
 const MAX_MANIFEST: u64 = 32 * 1024 * 1024;

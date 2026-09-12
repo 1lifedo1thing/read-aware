@@ -10,7 +10,8 @@ use std::{
 };
 use zeroize::Zeroizing;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) enum CredentialChoice {
     SourceLocal,
     SourceRoaming,

@@ -62,6 +62,7 @@
     "backupInvalidArchive": "This file is not a supported, complete ReadAware backup.",
     "backupUnlockFailed": "The backup could not be unlocked. Check the password and the file’s integrity.",
     "backupPasswordPolicy": "Use a backup password with at least 12 characters and no more than 1024 UTF-8 bytes.",
+    "backupRecoveryRequired": "Restore could not finish rolling back its files. Restart ReadAware to recover before continuing.",
     "backupIncomplete": "Some files needed for a complete backup are missing or unsupported. Restore the missing files before trying again.",
     "backupBusy": "Another backup operation is in progress. Try again when it finishes.",
     "backupChanged": "Data changed or failed verification while preparing the backup. Try again after current operations finish.",

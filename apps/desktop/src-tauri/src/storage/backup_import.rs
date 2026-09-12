@@ -1,5 +1,6 @@
-//! Host-only authenticated preparation. There is deliberately no apply command:
-//! a plan is evidence for review, never an import receipt or approval.
+//! Host-owned authenticated preparation, review, and one-shot restore execution.
+//! The host supplies confirmed selections and staged program results, and owns
+//! producer quiescence around the final native transaction.
 use super::{
     backup_archive,
     backup_staging::BackupStaging,
@@ -25,6 +26,7 @@ pub enum ImportProgress {
     ComparingRows,
     ComparingFiles,
     PreparingReview,
+    Restoring,
 }
 
 /// Count-only host report. No source paths, event payloads, row keys, plugin
@@ -73,6 +75,65 @@ struct Reporter<F> {
     send: F,
     phase: Option<ImportProgress>,
     last: Instant,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportReceipt {
+    task_id: String,
+    format: u32,
+    #[serde(flatten)]
+    restored: backup_archive::RestoreReceipt,
+}
+fn execute_plan(
+    tasks: &BackupTasks,
+    owner: &str,
+    task_id: String,
+    conn: &mut rusqlite::Connection,
+    data_dir: &Path,
+    request: backup_archive::RestoreRequest,
+    send: impl FnMut(ImportProgress) -> Result<(), CommandError>,
+) -> Result<ImportReceipt, CommandError> {
+    let (lease, prepared) = tasks.take(owner, &task_id, Phase::Plan)?;
+    let PreparedBackup::Plan(plan) = prepared else {
+        return Err(missing());
+    };
+    let mut progress = Reporter::new(send);
+    let restored = plan.restore(conn, data_dir, request, || {
+        progress.update(&lease, ImportProgress::Restoring)
+    })?;
+    Ok(ImportReceipt {
+        task_id,
+        format: 2,
+        restored,
+    })
+}
+
+#[tauri::command]
+pub async fn backup_import_apply(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    task_id: String,
+    request: backup_archive::RestoreRequest,
+    progress: tauri::ipc::Channel<ImportProgress>,
+) -> Result<ImportReceipt, CommandError> {
+    let tasks = app.state::<BackupTasks>().inner().clone();
+    let owner = window.label().to_owned();
+    super::blocking("backup_import_apply", move || {
+        let db = app.state::<Db>();
+        let mut conn = db.0.lock()?;
+        let data_dir = app.state::<DataDir>();
+        execute_plan(
+            &tasks,
+            &owner,
+            task_id,
+            &mut conn,
+            &data_dir.0,
+            request,
+            |phase| progress.send(phase).map_err(|_| cancelled()),
+        )
+    })
+    .await
 }
 impl<F: FnMut(ImportProgress) -> Result<(), CommandError>> Reporter<F> {
     fn new(send: F) -> Self {

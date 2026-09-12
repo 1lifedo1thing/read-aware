@@ -62,6 +62,7 @@
     "backupInvalidArchive": "Este archivo no es una copia de seguridad completa y compatible de ReadAware.",
     "backupUnlockFailed": "No se pudo desbloquear la copia. Comprueba la contraseña y la integridad del archivo.",
     "backupPasswordPolicy": "La contraseña debe tener al menos 12 caracteres y no superar los 1024 bytes en UTF-8.",
+    "backupRecoveryRequired": "No se pudieron revertir todos los archivos. Reinicia ReadAware para completar la recuperación antes de continuar.",
     "backupIncomplete": "Faltan archivos necesarios para una copia completa o no son compatibles. Restaura los archivos que faltan antes de volver a intentarlo.",
     "backupBusy": "Hay otra operación de copia de seguridad en curso. Vuelve a intentarlo cuando termine.",
     "backupChanged": "Los datos cambiaron o no superaron la verificación durante la preparación. Inténtalo de nuevo cuando terminen las operaciones actuales.",

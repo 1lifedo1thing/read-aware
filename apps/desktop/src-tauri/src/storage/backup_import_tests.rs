@@ -33,6 +33,93 @@ fn archive(source: &Path, out: &Path, staging: &Path) -> std::path::PathBuf {
     .unwrap();
     path
 }
+
+#[test]
+fn backup_import_apply_consumes_the_owned_plan_and_returns_only_a_committed_receipt() {
+    let source = tempfile::tempdir().unwrap();
+    let target = tempfile::tempdir().unwrap();
+    let out = tempfile::tempdir().unwrap();
+    let staging = tempfile::tempdir().unwrap();
+    let path = archive(source.path(), out.path(), staging.path());
+    let root = BackupStaging::fixture(staging.path());
+    let tasks = BackupTasks::default();
+    let id = uuid::Uuid::new_v4().to_string();
+    let mut conn = database(target.path());
+    open_source(
+        tasks.begin("main", &id).unwrap(),
+        id.clone(),
+        &path,
+        SecretString::from(PASSWORD.to_owned()),
+        &root,
+        |_| Ok(()),
+    )
+    .unwrap();
+    build_plan(
+        &tasks,
+        "main",
+        id.clone(),
+        &mut conn,
+        target.path(),
+        crate::plugins::BundledPrograms::fixture(target.path()),
+        &root,
+        |_| Ok(()),
+    )
+    .unwrap();
+    let request=tasks.with_plan("main",&id,|plan,lease|{
+        let page=plan.rows().page("app_kv",0,100)?;
+        let edits=page.entries.iter().filter(|r|r.selectable).map(|r|serde_json::json!({"table":"app_kv","entryId":r.entry_id,"choice":"source"})).collect::<Vec<_>>();
+        let revision=plan.choose_rows(serde_json::from_value(serde_json::json!({"expectedRevision":page.decision_revision,"edits":edits})).unwrap(),||lease.check())?.revision;
+        let file=format!("blobs/{}",crate::storage::blob_file_name("booktext:synthetic"));
+        Ok(serde_json::json!({"rowRevision":revision,"files":{file:"source"},"programs":{},"programResults":{},"credentials":{}}))
+    }).unwrap();
+    assert!(execute_plan(
+        &tasks,
+        "foreign",
+        id.clone(),
+        &mut conn,
+        target.path(),
+        serde_json::from_value(request.clone()).unwrap(),
+        |_| Ok(())
+    )
+    .is_err());
+    let receipt = execute_plan(
+        &tasks,
+        "main",
+        id.clone(),
+        &mut conn,
+        target.path(),
+        serde_json::from_value(request.clone()).unwrap(),
+        |_| Ok(()),
+    )
+    .unwrap();
+    assert_eq!(receipt.task_id, id);
+    assert_eq!(receipt.format, 2);
+    assert!(receipt.restored.files > 0);
+    assert!(!serde_json::to_string(&receipt).unwrap().contains("PRIVATE"));
+    assert_eq!(
+        conn.query_row(
+            "SELECT value_json FROM app_kv WHERE key='private'",
+            [],
+            |r| r.get::<_, String>(0)
+        )
+        .unwrap(),
+        "\"PRIVATE IMPORT CONTENT\""
+    );
+    assert!(execute_plan(
+        &tasks,
+        "main",
+        id.clone(),
+        &mut conn,
+        target.path(),
+        serde_json::from_value(request).unwrap(),
+        |_| Ok(())
+    )
+    .is_err());
+    assert_eq!(root.cleanup().unwrap().active, 0);
+    assert!(tasks
+        .begin("main", &uuid::Uuid::new_v4().to_string())
+        .is_ok());
+}
 #[test]
 fn backup_import_real_archive_to_private_plan_preserves_target_and_rejects_wrong_owner_or_phase() {
     let source = tempfile::tempdir().unwrap();

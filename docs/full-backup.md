@@ -2,6 +2,12 @@
 
 OPS08 仍未完成。当前产品导出已可选择完整加密归档或 `backup-io.ts` 的 v1 书库子集；导入仍仅支持v1。完整导出接线不等于完整合并恢复已可用，真实Tauri与组合验收仍待集中进行。
 
+## 已实现：原生共同恢复与apply任务
+
+`FilePlan.restore` 将确认的行、文件、程序及凭据决定接入同一IMMEDIATE事务和文件journal。重新核对目标/来源和完整选择后，先准备旧/新文件，再恢复可重放的领域状态、blob登记与outbox、插件namespace、本机密封凭据及漫游发布义务，最后安装文件并在同一事务写入接受记录。书籍或ready封面所需文件被跳过、不可用或登记不匹配会拒绝；目标设备/同步会话及插件运行队列保留。新目标生成自己的密钥，已有密钥不替换，明确选择凭据缺省可以删除该槽并保留发布义务。
+
+源程序按所选整树安装，过时文件随同一journal删除；data-only不暗含卸载。原生核对宿主程序结果的代码摘要、同意、实际hasMigration与迁移后schema；**宿主真实探测/迁移接线仍未完成**，原生测试中的程序结果只证明该接受协议。`backup_import_apply`一次性消耗所属窗口的Plan并返回已提交回执；提交前失败/取消共同回滚，文件回滚失败返回backup/recovery-required并需重启恢复，宿主接线必须阻止继续写入。提交后的清理失败标记cleanupPending，不伪报回滚。真实加密归档到隔离数据/文件恢复与事务失败测试已有证据，用户表单/运行时重载和真实Tauri尚未接通。
+
 ## 已实现：文件安装与崩溃恢复机制
 
 `backup_restore_files.rs` 在数据库写锁保护下，将受管blob/外部插件文件和新建凭据key的旧/新字节保留到私有 `full-restore-v1` 目录；校验摘要后持久化manifest，才允许替换live文件。目录独立于可回收的解密暂存。接受记录使用受保护的 `read-aware-backup-restore-accepted:` 本机KV，在同一业务数据库事务内提交，不增加数据库schema版本。未接受journal必须恢复后才能开始下一次恢复。
@@ -36,7 +42,7 @@ DataSyncPanel通过useBackupActions绑定既有HostActionFlow。actor请求仅�
 
 `backup_tasks.rs` 统一Export/Source/Plan的原生所有权，一个应用同时只有一个任务。沿用窗口归属、活动工作不按年龄强退、就绪十分钟闲置回收及销毁清理。阶段检查发生在取走数据前，误用导出/来源/计划接口或其他窗口不能消耗原任务。导出继续使用同一捕获和编解码器。
 
-`backup_import_open` 接受宿主选定文件和口令，以生产age读取器完成整个认证流后才预检SQLite/文件；返回schema/表/事件/blob/凭据/程序集计数。密码转为SecretString，解密目录及只读连接留在Source阶段；错密码、坏来源或取消都清理，不接触live DB。`backup_import_plan` 在Db锁下依次调用现有事件、实际行、文件/程序目录规划，保存Plan阶段并只回传差异计数。不存在apply IPC，也不产生imported或任何安装/恢复许可。
+`backup_import_open` 接受宿主选定文件和口令，以生产age读取器完成整个认证流后才预检SQLite/文件；返回schema/表/事件/blob/凭据/程序集计数。密码转为SecretString，解密目录及只读连接留在Source阶段；错密码、坏来源或取消都清理，不接触live DB。`backup_import_plan` 在Db锁下依次调用现有事件、实际行、文件/程序目录规划，保存Plan阶段并只回传差异计数。准备阶段不产生imported或安装/恢复许可；最终执行现由上节backup_import_apply单独消耗Plan。
 
 `prepareFullBackupImport` 完成文件选择与来源准备后，才取得现有同步→插件读取屏障→计划/阅读/领域窗口来比较目标。正常结算本机阅读事实，但不应用来源数据；此阶段使用读取模式，不无故触发导入后的镜像刷新。窗口释放后返回宿主计数review和dispose，任务ID仅在闭包中。审阅期间应用可写，计划按已有DB及文件revision再验证规则失效；最终应用必须在决定事务内重验，不能把计数视作长期有效的同意。
 

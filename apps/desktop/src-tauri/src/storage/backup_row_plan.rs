@@ -29,6 +29,7 @@ pub(crate) use choices::{RowChoiceReceipt, RowChoiceRequest, RowDecisionState};
 #[path = "backup_row_scan.rs"]
 mod scan;
 pub(crate) use files::{FileMatchKind, FilePlan, ReviewPage, ReviewQuery};
+pub(crate) use files::{RestoreRequest, RestoreReceipt};
 pub(crate) use review::{RowFieldPage, RowFieldsPage, RowSide};
 
 #[derive(Debug, Default)]

@@ -62,6 +62,7 @@
     "backupInvalidArchive": "此檔案不是受支援的完整 ReadAware 備份。",
     "backupUnlockFailed": "無法解鎖備份，請檢查密碼和檔案完整性。",
     "backupPasswordPolicy": "備份密碼至少需要 12 個字元，且不能超過 1024 個 UTF-8 位元組。",
+    "backupRecoveryRequired": "還原未能完成檔案回復。請重新啟動 ReadAware 完成復原後再繼續使用。",
     "backupIncomplete": "完整備份所需的部分檔案遺失或不受支援，請先恢復遺失檔案再重試。",
     "backupBusy": "另一項備份操作正在進行，請在完成後重試。",
     "backupChanged": "準備備份時資料發生變化或驗證失敗，請等待目前操作完成後重試。",

@@ -17,6 +17,7 @@ pub(crate) use rows::{
     FileMatchKind, FilePlan, ReviewPage, ReviewQuery, RowChoiceReceipt, RowChoiceRequest, RowPlan,
     RowStructureReceipt,
 };
+pub(crate) use rows::{RestoreRequest, RestoreReceipt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

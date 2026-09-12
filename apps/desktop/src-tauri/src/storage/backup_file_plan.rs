@@ -20,6 +20,9 @@ pub(crate) use programs::{ProgramChoice, ProgramDecision, ProgramFacts};
 
 #[path = "backup_credentials.rs"]
 mod credentials;
+#[path = "backup_restore_apply.rs"]
+mod restore;
+pub(crate) use restore::{RestoreRequest, RestoreReceipt};
 #[path = "backup_file_inventory.rs"]
 mod inventory;
 pub(crate) use credentials::{CredentialChoice, CredentialFacts, PreparedCredentials};
