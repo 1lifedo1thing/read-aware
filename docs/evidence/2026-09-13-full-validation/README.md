@@ -468,3 +468,21 @@ first→second→remote→删除。最终观察到本地first/second/删除三�
 remote来源写入没有回传，当前slot为空，临时slot/master-key清理后均不存在。
 这只证明本机原生命令与加密事件发布，不是跨设备传输，也不证明UI失效：此批changed计数为0。
 原有凭据未读取或使用。详情见[观察记录](./callback-credential-observations.json)。
+
+## 第二十个桌面流程：插件数据事务与实际安装回滚
+
+通过产品installPluginFiles入口实际安装合成插件1.0.0/schema1，候选文件落盘、真实Worker
+激活与迁移均由正常宿主完成。KV乐观镜像与getDurable一致，私有secret经Worker写入、
+读回并删除后返回null。Unicode小写字面搜索分两页命中不同文档；%作为字面量不匹配全部。
+一批先put再检查错误的真实revision，返回conflict/index1且前置文档不存在；合法CAS批次
+成功更新/删除，旧游标stale-cursor，观察订阅sequence1/2分别包含修改前后内容。
+
+升级2.0.0/schema2的migrate在KV和文档写入后主动失败。实际代码槽恢复1.0.0、schema1，
+原生snapshot的KV/文档/时间戳与基线完全一致，旧Worker重新可调用且私有secret保持。
+文档CAS revision在恢复后重新生成，不承诺旧revision继续有效。
+随后成功升级2.0.0/schema2，再成功降回1.0.0/schema1。
+
+卸载后代码和贡献归零、文档删除，KV/schema按现有策略保留；测试收尾再移除自有KV/schema
+和合成secret，原生snapshot为空。policy的usage来自实际原生数据；配额数字仅为策略读取，
+不冒充上限测试。探针类型检查通过。未验安装同意UI、packaged、进程杀死或恢复失败。
+详情见[观察记录](./plugin-data-observations.json)。
