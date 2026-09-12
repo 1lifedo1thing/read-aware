@@ -3,6 +3,25 @@ import { AppError, type Id, type ResourceRef, type BookImportTaskSnapshot } from
 import { createInMemoryDeps } from "../testing/fixtures";
 import { buildResourceTools } from "./resource-tools";
 
+test("directory tools stay in their conversation in both scopes and preserve paging failure", async () => {
+  for (const scope of [{ kind: "global", threadId: "mine" } as const, { kind: "book", bookId: "book" as Id } as const]) {
+    const { deps } = createInMemoryDeps(), original = deps.resources("fixture"), seen: unknown[] = [];
+    deps.resources = (...args) => { seen.push(args); return { ...original,
+      pickDirectory: async () => ({ cancelled: false, directory: { id: "own", name: "Folder", expiresAt: 99 } }),
+      listDirectory: async (id, query) => { expect([id, query]).toEqual(["own", { relativePath: "child", cursor: "stale" }]); throw new AppError("ui/superseded", "Listing changed"); },
+      openDirectoryFile: async (id, path) => { expect([id, path]).toEqual(["own", "child/a.txt"]); return { id: "file", name: "a.txt", size: 0, source: "picked", state: "ready", expiresAt: 99, mimeType: "text/plain" }; },
+      releaseDirectory: async id => { expect(id).toBe("own"); },
+    }; };
+    const tools = buildResourceTools(scope, deps), signal = new AbortController().signal;
+    const call = (name: string, params: unknown) => tools.find(tool => tool.name === name)!.execute("test", params, signal);
+    expect(JSON.stringify(await call("pick_resource_directory", {}))).toContain("Folder");
+    await expect(call("list_resource_directory", { id: "own", relativePath: "child", cursor: "stale" })).rejects.toMatchObject({ code: "ui/superseded" });
+    expect(JSON.stringify(await call("open_directory_resource", { id: "own", relativePath: "child/a.txt" }))).toContain("picked");
+    await call("release_resource_directory", { id: "own" });
+    expect(seen).toEqual(Array(4).fill(scope.kind === "global" ? ["global:mine", undefined] : ["book:book", "book"]));
+  }
+});
+
 test("Agent uses thread-owned references, approves original export and cannot read book bytes", async () => {
   const { deps, stores } = createInMemoryDeps({ books: [{ id: "book" as Id, title: "Book", progressPercent: 0, status: "reading" }] });
   const original = deps.resources("test"); const scopes: unknown[] = []; let opened = 0, reads = 0;

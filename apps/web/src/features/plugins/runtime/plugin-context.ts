@@ -644,6 +644,10 @@ export function buildPluginContext(
         } : {}),
       },
       resources: {
+        pickDirectory: () => { lifecycle.assertActive("services.resources.pickDirectory"); return resources.pickDirectory(lifecycle.signal); },
+        listDirectory: (id, query) => { lifecycle.assertActive("services.resources.listDirectory"); return resources.listDirectory(id, query, lifecycle.signal); },
+        openDirectoryFile: (id, path) => { lifecycle.assertActive("services.resources.openDirectoryFile"); return resources.openDirectoryFile(id, path, lifecycle.signal); },
+        releaseDirectory: id => { lifecycle.assertActive("services.resources.releaseDirectory"); return resources.releaseDirectory(id); },
         assets: createPluginAssets(manifest.id, lifecycle, resources),
         pick: options => { lifecycle.assertActive("services.resources.pick"); return resources.pick(options, lifecycle.signal); },
         ...(permissions.has("library:read") || permissions.has("library:write") ? {

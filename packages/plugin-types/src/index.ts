@@ -2291,6 +2291,12 @@ export type PluginHostServices = {
     verifyProjections(options?: PluginCallOptions): Promise<import("@read-aware/core").ProjectionVerification>;
   };
   resources: {
+    /** Resources 1.4: reader-selected, read-only directory grants; four per activation, one hour.
+     * No ambient paths. Listings are live; openDirectoryFile seals the current file bytes. */
+    pickDirectory(): Promise<{ cancelled: boolean; directory: import("@read-aware/core").ResourceDirectoryRef | null }>;
+    listDirectory(id: string, query?: import("@read-aware/core").ResourceDirectoryQuery): Promise<import("@read-aware/core").ResourceDirectoryPage>;
+    openDirectoryFile(id: string, relativePath: string): Promise<import("@read-aware/core").ResourceRef>;
+    releaseDirectory(id: string): Promise<void>;
     /** Resources 1.3: own local binary assets, retained across activations.
      * Only full backups include them; uninstall deletes them. No sync. */
     assets: {

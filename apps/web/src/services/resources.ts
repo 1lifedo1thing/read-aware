@@ -20,6 +20,23 @@ async function cleanup(values: NativeInfo[]) {
   }
 }
 export const resourceAdapter: ResourceAdapter = {
+  directories: {
+    async pick(signal) {
+      desktop(); signal?.throwIfAborted();
+      const path = await open({ multiple: false, directory: true });
+      signal?.throwIfAborted();
+      if (path === null) return null;
+      if (typeof path !== "string") throw new AppError("ui/invalid-target", "Choose one directory");
+      const id = await invoke<string>("resource_open_directory", { path });
+      return { id, name: fileNameFromPath(path.replace(/[\\/]+$/, "")) || "Directory" };
+    },
+    list: (id, query) => invoke("resource_list_directory", { id, query }),
+    async openFile(id, relativePath) {
+      const info = await invoke<NativeInfo>("resource_open_directory_file", { id, relativePath });
+      return { ...info, name: relativePath.split("/").at(-1)!, mimeType: "application/octet-stream" };
+    },
+    release: id => invoke("resource_release_directory", { id }),
+  },
   async pick(options: ResourcePickOptions, signal) {
     desktop(); signal?.throwIfAborted();
     const selected = await open({ multiple: options.multiple ?? false, directory: false,

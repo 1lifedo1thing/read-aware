@@ -6,6 +6,7 @@ import { assetStrings } from "./assets-strings";
 import { savedCovers } from "./saved-covers";
 import { bookAssets } from "./book-assets";
 import { importBook } from "./import-book";
+import { browseDirectory, directoryStrings } from "./directory";
 import { organizeStrings } from "./organize-strings";
 import { organizeBook } from "./organize-books";
 import { collectionList, moveBooks } from "./collections";
@@ -79,6 +80,7 @@ export async function libraryDesk(ctx: PluginContext): Promise<PluginView> {
     actions: [{ id: "refresh", label: t[7], icon: "arrows-clockwise", run: refresh },
       { id: "saved-covers", label: assetsText.privateCovers, icon: "image", run: async () => ({ view: await savedCovers(ctx) }) },
       { id: "import", label: assetsText.import, icon: "plus", run: () => importBook(ctx) },
+      { id: "directory", label: directoryStrings(ctx.locale)[0], icon: "folder", run: () => browseDirectory(ctx) },
       { id: "duplicates", label: organizeText.duplicates, icon: "books", run: async () => ({ view: await duplicateList(ctx) }) },
       { id: "collections", label: organizeText.collections, icon: "folder", run: async () => ({ view: await collectionList(ctx) }) },
       ...(selected.size ? [{ id: "move", label: organizeText.move, icon: "folder", run: async () => ({ view: await moveBooks(ctx, books.filter(book => selected.has(book.id))) }) }] : []),

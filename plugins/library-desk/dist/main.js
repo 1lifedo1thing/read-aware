@@ -426,12 +426,16 @@ async function bookAssets(ctx, book) {
 
 // src/import-book.ts
 async function importBook(ctx) {
-  const library = ctx.domains.library, resources = ctx.services.resources, t = assetStrings(ctx.locale);
+  const library = ctx.domains.library, resources = ctx.services.resources;
   const formats = await library.queries.books.listFormats();
   const picked = await resources.pick({ multiple: false, extensions: formats.flatMap((format) => format.extensions) });
   const resource = picked.resources[0];
   if (!resource)
     return null;
+  return inspectImportResource(ctx, resource);
+}
+async function inspectImportResource(ctx, resource) {
+  const library = ctx.domains.library, resources = ctx.services.resources, t = assetStrings(ctx.locale);
   let inspection;
   try {
     inspection = await library.queries.books.inspectResource(resource.id);
@@ -457,6 +461,54 @@ async function importBook(ctx) {
       actions: [{ id: "details", label: t.details, icon: "book-open", run: async () => ({ view: await bookAssets(ctx, receipt.book) }) }]
     }, navigation: "replace" };
   } }] : [], onClose: () => resources.release(resource.id) } };
+}
+
+// src/directory.ts
+var translations4 = {
+  en: ["Browse folder", "Parent folder", "Next page", "Refresh", "Some links, special files or names were omitted"],
+  "zh-CN": ["浏览文件夹", "上级文件夹", "下一页", "刷新", "部分链接、特殊文件或文件名已略过"],
+  "zh-TW": ["瀏覽資料夾", "上層資料夾", "下一頁", "重新整理", "部分連結、特殊檔案或檔名已略過"],
+  ja: ["フォルダーを参照", "親フォルダー", "次のページ", "更新", "リンク・特殊ファイル・一部の名前を省略しました"],
+  ko: ["폴더 찾아보기", "상위 폴더", "다음 페이지", "새로 고침", "일부 링크, 특수 파일 또는 이름을 생략했습니다"],
+  de: ["Ordner durchsuchen", "Übergeordneter Ordner", "Nächste Seite", "Aktualisieren", "Einige Links, spezielle Dateien oder Namen wurden ausgelassen"],
+  fr: ["Parcourir un dossier", "Dossier parent", "Page suivante", "Actualiser", "Certains liens, fichiers spéciaux ou noms ont été omis"],
+  es: ["Explorar carpeta", "Carpeta superior", "Página siguiente", "Actualizar", "Se omitieron algunos enlaces, archivos especiales o nombres"]
+};
+var directoryStrings = (locale) => translations4[locale] ?? translations4[locale.split("-")[0]] ?? translations4.en;
+async function browseDirectory(ctx) {
+  const resources = ctx.services.resources, t = directoryStrings(ctx.locale);
+  const { directory } = await resources.pickDirectory();
+  if (!directory)
+    return null;
+  const page = async (relativePath = "", cursor) => {
+    const result = await resources.listDirectory(directory.id, { relativePath, cursor, limit: 50 });
+    return {
+      kind: "list",
+      title: relativePath || directory.name,
+      searchable: true,
+      items: [
+        ...result.omittedCount ? [{ id: "omitted", title: `${t[4]} (${result.omittedCount})`, icon: "info" }] : [],
+        ...result.entries.map((entry) => ({
+          id: entry.relativePath,
+          title: entry.name,
+          icon: entry.kind === "directory" ? "folder" : "file-text",
+          subtitle: entry.size === null ? undefined : `${entry.size} B`,
+          onSelect: async () => entry.kind === "directory" ? { view: await page(entry.relativePath) } : inspectImportResource(ctx, await resources.openDirectoryFile(directory.id, entry.relativePath))
+        }))
+      ],
+      actions: [
+        { id: "refresh", label: t[3], icon: "arrows-clockwise", run: async () => ({ view: await page(relativePath) }) },
+        ...relativePath ? [{ id: "parent", label: t[1], icon: "arrow-up", run: async () => ({ view: await page(relativePath.split("/").slice(0, -1).join("/")) }) }] : [],
+        ...result.nextCursor ? [{ id: "next", label: t[2], icon: "arrow-right", run: async () => ({ view: await page(relativePath, result.nextCursor) }) }] : []
+      ]
+    };
+  };
+  try {
+    return { view: { ...await page(), onClose: () => resources.releaseDirectory(directory.id) } };
+  } catch (error) {
+    await resources.releaseDirectory(directory.id);
+    throw error;
+  }
 }
 
 // src/organize-strings.ts
@@ -869,6 +921,7 @@ ${book.author ?? ""}` }))
       { id: "refresh", label: t[7], icon: "arrows-clockwise", run: refresh },
       { id: "saved-covers", label: assetsText.privateCovers, icon: "image", run: async () => ({ view: await savedCovers(ctx) }) },
       { id: "import", label: assetsText.import, icon: "plus", run: () => importBook(ctx) },
+      { id: "directory", label: directoryStrings(ctx.locale)[0], icon: "folder", run: () => browseDirectory(ctx) },
       { id: "duplicates", label: organizeText.duplicates, icon: "books", run: async () => ({ view: await duplicateList(ctx) }) },
       { id: "collections", label: organizeText.collections, icon: "folder", run: async () => ({ view: await collectionList(ctx) }) },
       ...selected.size ? [{ id: "move", label: organizeText.move, icon: "folder", run: async () => ({ view: await moveBooks(ctx, books.filter((book) => selected.has(book.id))) }) }] : [],

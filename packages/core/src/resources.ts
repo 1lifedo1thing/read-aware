@@ -5,10 +5,25 @@ export type ResourceRef = {
   source: "picked" | "created" | "book" | "cover" | "image" | "context" | "asset";
 };
 export type ResourcePickOptions = { multiple?: boolean; extensions?: string[] };
+/** User-selected live directory grant. Paths below it are relative, never ambient filesystem paths. */
+export type ResourceDirectoryRef = { id: string; name: string; expiresAt: number };
+export type ResourceDirectoryQuery = { relativePath?: string; cursor?: string; limit?: number };
+export type ResourceDirectoryPage = {
+  entries: { name: string; relativePath: string; kind: "file" | "directory"; size: number | null }[];
+  nextCursor: string | null; omittedCount: number;
+};
 export type ResourceCreateOptions = { name: string; mimeType?: string };
 export type ResourceChunk = { data: ArrayBuffer; nextOffset: number; eof: boolean };
 export type ResourceImageReceipt = { copied: true; width: number; height: number };
 export type ResourcePort = {
+  /** Four grants per owner, one hour lifetime. Cancellation returns no grant. */
+  pickDirectory(signal?: AbortSignal): Promise<{ cancelled: boolean; directory: ResourceDirectoryRef | null }>;
+  /** Direct children only; 1..100 entries/page. Changed listings invalidate cursors. Symlinks/special files are omitted. */
+  listDirectory(id: string, query?: ResourceDirectoryQuery, signal?: AbortSignal): Promise<ResourceDirectoryPage>;
+  /** Copies the current regular file into a sealed ResourceRef. Listing does not freeze its contents. */
+  openDirectoryFile(id: string, relativePath: string, signal?: AbortSignal): Promise<ResourceRef>;
+  /** Revokes browsing; existing copied file references live independently. */
+  releaseDirectory(id: string): Promise<void>;
   pick(options?: ResourcePickOptions, signal?: AbortSignal): Promise<{ cancelled: boolean; resources: ResourceRef[] }>;
   /** Returns null for a book with no locally available original file. Never fetches it remotely. */
   openBook(bookId: string, signal?: AbortSignal): Promise<ResourceRef | null>;

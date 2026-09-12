@@ -3,11 +3,16 @@ import { assetStrings } from "./assets-strings";
 import { bookAssets } from "./book-assets";
 
 export async function importBook(ctx: PluginContext): Promise<PluginViewResult> {
-  const library = ctx.domains.library!, resources = ctx.services.resources, t = assetStrings(ctx.locale);
+  const library = ctx.domains.library!, resources = ctx.services.resources;
   const formats = await library.queries.books.listFormats();
   const picked = await resources.pick({ multiple: false, extensions: formats.flatMap(format => format.extensions) });
   const resource = picked.resources[0];
   if (!resource) return null;
+  return inspectImportResource(ctx, resource);
+}
+
+export async function inspectImportResource(ctx: PluginContext, resource: Awaited<ReturnType<PluginContext["services"]["resources"]["stat"]>>): Promise<PluginViewResult> {
+  const library = ctx.domains.library!, resources = ctx.services.resources, t = assetStrings(ctx.locale);
   let inspection;
   try { inspection = await library.queries.books.inspectResource(resource.id); }
   catch (error) { await resources.release(resource.id); throw error; }

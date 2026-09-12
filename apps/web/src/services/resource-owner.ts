@@ -1,9 +1,16 @@
 import { AppError, BOOK_IMAGE_MAX_BYTES, RESOURCE_LIFETIME_MS, RESOURCE_MAX_CHUNK, RESOURCE_MAX_SIZE,
-  type ResourcePort, type ResourceRef, type ResourcePickOptions, type ResourceCreateOptions, type ResourceImageReceipt } from "@read-aware/core";
+  type ResourcePort, type ResourceRef, type ResourcePickOptions, type ResourceCreateOptions, type ResourceImageReceipt,
+  type ResourceDirectoryRef, type ResourceDirectoryQuery, type ResourceDirectoryPage } from "@read-aware/core";
 import { retainResourceAccess, type ContextResourceAccess } from "./resource-access";
 
 export type NativeResource = { id: string; size: number; name: string; mimeType: string };
 export type ResourceAdapter = {
+  directories?: {
+    pick(signal?: AbortSignal): Promise<{ id: string; name: string } | null>;
+    list(id: string, query: ResourceDirectoryQuery): Promise<ResourceDirectoryPage>;
+    openFile(id: string, relativePath: string): Promise<NativeResource>;
+    release(id: string): Promise<void>;
+  };
   pick(options: ResourcePickOptions, signal?: AbortSignal): Promise<NativeResource[]>;
   openBook(bookId: string, signal?: AbortSignal): Promise<NativeResource | null>;
   openCover(bookId: string, signal?: AbortSignal): Promise<NativeResource | null>;
@@ -33,10 +40,18 @@ function mime(value: unknown): string {
 function idValue(id: unknown): asserts id is string {
   if (typeof id !== "string" || id.length === 0 || id.length > 256) throw invalid();
 }
+function directoryPath(value: unknown, root = false): string {
+  if (value === "" && root) return "";
+  if (typeof value !== "string" || value.length > 4096 || new TextEncoder().encode(value).length > 4096
+    || /[\\:\u0000-\u001f\u007f-\u009f]/.test(value) || value.split("/").length > 32
+    || value.split("/").some(part => !part || part === "." || part === "..")) throw invalid();
+  return value;
+}
 
 /** One serial queue per actor. Public IDs cannot be reused across owners. */
 export class ResourceOwner implements ResourcePort {
   private entries = new Map<string, Entry>();
+  private directories = new Map<string, { nativeId: string; ref: ResourceDirectoryRef; timer: ReturnType<typeof setTimeout> }>();
   private tail: Promise<unknown> = Promise.resolve();
   private queued = 0;
   private disposed = false;
@@ -46,6 +61,61 @@ export class ResourceOwner implements ResourcePort {
     private authorizeBook: (id: string) => void = () => {}, private now = Date.now,
     private authorizeRead: (ref: ResourceRef) => void = () => {}) {}
 
+  private directoryAdapter() {
+    if (!this.adapter.directories) throw new AppError("ui/unavailable", "Directory resources unavailable");
+    return this.adapter.directories;
+  }
+  pickDirectory(signal?: AbortSignal) {
+    return this.run(async () => {
+      const adapter = this.directoryAdapter();
+      if (this.directories.size >= 4) throw new AppError("ui/unavailable", "At most four directory grants per owner");
+      const value = await adapter.pick(signal);
+      if (!value) { this.guard(signal); return { cancelled: true, directory: null }; }
+      try {
+        this.guard(signal);
+        const ref: ResourceDirectoryRef = { id: crypto.randomUUID(), name: resourceName(value.name), expiresAt: this.now() + RESOURCE_LIFETIME_MS };
+        const timer = setTimeout(() => {
+          const cleanup = this.tail.then(() => this.removeDirectory(ref.id));
+          this.tail = cleanup.catch(this.report);
+        }, RESOURCE_LIFETIME_MS);
+        if (typeof timer === "object" && "unref" in timer) timer.unref();
+        this.directories.set(ref.id, { nativeId: value.id, ref, timer });
+        return { cancelled: false, directory: { ...ref } };
+      } catch (error) { try { await adapter.release(value.id); } catch (cleanup) { this.report(cleanup); } throw error; }
+    }, signal);
+  }
+  listDirectory(id: string, query: ResourceDirectoryQuery = {}, signal?: AbortSignal) {
+    if (!query || typeof query !== "object" || Object.keys(query).some(key => !["relativePath", "cursor", "limit"].includes(key))
+      || (query.cursor !== undefined && (typeof query.cursor !== "string" || query.cursor.length > 90))
+      || (query.limit !== undefined && (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > 100))) return Promise.reject(invalid());
+    const accepted = { ...query, relativePath: directoryPath(query.relativePath ?? "", true) };
+    return this.run(async () => {
+      const entry = this.directory(id);
+      const page = await this.directoryAdapter().list(entry.nativeId, accepted);
+      this.guard(signal); this.directory(id); return page;
+    }, signal);
+  }
+  openDirectoryFile(id: string, relativePath: string, signal?: AbortSignal) {
+    const accepted = directoryPath(relativePath);
+    return this.run(async () => {
+      const entry = this.directory(id);
+      this.capacity([{ id: "", size: 0, name: "file", mimeType: "application/octet-stream" }]);
+      const value = await this.directoryAdapter().openFile(entry.nativeId, accepted);
+      try { this.guard(signal); this.directory(id); this.capacity([value]); return this.register(value, "picked", "ready"); }
+      catch (error) { await this.cleanNative([value]); throw error; }
+    }, signal);
+  }
+  releaseDirectory(id: string) { idValue(id); return this.run(() => this.removeDirectory(id)); }
+  private directory(id: string) {
+    idValue(id); const entry = this.directories.get(id);
+    if (!entry || entry.ref.expiresAt <= this.now()) throw new AppError("fs/not-found", "Directory expired or belongs to another actor");
+    return entry;
+  }
+  private async removeDirectory(id: string) {
+    const entry = this.directories.get(id); if (!entry) return;
+    await this.directoryAdapter().release(entry.nativeId);
+    clearTimeout(entry.timer); this.directories.delete(id);
+  }
   pick(options: ResourcePickOptions = {}, signal?: AbortSignal) {
     if (!options || typeof options !== "object" || Object.keys(options).some(key => !["multiple", "extensions"].includes(key))
       || (options.multiple !== undefined && typeof options.multiple !== "boolean")
@@ -249,6 +319,10 @@ export class ResourceOwner implements ResourcePort {
     // Rejected queued work is already owned by its caller; cleanup must still run.
     await this.tail.catch(() => {});
     const failures: unknown[] = [];
+    for (const [id, entry] of [...this.directories]) {
+      clearTimeout(entry.timer);
+      try { await this.removeDirectory(id); } catch (error) { failures.push(error); this.report(error); }
+    }
     for (const [id, entry] of [...this.entries]) {
       clearTimeout(entry.timer);
       try { await this.remove(id); } catch (error) { failures.push(error); this.report(error); }

@@ -761,6 +761,7 @@ pub fn run() {
         .manage(storage::BlobReadSessions::default())
         .manage(storage::BlobWriteSessions::default())
         .manage(resources::ResourceFiles::default())
+        .manage(resources::directories::DirectoryGrants::default())
         .setup(|app| {
             #[cfg(desktop)]
             app.handle().plugin(tauri_plugin_autostart::Builder::new()
@@ -1115,6 +1116,10 @@ pub fn run() {
             read_book_head,
             write_export_file,
             resources::resource_open_file,
+            resources::directories::resource_open_directory,
+            resources::directories::resource_list_directory,
+            resources::directories::resource_open_directory_file,
+            resources::directories::resource_release_directory,
             resources::resource_open_book,
             resources::resource_open_cover,
             resources::resource_store_plugin_asset,

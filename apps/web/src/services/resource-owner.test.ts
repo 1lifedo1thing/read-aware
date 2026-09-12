@@ -26,6 +26,56 @@ function fixture(authorizeBook: (id: string) => void = () => {}) {
   return { owner, adapter, files, released, errors, make, time: (value: number) => { now = value; } };
 }
 
+test("directory grants isolate owners, snapshot inputs and files, expire and release independently", async () => {
+  const a = fixture(), b = fixture(), calls: unknown[] = [];
+  a.adapter.directories = {
+    pick: async () => ({ id: "native-dir", name: "chosen" }),
+    list: async (id, query) => { calls.push([id, query]); return { entries: [], nextCursor: null, omittedCount: 1 }; },
+    openFile: async (id, path) => { calls.push([id, path]); return a.make("a.txt", new Uint8Array([7])); },
+    release: async id => { calls.push(["release", id]); },
+  };
+  try {
+    const { directory } = await a.owner.pickDirectory();
+    expect(directory!.id).not.toBe("native-dir");
+    await expect(b.owner.listDirectory(directory!.id)).rejects.toMatchObject({ code: "fs/not-found" });
+    const query = { relativePath: "child", limit: 1 }, listing = a.owner.listDirectory(directory!.id, query);
+    query.relativePath = "../escape";
+    expect(await listing).toMatchObject({ omittedCount: 1 });
+    expect(calls[0]).toEqual(["native-dir", { relativePath: "child", limit: 1 }]);
+    for (const bad of ["../secret", "/etc/passwd", "a\\b", "C:secret", "a/./b", ""]) expect(() => a.owner.openDirectoryFile(directory!.id, bad)).toThrow();
+    const file = await a.owner.openDirectoryFile(directory!.id, "child/a.txt");
+    expect(file).toMatchObject({ source: "picked", state: "ready", size: 1 });
+    await a.owner.releaseDirectory(directory!.id);
+    await expect(a.owner.listDirectory(directory!.id)).rejects.toMatchObject({ code: "fs/not-found" });
+    expect([...new Uint8Array((await a.owner.read(file.id, 0, 1)).data)]).toEqual([7]);
+    const second = (await a.owner.pickDirectory()).directory!;
+    a.time(second.expiresAt);
+    await expect(a.owner.listDirectory(second.id)).rejects.toMatchObject({ code: "fs/not-found" });
+  } finally { await a.owner.dispose(); await b.owner.dispose(); }
+});
+
+test("directory retirement drains late picker and file acquisition, rejects extra grants, cleans native handles", async () => {
+  const f = fixture(), picked = Promise.withResolvers<{ id: string; name: string }>(), released: string[] = [];
+  f.adapter.directories = {
+    pick: () => picked.promise, list: async () => ({ entries: [], nextCursor: null, omittedCount: 0 }),
+    openFile: async () => f.make(), release: async id => { released.push(id); },
+  };
+  const pending = f.owner.pickDirectory().catch(error => error);
+  await Bun.sleep(0); const retired = f.owner.dispose();
+  picked.resolve({ id: "late", name: "folder" });
+  expect(await pending).toMatchObject({ code: "ui/superseded" }); await retired;
+  expect(released).toEqual(["late"]);
+  const second = fixture(), file = Promise.withResolvers<NativeResource>();
+  second.adapter.directories = { ...f.adapter.directories, pick: async () => ({ id: "dir", name: "folder" }), openFile: () => file.promise };
+  const refs = [];
+  for (let i = 0; i < 4; i++) refs.push((await second.owner.pickDirectory()).directory!);
+  await expect(second.owner.pickDirectory()).rejects.toMatchObject({ code: "ui/unavailable" });
+  const opening = second.owner.openDirectoryFile(refs[0]!.id, "file").catch(error => error);
+  await Bun.sleep(0); const stopped = second.owner.dispose(); file.resolve(second.make());
+  expect(await opening).toMatchObject({ code: "ui/superseded" }); await stopped;
+  expect(second.files.size).toBe(0); expect(released).toHaveLength(5);
+});
+
 test("image previews use only owned sealed non-book resources and recheck expiry and cancellation", async () => {
   const f = fixture(), other = fixture();
   const calls: string[] = [];

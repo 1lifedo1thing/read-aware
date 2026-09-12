@@ -13,6 +13,8 @@ use std::{
 use tauri::Manager;
 #[path = "resources_context.rs"]
 mod context;
+#[path = "resource_directories.rs"]
+pub mod directories;
 
 const MAX_FILE: u64 = 1024 * 1024 * 1024;
 const MAX_TOTAL: u64 = 2 * MAX_FILE;
