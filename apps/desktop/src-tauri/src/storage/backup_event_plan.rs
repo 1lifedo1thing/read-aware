@@ -11,7 +11,7 @@ mod events;
 mod revision;
 #[path = "backup_row_plan.rs"]
 mod rows;
-pub(crate) use rows::RowPlan;
+pub(crate) use rows::{RowPlan, FilePlan, FileMatchKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EventMatchKind {

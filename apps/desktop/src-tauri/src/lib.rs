@@ -795,9 +795,9 @@ pub fn run() {
                 app.deep_link().register_all()?;
             }
 
-            let backup_exports = storage::backup_export::ExportTasks::default();
-            backup_exports.start_cleanup()?;
-            app.manage(backup_exports);
+            let backup_tasks = storage::backup_tasks::BackupTasks::default();
+            backup_tasks.start_cleanup()?;
+            app.manage(backup_tasks);
 
             // Disposable plaintext preparation is independent of DB recovery.
             // Cross-process leases protect live tasks; cleanup never blocks boot.
@@ -931,7 +931,7 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {
-                if let Some(tasks) = window.app_handle().try_state::<storage::backup_export::ExportTasks>() {
+                if let Some(tasks) = window.app_handle().try_state::<storage::backup_tasks::BackupTasks>() {
                     let tasks = tasks.inner().clone();
                     let owner = window.label().to_owned();
                     tauri::async_runtime::spawn_blocking(move || tasks.cancel_owner(&owner));
@@ -1092,6 +1092,9 @@ pub fn run() {
             storage::backup_export::backup_export_capture,
             storage::backup_export::backup_export_write,
             storage::backup_export::backup_export_cancel,
+            storage::backup_import::backup_import_open,
+            storage::backup_import::backup_import_plan,
+            storage::backup_import::backup_import_cancel,
             storage::reading_time_import,
             external_open::external_open_take,
             external_open::external_open_is_current,

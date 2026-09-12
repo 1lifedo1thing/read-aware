@@ -12,7 +12,7 @@ pub(crate) use policy::RowPolicy;
 mod files;
 #[path = "backup_row_scan.rs"]
 mod scan;
-pub(crate) use files::FilePlan;
+pub(crate) use files::{FilePlan, FileMatchKind};
 
 #[derive(Debug, Default)]
 pub(crate) struct RowCounts {

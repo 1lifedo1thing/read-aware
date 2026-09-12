@@ -102,6 +102,8 @@ pub use checkpoints::*;
 pub(crate) mod backup_snapshot;
 pub(crate) mod backup_archive;
 pub(crate) mod backup_export;
+pub(crate) mod backup_tasks;
+pub(crate) mod backup_import;
 
 use crate::error::CommandError;
 use std::io::{Read, Seek, SeekFrom};
