@@ -2,6 +2,10 @@ import { AppError } from "@read-aware/core";
 import { validBackupPassword } from "./backup-password";
 import type { BackupReviewPage, BackupReviewQuery, BackupRowChoiceRequest, BackupRowChoiceReceipt, BackupRowStructureReceipt } from "./backup-review-types";
 
+import type { BackupProgramChoice } from "../../plugins/runtime/backup-program-review";
+import type { BackupProgramStageQuery, BackupProgramStageReceipt } from "../../plugins/runtime/backup-program-storage";
+export type BackupProgramStageRequest = { id: string; choices: Record<string, BackupProgramChoice>; consented: boolean };
+
 export type FullBackupImportProgress = "decrypting" | "checkingSource" | "comparingEvents" | "comparingRows" | "comparingFiles" | "preparingReview";
 export type BackupSourceSummary = {
   format: 2; schemaVersion: number; tables: Record<string, number>;
@@ -24,6 +28,8 @@ type Dependencies = {
   read(taskId: string, query: BackupReviewQuery): Promise<BackupReviewPage>;
   checkRows(taskId: string, expectedRevision: string): Promise<BackupRowStructureReceipt>;
   chooseRows(taskId: string, request: BackupRowChoiceRequest): Promise<BackupRowChoiceReceipt>;
+  stageProgram(taskId: string, request: BackupProgramStageRequest): Promise<BackupProgramStageReceipt>;
+  stageStorage<T>(taskId: string, token: string, query: BackupProgramStageQuery): Promise<T>;
   cancel(taskId: string): Promise<void>;
   warn(message: string, error: unknown): void;
 };
@@ -37,6 +43,8 @@ export type FullBackupReview = {
   chooseRows(request: BackupRowChoiceRequest): Promise<BackupRowChoiceReceipt>;
   /** Checks row constraints only, not whole-restore readiness. */
   checkRows(expectedRevision: string): Promise<BackupRowStructureReceipt>;
+  stageProgram(request: BackupProgramStageRequest): Promise<BackupProgramStageReceipt>;
+  stageStorage<T>(token: string, query: BackupProgramStageQuery): Promise<T>;
   dispose(): Promise<void>;
 };
 
@@ -116,8 +124,16 @@ export function createFullBackupImport(deps: Dependencies) {
         return enqueue(() => deps.chooseRows(taskId, candidate));
       };
       const checkRows = (expectedRevision: string): Promise<BackupRowStructureReceipt> => enqueue(() => deps.checkRows(taskId, expectedRevision));
+      const stageProgram = (request: BackupProgramStageRequest) => {
+        const candidate = structuredClone(request);
+        return enqueue(() => deps.stageProgram(taskId, candidate));
+      };
+      const stageStorage = <T>(token: string, query: BackupProgramStageQuery): Promise<T> => {
+        const candidate = structuredClone(query);
+        return enqueue(() => deps.stageStorage<T>(taskId, token, candidate));
+      };
       retained = true;
-      return { source: sourceSummary, plan: planSummary, get disposed() { return disposed; }, read, chooseRows, checkRows, dispose };
+      return { source: sourceSummary, plan: planSummary, get disposed() { return disposed; }, read, chooseRows, checkRows, stageProgram, stageStorage, dispose };
     } finally {
       // Cancellation before native admission can initially miss. Wait for
       // physical preparation/planning, then retry cleanup before returning.

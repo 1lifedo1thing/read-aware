@@ -23,6 +23,8 @@ function fixture() {
       return { kind: query.kind, entries: [], nextAfter: null }; },
     checkRows: async (_id: string, expectedRevision: string) => ({ revision: expectedRevision, selectedSourceRows: 0, issues: 0, constraintsPassed: true }),
     chooseRows: async (_id: string, request: import("./backup-review-types").BackupRowChoiceRequest) => ({ revision: "updated", changed: request.edits.length }),
+    stageProgram: async () => ({ token: "stage", storage: {} }),
+    stageStorage: async <T>() => null as T,
     cancel: async () => { calls.push("cancel"); },
     warn: (_message: string, _error: unknown) => { calls.push("warn"); },
   };

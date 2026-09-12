@@ -404,3 +404,5 @@ pub(crate) fn plan_events_fixture(
         check,
     )
 }
+
+pub(crate) use event_plan::{ProgramStageRequest, ProgramStageReceipt, ProgramStageQuery};

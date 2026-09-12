@@ -19,6 +19,7 @@ import type {
   PluginDisposable,
   PluginMigration,
   PluginManifest,
+  PluginStorage,
 } from "@read-aware/plugin-types";
 import { AppError, errorCode } from "@read-aware/core";
 import { injectPluginCallSignal, pluginCallDrainsCancellation } from "./plugin-call-options";
@@ -42,6 +43,13 @@ import { PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
 import { PluginCallbackBudget } from "./plugin-callback-budget";
 import { pluginHostBudget, pluginTrafficBudget, type BudgetLease } from "./plugin-host-budget";
 
+import type { PluginLifecycleController } from "./plugin-lifecycle";
+
+export type PluginRestoreStorage = {
+  create(lifecycle: PluginLifecycleController): PluginStorage;
+  snapshot(): Record<string, string>;
+};
+
 type HeldRegistration = PluginDisposable & Partial<Pick<PluginActionRegistration, "updateState">>;
 const actionRegistrations = new Set(["selectionActions", "headerActions", "contextActions", "commands", "agentTools"].map(point => `contributions.${point}.register`));
 
@@ -59,6 +67,8 @@ export type SandboxedPlugin = {
 export type StartPluginWorkerOptions = {
   /** Alternate entry URL for a separately staged update candidate. */
   moduleUrl?: string;
+  /** Private restore namespace; never receives live storage broadcasts. */
+  restoreStorage?: PluginRestoreStorage;
   /** Distinguishes two simultaneous versions of one plugin. */
   instanceId?: string;
   /** Candidate failures must not overwrite the installed version's status. */
@@ -196,7 +206,11 @@ export function startPluginWorker(
   options: StartPluginWorkerOptions = {},
 ): Promise<SandboxedPlugin> {
   const runtime = buildPluginContext(manifest, appVersion, disposables);
-  const ctx = runtime.context;
+  const ctx = options.restoreStorage ? {
+    ...runtime.context,
+    services: { ...runtime.context.services, storage: options.restoreStorage.create(runtime.lifecycle) },
+  } : runtime.context;
+  const storageSnapshot = () => options.restoreStorage?.snapshot() ?? localKV.entries(pluginStoragePrefix(manifest.id));
   const worker = new Worker(new URL("./plugin-sandbox.worker.ts", import.meta.url), {
     type: "module",
     name: `plugin:${manifest.id}`,
@@ -334,7 +348,7 @@ export function startPluginWorker(
       failRuntime("plugin activation timed out");
     }, 10_000);
     retireForTraffic = error => failRuntime(error instanceof Error ? error.message : "Plugin transport traffic exhausted");
-    liveWorkers.set(instanceId, { pluginId: manifest.id, worker, sync(patch) {
+    if (!options.restoreStorage) liveWorkers.set(instanceId, { pluginId: manifest.id, worker, sync(patch) {
       try { post({ t: "sync", patch }); }
       catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
     } });
@@ -406,7 +420,7 @@ export function startPluginWorker(
                 try { parsePluginHostMessage({ t: "migrate", id, migration }); }
                 catch (error) { return Promise.reject(error); }
                 runtime.lifecycle.beginMigration();
-                try { post({ t: "sync", patch: { phase: "migrating", storage: localKV.entries(pluginStoragePrefix(manifest.id)) } }); }
+                try { post({ t: "sync", patch: { phase: "migrating", storage: storageSnapshot() } }); }
                 catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); return Promise.reject(error); }
                 return new Promise<void>((migrationResolve, migrationReject) => {
                   const timeout = setTimeout(() => {
@@ -596,6 +610,9 @@ export function startPluginWorker(
               }
               return;
             }
+            if (options.restoreStorage && message.method.startsWith("services.storage.")) {
+              post({ t: "sync", patch: { storage: storageSnapshot() } });
+            }
             post({ t: "result", id: message.id, ok: true, value: value ?? null });
           } catch (error) {
             const failure = controller.signal.aborted && !pluginCallDrainsCancellation(message.method) ? controller.signal.reason : error;
@@ -693,7 +710,7 @@ export function startPluginWorker(
       appVersion,
       capabilities: ctx.capabilities,
       shape: describeContext(ctx),
-      storage: localKV.entries(pluginStoragePrefix(manifest.id)),
+      storage: storageSnapshot(),
       locale: ctx.locale,
       phase: runtime.lifecycle.phase,
     }); } catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }

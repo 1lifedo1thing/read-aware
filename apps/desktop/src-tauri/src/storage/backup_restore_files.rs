@@ -139,7 +139,7 @@ fn destination(root: &Path, relative: &str, create: bool) -> Result<PathBuf, Com
     regular(&path)?;
     Ok(path)
 }
-fn copy_checked(
+pub(crate) fn copy_checked(
     source: &Path,
     target: &Path,
     expected: &FileDigest,

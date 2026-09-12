@@ -308,3 +308,5 @@ pub(super) fn plan(
 #[cfg(test)]
 #[path = "backup_row_plan_tests.rs"]
 mod tests;
+
+pub(crate) use files::{ProgramStageRequest, ProgramStageReceipt, ProgramStageQuery};

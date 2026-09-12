@@ -205,3 +205,5 @@ pub(crate) fn plan_events(
 #[cfg(test)]
 #[path = "backup_event_plan_tests.rs"]
 mod tests;
+
+pub(crate) use rows::{ProgramStageRequest, ProgramStageReceipt, ProgramStageQuery};

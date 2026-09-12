@@ -23,6 +23,9 @@ mod credentials;
 #[path = "backup_restore_apply.rs"]
 mod restore;
 pub(crate) use restore::{RestoreRequest, RestoreReceipt};
+#[path = "backup_program_stage.rs"]
+mod program_stage;
+pub(crate) use program_stage::{ProgramStageRequest, ProgramStageReceipt, ProgramStageQuery};
 #[path = "backup_file_inventory.rs"]
 mod inventory;
 pub(crate) use credentials::{CredentialChoice, CredentialFacts, PreparedCredentials};
@@ -78,6 +81,7 @@ pub(crate) struct FilePage<'a> {
 }
 #[derive(Debug)]
 pub(crate) struct FilePlan {
+    staged_programs: std::cell::RefCell<Vec<program_stage::OwnedStage>>,
     rows: RowPlan,
     target: inventory::Inventory,
     bundled: crate::plugins::BundledPrograms,
@@ -364,6 +368,7 @@ pub(super) fn plan(
     }
     tx.commit()?;
     Ok(FilePlan {
+        staged_programs: Default::default(),
         rows,
         target,
         bundled,

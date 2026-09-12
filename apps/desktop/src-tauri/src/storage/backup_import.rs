@@ -135,6 +135,43 @@ pub async fn backup_import_apply(
     })
     .await
 }
+#[tauri::command]
+pub async fn backup_import_stage_program(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    task_id: String,
+    request: backup_archive::ProgramStageRequest,
+) -> Result<backup_archive::ProgramStageReceipt, CommandError> {
+    let tasks = app.state::<BackupTasks>().inner().clone();
+    let owner = window.label().to_owned();
+    super::blocking("backup_import_stage_program", move || {
+        let db = app.state::<Db>();
+        let mut conn = db.0.lock()?;
+        let data_dir = app.state::<DataDir>();
+        let tx = conn.transaction()?;
+        tasks.with_plan(&owner, &task_id, |plan, lease| {
+            plan.stage_program(&tx, &data_dir.0, request, || lease.check())
+        })
+    })
+    .await
+}
+#[tauri::command]
+pub async fn backup_import_stage_storage(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    task_id: String,
+    token: String,
+    query: backup_archive::ProgramStageQuery,
+) -> Result<serde_json::Value, CommandError> {
+    let tasks = app.state::<BackupTasks>().inner().clone();
+    let owner = window.label().to_owned();
+    super::blocking("backup_import_stage_storage", move || {
+        tasks.with_plan(&owner, &task_id, |plan, lease| {
+            plan.stage_storage(&token, query, || lease.check())
+        })
+    })
+    .await
+}
 impl<F: FnMut(ImportProgress) -> Result<(), CommandError>> Reporter<F> {
     fn new(send: F) -> Self {
         Self {

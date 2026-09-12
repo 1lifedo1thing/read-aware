@@ -28,6 +28,8 @@ export const prepareFullBackupImport = createFullBackupImport({
   checkRows: (taskId, expectedRevision) => invoke("backup_import_check_rows", { taskId, expectedRevision }),
   chooseRows: (taskId, request) => invoke("backup_import_choose_rows", { taskId, request }),
   read: (taskId, query) => invoke("backup_import_review", { taskId, query }),
+  stageProgram: (taskId, request) => invoke("backup_import_stage_program", { taskId, request }),
+  stageStorage: (taskId, token, query) => invoke("backup_import_stage_storage", { taskId, token, query }),
   cancel: taskId => invoke("backup_import_cancel", { taskId }),
   warn: (message, error) => log.warn(message, error),
 });

@@ -76,7 +76,10 @@ function pageFilter(filter?: PluginDocumentPageFilter) {
     cursor: filter?.cursor === undefined ? undefined : key(filter.cursor, 8192) };
 }
 
-export function createPluginDocuments(pluginId: string, lifecycle: PluginLifecycleController): Pick<PluginStorage, "collection" | "applyDocuments" | "observeDocuments"> {
+const nativeDocuments = { pluginDocsApply, pluginDocsDelete, pluginDocsGet, pluginDocsList, pluginDocsPage, pluginDocsPut };
+export type PluginDocumentsBackend = typeof nativeDocuments;
+
+export function createPluginDocuments(pluginId: string, lifecycle: PluginLifecycleController, backend: PluginDocumentsBackend = nativeDocuments): Pick<PluginStorage, "collection" | "applyDocuments" | "observeDocuments"> {
   const observer = new PluginDocumentObserver(lifecycle);
   const storage: Pick<PluginStorage, "collection" | "applyDocuments" | "observeDocuments"> = {
     observeDocuments: <T>(input: import("@read-aware/plugin-types").PluginDocumentObservationQuery, handler: (event: import("@read-aware/plugin-types").PluginDocumentObservation<T>) => unknown) => {
@@ -93,23 +96,23 @@ export function createPluginDocuments(pluginId: string, lifecycle: PluginLifecyc
       return invalid("Invalid document observation query");
     },
     applyDocuments: changes => lifecycle.storageWrite("services.storage.applyDocuments", () =>
-      pluginDocsApply(pluginId, normalizeDocumentChanges(changes))),
+      backend.pluginDocsApply(pluginId, normalizeDocumentChanges(changes))),
     collection: name => {
       const collection = collectionName(name);
       const api: PluginDocumentCollection = {
         put: (id, data, options) => lifecycle.storageWrite("services.storage.collection.put", () =>
-          pluginDocsPut(pluginId, collection, String(id), JSON.stringify(data ?? null), { bookId: options?.bookId, anchor: options?.anchor })),
-        delete: id => lifecycle.storageWrite("services.storage.collection.delete", () => pluginDocsDelete(pluginId, collection, String(id))),
+          backend.pluginDocsPut(pluginId, collection, String(id), JSON.stringify(data ?? null), { bookId: options?.bookId, anchor: options?.anchor })),
+        delete: id => lifecycle.storageWrite("services.storage.collection.delete", () => backend.pluginDocsDelete(pluginId, collection, String(id))),
         get: <T>(id: string) => lifecycle.read("services.storage.collection.get", async () => {
-          const row = await pluginDocsGet(pluginId, collection, String(id));
+          const row = await backend.pluginDocsGet(pluginId, collection, String(id));
           return row ? document<T>(row) : null;
         }),
         list: <T>(filter?: Parameters<PluginDocumentCollection["list"]>[0]) => lifecycle.read("services.storage.collection.list", async () =>
-          (await pluginDocsList(pluginId, collection, { bookId: filter?.bookId, limit: filter?.limit, oldestFirst: filter?.oldestFirst })).map(document<T>)),
+          (await backend.pluginDocsList(pluginId, collection, { bookId: filter?.bookId, limit: filter?.limit, oldestFirst: filter?.oldestFirst })).map(document<T>)),
         page: <T>(filter?: Parameters<PluginDocumentCollection["page"]>[0]) => {
           const query = pageFilter(filter);
           return lifecycle.read("services.storage.collection.page", async () => {
-            const page = await pluginDocsPage(pluginId, collection, query);
+            const page = await backend.pluginDocsPage(pluginId, collection, query);
             return page.status === "stale-cursor" ? page : { ...page, items: page.items.map(document<T>) };
           });
         },

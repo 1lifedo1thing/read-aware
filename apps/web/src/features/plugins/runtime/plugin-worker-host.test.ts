@@ -188,7 +188,7 @@ class FaultWorker {
   terminate() { this.terminated = true; this.callbacks.clear(); }
 }
 
-async function hostFixture(permissions: PluginPermission[] = [], promote = true, schedules?: PluginManifest["schedules"]) {
+async function hostFixture(permissions: PluginPermission[] = [], promote = true, schedules?: PluginManifest["schedules"], options: import("./plugin-worker-host").StartPluginWorkerOptions = {}) {
   const native = globalThis.Worker;
   const storageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   const values = new Map<string, string>();
@@ -205,7 +205,7 @@ async function hostFixture(permissions: PluginPermission[] = [], promote = true,
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: storage });
   let started: ReturnType<typeof startPluginWorker>;
   try {
-    started = startPluginWorker({ id: "callback-host-test", name: "Callback host test", version: "1.0.0", schemaVersion: 1, permissions, requires: {}, schedules }, "1.0.0", disposables, { moduleUrl: "test:callback" });
+    started = startPluginWorker({ id: "callback-host-test", name: "Callback host test", version: "1.0.0", schemaVersion: 1, permissions, requires: {}, schedules }, "1.0.0", disposables, { moduleUrl: "test:callback", ...options });
   } finally {
     globalThis.Worker = native;
     if (storageDescriptor) Object.defineProperty(globalThis, "localStorage", storageDescriptor);
@@ -848,4 +848,35 @@ test("shutdown still drains durable writes and terminates its Worker when regist
     unsubscribe?.(); drain.mockRestore();
     if (!worker.terminated) { finishDrain?.(); await close().catch(() => { /* Expected injected shutdown failure. */ }); }
   }
+});
+
+
+test("restore Worker uses private committed storage before RPC acknowledgement and ignores live sync", async () => {
+  const { createBackupProgramStorage } = await import("./backup-program-storage");
+  const values = new Map([["value", '\"source\"']]);
+  const storage = createBackupProgramStorage("callback-host-test", Object.fromEntries(values), async <T>(query: import("./backup-program-storage").BackupProgramStageQuery) => {
+    if (query.kind === "get") return (values.get(query.key) ?? null) as T;
+    if (query.kind === "set") { values.set(query.key, query.json); return null as T; }
+    if (query.kind === "remove") { values.delete(query.key); return null as T; }
+    throw new Error("Unexpected stage query");
+  });
+  const { worker, runtime, close } = await hostFixture([], false, undefined, { restoreStorage: storage, instanceId: "restore:test" });
+  try {
+    expect(worker.sent.find(message => message.t === "boot")?.storage).toEqual({ value: '\"source\"' });
+    const before = worker.sent.length;
+    emitAppEvent("plugin-storage-changed", { pluginId: "callback-host-test" });
+    await Bun.sleep(0);
+    expect(worker.sent).toHaveLength(before);
+    const migration = runtime.migrate({ fromVersion: 1, toVersion: 2, direction: "upgrade" });
+    const request = worker.sent.find(message => message.t === "migrate")!;
+    await worker.deliver({ t: "call", id: 1200, method: "services.storage.set", args: worker.callbacks.encode(["value", "migrated"]) });
+    const receiptIndex = worker.sent.findIndex(message => message.t === "result" && message.id === 1200);
+    expect(worker.sent[receiptIndex]).toMatchObject({ ok: true });
+    expect(worker.sent[receiptIndex - 1]).toMatchObject({ t: "sync", patch: { storage: { value: '\"migrated\"' } } });
+    expect(storage.snapshot()).toEqual({ value: '\"migrated\"' });
+    await worker.deliver({ t: "call", id: 1201, method: "services.storage.set", args: worker.callbacks.encode(["schedule-state", {}]) });
+    expect(worker.sent.find(message => message.t === "result" && message.id === 1201)).toMatchObject({ ok: false });
+    await worker.deliver({ t: "migrated", id: request.id, ok: true });
+    await migration;
+  } finally { await close(); }
 });

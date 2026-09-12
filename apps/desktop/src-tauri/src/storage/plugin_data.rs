@@ -28,6 +28,10 @@ pub(crate) fn plugin_data_snapshot_inner(conn: &mut Connection, plugin_id: &str)
 }
 
 pub(crate) fn plugin_data_snapshot_tx(tx: &Transaction, plugin_id: &str) -> Result<PluginDataSnapshot, CommandError> {
+    plugin_data_snapshot_conn(tx, plugin_id)
+}
+
+pub(crate) fn plugin_data_snapshot_conn(tx: &Connection, plugin_id: &str) -> Result<PluginDataSnapshot, CommandError> {
     let (prefix, schema_key) = keys(plugin_id)?;
     let kv = {
         let mut stmt = tx.prepare("SELECT key, value_json FROM app_kv WHERE substr(key, 1, length(?1))=?1 ORDER BY key")?;

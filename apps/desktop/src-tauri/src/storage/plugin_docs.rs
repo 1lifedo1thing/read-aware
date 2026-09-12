@@ -59,19 +59,23 @@ pub async fn plugin_docs_put(
     crate::storage::blocking("plugin_docs_put", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        conn.execute(
-            "INSERT INTO plugin_documents
-            (plugin_id, collection, id, json, book_id, anchor, updated_at)
-         VALUES (?1,?2,?3,?4,?5,?6, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-         ON CONFLICT(plugin_id, collection, id) DO UPDATE SET
-            json=excluded.json, book_id=excluded.book_id, anchor=excluded.anchor,
-            updated_at=excluded.updated_at",
-            params![plugin_id, collection, id, json, book_id, anchor],
-        )
-        ?;
-        Ok(())
+        plugin_docs_put_inner(&conn, &plugin_id, &collection, &id, &json, book_id, anchor)
     })
     .await
+}
+
+pub(crate) fn plugin_docs_put_inner(conn: &Connection, plugin_id: &str, collection: &str, id: &str, json: &str, book_id: Option<String>, anchor: Option<String>) -> Result<(), CommandError> {
+    conn.execute(
+        "INSERT INTO plugin_documents
+        (plugin_id, collection, id, json, book_id, anchor, updated_at)
+     VALUES (?1,?2,?3,?4,?5,?6, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+     ON CONFLICT(plugin_id, collection, id) DO UPDATE SET
+        json=excluded.json, book_id=excluded.book_id, anchor=excluded.anchor,
+        updated_at=excluded.updated_at",
+        params![plugin_id, collection, id, json, book_id, anchor],
+    )
+    ?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -84,18 +88,22 @@ pub async fn plugin_docs_get(
     crate::storage::blocking("plugin_docs_get", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        match conn.query_row(
-            "SELECT id, json, book_id, anchor, updated_at, revision FROM plugin_documents
-         WHERE plugin_id = ?1 AND collection = ?2 AND id = ?3",
-            params![plugin_id, collection, id],
-            row_to_plugin_document,
-        ) {
-            Ok(row) => Ok(Some(row)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e.into()),
-        }
+        plugin_docs_get_inner(&conn, &plugin_id, &collection, &id)
     })
     .await
+}
+
+pub(crate) fn plugin_docs_get_inner(conn: &Connection, plugin_id: &str, collection: &str, id: &str) -> Result<Option<PluginDocumentRow>, CommandError> {
+    match conn.query_row(
+        "SELECT id, json, book_id, anchor, updated_at, revision FROM plugin_documents
+     WHERE plugin_id = ?1 AND collection = ?2 AND id = ?3",
+        params![plugin_id, collection, id],
+        row_to_plugin_document,
+    ) {
+        Ok(row) => Ok(Some(row)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
 }
 
 #[tauri::command]
@@ -108,14 +116,18 @@ pub async fn plugin_docs_delete(
     crate::storage::blocking("plugin_docs_delete", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        conn.execute(
-            "DELETE FROM plugin_documents WHERE plugin_id = ?1 AND collection = ?2 AND id = ?3",
-            params![plugin_id, collection, id],
-        )
-        ?;
-        Ok(())
+        plugin_docs_delete_inner(&conn, &plugin_id, &collection, &id)
     })
     .await
+}
+
+pub(crate) fn plugin_docs_delete_inner(conn: &Connection, plugin_id: &str, collection: &str, id: &str) -> Result<(), CommandError> {
+    conn.execute(
+        "DELETE FROM plugin_documents WHERE plugin_id = ?1 AND collection = ?2 AND id = ?3",
+        params![plugin_id, collection, id],
+    )
+    ?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -130,30 +142,34 @@ pub async fn plugin_docs_list(
     crate::storage::blocking("plugin_docs_list", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let conn = db.0.lock()?;
-        let order = if oldest_first.unwrap_or(false) {
-            "ASC"
-        } else {
-            "DESC"
-        };
-        let sql = format!(
-            "SELECT id, json, book_id, anchor, updated_at, revision FROM plugin_documents
-         WHERE plugin_id = ?1 AND collection = ?2
-           AND (?3 IS NULL OR book_id = ?3)
-         ORDER BY updated_at {order}, id {order}
-         LIMIT ?4"
-        );
-        let mut stmt = conn.prepare(&sql)?;
-        let rows = stmt
-            .query_map(
-                params![plugin_id, collection, book_id, limit.unwrap_or(i64::MAX)],
-                row_to_plugin_document,
-            )
-            ?
-            .collect::<Result<Vec<_>, _>>()
-            ?;
-        Ok(rows)
+        plugin_docs_list_inner(&conn, &plugin_id, &collection, book_id, limit, oldest_first)
     })
     .await
+}
+
+pub(crate) fn plugin_docs_list_inner(conn: &Connection, plugin_id: &str, collection: &str, book_id: Option<String>, limit: Option<i64>, oldest_first: Option<bool>) -> Result<Vec<PluginDocumentRow>, CommandError> {
+    let order = if oldest_first.unwrap_or(false) {
+        "ASC"
+    } else {
+        "DESC"
+    };
+    let sql = format!(
+        "SELECT id, json, book_id, anchor, updated_at, revision FROM plugin_documents
+     WHERE plugin_id = ?1 AND collection = ?2
+       AND (?3 IS NULL OR book_id = ?3)
+     ORDER BY updated_at {order}, id {order}
+     LIMIT ?4"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt
+        .query_map(
+            params![plugin_id, collection, book_id, limit.unwrap_or(i64::MAX)],
+            row_to_plugin_document,
+        )
+        ?
+        .collect::<Result<Vec<_>, _>>()
+        ?;
+    Ok(rows)
 }
 
 /// Uninstall wipe — documents die with the plugin (their declared lifecycle).
