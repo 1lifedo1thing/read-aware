@@ -23,6 +23,7 @@ import { createNativeLinkNavigator } from "../lib/native-link-navigation";
 import { attachTocFractions } from "../lib/toc-fractions";
 import { chapterProgressAt, normalizeReadingCursorText } from "../lib/reading-cursor";
 import { readingVisibleText } from "../lib/reading-visible-text";
+import { readingPagePosition } from "../lib/reading-pagination";
 import { relocateDismissesShell } from "../lib/shell-dismissal";
 import type { LoadedBook, ReadingCursor, TocEntry } from "../lib/reader-types";
 import { retainBook } from '../lib/book-lifetime';
@@ -1975,8 +1976,7 @@ export function FoliateReaderView({
           clearSelection();
           setActiveAnnotation(null);
           const fraction = Math.max(0, Math.min(1, detail.fraction ?? 0));
-          const current = detail.location?.current ?? 0;
-          const total = detail.location?.total ?? 0;
+          const { current, total } = readingPagePosition(view.isFixedLayout, detail);
           const cfi = detail.cfi ?? null;
           const href = detail.tocItem?.href ?? null;
           const activeTocIndex = findTocIndexForHref(entries, href);

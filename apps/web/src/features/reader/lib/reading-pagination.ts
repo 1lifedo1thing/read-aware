@@ -1,5 +1,11 @@
 import type { ReadingPaginationSnapshot } from "@read-aware/core";
-import type { FoliateView } from "./foliate-engine";
+import type { FoliateRelocateDetail, FoliateView } from "./foliate-engine";
+
+/** Fixed-layout source sections are pages; engine locations estimate text size. */
+export function readingPagePosition(fixedLayout: boolean, detail: Pick<FoliateRelocateDetail, "section" | "location">): { current: number; total: number } {
+  if (fixedLayout) return { current: detail.section.current + 1, total: detail.section.total };
+  return { current: detail.location.current, total: detail.location.total };
+}
 
 /** Read the renderer's current geometry, never estimate unrendered sections. */
 export function readingPagination(view: FoliateView): ReadingPaginationSnapshot | null {

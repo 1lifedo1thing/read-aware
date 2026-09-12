@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { readingPagination } from "./reading-pagination";
+import { readingPagePosition, readingPagination } from "./reading-pagination";
+import { SectionProgress } from "../../../../foliate-js/src/progress";
 import { attachReadingEngine, createReadingEngineAdapter } from "./reading-engine-adapter";
 import type { FoliateView } from "./foliate-engine";
 import { readingRuntime } from "../../../domain/reading-runtime";
@@ -13,6 +14,15 @@ function fixture() {
   });
   return { view, read: () => readingPagination(view as unknown as FoliateView) };
 }
+
+test("fixed-layout page readouts use source pages rather than size-based engine locations", () => {
+  const progress = new SectionProgress(Array.from({ length: 4 }, () => ({ size: 1000 })), 1500, 1600);
+  for (let index = 0; index < 4; index++) {
+    const detail = progress.getProgress(index, 0, 1);
+    expect(readingPagePosition(true, detail)).toEqual({ current: index + 1, total: 4 });
+    expect(readingPagePosition(false, detail)).toEqual({ current: detail.location.current, total: detail.location.total });
+  }
+});
 
 test("reflow metrics count current-section viewports, excluding engine padding and not source sections", () => {
   const f = fixture();

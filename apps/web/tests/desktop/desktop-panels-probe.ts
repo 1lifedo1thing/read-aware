@@ -19,7 +19,7 @@ export async function preparePanelActors() {
   try {
     for (const actor of ["empty", "read", "write"] as const) {
       const manifest: PluginManifest = { id: `capability-panels-${actor}`, name: `Panel ${actor}`, version: "1.0.0", schemaVersion: 1,
-        permissions: actor === "empty" ? [] : [actor === "read" ? "reading:read" : "reading:write"], requires: { services: { ui: "^1.1.0" } } };
+        permissions: actor === "empty" ? [] : [actor === "read" ? "reading:read" : "reading:write"], requires: { services: { ui: "^1.14.0" } } };
       const worker = await startPluginWorker(manifest, "0.5.4", owned, { moduleUrl: new URL("./panel-probe.ts", import.meta.url).href });
       workers.set(actor, worker); await worker.checkHealth(); worker.promote();
     }

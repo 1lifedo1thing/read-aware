@@ -1,4 +1,4 @@
-# 全量验证第一批：基础门禁与 Text Desk
+# 全量验证：基础门禁与桌面组合流程
 
 起点 `b3b2097a`，本批修复在同一工作树。时间为 2026-09-13（Asia/Singapore）。
 这批是全量验证的部分证据，不能据此把 243 行或全部格式、平台判为通过。
@@ -501,3 +501,39 @@ KF8/AZW3、fb2.zip、CBZ、TXT、HTML七个合成样本均完成；源节数分�
 探针类型检查通过；本批不是各格式前台阅读/选择器/packaged证明，CBR、扩展名别名和损坏
 文件仍待验。生成命令：bun apps/web/tests/desktop/create-format-fixtures.ts，原文件位于私有
 .eval/validation-20260913-formats。详情见[观察记录](./format-observations.json)。
+
+## 第二十二个桌面流程：解锁后 PDF 导航、面板与焦点
+
+用户确认解锁后，原隔离实例 unminimize 恢复 WebView visible；未修改窗口权限。
+沿既有真实 Worker 重跑之前被后台 PDF 绘制超时阻断的导航：恢复位置、45%/80%
+跳转、back/forward、前后翻页完成；缺失 href、旧版本、非法进度分别返回
+reader/target-not-found、reader/stale-location、reader/invalid-target。最终位置为
+第 3 页，visibleText available，实际截图显示对应正文。精确回执见
+[foreground-pdf-focus.json](./foreground-pdf-focus.json)。
+
+三个真实面板 Worker 验证无权限/只读均没有 focus，写权限才开放。已打开的聊天
+输入框聚焦成功，DOM activeElement 是标注 Message 的 TEXTAREA；隐藏聊天返回
+not-focused/hidden。目录聚焦成功。真实外观弹窗打开后，正文聚焦返回 blocked，
+弹窗与焦点保持；关闭后正文聚焦成功，Agent focus_reader 经实际端口同样成功。
+这是 DOM 焦点证据，不是 OS 窗口激活、屏幕阅读器或 iframe 光标证据。
+所有面板 Worker 退役、贡献归零。页宽/浮动窄窗/原生拖放等仍未全部覆盖。
+
+画面暴露并修复固定版式页码来源错误：四页 PDF 的第 3 页原显示 1 / 3，错误使用
+引擎按文本大小估算的位置数。现在固定版式使用源页序号与总页数，可重排文本仍沿
+原位置语义。真实 PDF 第 1–4 页顶部与滑条分别显示 1/4、2/4、3/4、4/4，末页截图
+与正文一致。第 1 页第一次快照 visibleText 为空，第 2–4 页可读；未用页码通过掩盖
+初次正文发布的时序问题。四条受影响分页检查及桌面探针类型检查通过。
+
+![PDF 真实导航后正文](./pdf-navigation-visible.png)
+![聊天面板可见及焦点检查](./chat-focus-visible.png)
+![固定版式页码修复后](./pdf-page-readout-fixed.png)
+
+### Agent 识图失败的参数诊断
+
+对第十五流程 Qwen 失败补一次带工具参数的实际 AgentThread 诊断：120.148 秒截止，
+51 次 list_book_images 均使用 contentVersion="1.0"、sectionIndex=0、省略 bookId，
+均返回 Book content revision changed；没有调用目录发现或 read_book_image。
+本轮直接原因是猜版本后原样重试，不能归因于图片传输或识别精度，也不能把原来
+没有参数的错书 ID 记录解释成同一原因。人工主评 1：未回答图片问题且重复播报。
+保留私有原始记录，不靠重跑直到成功判通过；工具恢复路径/重复失败处理仍需修复。
+本轮图书和临时 AI 配置/密钥已清理恢复。

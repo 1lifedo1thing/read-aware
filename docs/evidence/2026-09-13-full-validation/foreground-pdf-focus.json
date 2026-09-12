@@ -1,0 +1,409 @@
+{
+  "environment": {
+    "platform": "macOS",
+    "app": "com.readaware.app.capability-e2e",
+    "mode": "Tauri debug",
+    "date": "2026-09-13"
+  },
+  "navigation": {
+    "dataDir": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+    "result": {
+      "receipts": [
+        {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/8)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 1
+          },
+          "sessionId": "e08de50d-7195-4cda-aeab-d078ba90c20e",
+          "status": "completed"
+        },
+        {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/4)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 0.5
+          },
+          "sessionId": "e08de50d-7195-4cda-aeab-d078ba90c20e",
+          "status": "completed"
+        },
+        {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/8)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 1
+          },
+          "sessionId": "e08de50d-7195-4cda-aeab-d078ba90c20e",
+          "status": "completed"
+        },
+        {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/4)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 0.5
+          },
+          "sessionId": "e08de50d-7195-4cda-aeab-d078ba90c20e",
+          "status": "completed"
+        },
+        {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/8)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 1
+          },
+          "sessionId": "e08de50d-7195-4cda-aeab-d078ba90c20e",
+          "status": "completed"
+        },
+        {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/8)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 1
+          },
+          "sessionId": "e08de50d-7195-4cda-aeab-d078ba90c20e",
+          "status": "completed"
+        },
+        {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/6)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 0.75
+          },
+          "sessionId": "e08de50d-7195-4cda-aeab-d078ba90c20e",
+          "status": "completed"
+        }
+      ],
+      "revisions": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49
+      ],
+      "snapshot": {
+        "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "change": {
+          "origin": "plugin:capability-reading-probe",
+          "reason": "step"
+        },
+        "controls": {
+          "visible": false
+        },
+        "history": {
+          "canGoBack": true,
+          "canGoForward": false
+        },
+        "location": {
+          "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "cfi": "epubcfi(/6/6)",
+          "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+          "fraction": 0.75
+        },
+        "mode": {
+          "availableModes": [
+            {
+              "defaultUnitId": "sentence",
+              "key": "sentence-reader:guided-reading",
+              "label": "Sentence Reader: Read by sentence or paragraph",
+              "units": [
+                {
+                  "id": "sentence",
+                  "label": "By sentence"
+                },
+                {
+                  "id": "paragraph",
+                  "label": "By paragraph"
+                }
+              ]
+            }
+          ],
+          "cfiRange": null,
+          "label": "Sentence Reader: Read by sentence or paragraph",
+          "modeKey": "sentence-reader:guided-reading",
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "unavailable",
+          "unavailableReason": "unsupported-format",
+          "unitId": "paragraph",
+          "units": [
+            {
+              "id": "sentence",
+              "label": "By sentence"
+            },
+            {
+              "id": "paragraph",
+              "label": "By paragraph"
+            }
+          ]
+        },
+        "pagination": {
+          "flow": "scrolled",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 4,
+            "index": 2
+          }
+        },
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "mode-inactive"
+        },
+        "readerDemand": {
+          "active": true,
+          "idleAt": 1789246417688,
+          "lastActivityAt": 1789246416188,
+          "reason": "relocate"
+        },
+        "revision": 49,
+        "selection": null,
+        "sessionId": "e08de50d-7195-4cda-aeab-d078ba90c20e",
+        "sourceRevision": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+        "status": "ready",
+        "visibleText": "Reading paint probe - page 3 Page 3, line 1: navigation must wait for this page. Page 3, line 2: navigation must wait for this page. Page 3, line 3: navigation must wait for this page. Page 3, line 4: navigation must wait for this page. Page 3, line 5: navigation must wait for this page. Page 3, line 6: navigation must wait for this page. Page 3, line 7: navigation must wait for this page. Page 3, line 8: navigation must wait for this page. Page 3, line 9: navigation must wait for this page. Page 3, line 10: navigation must wait for this page. Page 3, line 11: navigation must wait for this page. Page 3, line 12: navigation must wait for this page. Page 3, line 13: navigation must wait for this page. Page 3, line 14: navigation must wait for this page.",
+        "visibleTextState": {
+          "source": "pdf-text-layer",
+          "status": "available",
+          "truncated": false
+        }
+      },
+      "trace": {
+        "invalid": "reader/invalid-target",
+        "missing": "reader/target-not-found",
+        "stale": "reader/stale-location"
+      }
+    }
+  },
+  "focus": {
+    "agent": {
+      "content": [
+        {
+          "text": "{\"target\":\"content\",\"sessionId\":\"a4d733d4-f762-416e-ae01-48c40b55000b\",\"bookId\":\"8ced004f-efe3-408f-80a8-a0ebffec84d3\",\"status\":\"focused\"}",
+          "type": "text"
+        }
+      ]
+    },
+    "permissions": {
+      "empty": false,
+      "read": false,
+      "write": true
+    },
+    "steps": [
+      {
+        "active": {
+          "aria-label": "Message",
+          "contenteditable": null,
+          "role": null,
+          "tag": "TEXTAREA"
+        },
+        "case": "visible-chat",
+        "receipt": {
+          "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "sessionId": "a4d733d4-f762-416e-ae01-48c40b55000b",
+          "status": "focused",
+          "target": "chat"
+        },
+        "visibility": "visible"
+      },
+      {
+        "case": "hidden-chat",
+        "receipt": {
+          "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "reason": "hidden",
+          "sessionId": "a4d733d4-f762-416e-ae01-48c40b55000b",
+          "status": "not-focused",
+          "target": "chat"
+        }
+      },
+      {
+        "active": {
+          "label": null,
+          "role": null,
+          "tag": "DIV"
+        },
+        "case": "visible-toc",
+        "receipt": {
+          "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "sessionId": "a4d733d4-f762-416e-ae01-48c40b55000b",
+          "status": "focused",
+          "target": "toc"
+        }
+      },
+      {
+        "case": "appearance-blocks-content",
+        "dialogPresent": true,
+        "receipt": {
+          "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "reason": "blocked",
+          "sessionId": "a4d733d4-f762-416e-ae01-48c40b55000b",
+          "status": "not-focused",
+          "target": "content"
+        },
+        "unchanged": true
+      },
+      {
+        "active": {
+          "label": null,
+          "tag": "DIV"
+        },
+        "case": "content-after-dialog",
+        "receipt": {
+          "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "sessionId": "a4d733d4-f762-416e-ae01-48c40b55000b",
+          "status": "focused",
+          "target": "content"
+        }
+      }
+    ]
+  },
+  "pageReadoutFix": {
+    "rows": [
+      {
+        "header": "Reading Paint Probe1 / 4 · 25%",
+        "page": 1,
+        "pagination": {
+          "flow": "scrolled",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 4,
+            "index": 0
+          }
+        },
+        "receipt": {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/2)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 0.25
+          },
+          "sessionId": "cd0ce5be-15af-492a-af72-dc43f30d6860",
+          "status": "completed"
+        },
+        "slider": "1 / 4 · 25%",
+        "textStart": ""
+      },
+      {
+        "header": "Reading Paint Probe2 / 4 · 50%",
+        "page": 2,
+        "pagination": {
+          "flow": "scrolled",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 4,
+            "index": 1
+          }
+        },
+        "receipt": {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/4)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 0.5
+          },
+          "sessionId": "cd0ce5be-15af-492a-af72-dc43f30d6860",
+          "status": "completed"
+        },
+        "slider": "2 / 4 · 50%",
+        "textStart": "Reading paint probe - page 2 Page 2, line 1: "
+      },
+      {
+        "header": "Reading Paint Probe3 / 4 · 75%",
+        "page": 3,
+        "pagination": {
+          "flow": "scrolled",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 4,
+            "index": 2
+          }
+        },
+        "receipt": {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/6)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 0.75
+          },
+          "sessionId": "cd0ce5be-15af-492a-af72-dc43f30d6860",
+          "status": "completed"
+        },
+        "slider": "3 / 4 · 75%",
+        "textStart": "Reading paint probe - page 3 Page 3, line 1: "
+      },
+      {
+        "header": "Reading Paint Probe4 / 4 · 100%",
+        "page": 4,
+        "pagination": {
+          "flow": "scrolled",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 4,
+            "index": 3
+          }
+        },
+        "receipt": {
+          "location": {
+            "bookId": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "cfi": "epubcfi(/6/8)",
+            "contentVersion": "sha256:009803b8fe1ccb72f9f53a91ae11ceea5bccf44d3c04c7f86835cf777d7d407e",
+            "fraction": 1
+          },
+          "sessionId": "cd0ce5be-15af-492a-af72-dc43f30d6860",
+          "status": "completed"
+        },
+        "slider": "4 / 4 · 100%",
+        "textStart": "Reading paint probe - page 4 Page 4, line 1: "
+      }
+    ],
+    "status": "done"
+  },
+  "cleanup": {
+    "panelContributions": 0,
+    "vision": {
+      "cleaned": true,
+      "configRestored": true,
+      "keyRestored": true
+    }
+  }
+}
