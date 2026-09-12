@@ -185,7 +185,37 @@
       "heading": "Return Visit",
       "text": "On reopening, the same synthetic book remains available in the library."
     },
-    "startupNote": "Startup closed one reading session left open by the previous run; persisted reading time and position retained. Not crash-recovery proof."
+    "startupNote": "Startup closed one reading session left open by the previous run; persisted reading time and position retained. Not crash-recovery proof.",
+    "nativeWindowAndFocus": {
+      "fullScreenEntry": "View > Toggle Full Screen",
+      "fullScreenObserved": true,
+      "entryPlacement": {
+        "normal": {
+          "x": 312,
+          "y": 142,
+          "width": 1200,
+          "height": 800
+        },
+        "maximized": false,
+        "fullscreen": true
+      },
+      "restoredPlacement": {
+        "normal": {
+          "x": 312,
+          "y": 142,
+          "width": 1200,
+          "height": 800
+        },
+        "maximized": false,
+        "fullscreen": false
+      },
+      "actualFullScreenPixelsObserved": true,
+      "immersiveTitlebar": "Native window buttons absent while reader shell hidden; content tap reveals shell and native close/fullscreen/minimize buttons",
+      "chatOpenFocus": "Message text entry area",
+      "chatCloseFocus": "Reader container",
+      "finalScreen": "Library, one synthetic book retained",
+      "minorObservation": "Tiny FB2 header shows 0 / 1 at 100%, while position slider detail shows 1 / 1 at 100%; recorded as unclosed display inconsistency."
+    }
   },
   "databaseComparison": {
     "beforeIntegrity": "ok",
