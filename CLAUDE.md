@@ -1,329 +1,74 @@
-## Project Context
+# ReadAware
 
-- Product: `ReadAware`
-- Type: AI-native reading application
-- Core capability: context-rich reading and AI-assisted understanding
-- Repo: `monorepo` managed by `Turborepo` over `bun` workspaces (`apps/*`, `packages/*`, `plugins/*`)
-- Runtime shell: a `Tauri` desktop app **only** (the shipping target) that wraps the React web frontend. The web build is just Tauri's bundled frontend plus local dev / Storybook — not a standalone browser or PWA product
-- Frontend: `React 19` as a client-rendered SPA (no SSR)
-- Routing: `TanStack Router` (file-based, via the Vite router plugin)
-- Styling: `Tailwind CSS v4` (tokens via `@theme` in `apps/web/src/index.css`)
-- State management: `Jotai`
-- Bundler: `Vite`
-- Package manager: `bun`
+AI-native reading application. Bun workspaces and Turborepo; React 19 SPA,
+TanStack Router, Jotai, Tailwind CSS v4, Vite, and a Tauri 2 desktop shell.
+`AGENTS.md` links to this file; keep these instructions useful across coding agents.
 
-## AI Architecture Decisions
+## Product and architecture boundaries
 
-> **Implementation status** (v0.3.0 — keep this block honest; the sections
-> below describe **decided direction**, this one describes what actually runs):
->
-> - Frontend-only monorepo (`apps/web` + `apps/desktop`); the Python backend is
->   gone.
-> - **Persistence is SQLite**, not the old IndexedDB/localStorage interim layer.
->   IndexedDB survives only in one-time migration code and a font cache.
-> - **Event sourcing is live for writes.** Every state change goes through
->   `commit_events`, which appends to `domain_events` and applies it to the
->   projections in ONE transaction (`storage/apply.rs`).
->   `rebuild_projections` replays the log into the tables;
->   `verify_projections` replays into scratch and diffs, so drift is
->   detectable rather than assumed absent.
-> - **Known gap:** rows written before that landed still carry mutations the
->   log never recorded (a recolor, a memory reinforcement). `verify_projections`
->   reports them; they cannot be recovered, only outgrown.
-> - **Sync engine is live** (relay = Cloudflare Worker + DO mailbox + R2,
->   E2E-sealed; docs/sync-engine.md). Since 2026-09-07: exact bookkeeping
->   (`unverified` rows settle via `/v1/events/have` + blob HEAD, and a pull's
->   `seqs` acknowledge pushes — a re-login never re-uploads), projection
->   checkpoints (replay = newest valid checkpoint + tail; a published
->   `snapshot:` blob bootstraps a new device in one download, the log
->   backfills behind it), and reading is modelled as SESSIONS: ticks and page
->   turns land in the `reading_sessions_pending` scratch pad, one
->   `book.sessionRecorded` (time + position, last-observed-wins) per closed
->   hour bucket — `book.progressed` / `book.timeRecorded` are legacy.
-> - **Profile/entity projections are live** (schema 33): profile field patches,
->   retained entity definitions/aliases and flat merge redirects participate in
->   replay and checkpoints. The summary migrates from KV through a transaction;
->   prompt reads, onboarding, memory 2 profile queries/conditional edits and v1
->   backup summary restore share this projection. Entity consumers and the
->   consolidation pipeline are not built yet.
-> - **Book memory v1 is live**: `book.chapterDigested` events project to
->   `chapter_digests` (per-finished-chapter summary + entity registry,
->   names spelled as THIS edition spells them), filled by an idle pipeline
->   and injected into the book-thread system prompt behind the spoiler
->   boundary. Selection turns additionally get deterministic grounding
->   context (`runtime/grounding-context.ts`) assembled host-side.
-> - **Digests are narrativity-flavored**: the idle pipeline first classifies
->   an unclassified book (`book.narrativityClassified` → `books.narrativity`);
->   narrative books digest to a character/relation graph behind the spoiler
->   fence, expository books to a concept graph ("argument so far") with no
->   fence. Flavor-mismatched rows (reclassified book) redigest lazily.
-> - Target on-device schema: `docs/data-model.md`. Current audit:
->   `docs/review-0.3.0.html`.
+- The shipping reading app is desktop-only. `apps/web` supplies Tauri's frontend
+  and local dev/Storybook; it is not a standalone browser/PWA product.
+  `apps/landing` is the separate public marketing site.
+- Data and retrieval are local: SQLite is the source of truth, with FTS and
+  structured retrieval. No embeddings/vector store in the default architecture.
+  LLM inference is remote through BYO keys or a thin proxy.
+- Application state writes go through event-sourced domain commands and
+  `commit_events`; event append and projection updates share one transaction.
+  Keep projections rebuildable. Use the existing StorageAdapter and domain seams.
+- Sync is an E2E-encrypted event/blob relay, not a business-logic backend.
+- The product uses one core agent over deterministic pipelines. Continuity lives
+  in memory, not a transcript dump; memory does not split per chat thread.
+- `foliate-js` is the single reader engine. Keep it vendored as static runtime
+  modules; read original files without conversion. Surface DRM as unsupported.
+- Keep module responsibilities clear: components render, hooks own React state
+  and effects, and pure transformations belong in reusable modules.
 
-- Product architecture: single-agent system (one orchestrator over deterministic pipelines, not one LLM loop doing everything)
-- User experience: the in-book chat is one persistent surface per book (prompt assembly is stateless per turn — continuity lives in the memory layer, not the transcript); the global (Context page) chat supports multiple user-created threads. Memory never splits per thread
-- System model: memory-first, not transcript-first
-- Deployment model: **local-first** — data and retrieval live on-device; the remote backend is a sync/relay layer, not where business logic lives
-- Two independent axes — keep them separate:
-  - **Data + retrieval: local** (on-device store + SQLite FTS; no vector store — see Storage Responsibilities)
-  - **LLM inference: remote** (BYO API key or a thin proxy; no local model required)
-- Frontend: a `React + TypeScript` SPA, shipped **only** inside the `Tauri` desktop app (desktop-only)
-- On-device storage: `SQLite` only (source of truth + FTS retrieval). **No embeddings / vector store in the default architecture** (decided 2026-07-02, see `docs/agent-architecture.md` §4)
-- Remote backend: sync + relay only (see Storage Responsibilities)
+## Work and verification
 
-### Agent Model
+- Keep changes within the agreed deliverable. Architecture guidance does not
+  authorize completing every future capability described in a reference.
+- Choose validation by the changed behavior. Product import, reading, storage,
+  IPC and AI integration acceptance must use the running Tauri app. Plain browser
+  checks can verify isolated frontend/layout behavior, not desktop integration.
+  Production CSP or packaging changes need the packaged desktop build.
+- Respect the user's implementation and acceptance phases. Mark deferred runtime
+  acceptance explicitly pending; local checks do not close that boundary.
+- Validate document facts and links for content edits. Check rendered layout or
+  interactions when those change or content creates a concrete rendering risk;
+  unchanged templates do not require repeating the full visual suite.
+- Preserve the task's worktree changes. Automatically commit coherent, validated
+  units with only their related files; do not push without authorization.
 
-- ReadAware uses one core agent that orchestrates the product's intelligence
-- This agent is responsible for:
-  - building and updating the user's profile
-  - updating user memory over time
-  - retrieving relevant book notes, highlights, and prior conversations
-  - assembling the right context for the current reading moment
-- Do not model the product as multiple user-visible agents unless the product direction explicitly changes
+## Code entrypoints
 
-### Memory and Context
+- `apps/web/src/domain`: shared domain reads, commands, and subscriptions.
+- `apps/web/src/features`: feature UI and orchestration; `platform/ipc` is the IPC seam.
+- `apps/desktop/src-tauri`: native commands, SQLite, filesystem and shell.
+- `packages/core`: contracts, entities, events and StorageAdapter.
+- `packages/agent`: agent runtime, tools, memory and context assembly.
+- `packages/plugin-types` and `plugins`: public plugin API and first-party consumers.
+- `packages/ui`: shared design system. Use `@read-aware/ui` components,
+  `@read-aware/ui/cn`, and `@phosphor-icons/react` icons for product UI.
 
-- The core system problem is memory management, not chat history management
-- User-visible chat should feel continuous, but the system should not rely on dumping all prior messages into the prompt
-- Treat chat transcripts as raw source material, not as the memory layer itself
-- Memory is **event-sourced**. Model it in layers:
-  - `raw events` — append-only, immutable; **this is the unit of sync** (see Storage Responsibilities)
-  - working memory — local projection
-  - long-term user memory — local projection
-  - book / highlight / note memory — local projection
-  - exportable context bundles — local projection
-- Everything above `raw events` is a **local projection rebuilt from the event log** — projections are recomputed on-device, never synced directly. This is enforced, not aspirational: `storage/apply.rs` is the only writer of a projection row, and `rebuild_projections` can reproduce every one of them from the log. One thing is deliberately NOT derived and is excluded from the check: chat presentation state (`parts_json`, `error`). Covers are fully derived: `book.coverExtracted` projects `books.cover_status`/`cover_blob_key` (the verdict — `ready` with a synced `cover:` blob, or `none`), the bytes live in the device-local blob registry, and the shelf paints them through the `rablob://` scheme rather than any data-URL column
-- Design the **write / consolidation pipeline** as explicitly as retrieval; it is the harder half:
-  - promotion from raw events into long-term memory (summarization / consolidation)
-  - conflict resolution when new information contradicts old memory
-  - decay / forgetting so memory does not grow into noise
-  - dedup / entity resolution behind "repeated appearance across books or conversations"
-- Memory retrieval should consider more than text-match relevance, including:
-  - relevance to the current reading goal
-  - recency
-  - importance
-  - explicit user feedback
-  - repeated appearance across books or conversations
+## References by task
 
-### Storage Responsibilities
+Read only the references needed for the current change. Paths are repo-relative.
 
-- On-device `SQLite` is the source of truth for structured application data:
-  - users / profile
-  - books
-  - highlights
-  - notes
-  - raw events (the append-only log)
-  - memory metadata
-  - context bundle versions
-- **Retrieval is structured, not vector-based**: SQLite FTS + scope/recency/importance signals, plus agentic iterative search (the agent reformulates queries, walks the TOC, reads chapters). The product's unit of intelligence is the user's reading trace (annotations, questions, memories), not the book corpus — retrieval needs are deliberately lightweight
-- No embedding model, no LanceDB in the default build. If FTS + agentic search ever proves insufficient, the upgrade ladder is: embed memories + annotations first, full text last — and any vector index would be a derived, rebuildable, never-synced projection
-- The remote backend is **sync + relay only**, never a source of truth. Its only jobs:
-  - identity / auth
-  - durable storage of the (preferably E2E-encrypted) event log + large blobs (book files, derivatives) for multi-device merge and new-device bootstrap
-  - a change feed to sync event logs across devices
-  - optionally, an LLM proxy (to hide / meter API keys)
-- The backend holds no business logic — consolidation, retrieval, and bundle assembly all run on-device
-- Reach storage through a pluggable `StorageAdapter` (native filesystem + SQLite on desktop). The abstraction stays for testability and clean layering — **not** to support an in-browser engine port
+| Task | Reference |
+| --- | --- |
+| Memory, retrieval, storage or reader architecture | [Architecture decisions](docs/agent-guidance/architecture.md); `docs/agent-architecture.md` or `docs/data-model.md` for the affected design |
+| Sync behavior | [Sync engine](docs/sync-engine.md) |
+| Product UI and component conventions | [UI conventions](docs/agent-guidance/ui.md) |
+| Error handling and IPC | [Error contract](docs/agent-guidance/errors.md); keep stable codes, localized user messages, logged raw errors, honest retries and visible read/write failures |
+| Plugin boundaries | [Plugin system](docs/plugin-system.md) |
+| Host/Agent/plugin capability delivery | `docs/host-capability-matrix.data.ts`, `docs/host-capability-model.data.ts`, and [delivery ledger](docs/host-capability-delivery.md); generated MD/HTML are outputs |
+| Agent behavior evals | `.agents/skills/evals/SKILL.md` |
+| Authorized release work | `.agents/skills/publishing/SKILL.md` |
+| Historical migrations | [Historical implementation notes](docs/agent-guidance/implementation-history.md); not current status |
 
-### Context Portability
+## Commands
 
-- Context must be dynamically updatable
-- Context must be exportable at any time
-- Exported context should be usable by external agents or systems
-- Prefer structured context bundles over ad hoc prompt strings
-- Likely bundle types include:
-  - `user_profile_context`
-  - `reading_intent_context`
-  - `book_memory_context`
-  - `conversation_insights_context`
-
-### Platform Direction
-
-- **Local-first**: the app must be fully usable offline against on-device data; the network is for sync and (optional) remote inference, not for core reads/writes
-- **Desktop-only**: the product ships as the Tauri desktop app. The web build exists only as Tauri's bundled frontend and for local dev / Storybook — there is no standalone browser app, PWA, or in-browser storage engine
-- **Verify against the desktop app, never the web build in a browser**: outside the Tauri shell the app is UI shell only — no Tauri IPC, no SQLite/FS storage, no raw-IPC book blobs — so anything exercised in a plain browser (imports, reading, persistence, CSP, AI calls) proves nothing about product behavior. Exercise changes in the running Tauri app (see the Tauri MCP bridge); anything gated on the packaged build (e.g. the production CSP) needs a real `bun run build:desktop` build
-- **E2E by default**: end-to-end encrypt synced data. With no server-backed web client to feed, the server stays a dumb encrypted relay — there is no E2E-vs-web-client tradeoff to weigh
-- Do not use no-code / visual agent platforms as the core product architecture
-- Keep the AI layer code-first and product-native
-- Prefer explicit state, explicit memory writes, and explicit retrieval pipelines over opaque agent magic
-
-### Reader Engine Strategy
-
-- Single reading engine: **`foliate-js`** renders every supported format —
-  `EPUB`, `MOBI`, `AZW3`, `FB2`, `PDF` — under one selection / annotation / CFI /
-  progress model
-- The engine is **vendored**, served as a static ES-module tree from
-  `apps/web/public/foliate-js` and loaded at runtime via script injection (see
-  that folder's `VENDOR.md` and `features/reader/lib/foliate-engine.ts`); do not
-  bundle it
-- Read original files directly — **no format conversion, no Calibre, no
-  normalized derivatives**. Keep only the imported source file
-- Surface DRM-protected files as unsupported with explicit UX messaging
-
-## Design System
-
-The component library is its own package, `@read-aware/ui` (`packages/ui/`), with co-located Storybook stories. Run `bun run storybook` to browse (Storybook is hosted by `apps/web` and scans both `packages/ui` and feature stories).
-
-### Design Tokens
-
-Defined in `apps/web/src/index.css` via `@theme` block:
-- Colors: `paper`, `paper-warm`, `border` (plus Tailwind's built-in `stone-*` palette)
-- Fonts: `sans` (Inter), `serif`, `mono`
-- Sizes: `text-eyebrow` (11px), `text-caption` (12px)
-- Leading: `leading-display` (0.98), `leading-body` (2rem)
-
-### Component Library
-
-Always use these components instead of raw HTML + Tailwind classes:
-
-**Typography:** `Display`, `Heading`, `Body`, `Eyebrow`, `Caption`
-**Form controls:** `TextField`, `SearchField`, `TextArea`, `Select`, `Checkbox`, `Radio`, `Toggle`, `ChoiceGroup`
-**Buttons:** `Button` (solid/outline/ghost/link/danger), `IconButton`
-**Navigation:** `NavItem`, `Breadcrumb`, `Tabs`
-**Data display:** `Avatar`, `Badge`, `Tag`, `Kbd`, `DefinitionList`, `Metadata`, `Metric`, `Progress`, `Quote`, `ItemList`, `Skeleton`, `Spinner`
-**Layout:** `Stack`, `Columns`, `Section`, `Detail`, `Divider`, `Card` (compound: Header/Body/Footer)
-**Feedback:** `Alert`, `EmptyState`, `Tooltip`
-**Overlays:** `Dialog`, `Sidebar`, `DropdownMenu`, `Popover`, `Accordion`
-
-Import from the package barrel: `import { Button, Card, Display } from "@read-aware/ui";`
-
-### Utility
-
-Use `cn()` from `@read-aware/ui/cn` for className composition (clsx + tailwind-merge). The `useLocalAtom` hook is available from `@read-aware/ui/state`.
-
-### Design Principles
-
-- Editorial restraint: no gradients, no badges, no ornamental highlights
-- Paper-toned canvas, monochrome stone palette, warm and quiet
-- Typography carries hierarchy; the interface stays visually spare
-- Serif for display, sans for everything else
-- `stone-600` minimum for text on paper backgrounds (WCAG AA)
-
-### Iconography Rule
-
-- Use `@phosphor-icons/react` for all product UI icons
-- Do not hand-draw inline SVG icons in feature or app code
-- Keep icons functional and quiet (avoid decorative icon usage)
-
-## Project Structure
-
-Monorepo managed by Turborepo + bun workspaces. Commands run from the repo root:
-`bun run dev` (Tauri desktop), `bun run dev:web` (web only), `bun run dev:landing`,
-`bun run build`, `bun run build:desktop`, `bun run storybook`, `bun run test`,
-`bun run typecheck`.
-
-```
-read-aware/
-  package.json         # workspace root: bun workspaces + turbo scripts
-  turbo.json           # Turborepo task graph
-  apps/
-    web/               # React 19 + TanStack Router SPA (Vite)
-      index.html       # SPA entry document
-      vite.config.ts
-      .storybook/      # Storybook config
-      src/
-        main.tsx       # SPA mount (createRoot + RouterProvider)
-        router.tsx     # Router factory + type registration
-        routes/        # File-based routes (__root.tsx, index.tsx)
-        index.css      # Tailwind v4 @theme tokens (+ @source for packages/ui)
-        domain/        # Shared domain API layer: per-domain reads / commands /
-                       #   event subscriptions over the dual-write seams,
-                       #   origin-parameterized; consumed by the plugin runtime
-                       #   (plugin:<id>) and the agent ports (agent)
-        features/      # Feature modules (domain-specific UI)
-          shelf/       # Book collection / library view
-          reader/      # Reading experience
-          context/     # AI-assisted context panel
-          annotations/ # User annotations
-          ai/          # AI chat panel
-          plugins/     # Plugin runtime, host surfaces, marketplace UI
-          command/     # Command palette + shortcut registry
-          menus/       # Native / in-app menu wiring
-          stats/       # Reading statistics surfaces
-          update/      # App update checks and prompts
-          settings/    # Preferences
-          navigation/  # App-level nav
-          library/     # Content management
-        state/         # Jotai UI atoms (ui.ts)
-    desktop/           # Tauri 2 desktop shell (wraps apps/web) — the shipping app
-      src-tauri/       # Rust crate, tauri.conf.json, capabilities, icons
-    landing/           # @read-aware/landing — readaware.app marketing site
-  packages/
-    ui/                # @read-aware/ui — design system (components, typography,
-                       #   cn, useLocalAtom) + co-located stories & MDX docs
-    core/              # @read-aware/core — local-first engine contracts:
-                       #   entities, event-sourced DomainEvent, StorageAdapter
-    agent/             # @read-aware/agent — the core agent: models, tools,
-                       #   memory, context assembly, structured output
-    plugin-types/      # @read-aware/plugin-types — the public plugin API surface
-    tsconfig/          # @read-aware/tsconfig — shared TypeScript base config
-  plugins/             # First-party plugins, each built via scripts/build-plugin.ts
-    dictionary/        # @read-aware/plugin-dictionary — word lookup & vocabulary
-    editorial-themes/  # @read-aware/plugin-editorial-themes — app/reader themes
-    rss-reader/        # @read-aware/plugin-rss-reader — RSS/Atom feed reader
-    sentence-reader/   # @read-aware/plugin-sentence-reader — sentence/paragraph modes
-    tts/               # @read-aware/plugin-tts — text-to-speech synthesis
-```
-
-Note: design-system imports use the `@read-aware/ui` package barrel, e.g.
-`import { Button, Card, Display } from "@read-aware/ui";` (and `@read-aware/ui/cn`,
-`@read-aware/ui/state`).
-
-## Conventions
-
-- Components use `forwardRef` for form controls, plain functions for everything else
-- Polymorphic components use `as` prop with `ElementType` + `ComponentPropsWithRef`
-- All interactive components must be keyboard-navigable with proper ARIA
-- Stories co-located next to components: `Component.stories.tsx`
-- Storybook hierarchy: `Design System/Components/...`, `Design System/Guidelines/...`, `Interface/...`
-
-### Responsibility Boundaries
-
-- Every file must have one clear responsibility. Do not let rendering, state orchestration, DOM measurement, async data flows, and pure data transforms accumulate in the same file.
-- Components should focus on UI structure and prop composition. If a component starts owning non-trivial effects, async workflows, or cross-feature coordination, extract that logic into a hook.
-- Hooks should own stateful client logic, browser APIs, subscriptions, measurements, and async orchestration. If the logic does not need React, it should not live in a hook.
-- `lib/` and `utils/` modules should stay pure and reusable. Put formatting, derived data, mappers, and domain helpers there instead of inside components.
-- Before adding new code to an existing file, first decide whether it belongs in a component, a hook, or a util. Prefer extraction over growing a mixed-responsibility file.
-
-## Error Handling
-
-The app has ONE error-handling contract (landed 2026-08-30; see
-`packages/core/src/errors.ts`, `apps/web/src/i18n/describe-error.ts`,
-`apps/desktop/src-tauri/src/error.rs`):
-
-- **Stable codes, not prose.** Failures carry a machine-readable code
-  (`fs/not-found`, `db/locked`, `ai/rate-limited`, `sync/network`…) via
-  `AppError` (TS) / `CommandError` (Rust). Codes are only ever added, never
-  renamed — persisted `errorCode` columns and localized copy match on them.
-- **Raw error text never reaches the user.** `error.message` goes to the file
-  log (`createLogger(...)`) where the diagnostics bundle picks it up; the UI
-  renders `describeError(error, { fallback })` / `describeErrorCode(code)` —
-  localized copy from `common:errors.*` (all 8 locales). No `{error.message}`
-  in JSX, no `t("...", { message })` interpolation of raw text.
-- **IPC goes through the seam.** Import `invoke` from `platform/ipc`, never
-  from `@tauri-apps/api/core` — raw invoke rejects with a bare string, the
-  seam normalizes it to an `IpcError` with a code. New Rust commands return
-  `Result<T, CommandError>` (storage/secrets already do); legacy `String`
-  errors map to `ipc/unknown`.
-- **Catch blocks pick one of three, always:** (a) a comment naming why
-  swallowing is correct (best-effort cache, platform no-op, parse fallback),
-  (b) a log line, or (c) a user-facing surface. Silent `catch {}` on anything
-  the user would care about is a bug.
-- **Read failure ≠ empty state.** A failed load renders an error state
-  (`InlineError`, usually with retry), never `catch → []` — an empty shelf and
-  a locked database must not look alike.
-- **Write failure must be told.** A failed save gets a destructive toast; a
-  write-through snapshot (localKV, secret-store) rolls back and emits
-  `local-write-failed` instead of pretending the change stuck.
-- **Three presentation surfaces only:** destructive `useToast` (an action
-  failed, transient), `InlineError` from @read-aware/ui (persistent in-surface
-  failure, quiet stone palette per the design system), and the form-control
-  `error` prop (field validation). **Never a Dialog** — errors don't
-  interrupt; the only full-screen failures are boot failure and the error
-  boundaries.
-- **Retry only when honest.** `describeError().retryable` says whether "try
-  again" can succeed; don't offer retry on terminal failures (quota, bad
-  input), offer the fix surface instead (`action`, e.g. open AI settings).
-- **Background pipelines log.** Anything running without a surface (memory
-  extraction, digests, plugin schedules, sync cycles) takes a logger
-  (`deps.log` in @read-aware/agent) and warns on every degraded fallback.
+Run from the repo root using bun. Select commands relevant to the change:
+`bun run dev` (Tauri), `bun run dev:web`, `bun run dev:landing`,
+`bun run storybook`, `bun run test`, `bun run typecheck`, `bun run build`,
+`bun run build:desktop`. Consult the affected package's scripts for focused checks.
