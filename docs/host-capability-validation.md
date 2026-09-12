@@ -93,7 +93,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | UI01 | 书架/Agent/统计/设置与集合页面导航 | F6 | 本机真实Worker导航书架/集合/Agent/统计/阅读设置/预填搜索、Agent双scope导航回执通过；集合DOM核实，其他前台画面待验，见第二十三流程 |
 | UI02 | 命令面板搜索/书架布局/排序/分组/多选 | F6 | 本机集合两书多选在列表/标题排序/作者分组后保持，DOM/原生持久值一致；搜索结果/多选续页等待验，见第二十三流程 |
 | UI03 | 发现/执行宿主命令与可用条件 | F6 | 本机真实Worker按权限发现commands/checked/不可用原因，执行及缺失目标/旧revision/无阅读控制拒绝通过；完整命令集待验，见第二十三流程 |
-| UI04 | 快捷键查询、重绑、冲突与重置 | F6 | 待验 |
+| UI04 | 快捷键查询、重绑、冲突与重置 | F6 | 编译Workspace Profiles表单冲突拒绝、mod+alt+p绑定/实际WebView派发、默认恢复通过；其他快捷键/输入上下文待验，见第二十七流程 |
 | UI05 | 菜单可见/溢出位置及自定义重排 | F6 | 待验 |
 | CFG01 | 设置 discover/read/update 与动态选项 | F6 | 本机Agent/Worker设置查询/原子修改/动态主题、编译Workspace Profiles v2十项预设保存/应用/确认删除、宿主批准与过期保护/真分页通过；完整目录及预设重启/v1待验，见第二十六流程 |
 | CFG02 | 全局/本书/全书阅读设置覆盖 | F6 | 本机真实Worker全局/两书覆盖/全书修改及原生重读通过；FB2外观作用域切换及正文21px↔17px通过；其他呈现与进程重启待验，见第二十五流程 |
@@ -166,7 +166,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET56 | shelf.layout | F6 | 本机真实Worker grid→list，命令checked/列表DOM/原生KV一致并恢复；其他入口待验，见第二十三流程 |
 | SET57 | shelf.group | F6 | 本机真实Worker none→author，作者分组DOM/原生KV一致并恢复；其他分组/入口待验，见第二十三流程 |
 | SET58 | shelf.sort | F6 | 本机真实Worker recent→title，列表顺序/原生KV一致并恢复；其他排序/入口待验，见第二十三流程 |
-| SET59 | shortcuts.search | F6 | 待验 |
+| SET59 | shortcuts.search | F6 | 插件冲突写未改变mod+k，实际按键打开搜索通过；搜索自身重绑及输入上下文待验，见第二十七流程 |
 | SET60 | shortcuts.settings | F6 | 待验 |
 | SET61 | shortcuts.new-conversation | F6 | 待验 |
 | SET62 | shortcuts.next-page | F6 | 待验 |
@@ -235,7 +235,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SYS14 | 系统字体枚举和字体资产加载 | F8 | 待验 |
 | SYS15 | 原生日志/诊断包/崩溃报告导出与发送 | F8 | 待验 |
 | SYS16 | 检查/下载/安装更新与重启 | F8 | 待验 |
-| SYS17 | 窗口最小化/最大化/全屏/关闭/标题栏 | F8 | 待验 |
+| SYS17 | 窗口最小化/最大化/全屏/关闭/标题栏 | F8 | 编译Workspace Profiles最大化/最小化/还原：原生flag与Worker实时显示通过；全屏请求后仍false，关闭/标题栏/前台画面待验，见第二十七流程 |
 | SYS18 | Android/iOS 遗留桥：状态栏/安全区/音量键/商店 | F8 | 待验 |
 | OPS01 | 同步连接/断开/立即同步/状态与积压 | F8 | 待验 |
 | OPS02 | 事件/Blob E2E 加解密、游标、去重/确认与重试 | F8 | 待验 |

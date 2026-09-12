@@ -692,3 +692,30 @@ stale-cursor。随后批准应用这条已删除预设，返回 conflict，当�
 [workspace-profiles-observations.json](./workspace-profiles-observations.json)。
 仍待验：保存预设的Worker/进程重启、v1兼容真实运行、字体加载与分页、
 窗口/快捷键入口，以及实际模型如何选择这些工具。
+
+## 第二十七个桌面流程：快捷键重绑与实际窗口状态
+
+编译 Workspace Profiles 0.6.0 的真实 Worker，使用已有 Keyboard shortcut 表单。
+默认插件无绑定，搜索为 mod+k。设置 Custom、Command/Ctrl、k 后，被真实
+Shortcut conflict 拒绝；搜索仍 mod+k，插件仍null且overridden=false。日志保存
+冲突事实，未把回执失败误报成绑定成功；本轮没有捕获其错误提示的前台画面。
+
+改为 mod+alt+p 后原生 read-aware-shortcuts 与目录metadata一致，
+overridden=true/conflicted=false。通过 WebView 的 Meta+Alt+p 按键事件，实际
+快捷键派发打开 Workspace Profiles。重新进表单选 Default、Apply，绑定null、
+overridden=false，同一按键不再打开。Meta+k 仍打开真实搜索入口。这里验证的是
+应用WebView快捷键路由，不是OS全局快捷键或所有输入焦点/所有快捷键上下文。
+
+插件 Window 实时视图：Maximize 后原生 maximized=true、视图 Maximized Yes；
+Restore 后false；Minimize 后原生 minimized=true、视图 Minimized Yes；
+再次Restore后false。初次立即读时原生已变化、DOM尚旧，随后观察到实时更新，
+因此保留意图回执与最终观察的区别。全屏按钮请求未抛错，但随后两次原生读取
+fullscreen=false、视图仍No；未重复发送，最终Restore明确请求退出/正常窗口。
+全屏记待验，不能以 requested 或支持标志计作通过。
+
+窗口整个流程hidden/focused=false，未声称前台像素或OS动画通过；原窗口的
+minimized/maximized/fullscreen均为false，最终恢复一致。测试快捷键原始KV恢复，
+测试Worker文档/工具/命令0，弹窗0。未修改源代码或重复基础门禁。
+详情见 [shortcut-window-observations.json](./shortcut-window-observations.json)。
+仍待验：全屏在可聚焦前台的实际完成、关闭/退出协调/标题栏、其他快捷键及输入
+上下文、打包及其他平台。
