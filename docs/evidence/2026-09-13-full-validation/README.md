@@ -660,3 +660,35 @@ Agent/插件命令；因此不再将不存在的按钮无限保留为“待点�
 focus=false。没有修改 PDF 颜色，不重做之前已经有效的 PDF 前台导航证据。
 返回书架并恢复原全局/空覆盖。详见
 [reader-appearance-ui-observations.json](./reader-appearance-ui-observations.json)。
+
+## 第二十六个桌面流程：Workspace Profiles 预设与宿主批准
+
+复用现有 desktop-workspace-profiles-probe，将编译的第一方 Workspace Profiles
+0.6.0 运行在独立 capability-workspace-profiles Worker。配置列表/作者/标题、
+阅读 large/relaxed、独立 Literata 且不跟随阅读；current 工具一次读取十项和
+workspaceToken。实际保存界面空名称拒绝，原生文档0；填入名称保存为v2十项文档。
+重置当前设置后，实际预设详情显示十项，Apply 后十项与保存快照完全相同；原生
+书架/阅读KV重读一致，书架DOM为作者分组列表。独立字体值通过，字体实际加载和
+聊天/笔记排版不在本次证据内。
+
+通过 buildRuntimeDeps.extraTools 获取实际命名空间 Agent 工具，沿真实交互端口
+在现有 ChatInteractionPrompt 展示每次插件名、操作及完整参数；没有调用模型，
+也没有直接绕过 approval-required 的原始回调。删除点击 Keep it 后 executed:false，
+原文档/revision 保留。保存请求等待批准期间，把书架 list 改为 grid，再 Run tool：
+返回 stale-workspace、仍只有原一条文档；重新 current 后批准保存成功。
+
+两条预设以 limit1 读取真正第二页，ID不同无重复。实际删除表单不勾确认返回
+Confirm deletion first，文档保留；勾选后删除，inspect not-found，原页游标
+stale-cursor。随后批准应用这条已删除预设，返回 conflict，当前设置不变。
+批准删除第二条预设返回 deleted，最后列表为空。
+
+观察脚本一次误将原生文档的 json 当作 data，结果读取报错发生在预设已保存、
+当前设置已恢复及inspect已完成之后；没有重做该操作。另一次批准面板初始化
+使用了Vite CommonJS模块错误的named export，修正为模块default后再发起工具，
+失败时尚未派发任何工具调用。两者均为验收脚本问题，未修改产品。
+
+全部十项恢复原值；本轮文档0、工具0、命令0、批准面板0。没有新增源代码、
+没有重复全量门禁。详情见
+[workspace-profiles-observations.json](./workspace-profiles-observations.json)。
+仍待验：保存预设的Worker/进程重启、v1兼容真实运行、字体加载与分页、
+窗口/快捷键入口，以及实际模型如何选择这些工具。
