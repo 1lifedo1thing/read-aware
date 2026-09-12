@@ -1041,3 +1041,29 @@ finally释放对应暂存文件、意图归零，原书保持。触发器在fina
 中途复制/未注册.tmp由原生故障测试覆盖，未做任意断电证明；release、其他平台仍
 待验。primary目前schema45/新二进制；backup隔离实例仍是旧原生进程，使用新导入
 命令前需重启更新；release包也尚未包含第38/39流程修复。
+
+## 第四十流程：精确搜索跨章节分页、游标拒绝与最后命中定位
+
+在ca43934f的隔离debug Tauri导入三节、每节15个相同关键词的合成FB2，使用
+编译Text Desk真实Worker的Find a passage搜索needle-pagination。实际DOM第一页
+20条、第二页20条、末页5条且无Next。列表虚拟化分别滚动前两页补读后，观察到
+Row01–45共45个唯一条目，跨节无重漏。原生查询ID分别0:0→1:4、1:5→2:9、
+2:10→2:14；重放第一页游标仍返回原第二页。
+
+沿用游标改查询和非法游标返回library/invalid-cursor；改书籍或声明错误源版本
+返回reader/stale-location。这里只验证声明不匹配，并未替换实际源文件。
+book/global Agent真实RuntimeDeps都从第一页游标续查：工具固定每页12条，
+返回12/12/1后耗尽，与宿主剩余25条ID完全一致。最初直接调用附带的limit=20
+不是Agent参数，工具忽略并使用12，因此不把与宿主第二页长度不同判为遗漏。
+
+Text Desk末页选择Row45，详情quote为needle-pagination；Open passage后实际
+session ready、href=2、fraction=1、CFI在第三节最后段，visibleText准确返回
+Row 45 needle-pagination ends here.，来源range/available且未截断。
+未运行模型回合，不计Agent语义质量通过。
+
+证据：[text-search-pagination-observations.json](./text-search-pagination-observations.json)。
+自有分页书和辅助书均committed/files released；书库恢复原两书、导入意图0、
+会话idle。没有产品代码改动，不重复全量门禁。Tauri专用DOM助手报resolveAll
+缺失，改用同一真实WebView直接DOM观察/操作；CUA在用户回复已解锁后仍报告Mac
+锁定，不能据此证明前台画面、原生焦点或发布包。背压、换查询退役、实际源替换、
+其他格式及平台保持待验。
