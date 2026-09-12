@@ -12,7 +12,7 @@ let marker: string | undefined;
 
 async function isolated() {
   const path = await appDataDir();
-  if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw Error("Requires isolated capability-e2e profile");
+  if (!/\/com\.readaware\.app\.(capability-e2e|validation-backup-e2e)$/.test(path.replace(/[/\\]$/, ""))) throw Error("Requires isolated acceptance profile");
   return path;
 }
 

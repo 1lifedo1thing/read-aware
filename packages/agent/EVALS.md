@@ -395,6 +395,12 @@ human-reviews.json         mutable local human verdicts, dimension scores, flags
 manual-sessions.json       freeform reader questions, follow-ups, answers, tools, telemetry
 ```
 
+Execution errors can retain an optional `partialOutput` snapshot with captured
+chunks, tool receipts and model requests up to interruption. It is diagnostic
+evidence, separate from a completed `output`, and is never graded or rescored.
+Active requests may have no completed-round timing or token usage yet; inspect
+the captured activity before interpreting zero-valued completion telemetry.
+
 Browse everything in the **eval viewer** (`bun run eval:ui`, port 5199 —
 `packages/agent/eval-viewer`): the suite catalog grouped by behavior/realbook with
 stable reference codes (scenarios are cited as `S07.3`), each scenario's

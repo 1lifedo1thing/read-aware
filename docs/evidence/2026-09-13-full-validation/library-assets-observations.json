@@ -1,0 +1,39 @@
+{
+  "profile": "com.readaware.app.capability-e2e",
+  "plugin": "library-desk@0.12.0",
+  "bookId": "6d044048-2fc4-4d9d-8487-557601a7ac2b",
+  "marker": "Composition 1abec652",
+  "originalCover": {
+    "width": 240,
+    "height": 160,
+    "complete": true
+  },
+  "savedPrivateCover": {
+    "name": "Composition 1abec652.png",
+    "bytes": 1256,
+    "listedAfterWorkerRestart": true
+  },
+  "visualBoundary": "WebView hidden by locked desktop; DOM/image decode only",
+  "backupPreflight": {
+    "status": "source-unavailable",
+    "missingKeys": [
+      "",
+      "book:238c01de-b01e-4d06-8077-9aaaaa5d4cf2",
+      "book:860e3d89-22b7-4e7b-a3c6-2f7318881b02",
+      "book:915f73d9-f862-4869-b8a3-32a4cb929b13"
+    ],
+    "missingCreatedRange": "2026-09-09 to 2026-09-10",
+    "archiveWritten": false,
+    "oldCatalogModified": false
+  },
+  "cleanup": {
+    "savedCoverListEmpty": true,
+    "bookPreservedAfterAssetDeletion": true,
+    "ownedBookRemoved": true,
+    "files": "released",
+    "remainingBookIds": [
+      "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+      "8ced004f-efe3-408f-80a8-a0ebffec84d3"
+    ]
+  }
+}
