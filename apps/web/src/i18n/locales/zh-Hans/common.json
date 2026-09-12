@@ -93,6 +93,7 @@
     "pluginActionDisabled": "此插件操作当前不可用。",
     "bookTextExtractionFailed": "部分书籍正文未能准备完成。重试可继续处理未完成的章节。",
     "bookTextUnsupported": "此书未提供可用于章节索引的受支持文本分节。",
+    "bookTextTimeout": "正文准备已达到时间上限。已保存的检查点仍保留，可启动新请求继续。",
     "bookTextCancelled": "此正文准备请求已取消。",
     "bookTextBusy": "正文正在准备中，请等待完成后再重建。",
     "bookTextTaskNotFound": "此调用方已无法访问该正文请求。",

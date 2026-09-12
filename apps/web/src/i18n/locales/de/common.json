@@ -93,6 +93,7 @@
     "pluginActionDisabled": "Diese Plugin-Aktion ist derzeit nicht verfügbar.",
     "bookTextExtractionFailed": "Ein Teil des Buchtexts konnte nicht vorbereitet werden. Versuche es erneut, um unvollständige Abschnitte fortzusetzen.",
     "bookTextUnsupported": "Dieses Buch enthält keine unterstützten Textabschnitte für den Kapitelindex.",
+    "bookTextTimeout": "Die Zeitgrenze für die Textaufbereitung wurde erreicht. Gespeicherte Zwischenstände bleiben erhalten; starten Sie eine neue Anfrage.",
     "bookTextCancelled": "Diese Textaufbereitungsanfrage wurde abgebrochen.",
     "bookTextBusy": "Die Textaufbereitung läuft bereits. Warten Sie vor dem Neuaufbau, bis sie abgeschlossen ist.",
     "bookTextTaskNotFound": "Diese Textanfrage ist für diesen Aufrufer nicht mehr verfügbar.",

@@ -1,7 +1,7 @@
 import type { PluginContext, PluginDetailView, PluginListView, PluginAction, PluginListItem } from "@read-aware/plugin-types";
 import { readerDemandDetail } from "./reader-demand";
 import { tr } from "./strings";
-import { rebuildForm, requestList, startRequest } from "./task-views";
+import { rebuildForm, requestList, startRequest, timedPrepareForm } from "./task-views";
 import { textSearchForm } from "./search-views";
 import { capturedRangeDetail, rangeSearchForm } from "./range-views";
 import { emphasisList } from "./emphasis-views";
@@ -29,6 +29,7 @@ export async function textDetail(ctx: PluginContext, bookId: string, title: stri
     { id: "requests", label: tr(ctx.locale, "requests"), icon: "list-bullets", run: async () => ({ view: await requestList(ctx, bookId, title) }) },
     ...(state.status !== "unsupported" ? [
       { id: "prepare", label: tr(ctx.locale, "prepare"), icon: "play", run: () => startRequest(ctx, bookId, title) },
+      { id: "timed-prepare", label: tr(ctx.locale, "timedPrepare"), icon: "timer", run: () => ({ view: timedPrepareForm(ctx, bookId, title) }) },
       { id: "rebuild", label: tr(ctx.locale, "rebuild"), icon: "arrows-clockwise", run: () => ({ view: rebuildForm(ctx, bookId, title) }) },
     ] : []),
   ] };

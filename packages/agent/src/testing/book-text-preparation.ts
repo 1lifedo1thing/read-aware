@@ -14,7 +14,7 @@ export function createMemoryTextPreparation(chapters: ReadonlyMap<string, readon
       const text = chapters.get(bookId);
       const now = new Date().toISOString();
       const task: BookTextTaskSnapshot = { taskId: crypto.randomUUID(), bookId, mode: options?.rebuild ? "rebuild" : "prepare",
-        status: text ? "completed" : "failed", priority: options?.priority ?? "normal", waitReason: null, revision: 1, createdAt: now, updatedAt: now,
+        status: text ? "completed" : "failed", priority: options?.priority ?? "normal", timeoutMs: options?.timeoutMs ?? 1800000, deadlineAt: new Date(Date.now() + (options?.timeoutMs ?? 1800000)).toISOString(), waitReason: null, revision: 1, createdAt: now, updatedAt: now,
         textState: { bookId, contentVersion: "fixture", status: text ? "ready" : "unprepared", text: text ? text.some(c => c.text.length) ? "available" : "textless" : "unknown", chapterCount: text?.length ?? 0, progress: null },
         ...(!text ? { errorCode: "library/content-unavailable" } : {}),
       };

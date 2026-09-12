@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test";
 import type { BookTextTaskSnapshot, PluginContext, PluginDetailView, PluginViewUpdate } from "@read-aware/plugin-types";
-import { rebuildForm, requestDetail, requestList, startRequest } from "../src/task-views";
+import { rebuildForm, requestDetail, requestList, startRequest, timedPrepareForm } from "../src/task-views";
 
 function harness() {
   const starts: unknown[] = [], cancelled: string[] = [];
   let fails = false;
-  const task: BookTextTaskSnapshot = { taskId: "task", bookId: "book", mode: "prepare", priority: "normal", waitReason: null, status: "running", revision: 1,
+  const task: BookTextTaskSnapshot = { taskId: "task", bookId: "book", mode: "prepare", priority: "normal", timeoutMs: 1800000, deadlineAt: "2026-09-12T12:30:00Z", waitReason: null, status: "running", revision: 1,
     createdAt: "2026-09-09T00:00:00Z", updatedAt: "2026-09-09T00:00:00Z",
     textState: { bookId: "book", contentVersion: "v", status: "preparing", text: "unknown", chapterCount: 0,
       progress: { completed: 1, failed: 0, unsupported: 0, total: 3 } } };
@@ -120,4 +120,16 @@ test("Text Desk shows reader waiting and changes only the selected request prior
   expect(next.actions!.find(a => a.id === "priority")!.label).toBe("Normal priority");
   h.fail(); await expect(next.actions!.find(a => a.id === "priority")!.run()).rejects.toThrow("priority failed");
   expect(h.task.priority).toBe("background");
+});
+
+
+test("time-limited preparation validates the duration and displays deadline failures honestly", async () => {
+  const h = harness(), form = timedPrepareForm(h.ctx, "book", "Book");
+  for (const minutes of [0, 121, 1.5, "30", undefined]) expect(await form.onSubmit({ minutes } as never)).toMatchObject({ fieldErrors: { minutes: expect.any(String) } });
+  expect(h.starts).toHaveLength(0); await form.onSubmit({ minutes: 45 });
+  expect(h.starts).toEqual([{ bookId: "book", options: { rebuild: false, timeoutMs: 2700000 } }]);
+  h.task.status = "failed"; h.task.errorCode = "library/text-timeout";
+  const view = await requestDetail(h.ctx, "book", "Book", "task");
+  expect(view.content[0]).toMatchObject({ rows: expect.arrayContaining([{ label: "Failure", value: "Time limit reached; saved checkpoints remain" }]) });
+  expect(view.actions!.some(a => a.id === "resume")).toBe(false);
 });

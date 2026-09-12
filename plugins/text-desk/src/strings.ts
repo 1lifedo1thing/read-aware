@@ -1,5 +1,10 @@
 const locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 const labels = {
+  deadline: ["Deadline", "截止时间", "截止時間", "期限", "Крайний срок", "Échéance", "Frist", "Fecha límite"],
+  taskTimeout: ["Time limit reached; saved checkpoints remain", "已到时间上限，已保存的检查点保留", "已達時間上限，保留已儲存的檢查點", "制限時間に到達。チェックポイントは保持", "Время истекло; контрольные точки сохранены", "Limite atteinte ; points de reprise conservés", "Zeitlimit erreicht; Zwischenstände bleiben erhalten", "Límite alcanzado; se conservan los puntos guardados"],
+  timedPrepare: ["Prepare with time limit", "设置时限并准备", "設定時限並準備", "制限時間を指定して準備", "Подготовить с лимитом времени", "Préparer avec une limite de temps", "Mit Zeitlimit aufbereiten", "Preparar con límite de tiempo"],
+  timeLimit: ["Time limit (1–120 minutes)", "时限（1–120 分钟）", "時限（1–120 分鐘）", "制限時間（1～120分）", "Лимит (1–120 минут)", "Limite (1–120 minutes)", "Zeitlimit (1–120 Minuten)", "Límite (1–120 minutos)"],
+  timeLimitNote: ["Includes waiting and pause. Saved checkpoints are kept.", "包含等待和暂停时间，保留已保存的检查点。", "包含等待及暫停時間，保留已儲存的檢查點。", "待機・一時停止を含みます。保存済みチェックポイントは保持されます。", "Включает ожидание и паузу. Контрольные точки сохраняются.", "Inclut l'attente et la pause. Les points de reprise sont conservés.", "Einschließlich Warten und Pause. Zwischenstände bleiben erhalten.", "Incluye espera y pausa. Se conservan los puntos guardados."],
   activityState: ["Activity", "活动状态", "活動狀態", "活動状態", "Активность", "Activité", "Aktivität", "Actividad"],
   readerActivity: ["Reading activity", "阅读活动", "閱讀活動", "読書アクティビティ", "Активность чтения", "Activité de lecture", "Leseaktivität", "Actividad de lectura"],
   readerIdle: ["No recent render or movement", "近期没有绘制或位置变化", "近期沒有繪製或位置變化", "最近の描画・移動なし", "Недавних отрисовок или перемещений нет", "Aucun rendu ni déplacement récent", "Kein kürzliches Rendern oder Bewegen", "Sin renderizado ni movimiento reciente"],

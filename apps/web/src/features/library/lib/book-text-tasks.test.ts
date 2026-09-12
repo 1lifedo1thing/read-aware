@@ -158,3 +158,30 @@ test("priority changes preserve the same lease and checkpoints; waiting reasons 
   await expect(h.owner.start("book", { priority: "urgent" } as never)).rejects.toMatchObject({ code: "library/invalid-input" });
   h.owner.dispose();
 });
+
+test("request timeout releases only that lease, preserves checkpoints and cannot be overwritten by late success", async () => {
+  const h = harness(); const first = await h.owner.start("book", { timeoutMs: 1000 });
+  const sibling = await h.owner.start("book");
+  const progress = { ...state("book", "preparing"), progress: { total: 50, completed: 25, failed: 0, unsupported: 0 } };
+  h.work[0]!.options.progress!(progress);
+  const seen: BookTextTaskSnapshot[] = [];
+  h.owner.observe("book", first.taskId, value => { seen.push(value); });
+  await Bun.sleep(1050);
+  const expired = h.owner.get("book", first.taskId);
+  expect(expired).toMatchObject({ status: "failed", errorCode: "library/text-timeout", textState: { progress: { completed: 25 } } });
+  expect(h.work[0]!.options.signal!.aborted).toBe(true); expect(h.work[1]!.options.signal!.aborted).toBe(false);
+  expect(seen.at(-1)!.status).toBe("failed");
+  h.work[0]!.result.resolve(state("book", "ready")); await settle(); expect(h.owner.get("book", first.taskId)).toEqual(expired);
+  expect(h.owner.resume("book", first.taskId)).toEqual(expired);
+  expect(h.owner.get("book", sibling.taskId).status).toBe("running"); h.owner.dispose();
+});
+
+test("paused time counts toward the deadline and malformed time limits never admit a task", async () => {
+  const h = harness();
+  for (const timeoutMs of [null, 0, 999, 7200001, 1.5, NaN, "1000"]) await expect(h.owner.start("book", { timeoutMs } as never)).rejects.toMatchObject({ code: "library/invalid-input" });
+  expect(h.work).toHaveLength(0);
+  const task = await h.owner.start("book", { timeoutMs: 1000 }); h.owner.pause("book", task.taskId);
+  await Bun.sleep(1050);
+  expect(h.owner.list("book")[0]).toMatchObject({ status: "failed", errorCode: "library/text-timeout", timeoutMs: 1000 });
+  expect(Date.parse(task.deadlineAt) - Date.parse(task.createdAt)).toBe(1000); h.owner.dispose();
+});

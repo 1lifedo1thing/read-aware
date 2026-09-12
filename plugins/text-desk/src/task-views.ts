@@ -17,6 +17,7 @@ function requestSnapshot(ctx: PluginContext, title: string, task: BookTextTaskSn
   const progress = task.textState.progress;
   const rows = [
     { label: tr(ctx.locale, "request"), value: tr(ctx.locale, `task_${task.status}`) },
+    { label: tr(ctx.locale, "deadline"), value: new Date(task.deadlineAt).toLocaleString(ctx.locale) },
     { label: tr(ctx.locale, "priority"), value: tr(ctx.locale, task.priority === "background" ? "backgroundPriority" : "normalPriority") },
     ...(task.waitReason ? [{ label: tr(ctx.locale, "waiting"), value: tr(ctx.locale, task.waitReason === "reader" ? "readerWait" : "queueWait") }] : []),
     { label: tr(ctx.locale, "mode"), value: tr(ctx.locale, task.mode) },
@@ -25,7 +26,7 @@ function requestSnapshot(ctx: PluginContext, title: string, task: BookTextTaskSn
     { label: tr(ctx.locale, "chapters"), value: String(task.textState.chapterCount) },
   ];
   if (task.status === "failed") rows.push({ label: tr(ctx.locale, "failure"), value: tr(ctx.locale,
-    task.errorCode === "library/text-busy" ? "busy" : task.errorCode === "library/text-unsupported" ? "unsupported"
+    task.errorCode === "library/text-timeout" ? "taskTimeout" : task.errorCode === "library/text-busy" ? "busy" : task.errorCode === "library/text-unsupported" ? "unsupported"
       : task.errorCode === "library/content-unavailable" ? "unavailable" : "error") });
   if (progress) rows.push(
     { label: tr(ctx.locale, "sections"), value: `${progress.completed} / ${progress.total}` },
@@ -54,8 +55,8 @@ function requestSnapshot(ctx: PluginContext, title: string, task: BookTextTaskSn
   ] };
 }
 
-export async function startRequest(ctx: PluginContext, bookId: string, title: string, rebuild = false) {
-  const task = await ctx.domains.library!.commands!.books.prepareText(bookId, { rebuild });
+export async function startRequest(ctx: PluginContext, bookId: string, title: string, rebuild = false, timeoutMs?: number) {
+  const task = await ctx.domains.library!.commands!.books.prepareText(bookId, { rebuild, ...(timeoutMs === undefined ? {} : { timeoutMs }) });
   return { view: await requestDetail(ctx, bookId, title, task.taskId) };
 }
 
@@ -74,4 +75,15 @@ export async function requestList(ctx: PluginContext, bookId: string, title: str
     onSelect: async () => ({ view: await requestDetail(ctx, bookId, title, task.taskId) }),
   })), actions: [{ id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise",
     run: async () => ({ view: await requestList(ctx, bookId, title), navigation: "replace" }) }] };
+}
+
+
+export function timedPrepareForm(ctx: PluginContext, bookId: string, title: string): PluginFormView {
+  return { kind: "form", title, fields: [{ kind: "number", id: "minutes", label: tr(ctx.locale, "timeLimit"),
+    value: 30, min: 1, max: 120, step: 1, helperText: tr(ctx.locale, "timeLimitNote") }],
+    submitLabel: tr(ctx.locale, "prepare"), onSubmit: async values => {
+      const minutes = values.minutes;
+      if (typeof minutes !== "number" || !Number.isInteger(minutes) || minutes < 1 || minutes > 120) return { fieldErrors: { minutes: tr(ctx.locale, "timeLimit") } };
+      return { ...await startRequest(ctx, bookId, title, false, minutes * 60_000), navigation: "replace" };
+    } };
 }

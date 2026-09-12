@@ -3,7 +3,7 @@ import type { BookTextRepository } from "./book-text-repository";
 
 type Listener = (state: BookTextTaskSnapshot) => void | Promise<void>;
 type Observer = { send(state: BookTextTaskSnapshot): void; stop(): void };
-type Task = { state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
+type Task = { timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
 const active = (state: BookTextTaskSnapshot) => state.status === "queued" || state.status === "running" || state.status === "paused";
 const cancelled = () => new AppError("library/text-cancelled", "This text preparation request was cancelled");
 
@@ -23,43 +23,67 @@ export class BookTextTaskOwner {
     this.assertLive();
     const task = this.tasks.get(taskId);
     if (!task || task.state.bookId !== bookId) throw new AppError("library/text-task-not-found", "No task belongs to this actor and book");
+    this.expire(task);
     return task;
   }
   private publish(task: Task, change: Partial<Pick<BookTextTaskSnapshot, "status" | "textState" | "errorCode" | "priority" | "waitReason">>) {
     if (!active(task.state)) return;
     task.state = { ...task.state, ...change, revision: task.state.revision + 1, updatedAt: new Date().toISOString() };
+    if (!active(task.state)) { clearTimeout(task.timer); task.timer = undefined; }
     for (const observer of task.observers) observer.send(task.state);
+  }
+
+  private expire(task: Task): void {
+    if (!active(task.state) || Date.now() < Date.parse(task.state.deadlineAt)) return;
+    const error = new AppError("library/text-timeout", "Text request deadline elapsed", { retryable: true });
+    this.publish(task, { status: "failed", waitReason: null, errorCode: error.code });
+    task.controller.abort(error);
+  }
+
+  private scheduleDeadline(task: Task): void {
+    task.timer = setTimeout(() => {
+      task.timer = undefined; this.expire(task);
+      // A wall-clock correction can move the visible deadline farther away.
+      if (active(task.state)) this.scheduleDeadline(task);
+    }, Math.min(2_147_483_647, Math.max(0, Date.parse(task.state.deadlineAt) - Date.now())));
+    if (typeof task.timer === "object" && "unref" in task.timer) task.timer.unref();
   }
 
   async start(bookId: string, options: BookTextPrepareOptions = {}): Promise<BookTextTaskSnapshot> {
     this.assertLive();
     if (!options || typeof options !== "object" || Array.isArray(options)
-      || Object.keys(options).some(key => !["rebuild", "priority"].includes(key)) || options.rebuild !== undefined && typeof options.rebuild !== "boolean"
+      || Object.keys(options).some(key => !["rebuild", "priority", "timeoutMs"].includes(key)) || options.rebuild !== undefined && typeof options.rebuild !== "boolean"
       || options.priority !== undefined && options.priority !== "normal" && options.priority !== "background") {
       throw new AppError("library/invalid-input", "Invalid text preparation options");
     }
-    const request = { rebuild: options.rebuild, priority: options.priority ?? "normal" };
+    const timeoutMs = options.timeoutMs === undefined ? 30 * 60_000 : options.timeoutMs;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 2 * 60 * 60_000) {
+      throw new AppError("library/invalid-input", "Text timeout must be 1000..7200000 milliseconds");
+    }
+    const request = { rebuild: options.rebuild, priority: options.priority ?? "normal", timeoutMs };
     const state = await this.repository.snapshot(bookId);
     this.assertLive();
+    for (const task of this.tasks.values()) this.expire(task);
     if ([...this.tasks.values()].filter(task => active(task.state)).length >= 16) throw new AppError("library/text-task-limit", "Too many active text requests for this actor");
     // Retain at most 64 handles. Eviction closes observers of oldest terminal requests.
     for (const [id, task] of this.tasks) {
       if (this.tasks.size < 64) break;
       if (!active(task.state)) { for (const observer of task.observers) observer.stop(); this.tasks.delete(id); }
     }
-    const now = new Date().toISOString();
+    const now = new Date().toISOString(), deadlineAt = new Date(Date.parse(now) + request.timeoutMs).toISOString();
     const task: Task = { controller: new AbortController(), rebuildPending: request.rebuild === true, observers: new Set(), state: {
       taskId: crypto.randomUUID(), bookId, mode: request.rebuild ? "rebuild" : "prepare", revision: 0,
-      status: "queued", priority: request.priority, waitReason: null, createdAt: now, updatedAt: now, textState: state,
+      status: "queued", priority: request.priority, timeoutMs: request.timeoutMs, deadlineAt, waitReason: null, createdAt: now, updatedAt: now, textState: state,
     } };
     this.tasks.set(task.state.taskId, task);
+    this.scheduleDeadline(task);
     void this.run(task);
     return structuredClone(task.state);
   }
 
   private async run(task: Task): Promise<void> {
     const controller = task.controller;
-    const current = () => task.controller === controller && !controller.signal.aborted && task.state.status === "running";
+    const current = () => { this.expire(task); return task.controller === controller && !controller.signal.aborted && task.state.status === "running"; };
     this.publish(task, { status: "running", errorCode: undefined, waitReason: null });
     try {
       const textState = await this.repository.prepare(task.state.bookId, {
@@ -110,6 +134,7 @@ export class BookTextTaskOwner {
   list(bookId: string): BookTextTaskSnapshot[] {
     this.assertLive();
     if (typeof bookId !== "string" || !bookId.trim()) throw new AppError("library/invalid-input", "A book ID is required");
+    for (const task of this.tasks.values()) if (task.state.bookId === bookId) this.expire(task);
     return [...this.tasks.values()].filter(task => task.state.bookId === bookId).map(task => structuredClone(task.state));
   }
   cancel(bookId: string, taskId: string): BookTextTaskSnapshot {

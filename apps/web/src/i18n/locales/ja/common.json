@@ -93,6 +93,7 @@
     "pluginActionDisabled": "このプラグインの操作は現在利用できません。",
     "bookTextExtractionFailed": "書籍の本文の一部を準備できませんでした。再試行すると未完了のセクションを処理します。",
     "bookTextUnsupported": "この書籍には章の索引に対応したテキストセクションがありません。",
+    "bookTextTimeout": "本文準備が制限時間に達しました。保存済みチェックポイントから新しいリクエストで続行できます。",
     "bookTextCancelled": "この本文準備リクエストはキャンセルされました。",
     "bookTextBusy": "本文を準備中です。完了してから索引を再構築してください。",
     "bookTextTaskNotFound": "この呼び出し元は、この本文リクエストにアクセスできません。",

@@ -6805,3 +6805,20 @@ cannot emit demand events. Text Desk 0.15 has a live activity view, and Agent
 session queries return the same metadata within their existing scope/privacy
 checks. Unit and controlled public-port/plugin checks pass; actual desktop and
 Worker rendering behavior remains in the concentrated acceptance phase.
+
+
+### Text request deadlines (Library 1.24)
+
+`prepareText` accepts `timeoutMs` from 1000 to 7200000, default 1800000 (30
+minutes). Accepted tasks expose `timeoutMs` and `deadlineAt`; time in the queue,
+reader cooldown or pause counts toward that deadline. Expiry reports
+`failed` / `library/text-timeout` and releases only that request's lease. Saved
+checkpoints and other consumers remain. Already dispatched parser work drains
+before releasing its actual scheduling slot. Late completion cannot overwrite
+the timeout, and resume does not revive a terminal request. Start a new request
+to continue from saved checkpoints.
+
+Text Desk 0.16 displays deadlines and supplies a validated 1–120 minute form;
+Agent preparation exposes the same timeout option. Timer/lease/late-result and
+public consumer checks pass. App suspension, background throttling and actual
+Worker/Tauri behavior remain pending; task history is still process local.

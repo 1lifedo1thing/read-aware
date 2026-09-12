@@ -1,6 +1,11 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  deadline: ["Deadline", "截止时间", "截止時間", "期限", "Крайний срок", "Échéance", "Frist", "Fecha límite"],
+  taskTimeout: ["Time limit reached; saved checkpoints remain", "已到时间上限，已保存的检查点保留", "已達時間上限，保留已儲存的檢查點", "制限時間に到達。チェックポイントは保持", "Время истекло; контрольные точки сохранены", "Limite atteinte ; points de reprise conservés", "Zeitlimit erreicht; Zwischenstände bleiben erhalten", "Límite alcanzado; se conservan los puntos guardados"],
+  timedPrepare: ["Prepare with time limit", "设置时限并准备", "設定時限並準備", "制限時間を指定して準備", "Подготовить с лимитом времени", "Préparer avec une limite de temps", "Mit Zeitlimit aufbereiten", "Preparar con límite de tiempo"],
+  timeLimit: ["Time limit (1–120 minutes)", "时限（1–120 分钟）", "時限（1–120 分鐘）", "制限時間（1～120分）", "Лимит (1–120 минут)", "Limite (1–120 minutes)", "Zeitlimit (1–120 Minuten)", "Límite (1–120 minutos)"],
+  timeLimitNote: ["Includes waiting and pause. Saved checkpoints are kept.", "包含等待和暂停时间，保留已保存的检查点。", "包含等待及暫停時間，保留已儲存的檢查點。", "待機・一時停止を含みます。保存済みチェックポイントは保持されます。", "Включает ожидание и паузу. Контрольные точки сохраняются.", "Inclut l'attente et la pause. Les points de reprise sont conservés.", "Einschließlich Warten und Pause. Zwischenstände bleiben erhalten.", "Incluye espera y pausa. Se conservan los puntos guardados."],
   activityState: ["Activity", "活动状态", "活動狀態", "活動状態", "Активность", "Activité", "Aktivität", "Actividad"],
   readerActivity: ["Reading activity", "阅读活动", "閱讀活動", "読書アクティビティ", "Активность чтения", "Activité de lecture", "Leseaktivität", "Actividad de lectura"],
   readerIdle: ["No recent render or movement", "近期没有绘制或位置变化", "近期沒有繪製或位置變化", "最近の描画・移動なし", "Недавних отрисовок или перемещений нет", "Aucun rendu ni déplacement récent", "Kein kürzliches Rendern oder Bewegen", "Sin renderizado ni movimiento reciente"],
@@ -173,6 +178,7 @@ function requestSnapshot(ctx, title, task) {
   const progress = task.textState.progress;
   const rows = [
     { label: tr(ctx.locale, "request"), value: tr(ctx.locale, `task_${task.status}`) },
+    { label: tr(ctx.locale, "deadline"), value: new Date(task.deadlineAt).toLocaleString(ctx.locale) },
     { label: tr(ctx.locale, "priority"), value: tr(ctx.locale, task.priority === "background" ? "backgroundPriority" : "normalPriority") },
     ...task.waitReason ? [{ label: tr(ctx.locale, "waiting"), value: tr(ctx.locale, task.waitReason === "reader" ? "readerWait" : "queueWait") }] : [],
     { label: tr(ctx.locale, "mode"), value: tr(ctx.locale, task.mode) },
@@ -181,7 +187,7 @@ function requestSnapshot(ctx, title, task) {
     { label: tr(ctx.locale, "chapters"), value: String(task.textState.chapterCount) }
   ];
   if (task.status === "failed")
-    rows.push({ label: tr(ctx.locale, "failure"), value: tr(ctx.locale, task.errorCode === "library/text-busy" ? "busy" : task.errorCode === "library/text-unsupported" ? "unsupported" : task.errorCode === "library/content-unavailable" ? "unavailable" : "error") });
+    rows.push({ label: tr(ctx.locale, "failure"), value: tr(ctx.locale, task.errorCode === "library/text-timeout" ? "taskTimeout" : task.errorCode === "library/text-busy" ? "busy" : task.errorCode === "library/text-unsupported" ? "unsupported" : task.errorCode === "library/content-unavailable" ? "unavailable" : "error") });
   if (progress)
     rows.push({ label: tr(ctx.locale, "sections"), value: `${progress.completed} / ${progress.total}` }, { label: tr(ctx.locale, "failed"), value: String(progress.failed) }, { label: tr(ctx.locale, "unsupportedSections"), value: String(progress.unsupported) });
   return { kind: "detail", title, content: [{ kind: "keyValue", rows }], actions: [
@@ -213,8 +219,8 @@ function requestSnapshot(ctx, title, task) {
     { id: "requests", label: tr(ctx.locale, "requests"), icon: "list-bullets", run: async () => ({ view: await requestList(ctx, bookId, title) }) }
   ] };
 }
-async function startRequest(ctx, bookId, title, rebuild = false) {
-  const task = await ctx.domains.library.commands.books.prepareText(bookId, { rebuild });
+async function startRequest(ctx, bookId, title, rebuild = false, timeoutMs) {
+  const task = await ctx.domains.library.commands.books.prepareText(bookId, { rebuild, ...timeoutMs === undefined ? {} : { timeoutMs } });
   return { view: await requestDetail(ctx, bookId, title, task.taskId) };
 }
 function rebuildForm(ctx, bookId, title) {
@@ -244,6 +250,29 @@ async function requestList(ctx, bookId, title) {
     icon: "arrows-clockwise",
     run: async () => ({ view: await requestList(ctx, bookId, title), navigation: "replace" })
   }] };
+}
+function timedPrepareForm(ctx, bookId, title) {
+  return {
+    kind: "form",
+    title,
+    fields: [{
+      kind: "number",
+      id: "minutes",
+      label: tr(ctx.locale, "timeLimit"),
+      value: 30,
+      min: 1,
+      max: 120,
+      step: 1,
+      helperText: tr(ctx.locale, "timeLimitNote")
+    }],
+    submitLabel: tr(ctx.locale, "prepare"),
+    onSubmit: async (values) => {
+      const minutes = values.minutes;
+      if (typeof minutes !== "number" || !Number.isInteger(minutes) || minutes < 1 || minutes > 120)
+        return { fieldErrors: { minutes: tr(ctx.locale, "timeLimit") } };
+      return { ...await startRequest(ctx, bookId, title, false, minutes * 60000), navigation: "replace" };
+    }
+  };
 }
 
 // src/search-task.ts
@@ -766,6 +795,7 @@ async function textDetail(ctx, bookId, title) {
     { id: "requests", label: tr(ctx.locale, "requests"), icon: "list-bullets", run: async () => ({ view: await requestList(ctx, bookId, title) }) },
     ...state.status !== "unsupported" ? [
       { id: "prepare", label: tr(ctx.locale, "prepare"), icon: "play", run: () => startRequest(ctx, bookId, title) },
+      { id: "timed-prepare", label: tr(ctx.locale, "timedPrepare"), icon: "timer", run: () => ({ view: timedPrepareForm(ctx, bookId, title) }) },
       { id: "rebuild", label: tr(ctx.locale, "rebuild"), icon: "arrows-clockwise", run: () => ({ view: rebuildForm(ctx, bookId, title) }) }
     ] : []
   ] };

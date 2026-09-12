@@ -12,7 +12,8 @@ test("both Agent scopes prepare, inspect and cancel the exact task/book without 
       const content = result.content[0]; if (content?.type !== "text") throw Error("Expected text"); return JSON.parse(content.text);
     };
     const bookId = scope.kind === "book" ? "current" : "book";
-    const task = await call("prepare_book_text", { bookId, rebuild: true });
+    const task = await call("prepare_book_text", { bookId, rebuild: true, timeoutMs: 60000 });
+    expect(task.timeoutMs).toBe(60000);
     expect(task.bookId).toBe("book"); expect(task.mode).toBe("rebuild");
     expect(await call("get_book_text_tasks", { bookId, taskId: task.taskId })).toEqual(task);
     expect(await call("get_book_text_tasks", { bookId })).toEqual({ tasks: [task], total: 1, offset: 0, nextOffset: null });

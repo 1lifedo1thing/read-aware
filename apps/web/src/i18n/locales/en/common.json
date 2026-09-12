@@ -93,6 +93,7 @@
     "pluginActionDisabled": "This plugin action is not currently available.",
     "bookTextExtractionFailed": "Some book text could not be prepared. Try again to resume unfinished sections.",
     "bookTextUnsupported": "This book does not provide supported text sections for chapter indexing.",
+    "bookTextTimeout": "Text preparation reached its time limit. Saved checkpoints remain; start a new request to continue.",
     "bookTextCancelled": "This text preparation request was cancelled.",
     "bookTextBusy": "Text preparation is already running. Wait for it to finish before rebuilding.",
     "bookTextTaskNotFound": "This text request is no longer available to this caller.",

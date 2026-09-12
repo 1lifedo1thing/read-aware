@@ -160,6 +160,7 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "plugin/payload-too-large": { key: "pluginNetworkBodyTooLarge", retryable: false },
   "library/text-extraction-failed": { key: "bookTextExtractionFailed", retryable: true },
   "library/text-unsupported": { key: "bookTextUnsupported", retryable: false },
+  "library/text-timeout": { key: "bookTextTimeout", retryable: true },
   "library/text-cancelled": { key: "bookTextCancelled", retryable: false },
   "library/text-busy": { key: "bookTextBusy", retryable: true },
   "library/text-task-not-found": { key: "bookTextTaskNotFound", retryable: false },

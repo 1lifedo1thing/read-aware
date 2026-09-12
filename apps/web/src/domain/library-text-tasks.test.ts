@@ -8,7 +8,7 @@ import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
 const cleanups: (() => void)[] = [];
 afterEach(() => { for (const cleanup of cleanups.splice(0).reverse()) cleanup(); });
 const own = <T extends { mockRestore(): void }>(spy: T): T => { cleanups.push(() => spy.mockRestore()); return spy; };
-const task: BookTextTaskSnapshot = { bookId: "book", taskId: "task", mode: "prepare", priority: "normal", waitReason: null, status: "paused", revision: 2,
+const task: BookTextTaskSnapshot = { bookId: "book", taskId: "task", mode: "prepare", priority: "normal", timeoutMs: 1800000, deadlineAt: "2026-09-12T12:30:00Z", waitReason: null, status: "paused", revision: 2,
   createdAt: "now", updatedAt: "now", textState: { bookId: "book", contentVersion: "v", status: "preparing", text: "unknown", chapterCount: 0, progress: null } };
 function plugin(permission: PluginPermission) {
   const runtime = buildPluginContext({ id: "text-control", name: "Text", version: "1.0.0", schemaVersion: 1,

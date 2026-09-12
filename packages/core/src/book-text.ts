@@ -12,13 +12,16 @@ export type BookTextSnapshot = {
 
 export type BookTextPriority = "normal" | "background";
 export type BookTextWaitReason = "queue" | "reader" | null;
-export type BookTextPrepareOptions = { rebuild?: boolean; priority?: BookTextPriority };
+export type BookTextPrepareOptions = { rebuild?: boolean; priority?: BookTextPriority; timeoutMs?: number };
 /** One caller's ephemeral request, not ownership of all extraction for this book. */
 export type BookTextTaskSnapshot = {
   taskId: string;
   bookId: string;
   mode: "prepare" | "rebuild";
   priority: BookTextPriority;
+  /** Wall-clock deadline from admission, including queueing and pause. */
+  timeoutMs: number;
+  deadlineAt: string;
   waitReason: BookTextWaitReason;
   revision: number;
   status: "queued" | "running" | "paused" | "completed" | "failed" | "cancelled";

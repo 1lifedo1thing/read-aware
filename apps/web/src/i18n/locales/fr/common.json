@@ -93,6 +93,7 @@
     "pluginActionDisabled": "Cette action du plugin n'est pas disponible actuellement.",
     "bookTextExtractionFailed": "Une partie du texte n'a pas pu être préparée. Réessayez pour reprendre les sections incomplètes.",
     "bookTextUnsupported": "Ce livre ne fournit pas de sections de texte compatibles avec l'index des chapitres.",
+    "bookTextTimeout": "La préparation du texte a atteint sa limite de temps. Les points de reprise sont conservés ; lancez une nouvelle requête pour continuer.",
     "bookTextCancelled": "Cette demande de préparation du texte a été annulée.",
     "bookTextBusy": "La préparation du texte est en cours. Attendez sa fin avant de reconstruire l'index.",
     "bookTextTaskNotFound": "Cette demande de texte n'est plus accessible à cet appelant.",
