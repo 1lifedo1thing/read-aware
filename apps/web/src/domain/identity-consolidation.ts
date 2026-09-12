@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../platform/domain-write-gate";
 import { identityProfileContext, normalizeIdentityConsolidationPlan, normalizeIdentityWorkQuery, normalizeIdentityWorkAppend, normalizeIdentityWorkCompact, normalizeProfileInspectionQuery, profileInspectionPage, type ProfileInspectionQuery,
   type IdentityWorkPort, type IdentityWorkPage, type IdentityWorkReceipt,
   type IdentityConsolidationPort, type IdentityConsolidationReceipt, type IdentityConsolidationSnapshot, type ProfileContextSnapshot } from "@read-aware/core";
@@ -5,7 +6,6 @@ import { invoke } from "../platform/ipc";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../platform/domain-events";
 import { createLogger } from "../platform/logger";
 import { initializeUserProfile } from "./user-profile";
-import { durableWrites } from "../platform/write-settlement";
 
 type IdentityHost = { invoke: typeof invoke; mint: typeof mintEventRows; broadcast: typeof broadcastDomainEventDrafts;
   initialize(): Promise<void>; warn(message: string): void };
@@ -16,7 +16,7 @@ export function createIdentityConsolidationService(host: IdentityHost) {
     compact: async (raw, signal) => {
       const input = normalizeIdentityWorkCompact(raw);
       signal?.throwIfAborted(); await host.initialize(); signal?.throwIfAborted();
-      return durableWrites.track(host.invoke<IdentityWorkReceipt>("identity_work_compact", input));
+      return runDomainWrite(() => { signal?.throwIfAborted(); return host.invoke<IdentityWorkReceipt>("identity_work_compact", input); });
     },
     read: async (raw, signal) => {
       const input = normalizeIdentityWorkQuery(raw);
@@ -27,7 +27,7 @@ export function createIdentityConsolidationService(host: IdentityHost) {
     append: async (raw, signal) => {
       const input = normalizeIdentityWorkAppend(raw);
       signal?.throwIfAborted(); await host.initialize(); signal?.throwIfAborted();
-      return durableWrites.track(host.invoke<IdentityWorkReceipt>("identity_work_append", input));
+      return runDomainWrite(() => { signal?.throwIfAborted(); return host.invoke<IdentityWorkReceipt>("identity_work_append", input); });
     },
   };
   const snapshot: IdentityConsolidationPort["snapshot"] = async signal => {
@@ -47,24 +47,26 @@ export function createIdentityConsolidationService(host: IdentityHost) {
       ? { type: "entity.resolved", origin: "agent", payload: { entityId: decision.entityId, kind: decision.kind,
         canonicalName: decision.canonicalName, ...(decision.aliases === undefined ? {} : { aliases: decision.aliases }) } }
       : { type: "entity.merged", origin: "agent", payload: { keepId: decision.keepId, mergedId: decision.mergedId } });
-    const entityEvents = entityDrafts.length ? await host.mint(entityDrafts) : [];
-    signal?.throwIfAborted();
-    const profileDraft: DomainEventDraft = { type: "profile.updated", origin: "agent", payload: { traits: { consolidated: {
-      version: 1, summary: input.summary, sources: input.sources,
-      entityEvidence: entityEvents.map((event, index) => ({ eventId: event.id, memoryIds: input.decisions[index]!.memoryIds })),
-    } } } };
-    // Profile provenance needs minted entity IDs and must follow their HLCs.
-    const [profileEvent] = await host.mint([profileDraft]);
-    signal?.throwIfAborted();
-    const receipt = await host.invoke<IdentityConsolidationReceipt>("identity_consolidation_commit", {
-      expectedRevision: input.expectedRevision, profileEvent, entityEvents, complete: input.complete,
+    return runDomainWrite(async () => {
+      const entityEvents = entityDrafts.length ? await host.mint(entityDrafts) : [];
+      signal?.throwIfAborted();
+      const profileDraft: DomainEventDraft = { type: "profile.updated", origin: "agent", payload: { traits: { consolidated: {
+        version: 1, summary: input.summary, sources: input.sources,
+        entityEvidence: entityEvents.map((event, index) => ({ eventId: event.id, memoryIds: input.decisions[index]!.memoryIds })),
+      } } } };
+      // Profile provenance needs minted entity IDs and must follow their HLCs.
+      const [profileEvent] = await host.mint([profileDraft]);
+      signal?.throwIfAborted();
+      const receipt = await host.invoke<IdentityConsolidationReceipt>("identity_consolidation_commit", {
+        expectedRevision: input.expectedRevision, profileEvent, entityEvents, complete: input.complete,
+      });
+      // Dispatch owns the actual result, including when cancellation arrives meanwhile.
+      const emitted = new Set(receipt.emittedEventIds);
+      const events = [...entityEvents, profileEvent!];
+      const changed = [...entityDrafts, profileDraft].filter((_, index) => emitted.has(events[index]!.id));
+      if (changed.length) host.broadcast(changed);
+      return receipt;
     });
-    // Dispatch owns the actual result, including when cancellation arrives meanwhile.
-    const emitted = new Set(receipt.emittedEventIds);
-    const events = [...entityEvents, profileEvent!];
-    const changed = [...entityDrafts, profileDraft].filter((_, index) => emitted.has(events[index]!.id));
-    if (changed.length) host.broadcast(changed);
-    return receipt;
   };
   const readContextSnapshot = async (signal?: AbortSignal) => {
     signal?.throwIfAborted();

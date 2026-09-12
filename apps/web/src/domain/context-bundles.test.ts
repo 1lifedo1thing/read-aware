@@ -1,3 +1,4 @@
+import { withDomainBackup } from "../platform/domain-write-gate";
 import { expect, test } from "bun:test";
 import { AppError, type ContextBundle, type ProfileContextSnapshot } from "@read-aware/core";
 import { createContextBundleService } from "./context-bundles";
@@ -168,4 +169,21 @@ test("source retirement prevents undispatched publication but preserves actual d
     else { await expect(pending).rejects.toBeDefined(); expect(host.calls).not.toContain("context_bundle_publish"); }
     expect(host.intentObservers()).toBe(0);
   }
+});
+
+// A plugin-backed source can itself request backup. Only the final local
+// publication is a write, not source callbacks or model/context preparation.
+test("context source assembly may await backup while publication is separately fenced", async () => {
+  const host = fixture(); let captures = 0;
+  host.controls.before = async step => {
+    if (step === "profile_context") await withDomainBackup(async () => { captures++; });
+  };
+  expect((await host.service.captureProfile("user")).receipt.changed).toBe(true);
+  expect(captures).toBe(1);
+  const denied = fixture();
+  await withDomainBackup(async () => {
+    await expect(denied.service.captureProfile("user")).rejects.toMatchObject({ code: "backup/busy" });
+    expect(denied.calls).not.toContain("mint");
+    expect(denied.calls).not.toContain("context_bundle_publish");
+  });
 });

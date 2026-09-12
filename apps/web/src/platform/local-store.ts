@@ -19,6 +19,7 @@
  * atoms synchronously) is imported — see main.tsx. Until it resolves under
  * Tauri, the snapshot is empty and reads fall back to defaults.
  */
+import { runObservedDomainWrite, runDomainWrite, type RunDomainWrite } from "./domain-write-gate";
 import { AppError, errorCode, type EventOrigin } from "@read-aware/core";
 import { invoke } from "./ipc";
 import { emitAppEvent } from "./app-events";
@@ -103,6 +104,17 @@ const writes = new KVWriteQueue({
   },
 });
 
+/** Preserve the queue's optimistic and failure contracts before native dispatch. */
+function writeLocal<T>(keys: Iterable<string>, operation: () => T | Promise<T>, owner: KVFailureOwner = "store", run: RunDomainWrite = runDomainWrite): Promise<T> {
+  return runObservedDomainWrite(operation, error => {
+    // Synchronous UI setters may have optimistically changed their own atom
+    // even though no queue mutation was admitted. Re-publish current values.
+    for (const key of keys) notifyChange(key, snapshot?.get(key) ?? null);
+    log.warn("KV write admission failed", error);
+    emitAppEvent("local-write-failed", { kind: "kv", code: errorCode(error), owner });
+  }, run);
+}
+
 /** A durability barrier for writes already accepted by this process. */
 export async function flushLocalKV(prefix = ""): Promise<void> {
   if (isTauri()) await writes.flush(prefix);
@@ -133,7 +145,7 @@ export const localKV = {
       notifyCommit({ entries: [{ key, value }], source: origin, actor: null });
       return;
     }
-    void writes.write(key, value, origin);
+    void writeLocal([key], () => writes.write(key, value, origin));
   },
 
   removeItem(key: string, origin: KVWriteOrigin = "local"): void {
@@ -143,18 +155,18 @@ export const localKV = {
       notifyCommit({ entries: [{ key, value: null }], source: origin, actor: null });
       return;
     }
-    void writes.write(key, null, origin);
+    void writeLocal([key], () => writes.write(key, null, origin));
   },
 
   setItemAsync(key: string, value: string, actor: EventOrigin | null = null): Promise<void> {
-    if (isTauri()) return writes.write(key, value, "local", actor);
+    if (isTauri()) return writeLocal([key], () => writes.write(key, value, "local", actor));
     localStorage.setItem(key, value);
     notifyChange(key, value);
     notifyCommit({ entries: [{ key, value }], source: "local", actor });
     return Promise.resolve();
   },
   removeItemAsync(key: string, actor: EventOrigin | null = null): Promise<void> {
-    if (isTauri()) return writes.write(key, null, "local", actor);
+    if (isTauri()) return writeLocal([key], () => writes.write(key, null, "local", actor));
     localStorage.removeItem(key);
     notifyChange(key, null);
     notifyCommit({ entries: [{ key, value: null }], source: "local", actor });
@@ -187,11 +199,11 @@ export const localKV = {
 };
 
 /** Host-only multi-record settings commit; never exposes raw KV authority to actors. */
-export function setLocalKVBatch(entries: ReadonlyMap<string, string | null>, actor: EventOrigin | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store"): Promise<void> {
+export function setLocalKVBatch(entries: ReadonlyMap<string, string | null>, actor: EventOrigin | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store", run: RunDomainWrite = runDomainWrite): Promise<void> {
   if (entries.size === 0) return Promise.resolve();
   const values = new Map(entries);
   if (isTauri()) {
-    return writes.batch(values, () => invoke("set_kv_batch", { entries: [...values] }), actor, source, failureOwner);
+    return writeLocal(values.keys(), () => writes.batch(values, () => invoke("set_kv_batch", { entries: [...values] }), actor, source, failureOwner), failureOwner, run);
   }
   // Storybook has no SQLite transaction. Restore its prior records on failure,
   // and do not notify observers until all writes have succeeded.
@@ -312,8 +324,8 @@ export async function dumpLocalKV(): Promise<Record<string, string>> {
 }
 
 /** Merge a backup atomically before reload, retaining the existing roaming-publication policy. */
-export async function restoreLocalKV(entries: Record<string, string>): Promise<void> {
-  await setLocalKVBatch(new Map(Object.entries(entries)), null, "restore");
+export async function restoreLocalKV(entries: Record<string, string>, run: RunDomainWrite = runDomainWrite): Promise<void> {
+  await setLocalKVBatch(new Map(Object.entries(entries)), null, "restore", "store", run);
 }
 
 /** Host rollback spanning KV and other SQLite tables, with the same queue/mirror contract. */
@@ -331,7 +343,7 @@ export function restoreLocalKVTransaction(
     const values = new Map([...new Set([...Object.keys(previous), ...Object.keys(replacement)])]
       .map(suffix => [prefix + suffix, Object.prototype.hasOwnProperty.call(replacement, suffix) ? replacement[suffix]! : null] as const));
     for (const [key, value] of extra) values.set(key, value);
-    return writes.replace(values, persist);
+    return writeLocal(values.keys(), () => writes.replace(values, persist));
   });
 }
 
@@ -355,5 +367,5 @@ export async function replaceLocalKVPrefix(
   const previous = localKV.entries(prefix);
   const values = new Map([...new Set([...Object.keys(previous), ...Object.keys(entries)])]
     .map(suffix => [prefix + suffix, entries[suffix] ?? null] as const));
-  await writes.replace(values, () => invoke("replace_kv_prefix", { prefix, entries }));
+  await writeLocal(values.keys(), () => writes.replace(values, () => invoke("replace_kv_prefix", { prefix, entries })));
 }

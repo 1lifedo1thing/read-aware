@@ -1,3 +1,4 @@
+import { withDomainBackup } from "../platform/domain-write-gate";
 import { expect, test } from "bun:test";
 import { AppError } from "@read-aware/core";
 import { deferred } from "../../tests/helpers/entity-host";
@@ -78,4 +79,17 @@ test("partial/no-op receipt is not inflated, and invalid derived data is logged 
   host.controls.snapshot.derived = { version: 1, summary: "Old", sources: [{ memoryId: "a", revision: `mem1:${"b".repeat(64)}` }], entityEvidence: [] };
   expect(await host.service.context()).toEqual({ curated: "Curated", consolidated: null, derivedStatus: "stale" });
   expect(host.warnings).toHaveLength(1);
+});
+
+test("backup fences consolidation and its scratch writes while snapshot reads stay available", async () => {
+  const host = identityHost();
+  await withDomainBackup(async () => {
+    for (const write of [
+      () => host.service.commit(identityPlan()),
+      () => host.service.work.append({ expectedRevision: identityRevision, index: 0, json: "{}" }),
+      () => host.service.work.compact({ expectedRevision: identityRevision, expectedPageCount: 1, json: "{}" }),
+    ]) await expect(write()).rejects.toMatchObject({ code: "backup/busy" });
+    expect(host.calls).toHaveLength(0); expect(host.minted).toHaveLength(0);
+    expect(await host.service.snapshot()).toEqual(host.controls.snapshot);
+  });
 });

@@ -13,6 +13,7 @@
  * `secrets.rs` (AES-256-GCM with a separate `0600` key file); read its header
  * for why the OS keychain is deliberately not used.
  */
+import { runDomainWrite, runObservedDomainWrite } from "./domain-write-gate";
 import { invoke } from "./ipc";
 import { errorCode } from "@read-aware/core";
 import { emitAppEvent } from "./app-events";
@@ -102,7 +103,7 @@ export async function hydrateSecrets(): Promise<void> {
     // launch rather than losing the user's key.
     const legacy = localStorage.getItem(LEGACY_AI_KEY_STORAGE_KEY);
     if (legacy) {
-      await invoke("secret_set", { key: "ai-api-key", value: legacy });
+      await runDomainWrite(() => invoke("secret_set", { key: "ai-api-key", value: legacy }));
       localStorage.removeItem(LEGACY_AI_KEY_STORAGE_KEY);
       log.info("moved the API key out of localStorage into encrypted storage");
     }
@@ -138,7 +139,10 @@ export function getDurableSecret(key: SecretKey): string {
 }
 
 export function setSecretAsync(key: SecretKey, value: string, source: KVWriteOrigin = "local"): Promise<void> {
-  if (isTauri()) return writes.write(key, value || null, source);
+  if (isTauri()) return runObservedDomainWrite(() => writes.write(key, value || null, source), error => {
+    log.warn("Credential write admission failed", error);
+    emitAppEvent("local-write-failed", { kind: "secret", code: errorCode(error) });
+  });
   if (value) snapshot.set(key, value); else snapshot.delete(key);
   notifyCommit(key, source);
   return Promise.resolve();
@@ -184,12 +188,16 @@ export async function setPluginSecret(
   value: string,
 ): Promise<void> {
   if (!isTauri()) throw new Error("secrets require the desktop app");
-  await invoke("secret_set", { key: pluginSecretKey(pluginId, key), value });
-  emitAppEvent("plugin-storage-changed", { pluginId });
+  await runDomainWrite(async () => {
+    await invoke("secret_set", { key: pluginSecretKey(pluginId, key), value });
+    emitAppEvent("plugin-storage-changed", { pluginId });
+  });
 }
 
 export async function deletePluginSecret(pluginId: string, key: string): Promise<void> {
   if (!isTauri()) throw new Error("secrets require the desktop app");
-  await invoke("secret_delete", { key: pluginSecretKey(pluginId, key) });
-  emitAppEvent("plugin-storage-changed", { pluginId });
+  await runDomainWrite(async () => {
+    await invoke("secret_delete", { key: pluginSecretKey(pluginId, key) });
+    emitAppEvent("plugin-storage-changed", { pluginId });
+  });
 }

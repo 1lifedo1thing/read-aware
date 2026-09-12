@@ -5,14 +5,14 @@ import { invoke } from "./ipc";
 import { isTauri } from "./environment";
 import { afterSecretWrites, getDurableSecret } from "./secret-store";
 import { broadcastDomainEventDrafts, mintEventRowsAfterCurrentFrontier, type DomainEventDraft } from "./domain-events";
-import { durableWrites } from "./write-settlement";
+import { runDomainWrite } from "./domain-write-gate";
 
 type Report = { events: (DomainEventDraft & { hlc: HlcStamp })[]; awaitingConnection: boolean };
 let active: Promise<void> | null = null;
 export function flushRestoredCredentialPublications(): Promise<void> {
   if (!isTauri()) return Promise.resolve();
   if (active) return active;
-  active = durableWrites.run(() => afterSecretWrites(async () => {
+  active = runDomainWrite(() => afterSecretWrites(async () => {
     if (!getDurableSecret("sync.master-key")) return;
     let conflicts = 0;
     while (true) {

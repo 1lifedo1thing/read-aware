@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../platform/domain-write-gate";
 import { AppError, validateClassificationBookId, type BookDigestSnapshot, type ChapterDigest } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { isTauri } from "../platform/environment";
@@ -21,9 +22,11 @@ export async function saveBookDigest(bookId: string, digest: ChapterDigest, expe
   if (typeof expectedRevision !== "string" || !/^bdg1:[a-f0-9]{64}$/.test(expectedRevision)) throw new AppError("memory/invalid-input", "Missing digest revision");
   const copy = structuredClone(digest);
   const draft: DomainEventDraft = { type: "book.chapterDigested", origin: "agent", payload: { ...copy, bookId, flavor: copy.flavor ?? "narrative" } };
-  assertLive(signal);
-  const [event] = await mintEventRows([draft]);
-  assertLive(signal);
-  await invoke<BookDigestSnapshot>("book_digest_commit", { event, expectedRevision });
-  broadcastDomainEventDrafts([draft]);
+  return runDomainWrite(async () => {
+    assertLive(signal);
+    const [event] = await mintEventRows([draft]);
+    assertLive(signal);
+    await invoke<BookDigestSnapshot>("book_digest_commit", { event, expectedRevision });
+    broadcastDomainEventDrafts([draft]);
+  });
 }

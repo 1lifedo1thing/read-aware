@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../platform/domain-write-gate";
 import { normalizeEntityDecision, normalizeEntityQuery,
   type EntityDecision, type EntityDecisionReceipt, type EntityPage, type EntityQuery, type EventOrigin } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
@@ -22,12 +23,14 @@ export function createEntityRegistryService(host: EntityHost) {
         ? { type: "entity.resolved", origin, payload: { entityId: decision.entityId, kind: decision.kind,
           canonicalName: decision.canonicalName, ...(decision.aliases === undefined ? {} : { aliases: decision.aliases }) } }
         : { type: "entity.merged", origin, payload: { keepId: decision.keepId, mergedId: decision.mergedId } };
-      const [event] = await host.mint([draft]);
-      signal?.throwIfAborted();
-      const receipt = await host.invoke<EntityDecisionReceipt>("entity_commit", { event, expectedRevision: decision.expectedRevision });
-      // Once dispatched, cancellation cannot truthfully claim the transaction did not land.
-      if (receipt.changed) host.broadcast([draft]);
-      return receipt;
+      return runDomainWrite(async () => {
+        const [event] = await host.mint([draft]);
+        signal?.throwIfAborted();
+        const receipt = await host.invoke<EntityDecisionReceipt>("entity_commit", { event, expectedRevision: decision.expectedRevision });
+        // Once dispatched, cancellation cannot truthfully claim the transaction did not land.
+        if (receipt.changed) host.broadcast([draft]);
+        return receipt;
+      });
     },
   };
 }

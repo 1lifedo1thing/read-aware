@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { AppError, validateAnnotationMutations, type AnnotationCommitResult, type AnnotationMutation, type EventOrigin } from "@read-aware/core";
 import { invoke } from "../../../platform/ipc";
 import { isTauri } from "../../../platform/environment";
@@ -23,9 +24,11 @@ export async function commitAnnotationMutations(changes: AnnotationMutation[], o
   });
   const conditions = changes.map(({ annotationId, expectedRevision }) => ({ annotationId, expectedRevision }));
   if (signal?.aborted) throw new AppError("annotations/cancelled", "Cancelled before annotation commit");
-  const events = await mintEventRows(drafts);
-  if (signal?.aborted) throw new AppError("annotations/cancelled", "Cancelled before annotation commit");
-  const result = await invoke<AnnotationCommitResult>("annotations_commit", { events, conditions });
-  broadcastDomainEventDrafts(drafts);
-  return result;
+  return runDomainWrite(async () => {
+    const events = await mintEventRows(drafts);
+    if (signal?.aborted) throw new AppError("annotations/cancelled", "Cancelled before annotation commit");
+    const result = await invoke<AnnotationCommitResult>("annotations_commit", { events, conditions });
+    broadcastDomainEventDrafts(drafts);
+    return result;
+  });
 }

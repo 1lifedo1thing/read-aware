@@ -10,11 +10,11 @@
  * restored rows, not the missing event history. The full JSON/base64 bundle
  * remains in memory; native file transport does not make this a streamed archive.
  */
+import { type RunDomainWrite } from "../../../platform/domain-write-gate";
 import { dumpLocalKV, restoreLocalKV } from "../../../platform/local-store";
 import { withPluginDataBackup } from "../../../platform/plugin-data-access";
 import { withSyncBackup, type fetchRemoteBlob } from "../../../platform/sync/sync-scheduler";
-import { withReadingBackup } from "../../reader/lib/reading-trace-runtime";
-import { pluginSchedules } from "../../plugins/runtime/plugin-scheduler";
+import { withBackupCapture } from "./backup-capture";
 import { isPluginScheduleStateKey } from "../../../platform/plugin-local-state";
 import { AppError } from "@read-aware/core";
 import { LEGACY_PROFILE_KEY, readUserProfileSnapshot, restoreUserProfile } from "../../../domain/user-profile";
@@ -82,7 +82,7 @@ function settledValue<T>(result: PromiseSettledResult<T>): T {
 export async function exportBackup(signal?: AbortSignal): Promise<string> {
   const available = new Map<string, boolean>();
   return withSyncBackup(fetchBlob => withPluginDataBackup("export",
-    () => pluginSchedules.withPersistencePaused(() => withReadingBackup(() => exportBackupContents(available), signal), signal), signal,
+    () => withBackupCapture(run => exportBackupContents(available, run), signal), signal,
     () => prepareBackupFiles(fetchBlob, available, signal)), signal);
 }
 
@@ -100,7 +100,7 @@ async function prepareBackupFiles(fetchBlob: typeof fetchRemoteBlob, available: 
   }
 }
 
-async function exportBackupContents(available: ReadonlyMap<string, boolean>): Promise<string> {
+async function exportBackupContents(available: ReadonlyMap<string, boolean>, run: RunDomainWrite): Promise<string> {
   // Retain the backup boundary until every dispatched read settles, even when
   // one fails. A rejected export must not release still-running native work.
   const results = await Promise.allSettled([
@@ -108,7 +108,7 @@ async function exportBackupContents(available: ReadonlyMap<string, boolean>): Pr
     listLibraryBooks(),
     listCollections(),
     listAnnotations(),
-    readUserProfileSnapshot(),
+    readUserProfileSnapshot(undefined, run),
   ]);
   const kvAll = settledValue(results[0]);
   const books = settledValue(results[1]);
@@ -156,10 +156,10 @@ export async function importBackup(json: string, signal?: AbortSignal): Promise<
   // Cancellation can stop admission/draining, but does not revoke a merge
   // which has begun writing. Its legacy partial-write behavior is unchanged.
   return withSyncBackup(() => withPluginDataBackup("import",
-    () => pluginSchedules.withPersistencePaused(() => withReadingBackup(() => importBackupContents(json), signal), signal), signal), signal);
+    () => withBackupCapture(run => importBackupContents(json, run), signal), signal), signal);
 }
 
-async function importBackupContents(json: string): Promise<BackupImportResult> {
+async function importBackupContents(json: string, run: RunDomainWrite): Promise<BackupImportResult> {
   const parsed = JSON.parse(json) as Partial<Backup>;
   if (!parsed || parsed.kind !== "backup" || !Array.isArray(parsed.books)) {
     throw new Error("This file is not a ReadAware backup.");
@@ -175,12 +175,12 @@ async function importBackupContents(json: string): Promise<BackupImportResult> {
   const summary = kv[LEGACY_PROFILE_KEY];
   if (hasProfile && typeof summary !== "string") throw new Error("Invalid backup profile summary");
   delete kv[LEGACY_PROFILE_KEY];
-  const profile = hasProfile ? await readUserProfileSnapshot() : null;
+  const profile = hasProfile ? await readUserProfileSnapshot(undefined, run) : null;
   const collections = parsed.collections ?? [];
   const annotations = parsed.annotations ?? [];
 
-  await restoreLocalKV(kv);
-  if (profile) await restoreUserProfile(summary!, profile.revision);
+  await restoreLocalKV(kv, run);
+  if (profile) await restoreUserProfile(summary!, profile.revision, run);
   // Collections first so book membership resolves against existing rows.
   for (const collection of collections) await restoreCollection(collection);
   for (const book of parsed.books) {

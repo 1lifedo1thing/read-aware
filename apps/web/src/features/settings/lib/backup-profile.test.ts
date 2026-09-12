@@ -39,10 +39,10 @@ test("v1 import separates large historical summary from KV and carries the pre-r
   try {
     const summary = "x".repeat(20000);
     expect(await importBackup(json({ [profile.LEGACY_PROFILE_KEY]: summary, "read-aware-theme": "paper" }))).toMatchObject({ settings: 2 });
-    expect(write).toHaveBeenLastCalledWith({ "read-aware-theme": "paper" });
-    expect(restore).toHaveBeenLastCalledWith(summary, observed.revision);
+    expect(write).toHaveBeenLastCalledWith({ "read-aware-theme": "paper" }, expect.any(Function));
+    expect(restore).toHaveBeenLastCalledWith(summary, observed.revision, expect.any(Function));
     await importBackup(json({ [profile.LEGACY_PROFILE_KEY]: "" }));
-    expect(restore).toHaveBeenLastCalledWith("", observed.revision);
+    expect(restore).toHaveBeenLastCalledWith("", observed.revision, expect.any(Function));
     const reads = read.mock.calls.length, writes = restore.mock.calls.length;
     await importBackup(json({ "read-aware-theme": "dark" }));
     expect(read).toHaveBeenCalledTimes(reads); expect(restore).toHaveBeenCalledTimes(writes);

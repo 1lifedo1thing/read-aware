@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../platform/domain-write-gate";
 import { AppError, normalizeMemoryMutation, validateMemoryId, type EventOrigin, type MemoryMutation, type MemoryMutationReceipt, type MemorySnapshot } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { isTauri } from "../platform/environment";
@@ -19,10 +20,12 @@ export async function mutateMemory(input: MemoryMutation, origin: EventOrigin, s
   const change = normalizeMemoryMutation(input);
   assertDesktop(); assertLive(signal);
   const draft = memoryMutationDraft(change, origin);
-  const [event] = await mintEventRows([draft]);
-  assertLive(signal);
-  // After dispatch, return the committed receipt even if the caller cancels; cancellation is not undo.
-  const result = await invoke<MemoryMutationReceipt>("memory_commit", { event, expectedRevision: change.expectedRevision });
-  broadcastDomainEventDrafts([draft]);
-  return result;
+  return runDomainWrite(async () => {
+    const [event] = await mintEventRows([draft]);
+    assertLive(signal);
+    // After dispatch, return the committed receipt even if the caller cancels; cancellation is not undo.
+    const result = await invoke<MemoryMutationReceipt>("memory_commit", { event, expectedRevision: change.expectedRevision });
+    broadcastDomainEventDrafts([draft]);
+    return result;
+  });
 }

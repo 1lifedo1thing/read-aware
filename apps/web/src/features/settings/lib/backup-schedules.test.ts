@@ -58,6 +58,6 @@ test("legacy v1 import preserves device task identity while importing ordinary p
     const result = await importBackup(JSON.stringify({ kind: "backup", books: [], kv: local }));
     expect(result.settings).toBe(2);
     expect(write).toHaveBeenCalledWith({ "read-aware-plugin.backup-schedule.settings": '{"chosen":true}',
-      "read-aware-plugin.backup-schedule.schedule-state-extra": '"user data"' });
+      "read-aware-plugin.backup-schedule.schedule-state-extra": '"user data"' }, expect.any(Function));
   } finally { write.mockRestore(); }
 });

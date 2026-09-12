@@ -29,7 +29,7 @@ import type {
 import { isTauri } from "./environment";
 import { createHlcClock } from "./hlc";
 import { createLogger } from "./logger";
-import { durableWrites } from "./write-settlement";
+import { runDomainWrite } from "./domain-write-gate";
 
 const log = createLogger("domain-events");
 
@@ -234,7 +234,7 @@ function broadcastDomainEvents(drafts: DomainEventDraft[]): void {
  */
 export async function appendDomainEvents(drafts: DomainEventDraft[]): Promise<void> {
   if (!isTauri() || drafts.length === 0) return;
-  return durableWrites.run(async () => {
+  return runDomainWrite(async () => {
     const { deviceId } = await getDeviceInfo();
     const events = drafts.map((draft) => toEventRow(draft, deviceId));
     await invoke("append_events", { events });
@@ -267,7 +267,7 @@ export async function commitDomainEvents(
     broadcastDomainEvents(drafts);
     return { appended: 0, applied: 0 };
   }
-  return durableWrites.run(async () => {
+  return runDomainWrite(async () => {
     const { deviceId } = await getDeviceInfo();
     const events = drafts.map((draft) => toEventRow(draft, deviceId));
     const report = await invoke<CommitReport>("commit_events", { events });

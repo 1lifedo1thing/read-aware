@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../platform/domain-write-gate";
 import { AppError, type BookMergePreview, type BookMergeReceipt, type BookMergeRequest, type DuplicateBookPage,
   type DuplicateBookQuery, type EventOrigin } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
@@ -32,8 +33,10 @@ export async function mergeDuplicateBooks(input: BookMergeRequest, origin: Event
   if (!preview || preview.revision !== expectedRevision) throw new AppError("ui/superseded", "Duplicate books changed; preview again");
   const drafts: DomainEventDraft[] = preview.merged.map(member => ({ type: "book.merged", origin,
     payload: { keepId: preview.keep.id, mergedId: member.id } }));
-  const events = await mintEventRows(drafts); live(signal);
-  const receipt = await invoke<BookMergeReceipt>("library_merge_commit", { bookId, expectedRevision, events });
-  broadcastDomainEventDrafts(drafts); emitAppEvent("library-changed", {});
-  return receipt;
+  return runDomainWrite(async () => {
+    const events = await mintEventRows(drafts); live(signal);
+    const receipt = await invoke<BookMergeReceipt>("library_merge_commit", { bookId, expectedRevision, events });
+    broadcastDomainEventDrafts(drafts); emitAppEvent("library-changed", {});
+    return receipt;
+  });
 }

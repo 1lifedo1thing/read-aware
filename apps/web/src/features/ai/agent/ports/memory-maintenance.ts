@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../../../../platform/domain-write-gate";
 import { planMemoryMaintenance, type MemoryChange } from "@read-aware/agent";
 import { AppError, type MemorySnapshot } from "@read-aware/core";
 import { invoke } from "../../../../platform/ipc";
@@ -15,11 +16,13 @@ export async function snapshotMemories(): Promise<MemorySnapshot[]> {
 async function commitMaintenance(conditions: { memoryId: string; revision: string }[], drafts: DomainEventDraft[], signal?: AbortSignal) {
   assertAllowed(signal);
   if (!drafts.length) return [];
-  const events = await mintEventRows(drafts);
-  assertAllowed(signal);
-  const committed = await invoke<MemorySnapshot[]>("memory_maintenance_commit", { conditions, events });
-  broadcastDomainEventDrafts(drafts);
-  return committed;
+  return runDomainWrite(async () => {
+    const events = await mintEventRows(drafts);
+    assertAllowed(signal);
+    const committed = await invoke<MemorySnapshot[]>("memory_maintenance_commit", { conditions, events });
+    broadcastDomainEventDrafts(drafts);
+    return committed;
+  });
 }
 export async function applyMemoryChanges(changes: MemoryChange[], snapshots: MemorySnapshot[], signal?: AbortSignal) {
   assertAllowed(signal);

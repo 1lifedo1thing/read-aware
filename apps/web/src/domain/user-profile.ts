@@ -1,3 +1,4 @@
+import { runDomainWrite, type RunDomainWrite } from "../platform/domain-write-gate";
 import { normalizeUserProfileChange, normalizeUserProfileQuery, userProfilePage,
   type EventOrigin, type UserProfileChange, type UserProfileQuery, type UserProfileReceipt, type UserProfileSnapshot } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
@@ -9,31 +10,33 @@ type ProfileHost = { invoke: typeof invoke; mint: typeof mintEventRows; broadcas
 /** Initialization is shared housekeeping; actor cancellation only gates its own read/write. */
 export function createUserProfileService(host: ProfileHost) {
   let initialization: Promise<void> | undefined;
-  const initialize = (): Promise<void> => initialization ??= (async () => {
+  const initialize = (run: RunDomainWrite = runDomainWrite): Promise<void> => initialization ??= run(async () => {
     const [event] = await host.mint([{ type: "profile.updated", payload: {}, origin: "system" }]);
     const result = await host.invoke<{ migrated: boolean; snapshot: UserProfileSnapshot }>("profile_initialize", { event });
     if (result.migrated) host.broadcast([{ type: "profile.updated", payload: { summary: result.snapshot.summary }, origin: "system" }]);
-  })().catch(error => { initialization = undefined; throw error; });
+  }).catch(error => { initialization = undefined; throw error; });
 
-  const readSnapshot = async (signal?: AbortSignal): Promise<UserProfileSnapshot> => {
+  const readSnapshot = async (signal?: AbortSignal, run: RunDomainWrite = runDomainWrite): Promise<UserProfileSnapshot> => {
     signal?.throwIfAborted();
-    await initialize();
+    await initialize(run);
     signal?.throwIfAborted();
     const snapshot = await host.invoke<UserProfileSnapshot>("profile_inspect");
     signal?.throwIfAborted();
     return snapshot;
   };
-  const write = async (command: "profile_commit" | "profile_restore", input: UserProfileChange, origin: EventOrigin, signal?: AbortSignal) => {
+  const write = async (command: "profile_commit" | "profile_restore", input: UserProfileChange, origin: EventOrigin, signal?: AbortSignal, run: RunDomainWrite = runDomainWrite) => {
     signal?.throwIfAborted();
-    await initialize();
+    await initialize(run);
     signal?.throwIfAborted();
     const draft: DomainEventDraft = { type: "profile.updated", payload: { summary: input.summary }, origin };
-    const [event] = await host.mint([draft]);
-    signal?.throwIfAborted();
-    const receipt = await host.invoke<UserProfileReceipt>(command, { event, expectedRevision: input.expectedRevision });
-    // Dispatched transactions drain to their real result, even if the actor retires.
-    if (receipt.changed) host.broadcast([draft]);
-    return receipt;
+    return run(async () => {
+      const [event] = await host.mint([draft]);
+      signal?.throwIfAborted();
+      const receipt = await host.invoke<UserProfileReceipt>(command, { event, expectedRevision: input.expectedRevision });
+      // Dispatched transactions drain to their real result, even if the actor retires.
+      if (receipt.changed) host.broadcast([draft]);
+      return receipt;
+    });
   };
   const change = async (input: UserProfileChange, origin: EventOrigin, signal?: AbortSignal) =>
     write("profile_commit", normalizeUserProfileChange(input), origin, signal);
@@ -51,7 +54,7 @@ export function createUserProfileService(host: ProfileHost) {
       await change({ summary, expectedRevision: observed.revision }, "agent");
     },
     // Only the host archive workflow can reach this; no override flag in public edits.
-    restore: (summary: string, expectedRevision: string) => write("profile_restore", { summary, expectedRevision }, "user"),
+    restore: (summary: string, expectedRevision: string, run: RunDomainWrite = runDomainWrite) => write("profile_restore", { summary, expectedRevision }, "user", undefined, run),
   };
 }
 

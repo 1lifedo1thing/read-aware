@@ -1,3 +1,4 @@
+import { withDomainBackup } from "../platform/domain-write-gate";
 import { expect, test } from "bun:test";
 import { AppError, type OnboardingReceipt } from "@read-aware/core";
 import { createOnboardingService } from "./onboarding";
@@ -37,4 +38,16 @@ test.each(["committed", "replayed", "failed", "cancel-before", "disabled"])("onb
     summary: "Approved summary", seeds: [{ content: "Approved fact" }],
   } } } });
   else expect(["cancel-before", "disabled"]).toContain(mode);
+});
+
+test("backup rejects onboarding before minting without bypassing the memory policy", async () => {
+  let allowed = true;
+  const service = createOnboardingService({ allowed: () => allowed, initialize: async () => {},
+    mint: async () => { throw Error("must not mint"); }, invoke: async () => { throw Error("must not dispatch"); }, broadcast: () => { throw Error("must not publish"); } });
+  const candidate = { submissionId: "interview", expectedRevision: `profile2:${"a".repeat(64)}`, summary: "Approved", seeds: [] };
+  await withDomainBackup(async () => {
+    await expect(service(candidate, "user")).rejects.toMatchObject({ code: "backup/busy" });
+    allowed = false;
+    await expect(service(candidate, "user")).rejects.toMatchObject({ code: "ai/memory-disabled" });
+  });
 });

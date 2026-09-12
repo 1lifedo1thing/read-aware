@@ -1,3 +1,4 @@
+import { runDomainWrite } from "../platform/domain-write-gate";
 import { AppError, conversationContextBundle, normalizeConversationTarget, normalizeReadingIntentScope, profileContextBundle, readingIntentContextBundle,
   type ContextBundle, type ConversationTarget, type EventOrigin, type ProfileContextSnapshot, type ReadingIntentScope } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
@@ -27,15 +28,17 @@ export function createContextBundleService(host: Host) {
     const bundle = await assemble();
     signal?.throwIfAborted();
     const draft: DomainEventDraft = { type: "context.bundlePublished", payload: bundle, origin };
-    const [event] = await host.mint([draft]);
-    signal?.throwIfAborted();
-    const receipt = await host.invoke<Receipt>("context_bundle_publish", { event, expectedReadRevision });
-    // Native dispatch owns the real result, including cancellation after dispatch.
-    if (!receipt || receipt.version !== bundle.version || typeof receipt.changed !== "boolean" || receipt.persistence !== "event-log") {
-      throw new AppError("db/error", "Invalid context publication receipt");
-    }
-    if (receipt.changed) host.broadcast([draft]);
-    return { bundle, receipt };
+    return runDomainWrite(async () => {
+      const [event] = await host.mint([draft]);
+      signal?.throwIfAborted();
+      const receipt = await host.invoke<Receipt>("context_bundle_publish", { event, expectedReadRevision });
+      // Native dispatch owns the real result, including cancellation after dispatch.
+      if (!receipt || receipt.version !== bundle.version || typeof receipt.changed !== "boolean" || receipt.persistence !== "event-log") {
+        throw new AppError("db/error", "Invalid context publication receipt");
+      }
+      if (receipt.changed) host.broadcast([draft]);
+      return { bundle, receipt };
+    });
   };
   return {
     async captureBook(bookId: string, origin: EventOrigin, signal?: AbortSignal) {
