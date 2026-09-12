@@ -255,3 +255,11 @@ Save 面板保存到自有 /tmp 文件。原文件2809字节、与库内原文�
 测试符号链接被略过并显示 omitted=1。关闭视图后精确删除本轮重新导入的书，
 文件释放。见 native-file-observations.json。资源定向21项及桌面类型检查通过；
 目录分页、拖放、剪贴板、关联应用、其他格式和平台不属于此处通过范围。
+
+解锁后用另一新书复验首次选区：保持未打开书，在 Text Desk 找原文，切到 Codex
+使 Tauri focus=false/visibility=visible，再点 Select passage。记录 idle→loading→
+ready→selection，同一选择ID持续到切回前台，实际显示选中文字和操作菜单。
+这次没有复现早先 null；不据此断言锁屏原因，也不把一次通过当作竞争条件修复。
+见 selection-foreground-observations.json 和下图。自有书最终关闭并删除，文件释放。
+
+![后台打开后切回前台的选区](./selection-foreground.png)
