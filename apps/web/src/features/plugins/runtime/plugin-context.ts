@@ -878,9 +878,15 @@ export function buildPluginContext(
     if (annotations.commands) {
       ctx.domains.annotations.commands = guardMutationTree(
         {
-        createHighlight: annotations.commands.createHighlight,
-        applyChanges: (changes: import("@read-aware/core").AnnotationMutation[]) => annotations.commands!.applyChanges(changes, lifecycle.signal),
-        createNote: annotations.commands.createNote,
+          createHighlight: async (input: Parameters<NonNullable<typeof annotations.commands>["createHighlight"]>[0]) => {
+            if (input.range !== undefined && !domain.library) throw new AppError("annotations/forbidden", "Range validation requires library read access");
+            return annotations.commands!.createHighlight(input, lifecycle.signal);
+          },
+          applyChanges: (changes: import("@read-aware/core").AnnotationMutation[]) => annotations.commands!.applyChanges(changes, lifecycle.signal),
+          createNote: async (input: Parameters<NonNullable<typeof annotations.commands>["createNote"]>[0]) => {
+            if (input.range !== undefined && !domain.library) throw new AppError("annotations/forbidden", "Range validation requires library read access");
+            return annotations.commands!.createNote(input, lifecycle.signal);
+          },
         },
         (operation) => lifecycle.assertActive(operation),
         "domains.annotations.commands",

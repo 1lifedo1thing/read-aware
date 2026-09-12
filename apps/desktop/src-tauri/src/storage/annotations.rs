@@ -18,6 +18,8 @@ pub struct Annotation {
     pub kind: String,
     #[serde(default)]
     pub cfi_range: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<serde_json::Value>,
     #[serde(default)]
     pub chapter_href: Option<String>,
     pub text: String,
@@ -37,6 +39,8 @@ pub(crate) fn row_to_annotation(row: &rusqlite::Row) -> rusqlite::Result<Annotat
         book_id: row.get("book_id")?,
         kind: row.get("type")?,
         cfi_range: row.get("cfi_range")?,
+        range: row.get::<_, Option<String>>("range_json")?.map(|value| serde_json::from_str(&value)
+            .map_err(|error| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(error)))).transpose()?,
         chapter_href: row.get("chapter_href")?,
         text: row.get("text")?,
         color: row.get("color")?,
@@ -125,13 +129,13 @@ pub async fn annotation_put(
         conn.execute(
             "INSERT INTO annotations
             (id, book_id, type, cfi_range, chapter_href, text, color, style, content,
-             created_at, updated_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)
+             created_at, updated_at, range_json)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)
          ON CONFLICT(id) DO UPDATE SET
             book_id=excluded.book_id, type=excluded.type, cfi_range=excluded.cfi_range,
             chapter_href=excluded.chapter_href, text=excluded.text, color=excluded.color,
             style=excluded.style, content=excluded.content, created_at=excluded.created_at,
-            updated_at=excluded.updated_at",
+            updated_at=excluded.updated_at, range_json=excluded.range_json",
             params![
                 annotation.id,
                 annotation.book_id,
@@ -144,6 +148,7 @@ pub async fn annotation_put(
                 annotation.content,
                 annotation.created_at,
                 annotation.updated_at,
+                annotation.range.as_ref().map(serde_json::to_string).transpose()?,
             ],
         )
         ?;

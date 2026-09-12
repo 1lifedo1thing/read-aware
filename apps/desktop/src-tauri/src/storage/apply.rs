@@ -996,16 +996,17 @@ fn upsert_annotation(
     content: Option<String>,
     at: &str,
 ) -> Result<(), CommandError> {
+    let range = super::annotation_range::source_json(payload, book_id)?;
     tx.execute(
         "INSERT INTO annotations
             (id, book_id, type, cfi_range, chapter_href, text, color, style,
-             content, created_at, updated_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?10)
+             content, created_at, updated_at, range_json)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?10,?11)
          ON CONFLICT(id) DO UPDATE SET
             book_id=excluded.book_id, type=excluded.type, cfi_range=excluded.cfi_range,
             chapter_href=excluded.chapter_href, text=excluded.text,
             color=excluded.color, style=excluded.style, content=excluded.content,
-            updated_at=excluded.updated_at",
+            updated_at=excluded.updated_at, range_json=excluded.range_json",
         params![
             id,
             book_id,
@@ -1017,6 +1018,7 @@ fn upsert_annotation(
             str_of(payload, "style"),
             content,
             at,
+            range,
         ],
     )
     ?;

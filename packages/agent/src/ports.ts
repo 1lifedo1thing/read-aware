@@ -134,19 +134,21 @@ export interface AnnotationsPort {
   }): Promise<AnnotationItem[]>;
   createHighlight(input: {
     bookId: Id;
+    range?: import("@read-aware/core").BookTextRange;
     text: string;
     anchor?: string;
     chapter?: string;
     color?: HighlightColor;
     style?: HighlightStyle;
-  }): Promise<HighlightItem>;
+  }, signal?: AbortSignal): Promise<HighlightItem>;
   createNote(input: {
     bookId: Id;
+    range?: import("@read-aware/core").BookTextRange;
     body: string;
     quotedText?: string;
     anchor?: string;
     chapter?: string;
-  }): Promise<NoteItem>;
+  }, signal?: AbortSignal): Promise<NoteItem>;
   /**
    * 记录一条 ask-note（doc §7：书线程每个提问留痕；§10 第 5 步，轮末同步落）。
    * 产品实现走共享领域层的 agent-only 动词 createAsk（origin "agent"）。

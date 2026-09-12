@@ -14,6 +14,7 @@
 export type AnnotationType = "highlight" | "note" | "ask";
 
 export interface BaseAnnotation {
+  range?: import("@read-aware/core").BookTextRange;
   id: string;
   bookId: string;
   type: AnnotationType;

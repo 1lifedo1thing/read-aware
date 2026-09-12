@@ -111,10 +111,24 @@ test("compiled plugin exposes both selection actions and the desk create flow wi
   expect(view(await root.actions!.find(action => action.id === "new-note")!.run()).kind).toBe("form");
   expect(f.notes).toHaveLength(1); expect(f.highlights).toHaveLength(1);
   const manifest = await Bun.file(new URL("../dist/manifest.json", import.meta.url)).json();
-  expect(manifest.version).toBe("0.4.0");
+  expect(manifest.version).toBe("0.5.0");
   expect(manifest.permissions).toEqual(["annotations:write", "library:read", "reading:write"]);
   expect(manifest.requires.contributions.selectionActions).toBe("^1.2.0");
   for (const locale of ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"]) {
     for (const key of ["newNote", "newHighlight", "created", "viewCreated", "chooseBook", "bodyRequired", "selectionLimit", "unanchored"] as const) expect(tr(locale, key).length).toBeGreaterThan(0);
   }
+});
+
+test("versioned selection submits the frozen range without competing legacy anchors", async () => {
+  const f = fixture();
+  const range = { bookId: "book", contentVersion: "sha256:old", cfi: "epubcfi(/6/2!/4/2,/1:0,/1:5)" };
+  const selected = { ...structuredClone(input), range: structuredClone(range) };
+  const note = form(selectionCreationView(f.ctx, selected, "note", f.refresh));
+  const highlight = form(selectionCreationView(f.ctx, selected, "highlight", f.refresh));
+  selected.range.contentVersion = "sha256:new";
+  selected.text = "New selection";
+  await note.onSubmit({ body: "My note" });
+  await highlight.onSubmit({ color: "blue", style: "underline" });
+  expect(f.notes[0]).toEqual({ bookId: "book", range, quotedText: input.text, body: "My note" });
+  expect(f.highlights[0]).toEqual({ bookId: "book", range, text: input.text, color: "blue", style: "underline" });
 });

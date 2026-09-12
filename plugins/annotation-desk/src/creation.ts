@@ -50,7 +50,9 @@ export function selectionCreationView(ctx: DeskContext, input: SelectionActionIn
       { kind: "choice", id: "style", label: tr(ctx.locale, "style"), value: "highlight",
         options: styles.map(value => ({ value, label: tr(ctx.locale, value) })) },
     ], onSubmit: async values => {
-    const location = { bookId: captured.book.id, anchor: captured.cfiRange, chapterHref: captured.chapterHref };
+    const location = captured.range
+      ? { bookId: captured.book.id, range: captured.range }
+      : { bookId: captured.book.id, anchor: captured.cfiRange, chapterHref: captured.chapterHref };
     let item: PluginAnnotation;
     if (kind === "note") {
       if (typeof values.body !== "string" || !values.body.trim()) return { fieldErrors: { body: tr(ctx.locale, "bodyRequired") } };

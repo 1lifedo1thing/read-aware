@@ -31,9 +31,10 @@ describe("plugin capability negotiation", () => {
   });
   test("annotation 2 requires conditional edits and rejects clients expecting legacy aliases", () => {
     for (const permission of ["annotations:read", "annotations:write"] as const) {
-      expect(resolvePluginCapabilities(manifest({ permissions: [permission] })).domains.annotations).toBe("2.0.0");
-      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^1.4.0" } } }))).toThrow(/host provides 2.0.0/);
+      expect(resolvePluginCapabilities(manifest({ permissions: [permission] })).domains.annotations).toBe("2.1.0");
+      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^1.4.0" } } }))).toThrow(/host provides 2.1.0/);
       expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^2.0.0" } } }))).not.toThrow();
+      expect(() => assertPluginCapabilityRequirements(manifest({ permissions: [permission], requires: { domains: { annotations: "^2.1.0" } } }))).not.toThrow();
     }
   });
   test("metadata service does not grant reading access and legacy event contracts are rejected", () => {

@@ -1,3 +1,4 @@
+import type { BookTextRange } from "./book-range";
 // Canonical domain READ MODELS — the shapes any programmatic actor (the
 // plugin runtime, the agent's ports, and eventually the app UI) receives
 // when reading a domain. They mirror the projection tables (interim or
@@ -46,6 +47,8 @@ export interface CollectionSummary {
 }
 
 export interface HighlightItem {
+  /** Validated source at creation; absent on legacy/unanchored annotations. */
+  range?: BookTextRange;
   kind: "highlight";
   id: Id;
   bookId: Id;
@@ -60,6 +63,8 @@ export interface HighlightItem {
 }
 
 export interface NoteItem {
+  /** Validated source at creation; absent on legacy/unanchored annotations. */
+  range?: BookTextRange;
   kind: "note";
   id: Id;
   bookId: Id;

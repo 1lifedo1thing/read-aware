@@ -188,6 +188,7 @@ pub(crate) fn commit_events_in_transaction(
         if !insert_event_row(tx, ev, EventSource::Local)? {
             continue;
         }
+        super::annotation_range::validate_local_source(tx, ev)?;
         report.appended += 1;
         if apply::apply_event(tx, ev)? {
             report.applied += 1;

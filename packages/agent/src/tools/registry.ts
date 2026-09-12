@@ -66,7 +66,7 @@ export function buildAgentTools(
     ...buildScheduleTools(scope, deps),
     ...buildThreadTools(scope, deps),
     ...buildShelfTools(scope, deps),
-    ...buildAnnotationTools(scope, deps),
+    ...buildAnnotationTools(scope, deps, turnState),
     ...buildMemoryTools(scope, deps),
     ...buildContextBundleTools(scope, deps),
     ...buildConversationTools(scope, deps, turnState),

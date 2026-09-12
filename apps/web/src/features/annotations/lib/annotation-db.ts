@@ -8,10 +8,25 @@
 
 import { runDomainWrite, type RunDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
-import { normalizeAnnotationPageQuery, type AnnotationPageQuery, type EventOrigin } from "@read-aware/core";
+import { normalizeAnnotationPageQuery, type AnnotationPageQuery, type EventOrigin, type BookTextRange } from "@read-aware/core";
 import type { Annotation, AnnotationFilters, Ask, Highlight, Note } from "./annotation-types";
 import { isTauri } from "../../../platform/environment";
-import { commitDomainEvents } from "../../../platform/domain-events";
+import { commitDomainEvents, mintEventRows, broadcastDomainEventDrafts, type DomainEventDraft } from "../../../platform/domain-events";
+
+type CreationSource = { range?: BookTextRange; signal?: AbortSignal; beforeDispatch?: () => Promise<void> };
+async function commitCreation(draft: DomainEventDraft, source?: CreationSource): Promise<void> {
+  assertDesktop("Creating an annotation");
+  if (!source) { await commitDomainEvents(draft); return; }
+  await runDomainWrite(async () => {
+    source.signal?.throwIfAborted();
+    const events = await mintEventRows([draft]);
+    await source.beforeDispatch?.();
+    source.signal?.throwIfAborted();
+    await invoke("commit_events", { events });
+    // Cancellation after dispatch must not conceal a successful durable write.
+    broadcastDomainEventDrafts([draft]);
+  });
+}
 
 function assertDesktop(what: string): never | void {
   if (!isTauri()) {
@@ -105,13 +120,15 @@ export async function createHighlight(
   color: Highlight["color"] = "yellow",
   style: NonNullable<Highlight["style"]> = "highlight",
   origin?: EventOrigin,
+  source?: CreationSource,
 ): Promise<Highlight> {
   const highlightId = crypto.randomUUID();
-  await commitDomainEvents({
+  await commitCreation({
     type: "highlight.created",
     payload: {
       highlightId,
       bookId,
+      range: source?.range,
       anchor: cfiRange ?? undefined,
       chapterHref: chapterHref ?? undefined,
       text,
@@ -119,7 +136,7 @@ export async function createHighlight(
       style,
     },
     origin,
-  });
+  }, source);
   return requireStored(highlightId) as Promise<Highlight>;
 }
 
@@ -136,20 +153,22 @@ export async function createNote(
   text: string,
   content: string,
   origin?: EventOrigin,
+  source?: CreationSource,
 ): Promise<Note> {
   const noteId = crypto.randomUUID();
-  await commitDomainEvents({
+  await commitCreation({
     type: "note.created",
     payload: {
       noteId,
       bookId,
+      range: source?.range,
       anchor: cfiRange ?? undefined,
       chapterHref: chapterHref ?? undefined,
       quotedText: text || undefined,
       body: content,
     },
     origin,
-  });
+  }, source);
   return requireStored(noteId) as Promise<Note>;
 }
 

@@ -142,3 +142,28 @@ test("cancellation before dispatch does not commit a conditional batch", async (
   await expect(tool("apply_annotation_changes").execute("batch", { changes }, controller.signal)).rejects.toMatchObject({ code: "annotations/cancelled" });
   expect(await deps.annotations.getAnnotation("note")).toEqual(note);
 });
+
+test("versioned creation preserves exact whitespace and passes the read fence and cancellation to the host", async () => {
+  const { createAgentTurnState } = await import("./turn-state");
+  const { deps } = fixture();
+  const state = createAgentTurnState(); state.spoilerFence = { throughChapterIndex: 2 };
+  const range = { bookId, contentVersion: "sha256:old", cfi: "epubcfi(/6/2!/4/2,/1:0,/1:5)" };
+  const calls: unknown[] = [];
+  deps.bookText.readRange = async (query, signal) => { calls.push([query, signal]); return { range, text: " Q", offset: 0, totalLength: 7, nextOffset: 2, sectionIndex: 0, context: { before: "", after: "" } }; };
+  deps.annotations.createHighlight = async (input, signal) => { calls.push([input, signal]); return { kind: "highlight", ...input, color: input.color ?? "yellow", style: input.style ?? "highlight", id: "created" as Id, createdAt: timestamp, updatedAt: timestamp }; };
+  deps.annotations.createNote = async (input, signal) => { calls.push([input, signal]); return { kind: "note", ...input, id: "created" as Id, createdAt: timestamp, updatedAt: timestamp }; };
+  const create = buildAnnotationTools({ kind: "book", bookId }, deps, state).find(tool => tool.name === "create_annotation")!;
+  const controller = new AbortController();
+  const result = parsed(await create.execute("h", { kind: "highlight", range, text: " Quote " }, controller.signal));
+  expect(result).toMatchObject({ range, text: " Quote " });
+  expect(calls[0]).toEqual([{ range, limit: 2, contextChars: 0, throughChapterIndex: 2 }, controller.signal]);
+  expect(calls[1]).toEqual([expect.objectContaining({ range, text: " Quote " }), controller.signal]);
+  expect(parsed(await create.execute("n", { kind: "note", range, body: " Note ", quotedText: " Quote " }))).toMatchObject({ body: "Note", quotedText: " Quote ", range });
+  deps.bookText.readRange = async () => { throw new AppError("reader/stale-location", "Changed"); };
+  const count = calls.length;
+  await expect(create.execute("bad", { kind: "highlight", range, text: "Quote" })).rejects.toMatchObject({ code: "reader/stale-location" });
+  await expect(create.execute("bad", { kind: "highlight", range: { ...range, bookId: "wrong" }, text: "Quote" })).rejects.toMatchObject({ code: "annotations/invalid-input" });
+  controller.abort();
+  await expect(create.execute("abort", { kind: "highlight", range, text: "Quote" }, controller.signal)).rejects.toHaveProperty("name", "AbortError");
+  expect(calls).toHaveLength(count);
+});

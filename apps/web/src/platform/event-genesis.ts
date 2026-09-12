@@ -199,6 +199,7 @@ function memoryDrafts(memory: MemoryRow): DomainEventDraft[] {
   return drafts;
 }
 type AnnotationRow = {
+  range?: import("@read-aware/core").BookTextRange;
   id: string;
   bookId: string;
   type: string;
@@ -268,6 +269,7 @@ function bookDrafts(book: BookRow): DomainEventDraft[] {
 function annotationDraft(annotation: AnnotationRow): DomainEventDraft | null {
   const base = {
     bookId: annotation.bookId,
+    range: annotation.range,
     anchor: annotation.cfiRange ?? undefined,
     chapterHref: annotation.chapterHref ?? undefined,
   };

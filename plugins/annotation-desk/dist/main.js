@@ -398,7 +398,7 @@ function selectionCreationView(ctx, input, kind, refresh) {
       options: styles.map((value) => ({ value, label: tr(ctx.locale, value) }))
     }
   ], onSubmit: async (values) => {
-    const location = { bookId: captured.book.id, anchor: captured.cfiRange, chapterHref: captured.chapterHref };
+    const location = captured.range ? { bookId: captured.book.id, range: captured.range } : { bookId: captured.book.id, anchor: captured.cfiRange, chapterHref: captured.chapterHref };
     let item;
     if (kind === "note") {
       if (typeof values.body !== "string" || !values.body.trim())

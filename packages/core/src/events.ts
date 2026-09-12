@@ -1,3 +1,4 @@
+import type { BookTextRange } from "./book-range";
 // Event-sourced foundation. `raw events` are the unit of sync; every higher
 // layer (core projections, working / long-term memory, context bundles, the
 // vector index) is a local projection rebuilt from this append-only log.
@@ -266,6 +267,7 @@ export type DomainEvent =
       {
         highlightId: Id;
         bookId: Id;
+        range?: BookTextRange;
         /** Range anchor; may be absent for unanchorable formats (some PDFs). */
         anchor?: string;
         chapterHref?: string;
@@ -284,6 +286,7 @@ export type DomainEvent =
       {
         noteId: Id;
         bookId: Id;
+        range?: BookTextRange;
         highlightId?: Id;
         anchor?: string;
         chapterHref?: string;

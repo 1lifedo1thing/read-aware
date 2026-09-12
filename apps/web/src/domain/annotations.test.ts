@@ -7,15 +7,16 @@ import type { Ask, Highlight } from "../features/annotations/lib/annotation-type
 import { createAnnotationsPort } from "../features/ai/agent/ports/annotations-port";
 import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
 import { createAnnotationsDomain } from "./annotations";
+import * as sources from "./annotation-source";
 
 const cleanups: (() => void)[] = [];
 afterEach(() => { for (const cleanup of cleanups.splice(0).reverse()) cleanup(); });
 const own = <T extends { mockRestore(): void }>(spy: T): T => { cleanups.push(() => spy.mockRestore()); return spy; };
 const ask: Ask = { id: "ask", bookId: "book", type: "ask", text: "Question", cfiRange: null, chapterHref: null, createdAt: "2026-09-09T00:00:00Z", updatedAt: "2026-09-09T00:00:00Z" };
 const highlight: Highlight = { ...ask, id: "highlight", type: "highlight", color: "blue", style: "underline", updatedAt: ask.createdAt };
-function plugin(permission?: PluginPermission) {
+function plugin(permission?: PluginPermission, extra: PluginPermission[] = []) {
   const disposables: PluginDisposable[] = [];
-  const runtime = buildPluginContext({ id: "annotation-test", name: "Annotation test", version: "1.0.0", schemaVersion: 1, requires: { domains: { annotations: "^2.0.0" } }, permissions: permission ? [permission] : [] }, "0.5.4", disposables);
+  const runtime = buildPluginContext({ id: "annotation-test", name: "Annotation test", version: "1.0.0", schemaVersion: 1, requires: { domains: { annotations: "^2.1.0" } }, permissions: permission ? [permission, ...extra] : [] }, "0.5.4", disposables);
   runtime.lifecycle.promote();
   cleanups.push(() => runtime.lifecycle.stop());
   return runtime;
@@ -39,7 +40,7 @@ test("Agent adapter preserves underline style and kind filters", async () => {
   const list = own(spyOn(db, "listAnnotations").mockResolvedValue([ask]));
   const port = createAnnotationsPort();
   expect(await port.createHighlight({ bookId: "book", text: "Passage", style: "underline", color: "blue" })).toMatchObject({ style: "underline" });
-  expect(create).toHaveBeenCalledWith("book", null, null, "Passage", "blue", "underline", "agent");
+  expect(create).toHaveBeenCalledWith("book", null, null, "Passage", "blue", "underline", "agent", undefined);
   await port.listAnnotations({ bookId: "book", kind: "ask" });
   expect(list).toHaveBeenCalledWith({ bookId: "book", type: "ask", searchQuery: undefined });
 });
@@ -118,4 +119,25 @@ test("conditional writes share actor origin, require write permission, and carry
   const controller = new AbortController();
   await createAnnotationsPort().applyChanges(changes, controller.signal);
   expect(apply).toHaveBeenLastCalledWith(changes, "agent", controller.signal);
+});
+
+test("versioned creation requires library permission and returns source through Agent and plugin adapters", async () => {
+  const range = { bookId: "book", contentVersion: "sha256:old", cfi: "epubcfi(/6/2!/4/2,/1:0,/1:5)" };
+  const source = { range, beforeDispatch: async () => {}, signal: undefined };
+  const prepare = own(spyOn(sources, "prepareAnnotationSource").mockResolvedValue(source));
+  const create = own(spyOn(db, "createHighlight").mockResolvedValue({ ...highlight, range }));
+  const denied = plugin("annotations:write").context.domains.annotations!.commands!;
+  await expect(denied.createHighlight({ bookId: "book", text: "Quote", range })).rejects.toMatchObject({ code: "annotations/forbidden" });
+  expect(prepare).not.toHaveBeenCalled(); expect(create).not.toHaveBeenCalled();
+  const allowed = plugin("annotations:write", ["library:read"]);
+  const result = await allowed.context.domains.annotations!.commands!.createHighlight({ bookId: "book", text: "Quote", range });
+  expect(result.range).toEqual(range);
+  expect(prepare.mock.calls[0]![1]).toBeInstanceOf(AbortSignal);
+  expect(create).toHaveBeenLastCalledWith("book", range.cfi, null, "Quote", "yellow", "highlight", "plugin:annotation-test", source);
+  const controller = new AbortController();
+  expect(await createAnnotationsPort().createHighlight({ bookId: "book", text: "Quote", range }, controller.signal)).toHaveProperty("range", range);
+  expect(prepare).toHaveBeenLastCalledWith(expect.objectContaining({ range, text: "Quote" }), controller.signal);
+  prepare.mockRejectedValue(new AppError("reader/stale-location", "Changed"));
+  await expect(createAnnotationsPort().createHighlight({ bookId: "book", text: "Quote", range })).rejects.toMatchObject({ code: "reader/stale-location" });
+  expect(create).toHaveBeenCalledTimes(2);
 });

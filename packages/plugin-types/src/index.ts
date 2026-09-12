@@ -1564,7 +1564,9 @@ export type PluginAnnotationsDomain = {
     /** Since 2.0 this is the only edit/delete entry. Use the revision observed
      * before the user's decision; 1..100 distinct items, all commit or none. */
     applyChanges(changes: import("@read-aware/core").AnnotationMutation[]): Promise<import("@read-aware/core").AnnotationCommitResult>;
+    /** annotations >=2.1: range validates and preserves the captured source; requires library:read. */
     createHighlight(input: {
+      range?: import("@read-aware/core").BookTextRange;
       bookId: string;
       text: string;
       anchor?: string | null;
@@ -1573,6 +1575,7 @@ export type PluginAnnotationsDomain = {
       style?: HighlightStyle;
     }): Promise<PluginHighlight>;
     createNote(input: {
+      range?: import("@read-aware/core").BookTextRange;
       bookId: string;
       body: string;
       quotedText?: string;

@@ -35,6 +35,7 @@ import { inspectAnnotation, commitAnnotationMutations } from "../features/annota
 import { ANNOTATION_EVENTS, domainSubscribe, type DomainEventSubscribe } from "./events";
 import { AnnotationObserver, type AnnotationQueryObservation } from "./annotation-observer";
 import { createLogger } from "../platform/logger";
+import { prepareAnnotationSource } from "./annotation-source";
 
 const log = createLogger("annotation-observation");
 const observationDeps = {
@@ -66,6 +67,7 @@ export function toAnnotationItem(annotation: Annotation): AnnotationItem {
   if (annotation.type === "highlight") {
     return {
       kind: "highlight",
+      ...(annotation.range ? { range: annotation.range } : {}),
       id: annotation.id,
       bookId: annotation.bookId,
       text: annotation.text,
@@ -80,6 +82,7 @@ export function toAnnotationItem(annotation: Annotation): AnnotationItem {
   if (annotation.type === "note") {
     return {
       kind: "note",
+      ...(annotation.range ? { range: annotation.range } : {}),
       id: annotation.id,
       bookId: annotation.bookId,
       quotedText: annotation.text || undefined,
@@ -116,20 +119,22 @@ export type AnnotationQueries = {
 export type AnnotationCommands = {
   applyChanges(changes: AnnotationMutation[], signal?: AbortSignal): Promise<AnnotationCommitResult>;
   createHighlight(input: {
+    range?: import("@read-aware/core").BookTextRange;
     bookId: string;
     text: string;
     anchor?: string | null;
     chapterHref?: string | null;
     color?: HighlightColor;
     style?: HighlightStyle;
-  }): Promise<HighlightItem>;
+  }, signal?: AbortSignal): Promise<HighlightItem>;
   createNote(input: {
+    range?: import("@read-aware/core").BookTextRange;
     bookId: string;
     body: string;
     quotedText?: string;
     anchor?: string | null;
     chapterHref?: string | null;
-  }): Promise<NoteItem>;
+  }, signal?: AbortSignal): Promise<NoteItem>;
   /** Agent-only verb: record a passive trace of a book-thread question. */
   createAsk(input: {
     bookId: string;
@@ -182,29 +187,37 @@ export function createAnnotationsDomain(origin: EventOrigin, lifetime?: AbortSig
       const result = await commitAnnotationMutations(changes, origin, signal);
       return result;
     },
-    createHighlight: async (input) => {
+    createHighlight: async (input, signal = lifetime) => {
+      input = { ...input };
       if (input.style !== undefined && input.style !== "highlight" && input.style !== "underline") {
         throw new AppError("annotations/invalid-input", "Unknown highlight style");
       }
+      const source = input.range === undefined ? undefined : await prepareAnnotationSource({ ...input, range: input.range }, signal);
+      signal?.throwIfAborted();
       const highlight = await createHighlight(
         String(input.bookId),
-        input.anchor ?? null,
+        source?.range.cfi ?? input.anchor ?? null,
         input.chapterHref ?? null,
         String(input.text),
         input.color ?? "yellow",
         input.style ?? "highlight",
         origin,
+        source ?? (signal ? { signal } : undefined),
       );
       return toAnnotationItem(highlight) as HighlightItem;
     },
-    createNote: async (input) => {
+    createNote: async (input, signal = lifetime) => {
+      input = { ...input };
+      const source = input.range === undefined ? undefined : await prepareAnnotationSource({ ...input, range: input.range, text: input.quotedText ?? "" }, signal);
+      signal?.throwIfAborted();
       const note = await createNote(
         String(input.bookId),
-        input.anchor ?? null,
+        source?.range.cfi ?? input.anchor ?? null,
         input.chapterHref ?? null,
         String(input.quotedText ?? ""),
         String(input.body),
         origin,
+        source ?? (signal ? { signal } : undefined),
       );
       return toAnnotationItem(note) as NoteItem;
     },
