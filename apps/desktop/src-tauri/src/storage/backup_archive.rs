@@ -380,3 +380,7 @@ impl<R: Read> Read for BoundedReader<R> {
 #[cfg(test)]
 #[path = "backup_archive_tests.rs"]
 mod tests;
+
+#[cfg(all(test, debug_assertions))]
+#[path = "backup_runtime_programs_tests.rs"]
+mod runtime_programs_tests;

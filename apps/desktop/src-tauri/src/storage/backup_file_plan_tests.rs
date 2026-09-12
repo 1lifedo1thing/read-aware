@@ -22,7 +22,7 @@ pub(super) fn source(edit: impl FnOnce(&Connection, &Path)) -> backup_archive::P
     let mut conn = db(root.path());
     edit(&conn, root.path());
     let snapshot =
-        backup_snapshot::capture(&mut conn, root.path(), stage.path(), |_| Ok(())).unwrap();
+        backup_snapshot::capture_fixture(&mut conn, root.path(), stage.path(), |_| Ok(())).unwrap();
     let directory = tempfile::tempdir().unwrap();
     for file in &snapshot.manifest.files {
         let to = directory.path().join(&file.path);
@@ -103,7 +103,7 @@ fn backup_file_plan_compares_bytes_whole_programs_and_missing_or_orphan_targets_
         crate::secrets::encrypt(root, "source-secret").unwrap();
     });
     let plan = rows(input, &mut target, stage.path())
-        .plan_files(&mut target, root.path(), || Ok(()))
+        .plan_fixture_files(&mut target, root.path(), || Ok(()))
         .unwrap();
     assert_eq!(plan.matches["blobs/same"].kind, FileMatchKind::Same);
     assert_eq!(
@@ -206,7 +206,7 @@ fn backup_file_plan_rejects_file_changes_even_with_unchanged_database_and_checks
             &mut target,
             stage.path(),
         )
-        .plan_files(&mut target, root.path(), || Ok(()))
+        .plan_fixture_files(&mut target, root.path(), || Ok(()))
         .unwrap();
         match change {
             0 => fs::write(root.path().join("plugins/proof/main.js"), "new").unwrap(),
@@ -256,7 +256,7 @@ fn backup_file_plan_cleans_cancelled_stages_and_interrupts_target_streaming() {
     // A target file created after row planning does not alter DB identity.
     fs::create_dir_all(root.path().join("blobs")).unwrap();
     fs::write(root.path().join("blobs/large"), vec![42; 8 * 1024 * 1024]).unwrap();
-    let result = plan.plan_files(&mut target, root.path(), || {
+    let result = plan.plan_fixture_files(&mut target, root.path(), || {
         ticks += 1;
         // Count only callbacks from inventory streaming: use a standalone
         // collector cancellation proof below, and cancel this owned stage early.
@@ -309,7 +309,7 @@ fn backup_file_plan_rejects_symlinks_and_cross_side_case_aliases() {
             }
         }
         assert!(plan
-            .plan_files(&mut target, root.path(), || Ok(()))
+            .plan_fixture_files(&mut target, root.path(), || Ok(()))
             .is_err());
         assert_eq!(fs::read_dir(stage.path()).unwrap().count(), 0);
     }

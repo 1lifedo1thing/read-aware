@@ -1,6 +1,6 @@
 //! Streaming copy and integrity checks for host-owned backup staging.
 use super::{CaptureProgress, CapturedFile, CODE_CHANGED, CODE_INCOMPLETE};
-use crate::error::CommandError;
+use crate::{error::CommandError, plugins::BundledPrograms};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
@@ -38,12 +38,37 @@ fn owned_path(root: &Path, relative: &str) -> Result<PathBuf, CommandError> {
     Ok(absolute)
 }
 
+pub(in crate::storage) fn source_path(
+    root: &Path,
+    bundled: Option<&BundledPrograms>,
+    relative: &str,
+) -> Result<PathBuf, CommandError> {
+    if let (Some(bundled), Some(rest)) = (bundled, relative.strip_prefix("bundled-plugins/")) {
+        let (id, child) = rest
+            .split_once('/')
+            .map_or((rest, None), |(id, child)| (id, Some(child)));
+        let base = bundled.plugin_dir(id)?;
+        return match child {
+            Some(child) => owned_path(&base, child),
+            None => Ok(base),
+        };
+    }
+    owned_path(root, relative)
+}
+
 pub(in crate::storage) fn verify_file(
     root: &Path,
     entry: &CapturedFile,
     check: &mut impl FnMut() -> Result<(), CommandError>,
 ) -> Result<(), CommandError> {
     let path = owned_path(root, &entry.path)?;
+    verify_path(&path, entry, check)
+}
+pub(in crate::storage) fn verify_path(
+    path: &Path,
+    entry: &CapturedFile,
+    check: &mut impl FnMut() -> Result<(), CommandError>,
+) -> Result<(), CommandError> {
     if !fs::symlink_metadata(&path)?.file_type().is_file() {
         return Err(CommandError::new(
             CODE_CHANGED,
@@ -87,6 +112,7 @@ pub(in crate::storage) fn verify_file(
 pub(in crate::storage) struct FileCollector<'a, F> {
     source: &'a Path,
     destination: &'a Path,
+    bundled: Option<&'a BundledPrograms>,
     progress: &'a mut F,
     copied_bytes: u64,
     copy_files: bool,
@@ -98,12 +124,20 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
         Self {
             source,
             destination,
+            bundled: None,
             progress,
             copied_bytes: 0,
             copy_files: true,
             files: BTreeMap::new(),
             visited_entries: 0,
         }
+    }
+    pub fn with_bundled(mut self, bundled: &'a BundledPrograms) -> Self {
+        self.bundled = Some(bundled);
+        self
+    }
+    fn source_path(&self, relative: &str) -> Result<PathBuf, CommandError> {
+        source_path(self.source, self.bundled, relative)
     }
     /// Inspect the same owned files without creating a second copy. Restore
     /// planning must account for actual target bytes, including orphan blobs.
@@ -166,14 +200,11 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
                 "too many or duplicate backup members",
             ));
         }
-        let path = owned_path(
-            if created {
-                self.destination
-            } else {
-                self.source
-            },
-            relative,
-        )
+        let path = if created {
+            owned_path(self.destination, relative)
+        } else {
+            self.source_path(relative)
+        }
         .map_err(|error| {
             CommandError::context_coded(CODE_INCOMPLETE, "backup source unavailable", error)
         })?;
@@ -268,6 +299,21 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
         self.transfer(relative, false, size, digest)
     }
     pub fn plugins(&mut self, folder: &str) -> Result<(), CommandError> {
+        if folder == "bundled-plugins" {
+            if let Some(bundled) = self.bundled {
+                for id in bundled.ids(|| {
+                    (self.progress)(CaptureProgress::Files {
+                        copied_bytes: self.copied_bytes,
+                    })
+                })? {
+                    (self.progress)(CaptureProgress::Files {
+                        copied_bytes: self.copied_bytes,
+                    })?;
+                    self.plugin_tree(folder, &id)?;
+                }
+                return Ok(());
+            }
+        }
         let path = self.source.join(folder);
         match fs::symlink_metadata(&path) {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
@@ -293,34 +339,38 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
                     "invalid installed plugin directory",
                 ));
             }
-            let relative = format!("{folder}/{id}");
-            let manifest_path = owned_path(self.source, &format!("{relative}/manifest.json"))?;
-            let metadata = fs::symlink_metadata(&manifest_path)?;
-            if !metadata.file_type().is_file() || metadata.len() > CHUNK as u64 {
-                return Err(CommandError::new(
-                    CODE_INCOMPLETE,
-                    "installed plugin manifest is too large",
-                ));
-            }
-            let mut bytes = Vec::new();
-            fs::File::open(manifest_path)?
-                .take(CHUNK as u64 + 1)
-                .read_to_end(&mut bytes)?;
-            if bytes.len() > CHUNK {
-                return Err(CommandError::new(
-                    CODE_CHANGED,
-                    "plugin manifest grew during capture",
-                ));
-            }
-            let manifest: serde_json::Value = serde_json::from_slice(&bytes)?;
-            if manifest.get("id").and_then(serde_json::Value::as_str) != Some(&id) {
-                return Err(CommandError::new(
-                    CODE_INCOMPLETE,
-                    "installed plugin identity mismatch",
-                ));
-            }
-            self.tree(&relative, 0)?;
+            self.plugin_tree(folder, &id)?;
         }
+        Ok(())
+    }
+    fn plugin_tree(&mut self, folder: &str, id: &str) -> Result<(), CommandError> {
+        let relative = format!("{folder}/{id}");
+        let manifest_path = self.source_path(&format!("{relative}/manifest.json"))?;
+        let metadata = fs::symlink_metadata(&manifest_path)?;
+        if !metadata.file_type().is_file() || metadata.len() > CHUNK as u64 {
+            return Err(CommandError::new(
+                CODE_INCOMPLETE,
+                "installed plugin manifest is too large",
+            ));
+        }
+        let mut bytes = Vec::new();
+        fs::File::open(manifest_path)?
+            .take(CHUNK as u64 + 1)
+            .read_to_end(&mut bytes)?;
+        if bytes.len() > CHUNK {
+            return Err(CommandError::new(
+                CODE_CHANGED,
+                "plugin manifest grew during capture",
+            ));
+        }
+        let manifest: serde_json::Value = serde_json::from_slice(&bytes)?;
+        if manifest.get("id").and_then(serde_json::Value::as_str) != Some(id) {
+            return Err(CommandError::new(
+                CODE_INCOMPLETE,
+                "installed plugin identity mismatch",
+            ));
+        }
+        self.tree(&relative, 0)?;
         Ok(())
     }
     fn tree(&mut self, relative: &str, depth: usize) -> Result<(), CommandError> {
@@ -330,7 +380,7 @@ impl<'a, F: FnMut(CaptureProgress) -> Result<(), CommandError>> FileCollector<'a
                 "plugin tree exceeds backup depth limit",
             ));
         }
-        let path = owned_path(self.source, relative)?;
+        let path = self.source_path(relative)?;
         let children = self.children(&path)?;
         for entry in children {
             (self.progress)(CaptureProgress::Files {

@@ -27,6 +27,7 @@ pub(crate) enum CaptureProgress {
     Files {
         copied_bytes: u64,
     },
+    VerifyingPrograms,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -102,6 +103,18 @@ fn table_counts(conn: &Connection) -> Result<BTreeMap<String, u64>, CommandError
         .collect()
 }
 
+fn program_inventory(
+    data_dir: &Path,
+    bundled: &crate::plugins::BundledPrograms,
+    progress: &mut impl FnMut(CaptureProgress) -> Result<(), CommandError>,
+) -> Result<Vec<CapturedFile>, CommandError> {
+    let mut check = |_| progress(CaptureProgress::VerifyingPrograms);
+    let mut collector = FileCollector::inspect(data_dir, &mut check).with_bundled(bundled);
+    collector.plugins("plugins")?;
+    collector.plugins("bundled-plugins")?;
+    Ok(collector.finish())
+}
+
 /// Caller must hold the native Db mutex for this call, in addition to the host
 /// backup admission window. A pinned SQLite read transaction fixes DB identity;
 /// registered blob hashes reject filesystem drift even from another connection.
@@ -110,6 +123,7 @@ pub(crate) fn capture(
     conn: &mut Connection,
     data_dir: &Path,
     staging_root: &Path,
+    bundled: &crate::plugins::BundledPrograms,
     mut progress: impl FnMut(CaptureProgress) -> Result<(), CommandError>,
 ) -> Result<BackupSnapshot, CommandError> {
     progress(CaptureProgress::Preparing)?;
@@ -178,7 +192,9 @@ pub(crate) fn capture(
         ));
     }
     let tables = table_counts(&copied)?;
-    let mut collector = FileCollector::new(data_dir, directory.path(), &mut progress);
+    let programs_before = program_inventory(data_dir, bundled, &mut progress)?;
+    let mut collector =
+        FileCollector::new(data_dir, directory.path(), &mut progress).with_bundled(bundled);
     collector.record_created("database.sqlite")?;
     {
         let mut rows = copied.prepare("SELECT key,storage_uri,byte_size,sha256 FROM blob_objects WHERE deleted_at IS NULL ORDER BY key")?;
@@ -198,7 +214,7 @@ pub(crate) fn capture(
             collector.copy(&expected, size.map(|value| value as u64), hash.as_deref())?;
         }
     }
-    // Capture both actually installed program trees. Staging, rollback, logs
+    // Map the actual runtime bundled trees into portable paths. Staging, rollback, logs
     // and application-reconstructible caches never enter the portable image.
     collector.plugins("plugins")?;
     collector.plugins("bundled-plugins")?;
@@ -217,11 +233,27 @@ pub(crate) fn capture(
             "backup cannot preserve credentials without their existing key",
         ));
     }
+    let files = collector.finish();
+    let copied_programs: Vec<_> = files
+        .iter()
+        .filter(|file| {
+            file.path.starts_with("plugins/") || file.path.starts_with("bundled-plugins/")
+        })
+        .cloned()
+        .collect();
+    if copied_programs != programs_before
+        || program_inventory(data_dir, bundled, &mut progress)? != programs_before
+    {
+        return Err(CommandError::new(
+            CODE_CHANGED,
+            "runtime programs changed during backup capture",
+        ));
+    }
     let manifest = BackupManifest {
         format: FORMAT,
         schema_version: version,
         tables,
-        files: collector.finish(),
+        files,
         excluded: [
             "logs",
             "caches",
@@ -255,3 +287,19 @@ pub(crate) fn capture(
 #[cfg(test)]
 #[path = "backup_snapshot_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+pub(crate) fn capture_fixture(
+    conn: &mut Connection,
+    data_dir: &Path,
+    staging_root: &Path,
+    progress: impl FnMut(CaptureProgress) -> Result<(), CommandError>,
+) -> Result<BackupSnapshot, CommandError> {
+    capture(
+        conn,
+        data_dir,
+        staging_root,
+        &crate::plugins::BundledPrograms::fixture(data_dir),
+        progress,
+    )
+}

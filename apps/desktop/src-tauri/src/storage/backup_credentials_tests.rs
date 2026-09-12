@@ -25,7 +25,7 @@ fn plan(
     stage: &Path,
 ) -> FilePlan {
     rows(input, target, stage)
-        .plan_files(target, root, || Ok(()))
+        .plan_fixture_files(target, root, || Ok(()))
         .unwrap()
 }
 #[test]

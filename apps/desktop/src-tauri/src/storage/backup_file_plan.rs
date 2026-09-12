@@ -3,7 +3,10 @@
 use super::RowPlan;
 use crate::{
     error::CommandError,
-    storage::backup_snapshot::{files::verify_file, CapturedFile},
+    storage::backup_snapshot::{
+        files::{source_path, verify_file, verify_path},
+        CapturedFile,
+    },
 };
 use rusqlite::{Connection, Transaction};
 use sha2::{Digest, Sha256};
@@ -67,6 +70,7 @@ pub(crate) struct FilePage<'a> {
 pub(crate) struct FilePlan {
     rows: RowPlan,
     target: inventory::Inventory,
+    bundled: crate::plugins::BundledPrograms,
     matches: BTreeMap<String, FileMatch>,
     pub programs: Vec<ProgramMatch>,
 }
@@ -144,7 +148,7 @@ impl FilePlan {
         mut check: impl FnMut() -> Result<(), CommandError>,
     ) -> Result<(), CommandError> {
         self.rows.events().verify_target(tx, &mut check)?;
-        if inventory::read(tx, data_dir, &mut check)? != self.target {
+        if inventory::read(tx, data_dir, &self.bundled, &mut check)? != self.target {
             return Err(CommandError::new(
                 "backup/changed",
                 "target managed files changed after restore planning",
@@ -177,6 +181,7 @@ fn kind<T: PartialEq>(a: Option<&T>, b: Option<&T>) -> FileMatchKind {
 }
 fn read_manifest(
     root: &Path,
+    bundled: Option<&crate::plugins::BundledPrograms>,
     manifest: &CapturedFile,
     check: &mut impl FnMut() -> Result<(), CommandError>,
 ) -> Result<String, CommandError> {
@@ -186,10 +191,11 @@ fn read_manifest(
             "plugin manifest exceeds limit",
         ));
     }
-    verify_file(root, manifest, check)?;
+    let path = source_path(root, bundled, &manifest.path)?;
+    verify_path(&path, manifest, check)?;
     use std::io::Read;
     let mut bytes = Vec::new();
-    std::fs::File::open(root.join(&manifest.path))?
+    std::fs::File::open(path)?
         .take(1024 * 1024 + 1)
         .read_to_end(&mut bytes)?;
     if bytes.len() as u64 != manifest.byte_size
@@ -206,6 +212,7 @@ fn read_manifest(
 fn trees(
     root: &Path,
     files: &BTreeMap<String, CapturedFile>,
+    bundled: Option<&crate::plugins::BundledPrograms>,
     check: &mut impl FnMut() -> Result<(), CommandError>,
 ) -> Result<BTreeMap<String, ProgramTree>, CommandError> {
     let mut groups: BTreeMap<String, Vec<&CapturedFile>> = BTreeMap::new();
@@ -232,7 +239,7 @@ fn trees(
             .ok_or_else(|| {
                 CommandError::new("backup/incomplete", "invalid plugin tree manifest")
             })?;
-        let text = read_manifest(root, manifest, check)?;
+        let text = read_manifest(root, bundled, manifest, check)?;
         let value: serde_json::Value = serde_json::from_str(&text)?;
         let schema_version = value
             .get("schemaVersion")
@@ -272,11 +279,12 @@ pub(super) fn plan(
     rows: RowPlan,
     target: &mut Connection,
     data_dir: &Path,
+    bundled: crate::plugins::BundledPrograms,
     mut check: impl FnMut() -> Result<(), CommandError>,
 ) -> Result<FilePlan, CommandError> {
     let tx = target.transaction()?;
     rows.events().verify_target(&tx, &mut check)?;
-    let target = inventory::read(&tx, data_dir, &mut check)?;
+    let target = inventory::read(&tx, data_dir, &bundled, &mut check)?;
     let archive = rows.events().source().archive();
     let source: BTreeMap<_, _> = archive
         .manifest
@@ -288,8 +296,8 @@ pub(super) fn plan(
     for file in source.values() {
         verify_file(archive.directory(), file, &mut check)?;
     }
-    let a = trees(archive.directory(), &source, &mut check)?;
-    let b = trees(data_dir, &target.files, &mut check)?;
+    let a = trees(archive.directory(), &source, None, &mut check)?;
+    let b = trees(data_dir, &target.files, Some(&bundled), &mut check)?;
     let roots: BTreeSet<_> = a.keys().chain(b.keys()).cloned().collect();
     let mut programs = Vec::new();
     let mut a = a;
@@ -348,6 +356,7 @@ pub(super) fn plan(
     Ok(FilePlan {
         rows,
         target,
+        bundled,
         matches,
         programs,
     })

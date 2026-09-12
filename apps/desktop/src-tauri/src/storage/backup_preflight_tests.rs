@@ -36,7 +36,7 @@ fn fixture() -> AuthenticatedBackup {
     )
     .unwrap();
     let snapshot =
-        backup_snapshot::capture(&mut conn, source.path(), staging.path(), |_| Ok(())).unwrap();
+        backup_snapshot::capture_fixture(&mut conn, source.path(), staging.path(), |_| Ok(())).unwrap();
     let directory = tempfile::tempdir().unwrap();
     for file in &snapshot.manifest.files {
         let to = directory.path().join(&file.path);

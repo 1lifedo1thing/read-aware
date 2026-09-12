@@ -46,7 +46,7 @@ fn backup_programs_bind_whole_code_and_namespace_choices_without_private_bodies_
         conn.execute_batch("INSERT INTO app_kv VALUES ('read-aware-plugin.proof.entry','private-value','now'); INSERT INTO app_kv VALUES ('read-aware-plugin-host.schema.proof','2','now'); INSERT INTO app_kv VALUES ('read-aware-plugin.orphan.entry','retained-data','now'); INSERT INTO plugin_documents(plugin_id,collection,id,json,updated_at) VALUES ('proof','notes','one','{\"body\":\"private-doc\"}','now');").unwrap();
     });
     let plan = rows(input, &mut target, stage.path())
-        .plan_files(&mut target, root.path(), || Ok(()))
+        .plan_fixture_files(&mut target, root.path(), || Ok(()))
         .unwrap();
     let tx = target.transaction().unwrap();
     let facts = plan.program_facts(&tx, root.path(), || Ok(())).unwrap();
@@ -122,7 +122,7 @@ fn backup_programs_never_replace_current_builtins_or_inherit_source_bundled_trus
         plugin(root, "bundled-plugins", "former-builtin", 1, true);
     });
     let plan = rows(input, &mut target, stage.path())
-        .plan_files(&mut target, root.path(), || Ok(()))
+        .plan_fixture_files(&mut target, root.path(), || Ok(()))
         .unwrap();
     let tx = target.transaction().unwrap();
     let facts = plan.program_facts(&tx, root.path(), || Ok(())).unwrap();
@@ -161,7 +161,7 @@ fn backup_programs_reject_missing_entries_stale_files_and_cancellation_without_a
     let input = source(|_, root| plugin(root, "plugins", "proof", 1, false));
     let path = input.archive().directory().to_owned();
     let plan = rows(input, &mut target, stage.path())
-        .plan_files(&mut target, root.path(), || Ok(()))
+        .plan_fixture_files(&mut target, root.path(), || Ok(()))
         .unwrap();
     let tx = target.transaction().unwrap();
     let facts = plan.program_facts(&tx, root.path(), || Ok(())).unwrap();
@@ -205,7 +205,7 @@ fn backup_programs_reject_noncanonical_target_schema_and_keep_data_only_owners()
         )
         .unwrap();
     let plan = rows(source(|_, _| {}), &mut target, stage.path())
-        .plan_files(&mut target, root.path(), || Ok(()))
+        .plan_fixture_files(&mut target, root.path(), || Ok(()))
         .unwrap();
     let tx = target.transaction().unwrap();
     assert_eq!(

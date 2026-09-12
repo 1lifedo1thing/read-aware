@@ -12,7 +12,7 @@ export type BackupProgramChoice = { program: BackupProgramRef | null; data: Back
 export type BackupProgramDataFacts = { kvRows: number; documents: number; schema: number | null };
 export type BackupProgramFacts = {
   id: string;
-  /** Native current-build identity, never derived from a source folder flag. */
+  /** Native current-runtime identity, never derived from a source folder flag. */
   builtin: boolean;
   candidates: (BackupProgramRef & { manifest: string; main: string; mainPresent: boolean })[];
   sourceData: BackupProgramDataFacts;

@@ -41,7 +41,7 @@ fn backup_reading_closes_current_facts_once_and_captured_events_deduplicate_on_r
     let mut conn = db(root.path());
     tick(&conn, "b1", 20, 1000);
     assert_eq!(
-        backup_snapshot::capture(&mut conn, root.path(), stage.path(), |_| Ok(()))
+        backup_snapshot::capture_fixture(&mut conn, root.path(), stage.path(), |_| Ok(()))
             .unwrap_err()
             .code,
         "backup/incomplete"
@@ -67,7 +67,7 @@ fn backup_reading_closes_current_facts_once_and_captured_events_deduplicate_on_r
     require_closed(&conn).unwrap();
     assert!(close(&mut conn, vec![request]).unwrap().is_empty());
     let snapshot =
-        backup_snapshot::capture(&mut conn, root.path(), stage.path(), |_| Ok(())).unwrap();
+        backup_snapshot::capture_fixture(&mut conn, root.path(), stage.path(), |_| Ok(())).unwrap();
     assert_eq!(snapshot.manifest.format, 2);
     assert_eq!(snapshot.manifest.tables["reading_sessions_pending"], 0);
     let captured = Connection::open(snapshot.directory().join("database.sqlite")).unwrap();
@@ -95,7 +95,7 @@ fn backup_reading_closes_current_facts_once_and_captured_events_deduplicate_on_r
     // Reading resumed after closure: capture must reject rather than omit it.
     tick(&conn, "b1", 5, 1010);
     assert_eq!(
-        backup_snapshot::capture(&mut conn, root.path(), stage.path(), |_| Ok(()))
+        backup_snapshot::capture_fixture(&mut conn, root.path(), stage.path(), |_| Ok(()))
             .unwrap_err()
             .code,
         "backup/incomplete"

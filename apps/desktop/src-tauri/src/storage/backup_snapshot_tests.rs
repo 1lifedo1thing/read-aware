@@ -62,7 +62,7 @@ fn full_backup_snapshot_preserves_database_blobs_plugins_and_credentials_without
     fs::write(data.path().join("unregistered-cache"), "cache").unwrap();
     let original_tables = table_counts(&conn).unwrap();
     let mut reported = 0;
-    let snapshot = capture(&mut conn, data.path(), staging.path(), |progress| {
+    let snapshot = capture_fixture(&mut conn, data.path(), staging.path(), |progress| {
         if let CaptureProgress::Database {
             remaining_pages,
             total_pages,
@@ -138,7 +138,7 @@ fn full_backup_snapshot_is_one_pinned_wal_view_despite_a_second_connection_commi
     seed(&conn);
     let other = database(&path);
     let mut changed = false;
-    let snapshot = capture(&mut conn, data.path(), staging.path(), |progress| {
+    let snapshot = capture_fixture(&mut conn, data.path(), staging.path(), |progress| {
         if matches!(progress, CaptureProgress::Database { remaining_pages: 0, .. }) && !changed {
             changed = true;
             other.execute_batch("BEGIN; UPDATE app_kv SET value_json='false'; DELETE FROM plugin_documents; UPDATE future_user_data SET value=X'FF'; COMMIT;").unwrap();
@@ -193,7 +193,7 @@ fn full_backup_snapshot_missing_or_changed_blob_never_publishes_partial_preparat
             }
             _ => {}
         }
-        let result = capture(&mut conn, data.path(), staging.path(), |progress| {
+        let result = capture_fixture(&mut conn, data.path(), staging.path(), |progress| {
             if mode == "concurrent"
                 && matches!(
                     progress,
@@ -220,7 +220,7 @@ fn full_backup_snapshot_blocks_pending_updates_and_does_not_generate_missing_sec
     let id = uuid::Uuid::new_v4().to_string();
     begin_plugin_update(&mut conn, &id, "proof", None, None).unwrap();
     assert_eq!(
-        capture(&mut conn, data.path(), staging.path(), |_| Ok(()))
+        capture_fixture(&mut conn, data.path(), staging.path(), |_| Ok(()))
             .unwrap_err()
             .code,
         "plugin/recovery-required"
@@ -228,7 +228,7 @@ fn full_backup_snapshot_blocks_pending_updates_and_does_not_generate_missing_sec
     rollback_plugin_update(&mut conn, &id).unwrap();
     conn.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES ('read-aware-secret:test','unreadable','now')", []).unwrap();
     assert_eq!(
-        capture(&mut conn, data.path(), staging.path(), |_| Ok(()))
+        capture_fixture(&mut conn, data.path(), staging.path(), |_| Ok(()))
             .unwrap_err()
             .code,
         "secrets/unavailable"
@@ -242,7 +242,7 @@ fn full_backup_snapshot_cancel_and_staged_tampering_are_detected() {
     let (data, staging) = roots();
     let mut conn = database(&data.path().join("db"));
     for files_phase in [false, true] {
-        let result = capture(&mut conn, data.path(), staging.path(), |progress| {
+        let result = capture_fixture(&mut conn, data.path(), staging.path(), |progress| {
             if files_phase == matches!(progress, CaptureProgress::Files { .. }) {
                 return Err(CommandError::new(CODE_CANCELLED, "cancelled"));
             }
@@ -251,7 +251,7 @@ fn full_backup_snapshot_cancel_and_staged_tampering_are_detected() {
         assert_eq!(result.unwrap_err().code, CODE_CANCELLED);
         assert_eq!(fs::read_dir(staging.path()).unwrap().count(), 0);
     }
-    let snapshot = capture(&mut conn, data.path(), staging.path(), |_| Ok(())).unwrap();
+    let snapshot = capture_fixture(&mut conn, data.path(), staging.path(), |_| Ok(())).unwrap();
     assert_eq!(
         snapshot
             .verify(|| Err(CommandError::new(CODE_CANCELLED, "cancelled")))
@@ -274,7 +274,7 @@ fn full_backup_snapshot_rejects_symlink_sources_and_never_reads_the_target() {
     fs::write(&secret, "must not be captured").unwrap();
     symlink(&secret, data.path().join("plugins/proof/linked")).unwrap();
     assert_eq!(
-        capture(&mut conn, data.path(), staging.path(), |_| Ok(()))
+        capture_fixture(&mut conn, data.path(), staging.path(), |_| Ok(()))
             .unwrap_err()
             .code,
         CODE_INCOMPLETE

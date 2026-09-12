@@ -28,7 +28,7 @@ fn source(events: &[(&str, i64, &str, &str)]) -> PreflightedBackup {
         insert(&conn, id, *wall, device, payload);
     }
     let snapshot =
-        backup_snapshot::capture(&mut conn, root.path(), staging.path(), |_| Ok(())).unwrap();
+        backup_snapshot::capture_fixture(&mut conn, root.path(), staging.path(), |_| Ok(())).unwrap();
     let directory = tempfile::tempdir().unwrap();
     fs::copy(
         snapshot.directory().join("database.sqlite"),

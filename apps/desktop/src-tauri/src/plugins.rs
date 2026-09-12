@@ -8,9 +8,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 
-use include_dir::{include_dir, Dir};
 use serde::Serialize;
 use tauri::Manager;
 
@@ -120,139 +118,10 @@ fn recover_interrupted_commits(plugins: &Path) -> Result<(), String> {
     Ok(())
 }
 
-// ─── Built-in plugins ────────────────────────────────────────────────────────
-//
-// Embedded at compile time and extracted to `<app_data>/bundled-plugins/`
-// once per app version. They used to ship as `bundle.resources`, which only
-// exists as a readable directory on DESKTOP — Android's `resource_dir()` is
-// the literal URI `asset://localhost/` (APK assets are not a filesystem), so
-// resource-based built-ins simply vanished there. Embedding gives every
-// platform the same real-filesystem root, which `plugins_list` and the
-// `raplugin://` protocol already know how to serve.
-//
-// Adding a first-party plugin means one static + one table row here (this
-// replaced the tauri.conf resources list).
-
-static BUNDLED_DICTIONARY: Dir =
-    include_dir!("$CARGO_MANIFEST_DIR/../../../plugins/dictionary/dist");
-static BUNDLED_EDITORIAL_THEMES: Dir =
-    include_dir!("$CARGO_MANIFEST_DIR/../../../plugins/editorial-themes/dist");
-static BUNDLED_RSS_READER: Dir =
-    include_dir!("$CARGO_MANIFEST_DIR/../../../plugins/rss-reader/dist");
-static BUNDLED_SENTENCE_READER: Dir =
-    include_dir!("$CARGO_MANIFEST_DIR/../../../plugins/sentence-reader/dist");
-static BUNDLED_TTS: Dir = include_dir!("$CARGO_MANIFEST_DIR/../../../plugins/tts/dist");
-static BUNDLED_JUMPER: Dir = include_dir!("$CARGO_MANIFEST_DIR/../../../plugins/jumper/dist");
-
-static BUNDLED: &[(&str, &Dir)] = &[
-    ("dictionary", &BUNDLED_DICTIONARY),
-    ("editorial-themes", &BUNDLED_EDITORIAL_THEMES),
-    ("rss-reader", &BUNDLED_RSS_READER),
-    ("sentence-reader", &BUNDLED_SENTENCE_READER),
-    ("tts", &BUNDLED_TTS),
-    ("jumper", &BUNDLED_JUMPER),
-];
-
-/// Backup input cannot add an ID to the current build's trusted plugin set.
-pub(crate) fn is_bundled_plugin(id: &str) -> bool {
-    BUNDLED.iter().any(|(known, _)| *known == id)
-}
-
-/// Where the built-in set lives at runtime.
-enum BundledRoot {
-    /// `<dir>/<id>/…` — extracted from the embedded set.
-    Extracted(PathBuf),
-    /// Dev checkout: `<plugins>/<id>/dist/…`, served live so a rebuilt
-    /// plugin is picked up on the next request without restarting the app.
-    #[cfg(debug_assertions)]
-    RepoDist(PathBuf),
-}
-
-impl BundledRoot {
-    /// The directory holding one bundled plugin's files.
-    fn plugin_dir(&self, id: &str) -> PathBuf {
-        match self {
-            BundledRoot::Extracted(dir) => dir.join(id),
-            #[cfg(debug_assertions)]
-            BundledRoot::RepoDist(plugins) => plugins.join(id).join("dist"),
-        }
-    }
-
-    /// Bundled plugin ids present at this root.
-    fn ids(&self) -> Vec<String> {
-        let base = match self {
-            BundledRoot::Extracted(dir) => dir.clone(),
-            #[cfg(debug_assertions)]
-            BundledRoot::RepoDist(plugins) => plugins.clone(),
-        };
-        let Ok(read) = fs::read_dir(&base) else {
-            return Vec::new();
-        };
-        read.filter_map(|entry| {
-            let entry = entry.ok()?;
-            let id = entry.file_name().to_string_lossy().to_string();
-            self.plugin_dir(&id)
-                .join("manifest.json")
-                .is_file()
-                .then_some(id)
-        })
-        .collect()
-    }
-}
-
-/// Extract the embedded set (once per app version) and return its root.
-fn extract_bundled(app: &tauri::AppHandle) -> Option<PathBuf> {
-    let base = app.path().app_data_dir().ok()?.join("bundled-plugins");
-    let stamp_path = base.join(".version");
-    let version = app.package_info().version.to_string();
-    if fs::read_to_string(&stamp_path).ok().as_deref() == Some(version.as_str()) {
-        return Some(base);
-    }
-    let _ = fs::remove_dir_all(&base);
-    let extract = || -> std::io::Result<()> {
-        for (id, dir) in BUNDLED {
-            extract_tree(dir, &base.join(id))?;
-        }
-        fs::write(&stamp_path, &version)
-    };
-    if let Err(error) = extract() {
-        log::error!("[plugins] extracting bundled plugins failed: {error}");
-        return None;
-    }
-    Some(base)
-}
-
-/// Write an embedded tree to disk. `File::path()` is relative to the
-/// include_dir! root at every depth, so one target base serves all levels.
-fn extract_tree(dir: &Dir, target: &Path) -> std::io::Result<()> {
-    for file in dir.files() {
-        let dest = target.join(file.path());
-        if let Some(parent) = dest.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(dest, file.contents())?;
-    }
-    for sub in dir.dirs() {
-        extract_tree(sub, target)?;
-    }
-    Ok(())
-}
-
-/// Resolved once per process — the version cannot change mid-run.
-fn bundled_root(app: &tauri::AppHandle) -> Option<&'static BundledRoot> {
-    static ROOT: OnceLock<Option<BundledRoot>> = OnceLock::new();
-    ROOT.get_or_init(|| {
-        #[cfg(debug_assertions)]
-        {
-            let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../plugins");
-            if repo.is_dir() {
-                return Some(BundledRoot::RepoDist(repo));
-            }
-        }
-        extract_bundled(app).map(BundledRoot::Extracted)
-    })
-    .as_ref()
-}
+#[path = "plugin_bundled.rs"]
+mod bundled;
+use bundled::bundled_root;
+pub(crate) use bundled::{backup_programs, BundledPrograms};
 
 fn list_plugin_dirs(dir: &Path, builtin: bool, entries: &mut Vec<PluginEntry>) {
     let Ok(read) = fs::read_dir(dir) else { return };

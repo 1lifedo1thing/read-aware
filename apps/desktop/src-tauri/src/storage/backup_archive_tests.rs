@@ -39,7 +39,7 @@ fn snapshot(root: &Path, staging: &Path) -> BackupSnapshot {
         "PLUGIN CONTENT",
     )
     .unwrap();
-    backup_snapshot::capture(&mut conn, root, staging, |_| Ok(())).unwrap()
+    backup_snapshot::capture_fixture(&mut conn, root, staging, |_| Ok(())).unwrap()
 }
 #[test]
 fn backup_archive_real_password_roundtrip_authenticates_all_members_and_preserves_destination_on_failure(

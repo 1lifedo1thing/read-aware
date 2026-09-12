@@ -463,7 +463,7 @@ export function collectInventory(): Inventory[] {
       visitRegistration(source(`plugins/${directory.name}/src/${file}`));
     }
   }
-  const bundled = readFileSync("apps/desktop/src-tauri/src/plugins.rs", "utf8").match(/static BUNDLED:.*?=\s*&\[([\s\S]*?)\];/);
+  const bundled = readFileSync("apps/desktop/src-tauri/src/plugin_bundled.rs", "utf8").match(/static BUNDLED:.*?=\s*&\[([\s\S]*?)\];/);
   if (!bundled) throw new Error("Native bundled plugin table needs audit");
   const bundledEntries = [...bundled[1].matchAll(/\("([^"]+)",\s*&([A-Z_]+)\)/g)];
   if (!bundledEntries.length) throw new Error("Empty native bundled plugin inventory");

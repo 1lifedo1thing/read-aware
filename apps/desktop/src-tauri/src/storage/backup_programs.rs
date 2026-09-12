@@ -33,7 +33,7 @@ pub(crate) struct DataFacts {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProgramFacts {
     pub id: String,
-    /// Derived from this executable's compiled set, NEVER a backup manifest.
+    /// Derived from this process's actual runtime roots, NEVER a backup manifest.
     pub builtin: bool,
     pub candidates: Vec<ProgramCandidate>,
     pub source_data: DataFacts,
@@ -75,7 +75,7 @@ fn ensure<'a>(
     }
     Ok(facts.entry(id.to_owned()).or_insert_with(|| ProgramFacts {
         id: id.into(),
-        builtin: crate::plugins::is_bundled_plugin(id),
+        builtin: false,
         candidates: vec![],
         source_data: DataFacts::default(),
         target_data: DataFacts::default(),
@@ -168,7 +168,11 @@ pub(super) fn inspect(
             if manifest_bytes > 16 * 1024 * 1024 {
                 return Err(invalid("plugin review manifests exceed limit"));
             }
-            let manifest = read_manifest(base, file, &mut check)?;
+            let bundled = match side {
+                Side::Source => None,
+                Side::Target => Some(&plan.bundled),
+            };
+            let manifest = read_manifest(base, bundled, file, &mut check)?;
             let parsed: serde_json::Value = serde_json::from_str(&manifest)?;
             // Same whitespace/default spelling as the host parser. Semantics
             // and path validity still go through its single manifest validator.
@@ -186,7 +190,11 @@ pub(super) fn inspect(
                     Side::Source => item.source.is_some(),
                     Side::Target => item.target.is_some(),
                 });
-            ensure(&mut facts, id)?.candidates.push(ProgramCandidate {
+            let owner = ensure(&mut facts, id)?;
+            if side == Side::Target && group.root.starts_with("bundled-plugins/") {
+                owner.builtin = true;
+            }
+            owner.candidates.push(ProgramCandidate {
                 side,
                 root: group.root.clone(),
                 sha256: tree.sha256.clone(),

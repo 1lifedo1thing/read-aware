@@ -61,9 +61,24 @@ impl RowPlan {
         self,
         target: &mut Connection,
         data_dir: &std::path::Path,
+        bundled: crate::plugins::BundledPrograms,
         check: impl FnMut() -> Result<(), CommandError>,
     ) -> Result<FilePlan, CommandError> {
-        files::plan(self, target, data_dir, check)
+        files::plan(self, target, data_dir, bundled, check)
+    }
+    #[cfg(test)]
+    pub(crate) fn plan_fixture_files(
+        self,
+        target: &mut Connection,
+        data_dir: &std::path::Path,
+        check: impl FnMut() -> Result<(), CommandError>,
+    ) -> Result<FilePlan, CommandError> {
+        self.plan_files(
+            target,
+            data_dir,
+            crate::plugins::BundledPrograms::fixture(data_dir),
+            check,
+        )
     }
     pub(crate) fn events(&self) -> &EventPlan {
         &self.events

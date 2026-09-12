@@ -38,6 +38,7 @@ fn invalid(message: &str) -> CommandError {
 pub(super) fn read(
     conn: &Connection,
     root: &Path,
+    bundled: &crate::plugins::BundledPrograms,
     check: &mut impl FnMut() -> Result<(), CommandError>,
 ) -> Result<Inventory, CommandError> {
     check()?;
@@ -45,7 +46,7 @@ pub(super) fn read(
         return Err(invalid("backup target root is not an owned directory"));
     }
     let mut progress = |_| check();
-    let mut collector = FileCollector::inspect(root, &mut progress);
+    let mut collector = FileCollector::inspect(root, &mut progress).with_bundled(bundled);
     collector.blobs()?;
     collector.plugins("plugins")?;
     collector.plugins("bundled-plugins")?;
