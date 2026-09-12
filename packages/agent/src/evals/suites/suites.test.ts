@@ -22,6 +22,20 @@ function behaviorObservation(overrides: Partial<AgentEvalObservation>): AgentEva
 }
 
 describe("behavior acceptance boundaries", () => {
+  test("selected highlight must preserve the selection even when adjacent text is verbatim", async () => {
+    const scenario = evalSuites.refactoring.scenarios.find(s => s.id === "refactoring-annotate-verbatim")!;
+    const selected = scenario.turns[0]!.attachments![0]!.text;
+    const visible = scenario.turns[0]!.readingCursor!.visibleText!;
+    expect(visible).not.toBe(selected);
+    const observation = (text: string) => behaviorObservation({
+      tools: [{ turn: 1, id: "highlight", name: "create_annotation", args: { kind: "highlight", text }, isError: false }],
+      state: [{ kind: "highlight", text }, { kind: "note", text: "这里值得回头再读。" }],
+    });
+    expect((await scenario.evaluate(observation(selected))).passed).toBe(true);
+    const wider = await scenario.evaluate(observation(visible));
+    expect(wider.checks.find(check => check.id === "state.highlight-selection-boundary")?.passed).toBe(false);
+  });
+
   test("memory correction accepts conditional edits only when the active user state contains the correction", async () => {
     const scenario = evalSuites.personalization.scenarios.find(s => s.id === "memory-update-correction")!;
     const output = behaviorObservation({ tools: [{ turn: 1, id: "correct", name: "manage_memory", args: { action: "correct" }, isError: false }],

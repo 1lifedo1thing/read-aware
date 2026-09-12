@@ -1,0 +1,35 @@
+{
+  "cleanup": {
+    "contributions": [
+      {
+        "count": 0,
+        "id": "capability-live-view"
+      },
+      {
+        "count": 0,
+        "id": "capability-live-foreign"
+      }
+    ],
+    "dialog": false
+  },
+  "foreground": {
+    "focus": false,
+    "visible": "hidden"
+  },
+  "observation": {
+    "result": {
+      "dataDir": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+      "focused": false,
+      "preview": true,
+      "results": [
+        "foreign activation denied without channel discovery",
+        "live callback remains callable after RPC; revisions, drafts, push/back and fresh resubscription verified",
+        "modal suspends source; malformed update stops subscription, preserves content and hides raw error",
+        "late subscription acknowledgement disposed after close; late publication inactive",
+        "activation retirement closes visible live view and removes contributions"
+      ],
+      "visibility": "hidden"
+    }
+  },
+  "visualBoundary": "Native screenshot was stale/blank while webview remained hidden; discarded. Only real Worker, DOM interaction, revisions and lifecycle evidence accepted."
+}

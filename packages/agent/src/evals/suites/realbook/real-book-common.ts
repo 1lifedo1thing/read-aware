@@ -211,6 +211,7 @@ function observeAnnotations({ stores }: SetupContext) {
 function highlightVerbatimAssessment(
   observation: AgentEvalObservation,
   chapterText: string,
+  selectedText: string,
 ): EvalAssessment {
   const state = Array.isArray(observation.state)
     ? (observation.state as Array<{ kind: string; text: string }>)
@@ -221,6 +222,14 @@ function highlightVerbatimAssessment(
     highlights.every((entry) => entry.text.length > 0 && chapterText.includes(entry.text));
   const hasNote = state.some((entry) => entry.kind === "note" && entry.text.length > 0);
   return assessmentFromChecks([
+    {
+      id: "state.highlight-selection-boundary",
+      category: "state",
+      passed: highlights.length === 1 && highlights[0]!.text === selectedText,
+      message: "highlight must match exactly the attached selection, without adjacent text",
+      expected: selectedText,
+      actual: highlights.map((entry) => entry.text),
+    },
     {
       id: "state.highlight-verbatim",
       category: "state",
@@ -356,7 +365,7 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
               tools: { required: ["create_annotation"], noErrors: true },
               interactions: { forbiddenKinds: ["question", "permission"] },
             }),
-            highlightVerbatimAssessment(observation, chapterText),
+            highlightVerbatimAssessment(observation, chapterText, sentence),
             typeDiscipline(book, observation, config.annotationChapter),
           ),
       }),
