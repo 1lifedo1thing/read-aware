@@ -362,7 +362,7 @@
     "reveal": "在文件夹中显示",
     "backup": {
       "title": "备份与导出",
-      "description": "这不是全量备份，不含 AI 对话、长期记忆、插件文档、密钥和事件历史。导入可能覆盖同名键或同 ID 的已有记录，不能自动撤销。"
+      "description": "选择完整加密备份或书库备份。"
     },
     "fullBackup": {
       "title": "书库备份（v1）",
@@ -535,6 +535,32 @@
       "awaitingOtherDevice": "等待持有文件的设备上传",
       "quotaFull": "云端容量已满——腾出空间或升级方案之前，之后的书只保留在本设备。",
       "rejectedTooLarge": "这本书超过了当前方案的单文件大小上限——升级后可同步更大的文件。"
+    },
+    "exportDialog": {
+      "title": "导出备份",
+      "description": "选择完整加密备份或书库备份。",
+      "format": "备份类型",
+      "full": "完整加密备份",
+      "library": "书库备份（v1）",
+      "fullDescription": "包含书籍、批注、对话、记忆、设置、插件及凭据，使用密码加密保存。",
+      "restorePending": "完整备份的恢复功能尚未提供。当前导入仅支持书库备份。",
+      "password": "备份密码",
+      "passwordHint": "请妥善保存密码，恢复备份时需要它。",
+      "passwordError": "请使用至少 12 个字符，且不超过 1024 个 UTF-8 字节。",
+      "confirmation": "确认密码",
+      "confirmationError": "两次输入的密码不一致。",
+      "save": "选择保存位置…",
+      "cancelling": "正在取消，等待清理完成…",
+      "success": "完整加密备份已保存。",
+      "phases": {
+        "choosing": "选择保存位置…",
+        "preparing": "正在准备文件…",
+        "database": "正在捕获数据…",
+        "files": "正在复制文件…",
+        "verifyingPrograms": "正在检查插件…",
+        "encrypting": "正在加密并保存…"
+      },
+      "libraryNotice": "这不是全量备份，不含 AI 对话、长期记忆、插件文档、密钥和事件历史。导入可能覆盖同名键或同 ID 的已有记录，不能自动撤销。"
     }
   },
   "about": {

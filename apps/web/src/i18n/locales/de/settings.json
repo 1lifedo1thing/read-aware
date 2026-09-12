@@ -366,7 +366,7 @@
     "reveal": "Anzeigen",
     "backup": {
       "title": "Backup & Export",
-      "description": "Kein vollständiges Backup: KI-Chats, Langzeitgedächtnis, Plugin-Dokumente, Geheimnisse und Ereignisverlauf fehlen. Der Import kann übereinstimmende Datensätze überschreiben und lässt sich nicht automatisch rückgängig machen."
+      "description": "Wählen Sie ein vollständiges verschlüsseltes Backup oder ein Bibliotheksbackup."
     },
     "fullBackup": {
       "title": "Bibliotheksbackup (v1)",
@@ -539,6 +539,32 @@
       "awaitingOtherDevice": "Wartet auf das Gerät mit der Datei",
       "quotaFull": "Cloud-Speicher voll — weitere Bücher bleiben auf diesem Gerät, bis Platz frei wird oder der Tarif wächst.",
       "rejectedTooLarge": "Diese Datei überschreitet das Größenlimit deines Tarifs — ein Upgrade erhöht es."
+    },
+    "exportDialog": {
+      "title": "Backup exportieren",
+      "description": "Wählen Sie ein vollständiges verschlüsseltes Backup oder ein Bibliotheksbackup.",
+      "format": "Backup-Typ",
+      "full": "Vollständiges verschlüsseltes Backup",
+      "library": "Bibliotheksbackup (v1)",
+      "fullDescription": "Bücher, Anmerkungen, Gespräche, Erinnerungen, Einstellungen, Plugins und Zugangsdaten, mit Passwort verschlüsselt.",
+      "restorePending": "Vollständige Backups können noch nicht wiederhergestellt werden. Der Import unterstützt derzeit nur Bibliotheksbackups.",
+      "password": "Backup-Passwort",
+      "passwordHint": "Bewahren Sie dieses Passwort auf. Sie benötigen es zur Wiederherstellung.",
+      "passwordError": "Mindestens 12 Zeichen und höchstens 1024 UTF-8-Bytes verwenden.",
+      "confirmation": "Passwort bestätigen",
+      "confirmationError": "Die Passwörter stimmen nicht überein.",
+      "save": "Speicherort wählen…",
+      "cancelling": "Abbruch — Bereinigung läuft…",
+      "success": "Vollständiges verschlüsseltes Backup gespeichert.",
+      "phases": {
+        "choosing": "Speicherort wählen…",
+        "preparing": "Dateien werden vorbereitet…",
+        "database": "Daten werden erfasst…",
+        "files": "Dateien werden kopiert…",
+        "verifyingPrograms": "Plugins werden geprüft…",
+        "encrypting": "Verschlüsselung und Speicherung…"
+      },
+      "libraryNotice": "Kein vollständiges Backup: KI-Chats, Langzeitgedächtnis, Plugin-Dokumente, Geheimnisse und Ereignisverlauf fehlen. Der Import kann übereinstimmende Datensätze überschreiben und lässt sich nicht automatisch rückgängig machen."
     }
   },
   "about": {

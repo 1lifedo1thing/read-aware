@@ -370,7 +370,7 @@
     "reveal": "Afficher",
     "backup": {
       "title": "Sauvegarde et export",
-      "description": "Cette sauvegarde exclut les conversations IA, la mémoire à long terme, les documents des plugins, les secrets et l’historique des événements. L’import peut écraser les enregistrements correspondants et ne peut pas être annulé automatiquement."
+      "description": "Choisissez une sauvegarde complète chiffrée ou une sauvegarde de bibliothèque."
     },
     "fullBackup": {
       "title": "Sauvegarde de la bibliothèque (v1)",
@@ -543,6 +543,32 @@
       "awaitingOtherDevice": "En attente de l'appareil qui détient le fichier",
       "quotaFull": "Stockage cloud plein — les prochains livres restent sur cet appareil jusqu'à libérer de l'espace ou changer de forfait.",
       "rejectedTooLarge": "Ce fichier dépasse la taille maximale par livre de votre forfait — la mise à niveau l'augmente."
+    },
+    "exportDialog": {
+      "title": "Exporter une sauvegarde",
+      "description": "Choisissez une sauvegarde complète chiffrée ou une sauvegarde de bibliothèque.",
+      "format": "Type de sauvegarde",
+      "full": "Sauvegarde complète chiffrée",
+      "library": "Sauvegarde de bibliothèque (v1)",
+      "fullDescription": "Livres, annotations, conversations, mémoire, réglages, extensions et identifiants, chiffrés par mot de passe.",
+      "restorePending": "La restauration des sauvegardes complètes n’est pas encore disponible. Seules les sauvegardes de bibliothèque peuvent être importées.",
+      "password": "Mot de passe de la sauvegarde",
+      "passwordHint": "Conservez ce mot de passe : il sera nécessaire pour restaurer la sauvegarde.",
+      "passwordError": "Utilisez au moins 12 caractères et au maximum 1024 octets UTF-8.",
+      "confirmation": "Confirmer le mot de passe",
+      "confirmationError": "Les mots de passe ne correspondent pas.",
+      "save": "Choisir l’emplacement…",
+      "cancelling": "Annulation — nettoyage en cours…",
+      "success": "Sauvegarde complète chiffrée enregistrée.",
+      "phases": {
+        "choosing": "Choisissez l’emplacement…",
+        "preparing": "Préparation des fichiers…",
+        "database": "Capture des données…",
+        "files": "Copie des fichiers…",
+        "verifyingPrograms": "Vérification des extensions…",
+        "encrypting": "Chiffrement et enregistrement…"
+      },
+      "libraryNotice": "Cette sauvegarde exclut les conversations IA, la mémoire à long terme, les documents des plugins, les secrets et l’historique des événements. L’import peut écraser les enregistrements correspondants et ne peut pas être annulé automatiquement."
     }
   },
   "about": {

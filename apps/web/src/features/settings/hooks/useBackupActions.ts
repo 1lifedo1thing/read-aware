@@ -7,11 +7,13 @@ import { createLogger } from "../../../platform/logger";
 import { hostBackupFlows, hostMaintenance } from "../../../services/maintenance";
 import { backupFileActions } from "../lib/backup-file-actions";
 import type { BackupImportResult } from "../lib/backup-io";
+import { useBackupExport, type BackupExportFormat } from "./useBackupExport";
 
 const log = createLogger("backup-actions");
 
 export function useBackupActions(blocked = false) {
   const { t } = useTranslation("settings"), { toast } = useToast();
+  const exportDialog = useBackupExport();
   const [busy, setBusy] = useState(false), [requested, setRequested] = useState<BackupAction | null>(null);
   const active = useRef(false), pending = useRef<BackupAction | null>(null), lifetime = useRef<AbortController | null>(null);
   const unavailable = useRef(blocked); unavailable.current = blocked;
@@ -33,11 +35,15 @@ export function useBackupActions(blocked = false) {
     active.current = true; setBusy(true);
     const owner = lifetime.current;
     let operationSignal: AbortSignal | undefined, restarting = false;
+    const exportResult: { format: BackupExportFormat } = { format: "library" };
     try {
-      const result = await hostBackupFlows.run<boolean | BackupImportResult | null>(action, signal => {
+      const result = await hostBackupFlows.run<boolean | BackupImportResult | null>(action, async signal => {
         const combined = signal && owner ? AbortSignal.any([signal, owner.signal]) : signal ?? owner?.signal;
         operationSignal = combined;
-        return action === "export" ? backupFileActions.export(combined) : backupFileActions.import(combined);
+        if (action === "import") return backupFileActions.import(combined);
+        const exported = await exportDialog.request(combined);
+        exportResult.format = exported.format;
+        return exported.saved;
       });
       if (result && typeof result === "object") {
         restarting = true;
@@ -46,7 +52,7 @@ export function useBackupActions(blocked = false) {
       }
       if (!result || owner?.signal.aborted) return;
       toast({ variant: "success", title: t("dataSync.noticeDone"), description: typeof result === "boolean"
-        ? t("dataSync.exportSuccess")
+        ? t(exportResult.format === "full" ? "dataSync.exportDialog.success" : "dataSync.exportSuccess")
         : t("dataSync.merge.summary", {
           books: t("dataSync.merge.books", { count: result.books }), annotations: t("dataSync.merge.annotations", { count: result.annotations }),
           collections: t("dataSync.merge.collections", { count: result.collections }), settings: t("dataSync.merge.settings", { count: result.settings }),
@@ -60,5 +66,5 @@ export function useBackupActions(blocked = false) {
       if (!owner?.signal.aborted) { setBusy(restarting); setRequested(null); }
     }
   };
-  return { busy, requested, run };
+  return { busy, requested, run, exportDialog };
 }

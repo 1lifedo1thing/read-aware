@@ -2224,7 +2224,9 @@ export type PluginHostServices = {
     /** Maintenance 1.3: reveal native AI test controls; only the user's click starts inference. */
     requestConnectionTest(options?: PluginCallOptions): Promise<import("@read-aware/core").ConnectionTestReceipt>;
     /** Reveals a host backup button and awaits the user's click and file dialog.
-     * No backup bytes/paths; v1 is a subset, not a complete event-log backup. */
+     * Export lets the user choose a complete encrypted archive (host-only password)
+     * or the v1 library subset. Import currently supports v1 only.
+     * No passwords, bytes or paths; the final receipt does not identify the chosen format. */
     requestBackup(action: import("@read-aware/core").BackupAction, options?: PluginCallOptions): Promise<import("@read-aware/core").BackupReceipt>;
     snapshot(): Promise<import("@read-aware/core").HostMaintenanceSnapshot>;
     observe(handler: (snapshot: import("@read-aware/core").HostMaintenanceSnapshot) => unknown): PluginDisposable;

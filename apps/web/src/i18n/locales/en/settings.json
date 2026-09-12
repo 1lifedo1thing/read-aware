@@ -366,7 +366,7 @@
     "reveal": "Reveal",
     "backup": {
       "title": "Backup & export",
-      "description": "This is not a full backup: AI chats, long-term memory, plugin documents, secrets and event history are excluded. Importing may overwrite matching records and cannot be undone automatically."
+      "description": "Choose a complete encrypted backup or a library backup."
     },
     "fullBackup": {
       "title": "Library backup (v1)",
@@ -539,6 +539,32 @@
       "awaitingOtherDevice": "Waiting for the device that holds the file",
       "quotaFull": "Cloud storage is full — further books stay on this device until space frees up or the plan grows.",
       "rejectedTooLarge": "This file is over your plan's per-book size limit — upgrading raises it."
+    },
+    "exportDialog": {
+      "title": "Export a backup",
+      "description": "Choose a complete encrypted backup or a library backup.",
+      "format": "Backup type",
+      "full": "Complete encrypted backup",
+      "library": "Library backup (v1)",
+      "fullDescription": "Books, annotations, conversations, memory, settings, plugins and credentials, saved with password encryption.",
+      "restorePending": "Restoring a complete backup is not available yet. Import currently accepts library backups only.",
+      "password": "Backup password",
+      "passwordHint": "Keep this password: you will need it to restore the backup.",
+      "passwordError": "Use at least 12 characters and no more than 1024 UTF-8 bytes.",
+      "confirmation": "Confirm password",
+      "confirmationError": "The passwords do not match.",
+      "save": "Choose where to save…",
+      "cancelling": "Cancelling — waiting for cleanup…",
+      "success": "Complete encrypted backup saved.",
+      "phases": {
+        "choosing": "Choose where to save…",
+        "preparing": "Preparing files…",
+        "database": "Capturing data…",
+        "files": "Copying files…",
+        "verifyingPrograms": "Checking plugins…",
+        "encrypting": "Encrypting and saving…"
+      },
+      "libraryNotice": "This is not a full backup: AI chats, long-term memory, plugin documents, secrets and event history are excluded. Importing may overwrite matching records and cannot be undone automatically."
     }
   },
   "about": {

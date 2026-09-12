@@ -1,4 +1,5 @@
 import { AppError } from "@read-aware/core";
+import { validBackupPassword } from "./backup-password";
 
 export type FullBackupProgress =
   | { phase: "preparing" }
@@ -23,7 +24,7 @@ type Dependencies = {
 export function createFullBackupExport(deps: Dependencies) {
   return async (password: string, signal?: AbortSignal, onProgress?: (update: FullBackupProgress) => void): Promise<boolean> => {
     signal?.throwIfAborted();
-    if ([...password].length < 12 || new TextEncoder().encode(password).length > 1024) {
+    if (!validBackupPassword(password)) {
       throw new AppError("backup/password-policy", "Invalid full backup passphrase length");
     }
     // Never keep a write fence across user input.

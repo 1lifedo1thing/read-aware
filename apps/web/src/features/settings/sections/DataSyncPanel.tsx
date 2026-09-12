@@ -11,6 +11,7 @@ import { SyncAccountGroup } from "./SyncAccountGroup";
 import { useMaintenanceSurface } from "../hooks/useMaintenanceSurface";
 import { DataLocationGroup } from "./DataLocationGroup";
 import { ContextBundlesGroup } from "./ContextBundlesGroup";
+import { BackupExportDialog } from "../components/BackupExportDialog";
 
 const log = createLogger("data-sync");
 
@@ -30,7 +31,7 @@ export function DataSyncPanel() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const { busy, requested, run } = useBackupActions(deleteOpen || deleting);
+  const { busy, requested, run, exportDialog } = useBackupActions(deleteOpen || deleting);
 
   const deleteArmed = deleteConfirmText.trim() === DELETE_CONFIRM_PHRASE;
 
@@ -72,26 +73,22 @@ export function DataSyncPanel() {
       >
         <SettingsRow
           borderless
-          title={t("dataSync.fullBackup.title")}
-          description={t("dataSync.fullBackup.description")}
+          title={t("dataSync.exportDialog.title")}
+          description={t("dataSync.exportDialog.restorePending")}
           control={
-            <span className="flex items-center gap-2">
-              <Button
-                ref={importControlRef}
-                variant="outline"
-                size="sm"
-                disabled={busy || deleteOpen || deleting || requested === "export"}
-                onClick={() => void run("import")}
-              >
-                {t("dataSync.import")}
-              </Button>
-              <Button ref={exportControlRef} size="sm" disabled={busy || deleteOpen || deleting || requested === "import"} onClick={() => void run("export")}>
-                {busy ? t("dataSync.working") : t("dataSync.export")}
-              </Button>
-            </span>
+            <Button ref={exportControlRef} size="sm" disabled={busy || deleteOpen || deleting || requested === "import"} onClick={() => void run("export")}>
+              {busy ? t("dataSync.working") : t("dataSync.export")}
+            </Button>
           }
         />
+        <SettingsRow title={t("dataSync.fullBackup.title")} description={t("dataSync.exportDialog.libraryNotice")}
+          control={<Button ref={importControlRef} variant="outline" size="sm"
+            disabled={busy || deleteOpen || deleting || requested === "export"} onClick={() => void run("import")}>
+            {t("dataSync.import")}
+          </Button>} />
       </SettingsGroup>
+
+      <BackupExportDialog flow={exportDialog} />
 
       <ContextBundlesGroup />
 

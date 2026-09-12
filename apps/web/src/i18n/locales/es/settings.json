@@ -370,7 +370,7 @@
     "reveal": "Mostrar",
     "backup": {
       "title": "Copia de seguridad y exportación",
-      "description": "No es una copia completa: excluye chats de IA, memoria a largo plazo, documentos de plugins, secretos e historial de eventos. La importación puede sobrescribir registros coincidentes y no se puede deshacer automáticamente."
+      "description": "Elige una copia completa cifrada o una copia de la biblioteca."
     },
     "fullBackup": {
       "title": "Copia de la biblioteca (v1)",
@@ -543,6 +543,32 @@
       "awaitingOtherDevice": "Esperando al dispositivo que tiene el archivo",
       "quotaFull": "El almacenamiento en la nube está lleno: los próximos libros permanecen en este dispositivo hasta liberar espacio o ampliar el plan.",
       "rejectedTooLarge": "Este archivo supera el límite de tamaño por libro de tu plan; mejorarlo lo aumenta."
+    },
+    "exportDialog": {
+      "title": "Exportar una copia de seguridad",
+      "description": "Elige una copia completa cifrada o una copia de la biblioteca.",
+      "format": "Tipo de copia",
+      "full": "Copia completa cifrada",
+      "library": "Copia de la biblioteca (v1)",
+      "fullDescription": "Libros, anotaciones, conversaciones, memoria, ajustes, complementos y credenciales, cifrados con contraseña.",
+      "restorePending": "Aún no se pueden restaurar copias completas. La importación solo admite copias de la biblioteca.",
+      "password": "Contraseña de la copia",
+      "passwordHint": "Guarda esta contraseña: la necesitarás para restaurar la copia.",
+      "passwordError": "Usa al menos 12 caracteres y un máximo de 1024 bytes UTF-8.",
+      "confirmation": "Confirmar contraseña",
+      "confirmationError": "Las contraseñas no coinciden.",
+      "save": "Elegir dónde guardar…",
+      "cancelling": "Cancelando — esperando la limpieza…",
+      "success": "Copia completa cifrada guardada.",
+      "phases": {
+        "choosing": "Elige dónde guardar…",
+        "preparing": "Preparando archivos…",
+        "database": "Capturando datos…",
+        "files": "Copiando archivos…",
+        "verifyingPrograms": "Comprobando complementos…",
+        "encrypting": "Cifrando y guardando…"
+      },
+      "libraryNotice": "No es una copia completa: excluye chats de IA, memoria a largo plazo, documentos de plugins, secretos e historial de eventos. La importación puede sobrescribir registros coincidentes y no se puede deshacer automáticamente."
     }
   },
   "about": {

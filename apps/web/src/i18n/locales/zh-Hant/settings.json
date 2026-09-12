@@ -362,7 +362,7 @@
     "reveal": "顯示位置",
     "backup": {
       "title": "備份與匯出",
-      "description": "這不是完整備份，不含 AI 對話、長期記憶、外掛文件、金鑰和事件歷史。匯入可能覆寫相同鍵或同 ID 的既有紀錄，無法自動復原。"
+      "description": "選擇完整加密備份或書庫備份。"
     },
     "fullBackup": {
       "title": "書庫備份（v1）",
@@ -535,6 +535,32 @@
       "awaitingOtherDevice": "等待持有檔案的裝置上傳",
       "quotaFull": "雲端容量已滿——騰出空間或升級方案之前，之後的書只保留在本裝置。",
       "rejectedTooLarge": "這本書超過了目前方案的單一檔案大小上限——升級後可同步更大的檔案。"
+    },
+    "exportDialog": {
+      "title": "匯出備份",
+      "description": "選擇完整加密備份或書庫備份。",
+      "format": "備份類型",
+      "full": "完整加密備份",
+      "library": "書庫備份（v1）",
+      "fullDescription": "包含書籍、註記、對話、記憶、設定、外掛及憑證，使用密碼加密儲存。",
+      "restorePending": "完整備份的還原功能尚未提供。目前匯入僅支援書庫備份。",
+      "password": "備份密碼",
+      "passwordHint": "請妥善保存密碼，還原備份時需要它。",
+      "passwordError": "請使用至少 12 個字元，且不超過 1024 個 UTF-8 位元組。",
+      "confirmation": "確認密碼",
+      "confirmationError": "兩次輸入的密碼不一致。",
+      "save": "選擇儲存位置…",
+      "cancelling": "正在取消，等待清理完成…",
+      "success": "完整加密備份已儲存。",
+      "phases": {
+        "choosing": "選擇儲存位置…",
+        "preparing": "正在準備檔案…",
+        "database": "正在擷取資料…",
+        "files": "正在複製檔案…",
+        "verifyingPrograms": "正在檢查外掛…",
+        "encrypting": "正在加密並儲存…"
+      },
+      "libraryNotice": "這不是完整備份，不含 AI 對話、長期記憶、外掛文件、金鑰和事件歷史。匯入可能覆寫相同鍵或同 ID 的既有紀錄，無法自動復原。"
     }
   },
   "about": {
