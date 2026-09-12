@@ -300,7 +300,12 @@ fn backup_row_plan_rejects_unknown_tables_unsettled_updates_and_stale_targets_an
             }
         );
         assert!(!source_path.exists());
-        assert_eq!(crate::storage::backup_staging::fixture_entries(stage.path()).unwrap().count(), 0);
+        assert_eq!(
+            crate::storage::backup_staging::fixture_entries(stage.path())
+                .unwrap()
+                .count(),
+            0
+        );
         assert!(target.is_autocommit());
     }
 }
@@ -360,4 +365,195 @@ fn backup_row_plan_reuses_the_event_target_view_during_concurrent_wal_changes() 
         "backup/changed"
     );
     tx.rollback().unwrap();
+}
+
+#[test]
+fn backup_row_review_reads_fixed_values_composite_keys_and_policy_boundaries() {
+    let root = tempfile::tempdir().unwrap();
+    let stage = tempfile::tempdir().unwrap();
+    let mut target = db(&root.path().join("db"));
+    memory(&target, "changed", "target before planning");
+    document(&target, "with'quote", "same-id");
+    document(&target, "other", "same-id");
+    kv(&target, "read-aware-sync-test", "\"DEVICE PRIVATE\"");
+    kv(&target, "read-aware-plugin.proof.schedule-runs", "[]");
+    let long = format!("{}汉字\0tail", "a".repeat(4095));
+    let source = incoming(|conn, _| {
+        memory(conn, "changed", &long);
+        memory(conn, "source-only", "only source");
+        document(conn, "with'quote", "same-id");
+        conn.execute(
+            "UPDATE plugin_documents SET json='{\"source\":true}' WHERE collection=?1",
+            ["with'quote"],
+        )
+        .unwrap();
+    });
+    let plan = backup_archive::plan_events_fixture(source, &mut target, stage.path(), || Ok(()))
+        .unwrap()
+        .plan_rows(&mut target, || Ok(()))
+        .unwrap();
+    let changed = plan
+        .page("memories", 0, 100)
+        .unwrap()
+        .entries
+        .into_iter()
+        .find(|row| row.kind == RowMatchKind::Different)
+        .unwrap()
+        .entry_id;
+    // Close the live connection altogether: review cannot accidentally fall back
+    // to its database or observe newer values.
+    target
+        .execute(
+            "UPDATE memories SET content='new live content' WHERE id='changed'",
+            [],
+        )
+        .unwrap();
+    drop(target);
+    let fields = serde_json::to_value(
+        plan.review_fields("memories".into(), changed, None, 2, &mut || Ok(()))
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(fields["nextAfter"], 1);
+    assert_eq!(fields["entries"][0]["name"], "id");
+    assert_eq!(fields["entries"][0]["primary"], 1);
+    let target = serde_json::to_value(
+        plan.review_field(
+            "memories".into(),
+            changed,
+            "content".into(),
+            RowSide::Target,
+            0,
+            &mut || Ok(()),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(target["value"]["text"], "target before planning");
+    let first = serde_json::to_value(
+        plan.review_field(
+            "memories".into(),
+            changed,
+            "content".into(),
+            RowSide::Source,
+            0,
+            &mut || Ok(()),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(first["value"]["nextOffset"], 4095);
+    let second = serde_json::to_value(
+        plan.review_field(
+            "memories".into(),
+            changed,
+            "content".into(),
+            RowSide::Source,
+            4095,
+            &mut || Ok(()),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(second["value"]["text"], "汉字\0tail");
+    assert_eq!(second["value"]["byteLength"], long.len());
+    assert!(second["value"]["nextOffset"].is_null());
+    for row in plan.page("app_kv", 0, 100).unwrap().entries {
+        if matches!(
+            row.policy,
+            RowPolicy::PreserveDevice | RowPolicy::ReviewRuntimeHistory
+        ) {
+            let page = serde_json::to_value(
+                plan.review_fields("app_kv".into(), row.entry_id, None, 100, &mut || Ok(()))
+                    .unwrap(),
+            )
+            .unwrap();
+            assert_eq!(page["restricted"], true);
+            assert_eq!(page["entries"], serde_json::json!([]));
+            assert!(!page.to_string().contains("DEVICE PRIVATE"));
+            assert!(plan
+                .review_field(
+                    "app_kv".into(),
+                    row.entry_id,
+                    "value_json".into(),
+                    RowSide::Target,
+                    0,
+                    &mut || Ok(())
+                )
+                .is_err());
+        }
+    }
+    let document = plan
+        .page("plugin_documents", 0, 100)
+        .unwrap()
+        .entries
+        .into_iter()
+        .find(|row| row.kind == RowMatchKind::Different)
+        .unwrap()
+        .entry_id;
+    let doc = serde_json::to_value(
+        plan.review_field(
+            "plugin_documents".into(),
+            document,
+            "json".into(),
+            RowSide::Source,
+            0,
+            &mut || Ok(()),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(doc["value"]["text"], "{\"source\":true}");
+    let only = plan
+        .page("memories", 0, 100)
+        .unwrap()
+        .entries
+        .into_iter()
+        .find(|row| row.kind == RowMatchKind::SourceOnly)
+        .unwrap()
+        .entry_id;
+    let missing = serde_json::to_value(
+        plan.review_field(
+            "memories".into(),
+            only,
+            "content".into(),
+            RowSide::Target,
+            0,
+            &mut || Ok(()),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert!(missing["value"].is_null());
+    for (table, entry, column, offset) in [
+        ("app_kv", changed, "value_json", 0),
+        ("memories", changed, "id\" FROM app_kv--", 0),
+        ("memories", changed, "content", long.len() + 1),
+    ] {
+        assert!(plan
+            .review_field(
+                table.into(),
+                entry,
+                column.into(),
+                RowSide::Source,
+                offset,
+                &mut || Ok(())
+            )
+            .is_err());
+    }
+    assert!(plan
+        .review_fields("memories".into(), changed, Some(9999), 1, &mut || Ok(()))
+        .is_err());
+    assert_eq!(
+        plan.review_fields("memories".into(), changed, None, 1, &mut || Err(
+            CommandError::new("backup/cancelled", "cancel")
+        ))
+        .err()
+        .unwrap()
+        .code,
+        "backup/cancelled"
+    );
+    let private = plan.events.directory.path().to_owned();
+    drop(plan);
+    assert!(!private.exists());
 }

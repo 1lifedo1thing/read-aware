@@ -11,7 +11,9 @@ mod events;
 mod revision;
 #[path = "backup_row_plan.rs"]
 mod rows;
-pub(crate) use rows::{RowPlan, FilePlan, FileMatchKind, ReviewPage, ReviewQuery};
+#[path = "backup_target_snapshot.rs"]
+mod target_snapshot;
+pub(crate) use rows::{FileMatchKind, FilePlan, ReviewPage, ReviewQuery, RowPlan};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,10 +73,12 @@ pub(crate) struct EventMatchPage {
 }
 
 /// Connections close before their private directories are removed. No raw event
-/// payload or secret value is copied into the plan database, just ids and digests.
+/// payload or secret value is copied into the index database, just ids and digests.
+/// The separate private target snapshot preserves review values at this revision.
 #[derive(Debug)]
 pub(crate) struct EventPlan {
     entries: Connection,
+    target_snapshot: Connection,
     source: PreflightedBackup,
     directory: crate::storage::backup_staging::BackupDirectory,
     target_revision: String,
@@ -166,6 +170,11 @@ pub(crate) fn plan_events(
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o700))?;
     }
+    let target_snapshot = target_snapshot::capture(
+        &target_tx,
+        &directory.path().join("target.sqlite"),
+        &mut check,
+    )?;
     let mut entries = Connection::open(directory.path().join("event-plan.sqlite"))?;
     entries.execute_batch("CREATE TABLE event_matches (
         source_id TEXT PRIMARY KEY, kind INTEGER NOT NULL CHECK(kind BETWEEN 0 AND 4),
@@ -181,6 +190,7 @@ pub(crate) fn plan_events(
     target_tx.commit()?; // Read only: no target row or identity was changed.
     Ok(EventPlan {
         entries,
+        target_snapshot,
         source,
         directory,
         target_revision,

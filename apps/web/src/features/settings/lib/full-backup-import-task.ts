@@ -79,7 +79,7 @@ export function createFullBackupImport(deps: Dependencies) {
         if (disposed) return Promise.reject(new AppError("backup/changed", "Backup review has been disposed"));
         if (pendingReads >= 32) return Promise.reject(new AppError("backup/busy", "Backup review queue is full"));
         const candidate = structuredClone(query);
-        if (!Number.isSafeInteger(candidate.limit) || candidate.limit < 1 || candidate.limit > 100) {
+        if (candidate.kind !== "rowField" && (!Number.isSafeInteger(candidate.limit) || candidate.limit < 1 || candidate.limit > 100)) {
           return Promise.reject(new AppError("backup/invalid-archive", "Invalid backup review page limit"));
         }
         pendingReads++;

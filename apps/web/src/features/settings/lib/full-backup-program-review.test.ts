@@ -12,6 +12,7 @@ const proof: BackupProgramFacts = { id: "proof", builtin: false, candidates: [ca
 test("paged captured program facts reach the existing manifest/schema gate with the exact submitted choices", async () => {
   const waiting = Promise.withResolvers<void>(); const queries: BackupReviewQuery[] = [];
   const review = { disposed: false, read: async (query: BackupReviewQuery): Promise<BackupReviewPage> => {
+    if (query.kind !== "programs") throw new Error("Expected program review request");
     queries.push(query); await waiting.promise;
     return { kind: "programs", entries: query.after ? [proof] : [onlyData], nextAfter: query.after ? null : "a-data" };
   } };

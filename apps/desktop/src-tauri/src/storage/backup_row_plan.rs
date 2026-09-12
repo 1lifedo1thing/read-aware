@@ -10,9 +10,12 @@ mod policy;
 pub(crate) use policy::RowPolicy;
 #[path = "backup_file_plan.rs"]
 mod files;
+#[path = "backup_row_review.rs"]
+mod review;
 #[path = "backup_row_scan.rs"]
 mod scan;
-pub(crate) use files::{FilePlan, FileMatchKind, ReviewPage, ReviewQuery};
+pub(crate) use files::{FileMatchKind, FilePlan, ReviewPage, ReviewQuery};
+pub(crate) use review::{RowFieldPage, RowFieldsPage, RowSide};
 
 #[derive(Debug, Default)]
 pub(crate) struct RowCounts {

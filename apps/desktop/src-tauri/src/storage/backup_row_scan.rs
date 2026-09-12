@@ -5,9 +5,9 @@ use sha2::{Digest, Sha256};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Column {
-    name: String,
+    pub(super) name: String,
     kind: String,
-    primary: i64,
+    pub(super) primary: i64,
 }
 pub(super) fn quoted(value: &str) -> String {
     format!("\"{}\"", value.replace('"', "\"\""))

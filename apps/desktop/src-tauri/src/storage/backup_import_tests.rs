@@ -361,6 +361,25 @@ fn backup_import_review_pages_are_stable_private_evidence_and_invalid_queries_ke
         .unwrap()
         .iter()
         .all(|row| row["policy"].is_string()));
+    for row in rows["entries"].as_array().unwrap() {
+        let entry = row["entryId"].as_i64().unwrap();
+        let query: ReviewQuery = serde_json::from_value(
+            serde_json::json!({"kind":"rowFields","table":"app_kv","entryId":entry,"limit":100}),
+        )
+        .unwrap();
+        let fields = serde_json::to_value(read(query).unwrap()).unwrap();
+        assert_eq!(fields["kind"], "rowFields");
+        if row["policy"] == "reseal-credential" {
+            assert_eq!(fields["restricted"], true);
+            assert_eq!(fields["entries"], serde_json::json!([]));
+            assert!(read(serde_json::from_value(serde_json::json!({"kind":"rowField","table":"app_kv","entryId":entry,"column":"value_json","side":"source","offset":0})).unwrap()).is_err());
+        } else if row["policy"] == "plugin-data" {
+            assert!(fields.to_string().contains("PRIVATE NOTE"));
+            let field = serde_json::to_value(read(serde_json::from_value(serde_json::json!({"kind":"rowField","table":"app_kv","entryId":entry,"column":"value_json","side":"source","offset":0})).unwrap()).unwrap()).unwrap();
+            assert_eq!(field["kind"], "rowField");
+            assert_eq!(field["value"]["text"], "\"PRIVATE NOTE\"");
+        }
+    }
     let files = serde_json::to_value(
         read(ReviewQuery::Files {
             after: None,

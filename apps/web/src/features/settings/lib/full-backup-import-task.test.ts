@@ -14,7 +14,10 @@ function fixture() {
       expect([path, password]).toEqual(["/source.age", "a test password"]); calls.push("open"); return source;
     },
     plan: async (): Promise<BackupPlanReceipt> => { calls.push("plan"); return plan; },
-    read: async (_id: string, query: BackupReviewQuery): Promise<BackupReviewPage> => { calls.push("read"); return { kind: query.kind, entries: [], nextAfter: null }; },
+    read: async (_id: string, query: BackupReviewQuery): Promise<BackupReviewPage> => { calls.push("read");
+      if (query.kind === "rowField") return { ...query, value: null };
+      if (query.kind === "rowFields") return { ...query, policy: "domain-state", restricted: false, entries: [], nextAfter: null };
+      return { kind: query.kind, entries: [], nextAfter: null }; },
     cancel: async () => { calls.push("cancel"); },
     warn: (_message: string, _error: unknown) => { calls.push("warn"); },
   };
@@ -96,4 +99,25 @@ test("review disposal waits for the native read, discards queued reads, and boun
   release.resolve({ kind: "files", entries: [], nextAfter: null }); await closing;
   expect(physicalReads).toBe(1); expect((await Promise.all(pending)).every(result => result.code === "backup/changed")).toBe(true);
   await expect(review.read({ kind: "files", limit: 1 })).rejects.toMatchObject({ code: "backup/changed" });
+});
+
+test("record fields and continuation reads use the same owned serial review without losing typed values", async () => {
+  const { deps, run, calls } = fixture();
+  const seen: BackupReviewQuery[] = [];
+  deps.read = async (_id, query) => {
+    seen.push(query);
+    if (query.kind === "rowFields") return { ...query, policy: "domain-state", restricted: false, entries: [{ name: "id", primary: 1,
+      source: { type: "integer", decimal: "9223372036854775807" }, target: { type: "null" } }], nextAfter: 0 };
+    if (query.kind === "rowField") return { ...query, value: { type: "text", base64: "5rGJ", text: "汉", byteLength: 4098, offset: 4095, nextOffset: null } };
+    throw new Error("Unexpected request");
+  };
+  const review = (await run("a test password"))!;
+  const page = await review.read({ kind: "rowFields", table: "memories", entryId: 1, limit: 1 });
+  expect(page).toMatchObject({ entries: [{ source: { decimal: "9223372036854775807" }, target: { type: "null" } }] });
+  const query: BackupReviewQuery = { kind: "rowField", table: "memories", entryId: 1, column: "content", side: "source", offset: 4095 };
+  const next = review.read(query); query.offset = 0;
+  expect(await next).toMatchObject({ value: { text: "汉", offset: 4095, nextOffset: null } });
+  expect(seen[1]).toMatchObject({ offset: 4095 });
+  expect(calls).not.toContain("cancel");
+  await review.dispose();
 });

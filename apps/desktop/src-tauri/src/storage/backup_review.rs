@@ -1,5 +1,7 @@
 //! Bounded, immutable review evidence in the plan's private database. These
-//! pages never authorize installation, expose secrets, or apply source rows.
+//! pages never authorize installation or apply source rows. Credential slots
+//! retain their dedicated facts-only route; ordinary user content is host-only.
+use super::super::{RowFieldPage, RowFieldsPage, RowSide};
 use super::FilePlan;
 use crate::error::CommandError;
 use rusqlite::{params, Transaction};
@@ -22,6 +24,21 @@ pub(crate) enum ReviewQuery {
         table: String,
         after: Option<i64>,
         limit: usize,
+    },
+    #[serde(rename_all = "camelCase")]
+    RowFields {
+        table: String,
+        entry_id: i64,
+        after: Option<usize>,
+        limit: usize,
+    },
+    #[serde(rename_all = "camelCase")]
+    RowField {
+        table: String,
+        entry_id: i64,
+        column: String,
+        side: RowSide,
+        offset: usize,
     },
     Files {
         after: Option<String>,
@@ -47,6 +64,8 @@ pub(crate) struct JsonPage {
 pub(crate) enum ReviewPage {
     Events(super::super::super::EventMatchPage),
     Rows(super::super::RowPage),
+    RowFields(RowFieldsPage),
+    RowField(RowFieldPage),
     Files(JsonPage),
     Programs(JsonPage),
     Credentials(JsonPage),
@@ -119,6 +138,25 @@ impl FilePlan {
                 }
                 ReviewPage::Rows(self.rows.page(&table, after.unwrap_or(0), limit)?)
             }
+            ReviewQuery::RowFields {
+                table,
+                entry_id,
+                after,
+                limit,
+            } => ReviewPage::RowFields(
+                self.rows
+                    .review_fields(table, entry_id, after, limit, &mut check)?,
+            ),
+            ReviewQuery::RowField {
+                table,
+                entry_id,
+                column,
+                side,
+                offset,
+            } => ReviewPage::RowField(
+                self.rows
+                    .review_field(table, entry_id, column, side, offset, &mut check)?,
+            ),
             ReviewQuery::Files { after, limit } => {
                 let page = self.page(after.as_deref().unwrap_or(""), limit)?;
                 let mut entries = Vec::new();
