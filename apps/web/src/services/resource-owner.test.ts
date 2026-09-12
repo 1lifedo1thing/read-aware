@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { AppError, RESOURCE_MAX_CHUNK, RESOURCE_MAX_SIZE } from "@read-aware/core";
+import { AppError, BOOK_IMPORT_FORMATS, RESOURCE_MAX_CHUNK, RESOURCE_MAX_SIZE } from "@read-aware/core";
 import { ResourceOwner, type ResourceAdapter, type NativeResource } from "./resource-owner";
 
 function fixture(authorizeBook: (id: string) => void = () => {}) {
@@ -25,6 +25,21 @@ function fixture(authorizeBook: (id: string) => void = () => {}) {
   const owner = new ResourceOwner(adapter, error => errors.push(error), authorizeBook, () => now);
   return { owner, adapter, files, released, errors, make, time: (value: number) => { now = value; } };
 }
+
+test("file picker accepts the library format catalog including compound suffixes and rejects malformed filters", async () => {
+  const f = fixture(), calls: unknown[] = [];
+  f.adapter.pick = async options => { calls.push(options); return []; };
+  try {
+    const options = { multiple: false, extensions: BOOK_IMPORT_FORMATS.flatMap(format => format.extensions) };
+    expect(options.extensions).toContain("fb2.zip");
+    expect(await f.owner.pick(options)).toEqual({ cancelled: true, resources: [] });
+    expect(calls).toEqual([options]);
+    for (const extension of ["", ".fb2", "fb2.", "fb2..zip", "../fb2", "fb2/zip", "fb2\\zip", "*", "a".repeat(17)]) {
+      await expect(f.owner.pick({ extensions: [extension] })).rejects.toMatchObject({ code: "ui/invalid-target" });
+    }
+    expect(calls).toHaveLength(1);
+  } finally { await f.owner.dispose(); }
+});
 
 test("directory grants isolate owners, snapshot inputs and files, expire and release independently", async () => {
   const a = fixture(), b = fixture(), calls: unknown[] = [];

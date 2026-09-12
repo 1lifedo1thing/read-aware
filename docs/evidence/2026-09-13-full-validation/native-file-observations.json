@@ -1,0 +1,65 @@
+{
+  "profile": "com.readaware.app.capability-e2e",
+  "plugin": "library-desk 0.12.0 real Worker",
+  "nativeDialogs": "macOS System Events scoped to PID 60562 after user unlock",
+  "exportedBookId": "44d62bf7-3556-4d4c-bfa5-307706805e2c",
+  "exports": [
+    {
+      "path": "/tmp/readaware-validation-20260913-original.fb2",
+      "bytes": 2809,
+      "sha256": "6762f3815a67c08cdccf0b2549784484e36e23c4fce2afb964cf1d9fd4c6a10d"
+    },
+    {
+      "path": "/tmp/readaware-validation-20260913-cover.png",
+      "bytes": 1256,
+      "sha256": "32d8f0f5a56e2e5abb05f96a65958b820440d98e28da912d25f789921c257689",
+      "dimensions": [
+        240,
+        160
+      ]
+    }
+  ],
+  "originalByteEquality": true,
+  "exportCancel": "native Save panel Cancel closed without error",
+  "pickerBug": {
+    "before": "ui/invalid-target Invalid resource input; no native dialog",
+    "cause": "book catalog includes fb2.zip but ResourceOwner accepted only alphanumeric suffixes",
+    "fix": "bounded dot-separated alphanumeric suffixes; path separators, empty components, wildcards remain rejected",
+    "focusedTests": "21 pass, 140 assertions; desktop typecheck passed"
+  },
+  "import": {
+    "inspection": {
+      "format": "fb2",
+      "status": "Initialized",
+      "sections": 3,
+      "bytes": 2809
+    },
+    "firstResult": "Imported",
+    "bookId": "8832586b-1cb7-4e3f-aa95-2ee990ad59e7",
+    "repeatResult": "Already in library",
+    "repeatKeptSameBookIdAndCount": true,
+    "nativeCancelKeptCount": 4,
+    "alertsAfterCancel": [],
+    "cleanup": "imported book removed; files released"
+  },
+  "directory": {
+    "selectedRoot": "/tmp/readaware-validation-20260913-folder",
+    "rootEntries": [
+      "nested"
+    ],
+    "omittedSymlinkCount": 1,
+    "nestedFile": "original.fb2",
+    "openedFileInspection": {
+      "bytes": 2809,
+      "format": "fb2",
+      "status": "Initialized",
+      "sections": 3
+    }
+  },
+  "boundaries": [
+    "macOS debug only",
+    "directory paging and grant revocation not independently observed here",
+    "drag/drop, clipboard, associated application not observed",
+    "other file formats pending"
+  ]
+}

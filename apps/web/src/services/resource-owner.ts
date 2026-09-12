@@ -121,7 +121,7 @@ export class ResourceOwner implements ResourcePort {
     if (!options || typeof options !== "object" || Object.keys(options).some(key => !["multiple", "extensions"].includes(key))
       || (options.multiple !== undefined && typeof options.multiple !== "boolean")
       || (options.extensions !== undefined && (!Array.isArray(options.extensions) || options.extensions.length > 32
-        || options.extensions.some(ext => typeof ext !== "string" || !/^[a-zA-Z0-9]{1,16}$/.test(ext))))) return Promise.reject(invalid());
+        || options.extensions.some(ext => typeof ext !== "string" || ext.length > 16 || !/^[a-zA-Z0-9]+(?:\.[a-zA-Z0-9]+)*$/.test(ext))))) return Promise.reject(invalid());
     const accepted = { ...options, ...(options.extensions ? { extensions: [...options.extensions] } : {}) };
     return this.run(async () => {
       const values = await this.adapter.pick(accepted, signal);
