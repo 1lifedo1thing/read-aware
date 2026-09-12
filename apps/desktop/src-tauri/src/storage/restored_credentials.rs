@@ -1,4 +1,5 @@
-//! Durable restore publication. Event append/apply and obligation removal share
+//! Durable credential publication (the table/API retain their restore-era names).
+//! Local credential writes and restores share this queue. Event append/apply and obligation removal share
 //! one transaction; a failed/lost response is safely retried from pending slots.
 use super::{credential_crypto as crypto, local_event_guard, DataDir, Db, EventRow};
 use crate::error::CommandError;
@@ -36,6 +37,23 @@ pub(crate) fn pending(conn: &Connection) -> Result<Vec<String>, CommandError> {
         .query_map([], |row| row.get(0))?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
+}
+pub(crate) fn enqueue_current(conn: &mut Connection, only_unpublished: bool) -> Result<(), CommandError> {
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let slots = {
+        let mut query = tx.prepare("SELECT substr(key,19) FROM app_kv WHERE substr(key,1,18)='read-aware-secret:' AND substr(key,19,10)='ai-api-key' AND (?1=0 OR NOT EXISTS (SELECT 1 FROM synced_preferences p WHERE p.key='secret:'||substr(app_kv.key,19)))")?;
+        let rows = query.query_map([only_unpublished], |row| row.get::<_, String>(0))?.collect::<Result<Vec<_>, _>>()?;
+        rows
+    };
+    for slot in slots { enqueue(&tx, &slot)?; }
+    tx.commit()?; Ok(())
+}
+#[tauri::command]
+pub async fn restored_credentials_enqueue_current(app: tauri::AppHandle, only_unpublished: bool) -> Result<(), CommandError> {
+    super::blocking("restored_credentials_enqueue_current", move || {
+        let db = app.state::<Db>(); let mut conn = db.0.lock()?;
+        enqueue_current(&mut conn, only_unpublished)
+    }).await
 }
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

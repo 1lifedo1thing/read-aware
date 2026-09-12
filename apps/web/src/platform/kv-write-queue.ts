@@ -25,14 +25,14 @@ export class KVWriteQueue {
   constructor(private readonly deps: {
     read(key: string): string | null;
     mirror(key: string, value: string | null): void;
-    persist(key: string, value: string | null): Promise<void>;
+    persist(key: string, value: string | null, origin: KVWriteOrigin): Promise<void>;
     committed(key: string, value: string | null, origin: KVWriteOrigin): void;
     settled?(commit: KVCommit): void;
     failed(key: string, error: unknown, owner: KVFailureOwner): void;
   }) {}
 
   write(key: string, value: string | null, origin: KVWriteOrigin = "local", actor: EventOrigin | null = null): Promise<void> {
-    return this.enqueue(new Map([[key, value]]), () => this.deps.persist(key, value), origin, actor);
+    return this.enqueue(new Map([[key, value]]), () => this.deps.persist(key, value, origin), origin, actor);
   }
 
   /** Atomic user edits publish only after the entire native transaction commits. */

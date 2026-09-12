@@ -1009,6 +1009,7 @@ pub fn run() {
             storage::blob_write_abort,
             secrets::secret_get,
             storage::restored_credentials_pending,
+            storage::restored_credentials_enqueue_current,
             storage::restored_credentials_publish,
             secrets::secret_keys,
             secrets::secret_set,

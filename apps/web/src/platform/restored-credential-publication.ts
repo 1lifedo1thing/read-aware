@@ -1,4 +1,4 @@
-/** Host-only retry of durable restore obligations. Native code reads/seals the
+/** Host-only retry of durable local-write and restore obligations. Native code reads/seals the
  * current credential, appends its event and retires the marker atomically. */
 import { errorCode, type HlcStamp } from "@read-aware/core";
 import { invoke } from "./ipc";

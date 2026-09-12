@@ -5,19 +5,40 @@ if (process.env.ROAMING_SECRET_DURABILITY === "1") {
   const events: { payload: { key: string; value: { sealed: string } | null } }[] = [];
   const pending: { key: string; resolve(): void; reject(error: unknown): void }[] = [];
   const commands: string[] = [];
+  const obligations = new Set<string>();
   let hold = false;
   let rows: { key: string; valueJson: string }[] = [];
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => null } });
   Object.defineProperty(globalThis, "window", { configurable: true, value: { __TAURI_INTERNALS__: {
-    invoke: (command: string, args: { key: string; value: string; events: typeof events }) => {
+    invoke: (command: string, args: { key: string; value: string; roam?: boolean; onlyUnpublished?: boolean; events: typeof events }) => {
       commands.push(command);
-      if (command === "secret_keys" || command === "restored_credentials_pending") return Promise.resolve([]);
+      if (command === "secret_keys") return Promise.resolve([]);
+      if (command === "restored_credentials_pending") return Promise.resolve([...obligations]);
+      if (command === "restored_credentials_enqueue_current") {
+        for (const slot of disk.keys()) if (slot.startsWith("ai-api-key") && (!args.onlyUnpublished || !rows.some(row => row.key === `secret:${slot}`))) obligations.add(slot);
+        return Promise.resolve();
+      }
+      if (command === "restored_credentials_publish") {
+        const master = disk.get("sync.master-key");
+        if (!master) return Promise.resolve({ events: [], awaitingConnection: true });
+        const published = args.events.filter(event => obligations.has(event.payload.key.slice(7))).map(event => {
+          const slot = event.payload.key.slice(7), value = disk.get(slot);
+          obligations.delete(slot);
+          return { ...event, payload: { key: event.payload.key, value: value ? { sealed: sealSecret(fromBase64(master), slot, value) } : null } };
+        });
+        events.push(...published); return Promise.resolve({ events: published, awaitingConnection: false });
+      }
       if (command === "local_device_get") return Promise.resolve({ deviceId: "secret-proof", lastHlcWallMs: null, lastHlcCounter: null });
       if (command === "preferences_load_all") return Promise.resolve(rows);
       if (command === "commit_events") { events.push(...args.events); return Promise.resolve({ appended: args.events.length, applied: args.events.length }); }
       if (command === "secret_set" || command === "secret_delete") {
         return new Promise<void>((resolve, reject) => {
-          const commit = () => { if (command === "secret_delete") disk.delete(args.key); else disk.set(args.key, args.value); resolve(); };
+          const commit = () => {
+            if (args.roam === false && obligations.has(args.key)) { reject({ code: "ui/superseded" }); return; }
+            if (command === "secret_delete") disk.delete(args.key); else disk.set(args.key, args.value);
+            if (args.roam !== false && args.key.startsWith("ai-api-key")) obligations.add(args.key);
+            resolve();
+          };
           if (hold) pending.push({ key: args.key, resolve: commit, reject }); else commit();
         });
       }
@@ -28,7 +49,7 @@ if (process.env.ROAMING_SECRET_DURABILITY === "1") {
   const roaming = await import("./roaming-preferences");
   const { saveAIConfig } = await import("../features/ai/lib/ai-config");
   const { onAppEvent } = await import("./app-events");
-  const { toBase64, sealSecret, openSecret } = await import("./sync-envelope");
+  const { toBase64, fromBase64, sealSecret, openSecret } = await import("./sync-envelope");
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   const key = new Uint8Array(32).fill(7);
   const slot = "ai-api-key.openai";
@@ -49,10 +70,10 @@ if (process.env.ROAMING_SECRET_DURABILITY === "1") {
     secrets.setSecret(slot, "synthetic-later");
     await tick(); expect(secrets.getSecret(slot)).toBe("synthetic-later");
     pending.shift()!.resolve(); await tick();
-    expect(decoded()).toEqual(["synthetic-first"]);
+    expect(decoded()).toEqual([]); // Drain waits for the accepted write queue, then publishes its latest durable value.
     expect(secrets.getDurableSecret(slot)).toBe("synthetic-first");
     pending.shift()!.reject({ code: "fs/permission-denied" });
-    await secrets.afterSecretWrites(() => {});
+    await secrets.afterSecretWrites(() => {}); await tick();
     expect(secrets.getSecret(slot)).toBe("synthetic-first");
     expect(decoded()).toEqual(["synthetic-first"]);
 
@@ -84,8 +105,9 @@ if (process.env.ROAMING_SECRET_DURABILITY === "1") {
     secrets.setSecret(slot, "synthetic-old-master");
     secrets.setSecret("sync.master-key", toBase64(new Uint8Array(32).fill(8)));
     await tick(); pending.shift()!.resolve(); await tick();
+    expect(decoded().at(-1)).toBe("synthetic-remote");
+    pending.shift()!.reject({ code: "fs/permission-denied" }); await secrets.afterSecretWrites(() => {}); await tick();
     expect(decoded().at(-1)).toBe("synthetic-old-master");
-    pending.shift()!.reject({ code: "fs/permission-denied" }); await secrets.afterSecretWrites(() => {});
     expect(JSON.stringify(events)).not.toContain("synthetic-");
     expect(events.some(event => event.payload.key.startsWith("secret:sync."))).toBe(false);
     expect(pending).toHaveLength(0);

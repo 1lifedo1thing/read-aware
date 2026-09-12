@@ -65,7 +65,9 @@ function notifyCommit(key: SecretKey, source: KVWriteOrigin): void {
 const writes = new KVWriteQueue({
   read: key => snapshot.get(key as SecretKey) ?? null,
   mirror: (key, value) => { if (value === null) snapshot.delete(key as SecretKey); else snapshot.set(key as SecretKey, value); },
-  persist: (key, value) => value === null ? invoke("secret_delete", { key }) : invoke("secret_set", { key, value }),
+  persist: (key, value, origin) => value === null
+    ? invoke("secret_delete", { key, roam: origin === "local" })
+    : invoke("secret_set", { key, value, roam: origin === "local" }),
   committed: (key, value, source) => {
     if (source !== "local") return;
     for (const listener of [...writeListeners]) {
@@ -74,6 +76,7 @@ const writes = new KVWriteQueue({
   },
   settled: commit => { for (const { key } of commit.entries) notifyCommit(key as SecretKey, commit.source === "remote" ? "remote" : "local"); },
   failed: (key, error) => {
+    if (errorCode(error) === "ui/superseded") { log.debug("Deferred stale credential overlay while local publication is pending"); return; }
     log.error(`failed to persist "${key}"`, error);
     emitAppEvent("local-write-failed", { kind: "secret", code: errorCode(error) });
   },

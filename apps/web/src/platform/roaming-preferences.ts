@@ -26,6 +26,7 @@ import { waitForPluginDataUpdates, withPluginDataWrites } from "./plugin-data-ac
 import { invoke } from "./ipc";
 import { emitAppEvent } from "./app-events";
 import { commitDomainEvents } from "./domain-events";
+import { runDomainWrite } from "./domain-write-gate";
 import { isTauri } from "./environment";
 import { localKV, onLocalKVWrite, flushLocalKV } from "./local-store";
 import { isPluginScheduleStateKey } from "./plugin-local-state";
@@ -35,12 +36,11 @@ import {
   deleteSecretAsync,
   getDurableSecret,
   getSecret,
-  listSecretSlots,
   onLocalSecretWrite,
   setSecretAsync,
   type SecretKey,
 } from "./secret-store";
-import { fromBase64, openSecret, sealSecret } from "./sync-envelope";
+import { fromBase64, openSecret } from "./sync-envelope";
 
 const log = createLogger("roaming-preferences");
 
@@ -126,44 +126,26 @@ function masterKey(): Uint8Array | null {
   return b64 ? fromBase64(b64) : null;
 }
 
-/**
- * Record a credential change in the log, sealed. A device that is not
- * connected has no master key and publishes nothing — `republishRoamingSecrets`
- * catches those up when an account connects.
- */
-function publishRoamingSecret(slot: SecretKey, value: string | null): void {
+/** Ordinary local writes atomically enqueue with the encrypted value in native
+ * SQLite. Publication reads that current durable value, including deletions. */
+function publishRoamingSecret(slot: SecretKey): void {
   if (!isTauri() || !isRoamingSecretSlot(slot)) return;
-  const key = masterKey();
-  if (!key) return;
-  void commitDomainEvents({
-    type: "preference.changed",
-    payload: {
-      key: `${SECRET_EVENT_PREFIX}${slot}`,
-      value: value ? { sealed: sealSecret(key, slot, value) } : null,
-    },
-  }).catch((error) => {
-    log.error(`failed to log secret ${slot} change`, error);
+  void flushRestoredCredentialPublications().catch(error => {
+    log.error(`failed to publish credential slot ${slot}; durable marker retained`, error);
   });
 }
-
 onLocalSecretWrite(publishRoamingSecret);
 
-/**
- * Seal every locally-present roaming credential into the log — called right
- * after an account connects, so keys entered before sync existed (or before
- * this device joined the account) roam without waiting for their next edit.
- */
-export async function republishRoamingSecrets(): Promise<void> {
+async function enqueueCurrentCredentials(onlyUnpublished: boolean): Promise<void> {
   if (!isTauri()) return;
+  await runDomainWrite(() => afterSecretWrites(() => invoke("restored_credentials_enqueue_current", { onlyUnpublished })));
   await flushRestoredCredentialPublications();
-  await afterSecretWrites(() => {
-    for (const prefix of ROAMING_SECRET_SLOT_PREFIXES) {
-      for (const slot of listSecretSlots(prefix)) {
-        const value = getDurableSecret(slot);
-        if (value) publishRoamingSecret(slot, value);
-      }
-    }
-  });
+}
+
+/** Explicit account connection republishes existing credentials for that account.
+ * The native queue also retains deletions and survives process termination. */
+export function republishRoamingSecrets(): Promise<void> {
+  return enqueueCurrentCredentials(false);
 }
 
 /** Sealed projection row → this device's secret store. True if it moved. */
@@ -390,13 +372,9 @@ function reconcileUnpublished(rows: PreferenceRow[]): void {
       publishIfLocal(prefix + suffix);
     }
   }
-  for (const prefix of ROAMING_SECRET_SLOT_PREFIXES) {
-    for (const slot of listSecretSlots(prefix)) {
-      if (present.has(`${SECRET_EVENT_PREFIX}${slot}`)) continue;
-      const value = getDurableSecret(slot);
-      if (value) publishRoamingSecret(slot, value);
-    }
-  }
+  // Native row-presence check avoids a stale JS projection snapshot deciding
+  // which credentials to backfill. Existing pending local changes drained first.
+  void enqueueCurrentCredentials(true).catch(error => log.error("Credential backfill remains pending", error));
 }
 
 /**

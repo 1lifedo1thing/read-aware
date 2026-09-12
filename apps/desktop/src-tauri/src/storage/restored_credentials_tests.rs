@@ -1,6 +1,47 @@
 use super::*;
 use crate::storage::{self, credential_crypto, Hlc};
 use base64::{engine::general_purpose::STANDARD, Engine};
+
+#[test]
+fn restored_credentials_local_writes_and_deletions_survive_crash_before_publication() {
+    let root = tempfile::tempdir().unwrap(); let mut conn = db(root.path());
+    secret(&conn, root.path(), "sync.master-key", &STANDARD.encode([7u8; 32]));
+    let sealed = crate::secrets::encrypt(root.path(), "new local value").unwrap();
+    crate::secrets::write_sealed(&mut conn, "ai-api-key.a", Some(&sealed), true).unwrap();
+    assert!(contains(&conn, "ai-api-key.a").unwrap());
+    let stale = crate::secrets::encrypt(root.path(), "stale projection").unwrap();
+    assert_eq!(crate::secrets::write_sealed(&mut conn, "ai-api-key.a", Some(&stale), false).unwrap_err().code, "ui/superseded");
+    drop(conn); let mut conn = db(root.path());
+    assert_eq!(credential_crypto::local(&conn, root.path(), "ai-api-key.a").unwrap().as_ref().map(|value| value.as_str()), Some("new local value"));
+    let draft = event(&conn, "ai-api-key.a", 1000);
+    let report = publish(&mut conn, root.path(), vec![draft]).unwrap();
+    assert_eq!(report.events.len(), 1); assert!(!contains(&conn, "ai-api-key.a").unwrap());
+    crate::secrets::write_sealed(&mut conn, "ai-api-key.a", None, true).unwrap();
+    drop(conn); let mut conn = db(root.path());
+    assert!(contains(&conn, "ai-api-key.a").unwrap());
+    let draft = event(&conn, "ai-api-key.a", 2000);
+    assert!(publish(&mut conn, root.path(), vec![draft]).unwrap().events[0].payload["value"].is_null());
+    crate::secrets::write_sealed(&mut conn, "ai-api-key.a", Some(&sealed), false).unwrap();
+    assert!(pending(&conn).unwrap().is_empty()); // Remote overlays never echo.
+}
+
+#[test]
+fn restored_credentials_local_value_and_marker_roll_back_together_and_backfill_is_scoped() {
+    let root = tempfile::tempdir().unwrap(); let mut conn = db(root.path());
+    secret(&conn, root.path(), "ai-api-key.a", "old");
+    let next = crate::secrets::encrypt(root.path(), "next").unwrap();
+    conn.execute_batch("CREATE TRIGGER refuse_marker BEFORE INSERT ON restored_credential_publications BEGIN SELECT RAISE(ABORT,'marker failure'); END;").unwrap();
+    assert!(crate::secrets::write_sealed(&mut conn, "ai-api-key.a", Some(&next), true).is_err());
+    assert!(crate::secrets::write_sealed(&mut conn, "ai-api-key.a", None, true).is_err());
+    assert_eq!(credential_crypto::local(&conn, root.path(), "ai-api-key.a").unwrap().as_ref().map(|value| value.as_str()), Some("old"));
+    crate::secrets::write_sealed(&mut conn, "plugin.test.token", Some(&next), true).unwrap();
+    crate::secrets::write_sealed(&mut conn, "sync.session", Some(&next), true).unwrap();
+    assert!(pending(&conn).unwrap().is_empty());
+    conn.execute_batch("DROP TRIGGER refuse_marker; INSERT INTO synced_preferences VALUES ('secret:ai-api-key.a','null','now');").unwrap();
+    secret(&conn, root.path(), "ai-api-key.b", "unpublished");
+    enqueue_current(&mut conn, true).unwrap(); assert_eq!(pending(&conn).unwrap(), vec!["ai-api-key.b"]);
+    enqueue_current(&mut conn, false).unwrap(); assert_eq!(pending(&conn).unwrap(), vec!["ai-api-key.a", "ai-api-key.b"]);
+}
 fn db(root: &Path) -> Connection {
     let mut conn = Connection::open(root.join("db")).unwrap();
     storage::apply_connection_pragmas(&conn).unwrap();
