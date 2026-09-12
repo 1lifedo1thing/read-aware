@@ -98,7 +98,7 @@ import type {
 export type { BookTextSearch, BookTextHit } from "@read-aware/core";
 export type { BookImportPhase, BookImportReceipt, BookImportRequest, BookImportTaskSnapshot } from "@read-aware/core";
 export type { BookTextRange, BookRangeQuery, BookRangePage, BookTextSnapshot, BookTextTaskSnapshot, BookTextPrepareOptions, BookTextTaskHistoryEntry, BookTextTaskHistoryPage, BookTextTaskHistoryQuery, BookTextPriority, BookTextWaitReason, AnnotationSnapshot, AnnotationMutation, AnnotationCommitResult, AnnotationPage, AnnotationPageQuery, BookTocEntry, BookNavigationToc, BookLocationSearch, BookLocationSearchPage, BookLocationHit,
-  ReadingLocation, ReadingTarget, ReadingSessionSnapshot, ReadingPaginationSnapshot, ReadingSelectionSnapshot, ReadingSelectionReceipt, ReadingSessionGuard, ReadingNavigationReceipt, ReadingPlaybackSnapshot, ReadingPlaybackReceipt, ReadingModeConfiguration, ReadingModeDescriptor, ReadingModeSnapshot, ReadingModeReceipt, ReadingModePosition, ReadingModeStepOutcome, ReadingModeStepReceipt } from "@read-aware/core";
+  ReadingLocation, ReadingTarget, ReadingSessionSnapshot, ReadingSessionChange, ReadingPaginationSnapshot, ReadingSelectionSnapshot, ReadingSelectionReceipt, ReadingSessionGuard, ReadingNavigationReceipt, ReadingPlaybackSnapshot, ReadingPlaybackReceipt, ReadingModeConfiguration, ReadingModeDescriptor, ReadingModeSnapshot, ReadingModeReceipt, ReadingModePosition, ReadingModeStepOutcome, ReadingModeStepReceipt } from "@read-aware/core";
 export type {
   BookFormat,
   DictionaryEntrySnapshot,

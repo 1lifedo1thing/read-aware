@@ -1,6 +1,18 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  changeReason: ["Latest update", "最近更新", "最近更新", "最新の更新", "Последнее обновление", "Dernière mise à jour", "Letzte Änderung", "Última actualización"],
+  changeOrigin: ["Update source", "更新来源", "更新來源", "更新元", "Источник обновления", "Source de la mise à jour", "Quelle der Änderung", "Origen de actualización"],
+  originHost: ["Host feedback", "宿主反馈", "宿主回饋", "ホストの通知", "Уведомление приложения", "Retour de l’application", "Rückmeldung der App", "Respuesta de la aplicación"],
+  originUser: ["Your command", "你的操作", "你的操作", "あなたの操作", "Ваша команда", "Votre commande", "Deine Aktion", "Tu acción"],
+  originAgent: ["Agent command", "Agent 操作", "Agent 操作", "Agent の操作", "Команда Agent", "Commande Agent", "Agent-Aktion", "Acción del Agent"],
+  originPlugin: ["Plugin", "插件", "外掛", "プラグイン", "Плагин", "Extension", "Plugin", "Complemento"],
+  changeLifecycle: ["Session lifecycle", "会话状态变化", "工作階段狀態變化", "セッション状態の変更", "Изменение состояния сеанса", "État de la session", "Sitzungsstatus geändert", "Cambio de estado de sesión"],
+  changeNavigation: ["Navigation completed", "导航已完成", "導覽已完成", "移動完了", "Переход завершён", "Navigation terminée", "Navigation abgeschlossen", "Navegación completada"],
+  changeSelection: ["Selection changed", "选区变化", "選取範圍變化", "選択範囲の変更", "Изменение выделения", "Sélection modifiée", "Auswahl geändert", "Selección modificada"],
+  changeControls: ["Reader controls changed", "阅读控件变化", "閱讀控制項變化", "読書コントロールの変更", "Изменение управления чтением", "Commandes de lecture modifiées", "Lesesteuerung geändert", "Controles de lectura modificados"],
+  changeMode: ["Reading mode changed", "阅读模式变化", "閱讀模式變化", "読書モードの変更", "Изменение режима чтения", "Mode de lecture modifié", "Lesemodus geändert", "Modo de lectura modificado"],
+  changePlayback: ["Playback changed", "播放状态变化", "播放狀態變化", "再生状態の変更", "Изменение воспроизведения", "Lecture audio modifiée", "Wiedergabe geändert", "Reproducción modificada"],
   historySaved: ["Milestone saved", "节点已保存", "節點已儲存", "進行状況を保存済み", "Этап сохранён", "Étape enregistrée", "Zwischenstand gespeichert", "Etapa guardada"],
   historyPending: ["Saving history", "正在保存历史", "正在儲存歷史", "履歴を保存中", "Сохранение истории", "Enregistrement de l'historique", "Verlauf wird gespeichert", "Guardando historial"],
   historyFailed: ["History save failed; reopen history to retry", "历史保存失败，重新打开历史可重试", "歷史儲存失敗，重新開啟歷史可重試", "履歴の保存に失敗。履歴を開き直して再試行", "История не сохранена; откройте её снова", "Échec de sauvegarde ; rouvrez l'historique", "Speichern fehlgeschlagen; Verlauf erneut öffnen", "No se guardó; vuelve a abrir el historial"],
@@ -304,11 +316,39 @@ async function taskHistory(ctx, bookId, title, offset = 0) {
 }
 
 // src/reader-demand.ts
+function changeOrigin(ctx, origin) {
+  return origin === "system" ? tr(ctx.locale, "originHost") : origin === "user" ? tr(ctx.locale, "originUser") : origin === "agent" ? tr(ctx.locale, "originAgent") : `${tr(ctx.locale, "originPlugin")}: ${origin.slice(7)}`;
+}
+var reasonLabel = {
+  initial: "changeLifecycle",
+  open: "changeLifecycle",
+  ready: "changeLifecycle",
+  detach: "changeLifecycle",
+  error: "changeLifecycle",
+  close: "changeLifecycle",
+  relocate: "relocateActivity",
+  navigate: "changeNavigation",
+  back: "changeNavigation",
+  forward: "changeNavigation",
+  step: "changeNavigation",
+  reload: "changeNavigation",
+  "mode-step": "changeNavigation",
+  "mode-return": "changeNavigation",
+  selection: "changeSelection",
+  controls: "changeControls",
+  mode: "changeMode",
+  playback: "changePlayback",
+  "reader-demand": "readerActivity"
+};
 function snapshot(ctx, session) {
-  const demand = session.readerDemand;
+  const { readerDemand: demand, change } = session;
   return { kind: "detail", title: tr(ctx.locale, "readerActivity"), content: [{ kind: "keyValue", rows: [
     { label: tr(ctx.locale, "activityState"), value: tr(ctx.locale, !demand ? "unavailable" : demand.active ? "readerWait" : "readerIdle") },
-    ...demand?.reason ? [{ label: tr(ctx.locale, "activitySource"), value: tr(ctx.locale, demand.reason === "render" ? "renderActivity" : "relocateActivity") }] : []
+    ...demand?.reason ? [{ label: tr(ctx.locale, "activitySource"), value: tr(ctx.locale, demand.reason === "render" ? "renderActivity" : "relocateActivity") }] : [],
+    ...change ? [
+      { label: tr(ctx.locale, "changeReason"), value: tr(ctx.locale, reasonLabel[change.reason]) },
+      { label: tr(ctx.locale, "changeOrigin"), value: changeOrigin(ctx, change.origin) }
+    ] : []
   ] }] };
 }
 async function readerDemandDetail(ctx) {
@@ -317,7 +357,7 @@ async function readerDemandDetail(ctx) {
   return { ...snapshot(ctx, current), live: { subscribe: (channel) => {
     let previous;
     return reading.events.observeSession(async (session) => {
-      const next = JSON.stringify(session.readerDemand);
+      const next = JSON.stringify([session.readerDemand, session.change]);
       if (previous === next)
         return;
       await ctx.services.ui.publishView(channel, { revision: session.revision, view: snapshot(ctx, session) });

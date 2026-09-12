@@ -17,5 +17,10 @@ test("reading activity view follows public demand transitions without replaying 
   session = { ...session, revision: 2 }; await callback!(session); expect(updates).toHaveLength(1);
   session = { ...session, revision: 3, readerDemand: { ...session.readerDemand!, active: false } }; await callback!(session);
   expect(updates).toHaveLength(2); expect(updates[1]!.view).toMatchObject({ content: [{ rows: expect.arrayContaining([{ label: "Activity", value: "No recent render or movement" }]) }] });
+  session = { ...session, revision: 4, change: { origin: "plugin:jumper", reason: "navigate" } }; await callback!(session);
+  expect(updates).toHaveLength(3);
+  expect(updates[2]!.view).toMatchObject({ content: [{ rows: expect.arrayContaining([
+    { label: "Latest update", value: "Navigation completed" }, { label: "Update source", value: "Plugin: jumper" },
+  ]) }] });
   lease.dispose(); expect(disposed).toBe(true);
 });

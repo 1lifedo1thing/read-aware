@@ -6844,3 +6844,18 @@ local KV; neither history is preference-roamed. Records contain no chapter text.
 Text Desk 0.17 supplies paging, details and an explicit fresh continuation;
 Agent tools expose the same owner boundary and format time limits with units.
 Actual Tauri/Worker and disk restart acceptance remains pending.
+
+
+### Session publication attribution (Reading 2.20)
+
+`session` and `observeSession` include `change.origin` and `change.reason` for the
+latest host publication. The domain stamps command acknowledgements with its
+actor; callers cannot supply it. Opening tokens carry their initiating actor.
+Unattributed renderer, playback and lifecycle feedback uses `system`, even while
+an Agent/plugin command is pending. Cancellation and failure do not stamp a false
+completion. Acknowledgement metadata does not replay an old captured UI value.
+
+`sessionId` remains the generation identity. Observers receive coalescible latest
+snapshots, not every event, human-presence detection or a complete causal audit.
+Text Desk 0.18 displays the update category and source; Agent session reads retain
+existing book/privacy fences. Actual new Worker/Tauri acceptance is pending.

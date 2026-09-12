@@ -45,7 +45,8 @@ test("session selection is versioned and withheld with privacy restrictions, spo
   const selection = { id: "selected", text: "needle", textLength: 6,
     range: { bookId, contentVersion: "v1", cfi: "epubcfi(/6/2)", textQuote: { exact: "needle", prefix: "private context" } } };
   const pagination = { layout: "reflowable" as const, flow: "paginated" as const, section: { index: 0, count: 8 }, screen: { index: 2, count: 5 } };
-  deps.reader.getSession = async () => ({ ...original, selection, pagination });
+  const change = { origin: "plugin:reader", reason: "navigate" } as const;
+  deps.reader.getSession = async () => ({ ...original, selection, pagination, change });
   const state = createAgentTurnState(), policy = contextPolicyState({ selection: true, surrounding: true });
   deps.readingContextPolicy = policy;
   const read = async () => {
@@ -55,10 +56,12 @@ test("session selection is versioned and withheld with privacy restrictions, spo
   };
   expect((await read()).selection).toEqual(selection);
   expect((await read()).pagination).toEqual(pagination);
+    expect((await read()).change).toEqual(change);
   for (const permissions of [{ selection: false, surrounding: true }, { selection: true, surrounding: false }]) {
     policy.set(permissions);
     expect((await read()).selection).toBeNull();
     expect((await read()).pagination).toEqual(pagination);
+    expect((await read()).change).toEqual(change);
   }
   policy.set({ selection: true, surrounding: true }); state.spoilerFence = { throughChapterIndex: 0 };
   expect((await read()).selection).toBeNull();

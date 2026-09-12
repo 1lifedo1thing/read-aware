@@ -50,7 +50,19 @@ export type ReadingDemandSnapshot = {
   reason: "render" | "relocate" | null;
 };
 
+export type ReadingSessionChange = {
+  /** Actor of this publication. Unattributed renderer/lifecycle feedback is system,
+   * not inferred human input or the actor of a concurrent pending command. */
+  origin: EventOrigin;
+  reason: "initial" | "open" | "ready" | "detach" | "error" | "close" | "relocate"
+    | "navigate" | "back" | "forward" | "step" | "reload" | "mode-step" | "mode-return"
+    | "selection" | "controls" | "mode" | "playback" | "reader-demand";
+};
+
 export type ReadingSessionSnapshot = {
+  /** Reading 2.20: last publication, not a replayable event stream. Slow observers
+   * may skip revisions; sessionId remains the generation/retirement identity. */
+  change?: ReadingSessionChange;
   /** Reading 2.19: process-local render/relocation demand, not human presence or a durable event log. */
   readerDemand?: ReadingDemandSnapshot;
   revision: number;
