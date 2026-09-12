@@ -1,5 +1,13 @@
 const locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 const labels = {
+  inferenceHistory: ["AI request history", "AI 请求历史", "AI 請求歷史", "AIリクエスト履歴", "История запросов ИИ", "Historique des requêtes IA", "KI-Anfrageverlauf", "Historial de solicitudes IA"],
+  noInferenceHistory: ["No saved AI requests", "没有已保存的 AI 请求", "沒有已儲存的 AI 請求", "保存済みAIリクエストはありません", "Нет сохранённых запросов ИИ", "Aucune requête IA enregistrée", "Keine gespeicherten KI-Anfragen", "No hay solicitudes IA guardadas"],
+  requestTimedOut: ["Timed out", "已超时", "已逾時", "時間切れ", "Время истекло", "Délai dépassé", "Zeitüberschreitung", "Tiempo agotado"],
+  inferenceSettlement: ["Provider response settled", "提供者响应已结束", "提供者回應已結束", "提供元の応答終了", "Ответ провайдера завершён", "Réponse du fournisseur terminée", "Anbieterantwort abgeschlossen", "Respuesta del proveedor finalizada"],
+  inferenceModel: ["Model", "模型", "模型", "モデル", "Модель", "Modèle", "Modell", "Modelo"],
+  inferenceInput: ["Input tokens", "输入 token", "輸入 token", "入力トークン", "Входные токены", "Tokens d’entrée", "Eingabetokens", "Tokens de entrada"],
+  inferenceOutput: ["Output tokens", "输出 token", "輸出 token", "出力トークン", "Выходные токены", "Tokens de sortie", "Ausgabetokens", "Tokens de salida"],
+  inferenceCost: ["Estimated cost (USD)", "估算费用（美元）", "估算費用（美元）", "推定費用（USD）", "Оценка стоимости (USD)", "Coût estimé (USD)", "Geschätzte Kosten (USD)", "Coste estimado (USD)"],
   changeReason: ["Latest update", "最近更新", "最近更新", "最新の更新", "Последнее обновление", "Dernière mise à jour", "Letzte Änderung", "Última actualización"],
   changeOrigin: ["Update source", "更新来源", "更新來源", "更新元", "Источник обновления", "Source de la mise à jour", "Quelle der Änderung", "Origen de actualización"],
   originHost: ["Host feedback", "宿主反馈", "宿主回饋", "ホストの通知", "Уведомление приложения", "Retour de l’application", "Rückmeldung der App", "Respuesta de la aplicación"],

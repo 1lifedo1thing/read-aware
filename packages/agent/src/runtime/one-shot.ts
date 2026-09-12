@@ -1,3 +1,4 @@
+import { InferenceBudget, type InferenceBudgetOptions } from "./inference-budget";
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
 import { AppError, validateModelImages } from "@read-aware/core";
 import type { InferenceAttemptReceipt, InferenceResult, ModelReadingContext } from "@read-aware/core";
@@ -9,7 +10,7 @@ import { modelReadingPrompt, validateModelReadingContext } from "./model-reading
 import { readingContextCall, type ReadingContextPolicy } from "./reading-context-policy";
 import { inferenceReceipt } from "./inference-receipt";
 
-export type OneShotInput = InferenceSourceTracking & {
+export type OneShotInput = InferenceSourceTracking & InferenceBudgetOptions & {
   prompt: string;
   /** Host-decoded bounded image inputs; never raw plugin URLs. */
   images?: import("@read-aware/core").ModelImageInput[];
@@ -42,6 +43,7 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
   if (input.maxOutputTokens !== undefined && (!Number.isSafeInteger(input.maxOutputTokens) || input.maxOutputTokens < 1)) {
     throw new Error("ask: maxOutputTokens must be a positive safe integer");
   }
+  const budget = new InferenceBudget(input);
   const images = input.images === undefined ? [] : validateModelImages(input.images);
   const attempts: InferenceAttemptReceipt[] = [];
   const reading = input.readingContext === undefined ? undefined : validateModelReadingContext(input.readingContext);
@@ -56,14 +58,16 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
       const role = input.model ?? "fast";
       const model = deps.resolveModel(role);
       if (images.length && !model.input?.includes("image")) throw new AppError("ai/image-unsupported", "Selected model does not support images");
-      const maxTokens = input.maxOutputTokens === undefined ? undefined
-        : Math.min(input.maxOutputTokens, Number.isSafeInteger(model.maxTokens) && model.maxTokens > 0 ? model.maxTokens : input.maxOutputTokens);
+      budget.input(system, prompt);
+      const reservation = budget.reserve(input.maxOutputTokens, model.maxTokens);
+      const maxTokens = reservation.maxTokens;
       const context = { systemPrompt: system, messages: [{ role: "user" as const, content: images.length ? [{ type: "text" as const, text: prompt }, ...images.map(image => ({ type: "image" as const, ...image }))] : prompt, timestamp: Date.now() }] };
       let recorded = false;
       const record = (message?: AssistantMessage) => {
         if (recorded) return;
         recorded = true;
         const receipt = inferenceReceipt(model, message, maxTokens);
+        reservation.record(receipt);
         attempts.push(receipt);
         input.onAttempt?.(structuredClone(receipt));
       };
@@ -81,7 +85,7 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
           const stream = deps.streamFns[role](model, context, { signal: call.signal, trackSource, maxTokens });
           for await (const event of stream) {
             call?.assertAllowed();
-            if (event.type === "text_delta") await call.wait(Promise.resolve(input.onText!(event.delta)));
+            if (event.type === "text_delta") { budget.output(event.delta); await call.wait(Promise.resolve(input.onText!(event.delta))); }
           }
           message = await stream.result();
         } else {
@@ -91,8 +95,11 @@ export async function askOneShotDetailed(input: OneShotInput, deps: OneShotDeps)
         call?.assertAllowed();
         if (message.stopReason === "error") throw classifyModelFailure(message.errorMessage ?? "ask failed");
         if (message.stopReason === "aborted") throw new Error(message.errorMessage ?? "ask aborted");
-        return message.content.filter((block): block is { type: "text"; text: string } => block.type === "text")
+        reservation.assertWithinBudget();
+        const text = message.content.filter((block): block is { type: "text"; text: string } => block.type === "text")
           .map(block => block.text).join("");
+        if (!input.onText) budget.output(text);
+        return text;
       };
       return call ? call.wait(run()) : run();
     };

@@ -39,7 +39,7 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
 test("LLM policy, validation and pre-cancellation reject before inference", async () => {
   const f = fixture();
-  expect(await f.api.policy()).toEqual({ defaultTimeoutMs: 60000, maxTimeoutMs: 110000, perPluginLimit: 2, appLimit: 8, maxOutputTokensLimit: 65536, maxImageCount: 4, maxImageBytes: 8 * 1024 * 1024, maxImageTotalBytes: 16 * 1024 * 1024 });
+  expect(await f.api.policy()).toEqual({ defaultTimeoutMs: 60000, maxTimeoutMs: 110000, perPluginLimit: 2, appLimit: 8, maxOutputTokensLimit: 65536, maxImageCount: 4, maxImageBytes: 8 * 1024 * 1024, maxImageTotalBytes: 16 * 1024 * 1024, maxTotalOutputTokensLimit: 131072, maxOutputCharsLimit: 262144, maxInputChars: 262144 });
   for (const maxOutputTokens of [0, -1, 65537, 1.5, NaN, Infinity]) {
     await expect(f.api.ask({ prompt: "p", maxOutputTokens })).rejects.toMatchObject({ code: "plugin/invalid-argument" });
     await expect(f.api.askDetailed({ prompt: "p", maxOutputTokens })).rejects.toMatchObject({ code: "plugin/invalid-argument" });

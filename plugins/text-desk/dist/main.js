@@ -1,6 +1,14 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  inferenceHistory: ["AI request history", "AI 请求历史", "AI 請求歷史", "AIリクエスト履歴", "История запросов ИИ", "Historique des requêtes IA", "KI-Anfrageverlauf", "Historial de solicitudes IA"],
+  noInferenceHistory: ["No saved AI requests", "没有已保存的 AI 请求", "沒有已儲存的 AI 請求", "保存済みAIリクエストはありません", "Нет сохранённых запросов ИИ", "Aucune requête IA enregistrée", "Keine gespeicherten KI-Anfragen", "No hay solicitudes IA guardadas"],
+  requestTimedOut: ["Timed out", "已超时", "已逾時", "時間切れ", "Время истекло", "Délai dépassé", "Zeitüberschreitung", "Tiempo agotado"],
+  inferenceSettlement: ["Provider response settled", "提供者响应已结束", "提供者回應已結束", "提供元の応答終了", "Ответ провайдера завершён", "Réponse du fournisseur terminée", "Anbieterantwort abgeschlossen", "Respuesta del proveedor finalizada"],
+  inferenceModel: ["Model", "模型", "模型", "モデル", "Модель", "Modèle", "Modell", "Modelo"],
+  inferenceInput: ["Input tokens", "输入 token", "輸入 token", "入力トークン", "Входные токены", "Tokens d’entrée", "Eingabetokens", "Tokens de entrada"],
+  inferenceOutput: ["Output tokens", "输出 token", "輸出 token", "出力トークン", "Выходные токены", "Tokens de sortie", "Ausgabetokens", "Tokens de salida"],
+  inferenceCost: ["Estimated cost (USD)", "估算费用（美元）", "估算費用（美元）", "推定費用（USD）", "Оценка стоимости (USD)", "Coût estimé (USD)", "Geschätzte Kosten (USD)", "Coste estimado (USD)"],
   changeReason: ["Latest update", "最近更新", "最近更新", "最新の更新", "Последнее обновление", "Dernière mise à jour", "Letzte Änderung", "Última actualización"],
   changeOrigin: ["Update source", "更新来源", "更新來源", "更新元", "Источник обновления", "Source de la mise à jour", "Quelle der Änderung", "Origen de actualización"],
   originHost: ["Host feedback", "宿主反馈", "宿主回饋", "ホストの通知", "Уведомление приложения", "Retour de l’application", "Rückmeldung der App", "Respuesta de la aplicación"],
@@ -158,6 +166,56 @@ var labels = {
 };
 function tr(locale, key) {
   return labels[key][Math.max(0, locales.indexOf(locale))];
+}
+
+// src/inference-history.ts
+var status = (ctx, receipt) => tr(ctx.locale, receipt.interrupted ? "taskInterrupted" : receipt.status === "timed-out" ? "requestTimedOut" : `task_${receipt.status}`);
+async function inferenceHistory(ctx) {
+  const receipts = await ctx.services.llm.listRequests();
+  return {
+    kind: "list",
+    title: tr(ctx.locale, "inferenceHistory"),
+    emptyText: tr(ctx.locale, "noInferenceHistory"),
+    items: receipts.slice().reverse().map((receipt) => ({
+      id: receipt.requestId,
+      title: status(ctx, receipt),
+      subtitle: new Date(receipt.createdAt).toLocaleString(ctx.locale),
+      icon: "sparkle",
+      onSelect: async () => ({ view: await inferenceDetail(ctx, receipt.requestId) })
+    })),
+    actions: [{
+      id: "refresh",
+      label: tr(ctx.locale, "refresh"),
+      icon: "arrows-clockwise",
+      run: async () => ({ view: await inferenceHistory(ctx), navigation: "replace" })
+    }]
+  };
+}
+async function inferenceDetail(ctx, id) {
+  const receipt = await ctx.services.llm.getRequest(id);
+  if (!receipt)
+    return { kind: "detail", title: tr(ctx.locale, "inferenceHistory"), content: [{ kind: "text", text: tr(ctx.locale, "noInferenceHistory") }] };
+  const unknown = tr(ctx.locale, "unknown");
+  return { kind: "detail", title: status(ctx, receipt), content: [
+    { kind: "keyValue", rows: [
+      { label: "ID", value: receipt.requestId },
+      { label: tr(ctx.locale, "recordedAt"), value: new Date(receipt.updatedAt).toLocaleString(ctx.locale) },
+      { label: tr(ctx.locale, "inferenceSettlement"), value: tr(ctx.locale, receipt.settled ? "task_completed" : "unknown") },
+      ...receipt.errorCode ? [{ label: tr(ctx.locale, "status"), value: receipt.errorCode }] : []
+    ] },
+    ...receipt.attempts.map((attempt) => ({ kind: "keyValue", rows: [
+      { label: tr(ctx.locale, "inferenceModel"), value: `${attempt.model.provider} · ${attempt.model.id}` },
+      { label: tr(ctx.locale, "inferenceInput"), value: attempt.usage?.input == null ? unknown : String(attempt.usage.input) },
+      { label: tr(ctx.locale, "inferenceOutput"), value: attempt.usage?.output == null ? unknown : String(attempt.usage.output) },
+      { label: tr(ctx.locale, "inferenceCost"), value: attempt.estimatedCostUsd === null ? unknown : `$${attempt.estimatedCostUsd.toFixed(6)}` }
+    ] }))
+  ], actions: [
+    { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await inferenceDetail(ctx, id), navigation: "replace" }) },
+    ...receipt.requestAvailable && receipt.status === "running" ? [{ id: "cancel", label: tr(ctx.locale, "cancelRequest"), icon: "stop", run: async () => {
+      await ctx.services.llm.cancelRequest(id);
+      return { view: await inferenceDetail(ctx, id), navigation: "replace" };
+    } }] : []
+  ] };
 }
 
 // src/task-views.ts
@@ -810,7 +868,10 @@ async function imageDetail(ctx, image) {
           prompt: `Describe this illustration in ${ctx.locale}. Discuss only visible content; mark uncertainty. Do not invent surrounding book context.`,
           images: [{ resourceId: resource.id }],
           model: "smart",
+          requestId: crypto.randomUUID(),
           maxOutputTokens: 1200,
+          maxTotalOutputTokens: 1200,
+          maxOutputChars: 6000,
           signal: inference.signal
         });
         return { view: { kind: "detail", title: tr(ctx.locale, "describeImage"), content: [{ kind: "text", text: description }] } };
@@ -932,6 +993,8 @@ async function textDesk(ctx, page = 0) {
     icon: "arrows-clockwise",
     run: async () => ({ view: await textDesk(ctx, index), navigation: "replace" })
   }];
+  if (ctx.services.llm)
+    actions.push({ id: "inference-history", label: tr(ctx.locale, "inferenceHistory"), icon: "clock-counter-clockwise", run: async () => ({ view: await inferenceHistory(ctx) }) });
   actions.push({ id: "reader-activity", label: tr(ctx.locale, "readerActivity"), icon: "book-open", run: async () => ({ view: await readerDemandDetail(ctx) }) });
   actions.push({ id: "search", label: tr(ctx.locale, "searchShelf"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx) }) });
   actions.push({ id: "temporary-marks", label: tr(ctx.locale, "temporaryMarks"), icon: "text-aa", run: async () => ({ view: await emphasisList(ctx) }) });
@@ -979,6 +1042,8 @@ var src_default = {
       icon: "magnifying-glass",
       run: async () => ({ view: await imageControls(ctx) })
     });
+    if (ctx.services.llm)
+      ctx.contributions.commands.register({ id: "inference-history", title: `${title}: ${tr(ctx.locale, "inferenceHistory")}`, icon: "clock-counter-clockwise", run: async () => ({ view: await inferenceHistory(ctx) }) });
     ctx.contributions.headerActions.register({ id: "reader", title, icon: "book-open", surface: "reader", presentation: "popup", view: () => textDesk(ctx) });
     ctx.contributions.selectionActions.register({
       id: "inspect-passage",

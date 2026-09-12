@@ -149,7 +149,9 @@
     "aiImageUnsupported": "画像入力に対応したモデルを選択してください。",
     "aiImageInvalid": "この画像はAI入力として使用できません。",
     "aiImageBudget": "画像入力の上限に達しました。画像の数やサイズを減らしてください。",
-    "bookContentBudget": "このセクションは読み取り上限を超えています。"
+    "bookContentBudget": "このセクションは読み取り上限を超えています。",
+    "aiOutputBudget": "AI出力の上限に達しました。依頼を絞るか上限を増やしてください。",
+    "aiInputBudget": "AIへの入力が長すぎます。範囲を狭めてください。"
   },
   "crashPrompt": {
     "title": "前回 ReadAware に問題が発生しました",

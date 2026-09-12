@@ -1,3 +1,4 @@
+import { inferenceHistory } from "./inference-history";
 import type { PluginContext, PluginDetailView, PluginListView, PluginAction, PluginListItem } from "@read-aware/plugin-types";
 import { taskHistory } from "./task-history";
 import { readerDemandDetail } from "./reader-demand";
@@ -51,6 +52,7 @@ export async function textDesk(ctx: PluginContext, page = 0): Promise<PluginList
   }
   const actions: PluginAction[] = [{ id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise",
     run: async () => ({ view: await textDesk(ctx, index), navigation: "replace" }) }];
+  if (ctx.services.llm) actions.push({ id: "inference-history", label: tr(ctx.locale, "inferenceHistory"), icon: "clock-counter-clockwise", run: async () => ({ view: await inferenceHistory(ctx) }) });
   actions.push({ id: "reader-activity", label: tr(ctx.locale, "readerActivity"), icon: "book-open", run: async () => ({ view: await readerDemandDetail(ctx) }) });
   actions.push({ id: "search", label: tr(ctx.locale, "searchShelf"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx) }) });
   actions.push({ id: "temporary-marks", label: tr(ctx.locale, "temporaryMarks"), icon: "text-aa", run: async () => ({ view: await emphasisList(ctx) }) });

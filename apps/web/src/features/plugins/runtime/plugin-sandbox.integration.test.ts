@@ -167,7 +167,7 @@ test.each(["ask", "askDetailed"])("Worker LLM %s cancellation keeps AbortSignal 
 test("Worker detailed inference carries a plain output cap and receives the metadata envelope", async () => {
   const s = await command("detailed", "llm-probe.ts");
   const call = await s.next(message => message.method === "services.llm.askDetailed");
-  expect(data(call.args!)).toEqual([{ prompt: "probe", maxOutputTokens: 128 }]);
+  expect(data(call.args!)).toEqual([{ prompt: "probe", maxOutputTokens: 128, maxTotalOutputTokens: 180, maxOutputChars: 1000 }]);
   s.worker.postMessage({ t: "result", id: call.id, ok: true, value: { value: "ok", attempts: [{ usage: null, estimatedCostUsd: null }] } });
   expect(resultData(await s.next(message => message.t === "result" && message.id === 900))).toMatchObject({ ok: true, value: { toast: "ok:1" } });
 });

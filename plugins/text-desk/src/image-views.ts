@@ -32,7 +32,7 @@ export async function imageDetail(ctx: PluginContext, image: Image): Promise<Plu
     actions: [
       ...(ctx.services.llm ? [{ id: "describe-image", label: tr(ctx.locale, "describeImage"), icon: "sparkle", run: async () => {
         const description = await ctx.services.llm!.ask({ prompt: `Describe this illustration in ${ctx.locale}. Discuss only visible content; mark uncertainty. Do not invent surrounding book context.`,
-          images: [{ resourceId: resource.id }], model: "smart", maxOutputTokens: 1200, signal: inference.signal });
+          images: [{ resourceId: resource.id }], model: "smart", requestId: crypto.randomUUID(), maxOutputTokens: 1200, maxTotalOutputTokens: 1200, maxOutputChars: 6000, signal: inference.signal });
         return { view: { kind: "detail" as const, title: tr(ctx.locale, "describeImage"), content: [{ kind: "text" as const, text: description }] } };
       } }] : []),
       { id: "image-controls", label: tr(ctx.locale, "imageControls"), icon: "magnifying-glass",

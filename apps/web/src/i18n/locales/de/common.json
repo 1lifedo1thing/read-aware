@@ -149,7 +149,9 @@
     "aiImageUnsupported": "Wählen Sie ein Modell mit Bildeingabe.",
     "aiImageInvalid": "Dieses Bild kann nicht an die KI übergeben werden.",
     "aiImageBudget": "Bildlimit erreicht. Verwenden Sie weniger oder kleinere Bilder.",
-    "bookContentBudget": "Dieser Abschnitt überschreitet das Leselimit."
+    "bookContentBudget": "Dieser Abschnitt überschreitet das Leselimit.",
+    "aiOutputBudget": "KI-Ausgabelimit erreicht. Verkleinern Sie die Anfrage oder erhöhen Sie das Limit.",
+    "aiInputBudget": "Die KI-Anfrage enthält zu viel Text. Verkleinern Sie die Auswahl."
   },
   "crashPrompt": {
     "title": "ReadAware hatte beim letzten Mal ein Problem",

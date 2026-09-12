@@ -1,3 +1,4 @@
+import { inferenceHistoryStorage } from "./plugin-inference-history-storage";
 import { resourceModelImage } from "../../../services/model-image";
 import { createPluginStoragePolicy } from "./plugin-storage-policy";
 import { pluginUriRegistry } from "../lib/plugin-uri";
@@ -1006,7 +1007,7 @@ export function buildPluginContext(
   }
 
   if (canUseHostService("llm", permissions)) {
-    ctx.services.llm = createPluginLlm(manifest.id, lifecycle, getAgentRuntime, undefined, (id, signal) => resourceModelImage(resources, id, signal));
+    ctx.services.llm = createPluginLlm(manifest.id, lifecycle, getAgentRuntime, undefined, (id, signal) => resourceModelImage(resources, id, signal), inferenceHistoryStorage(manifest.id));
   }
 
   if (canUseHostService("clipboard", permissions)) {

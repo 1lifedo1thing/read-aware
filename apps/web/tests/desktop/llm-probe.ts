@@ -20,7 +20,7 @@ export default {
         return { toast: `${receipt?.status}:${receipt?.settled}` };
       }
       if (ctx.manifest.description === "detailed") {
-        const result = await ctx.services.llm!.askDetailed({ prompt: "probe", maxOutputTokens: 128 });
+        const result = await ctx.services.llm!.askDetailed({ prompt: "probe", maxOutputTokens: 128, maxTotalOutputTokens: 180, maxOutputChars: 1000 });
         return { toast: `${result.value}:${result.attempts.length}` };
       }
       const controller = new AbortController();

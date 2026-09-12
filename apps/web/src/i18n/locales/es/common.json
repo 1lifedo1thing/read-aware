@@ -149,7 +149,9 @@
     "aiImageUnsupported": "Elige un modelo que admita imágenes.",
     "aiImageInvalid": "Esta imagen no se puede enviar a la IA.",
     "aiImageBudget": "Se alcanzó el límite de imágenes. Reduce su número o tamaño.",
-    "bookContentBudget": "Esta sección supera el límite de lectura."
+    "bookContentBudget": "Esta sección supera el límite de lectura.",
+    "aiOutputBudget": "Se alcanzó el límite de salida de IA. Reduce la petición o aumenta el límite.",
+    "aiInputBudget": "La petición contiene demasiado texto. Reduce la selección."
   },
   "crashPrompt": {
     "title": "ReadAware tuvo un problema la última vez",

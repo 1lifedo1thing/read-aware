@@ -27,9 +27,13 @@ export type InferenceResult<T = unknown> = {
   attempts: InferenceAttemptReceipt[];
 };
 
-/** Activation-local metadata only. No prompt, output, credential or provider error prose. */
+/** Owned request metadata only. No prompt, output, credential or provider error prose. */
 export type InferenceRequestReceipt = {
   requestId: string;
+  /** Live handle in the calling activation; historical IDs cannot cancel new work. */
+  requestAvailable: boolean;
+  /** Observation ended before all provider promises settled; no automatic replay. */
+  interrupted: boolean;
   revision: number;
   status: "running" | "completed" | "failed" | "cancelled" | "timed-out";
   /** All known provider promises have settled. Not proof of remote billing finality. */

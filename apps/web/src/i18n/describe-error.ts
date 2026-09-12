@@ -152,6 +152,8 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "plugin/http-rejected": { key: "pluginHttpRejected", retryable: false },
   [ERR_AI_REQUEST_CANCELLED]: { key: "aiRequestCancelled", retryable: false },
   [ERR_AI_REQUEST_TIMEOUT]: { key: "aiRequestTimeout", retryable: false },
+  "ai/budget-exceeded": { key: "aiOutputBudget", retryable: false },
+  "ai/input-budget-exceeded": { key: "aiInputBudget", retryable: false },
   "ai/image-unsupported": { key: "aiImageUnsupported", retryable: false },
   "ai/invalid-image": { key: "aiImageInvalid", retryable: false },
   "ai/image-budget-exceeded": { key: "aiImageBudget", retryable: false },

@@ -2189,6 +2189,12 @@ export type PluginInferenceInput = {
    * Model/account/provider limits may be stricter. Omit to retain account defaults.
    * This is not a total token/cost budget or a guarantee of provider compliance. */
   maxOutputTokens?: number;
+  /** llm 1.6: total requested output-token budget across structured retries, 1..131072.
+   * Unknown/zero output usage consumes that attempt's full reservation. Provider billing may differ. */
+  maxTotalOutputTokens?: number;
+  /** llm 1.6: aggregate UTF-16 output across attempts/stream deltas, 1..262144 (default).
+   * Text input including schema/retry feedback is limited to 262144 UTF-16 units per attempt. */
+  maxOutputChars?: number;
 };
 
 export type PluginHostServices = {
@@ -2401,18 +2407,20 @@ export type PluginHostServices = {
   };
   llm?: {
     /** Plugin inference limits, not billing quotas. maxOutputTokensLimit since 1.3. */
-    policy(): Promise<{ defaultTimeoutMs: number; maxTimeoutMs: number; perPluginLimit: number; appLimit: number; maxOutputTokensLimit: number; maxImageCount: number; maxImageBytes: number; maxImageTotalBytes: number }>;
+    policy(): Promise<{ defaultTimeoutMs: number; maxTimeoutMs: number; perPluginLimit: number; appLimit: number; maxOutputTokensLimit: number; maxImageCount: number; maxImageBytes: number; maxImageTotalBytes: number; maxTotalOutputTokensLimit: number; maxOutputCharsLimit: number; maxInputChars: number }>;
     ask(input: PluginInferenceInput & { schema?: never; onText?: (delta: string) => void }): Promise<string>;
     ask(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never }): Promise<unknown>;
     /** llm 1.3: same execution as ask, with per-attempt metadata on success.
      * Includes structured retries; failure/cancellation rejects, not a billing receipt. */
     askDetailed(input: PluginInferenceInput & { schema?: never; onText?: (delta: string) => void }): Promise<import("@read-aware/core").InferenceResult<string>>;
     askDetailed(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never }): Promise<import("@read-aware/core").InferenceResult>;
-    /** llm 1.4: this activation's last 64 named requests, oldest settled first
-     * on eviction. No output/prompt is retained. Missing/evicted IDs return null.
-     * After cancellation, settled=false until original provider promises finish;
-     * attempts may arrive later. Missing counters are unknown, never zero cost.
-     * Unload clears this ledger; it is not durable history or a billing record. */
+    /** llm 1.6: last 64 named requests in this plugin's local private storage.
+     * Initial metadata commits before inference dispatch; no prompt/output is retained.
+     * Includes backup/rollback and uninstall cleanup, not roaming or billing history.
+     * requestAvailable identifies this activation's handle. An older unsettled record
+     * has interrupted=true: status is last observed, not proof it still runs remotely.
+     * No automatic retry/resume; historical IDs cannot control another activation.
+     * Late terminal usage is persisted; unknown/evicted IDs return null. */
     getRequest(requestId: string): Promise<import("@read-aware/core").InferenceRequestReceipt | null>;
     listRequests(): Promise<import("@read-aware/core").InferenceRequestReceipt[]>;
     /** Requests cancellation independently of the ask RPC. The returned snapshot

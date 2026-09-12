@@ -149,7 +149,9 @@
     "aiImageUnsupported": "Choose a model that supports image inputs.",
     "aiImageInvalid": "This image cannot be used as an AI input.",
     "aiImageBudget": "The image input limit was reached. Use fewer or smaller images.",
-    "bookContentBudget": "This section exceeds the content query limit."
+    "bookContentBudget": "This section exceeds the content query limit.",
+    "aiOutputBudget": "The AI output limit was reached. Reduce the request or increase its budget.",
+    "aiInputBudget": "The AI request contains too much text. Use a smaller selection."
   },
   "crashPrompt": {
     "title": "ReadAware had a problem last time",

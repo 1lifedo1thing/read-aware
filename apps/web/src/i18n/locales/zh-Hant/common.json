@@ -149,7 +149,9 @@
     "aiImageUnsupported": "請選擇支援圖片輸入的模型。",
     "aiImageInvalid": "這張圖片無法用作 AI 輸入。",
     "aiImageBudget": "圖片輸入已達到上限，請減少圖片數量或大小。",
-    "bookContentBudget": "本節內容超過查詢讀取上限。"
+    "bookContentBudget": "本節內容超過查詢讀取上限。",
+    "aiOutputBudget": "AI 輸出已達到本次上限，請縮小請求或提高預算。",
+    "aiInputBudget": "AI 請求文字過多，請縮小讀取範圍。"
   },
   "crashPrompt": {
     "title": "ReadAware 上次執行發生了問題",

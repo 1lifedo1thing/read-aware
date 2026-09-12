@@ -279,3 +279,42 @@ test("vision inputs reach each structured model attempt as image blocks; text-on
   await expect(askOneShot({ prompt: "describe", images: Array(5).fill(images[0]) }, f.deps)).rejects.toMatchObject({ code: "ai/image-budget-exceeded" });
   expect(contexts).toHaveLength(2);
 });
+
+test("total output budget spans structured attempts and unknown usage consumes its reservation", async () => {
+  let exceed = false;
+  const caps: Array<number | undefined> = [];
+  const f = fixture(async (_model, _context, options) => {
+    caps.push(options?.maxTokens);
+    const message = fauxAssistantMessage(caps.length === 1 ? "invalid" : '{"ok":true}');
+    message.usage.output = caps.length === 1 || exceed ? 7 : 3; message.usage.input = 10; message.usage.totalTokens = 17;
+    return message;
+  });
+  expect(await askOneShot({ prompt: "p", schema: { type: "object" }, maxTotalOutputTokens: 10 }, f.deps)).toEqual({ ok: true });
+  expect(caps).toEqual([10, 3]);
+  // A provider exceeding the remaining requested cap is not a successful bounded call.
+  caps.length = 0; exceed = true;
+  await expect(askOneShot({ prompt: "p", schema: { type: "object" }, maxTotalOutputTokens: 10 }, f.deps)).rejects.toMatchObject({ code: "ai/budget-exceeded" });
+});
+
+test("unreported output does not grant a second full retry and oversized text input fails before dispatch", async () => {
+  let calls = 0;
+  const f = fixture(async () => { calls++; const message = fauxAssistantMessage("invalid"); message.usage = { input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }; return message; });
+  await expect(askOneShot({ prompt: "p", schema: { type: "object" }, maxTotalOutputTokens: 10 }, f.deps)).rejects.toMatchObject({ code: "ai/budget-exceeded" });
+  expect(calls).toBe(1);
+  await expect(askOneShot({ prompt: "x".repeat(262145) }, f.deps)).rejects.toMatchObject({ code: "ai/input-budget-exceeded" });
+  expect(calls).toBe(1);
+  await expect(askOneShot({ prompt: "p", maxOutputChars: 3 }, f.deps)).rejects.toMatchObject({ code: "ai/budget-exceeded" });
+});
+
+test("stream output budget rejects the overflowing delta before notifying the caller", async () => {
+  const source = createAssistantMessageEventStream();
+  const f = fixture(async () => { throw new Error("Unexpected completion"); }, () => source);
+  const deltas: string[] = [];
+  const pending = askOneShot({ prompt: "p", maxOutputChars: 3, onText: delta => { deltas.push(delta); } }, f.deps);
+  const message = fauxAssistantMessage("abcd");
+  source.push({ type: "text_delta", contentIndex: 0, delta: "ab", partial: message });
+  source.push({ type: "text_delta", contentIndex: 0, delta: "cd", partial: message });
+  source.push({ type: "done", reason: "stop", message });
+  await expect(pending).rejects.toMatchObject({ code: "ai/budget-exceeded" });
+  expect(deltas).toEqual(["ab"]);
+});
