@@ -1,3 +1,4 @@
+import { checkContentDocument, ContentBudgetError, CONTENT_QUERY_MAX_SOURCE_BYTES } from "../../../../foliate-js/src/content-budget";
 import { AppError, BOOK_IMAGE_MAX_BYTES, normalizeBookImageQuery, normalizeBookImagesQuery,
   type BookImage, type BookImageQuery, type BookImagesPage, type BookImagesQuery } from "@read-aware/core";
 import { loadContentNavigation, type FoliateBook } from "../../reader/lib/foliate-engine";
@@ -14,8 +15,11 @@ async function documentFor(book: FoliateBook, index: number, allowed?: Set<numbe
   if (allowed && !allowed.has(index)) throw new AppError("library/range-forbidden", "Image crosses the host reading fence");
   const section = book.sections[index];
   if (!section) throw new AppError("library/range-not-found", "Image section is missing");
+  if (section.size > CONTENT_QUERY_MAX_SOURCE_BYTES) throw new ContentBudgetError();
   const doc = await section.createDocument?.();
-  signal?.throwIfAborted(); return doc;
+  signal?.throwIfAborted();
+  if (doc) checkContentDocument(doc);
+  return doc;
 }
 function describeImage(book: FoliateBook, query: BookImageQuery, element: Element, cfi: typeof contentCFI): BookImage {
   const range = element.ownerDocument.createRange();

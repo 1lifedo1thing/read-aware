@@ -5,23 +5,44 @@ import type { contentCFI } from "../../../../foliate-js/src/content-navigation";
 import { withBookContent } from "./book-content-source";
 import { contentSections } from "./book-content-sections";
 
+import { checkContentDocument, checkContentText, ContentBudgetError, CONTENT_QUERY_MAX_SOURCE_BYTES } from "../../../../foliate-js/src/content-budget";
+
 const selector = 'a[href], a[*|href], img[zy-footnote], img.epub-footnote, img.zhangyue-footnote';
 const inlineNote = (element: Element) => element.localName === "img";
 const label = (element: Element) => (inlineNote(element) ? element.getAttribute("title") || "" : element.textContent || "").trim().slice(0, 300);
 const noteText = (element: Element) => element.getAttribute("zy-footnote") ?? element.getAttribute("alt") ?? "";
 
-async function documentFor(book: FoliateBook, index: number, allowed: Set<number> | undefined, signal?: AbortSignal) {
+function sectionFor(book: FoliateBook, index: number, allowed: Set<number> | undefined, signal?: AbortSignal) {
   signal?.throwIfAborted();
   if (allowed && !allowed.has(index)) throw new AppError("library/range-forbidden", "Reference crosses the host reading fence");
   const section = book.sections[index];
   if (!section) throw new AppError("library/range-not-found", "Reference section is missing");
+  return section;
+}
+async function documentFor(book: FoliateBook, index: number, allowed: Set<number> | undefined, signal?: AbortSignal) {
+  const section = sectionFor(book, index, allowed, signal);
+  if (section.size > CONTENT_QUERY_MAX_SOURCE_BYTES) throw new ContentBudgetError();
   const doc = await section.createDocument?.();
   signal?.throwIfAborted();
+  if (doc) checkContentDocument(doc);
   return doc;
 }
 
 export async function listReferencesInBook(book: FoliateBook, input: BookReferencesQuery, allowed?: Set<number>, signal?: AbortSignal): Promise<BookReferencesPage> {
   const query = normalizeBookReferencesQuery(input);
+  const section = sectionFor(book, query.sectionIndex, allowed, signal);
+  if (section.getReferences) {
+    const references = await section.getReferences(signal);
+    signal?.throwIfAborted();
+    if (query.offset > references.length) throw new AppError("library/invalid-query", "Reference offset exceeds the section");
+    const end = Math.min(references.length, query.offset + query.limit);
+    return { bookId: query.bookId, contentVersion: query.contentVersion, sectionIndex: query.sectionIndex,
+      status: "available", total: references.length, nextOffset: end < references.length ? end : null,
+      items: references.slice(query.offset, end).map((item, index) => ({
+        reference: { bookId: query.bookId, contentVersion: query.contentVersion, sectionIndex: query.sectionIndex, index: query.offset + index },
+        kind: item.kind, label: item.label,
+      })) };
+  }
   const doc = await documentFor(book, query.sectionIndex, allowed, signal);
   const nodes = doc ? Array.from(doc.querySelectorAll(selector)) : [];
   if (query.offset > nodes.length) throw new AppError("library/invalid-query", "Reference offset exceeds the section");
@@ -40,15 +61,19 @@ export async function readReferenceInBook(book: FoliateBook, input: BookReferenc
   const query = normalizeBookReferenceQuery(input), ref = query.reference;
   const result: BookReferencePreview = { reference: ref, status: "missing", label: "", text: "",
     offset: query.offset, totalLength: 0, nextOffset: null };
-  const source = await documentFor(book, ref.sectionIndex, allowed, signal);
-  if (!source) return { ...result, status: "unsupported" };
-  const element = source.querySelectorAll(selector)[ref.index];
-  if (!element) return result;
-  result.label = label(element);
+  const section = sectionFor(book, ref.sectionIndex, allowed, signal);
+  const native = section.getReferences ? (await section.getReferences(signal))[ref.index] : undefined;
+  signal?.throwIfAborted();
+  const source = section.getReferences ? undefined : await documentFor(book, ref.sectionIndex, allowed, signal);
+  if (!source && !section.getReferences) return { ...result, status: "unsupported" };
+  const element = source?.querySelectorAll(selector)[ref.index];
+  if (!native && !element) return result;
+  result.label = native?.label ?? label(element!);
+  if (native?.blocked) return { ...result, status: "blocked" };
   let text: string;
-  if (inlineNote(element)) text = noteText(element);
+  if (native?.kind === "inline-note" || element && inlineNote(element)) text = native?.text ?? noteText(element!);
   else {
-    const href = element.getAttribute("href") ?? element.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+    const href = native?.href ?? element?.getAttribute("href") ?? element?.getAttributeNS("http://www.w3.org/1999/xlink", "href");
     if (!href || href.length > 8192) return result;
     // No URL loading here. Only the book parser may resolve internal destinations.
     if (/^(?:https?:|\/\/)/i.test(href.trim())) {
@@ -65,6 +90,11 @@ export async function readReferenceInBook(book: FoliateBook, input: BookReferenc
     const target = await book.resolveHref?.(resolvedHref);
     signal?.throwIfAborted();
     if (!target || !Number.isSafeInteger(target.index) || !book.sections[target.index]) return result;
+    const targetSection = sectionFor(book, target.index, allowed, signal);
+    if (!targetSection.createDocument && targetSection.getText && target.anchor === undefined) {
+      text = checkContentText(await targetSection.getText(signal));
+      result.location = { bookId: ref.bookId, contentVersion: ref.contentVersion, cfi: cfi(book, target.index) };
+    } else {
     const doc = await documentFor(book, target.index, allowed, signal);
     if (!doc) return { ...result, status: "unsupported" };
     const resolvedAnchor = typeof target.anchor === "function" ? target.anchor(doc) : target.anchor;
@@ -82,8 +112,10 @@ export async function readReferenceInBook(book: FoliateBook, input: BookReferenc
     fragment.querySelectorAll("script, style").forEach(node => node.remove());
     text = fragment.textContent ?? "";
     result.location = { bookId: ref.bookId, contentVersion: ref.contentVersion, cfi: cfi(book, target.index, range) };
+    }
   }
   signal?.throwIfAborted();
+  checkContentText(text);
   if (query.offset > text.length || query.offset > 0 && /[\uD800-\uDBFF]/.test(text[query.offset - 1]) && /[\uDC00-\uDFFF]/.test(text[query.offset] ?? "")) {
     throw new AppError("library/invalid-query", "Preview offset exceeds text or splits a surrogate pair");
   }

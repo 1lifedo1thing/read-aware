@@ -1,3 +1,4 @@
+import { ContentBudgetError } from "../../../../foliate-js/src/content-budget";
 import { AppError } from "@read-aware/core";
 import { getDesktopBlobInfo } from "../../../platform/blob-store";
 import { retainBook } from "../../reader/lib/book-lifetime";
@@ -82,5 +83,8 @@ export async function withBookContent<T>(bookId: string, expectedVersion: string
     const result = await read(content);
     await check();
     return result;
+  } catch (error) {
+    if (error instanceof ContentBudgetError) throw new AppError(error.code, error.message, { cause: error });
+    throw error;
   } finally { await release?.(); }
 }

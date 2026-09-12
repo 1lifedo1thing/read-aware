@@ -33,7 +33,7 @@ export function buildReferenceTools(scope: ThreadScope, deps: RuntimeDeps, state
     },
   }, {
     name: "read_book_reference", label: "Read book reference",
-    description: "Resolve a reference returned by list_book_references and preview bounded plain text without moving the reader. Copy its descriptor unchanged. Both source and internal target must satisfy the narrative reading fence; known links do not bypass it. A resolved location can be passed to open_book. External URLs are only reported, never fetched/opened; blocked/missing/unsupported are explicit. Follow nextOffset for more text.",
+    description: "Resolve a reference returned by list_book_references and preview bounded plain text without moving the reader. Copy its descriptor unchanged. Both source and internal target must satisfy the narrative reading fence; known links do not bypass it. A resolved location can be passed to open_book. External URLs are only reported, never fetched/opened; blocked/missing/unsupported are explicit. Supports PDF link annotations and text notes; an internal PDF link previews the destination page text, without guessing its exact rectangle. Named actions, attachments and scripts are blocked. Follow nextOffset for more text; oversized source sections fail with library/content-budget-exceeded instead of being silently truncated.",
     parameters: referenceParameters,
     execute: async (_id, params, signal) => {
       const { confirmSpoiler, ...raw } = params as BookReferenceQuery & { confirmSpoiler?: unknown };

@@ -1,3 +1,4 @@
+import { checkContentDocument, checkContentText, ContentBudgetError, CONTENT_QUERY_MAX_SOURCE_BYTES } from './content-budget.js'
 import type { Book } from './book.js'
 import * as CFI from './epubcfi.js'
 import { searchAsync, matcherSearchOptions, type SearchExcerpt, type SearchMatcherOptions } from './search.js'
@@ -21,8 +22,10 @@ export async function* searchContentSection(book: Book, index: number, query: st
     const section = book.sections[index]
     if (!section) throw new RangeError('Invalid content section')
     if (section.createDocument) {
+        if (section.size > CONTENT_QUERY_MAX_SOURCE_BYTES) throw new ContentBudgetError()
         const doc = await section.createDocument()
         signal?.throwIfAborted()
+        checkContentDocument(doc)
         const { strings, makeRange } = await collectTextAsync(doc, options.acceptNode, signal)
         yield { textLength: strings.join('').trim().length }
         for await (const { range, excerpt } of searchAsync(strings, query, matcherSearchOptions(doc, options), signal)) {
@@ -31,7 +34,7 @@ export async function* searchContentSection(book: Book, index: number, query: st
             yield { cfi: contentCFI(book, index, makeRange(startIndex, startOffset, endIndex, endOffset)), excerpt }
         }
     } else if (section.getText) {
-        const text = await section.getText()
+        const text = checkContentText(await section.getText(signal))
         signal?.throwIfAborted()
         yield { textLength: text.trim().length }
         for await (const { range, excerpt } of searchAsync([text], query, {

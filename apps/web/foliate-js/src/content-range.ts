@@ -1,3 +1,4 @@
+import { checkContentDocument, checkContentText, ContentBudgetError, CONTENT_QUERY_MAX_SOURCE_BYTES } from './content-budget.js'
 import type { Book, ResolvedNavigation } from './book.js'
 import * as CFI from './epubcfi.js'
 import { contentCFI, type TextQuote } from './content-navigation.js'
@@ -89,8 +90,10 @@ export async function readContentRange(book: Book, input: { cfi: string; textQuo
     allow(resolved.index)
     let text: string, before: string, after: string, cfi = input.cfi, textQuote = input.textQuote
     if (section.createDocument) {
+        if (section.size > CONTENT_QUERY_MAX_SOURCE_BYTES) throw new ContentBudgetError()
         const doc = await section.createDocument()
         signal?.throwIfAborted()
+        checkContentDocument(doc)
         let range: Range
         try {
             const anchor = typeof resolved.anchor === 'function' ? resolved.anchor(doc) : resolved.anchor
@@ -119,7 +122,7 @@ export async function readContentRange(book: Book, input: { cfi: string; textQuo
         }
     } else if (section.getText) {
         if (!textQuote || input.cfi !== contentCFI(book, resolved.index)) throw new ContentRangeError('not-found')
-        const source = await section.getText()
+        const source = checkContentText(await section.getText(signal))
         signal?.throwIfAborted()
         const [start, end] = quoteOffsets(source, textQuote)
         text = source.slice(start, end); before = source.slice(0, start); after = source.slice(end)

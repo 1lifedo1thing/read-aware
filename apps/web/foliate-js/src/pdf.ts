@@ -1,6 +1,7 @@
 import type { Book, BookFile, PageColors, PageSource } from './book.js'
 import * as pdfjsLib from './vendor/pdfjs/pdf.mjs'
 import type { PDFPage, PDFDestination, LoadingTask } from './vendor/pdfjs/pdf.mjs'
+import { readPDFReferences, readPDFPageText } from './pdf-content.js'
 import { getPDFMetadata } from './pdf-metadata.js'
 import { BookRangeTransport } from './pdf-transport.js'
 import { createPDFPageListLoader, makePDFTOCItem, resolvePDFHref } from './pdf-navigation.js'
@@ -87,29 +88,6 @@ const renderCoverPage = async (page: PDFPage, deadline: number) => {
     }
 
     return thumbnailFromCanvas(canvas)
-}
-
-const extractPageText = async (page: PDFPage): Promise<string> => {
-    let text = ''
-    // `PDFPageProxy.getTextContent()` consumes the stream with `for await`;
-    // older WKWebView releases lack ReadableStream's async iterator even when
-    // using PDF.js's legacy build. Reading through the stable reader API keeps
-    // extraction on the same compatibility baseline as page rendering.
-    const reader = page.streamTextContent().getReader()
-    try {
-        while (true) {
-            const { value, done } = await reader.read()
-            if (done) break
-            for (const item of value?.items ?? []) {
-                if (!('str' in item)) continue
-                text += item.str
-                text += item.hasEOL ? '\n' : ' '
-            }
-        }
-    } finally {
-        reader.releaseLock()
-    }
-    return text.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
 }
 
 // READAWARE: page colors, in two forms.
@@ -507,7 +485,16 @@ export const makePDF = async (file: BookFile) => {
             cache.set(i, pending)
             return pending
         },
-        getText: async () => extractPageText(await pdf.getPage(i + 1)),
+        getReferences: async (signal?: AbortSignal) => {
+            signal?.throwIfAborted()
+            if (destroyed) throw new Error('PDF document was closed')
+            return readPDFReferences(await pdf.getPage(i + 1), signal)
+        },
+        getText: async (signal?: AbortSignal) => {
+            signal?.throwIfAborted()
+            if (destroyed) throw new Error('PDF document was closed')
+            return readPDFPageText(await pdf.getPage(i + 1), signal)
+        },
         size: 1000,
     }))
     const splitTOCHref = async (href: string): Promise<[string, null] | null> => {
