@@ -61,3 +61,5 @@
 - 备份确认恢复补验通过：自有来源插件经真实 migration Worker 和原生 apply，成功回执 `96a0d26d-b549-4ef6-bbaa-77bacd85907c`、cleanupPending=false。本次指定书授权正确落盘，旧本机授权保留；重载后两本原书仍在，授权来源为 user。插件及归档已清理。证据 `d2-backup-apply.json`、`d2-backup-reload-cleanup.json`。测试通过显式合成选择进入正式恢复链，不冒充授权弹窗点击；I02 仅剩可见授权交互，I01/I03/I05 的画面、草稿与焦点仍待解锁。
 
 - 桌面补验：CUA 已可操作。I05 真实 Annotation Desk 输入草稿→Tab/Return 取消保留原文，Tab/Tab/Return 保存精确保留标点；并发修改后旧编辑器显示红色冲突提示并保留草稿，原生数据未被覆盖，测试笔记已清理（`d5-visible-editor.json`）。I05 可见/键盘/焦点验收通过。I01 设置无障碍树仅保留选区和周围上下文开关；I03 两个插件经实际点击查询均返回两条 Full2 命中。但弹窗 native/CUA 截图不显示内容：窗口 focused=true/visible=true，WebView document.hidden=true，Dialog 停留 opacity=0 等待 RAF。没有修改 CSS/可见性来制造截图；等待用户唤醒屏幕并将隔离窗口置前后补弹窗画面与备份授权交互。
+
+- 2026-09-14：用户明确要求自行 AppleScript 激活，`tell application id ... to activate` 后 document.hidden=false，透明弹窗问题解除。旧归因为只能等待用户的结论撤回：窗口焦点不等于应用激活。Jumper 结果、Text Desk 结果、AI 隐私设置实际截图通过，localOnly 不存在。备份真实 consent 弹窗显示、取消不写入和指定书选择均已执行；确认后 stage_program 拒绝 target database changed after event merge planning，关闭阅读器后仍复现，尚未确认改动来源，不能计整条可见恢复通过。合成选择→原生 apply 的既有通过证据仍保留；新工件 d2-backup-visible-consent.json，临时归档已清理。下一步仅定位审阅期间数据库变化，不再等待用户置前、不循环重跑。
