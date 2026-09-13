@@ -2350,9 +2350,10 @@ export function FoliateReaderView({
           key={lightboxImage.id}
           viewerId={lightboxImage.id}
           session={lightboxImage.session}
+          lifetime={lightboxImage.lifetime}
           src={lightboxImage.src}
           alt={lightboxImage.alt}
-          onClose={closeLightbox}
+          onClose={origin => closeLightbox(origin, lightboxImage.id)}
         />
       )}
       <ReaderAnnotationMenu

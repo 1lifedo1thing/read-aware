@@ -23,12 +23,12 @@ export function createReaderPort(): ReaderPort {
         playback: session.playback.status !== "unavailable", imageBookId: readerImage.snapshot()?.bookId ?? null };
     },
     getImage: async () => readerImage.snapshot(),
-    openImage: ({ throughChapterIndex, ...query }, signal, guard) => readerImageOpen.open(query, async (input, requestSignal) => {
-      const hrefs = throughChapterIndex === undefined ? undefined : (await getExtractedChapters(input.image.bookId))
+    openImage: ({ throughChapterIndex, ...query }, signal, guard) => readerImageOpen.open(query, async (input, requestSignal, origin) => {
+      const hrefs = throughChapterIndex === undefined ? undefined : (await getExtractedChapters(input.image.bookId, origin))
         .slice(0, Math.max(0, throughChapterIndex + 1)).flatMap(chapter => chapter.hrefs ?? []);
       return readBookImage(input, requestSignal, hrefs);
-    }, signal, guard),
-    controlImage: (request, signal) => readerImage.control(request, signal),
+    }, signal, guard, "agent"),
+    controlImage: (request, signal) => readerImage.control(request, signal, "agent"),
     previewReference: (ownerKey, { throughChapterIndex, ...query }, signal, guard) => readerReferencePreview.open(`agent:${ownerKey}`, query,
       (input, requestSignal) => bookText.readReference({ ...input, throughChapterIndex }, requestSignal), signal, guard),
     closeReferencePreview: (ownerKey, id, signal) => readerReferencePreview.close(`agent:${ownerKey}`, id, signal),

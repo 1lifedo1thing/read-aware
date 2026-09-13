@@ -581,9 +581,9 @@ var DOMAIN_CATALOG = {
   library: { version: "1.30.0", pluginAccess: ["read", "write"] },
   reading: { version: "2.21.0", pluginAccess: ["read", "write"] },
   annotations: { version: "2.2.0", pluginAccess: ["read", "write"] },
-  conversations: { version: "1.4.0", pluginAccess: ["read", "write"] },
+  conversations: { version: "1.5.0", pluginAccess: ["read", "write"] },
   settings: { version: "1.10.0", pluginAccess: [] },
-  memory: { version: "2.7.0", pluginAccess: ["read", "write"] }
+  memory: { version: "2.8.0", pluginAccess: ["read", "write"] }
 };
 var DOMAIN_PERMISSIONS = Object.entries(DOMAIN_CATALOG).flatMap(([domain, definition]) => definition.pluginAccess.map((access) => `${domain}:${access}`));
 var FULL_DOMAIN_GRANTS = Object.freeze(Object.fromEntries(Object.keys(DOMAIN_CATALOG).map((id) => [id, "write"])));
@@ -609,10 +609,10 @@ var CONTRIBUTION_CATALOG = {
 var HOST_SERVICE_CATALOG = {
   storage: { version: "2.5.0", permission: null },
   secrets: { version: "1.0.0", permission: null },
-  ui: { version: "1.14.0", permission: null },
+  ui: { version: "1.15.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
   session: { version: "2.0.0", permission: null },
-  plugins: { version: "1.1.0", permission: null },
+  plugins: { version: "1.6.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
   logging: { version: "1.0.0", permission: null },
@@ -1230,10 +1230,10 @@ async function imageControls(ctx) {
   };
   return { ...render(await image.snapshot()), live: { subscribe(channel) {
     let active2 = true, revision = 0;
-    const subscription = image.observe(async (snapshot2) => {
-      if (!active2)
+    const subscription = image.observe(async (snapshot2, delivery) => {
+      if (!active2 || delivery?.reaction?.status === "cycle")
         return;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: render(snapshot2) });
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: render(snapshot2) });
     });
     return { dispose() {
       if (!active2)

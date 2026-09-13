@@ -2,6 +2,14 @@ import type { PluginModule } from "@read-aware/plugin-types";
 
 const plugin: PluginModule = {
   activate(ctx) {
+    if (ctx.manifest.description === "nullable-observation-reaction") {
+      ctx.services.ui.reader!.image!.observe(async (snapshot, delivery) => {
+        if (snapshot !== null) throw new Error("Closed snapshot changed");
+        const bound = ctx.withEvent(delivery); await Promise.resolve();
+        await bound.services.ui.reader!.setPanel!("chat", false);
+      });
+      return;
+    }
     if (ctx.manifest.description === "memory-observation-reaction") {
       ctx.domains.memory!.events.observe({ kind: "inspect", memoryId: "m" }, async (snapshot, delivery) => {
         if (snapshot.status !== "ready" || "reaction" in snapshot) throw new Error("Memory snapshot shape changed");

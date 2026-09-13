@@ -52,9 +52,9 @@ export async function imageControls(ctx: PluginContext): Promise<PluginDetailVie
   };
   return { ...render(await image.snapshot()), live: { subscribe(channel) {
     let active = true, revision = 0;
-    const subscription = image.observe(async snapshot => {
-      if (!active) return;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: render(snapshot) });
+    const subscription = image.observe(async (snapshot, delivery) => {
+      if (!active || delivery?.reaction?.status === "cycle") return;
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: render(snapshot) });
     });
     return { dispose() {
       if (!active) return;

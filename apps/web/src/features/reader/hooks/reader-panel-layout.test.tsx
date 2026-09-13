@@ -252,6 +252,53 @@ if (process.env.PANEL_LAYOUT_CASE === "1") {
       } finally { stop(); stopCommit(); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); }
     }
   });
+  test("public panel observations stop a cross-plugin cycle and accept another independent user intent", async () => {
+    hold = false;
+    for (const mode of ["all", "book"] as const) {
+      const make = (id: string) => {
+        const runtime = buildPluginContext({ id, name: id, version: "1", schemaVersion: 1, requires: {}, permissions: ["reading:write"] }, "1", [],
+          mode === "all" ? { mode } : { mode, bookId: "book" });
+        runtime.lifecycle.promote(); return runtime;
+      };
+      const a = make(`panels-a-${mode}`), b = make(`panels-b-${mode}`), errors: unknown[] = [];
+      let cycles = 0;
+      // The next reaction can replace a command after its optimistic render
+      // and before its durable/render acknowledgement. That receipt must stay
+      // superseded; the final view and disk below prove the actual effects.
+      const superseded = (error: unknown) => {
+        if (!(error && typeof error === "object" && "code" in error && error.code === "reader/superseded")) throw error;
+      };
+      try {
+        a.context.services.ui.reader!.observe(async (value, delivery) => {
+          try {
+            if (!value) return;
+            if (!value.panels.toc.open && value.panels.chat.open) {
+              expect(delivery?.reaction?.status).toBe("cycle"); cycles++;
+              expect(() => a.context.withEvent(delivery)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+            } else if (value.panels.toc.open && !value.panels.chat.open && delivery?.reaction?.status !== "cycle") {
+              const bound = a.context.withEvent(delivery); await Promise.resolve();
+              await bound.services.ui.reader!.setPanel!("chat", true).catch(superseded);
+            }
+          } catch (error) { errors.push(error); }
+        });
+        b.context.services.ui.reader!.observe(async (value, delivery) => {
+          try {
+            if (!value || !value.panels.toc.open || !value.panels.chat.open || delivery?.reaction?.status === "cycle") return;
+            const bound = b.context.withEvent(delivery); await Promise.resolve();
+            await bound.services.ui.reader!.setPanel!("toc", false).catch(superseded);
+          } catch (error) { errors.push(error); }
+        });
+        for (let n = 0; n < 2; n++) {
+          const request = requestPanel("toc", true).catch(superseded); await flush(); await request;
+          await act(async () => { await Promise.all([a.reactions.drain(), b.reactions.drain()]); });
+          expect(errors).toEqual([]); expect(cycles).toBe(n + 1);
+          expect(readerPanels.snapshot()?.panels).toMatchObject({ toc: { open: false }, chat: { open: true } });
+          expect(JSON.parse(disk.get(key)!).book).toEqual({ tocOpen: false, notesOpen: true });
+          const close = requestPanel("chat", false); await flush(); await close;
+        }
+      } finally { a.lifecycle.stop(); b.lifecycle.stop(); await Promise.all([a.lifecycle.drainCleanups(), b.lifecycle.drainCleanups()]); }
+    }
+  });
   test("width failure and transient panel feedback retain their source; independent control hiding has its own root", async () => {
     const origin = causalActor("plugin:panels");
     const width = begin(() => readerPanels.setWidth("toc", 450, undefined, undefined, origin)).catch(error => error);
@@ -286,6 +333,6 @@ if (process.env.PANEL_LAYOUT_CASE === "1") {
   test("isolated shared panel service, persistence and React lifecycle cases", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], { env: { ...process.env, PANEL_LAYOUT_CASE: "1" }, stdout: "ignore", stderr: "pipe" });
     const output = await new Response(child.stderr).text();
-    expect(await child.exited, output).toBe(0); expect(output).toContain("18 pass");
+    expect(await child.exited, output).toBe(0); expect(output).toContain("19 pass");
   }, 30_000);
 }

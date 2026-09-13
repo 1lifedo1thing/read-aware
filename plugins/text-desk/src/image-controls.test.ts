@@ -9,12 +9,12 @@ const state = (id = "viewer"): NonNullable<Snapshot> => ({ id, bookId: "book", s
   scale: 1.5, rotation: 90, panX: -0.15, panY: 0.2 });
 
 function fixture(locale = "en") {
-  let snapshot: Snapshot = state(), observer!: (value: Snapshot) => unknown;
+  let snapshot: Snapshot = state(), observer!: Parameters<ImageService["observe"]>[0];
   let failure: Error | undefined, disposed = 0;
   let openResult: Awaited<ReturnType<NonNullable<ImageService["open"]>>> = { status: "opened", snapshot: state() };
   const requests: Request[] = [], opened: unknown[][] = [];
   const published: { revision: number; view: PluginDetailView }[] = [];
-  const ctx = { locale, domains: { library: { commands: {}, queries: { books: { list: async () => [] } } },
+  const ctx = { locale, withEvent: () => ctx, domains: { library: { commands: {}, queries: { books: { list: async () => [] } } },
     reading: { queries: { session: async () => ({ bookId: "book", sessionId: "session", status: "ready" }) }, commands: {
       openBook: async (bookId: string) => { opened.push(["book", bookId]); return { sessionId: "opened-session" }; },
     } } }, services: { ui: { reader: { image: {
@@ -29,7 +29,7 @@ function fixture(locale = "en") {
       open: async (...args: unknown[]) => { opened.push(["image", ...args]); return openResult; },
     } }, publishView: async (_channel: unknown, frame: typeof published[number]) => { published.push(frame); } } } } as unknown as PluginContext;
   return { ctx, requests, opened, published, set: (value: Snapshot) => { snapshot = value; },
-    emit: async (value: Snapshot) => { snapshot = value; await observer(value); },
+    emit: async (value: Snapshot, delivery?: Parameters<typeof observer>[1]) => { snapshot = value; await observer(value, delivery); },
     fail: () => { failure = Object.assign(Error("Private native detail"), { code: "reader/superseded" }); },
     openResult: (value: typeof openResult) => { openResult = value; }, disposed: () => disposed };
 }
@@ -89,6 +89,26 @@ test("no open image is an honest empty state and refresh explicitly discovers a 
   expect(f.requests[0].id).toBe("later");
 });
 
+test("image and closed views publish with their reaction lease; user actions keep the root context", async () => {
+  const f = fixture(), deliveries: unknown[] = [];
+  f.ctx.withEvent = delivery => {
+    deliveries.push(delivery);
+    return { services: { ui: { publishView: f.ctx.services.ui.publishView } } } as unknown as PluginContext;
+  };
+  const view = await imageControls(f.ctx), sub = await view.live!.subscribe({ id: "causal-image" });
+  try {
+    const delivery = { reaction: { id: "host-lease", status: "ready" as const } };
+    await f.emit(state(), delivery);
+    expect(deliveries).toEqual([delivery]);
+    await action(f.published[0].view, "zoom-in");
+    expect(f.requests).toEqual([{ id: "viewer", action: "zoom-in" }]);
+    await f.emit(null, delivery);
+    expect(f.published[1].view.actions!.map(item => item.id)).toEqual(["refresh"]);
+    await f.emit(state(), { reaction: { id: "cycle", status: "cycle" } });
+    expect(deliveries).toEqual([delivery, delivery]); expect(f.published).toHaveLength(2);
+  } finally { sub.dispose(); }
+});
+
 test("missing services and host errors propagate, without false empty/success or closing", async () => {
   const f = fixture(), view = await imageControls(f.ctx); f.fail();
   await expect(action(view, "close-image")).rejects.toMatchObject({ code: "reader/superseded" });
@@ -134,7 +154,8 @@ test("compiled command exposes the image workflow with existing grants and retai
   await action(direct, "reset");
   expect(f.requests).toEqual([{ id: "viewer", action: "reset" }]);
   const manifest = await Bun.file(new URL("../dist/manifest.json", import.meta.url)).json();
-  expect(manifest.version).toBe("0.22.0");
+  expect(manifest.version).toBe("0.23.0");
+  expect(manifest.requires.services.plugins).toBe("^1.6.0");
   expect(manifest.requires.schemas.views).toBe("^1.9.0");
   expect(manifest.requires.services.ui).toBe("^1.13.0");
   expect(manifest.permissions).toEqual(["library:write", "reading:write", "service:clipboard", "service:llm"]);

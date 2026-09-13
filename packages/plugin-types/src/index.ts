@@ -2313,14 +2313,16 @@ export type PluginHostServices = {
       /** UI 1.12: already-open native image viewer. No URL, bytes, alt text or implicit opening. */
       image?: {
         snapshot(): Promise<import("@read-aware/core").ReaderImageSnapshot | null>;
-        observe(handler: (state: import("@read-aware/core").ReaderImageSnapshot | null) => unknown): PluginDisposable;
+        /** Plugins 1.6 supplies a separate reaction delivery, including closed/null snapshots. */
+        observe(handler: PluginObservationHandler<import("@read-aware/core").ReaderImageSnapshot | null>): PluginDisposable;
         /** reading:write; exact current viewer ID required. Pan deltas are fractions of its viewport. */
         control?(request: import("@read-aware/core").ReaderImageRequest): Promise<import("@read-aware/core").ReaderImageReceipt>;
         /** UI 1.13: library read + reading write; opens an embedded image in the current book. */
         open?(query: import("@read-aware/core").BookImageQuery, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderImageOpenReceipt>;
       };
       snapshot(): Promise<import("@read-aware/core").ReaderPanelsSnapshot | null>;
-      observe(handler: (snapshot: import("@read-aware/core").ReaderPanelsSnapshot | null) => unknown): PluginDisposable;
+      /** Plugins 1.6 supplies a separate reaction delivery; callbacks are serial and coalesced. */
+      observe(handler: PluginObservationHandler<import("@read-aware/core").ReaderPanelsSnapshot | null>): PluginDisposable;
       /** Requires reading:write. Opening reveals controls; completion waits for persistence and DOM commit. */
       setPanel?(panel: import("@read-aware/core").ReaderPanel, open: boolean, guard?: import("@read-aware/core").ReadingSessionGuard): Promise<import("@read-aware/core").ReaderPanelReceipt>;
       /** Persist a shared TOC/chat width (integer 240..640 CSS px); does not open it or focus. */

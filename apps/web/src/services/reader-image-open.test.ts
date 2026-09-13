@@ -5,6 +5,7 @@ import { ReaderImageService } from "./reader-image";
 import { ReaderImageOpenService } from "./reader-image-open";
 import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
 import type { BookImageData } from "../features/library/lib/book-images";
+import { causalActor, type DomainActor } from "../platform/domain-actor";
 
 const image = { bookId: "book", contentVersion: "v1", sectionIndex: 0, index: 0 };
 const data: BookImageData = { status: "ready", image: { image, alt: "Picture" }, blob: new Blob(["bytes"]) };
@@ -13,11 +14,25 @@ function fixture(deadline?: number) {
   const sessionId = reading.begin("book"), location = { bookId: "book", contentVersion: "v1", cfi: "start" };
   reading.attach(sessionId, { navigate: async () => location, step: async () => location }, location);
   const images = new ReaderImageService(reading, () => {}), service = new ReaderImageOpenService(reading, images, deadline);
-  const presented: string[] = [], cleared: string[] = [];
-  const binding = service.bind(sessionId, "book", { present: id => { presented.push(id); }, clear: id => { cleared.push(id); } });
-  return { reading, sessionId, images, service, presented, cleared, binding };
+  const presented: string[] = [], cleared: string[] = [], origins: DomainActor[] = [], clearing: DomainActor[] = [];
+  const binding = service.bind(sessionId, "book", { present: (id, _image, origin) => { presented.push(id); origins.push(origin); },
+    clear: (id, origin) => { cleared.push(id); clearing.push(origin); } });
+  return { reading, sessionId, images, service, presented, cleared, origins, clearing, binding };
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+
+test("an open retains its caller across reads, while cancellation cleanup retains the replacing intent", async () => {
+  const f = fixture(), origin = causalActor("plugin:images"), replacing = causalActor("user");
+  const sources: DomainActor[] = [];
+  try {
+    const pending = f.service.open({ image }, async (_query, _signal, actor) => { sources.push(actor); await tick(); return data; }, undefined, undefined, origin).catch(error => error);
+    await tick(); await tick(); expect(f.origins).toEqual([origin]); expect(sources).toEqual([origin]);
+    f.binding.interrupt(replacing);
+    expect(await pending).toMatchObject({ code: "reader/superseded" });
+    expect(f.clearing).toEqual([replacing]);
+    expect(f.cleared).toEqual(f.presented);
+  } finally { f.binding.dispose(); }
+});
 
 test("image opening requires matching session/version and waits for the actual viewer identity", async () => {
   const f = fixture(); let loads = 0;

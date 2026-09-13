@@ -1,5 +1,5 @@
 import { expect, mock, test } from "bun:test";
-import type { PluginCommand, PluginContext, PluginModule, PluginView, PluginViewResult, ReadingSessionSnapshot } from "@read-aware/plugin-types";
+import type { PluginCommand, PluginContext, PluginModule, PluginReactionEvent, PluginView, PluginViewResult, ReadingSessionSnapshot } from "@read-aware/plugin-types";
 import { readingMonitor } from "../src/monitor";
 import { panelWidths } from "../src/panel-widths";
 
@@ -26,7 +26,7 @@ function fixture() {
   const panels: Panels = { sessionId: "s1", bookId: "b1", revision: 1, controlsVisible: true, sizes: { toc: 288, chat: 352 }, layout: "docked",
     panels: { toc: { open: true, visible: true }, chat: { open: true, visible: false }, annotations: { open: false, visible: false }, appearance: { open: false, visible: false } } };
   const environment: Environment = { revision: 1, runtime: "desktop", platform: "macos", locale: "en", timeZone: "UTC", utcOffsetMinutes: 0, networkHint: "online" };
-  let sessionHandler!: (value: ReadingSessionSnapshot) => unknown, panelHandler!: (value: Panels | null) => unknown, environmentHandler!: (value: Environment) => unknown;
+  let sessionHandler!: (value: ReadingSessionSnapshot) => unknown, panelHandler!: (value: Panels | null, delivery?: PluginReactionEvent) => unknown, environmentHandler!: (value: Environment) => unknown;
   const disposeSession = mock(() => {}), disposePanel = mock(() => {}), disposeEnvironment = mock(() => {});
   const commands: PluginCommand[] = [];
   const snapshot = mock(async (): Promise<Panels | null> => panels);
@@ -34,7 +34,7 @@ function fixture() {
     snapshot: { ...panels, sizes: { ...panels.sizes, [panel]: width } } }));
   const controlPlayback = mock(async (_action: "start" | "stop", _guard: unknown, _options?: unknown) => ({ status: "completed", sessionId: "s1", playback: state.playback }));
   const publishView = mock(async (_channel: unknown, _update: { revision: number; view: PluginView }) => ({ status: "applied" }));
-  const ctx = { locale: "en", contributions: { commands: { register: (command: PluginCommand) => commands.push(command) }, headerActions: { register: mock() } },
+  const ctx = { withEvent: () => ctx, locale: "en", contributions: { commands: { register: (command: PluginCommand) => commands.push(command) }, headerActions: { register: mock() } },
     domains: { reading: { queries: { session: mock(async () => state) }, commands: { controlPlayback },
       events: { observeSession: (handler: typeof sessionHandler) => { sessionHandler = handler; return { dispose: disposeSession }; } } } },
     services: { ui: { publishView, reader: { snapshot, setWidth, observe: (handler: typeof panelHandler) => { panelHandler = handler; return { dispose: disposePanel }; } } },
@@ -42,9 +42,24 @@ function fixture() {
       logging: { write: mock(async () => {}) } },
   } as unknown as PluginContext;
   return { ctx, state, panels, environment, snapshot, setWidth, controlPlayback, publishView, commands, disposeSession, disposePanel, disposeEnvironment,
-    sessionChanged: (value: ReadingSessionSnapshot) => sessionHandler(value), panelsChanged: (value: Panels | null) => panelHandler(value),
+    sessionChanged: (value: ReadingSessionSnapshot) => sessionHandler(value), panelsChanged: (value: Panels | null, delivery?: PluginReactionEvent) => panelHandler(value, delivery),
     environmentChanged: (value: Environment) => environmentHandler(value) };
 }
+
+test("panel publications use the observation lease, while subsequent user controls retain the root context", async () => {
+  const f = fixture(), lifetime = new AbortController(), boundPublish = mock(async () => ({ status: "applied" }));
+  const bound = { ...f.ctx, services: { ...f.ctx.services, ui: { ...f.ctx.services.ui, publishView: boundPublish } } } as unknown as PluginContext;
+  f.ctx.withEvent = mock(() => bound);
+  const current = await readingMonitor(f.ctx, lifetime.signal), subscription = await current.live!.subscribe({ id: "causal" });
+  try {
+    const delivery = { reaction: { id: "lease", status: "ready" as const } };
+    await f.panelsChanged(f.panels, delivery);
+    expect(f.ctx.withEvent).toHaveBeenCalledWith(delivery); expect(boundPublish).toHaveBeenCalledTimes(1); expect(f.publishView).not.toHaveBeenCalled();
+    await action(current, "start").run(); expect(f.controlPlayback).toHaveBeenCalledTimes(1);
+    await f.panelsChanged(null, { reaction: { id: "loop", status: "cycle" } });
+    expect(boundPublish).toHaveBeenCalledTimes(1); expect(f.ctx.withEvent).toHaveBeenCalledTimes(1);
+  } finally { subscription.dispose(); }
+});
 
 test("monitor composes three live streams, truthful progress and guarded playback without exposing passage text", async () => {
   const f = fixture(), lifetime = new AbortController();

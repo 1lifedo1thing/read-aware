@@ -1,4 +1,5 @@
 import { causalActor, stampEventCause, actorFromEvent, type DomainActor } from "../platform/domain-actor";
+import { observeSnapshot } from "../domain/snapshot-observation";
 import { AppError, type ReaderPanel, type ReaderPanelReceipt, type ReaderPanelsSnapshot, type ReaderPanelsView, type ReadingSessionGuard } from "@read-aware/core";
 import type { ReadingSessionController } from "../domain/reading-session-controller";
 import { readingRuntime } from "../domain/reading-runtime";
@@ -10,7 +11,7 @@ type Adapter = {
   applyWidth(panel: ResizableReaderPanel, width: number, signal: AbortSignal, origin: DomainActor): Promise<void>;
   requestCommit(token: number, origin: DomainActor): void;
 };
-type Binding = { sessionId: string; bookId: string; adapter: Adapter; view: ReaderPanelsView; release(): void };
+type Binding = { sessionId: string; bookId: string; adapter: Adapter; view: ReaderPanelsView; release(origin?: DomainActor): void };
 type Operation = { panel: ReaderPanel; open: boolean; width?: never } | { panel: ResizableReaderPanel; width: number; open?: never };
 type Pending = Operation & {
   binding: Binding; token: number; ready: boolean; origin: DomainActor;
@@ -25,7 +26,7 @@ export class ReaderPanelsService {
   private revision = 0;
   private origin: DomainActor = causalActor("system");
   private token = 0;
-  private observers = new Set<(state: ReaderPanelsSnapshot | null) => unknown>();
+  private observers = new Set<(source: object) => void>();
 
   constructor(private readonly reading: Pick<ReadingSessionController, "snapshot" | "observe" | "setControls">,
     private readonly report: (error: unknown) => void, private readonly deadlineMs = 10_000) {}
@@ -37,17 +38,21 @@ export class ReaderPanelsService {
     return stampEventCause({ ...structuredClone(binding.view), sessionId: binding.sessionId, bookId: binding.bookId, revision: this.revision }, this.origin);
   }
 
-  observe(handler: (state: ReaderPanelsSnapshot | null) => unknown): () => void {
-    this.observers.add(handler); this.deliver(handler);
-    return () => this.observers.delete(handler);
+  observe(handler: (state: ReaderPanelsSnapshot | null, source: object) => unknown, origin?: DomainActor): () => void {
+    if (typeof handler !== "function") throw new AppError("reader/invalid-target", "Expected panel observer");
+    if (this.observers.size >= 64) throw new AppError("ui/observer-limit", "Too many panel observers");
+    return observeSnapshot(() => this.snapshot(), notify => {
+      this.observers.add(notify); return () => { this.observers.delete(notify); };
+    }, handler, this.report, origin);
   }
 
   bind(sessionId: string, bookId: string, adapter: Adapter, initial: ReaderPanelsView, origin: DomainActor = "system"): { publish(view: ReaderPanelsView, token: number, origin?: DomainActor): void; dispose(origin?: DomainActor): void } {
     this.checkGuard({ sessionId, bookId });
-    this.binding?.release();
+    origin = causalActor(origin);
+    this.binding?.release(origin);
     const binding: Binding = { sessionId, bookId, adapter, view: structuredClone(initial), release: () => {} };
     this.binding = binding;
-    const dispose = (origin: DomainActor = "system") => {
+    const dispose = (origin: DomainActor = this.origin) => {
       if (this.binding !== binding) return;
       this.binding = undefined;
       this.cancel(new AppError("reader/superseded", "Reader panels session ended"));
@@ -138,14 +143,11 @@ export class ReaderPanelsService {
   }
   private changed(origin: DomainActor): void {
     this.origin = causalActor(origin);
-    const revision = ++this.revision;
+    const source = stampEventCause({}, this.origin), revision = ++this.revision;
     for (const handler of [...this.observers]) {
       if (revision !== this.revision) break;
-      this.deliver(handler);
+      handler(source);
     }
-  }
-  private deliver(handler: (state: ReaderPanelsSnapshot | null) => unknown): void {
-    try { Promise.resolve(handler(this.snapshot())).catch(this.report); } catch (error) { this.report(error); }
   }
 }
 

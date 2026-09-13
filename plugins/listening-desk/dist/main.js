@@ -230,15 +230,15 @@ async function readingMonitor(ctx, signal) {
       for (const subscription of subscriptions)
         subscription.dispose();
     };
-    const publish = async () => {
+    const publish = async (context = ctx) => {
       if (!active || signal.aborted)
         return;
       try {
-        await ctx.services.ui.publishView(channel, { revision: ++revision, view: render() });
+        await context.services.ui.publishView(channel, { revision: ++revision, view: render() });
       } catch (error) {
         const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "ipc/unknown";
         try {
-          await ctx.services.logging.write({ level: "warn", event: "listening-view-publish-failed", errorCode: code });
+          await context.services.logging.write({ level: "warn", event: "listening-view-publish-failed", errorCode: code });
         } catch {}
       }
     };
@@ -251,9 +251,11 @@ async function readingMonitor(ctx, signal) {
         environment = value;
         return publish();
       }));
-      subscriptions.push(reader.observe((value) => {
+      subscriptions.push(reader.observe((value, delivery) => {
         panels = value;
-        return publish();
+        if (delivery?.reaction?.status === "cycle")
+          return;
+        return publish(ctx.withEvent(delivery));
       }));
       signal.addEventListener("abort", dispose, { once: true });
       if (signal.aborted)

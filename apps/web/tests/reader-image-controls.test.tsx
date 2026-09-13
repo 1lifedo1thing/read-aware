@@ -10,6 +10,8 @@ import { initI18n } from "../src/i18n";
 import { useImageViewer } from "../src/features/reader/hooks/useImageViewer";
 import { readerImageOpen } from "../src/services/reader-image-open";
 import type { BookImageData } from "../src/features/library/lib/book-images";
+import { actorCause, causalActor, eventCause, stampEventCause } from "../src/platform/domain-actor";
+import { buildPluginContext } from "../src/features/plugins/runtime/plugin-context";
 
 if (process.env.READER_IMAGE_CONTROLS_CASE === "1") {
 test("native lightbox and public controls share zoom, pan, rotation, reset and committed close under StrictMode", async () => {
@@ -73,31 +75,99 @@ test("API opening mounts the same lightbox, releases URLs and yields to native a
   const image = { bookId: "image-book", contentVersion: "v1", sectionIndex: 0, index: 0 };
   const data: BookImageData = { status: "ready", image: { image, alt: "API illustration" }, blob: new Blob(["pixels"], { type: "image/png" }) };
   let activateNative = () => {};
+  let closeOld: (() => void) | undefined;
   function Surface() {
     const viewer = useImageViewer("image-book"), current = viewer.lightboxImage;
     activateNative = () => viewer.setLightboxImage({ src: "data:image/png;base64,cGl4ZWxz", alt: "Native illustration", session: { sessionId, bookId: "image-book" } });
-    return current ? <ReaderImageLightbox key={current.id} viewerId={current.id} session={current.session}
-      alt={current.alt} src={current.src} onClose={viewer.closeLightbox} /> : null;
+    if (current && !closeOld) closeOld = () => viewer.closeLightbox(undefined, current.id);
+    return current ? <ReaderImageLightbox key={current.id} viewerId={current.id} session={current.session} lifetime={current.lifetime}
+      alt={current.alt} src={current.src} onClose={origin => viewer.closeLightbox(origin, current.id)} /> : null;
   }
   try {
     await initI18n("en");
     await act(async () => root.render(<StrictMode><Surface /></StrictMode>));
     let pending!: ReturnType<typeof readerImageOpen.open>;
-    await act(async () => { pending = readerImageOpen.open({ image }, async () => data); });
+    const opening = causalActor("agent");
+    await act(async () => { pending = readerImageOpen.open({ image }, async () => data, undefined, undefined, opening); });
     const result = await pending;
     expect(result.status).toBe("opened");
     if (result.status !== "opened") throw Error("Expected committed image viewer");
     expect(readerImage.snapshot()?.id).toBe(result.snapshot.id);
+    expect(eventCause(readerImage.snapshot()!)!.root).toBe(actorCause(opening)!.root);
+    const img = dom.window.document.querySelector("img")!, stage = img.parentElement!;
+    Object.defineProperties(stage, { clientWidth: { value: 600 }, clientHeight: { value: 400 } });
+    for (const mode of ["all", "book"] as const) {
+      const runtime = buildPluginContext({ id: `image-${mode}`, name: "Image", version: "1", schemaVersion: 1, requires: {}, permissions: ["reading:write"] }, "1", [],
+        mode === "all" ? { mode } : { mode, bookId: "image-book" });
+      runtime.lifecycle.promote();
+      try {
+        await runtime.reactions.deliver({}, stampEventCause({}, opening), async reaction => {
+          const origin = runtime.reactions.actor(reaction), bound = runtime.context.withEvent({ reaction });
+          await Promise.resolve(); let request!: Promise<ReaderImageReceipt>;
+          await act(async () => { request = bound.services.ui.reader!.image!.control!({ id: result.snapshot.id, action: "zoom-in" }); });
+          expect((await request).status).toBe("updated");
+          expect(eventCause(readerImage.snapshot()!)!.root).toBe(actorCause(origin)!.root);
+          expect(eventCause(readerImage.snapshot()!)!.steps).toEqual(actorCause(origin)!.steps);
+        });
+      } finally { runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); }
+    }
+    for (const mode of ["all", "book"] as const) {
+      const reset = async () => {
+        let pending!: Promise<ReaderImageReceipt>;
+        await act(async () => { pending = readerImage.control({ id: result.snapshot.id, action: "reset" }); }); await pending;
+      };
+      await reset();
+      const make = (id: string) => {
+        const runtime = buildPluginContext({ id, name: id, version: "1", schemaVersion: 1, requires: {}, permissions: ["reading:write"] }, "1", [],
+          mode === "all" ? { mode } : { mode, bookId: "image-book" });
+        runtime.lifecycle.promote(); return runtime;
+      };
+      const a = make(`image-cycle-a-${mode}`), b = make(`image-cycle-b-${mode}`), errors: unknown[] = [];
+      let cycles = 0, rotations = 0, zooms = 0;
+      try {
+        a.context.services.ui.reader!.image!.observe(async (value, delivery) => {
+          try {
+            if (!value) return;
+            if (value.rotation === 90 && value.scale === 1.5) {
+              expect(delivery?.reaction?.status).toBe("cycle"); cycles++;
+              expect(() => a.context.withEvent(delivery)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" })); return;
+            }
+            if (value.rotation !== 0 || value.scale <= 1 || delivery?.reaction?.status === "cycle") return;
+            const bound = a.context.withEvent(delivery); await Promise.resolve(); rotations++;
+            await bound.services.ui.reader!.image!.control!({ id: value.id, action: "rotate" });
+          } catch (error) { errors.push(error); }
+        });
+        b.context.services.ui.reader!.image!.observe(async (value, delivery) => {
+          try {
+            if (!value || value.rotation !== 90 || value.scale !== 1 || delivery?.reaction?.status === "cycle") return;
+            const bound = b.context.withEvent(delivery); await Promise.resolve(); zooms++;
+            await bound.services.ui.reader!.image!.control!({ id: value.id, action: "zoom-in" });
+          } catch (error) { errors.push(error); }
+        });
+        for (let n = 0; n < 2; n++) {
+          if (n) await reset();
+          let pending!: Promise<ReaderImageReceipt>;
+          await act(async () => { pending = readerImage.control({ id: result.snapshot.id, action: "zoom-in" }); }); await pending;
+          await act(async () => { await Promise.all([a.reactions.drain(), b.reactions.drain()]); });
+          expect(errors).toEqual([]); expect(cycles).toBe(n + 1); expect(rotations).toBe(n + 1); expect(zooms).toBe(n + 1);
+        }
+      } finally { a.lifecycle.stop(); b.lifecycle.stop(); await Promise.all([a.lifecycle.drainCleanups(), b.lifecycle.drainCleanups()]); }
+    }
     expect(dom.window.document.querySelector("img")?.alt).toBe("API illustration");
     expect(dom.window.document.querySelector("img")?.src).toStartWith("blob:");
     let close!: Promise<ReaderImageReceipt>;
-    await act(async () => { close = readerImage.control({ id: result.snapshot.id, action: "close" }); });
+    const closing = causalActor("plugin:closer"), retired: object[] = [];
+    const stop = readerImage.observe((value, source) => { if (value === null) retired.push(source); });
+    await act(async () => { close = readerImage.control({ id: result.snapshot.id, action: "close" }, undefined, closing); });
+    expect(eventCause(retired.at(-1)!)!.root).toBe(actorCause(closing)!.root); stop();
     expect(await close).toEqual({ status: "closed", id: result.snapshot.id });
     expect(dom.window.document.querySelector("img")).toBeNull(); expect(urls.size).toBe(0);
     const held = Promise.withResolvers<BookImageData>();
     const late = readerImageOpen.open({ image }, () => held.promise).catch(error => error);
     await act(async () => activateNative());
     held.resolve(data); expect(await late).toMatchObject({ code: "reader/superseded" });
+    expect(dom.window.document.querySelector("img")?.alt).toBe("Native illustration");
+    await act(async () => closeOld?.());
     expect(dom.window.document.querySelector("img")?.alt).toBe("Native illustration");
     await act(async () => { readingRuntime.begin("other"); });
     expect(dom.window.document.querySelector("img")).toBeNull(); expect(readerImage.snapshot()).toBeNull();

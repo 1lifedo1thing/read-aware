@@ -54,19 +54,23 @@ export async function readingMonitor(ctx: PluginContext, signal: AbortSignal): P
       signal.removeEventListener("abort", dispose);
       for (const subscription of subscriptions) subscription.dispose();
     };
-    const publish = async () => {
+    const publish = async (context = ctx) => {
       if (!active || signal.aborted) return;
-      try { await ctx.services.ui.publishView(channel, { revision: ++revision, view: render() }); }
+      try { await context.services.ui.publishView(channel, { revision: ++revision, view: render() }); }
       catch (error) {
         const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "ipc/unknown";
-        try { await ctx.services.logging.write({ level: "warn", event: "listening-view-publish-failed", errorCode: code }); }
+        try { await context.services.logging.write({ level: "warn", event: "listening-view-publish-failed", errorCode: code }); }
         catch { /* Host retirement may reject logging as well; reopening reads a fresh snapshot. */ }
       }
     };
     try {
       subscriptions.push(reading.events.observeSession(value => { session = value; return publish(); }));
       subscriptions.push(ctx.services.session.observeEnvironment(value => { environment = value; return publish(); }));
-      subscriptions.push(reader.observe(value => { panels = value; return publish(); }));
+      subscriptions.push(reader.observe((value, delivery) => {
+        panels = value;
+        if (delivery?.reaction?.status === "cycle") return;
+        return publish(ctx.withEvent(delivery));
+      }));
       signal.addEventListener("abort", dispose, { once: true });
       if (signal.aborted) dispose();
       return { dispose };

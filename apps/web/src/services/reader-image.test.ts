@@ -3,6 +3,7 @@ import { AppError, type ReaderImageRequest } from "@read-aware/core";
 import { ReadingSessionController } from "../domain/reading-session-controller";
 import { ReaderImageService } from "./reader-image";
 import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
+import { actorCause, causalActor, eventCause, reactionActor } from "../platform/domain-actor";
 
 const view = { scale: 1, rotation: 0, panX: 0, panY: 0 };
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -17,6 +18,41 @@ function fixture() {
   }, view);
   return { reading, service, binding, get token() { return token; }, get closes() { return closes; } };
 }
+
+test("image observations retain coalesced ancestors, callback failures and null retirement without laundering bound initial reads", async () => {
+  const f = fixture(), held = Promise.withResolvers<void>();
+  const root = causalActor("user"), a = reactionActor("plugin:a", "a", actorCause(root)!), b = reactionActor("plugin:b", "b", actorCause(root)!);
+  const values: { value: unknown; source: object }[] = [];
+  const stop = f.service.observe(async (value, source) => {
+    values.push({ value, source });
+    if (values.length === 1) await held.promise;
+    if (values.length === 2) throw Error("retry on next trigger");
+  }, a);
+  try {
+    expect(eventCause(values[0].source)).toBe(actorCause(a));
+    f.binding.publish({ ...view, scale: 2 }, 0, a);
+    f.binding.publish({ ...view, scale: 3 }, 0, b);
+    held.resolve(); await tick();
+    expect(values).toHaveLength(2); expect(values[1].value).toMatchObject({ scale: 3 });
+    for (const step of ["a", "b"]) expect(() => reactionActor("plugin:c", step, eventCause(values[1].source)!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+    f.binding.dispose(b); await tick();
+    expect(values[2].value).toBeNull();
+    expect(() => reactionActor("plugin:c", "a", eventCause(values[2].source)!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+  } finally { held.resolve(); stop(); f.binding.dispose(); }
+});
+
+test("native takeover cannot acknowledge an older command; replacement cannot count as its requested close", async () => {
+  const f = fixture(), requested = causalActor("plugin:image"), user = causalActor("user");
+  try {
+    const pending = f.service.control({ id: "image", action: "zoom-in" }, undefined, requested).catch(error => error);
+    f.binding.publish({ ...view, scale: 2.5 }, f.token, user);
+    expect(await pending).toMatchObject({ code: "reader/superseded" });
+    expect(eventCause(f.service.snapshot()!)).toBe(actorCause(user));
+    const close = f.service.control({ id: "image", action: "close" }, undefined, requested).catch(error => error);
+    f.binding.dispose(user);
+    expect(await close).toMatchObject({ code: "reader/superseded" });
+  } finally { f.binding.dispose(); }
+});
 
 test("image commands require current identity, reject extra authority and wait for a matching commit", async () => {
   const f = fixture();

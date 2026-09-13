@@ -115,6 +115,23 @@ test("real Worker annotation observations bind conditional edits across await wi
   expect(await s.next(message => message.t === "result" && message.id === 937)).toMatchObject({ ok: true });
 });
 
+test("real Worker nullable image observations retain the host lease through a panel command", async () => {
+  const s = sandbox("nullable-observation-reaction", "event-reaction-probe.ts", {
+    shape: { domains: {}, services: { ui: { reader: { image: { observe: "fn" }, setPanel: "fn" } } }, contributions: {} },
+  });
+  const registration = await s.next(message => message.method === "services.ui.reader.image.observe");
+  const args = data(registration.args!) as [() => string], handle = args[0]();
+  s.worker.postMessage({ t: "result", id: registration.id, ok: true, value: null, disposable: "image-subscription" });
+  await s.next(message => message.t === "ready"); s.worker.postMessage({ t: "sync", patch: { phase: "active" } });
+  const reaction = { id: "image-lease", status: "ready" };
+  s.worker.postMessage({ t: "invoke", id: 939, handle, args: [null, { reaction }] });
+  const call = await s.next(message => message.method === "services.ui.reader.setPanel");
+  expect((call as unknown as { reaction: unknown }).reaction).toEqual(reaction);
+  expect(data(call.args!)).toEqual(["chat", false]);
+  s.worker.postMessage({ t: "result", id: call.id, ok: true, value: { status: "completed", panel: "chat", snapshot: {} } });
+  expect(await s.next(message => message.t === "result" && message.id === 939)).toMatchObject({ ok: true });
+});
+
 test("real Worker memory observations retain the host lease through conditional mutation", async () => {
   const s = sandbox("memory-observation-reaction", "event-reaction-probe.ts", {
     shape: { domains: { memory: { events: { observe: "fn" }, commands: { mutate: "fn" } } }, services: {}, contributions: {} },

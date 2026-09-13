@@ -1300,20 +1300,20 @@ export function buildPluginContext(
       image: {
         ...(reading.commands && domain.library ? { open: (query: import("@read-aware/core").BookImageQuery, guard?: import("@read-aware/core").ReadingSessionGuard) => {
           lifecycle.assertActive("services.ui.reader.image.open");
-          return lifecycle.read("services.ui.reader.image.open", () => readerImageOpen.open(query, readBookImage, lifecycle.signal, guard));
+          return lifecycle.read("services.ui.reader.image.open", () => readerImageOpen.open(query, (input, signal) => readBookImage(input, signal), lifecycle.signal, guard, operationActor));
         } } : {}),
         snapshot: async () => { lifecycle.assertActive("services.ui.reader.image.snapshot"); return readerImage.snapshot(); },
-        observe: handler => track(() => ({ dispose: readerImage.observe(handler) })),
+        observe: handler => track(() => ({ dispose: readerImage.observe(handler, operationActor) })),
         ...(reading.commands ? { control: (request: import("@read-aware/core").ReaderImageRequest) => {
           lifecycle.assertActive("services.ui.reader.image.control");
-          return lifecycle.read("services.ui.reader.image.control", () => readerImage.control(request, lifecycle.signal));
+          return lifecycle.read("services.ui.reader.image.control", () => readerImage.control(request, lifecycle.signal, operationActor));
         } } : {}),
       },
       snapshot: async () => {
         lifecycle.assertActive("services.ui.reader.snapshot");
         return readerPanels.snapshot();
       },
-      observe: handler => track(() => ({ dispose: readerPanels.observe(handler) })),
+      observe: handler => track(() => ({ dispose: readerPanels.observe(handler, operationActor) })),
       ...(reading.commands ? { setPanel: (panel: import("@read-aware/core").ReaderPanel, open: boolean, guard?: import("@read-aware/core").ReadingSessionGuard) => {
         lifecycle.assertActive("services.ui.reader.setPanel");
         return readerPanels.setPanel(panel, open, lifecycle.signal, guard, operationActor);
@@ -1349,15 +1349,16 @@ export function buildPluginContext(
             },
             observe: handler => {
               objectAccess.assertBook(latestCurrent.bookId ?? "", "services.ui.reader.image.observe");
-              return track(() => rawImage.observe(value => {
-                try { if (value) objectAccess.assertReturnedBook(value.bookId, "services.ui.reader.image.observe"); handler(value); }
-                catch (error) { log.debug("reader image outside book grant", error); }
+              return track(() => rawImage.observe((value, source) => {
+                try { if (value) objectAccess.assertReturnedBook(value.bookId, "services.ui.reader.image.observe"); }
+                catch (error) { log.debug("reader image outside book grant", error); return; }
+                return handler(value, source);
               }));
             },
-            ...(rawImage.control ? { control: (request: import("@read-aware/core").ReaderImageRequest) => scopedCurrentCommand("services.ui.reader.image.control", signal => readerImage.control(request, signal), undefined, true, value => {
+            ...(rawImage.control ? { control: (request: import("@read-aware/core").ReaderImageRequest) => scopedCurrentCommand("services.ui.reader.image.control", signal => readerImage.control(request, signal, operationActor), undefined, true, value => {
               if (value.status === "updated") objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.image.control");
             }) } : {}),
-            ...(rawImage.open ? { open: (query: import("@read-aware/core").BookImageQuery, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedRead(query.image.bookId, "services.ui.reader.image.open", signal => readerImageOpen.open(query, readBookImage, signal, guard), undefined, value => {
+            ...(rawImage.open ? { open: (query: import("@read-aware/core").BookImageQuery, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedRead(query.image.bookId, "services.ui.reader.image.open", signal => readerImageOpen.open(query, (input, readSignal) => readBookImage(input, readSignal), signal, guard, operationActor), undefined, value => {
               if (value.status === "opened") objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.image.open");
             }) } : {}),
           } : undefined,
@@ -1368,9 +1369,10 @@ export function buildPluginContext(
           },
           observe: handler => {
             objectAccess.assertBook(latestCurrent.bookId ?? "", "services.ui.reader.observe");
-            return track(() => rawReader.observe(value => {
-              try { if (value) objectAccess.assertReturnedBook(value.bookId, "services.ui.reader.observe"); handler(value); }
-              catch (error) { log.debug("reader panels outside book grant", error); }
+            return track(() => rawReader.observe((value, source) => {
+              try { if (value) objectAccess.assertReturnedBook(value.bookId, "services.ui.reader.observe"); }
+              catch (error) { log.debug("reader panels outside book grant", error); return; }
+              return handler(value, source);
             }));
           },
           ...(rawReader.setPanel ? { setPanel: (panel: import("@read-aware/core").ReaderPanel, open: boolean, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedCurrentCommand("services.ui.reader.setPanel", signal => readerPanels.setPanel(panel, open, signal, guard, operationActor), undefined, true, value => objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.setPanel")) } : {}),

@@ -16,15 +16,18 @@ import { nativeResourceFiles } from "../../../platform/resource-files";
 import { createLogger } from "../../../platform/logger";
 import { useZoomPan } from "../hooks/useZoomPan";
 import { useImageControls } from "../hooks/useImageControls";
+import type { DomainActor } from "../../../platform/domain-actor";
+import type { ImageViewLifetime } from "../hooks/useImageViewer";
 
 const log = createLogger("reader");
 
 type ReaderImageLightboxProps = {
   src: string;
   alt: string | null;
-  onClose: () => void;
+  onClose: (origin?: DomainActor) => void;
   session?: { bookId: string; sessionId: string };
   viewerId?: string;
+  lifetime?: ImageViewLifetime;
 };
 
 /**
@@ -34,10 +37,10 @@ type ReaderImageLightboxProps = {
  * rotation, copy-to-clipboard, and close; Esc and a clean backdrop click
  * close too.
  */
-export function ReaderImageLightbox({ src, alt, onClose, session, viewerId }: ReaderImageLightboxProps) {
+export function ReaderImageLightbox({ src, alt, onClose, session, viewerId, lifetime }: ReaderImageLightboxProps) {
   const { t } = useTranslation("reader");
-  const zoom = useZoomPan();
-  useImageControls(zoom, session, onClose, undefined, viewerId);
+  const zoom = useZoomPan(lifetime?.opening);
+  useImageControls(zoom, session, onClose, undefined, viewerId, lifetime);
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   // The section's blob URL dies when foliate unloads the page under the open
@@ -196,21 +199,21 @@ export function ReaderImageLightbox({ src, alt, onClose, session, viewerId }: Re
           <IconButton
             size="sm"
             label={t("imageViewer.zoomOut")}
-            onClick={zoom.zoomOut}
+            onClick={() => zoom.zoomOut()}
             className={toolButtonClass}
             icon={<MagnifyingGlassMinus size={18} aria-hidden="true" />}
           />
           <IconButton
             size="sm"
             label={t("imageViewer.zoomIn")}
-            onClick={zoom.zoomIn}
+            onClick={() => zoom.zoomIn()}
             className={toolButtonClass}
             icon={<MagnifyingGlassPlus size={18} aria-hidden="true" />}
           />
           <IconButton
             size="sm"
             label={t("imageViewer.rotate")}
-            onClick={zoom.rotateRight}
+            onClick={() => zoom.rotateRight()}
             className={toolButtonClass}
             icon={<ArrowClockwise size={18} aria-hidden="true" />}
           />
@@ -231,7 +234,7 @@ export function ReaderImageLightbox({ src, alt, onClose, session, viewerId }: Re
           <IconButton
             size="sm"
             label={t("imageViewer.close")}
-            onClick={onClose}
+            onClick={() => onClose()}
             className={toolButtonClass}
             icon={<X size={18} aria-hidden="true" />}
           />
