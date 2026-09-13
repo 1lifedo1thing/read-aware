@@ -59,3 +59,5 @@
 - 备份补验：Full2 创建自有最小插件并捕获新加密来源备份，卸载后原生审阅确认 source-only candidate；取消前后完整 KV（按键规范化比较）和插件列表不变，工件 `d2-backup-cancel.json`。自有插件残留键与两份临时归档已清理。此证据仅关闭原生审阅取消不写入，授权弹窗和确认恢复事务仍待验收；没有读取旧归档口令。
 
 - 备份确认恢复补验通过：自有来源插件经真实 migration Worker 和原生 apply，成功回执 `96a0d26d-b549-4ef6-bbaa-77bacd85907c`、cleanupPending=false。本次指定书授权正确落盘，旧本机授权保留；重载后两本原书仍在，授权来源为 user。插件及归档已清理。证据 `d2-backup-apply.json`、`d2-backup-reload-cleanup.json`。测试通过显式合成选择进入正式恢复链，不冒充授权弹窗点击；I02 仅剩可见授权交互，I01/I03/I05 的画面、草稿与焦点仍待解锁。
+
+- 桌面补验：CUA 已可操作。I05 真实 Annotation Desk 输入草稿→Tab/Return 取消保留原文，Tab/Tab/Return 保存精确保留标点；并发修改后旧编辑器显示红色冲突提示并保留草稿，原生数据未被覆盖，测试笔记已清理（`d5-visible-editor.json`）。I05 可见/键盘/焦点验收通过。I01 设置无障碍树仅保留选区和周围上下文开关；I03 两个插件经实际点击查询均返回两条 Full2 命中。但弹窗 native/CUA 截图不显示内容：窗口 focused=true/visible=true，WebView document.hidden=true，Dialog 停留 opacity=0 等待 RAF。没有修改 CSS/可见性来制造截图；等待用户唤醒屏幕并将隔离窗口置前后补弹窗画面与备份授权交互。
