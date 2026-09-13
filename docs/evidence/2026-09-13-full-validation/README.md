@@ -1763,3 +1763,32 @@ not-needed，没有强制重做封面。封面预览实际解码240×160，受�
 保持，阅读器关闭，两个插件原启用状态恢复。仅复用library-content探针，最终
 desktop类型与diff检查通过。其他格式、none/源缺失、并发合并/队列及观察上限、
 物理输入/像素、发布包和跨设备仍待验。详见[book-enrichment-observations.json](./book-enrichment-observations.json)。
+
+## 第六十四批：当前发布包构建与启动，交互仍待验
+
+以a00eb3fa重建隔离com.readaware.app.validation-packaged-e2e优化release .app，
+保留生产CSP且不启用debug MCP；仅沿用隔离标识/应用名和禁用updater产物的配置。
+原17593通过应用quit退出，旧进程已消失才构建。前端/插件构建通过，原生release
+编译2m13s，命令退出0；既有44条原生warning和前端大chunk提示仍在，不计消除。
+新二进制SHA256为fe172424edac47cf46cf7bc0d7b640f33d36cc42b6f3c5d75968aa5b999f6525。
+
+通过open -n启动新包，PID86059；原生日志到local store/app identity/roaming
+preferences/i18n hydrated、mounted及shutdown coordination installed。启动前后
+books一行、annotations四行及各自完整行序列hash相同；聊天0、导入/移除清理0，
+SQLite quick_check=ok。这里证明本次正常启动和这份隔离数据保持，没有操作恢复/
+清空/聊天等新路径，不能把包含修复的构建当成这些操作已通过。
+
+正式包只嵌入dictionary/editorial-themes/jumper/rss-reader/sentence-reader/tts六个
+产品插件；对应已提取文件树逐文件hash与当前dist完全一致，无强制删除缓存。
+Library Desk等组合消费者按既有设计需另外安装，不因debug加载成功声称已内置。
+当前版本仍0.5.4，本批不是版本升级/签名更新或notarization验收。
+
+对新包调用CUA仍返回Mac locked，故画面、物理焦点、原生文件选择器、插件安装/
+授权和新修复的发布包交互均保留待验；没有修改生产CSP或开启调试后门获取假证据。
+原primary debug实例保持，无新增用户资料或测试夹具；release一书四标注保留。
+
+另回填此前漏列的[2026-09-09沙箱实测](../packaged-sandbox-network-2026-09-09.json)：
+当时真实macOS release的三种无授权网络绕行被阻止，授权host network正向成功。
+当前策略hash仍44cc54e0…，策略实现最后提交9f88895b，生产构建通过保护资源检查。
+复用仅限该历史边界，不算当前二进制重跑、完整沙箱或在途撤权/其他平台认证。
+详见[packaged-current-build-observations.json](./packaged-current-build-observations.json)。

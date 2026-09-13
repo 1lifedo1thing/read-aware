@@ -1,0 +1,138 @@
+{
+  "flow": 64,
+  "date": "2026-09-13",
+  "sourceCommit": "a00eb3fa0ef7369e1473e6c6a4b9d8e8e4cb2871",
+  "scope": "Build and native launch/data retention only. Release UI interactions and physical focus remain unverified because CUA reports Mac locked.",
+  "build": {
+    "command": "CARGO_NET_OFFLINE=true bun run tauri build --bundles app --config /tmp/readaware-validation-20260913-packaged.conf.json",
+    "workingDirectory": "/Users/ahpx/Code/read-aware/apps/desktop",
+    "exitCode": 0,
+    "nativeDuration": "2m 13s",
+    "log": "/tmp/readaware-validation-20260913-packaged-current-build.log",
+    "logSha256": "9343a6f7bccafe17245884f4532fc53715d54916b80b4dd244bed6cd23806aa3",
+    "warnings": "Existing 44 native warnings and frontend large chunks remain; build succeeded.",
+    "profile": "release optimized",
+    "updaterArtifacts": false,
+    "notarizationVerified": false
+  },
+  "artifact": {
+    "path": "/Users/ahpx/Code/read-aware/apps/desktop/src-tauri/target/release/bundle/macos/ReadAware Packaged Validation.app",
+    "identifier": "com.readaware.app.validation-packaged-e2e",
+    "version": "0.5.4",
+    "binarySha256": "fe172424edac47cf46cf7bc0d7b640f33d36cc42b6f3c5d75968aa5b999f6525",
+    "productionCspUnchanged": true,
+    "debugMcpCompiledOut": true
+  },
+  "runtime": {
+    "previousPid": 17593,
+    "previousQuit": "AppleScript application quit succeeded; previous PID absent before build",
+    "currentPid": 86059,
+    "launch": "open -n packaged .app",
+    "bootLog": [
+      "[2026-09-13][12:07:45][INFO][webview] [boot] start",
+      "[2026-09-13][12:07:45][INFO][webview] [boot] plugin updates recovered",
+      "[2026-09-13][12:07:45][INFO][webview] [boot] local store hydrated",
+      "[2026-09-13][12:07:45][INFO][webview] [boot] app identity hydrated",
+      "[2026-09-13][12:07:45][INFO][webview] [boot] roaming preferences hydrated",
+      "[2026-09-13][12:07:45][INFO][webview] [boot] i18n ready",
+      "[2026-09-13][12:07:45][INFO][webview] [boot] mounted",
+      "[2026-09-13][12:07:45][INFO][webview] [boot] shutdown coordination installed"
+    ],
+    "cua": "The Mac is locked and automatic unlock could not unlock it."
+  },
+  "dataAndPlugins": {
+    "before": {
+      "books": {
+        "rows": 1,
+        "hash": "a48a00c1a3d54e0328a2f94d595f29bc7a52d8cc2cfd2b60e3a7c9eca15a45ad"
+      },
+      "annotations": {
+        "rows": 4,
+        "hash": "80d5db89f8f3821b864b447175cbf64d16032e7bc4101752f075a61fa3c4dc90"
+      },
+      "ai_conversations": {
+        "rows": 0,
+        "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "book_import_cleanup": {
+        "rows": 0,
+        "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "book_removal_cleanup": {
+        "rows": 0,
+        "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "integrity": "ok"
+    },
+    "after": {
+      "books": {
+        "rows": 1,
+        "hash": "a48a00c1a3d54e0328a2f94d595f29bc7a52d8cc2cfd2b60e3a7c9eca15a45ad"
+      },
+      "annotations": {
+        "rows": 4,
+        "hash": "80d5db89f8f3821b864b447175cbf64d16032e7bc4101752f075a61fa3c4dc90"
+      },
+      "ai_conversations": {
+        "rows": 0,
+        "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "book_import_cleanup": {
+        "rows": 0,
+        "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "book_removal_cleanup": {
+        "rows": 0,
+        "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "integrity": "ok"
+    },
+    "unchanged": true,
+    "plugins": [
+      {
+        "id": "dictionary",
+        "files": 2,
+        "fullTreeMatchesSource": true
+      },
+      {
+        "id": "editorial-themes",
+        "files": 7,
+        "fullTreeMatchesSource": true
+      },
+      {
+        "id": "jumper",
+        "files": 2,
+        "fullTreeMatchesSource": true
+      },
+      {
+        "id": "rss-reader",
+        "files": 2,
+        "fullTreeMatchesSource": true
+      },
+      {
+        "id": "sentence-reader",
+        "files": 2,
+        "fullTreeMatchesSource": true
+      },
+      {
+        "id": "tts",
+        "files": 2,
+        "fullTreeMatchesSource": true
+      }
+    ]
+  },
+  "pluginBoundary": "Only six product plugins are Rust-bundled. Library Desk and other source composition plugins require separate installation; their latest debug tests are not packaged acceptance. Existing six extracted plugin trees match current source in full; no cache removal or forced re-extraction.",
+  "historicalSandboxEvidence": {
+    "path": "docs/evidence/packaged-sandbox-network-2026-09-09.json",
+    "policySha256": "44cc54e0e37f8cf2b622f1836760768380756a8d3dfc74a200f88ec9b3dc7f29",
+    "currentPolicyMatches": true,
+    "lastPolicyImplementationCommit": "9f88895b",
+    "proof": "Three concrete ambient network paths blocked in then-current macOS release; granted host network positive control succeeded.",
+    "limits": "Not a rerun on current binary, full sandbox certification, in-flight revocation, Windows or Linux proof."
+  },
+  "remaining": [
+    "Current release UI: chat streaming/cancellation, note typography, approved operations, file pickers, plugin installation/authorization and lifecycle.",
+    "Current release backup/import/recovery/wipe behavior and failure injection; building native fixes does not verify these paths.",
+    "Cross-platform, cross-device and external services remain under the existing full goal."
+  ]
+}
