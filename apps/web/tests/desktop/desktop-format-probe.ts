@@ -7,7 +7,8 @@ import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 
 const owned = new Set<string>();
 const library = createLibraryDomain("user");
-const allowed = new Set(["fixture.epub","fixture.mobi","fixture.azw3","fixture.fb2.zip","fixture.cbz","fixture.cbr","truncated.cbr","fixture.txt","fixture.html","encrypted.mobi"]);
+const allowed = new Set(["fixture.epub","fixture.mobi","fixture.azw3","fixture.fb2.zip","fixture.cbz","fixture.cbr","truncated.cbr","fixture.txt","fixture.html","encrypted.mobi",
+  "fixture.prc","fixture.azw","fixture.kf8","fixture.fbz","fixture.text","fixture.htm","fixture.xhtml"]);
 async function isolated() {
   if (!(await appDataDir()).replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw Error("Isolated capability-e2e required");
 }

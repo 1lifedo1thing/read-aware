@@ -1862,3 +1862,25 @@ computed transform保持identity。没有强制结束动画或禁用transition�
 本批无产品代码修改，不重跑已有门禁。自有书/源/封面均null、灯箱和dialog0，
 原两书保留。物理手势/焦点/Escape、发布包与其他平台仍待验；详见
 [large-image-fit-observations.json](./large-image-fit-observations.json)。
+
+## 第六十八流程：七个格式别名与原生入口遗漏
+
+沿用第21/65流程的确定性MOBI6/KF8、FB2 ZIP、TXT和HTML源字节，只替换为
+已声明的PRC/AZW/KF8/FBZ/TEXT/HTM/XHTML文件名，逐个原生导入、正文准备、
+实际阅读器打开、读取DOM正文后关闭清理，避免同源去重混淆。七项均成功，
+书目格式分别归为mobi/azw3/fb2/txt/html；短MOBI/KF8正文available但索引
+chapterCount0，原文中文及KF8标题确实存在，不计全文检索通过。XHTML只证明
+这个别名路由，未另造严格XML兼容性结论。
+
+发现核心声明/解析器支持TEXT、XHTML，而文件选择器、Rust外部打开白名单和
+Tauri关联配置漏列。三处补齐，11项既有原生打开检查通过（含关联一致性），
+web/desktop/Foliate严格类型通过。唯一尚未覆盖的声明后缀为fb2.zip：
+普通末级扩展名匹配仍遗漏复合后缀，单列为原生入口缺口，没有注册通用ZIP。
+
+七个自有书及源/封面全部null，原两书和原会话完整hash保持。没有将字节导入
+等同于真实系统选择器/Launch Services操作；桌面仍不可控，实际OS入口待验。
+当前源码另构建ReadAware Format Validation.app隔离发布包，release原生编译
+56.04秒、构建退出0；包内Info.plist含text/xhtml，SHA256为5a2c7d73…。
+新包未启动，旧PID86059及primary15611保持，不能把磁盘构建当运行版本。
+未改生产CSP/调试边界，使用独立输出名防覆盖原包。构建结果见
+[format-alias-observations.json](./format-alias-observations.json)。

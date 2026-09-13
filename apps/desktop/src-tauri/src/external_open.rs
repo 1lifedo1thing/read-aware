@@ -14,9 +14,9 @@ use tauri::{AppHandle, Emitter, Manager};
 
 /// Extensions the importer accepts. Keep in sync with `BOOK_FILE_EXTENSIONS`
 /// in `apps/web/src/features/library/lib/pick-book-files.ts`.
-const BOOK_EXTENSIONS: [&str; 14] = [
+const BOOK_EXTENSIONS: [&str; 16] = [
     "epub", "mobi", "prc", "azw3", "azw", "kf8", "fb2", "fbz", "cbz", "cbr", "txt", "html", "htm",
-    "pdf",
+    "pdf", "text", "xhtml",
 ];
 
 #[derive(serde::Serialize, Debug)]

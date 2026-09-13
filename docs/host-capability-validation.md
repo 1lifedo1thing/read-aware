@@ -30,7 +30,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | LIB03 | 收藏/取消收藏 | F1 | 本机编译Library Desk收藏/取消收藏、刷新Yes/No及重启保持通过；其他actor待验，见第二十四流程 |
 | LIB04 | 删除单本书 | F1 | 本机Library Desk单书复核前不删，明确删除后记录null/原文件不存在；其他actor/故障待验，见第二十四流程 |
 | LIB05 | 批量删除书籍 | F1 | 本机Agent真实批准UI拒绝保留/批准两书删除，Worker正常批删及恢复后旧清理pending保护通过；文件故障/崩溃待验，见第二十四流程 |
-| LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机FB2 user/Worker选择器、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML原生字节导入与源解析通过；压缩RAR5 CBR三页原生导入/源解析/定位通过（65），RAR4/加密/分卷、别名/其他actor待验；第38流程暂存残留已加设备本地意图，真实重载/进程重启回收、已提交书保持/重复导入/提交失败回收通过；release待验，见第二十一/三十九流程 |
+| LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机FB2 user/Worker选择器、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML原生字节导入与源解析通过；压缩RAR5 CBR三页原生导入/源解析/定位通过（65），PRC/AZW/KF8/FBZ/TEXT/HTM/XHTML七别名原生字节导入/准备/真实阅读器正文通过（68）；修复TEXT/XHTML选择器和外部打开列表遗漏，实际OS选择/关联待验，fb2.zip复合后缀入口仍有缺口；RAR4/加密/分卷及其他actor待验；第38流程暂存残留已加设备本地意图，真实重载/进程重启回收、已提交书保持/重复导入/提交失败回收通过；release待验，见第二十一/三十九流程 |
 | LIB07 | 识别格式/DRM/损坏文件并报告 | F1 | 部分通过：合成加密MOBI入库后源打开明确book/unsupported-encryption，未冒充可读；截断RAR5仍能入库/列出两个目录项，损坏页定位reader/render-failed且实际目录点击显示安全错误（65），完好页可读。正文ready/textless不代表归档完整，未计导入完整性检查；其他损坏格式/物理画面待验 |
 | LIB08 | 查询/读取书籍原文件与本地可用性 | F1 | 本机 Library Desk 原文件状态、原生导出字节一致及取消通过；其他格式/actor待验 |
 | LIB09 | 提取/显示封面与封面可用状态 | F1 | 本机 FB2 封面显示/解码、PNG原生保存及插件副本重读通过；补齐后FB2预览240×160及PDF书架320×480解码通过（63），修复详情刷新及预览名称滞后于改名；RAR5 CBR后台封面ready/local，损坏首图failed且保留unchecked（65）；其他格式/平台待验 |
@@ -46,7 +46,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | TXT01 | 读取抽取章节目录 | F2 | 本机FB2宿主及book/global Agent真实Tauri端口返回两章index/number/字数一致，抽取目录无href；插件直接查询/其他格式待验，见第三十七流程 |
 | TXT02 | 读取原书分层导航目录及 href | F2 | 本机FB2宿主及book Agent原书导航含两正文节和脚注节，ordinal/href/同源版本一致；嵌套目录/超大目录/其他格式待验，见第三十七流程 |
 | TXT03 | 按抽取章节读正文/分段 | F2 | 本机book/global Agent真实Tauri端口读第二章原文相同、part0/totalParts1，未读章节围栏拒绝通过；长章分段/插件直接读取待验，见第三十七流程 |
-| TXT04 | 查询本地正文准备状态与文本存在性 | F2 | 本机短/正常FB2及空白PDF、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML正文准备与available/textless一致；短章节另读源文本确认存在；Worker权限/Agent双scope和缺源/换源通过；RAR5 CBR三节ready/textless（65），该状态不证明图片/归档完整性；其他变体待验 |
+| TXT04 | 查询本地正文准备状态与文本存在性 | F2 | 本机短/正常FB2及空白PDF、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML正文准备与available/textless一致；短章节另读源文本确认存在；Worker权限/Agent双scope和缺源/换源通过；RAR5 CBR三节ready/textless（65），该状态不证明图片/归档完整性；七个格式别名正文available及实际源阅读通过（68），短MOBI/KF8没有索引章节，不计全文检索覆盖；其他变体待验 |
 | TXT05 | 启动、重建、暂停让路正文抽取 | F2 | 本机准备/重建、共享取消/退役隔离、激活期禁止、宿主忙拒绝通过；Worker重启历史已有证据；让路/截止/进程重启待验 |
 | TXT06 | 当前书及跨书多查询正文检索 | F2 | 编译Text Desk真实Worker三查询两章桶去重、两书索引搜索/详情/无命中/空输入拒绝通过，宿主重读及global Agent结果一致；取消/迟到结果不交付/明确重试已复验，完整负载/其他格式待验，见第三十七/三十八流程 |
 | TXT07 | 引擎全文精确搜索并返回 CFI | F2 | 本机FB2真Worker跨三节精确搜索45条分页20/20/5及末项CFI打开原文通过；book/global Agent按12条续页一致；其他格式待验，见第四十流程 |

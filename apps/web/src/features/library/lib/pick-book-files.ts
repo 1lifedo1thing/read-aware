@@ -32,8 +32,10 @@ export const BOOK_FILE_EXTENSIONS = [
   "cbz",
   "cbr",
   "txt",
+  "text",
   "html",
   "htm",
+  "xhtml",
   "pdf",
 ] as const;
 

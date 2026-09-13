@@ -13,14 +13,16 @@
 开发热更新与桌面操作错开，使用隔离 `com.readaware.app.capability-e2e`，不触碰正式资料。
 只重跑受影响步骤；类型/内存端口模型评测/真实 Worker/桌面及外部平台证据分开记录，不推送。
 
-本次交接（第67批）：第66批CBR真实Text Desk图片控制已提交5d678fef；本批
-补5000×400/400×5000 CBZ图片初始适配至900×72/60×750、原生导入/解码通过。
-旋转仅状态/inline样式提交：document.hidden，120ms动画等待1.2秒仍currentTime0，
-computed transform仍identity，故最终布局/画面必须等真实前台，未强制结束动画。
-自有书/源/封面及灯箱清零，原两书保留；无代码改动/新门禁。primary PID15611/9224，
-release PID86059仍为a00eb3fa、不含第65批CBR修复，相关验收前须重建。
-CUA最近Mac locked、已反馈，不重复轮询；下一步未覆格式/actor及本机消费者，
-桌面可控后接续原生选择器、旋转终态/画面/焦点和发布包；跨平台/跨设备仍待验。
+本次交接（第68批）：PRC/AZW/KF8/FBZ/TEXT/HTM/XHTML七别名逐个原生导入、
+正文available及实际阅读器DOM通过，全部书/源/封面清零、原两书/会话hash保持。
+修复.text/.xhtml系统选择器、Rust外部打开白名单和关联配置遗漏；11项原生打开
+检查、web/desktop/Foliate类型通过。fb2.zip复合后缀的系统入口仍有缺口。
+新ReadAware Format Validation.app构建通过，含第65批CBR与本批入口修复，
+SHA5a2c7d73…，包内Info.plist有text/xhtml，尚未启动。旧release PID86059仍
+运行原ReadAware Packaged Validation.app；primary PID15611/9224保持，勿把新
+磁盘构建当成已运行。CUA最近仍locked，WebView hidden动画停0ms；未重试。
+下一步复合扩展名入口及未覆actor；桌面可控后先正常退出旧release，再运行同一
+隔离profile的新包，验系统选择/打开、旋转终态/画面/焦点。其他平台/跨设备待验。
 
 当前进度：基础门禁/受影响类型检查及 Web 构建通过，本机原生465 pass/2 ignored；
 原始固定首轮模型共247次，198机器通过、34失败、15执行/评分错误（不计先前1条

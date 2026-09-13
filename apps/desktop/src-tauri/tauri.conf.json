@@ -108,7 +108,8 @@
       },
       {
         "ext": [
-          "txt"
+          "txt",
+          "text"
         ],
         "name": "TXT",
         "description": "Plain text book",
@@ -118,7 +119,8 @@
       {
         "ext": [
           "html",
-          "htm"
+          "htm",
+          "xhtml"
         ],
         "name": "HTML",
         "description": "HTML document",
