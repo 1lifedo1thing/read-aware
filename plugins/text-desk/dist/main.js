@@ -89,6 +89,10 @@ var labels = {
   imageSaved: ["Image saved", "图片已保存", "圖片已儲存", "画像を保存しました", "Изображение сохранено", "Image enregistrée", "Bild gespeichert", "Imagen guardada"],
   searching: ["Searching", "搜索中", "搜尋中", "検索中", "Поиск", "Recherche en cours", "Suche läuft", "Buscando"],
   searchCancelled: ["Search cancelled", "搜索已取消", "搜尋已取消", "検索をキャンセルしました", "Поиск отменён", "Recherche annulée", "Suche abgebrochen", "Búsqueda cancelada"],
+  timedOut: ["Search timed out", "搜索超时", "搜尋逾時", "検索がタイムアウトしました", "Поиск превысил время ожидания", "La recherche a expiré", "Die Suche hat das Zeitlimit überschritten", "La búsqueda agotó el tiempo"],
+  scanLimit: ["Search stopped at its section limit", "搜索已达到分节上限", "搜尋已達到分節上限", "セクション上限で検索を停止しました", "Поиск остановлен на лимите разделов", "Recherche arrêtée à la limite de sections", "Suche am Abschnittslimit angehalten", "Búsqueda detenida en el límite de secciones"],
+  resultLimit: ["Search stopped at its result limit", "搜索已达到结果上限", "搜尋已達到結果上限", "結果上限で検索を停止しました", "Поиск остановлен на лимите результатов", "Recherche arrêtée à la limite de résultats", "Suche am Ergebnislimit angehalten", "Búsqueda detenida en el límite de resultados"],
+  stale: ["The book changed; search again", "书籍内容已变化，请重新搜索", "書籍內容已變更，請重新搜尋", "本の内容が変わりました。もう一度検索してください", "Книга изменилась; выполните поиск снова", "Le livre a changé ; relancez la recherche", "Das Buch wurde geändert; suche erneut", "El libro cambió; vuelve a buscar"],
   temporaryMarks: ["Temporary marks", "临时标记", "暫時標記", "一時マーク", "Временные отметки", "Marques temporaires", "Temporäre Markierungen", "Marcas temporales"],
   noTemporaryMarks: ["No temporary marks", "没有临时标记", "沒有暫時標記", "一時マークなし", "Нет временных отметок", "Aucune marque temporaire", "Keine temporären Markierungen", "Sin marcas temporales"],
   markResults: ["Mark these results", "标记本批结果", "標記這批結果", "この結果をマーク", "Отметить эти результаты", "Marquer ces résultats", "Diese Treffer markieren", "Marcar estos resultados"],
@@ -552,7 +556,318 @@ function hitDetail(ctx, hit, title) {
     { id: "search-book", label: tr(ctx.locale, "searchBook"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx, hit.bookId) }) }
   ] };
 }
+// ../../packages/core/src/host-commands.ts
+var PARAMETERLESS_HOST_COMMAND_IDS = [
+  "go-shelf",
+  "go-context",
+  "go-stats",
+  "open-settings",
+  "select",
+  "layout-grid",
+  "layout-list",
+  "sort-recent",
+  "sort-added",
+  "sort-title",
+  "sort-author",
+  "sort-progress",
+  "group-none",
+  "group-status",
+  "group-author",
+  "group-format"
+];
+var HOST_COMMAND_IDS = [...PARAMETERLESS_HOST_COMMAND_IDS, "open-book", "open-collection"];
+// ../../packages/core/src/domains.ts
+var DOMAIN_CATALOG = {
+  library: { version: "1.30.0", pluginAccess: ["read", "write"] },
+  reading: { version: "2.21.0", pluginAccess: ["read", "write"] },
+  annotations: { version: "2.2.0", pluginAccess: ["read", "write"] },
+  conversations: { version: "1.4.0", pluginAccess: ["read", "write"] },
+  settings: { version: "1.10.0", pluginAccess: [] },
+  memory: { version: "2.7.0", pluginAccess: ["read", "write"] }
+};
+var DOMAIN_PERMISSIONS = Object.entries(DOMAIN_CATALOG).flatMap(([domain, definition]) => definition.pluginAccess.map((access) => `${domain}:${access}`));
+var FULL_DOMAIN_GRANTS = Object.freeze(Object.fromEntries(Object.keys(DOMAIN_CATALOG).map((id) => [id, "write"])));
+// ../../packages/core/src/capabilities.ts
+var CONTRIBUTION_CATALOG = {
+  uriHandlers: { version: "1.0.0", permission: null },
+  selectionActions: { version: "1.2.0", permission: null },
+  headerActions: { version: "1.2.0", permission: null },
+  contextActions: { version: "1.0.0", permission: null },
+  commands: { version: "1.1.0", permission: null },
+  settingsOptions: { version: "1.0.0", permission: null },
+  voiceProviders: { version: "1.0.0", permission: null },
+  contentProviders: { version: "1.0.0", permission: null },
+  readerModes: { version: "1.1.0", permission: "reader:modes" },
+  agentTools: { version: "1.3.0", permission: "agent:tools" },
+  agentContextProviders: { version: "1.1.0", permission: "agent:context" },
+  agentRetrievalProviders: { version: "1.0.0", permission: "agent:retrieval" },
+  memoryCandidateProviders: { version: "1.1.0", permission: "agent:memory" },
+  themes: { version: "1.0.0", permission: "ui:themes" },
+  fonts: { version: "1.0.0", permission: "ui:themes" },
+  syncTransports: { version: "2.0.0", permission: "sync:transport" }
+};
+var HOST_SERVICE_CATALOG = {
+  storage: { version: "2.5.0", permission: null },
+  secrets: { version: "1.0.0", permission: null },
+  ui: { version: "1.14.0", permission: null },
+  schedules: { version: "2.0.0", permission: null },
+  session: { version: "2.0.0", permission: null },
+  plugins: { version: "1.1.0", permission: null },
+  maintenance: { version: "1.4.0", permission: null },
+  diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
+  logging: { version: "1.0.0", permission: null },
+  resources: { version: "1.5.0", permission: null },
+  sync: { version: "1.1.0", permission: "service:sync" },
+  network: { version: "2.2.0", permission: "service:network" },
+  llm: { version: "1.6.0", permission: "service:llm" },
+  clipboard: { version: "1.1.0", permission: "service:clipboard" }
+};
+function declaredPermissions(catalog) {
+  return [...new Set(Object.values(catalog).flatMap((entry) => entry.permission === null ? [] : [entry.permission]))];
+}
+var PLUGIN_PERMISSIONS = [
+  ...DOMAIN_PERMISSIONS,
+  ...declaredPermissions(CONTRIBUTION_CATALOG),
+  ...declaredPermissions(HOST_SERVICE_CATALOG)
+];
+// ../../packages/core/src/context-bundle.ts
+var CONTEXT_BUNDLE_MAX_BYTES = 1024 * 1024;
+// ../../packages/core/src/resource-external-formats.json
+var resource_external_formats_default = ["epub", "pdf", "txt", "fb2", "mobi", "azw", "azw3", "cbz", "cbr", "png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "heic", "mp3", "m4a", "wav", "ogg", "flac", "mp4", "m4v", "webm", "mov", "rtf", "docx", "odt", "xlsx", "ods", "pptx", "odp", "prc", "kf8", "fbz", "zip", "html", "htm"];
 
+// ../../packages/core/src/resources.ts
+var RESOURCE_EXTERNAL_EXTENSIONS = Object.freeze(resource_external_formats_default);
+var RESOURCE_MAX_CHUNK = 1024 * 1024;
+var RESOURCE_MAX_SIZE = 1024 * 1024 * 1024;
+var RESOURCE_LIFETIME_MS = 60 * 60 * 1000;
+// ../../packages/core/src/resource-download.ts
+var RESOURCE_DOWNLOAD_MAX_BYTES = 64 * 1024 * 1024;
+// ../../packages/core/src/book-images.ts
+var BOOK_IMAGE_MAX_BYTES = 16 * 1024 * 1024;
+// ../../packages/core/src/plugin-assets.ts
+var PLUGIN_ASSET_MAX_BYTES = 64 * 1024 * 1024;
+var PLUGIN_ASSET_TOTAL_BYTES = 512 * 1024 * 1024;
+// ../../packages/core/src/model-image.ts
+var MODEL_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+var MODEL_IMAGES_MAX_BYTES = 16 * 1024 * 1024;
+// ../../packages/plugin-types/src/book-location-search.ts
+var HARD_MAX_SECTIONS = 256;
+var HARD_MAX_HITS = 200;
+var HARD_MAX_EXCERPT_BYTES = 64 * 1024;
+var HARD_MAX_TIMEOUT_MS = 30000;
+var MAX_PAGE_SIZE = 50;
+var MAX_PAGE_CALLS = 256;
+var HIT_OVERHEAD_BYTES = 128;
+var TEXT_STATUSES = new Set([
+  "available",
+  "textless",
+  "unsupported",
+  "unsearched",
+  "partial"
+]);
+function optionLimit(value, fallback, hardMax, name) {
+  if (value === undefined)
+    return fallback;
+  if (!Number.isSafeInteger(value) || value < 1 || value > hardMax) {
+    throw Object.assign(new Error(`${name} is outside the bounded search limit`), { code: "library/invalid-search-options" });
+  }
+  return value;
+}
+function errorCode(error) {
+  return error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : undefined;
+}
+function isStale(error) {
+  const code = errorCode(error);
+  return code === "reader/stale-location" || code === "reader/stale-content";
+}
+function isCancelled(error) {
+  const code = errorCode(error);
+  return code === "library/cancelled" || code === "plugin/cancelled" || typeof DOMException !== "undefined" && error instanceof DOMException && error.name === "AbortError";
+}
+function invalidPage(message) {
+  return Object.assign(new Error(message), { code: "library/search-invalid-page" });
+}
+function validatePage(page, expectedBookId, expectedTotal, previousScanned, requestCursor) {
+  if (!page || typeof page !== "object" || page.bookId !== expectedBookId || typeof page.contentVersion !== "string" || !page.contentVersion || !Array.isArray(page.hits) || page.hits.length > MAX_PAGE_SIZE || !Number.isSafeInteger(page.scannedSections) || page.scannedSections < 0 || !Number.isSafeInteger(page.totalSections) || page.totalSections < 0 || page.scannedSections > page.totalSections || page.scannedSections < previousScanned || expectedTotal !== null && page.totalSections !== expectedTotal || !TEXT_STATUSES.has(page.textStatus) || page.nextCursor !== null && (typeof page.nextCursor !== "string" || !page.nextCursor || page.nextCursor.length > 1024)) {
+    throw invalidPage("Search page counters or shape are invalid");
+  }
+  if (page.nextCursor === null && page.scannedSections !== page.totalSections) {
+    throw invalidPage("A terminal search page must account for every section");
+  }
+  if (page.nextCursor !== null && page.nextCursor === requestCursor) {
+    throw invalidPage("Search cursor did not advance");
+  }
+  for (const hit of page.hits) {
+    if (!hit || typeof hit !== "object" || typeof hit.id !== "string" || !hit.excerpt || typeof hit.excerpt.pre !== "string" || typeof hit.excerpt.match !== "string" || typeof hit.excerpt.post !== "string") {
+      throw invalidPage("Search page contains an invalid hit");
+    }
+  }
+}
+function combineSignal(source) {
+  const controller = new AbortController;
+  const abort = () => {
+    if (!controller.signal.aborted)
+      controller.abort();
+  };
+  if (source) {
+    source.addEventListener("abort", abort, { once: true });
+    if (source.aborted)
+      abort();
+  }
+  return {
+    signal: controller.signal,
+    abort,
+    dispose: () => source?.removeEventListener("abort", abort)
+  };
+}
+function awaitAbortable(promise, signal, status2) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (outcome) => {
+      if (settled)
+        return;
+      settled = true;
+      signal.removeEventListener("abort", onAbort);
+      resolve(outcome);
+    };
+    const onAbort = () => finish({ kind: "aborted", status: status2() ?? "cancelled" });
+    signal.addEventListener("abort", onAbort, { once: true });
+    Promise.resolve(promise).then((value) => finish({ kind: "value", value }), (error) => finish({ kind: "error", error }));
+    if (signal.aborted)
+      onAbort();
+  });
+}
+function runResult(bookId, status2, contentVersion, hits, scannedSections, totalSections, textStatus) {
+  return { status: status2, bookId, contentVersion, hits, scannedSections, totalSections, textStatus };
+}
+async function searchAllBookLocations(reader, input, options = {}) {
+  const maxSections = optionLimit(options.maxSections, HARD_MAX_SECTIONS, HARD_MAX_SECTIONS, "maxSections");
+  const maxHits = optionLimit(options.maxHits, HARD_MAX_HITS, HARD_MAX_HITS, "maxHits");
+  const maxExcerptBytes = optionLimit(options.maxExcerptBytes, HARD_MAX_EXCERPT_BYTES, HARD_MAX_EXCERPT_BYTES, "maxExcerptBytes");
+  const timeoutMs = optionLimit(options.timeoutMs, HARD_MAX_TIMEOUT_MS, HARD_MAX_TIMEOUT_MS, "timeoutMs");
+  const encoder = new TextEncoder;
+  const deadline = Date.now() + timeoutMs;
+  let timedOut = false;
+  let timeoutHandle;
+  const combined = combineSignal(options.signal);
+  const abortStatus = () => {
+    if (options.signal?.aborted)
+      return "cancelled";
+    if (timedOut || Date.now() >= deadline) {
+      timedOut = true;
+      return "timed-out";
+    }
+    return null;
+  };
+  timeoutHandle = setTimeout(() => {
+    timedOut = true;
+    combined.abort();
+  }, timeoutMs);
+  let version = null;
+  let totalSections = 0;
+  let expectedTotal = null;
+  let scannedSections = 0;
+  let textStatus = "unsearched";
+  let cursor = input.cursor;
+  let pageCalls = 0;
+  let excerptBytes = 0;
+  const hits = [];
+  const seenCursors = new Set;
+  if (cursor)
+    seenCursors.add(cursor);
+  const terminal = (status2) => runResult(input.bookId, status2, status2 === "stale" ? null : version, [], scannedSections, totalSections, textStatus);
+  const emitProgress = async () => {
+    const callback = options.onProgress;
+    if (!callback)
+      return null;
+    const outcome = await awaitAbortable(Promise.resolve().then(() => callback({
+      scannedSections,
+      totalSections,
+      hitCount: hits.length,
+      contentVersion: version
+    })), combined.signal, abortStatus);
+    if (outcome.kind === "aborted")
+      return terminal(outcome.status);
+    if (outcome.kind === "error")
+      throw outcome.error;
+    return null;
+  };
+  try {
+    if (abortStatus())
+      return terminal(abortStatus());
+    while (true) {
+      if (pageCalls >= MAX_PAGE_CALLS)
+        return runResult(input.bookId, "scan-limit", version, hits, scannedSections, totalSections, textStatus);
+      const beforePage = abortStatus();
+      if (beforePage)
+        return terminal(beforePage);
+      const request = {
+        ...input,
+        limit: Math.min(input.limit ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE, maxHits - hits.length || 1),
+        ...cursor ? { cursor } : {},
+        ...version ? { contentVersion: version } : {}
+      };
+      const pageOutcome = await awaitAbortable(Promise.resolve().then(() => reader(request, { signal: combined.signal })), combined.signal, abortStatus);
+      if (pageOutcome.kind === "aborted")
+        return terminal(pageOutcome.status);
+      if (pageOutcome.kind === "error") {
+        if (isStale(pageOutcome.error))
+          return terminal("stale");
+        if (isCancelled(pageOutcome.error))
+          return terminal(abortStatus() ?? "cancelled");
+        throw pageOutcome.error;
+      }
+      const page = pageOutcome.value;
+      validatePage(page, input.bookId, expectedTotal, scannedSections, cursor);
+      if (version !== null && page.contentVersion !== version)
+        return terminal("stale");
+      if (version === null) {
+        if (input.contentVersion && page.contentVersion !== input.contentVersion)
+          return terminal("stale");
+        version = page.contentVersion;
+      }
+      if (page.nextCursor && seenCursors.has(page.nextCursor))
+        throw invalidPage("Search cursor was repeated");
+      if (expectedTotal === null)
+        expectedTotal = page.totalSections;
+      totalSections = expectedTotal;
+      scannedSections = page.scannedSections;
+      textStatus = page.textStatus;
+      pageCalls++;
+      const remainingBytes = maxExcerptBytes - excerptBytes;
+      let resultLimited = false;
+      for (const hit of page.hits) {
+        const hitBytes = encoder.encode(hit.excerpt.pre).byteLength + encoder.encode(hit.excerpt.match).byteLength + encoder.encode(hit.excerpt.post).byteLength + HIT_OVERHEAD_BYTES;
+        if (hits.length >= maxHits || hitBytes > remainingBytes || excerptBytes + hitBytes > maxExcerptBytes) {
+          resultLimited = true;
+          break;
+        }
+        hits.push(hit);
+        excerptBytes += hitBytes;
+      }
+      const progressResult = await emitProgress();
+      if (progressResult)
+        return progressResult;
+      if (resultLimited)
+        return runResult(input.bookId, "result-limit", version, hits, scannedSections, totalSections, textStatus);
+      const afterPage = abortStatus();
+      if (afterPage)
+        return terminal(afterPage);
+      if (!page.nextCursor)
+        return runResult(input.bookId, "completed", version, hits, scannedSections, totalSections, textStatus);
+      if (hits.length >= maxHits)
+        return runResult(input.bookId, "result-limit", version, hits, scannedSections, totalSections, textStatus);
+      seenCursors.add(page.nextCursor);
+      cursor = page.nextCursor;
+      if (scannedSections >= maxSections)
+        return runResult(input.bookId, "scan-limit", version, hits, scannedSections, totalSections, textStatus);
+    }
+  } finally {
+    if (timeoutHandle !== undefined)
+      clearTimeout(timeoutHandle);
+    combined.dispose();
+  }
+}
 // src/reader-session.ts
 async function ensureReadingSession(ctx, bookId) {
   const reading = ctx.domains.reading, current = await reading.queries.session();
@@ -639,16 +954,17 @@ function rangeSearchForm(ctx, bookId) {
     const query = String(values.query ?? "").trim();
     if (!query || query.length > 500)
       return { fieldErrors: { query: tr(ctx.locale, "invalidPassage") } };
-    return { view: await rangeResults(ctx, { bookId, query, matchCase: values.matchCase === true, wholeWords: values.wholeWords === true, limit: 20 }) };
+    return { view: rangeSearchTask(ctx, { bookId, query, matchCase: values.matchCase === true, wholeWords: values.wholeWords === true, limit: 20 }) };
   } };
 }
-async function rangeResults(ctx, input) {
-  const page = await ctx.domains.library.queries.books.searchLocations(input);
+function rangeList(ctx, input, run) {
+  const emptyKey = run.status === "cancelled" ? "searchCancelled" : run.status === "timed-out" ? "timedOut" : run.status === "scan-limit" ? "scanLimit" : run.status === "result-limit" ? "resultLimit" : run.status === "stale" ? "stale" : run.textStatus === "available" ? "noPassageMatches" : run.textStatus === "textless" ? "textless" : "unsupportedSections";
+  const title = run.status === "completed" ? input.query : `${input.query} · ${tr(ctx.locale, emptyKey)}`;
   return {
     kind: "list",
-    title: input.query,
-    emptyText: tr(ctx.locale, page.nextCursor ? "searchPending" : page.textStatus === "available" ? "noPassageMatches" : page.textStatus === "textless" ? "textless" : "unsupportedSections"),
-    items: page.hits.map((hit) => ({
+    title,
+    emptyText: tr(ctx.locale, emptyKey),
+    items: run.hits.map((hit) => ({
       id: hit.id,
       title: hit.excerpt.pre + hit.excerpt.match + hit.excerpt.post,
       icon: "magnifying-glass",
@@ -656,20 +972,120 @@ async function rangeResults(ctx, input) {
       onSelect: async () => ({ view: await rangeDetail(ctx, { range: hit.range }) })
     })),
     actions: [
-      ...page.hits.length ? [{
+      ...run.hits.length ? [{
         id: "mark-results",
         label: tr(ctx.locale, "markResults"),
         icon: "text-aa",
-        run: () => markPassages(ctx, page.hits.map((hit) => hit.range))
+        run: () => markPassages(ctx, run.hits.map((hit) => hit.range))
       }] : [],
-      ...page.nextCursor ? [{
-        id: "next",
-        label: tr(ctx.locale, "next"),
-        icon: "arrow-right",
-        run: async () => ({ view: await rangeResults(ctx, { ...input, contentVersion: page.contentVersion, cursor: page.nextCursor }), navigation: "replace" })
+      ...run.status === "timed-out" || run.status === "scan-limit" || run.status === "result-limit" ? [{
+        id: "retry",
+        label: tr(ctx.locale, "search"),
+        icon: "magnifying-glass",
+        run: () => ({ view: rangeSearchTask(ctx, input), navigation: "replace" })
       }] : []
     ]
   };
+}
+function progressView(ctx, input, value, cancel) {
+  return { kind: "blocks", title: input.query, blocks: [{
+    kind: "progress",
+    value: value.totalSections ? Math.min(value.scannedSections, value.totalSections) : null,
+    ...value.totalSections ? { max: value.totalSections, showValue: true } : {},
+    label: value.totalSections ? `${tr(ctx.locale, "searching")} (${value.scannedSections}/${value.totalSections})` : tr(ctx.locale, "searching"),
+    cancel: { id: "cancel", label: tr(ctx.locale, "cancelRequest"), run: cancel }
+  }] };
+}
+function rangeSearchTask(ctx, input) {
+  const controller = new AbortController;
+  let channel, revision = 0, started = false, pending = true;
+  const retry = {
+    id: "retry",
+    label: tr(ctx.locale, "search"),
+    icon: "magnifying-glass",
+    run: () => ({ view: rangeSearchTask(ctx, input), navigation: "replace" })
+  };
+  const cancelled = () => ({
+    kind: "list",
+    title: input.query,
+    items: [],
+    emptyText: tr(ctx.locale, "searchCancelled"),
+    actions: [retry]
+  });
+  const stop = () => {
+    controller.abort();
+    if (pending) {
+      pending = false;
+      current = cancelled();
+    }
+  };
+  let current = progressView(ctx, input, { scannedSections: 0, totalSections: 0, hitCount: 0, contentVersion: null }, async () => {
+    stop();
+    await publish();
+  });
+  const publish = async () => {
+    if (!channel)
+      return;
+    const target = channel;
+    try {
+      const receipt = await ctx.services.ui.publishView(target, { revision: ++revision, view: current });
+      if (receipt.status === "inactive" && channel === target) {
+        channel = undefined;
+        stop();
+      }
+    } catch (error) {
+      console.warn("Text Desk range search view publication failed", error);
+      if (channel === target) {
+        channel = undefined;
+        stop();
+      }
+    }
+  };
+  const search = async () => {
+    await publish();
+    if (controller.signal.aborted)
+      return;
+    try {
+      const run = await searchAllBookLocations((pageInput, options) => ctx.domains.library.queries.books.searchLocations(pageInput, options), input, { signal: controller.signal, onProgress: async (value) => {
+        if (controller.signal.aborted || !pending)
+          return;
+        current = progressView(ctx, input, value, async () => {
+          stop();
+          await publish();
+        });
+        await publish();
+      } });
+      if (controller.signal.aborted)
+        return;
+      pending = false;
+      current = run.status === "cancelled" ? cancelled() : rangeList(ctx, input, run);
+    } catch (error) {
+      if (controller.signal.aborted)
+        return;
+      const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "library/content-unavailable";
+      const retryable = ["db/locked", "library/text-extraction-failed", "library/text-busy"].includes(code);
+      pending = false;
+      current = { kind: "blocks", title: input.query, blocks: [
+        { kind: "error", code },
+        ...retryable ? [{ kind: "actions", actions: [retry] }] : []
+      ] };
+    }
+    await publish();
+  };
+  return { ...current, onClose: stop, live: { subscribe(next) {
+    channel = next;
+    if (!started) {
+      started = true;
+      search();
+    } else
+      publish();
+    return { dispose() {
+      if (channel === next) {
+        channel = undefined;
+        stop();
+      }
+    } };
+  } } };
 }
 async function rangeDetail(ctx, input) {
   const page = await ctx.domains.library.queries.books.readRange(input);
@@ -847,7 +1263,7 @@ async function imageList(ctx, source, offsets = [0]) {
   };
 }
 async function imageDetail(ctx, image) {
-  const query = { image: image.image }, resources = ctx.services.resources;
+  const query = { image: image.image }, resources2 = ctx.services.resources;
   const result = await ctx.domains.library.queries.books.openImageResource(query);
   const title = image.alt || `${tr(ctx.locale, "image")} ${image.image.index + 1}`;
   if (result.status !== "ready")
@@ -887,7 +1303,7 @@ async function imageDetail(ctx, image) {
         const receipt = await ctx.services.ui.reader.image.open(query, guard);
         return receipt.status === "opened" ? { close: "all" } : { toast: tr(ctx.locale, `image_${receipt.reason}`) };
       } },
-      { id: "save-image", label: tr(ctx.locale, "saveImage"), icon: "download-simple", run: async () => (await resources.save(resource.id, resource.name)).saved ? { toast: tr(ctx.locale, "imageSaved") } : null },
+      { id: "save-image", label: tr(ctx.locale, "saveImage"), icon: "download-simple", run: async () => (await resources2.save(resource.id, resource.name)).saved ? { toast: tr(ctx.locale, "imageSaved") } : null },
       { id: "copy-image", label: tr(ctx.locale, "copyImage"), icon: "copy", run: async () => {
         await ctx.services.clipboard.writeImage(resource.id);
         return { toast: tr(ctx.locale, "imageCopied") };
@@ -899,7 +1315,7 @@ async function imageDetail(ctx, image) {
     ],
     onClose: () => {
       inference.abort();
-      return resources.release(resource.id);
+      return resources2.release(resource.id);
     }
   };
 }
