@@ -1649,9 +1649,19 @@ export type PluginAnnotationsDomain = {
 };
 
 /**
- * Conversations 1.2 — authorized queries, global draft selection and stop/clear
- * controls. Message generation stays with the host chat runtime.
+ * Conversations 1.5 supports current/specified-book grants for book transcripts,
+ * summaries, runtime, actor-owned turn requests, events and stop/clear controls.
+ * listThreads/getThread/createThread/selectThread are global-thread operations
+ * requiring an all-books grant. Restricted runtime revisions reflect only the
+ * visible book/session state, and selectedGlobalThreadId is null. Pending proposals
+ * retire on a current-book/session change; only host acceptance starts a turn.
+ * Message generation stays with the host chat runtime.
  */
+/** A book-scoped installation receives no selected global thread identity. */
+export type PluginConversationRuntimeSnapshot = Omit<import("@read-aware/core").ConversationRuntimeSnapshot, "selectedGlobalThreadId"> & {
+  selectedGlobalThreadId: string | null;
+};
+
 export type PluginConversationsDomain = {
   queries: {
     /** Conversations 1.4: stored rolling summary of a book/global thread, or null.
@@ -1659,7 +1669,7 @@ export type PluginConversationsDomain = {
     getInsights(target: import("@read-aware/core").ConversationTarget): Promise<string | null>;
     /** Up to 128 recently retained host requests, filtered to this actor; no text or other actors' requests. */
     turnRequests(): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot[]>;
-    runtime(): Promise<import("@read-aware/core").ConversationRuntimeSnapshot>;
+    runtime(): Promise<PluginConversationRuntimeSnapshot>;
     getBookThread(bookId: string): Promise<PluginChatMessage[]>;
     listThreads(): Promise<PluginThreadSummary[]>;
     getThread(threadId: string): Promise<PluginChatMessage[]>;
@@ -1678,7 +1688,7 @@ export type PluginConversationsDomain = {
   };
   events: { subscribe: DomainSubscribe<ConversationDomainEventType>;
     observeInvalidation(handler: (event: import("@read-aware/core").ProjectionInvalidation) => unknown): PluginDisposable;
-    observeRuntime(handler: (snapshot: import("@read-aware/core").ConversationRuntimeSnapshot) => unknown): PluginDisposable };
+    observeRuntime(handler: (snapshot: PluginConversationRuntimeSnapshot) => unknown): PluginDisposable };
 };
 
 export type PluginSettingsDomain = {

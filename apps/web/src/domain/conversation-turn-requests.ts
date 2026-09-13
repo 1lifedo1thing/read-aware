@@ -38,7 +38,7 @@ export class ConversationTurnRequests {
     return entry ? { ...this.copy(entry), owner: entry.owner,
       ...(entry.request && "text" in entry.request ? { text: entry.request.text } : {}) } : null;
   }
-  request(owner: EventOrigin, input: ConversationTurnRequest, signal?: AbortSignal) {
+  request(owner: EventOrigin, input: ConversationTurnRequest, signal?: AbortSignal, onRetire?: () => void) {
     const request = normalizeConversationTurnRequest(input);
     signal?.throwIfAborted();
     const surface = this.surfaces.get(request.target.id), state = surface?.state();
@@ -55,7 +55,7 @@ export class ConversationTurnRequests {
     const timer = setTimeout(() => this.finish(entry, "expired"), this.lifetimeMs);
     const entry: Entry = { owner, surface, generation: state.generation, request,
       snapshot: { id, target: request.target, action: request.action, status: "pending", createdAt: Date.now() },
-      release: () => { clearTimeout(timer); signal?.removeEventListener("abort", cancel); } };
+      release: () => { clearTimeout(timer); signal?.removeEventListener("abort", cancel); onRetire?.(); } };
     this.entries.set(id, entry);
     signal?.addEventListener("abort", cancel, { once: true });
     this.changed();

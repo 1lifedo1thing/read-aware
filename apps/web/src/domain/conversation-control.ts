@@ -30,8 +30,8 @@ export function conversationCommands(origin: EventOrigin) {
     signal?.throwIfAborted(); return target;
   };
   return {
-    requestTurn: async (input: import("@read-aware/core").ConversationTurnRequest, signal?: AbortSignal) =>
-      conversationTurnRequests.request(origin, input, signal),
+    requestTurn: async (input: import("@read-aware/core").ConversationTurnRequest, signal?: AbortSignal, onRetire?: () => void) =>
+      conversationTurnRequests.request(origin, input, signal, onRetire),
     cancelTurnRequest: async (id: string, signal?: AbortSignal) => {
       signal?.throwIfAborted(); return conversationTurnRequests.cancel(origin, id);
     },
@@ -63,7 +63,7 @@ export function conversationCommands(origin: EventOrigin) {
         signal?.throwIfAborted();
         await discardAgentThread(target.kind, target.id);
         signal?.throwIfAborted();
-        await clearConversation(target.id, origin);
+        await clearConversation(target.id, origin, signal);
         emitAppEvent("conversations-changed", {});
       }, signal);
       return { status: "completed" as const, target };

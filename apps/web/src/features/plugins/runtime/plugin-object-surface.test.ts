@@ -42,6 +42,25 @@ test("the production plugin context exposes book-scoped memory with write grants
   } finally { spy.mockRestore(); actor.lifecycle.stop(); await actor.lifecycle.drainCleanups(); }
 });
 
+test("the production plugin context exposes the permitted book conversation without a write grant", async () => {
+  const original = domain.createActorDomainView;
+  const spy = spyOn(domain, "createActorDomainView").mockImplementation((...args) => {
+    const view = original(...args);
+    if (view.conversations) view.conversations.queries.getBookThread = async id => [{ id: "m", role: "user", content: id, createdAt: "t" }];
+    return view;
+  });
+  const actor = buildPluginContext({ id: "fixed-conversation-proof", name: "Book conversation", version: "1.0.0",
+    schemaVersion: 1, requires: {}, permissions: ["conversations:read"] }, "1.0.0", [], { mode: "book", bookId: "book-a" });
+  actor.lifecycle.promote();
+  try {
+    const conversations = actor.context.domains.conversations!;
+    expect(conversations.commands).toBeUndefined();
+    expect((await conversations.queries.getBookThread("book-a"))[0]?.content).toBe("book-a");
+    expect((await conversations.queries.runtime()).selectedGlobalThreadId).toBeNull();
+    expect(() => conversations.queries.getBookThread("book-b")).toThrow(expect.objectContaining({ code: "plugin/object-access-denied" }));
+  } finally { spy.mockRestore(); actor.lifecycle.stop(); await actor.lifecycle.drainCleanups(); }
+});
+
 test.each(([[], ["reading:read"], ["annotations:read"]] as PluginPermission[][]).map(permissions => ({ permissions })))(
   "restricted workspace cannot bypass object grants without library permission: %j", async ({ permissions }) => {
     const actor = buildPluginContext({ id: "object-surface-proof", name: "Object scope", version: "1.0.0",

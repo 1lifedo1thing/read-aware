@@ -19,6 +19,7 @@ export async function conversationSummaries(ctx: PluginContext, page = 0): Promi
       { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await conversationSummaries(ctx, current), navigation: "replace" }) },
       { id: "current", label: c.current, icon: "chat-circle", run: async () => {
         const state = await domain.queries.runtime();
+        if (state.selectedGlobalThreadId === null) throw Object.assign(Error("Global conversation is outside this installation's book grant"), { code: "plugin/object-access-denied" });
         return { view: await conversationControls(ctx, { kind: "global", id: state.selectedGlobalThreadId }, c.current) };
       } },
       { id: "requests", label: c.requests, icon: "list", run: async () => ({ view: await turnRequestsView(ctx) }) },

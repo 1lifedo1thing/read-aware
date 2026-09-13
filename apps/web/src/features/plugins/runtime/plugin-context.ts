@@ -8,6 +8,7 @@ import { resolvePluginBookCards } from "./plugin-book-cards";
 import { wrapReadingIntent } from "./plugin-reading-intents";
 import { pluginDurableKV } from "./plugin-durable-kv";
 import { scopePluginMemory } from "./plugin-scoped-memory";
+import { scopePluginConversations } from "./plugin-scoped-conversations";
 /**
  * Builds the `ctx` handed to a plugin's activate(). This is a POLICY shell:
  * the data surface itself is the shared domain layer (src/domain), built
@@ -1645,36 +1646,11 @@ export function buildPluginContext(
     };
   }
 
-  // Conversations combine book and global threads and have no single-book
-  // projection at this boundary. Restricted grants keep the surface visible
-  // but explicitly unavailable until each method has an object fence.
-  if (objectAccess.restricted && ctx.domains.conversations) {
-    const rawConversations = ctx.domains.conversations;
-    ctx.domains.conversations = {
-      queries: {
-        getInsights: denyPluginBookOperation("domains.conversations.queries.getInsights"),
-        turnRequests: denyPluginBookOperation("domains.conversations.queries.turnRequests"),
-        runtime: denyPluginBookOperation("domains.conversations.queries.runtime"),
-        getBookThread: denyPluginBookOperation("domains.conversations.queries.getBookThread"),
-        listThreads: denyPluginBookOperation("domains.conversations.queries.listThreads"),
-        getThread: denyPluginBookOperation("domains.conversations.queries.getThread"),
-      },
-      events: {
-        subscribe: denyPluginBookOperation("domains.conversations.events.subscribe"),
-        observeInvalidation: denyPluginBookOperation("domains.conversations.events.observeInvalidation"),
-        observeRuntime: denyPluginBookOperation("domains.conversations.events.observeRuntime"),
-      },
-      ...(rawConversations.commands ? {
-        commands: {
-          requestTurn: denyPluginBookOperation("domains.conversations.commands.requestTurn"),
-          cancelTurnRequest: denyPluginBookOperation("domains.conversations.commands.cancelTurnRequest"),
-          createThread: denyPluginBookOperation("domains.conversations.commands.createThread"),
-          selectThread: denyPluginBookOperation("domains.conversations.commands.selectThread"),
-          stop: denyPluginBookOperation("domains.conversations.commands.stop"),
-          clear: denyPluginBookOperation("domains.conversations.commands.clear"),
-        },
-      } : {}),
-    } as typeof ctx.domains.conversations;
+  if (objectAccess.restricted && domain.conversations) {
+    ctx.domains.conversations = scopePluginConversations(domain.conversations, objectAccess, lifecycle, {
+      current: () => latestCurrent,
+      observe: handler => readingRuntime.observe(() => handler()),
+    }, selfOrigin);
   }
 
   if (domain.memory) {

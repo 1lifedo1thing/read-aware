@@ -1,7 +1,7 @@
 import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { isTauri } from "../../../platform/environment";
-import { commitDomainEvents, type DomainEventDraft } from "../../../platform/domain-events";
+import { broadcastDomainEventDrafts, commitDomainEvents, mintEventRows, type DomainEventDraft } from "../../../platform/domain-events";
 import { createLogger } from "../../../platform/logger";
 import type { EventOrigin } from "@read-aware/core";
 import type { ChatAssistantPart, ChatAttachment, ChatMessage } from "./chat-types";
@@ -220,17 +220,22 @@ export async function saveConversation(
   });
 }
 
-export async function clearConversation(conversationId: string, origin: EventOrigin = "user"): Promise<void> {
+export async function clearConversation(conversationId: string, origin: EventOrigin = "user", signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
   if (!isTauri()) {
     memoryStore.delete(conversationId);
     return;
   }
   return runDomainWrite(async () => {
-    // Applying the event drops the messages and tombstones the conversation;
-    // `ai_chat_clear` additionally removes any error stubs, which are local-only
-    // rows the log never described.
-    await commitDomainEvents({ type: "aiConversation.cleared", payload: { conversationId }, origin });
-    await invoke("ai_chat_clear", { conversationId });
+    signal?.throwIfAborted();
+    const draft: DomainEventDraft = { type: "aiConversation.cleared", payload: { conversationId }, origin };
+    const events = await mintEventRows([draft]);
+    signal?.throwIfAborted();
+    // The event deletes every message (including local error stubs) and
+    // tombstones in the same transaction. No second projection write can
+    // overwrite the event timestamp or erase a subsequently appended turn.
+    await invoke("commit_events", { events });
+    broadcastDomainEventDrafts([draft]);
     knownEventIds.set(conversationId, new Set());
   });
 }

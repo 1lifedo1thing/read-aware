@@ -1,13 +1,16 @@
 import { expect, test } from "bun:test";
 import type { PluginContext, PluginDetailView, PluginFormView, PluginHeaderAction, PluginListView, PluginModule, PluginView, PluginViewResult } from "@read-aware/plugin-types";
-import { conversationControls } from "../src/conversation-controls";
+import { conversationControls, type ConversationTarget } from "../src/conversation-controls";
 import { conversationSummaries } from "../src/conversation-summaries";
 import { turnRequestsView } from "../src/turn-requests";
 import { ConversationTurnRequests } from "../../../apps/web/src/domain/conversation-turn-requests";
 
 const target = { kind: "global" as const, id: "thread-test" };
-function fixture() {
-  const runtime = { revision: 1, selectedGlobalThreadId: target.id, sessions: [{ ...target, sessionId: "session", loading: false, streaming: false, messageCount: 2 }] };
+function fixture(selectedTarget: ConversationTarget = target) {
+  const target = selectedTarget;
+  const runtime: Awaited<ReturnType<NonNullable<PluginContext["domains"]["conversations"]>["queries"]["runtime"]>> = {
+    revision: 1, selectedGlobalThreadId: target.kind === "global" ? target.id : null,
+    sessions: [{ ...target, sessionId: "session", loading: false, streaming: false, messageCount: 2 }] };
   const requests = new ConversationTurnRequests(() => {});
   let sends = 0, drafts = 0, retries = 0, disposed = 0;
   const generation = {};
@@ -15,7 +18,7 @@ function fixture() {
     send: () => { sends++; return true; }, draft: () => { drafts++; return true; }, retry: () => { retries++; return true; } });
   const writes: unknown[] = [], frames: PluginView[] = [];
   let handler: (state: typeof runtime) => unknown = () => {};
-  const ctx = { locale: "en", grants: { book: { mode: "all" } }, domains: { conversations: {
+  const ctx = { locale: "en", grants: { book: target.kind === "book" ? { mode: "book", bookId: target.id } : { mode: "all" } }, domains: { conversations: {
     queries: { runtime: async () => runtime, listThreads: async () => [{ id: target.id, title: "Thread" }],
       turnRequests: async () => requests.list("plugin:memory-desk") },
     commands: {
@@ -162,5 +165,31 @@ test("compiled command routes from summaries to a host-owned pending send", asyn
     expect(await form.onSubmit({ text: "Compiled request" })).toEqual({ close: true, toast: "Awaiting host confirmation" });
     expect(f.requests.pending(target.id)?.text).toBe("Compiled request");
     expect(f.counts().sends).toBe(0);
+  } finally { f.cleanup(); }
+});
+
+test("compiled book-scoped command reaches book summary and proposes a turn with no global thread access", async () => {
+  const bookTarget = { kind: "book" as const, id: "book-one" }, f = fixture(bookTarget);
+  try {
+    let run!: () => Promise<PluginViewResult>;
+    Object.assign(f.ctx.domains, { memory: {}, library: { queries: { books: { list: async () => [{ id: bookTarget.id, title: "Book One" }] } } }, reading: { commands: {} } });
+    f.ctx.domains.conversations!.queries.getInsights = async target => { expect(target).toEqual(bookTarget); return "Stored book summary"; };
+    f.ctx.domains.conversations!.queries.listThreads = async () => { throw Error("Global thread listing was not authorized"); };
+    Object.assign(f.ctx, { contributions: { commands: { register: (c: { run: typeof run }) => { run = c.run; return { dispose() {} }; } },
+      headerActions: { register: () => ({ dispose() {} }) } } });
+    const plugin = (await import(new URL("../dist/main.js", import.meta.url).href)).default as PluginModule;
+    await plugin.activate(f.ctx);
+    const root = view(await run()) as PluginListView; expect(root.items.map(item => item.id)).toEqual([bookTarget.id]);
+    const book = view(await root.items[0]!.onSelect!()) as PluginListView;
+    const summary = view(await book.items.find(item => item.id === "summary")!.onSelect!());
+    const controls = view(await action(summary, "controls"));
+    expect(detail(controls).actions!.some(item => item.id === "select")).toBe(false);
+    const form = view(await action(controls, "send")) as PluginFormView;
+    await form.onSubmit({ text: "Question about this book" });
+    expect(f.requests.pending(bookTarget.id)?.text).toBe("Question about this book");
+    expect(f.counts().sends).toBe(0);
+    const clear = view(await action(controls, "clear")) as PluginFormView;
+    expect(await clear.onSubmit({ confirm: false })).toHaveProperty("fieldErrors");
+    await clear.onSubmit({ confirm: true }); expect(f.writes).toContainEqual({ clear: bookTarget });
   } finally { f.cleanup(); }
 });
