@@ -138,6 +138,35 @@ domain writes. General callback ownership, cancellation of other host tasks,
 wire-envelope validation and packaged CSP remain separate acceptance work; see
 [implementation and desktop evidence](./host-capability-delivery.md).
 
+### Book Object Access
+
+The user selects `all`, `current`, or `book` (one `bookId`) during installation
+or in plugin settings. Domain permissions remain required. The Worker receives
+frozen `ctx.grants.book` metadata; changing that object cannot change authority.
+A missing historical record is explicitly shown as legacy full-library access;
+a malformed saved grant fails closed.
+
+`current` follows the active reader book and fences in-flight work when that
+book/session changes. `book` remains bound to the selected book even while another
+book is open. Queries, returned objects, annotation writes, resources and book
+callbacks share the host policy. Cross-library memory/conversation/workspace
+operations that cannot be safely scoped are rejected with
+`plugin/object-access-denied`. Some writes without a cancellable dispatch boundary
+are unavailable in current-book mode; a domain permission alone does not bypass
+that limit. Independent picked/created files retain their existing permissions.
+
+Changing access drains the previous Worker, durably saves the new grant, then
+starts the replacement. Failed persistence or unconfirmed termination cannot
+start a replacement with wider access. Backup restore preserves device grants;
+source plugins require fresh consent, and the selected grant is applied in the
+same SQLite transaction as restoration.
+
+Annotation Desk scopes its lists, creation, editor saves and batches to this
+metadata. Restricted forms omit the all-books option and reject stale or mixed
+book operations. Deterministic host, Worker protocol, consumer and native backup
+checks cover this implementation; real Tauri authorization, revocation and editor
+acceptance remain pending in the current bounded goal.
+
 ### Network 2.0 Authorization
 
 [代码] `service:network` exposes `network.fetch` and `network.policy`, but arbitrary
