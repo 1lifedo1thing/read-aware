@@ -44,7 +44,8 @@ export function buildRuntimeDeps(): RuntimeDeps {
   const conversations = createConversationsDomain("agent");
   const interactions = createUserInteractionPort();
   return {
-    readingAiActions,
+    readingAiActions: { enabled: readingAiActions.enabled,
+      run: (action, bookId, signal) => readingAiActions.run(action, bookId, signal, "agent") },
     schedules: { list: async query => pluginSchedules.list(query), control: (input, signal) => pluginSchedules.control(input, signal) },
     sync: hostSync,
     maintenance: hostMaintenance,

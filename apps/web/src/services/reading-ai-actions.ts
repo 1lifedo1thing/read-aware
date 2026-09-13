@@ -1,4 +1,5 @@
 import { AppError, READING_AI_ACTIONS, type ReadingAiAction, type ReadingAiContext, type ReadingAiPort, type ReadingSessionSnapshot, type BookRangeQuery, type BookRangePage } from "@read-aware/core";
+import { causalActor, type DomainActor } from "../platform/domain-actor";
 
 type Preferences = { features: Record<ReadingAiAction, boolean>; sendHighlightedText: boolean; sendSurroundingContext: boolean };
 type Surface = { send(context: ReadingAiContext): "loading" | "busy" | "started" };
@@ -6,9 +7,9 @@ type Host = {
   preferences(): Preferences;
   snapshot(): ReadingSessionSnapshot;
   readRange(query: BookRangeQuery, signal?: AbortSignal): Promise<BookRangePage>;
-  chapter(bookId: string, href: string, signal?: AbortSignal): Promise<number | undefined>;
+  chapter(bookId: string, href: string, signal: AbortSignal, origin: DomainActor): Promise<number | undefined>;
   prompt(action: ReadingAiAction, chapterIndex?: number): string;
-  openChat(bookId: string, sessionId: string, signal?: AbortSignal): Promise<unknown>;
+  openChat(bookId: string, sessionId: string, signal: AbortSignal, origin: DomainActor): Promise<unknown>;
   observe(handler: () => void): () => void;
 };
 type Pending = { bookId: string; attempt(): void; reject(error: unknown): void };
@@ -35,7 +36,8 @@ export class ReadingAiActions implements ReadingAiPort {
     };
   }
   flush(bookId: string) { if (this.pending?.bookId === bookId) this.pending.attempt(); }
-  async run(action: ReadingAiAction, answeringBookId?: string, callerSignal?: AbortSignal) {
+  async run(action: ReadingAiAction, answeringBookId?: string, callerSignal?: AbortSignal, origin: DomainActor = "user") {
+    origin = causalActor(origin);
     const invalidated = new AbortController();
     const signal = callerSignal ? AbortSignal.any([callerSignal, invalidated.signal]) : invalidated.signal;
     signal?.throwIfAborted(); this.gate(action);
@@ -57,7 +59,7 @@ export class ReadingAiActions implements ReadingAiPort {
     let context: ReadingAiContext;
     if (action === "summarizeChapter") {
       if (!captured.location.href) throw new AppError("reader/invalid-target", "Current chapter is unavailable");
-      const index = await this.host.chapter(captured.bookId, captured.location.href, signal);
+      const index = await this.host.chapter(captured.bookId, captured.location.href, signal, origin);
       current();
       if (index === undefined) throw new AppError("reader/invalid-target", "Current chapter could not be resolved");
       context = { action, bookId: captured.bookId, prompt: this.host.prompt(action, index) };
@@ -90,7 +92,7 @@ export class ReadingAiActions implements ReadingAiPort {
       } };
     }
     current();
-    await this.host.openChat(captured.bookId, captured.sessionId, signal);
+    await this.host.openChat(captured.bookId, captured.sessionId, signal, origin);
     current();
     if (answeringBookId !== undefined) return { status: "context" as const, context };
     if (this.pending) throw new AppError("ui/unavailable", "Another reading action is pending");

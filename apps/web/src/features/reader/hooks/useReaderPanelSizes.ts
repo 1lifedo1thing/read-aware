@@ -4,6 +4,7 @@ import { useToast } from "@read-aware/ui";
 import { describeError } from "../../../i18n";
 import { IpcError } from "../../../platform/ipc";
 import { createLogger } from "../../../platform/logger";
+import { actorFromEvent, causalActor, stampEventCause } from "../../../platform/domain-actor";
 import {
   clampPanelWidth,
   readerPanelSizesAtom,
@@ -28,7 +29,8 @@ export function useReaderPanelSizes() {
     (key: keyof ReaderPanelSizes, deltaPx: number) => {
       if (!Number.isFinite(deltaPx)) return;
       changed.current = key;
-      setSizes((prev) => ({ ...prev, [key]: clampPanelWidth(prev[key] + deltaPx) }));
+      const origin = causalActor("user");
+      setSizes((prev) => stampEventCause({ ...prev, [key]: clampPanelWidth(prev[key] + deltaPx) }, origin));
     },
     [setSizes],
   );
@@ -37,8 +39,9 @@ export function useReaderPanelSizes() {
     const panel = changed.current;
     changed.current = null;
     if (!panel) return;
-    void updateReaderPanelWidth(panel, store.get(readerPanelSizesAtom)[panel]).catch(error => {
-      store.set(readerPanelSizesAtom, readReaderPanelSizes());
+    const sizes = store.get(readerPanelSizesAtom), origin = actorFromEvent(sizes, "user");
+    void updateReaderPanelWidth(panel, sizes[panel], undefined, origin).catch(error => {
+      if (store.get(readerPanelSizesAtom) === sizes) store.set(readerPanelSizesAtom, readReaderPanelSizes(origin));
       log.warn("Panel width save failed", error);
       // Native KV failures already have a global localized write-failure toast.
       if (!(error instanceof IpcError && error.command === "set_kv")) toast({ variant: "destructive", description: describeError(error).body });

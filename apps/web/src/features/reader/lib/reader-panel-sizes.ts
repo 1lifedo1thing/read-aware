@@ -1,4 +1,5 @@
 import { atom } from "jotai";
+import { stampEventCause, causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { assertReaderPanelWidth, MIN_READER_PANEL_WIDTH, MAX_READER_PANEL_WIDTH, type ReaderPanelSizes, type ResizableReaderPanel } from "@read-aware/core";
 
 /**
@@ -22,9 +23,12 @@ export function clampPanelWidth(px: number): number {
   return Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, Math.round(px)));
 }
 
-export function readReaderPanelSizes(): ReaderPanelSizes {
+export function readReaderPanelSizes(origin?: DomainActor, raw?: string | null): ReaderPanelSizes {
+  return stampEventCause(parseReaderPanelSizes(raw), origin);
+}
+function parseReaderPanelSizes(raw?: string | null): ReaderPanelSizes {
   try {
-    const raw = localKV.getItem(STORAGE_KEY);
+    if (raw === undefined) raw = localKV.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_SIZES };
     const parsed = JSON.parse(raw) as Partial<ReaderPanelSizes>;
     return {
@@ -37,11 +41,12 @@ export function readReaderPanelSizes(): ReaderPanelSizes {
   }
 }
 
-export function updateReaderPanelWidth(panel: ResizableReaderPanel, width: number, signal?: AbortSignal): Promise<void> {
+export function updateReaderPanelWidth(panel: ResizableReaderPanel, width: number, signal?: AbortSignal, origin: DomainActor = "user"): Promise<void> {
   assertReaderPanelWidth(panel, width);
+  origin = causalActor(origin);
   return afterLocalKVWrites(async () => {
     signal?.throwIfAborted();
-    await localKV.setItemAsync(STORAGE_KEY, JSON.stringify({ ...readReaderPanelSizes(), [panel]: width }));
+    await localKV.setItemAsync(STORAGE_KEY, JSON.stringify({ ...readReaderPanelSizes(), [panel]: width }), origin);
     signal?.throwIfAborted();
   });
 }
@@ -50,5 +55,5 @@ export function updateReaderPanelWidth(panel: ResizableReaderPanel, width: numbe
 export const readerPanelSizesAtom = atom<ReaderPanelSizes>(readReaderPanelSizes());
 readerPanelSizesAtom.onMount = set => {
   set(readReaderPanelSizes());
-  return onLocalKVChange(key => { if (key === STORAGE_KEY) set(readReaderPanelSizes()); });
+  return onLocalKVChange((key, value, origin) => { if (key === STORAGE_KEY) set(readReaderPanelSizes(origin, value)); });
 };

@@ -1,4 +1,4 @@
-import { actorCause, actorOrigin, copyEventCause, stampEventCause, type DomainActor } from "./domain-actor";
+import { actorCause, actorOrigin, causalActor, copyEventCause, stampEventCause, type DomainActor } from "./domain-actor";
 /**
  * The device-local persistence seam.
  *
@@ -78,24 +78,28 @@ function notifyCommit(commit: KVCommit): void {
   }
 }
 
-const changeListeners = new Set<(key: string, value: string | null) => void>();
+const changeListeners = new Set<(key: string, value: string | null, origin: DomainActor) => void>();
+const changing = new Map<string, object>();
 /** Optimistic changes and rollbacks, for UI and Worker mirrors; not a durable-write feed. */
-export function onLocalKVChange(listener: (key: string, value: string | null) => void): () => void {
+export function onLocalKVChange(listener: (key: string, value: string | null, origin: DomainActor) => void): () => void {
   changeListeners.add(listener);
   return () => changeListeners.delete(listener);
 }
-function notifyChange(key: string, value: string | null): void {
-  for (const listener of [...changeListeners]) {
-    try { listener(key, value); } catch (error) { log.error("KV mirror observer failed", error); }
-  }
+function notifyChange(key: string, value: string | null, origin: DomainActor = causalActor("system")): void {
+  const notification = {}; changing.set(key, notification);
+  try { for (const listener of [...changeListeners]) {
+    // A reentrant write already delivered the newer value and its own source.
+    if (changing.get(key) !== notification) break;
+    try { listener(key, value, origin); } catch (error) { log.error("KV mirror observer failed", error); }
+  } } finally { if (changing.get(key) === notification) changing.delete(key); }
 }
 const writes = new KVWriteQueue({
   read: key => snapshot?.get(key) ?? null,
-  mirror: (key, value) => {
+  mirror: (key, value, origin) => {
     const previous = snapshot?.get(key) ?? null;
     if (value === null) snapshot?.delete(key);
     else (snapshot ??= new Map()).set(key, value);
-    if (value !== previous) notifyChange(key, value);
+    if (value !== previous) notifyChange(key, value, origin);
   },
   persist: (key, value) => value === null ? invoke<void>("delete_kv", { key }) : invoke<void>("set_kv", { key, value }),
   committed: notifyWrite,
@@ -143,8 +147,9 @@ export const localKV = {
   setItem(key: string, value: string, origin: KVWriteOrigin = "local"): void {
     if (!isTauri()) {
       localStorage.setItem(key, value);
-      notifyChange(key, value);
-      notifyCommit({ entries: [{ key, value }], source: origin, actor: null });
+      const cause = causalActor("system");
+      notifyChange(key, value, cause);
+      notifyCommit(stampEventCause({ entries: [{ key, value }], source: origin, actor: null }, cause));
       return;
     }
     void writeLocal([key], () => writes.write(key, value, origin));
@@ -153,8 +158,9 @@ export const localKV = {
   removeItem(key: string, origin: KVWriteOrigin = "local"): void {
     if (!isTauri()) {
       localStorage.removeItem(key);
-      notifyChange(key, null);
-      notifyCommit({ entries: [{ key, value: null }], source: origin, actor: null });
+      const cause = causalActor("system");
+      notifyChange(key, null, cause);
+      notifyCommit(stampEventCause({ entries: [{ key, value: null }], source: origin, actor: null }, cause));
       return;
     }
     void writeLocal([key], () => writes.write(key, null, origin));
@@ -164,16 +170,18 @@ export const localKV = {
     actorCause(actor ?? undefined);
     if (isTauri()) return writeLocal([key], () => writes.write(key, value, "local", actor));
     localStorage.setItem(key, value);
-    notifyChange(key, value);
-    notifyCommit(stampEventCause({ entries: [{ key, value }], source: "local", actor: actor === null ? null : actorOrigin(actor) }, actor ?? undefined));
+    const cause = causalActor(actor ?? "system");
+    notifyChange(key, value, cause);
+    notifyCommit(stampEventCause({ entries: [{ key, value }], source: "local", actor: actor === null ? null : actorOrigin(actor) }, cause));
     return Promise.resolve();
   },
   removeItemAsync(key: string, actor: DomainActor | null = null): Promise<void> {
     actorCause(actor ?? undefined);
     if (isTauri()) return writeLocal([key], () => writes.write(key, null, "local", actor));
     localStorage.removeItem(key);
-    notifyChange(key, null);
-    notifyCommit(stampEventCause({ entries: [{ key, value: null }], source: "local", actor: actor === null ? null : actorOrigin(actor) }, actor ?? undefined));
+    const cause = causalActor(actor ?? "system");
+    notifyChange(key, null, cause);
+    notifyCommit(stampEventCause({ entries: [{ key, value: null }], source: "local", actor: actor === null ? null : actorOrigin(actor) }, cause));
     return Promise.resolve();
   },
 
@@ -233,8 +241,9 @@ export function setLocalKVBatch(entries: ReadonlyMap<string, string | null>, act
     }
     return Promise.reject(error);
   }
-  for (const [key, value] of values) notifyChange(key, value);
-  notifyCommit(stampEventCause({ entries: [...values].map(([key, value]) => ({ key, value })), source, actor: actor === null ? null : actorOrigin(actor) }, actor ?? undefined));
+  const cause = causalActor(actor ?? "system");
+  for (const [key, value] of values) notifyChange(key, value, cause);
+  notifyCommit(stampEventCause({ entries: [...values].map(([key, value]) => ({ key, value })), source, actor: actor === null ? null : actorOrigin(actor) }, cause));
   return Promise.resolve();
 }
 
@@ -387,8 +396,9 @@ export async function replaceLocalKVPrefix(
     for (const [key, value] of values) {
       if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value);
     }
-    for (const [key, value] of values) notifyChange(key, value);
-    notifyCommit({ entries: [...values].map(([key, value]) => ({ key, value })), source: "restore", actor: null });
+    const cause = causalActor("system");
+    for (const [key, value] of values) notifyChange(key, value, cause);
+    notifyCommit(stampEventCause({ entries: [...values].map(([key, value]) => ({ key, value })), source: "restore", actor: null }, cause));
     return;
   }
 

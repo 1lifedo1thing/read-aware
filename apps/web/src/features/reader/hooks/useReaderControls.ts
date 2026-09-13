@@ -9,5 +9,5 @@ export function useReaderControls() {
   const state = useSyncExternalStore(controls.subscribeRender, controls.getRenderState);
   useLayoutEffect(() => controls.acknowledge(state), [controls, state]);
   useEffect(() => () => controls.retire(), [controls]);
-  return { controls, visible: state.visible, setVisible: controls.setFromUI };
+  return { controls, visible: state.visible, origin: state.origin, setVisible: controls.setFromUI };
 }

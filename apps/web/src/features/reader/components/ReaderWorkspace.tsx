@@ -36,6 +36,7 @@ type ReaderWorkspaceProps = {
     requestId: number;
   } | null;
   overlayVisible: boolean;
+  overlayOrigin: DomainActor;
   selectedEpubProgress: ReaderProgress | null;
   readerProgress: number | undefined;
   currentPage: number;
@@ -69,6 +70,7 @@ export function ReaderWorkspace({
   annotationNavigationRequest,
   fractionNavigationRequest,
   overlayVisible,
+  overlayOrigin,
   selectedEpubProgress,
   readerProgress,
   currentPage,
@@ -227,6 +229,7 @@ export function ReaderWorkspace({
 
       <ReaderShellOverlay
         visible={headerVisible}
+        visibilityOrigin={overlayOrigin}
         onBack={onCloseReader}
         book={selectedBook}
         progress={readerProgress}

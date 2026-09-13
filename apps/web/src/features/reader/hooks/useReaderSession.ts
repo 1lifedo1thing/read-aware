@@ -59,7 +59,7 @@ export function useReaderSession({
   const [readerSource, setReaderSource] = useState<ReaderSource>(null);
   const [readerLoadError, setReaderLoadError] = useState<ReaderLoadError | null>(null);
   const [isReaderLoading, setIsReaderLoading] = useState(false);
-  const { controls, visible: shellVisible, setVisible: setShellVisible } = useReaderControls();
+  const { controls, visible: shellVisible, origin: overlayOrigin, setVisible: setShellVisible } = useReaderControls();
   const controlsBinding = useRef<(() => void) | undefined>(undefined);
   useEffect(() => () => controlsBinding.current?.(), []);
   const [readerPage, setReaderPage] = useLocalAtom({ current: 0, total: 0 });
@@ -307,6 +307,7 @@ export function useReaderSession({
     annotationNavigationRequest,
     fractionNavigationRequest,
     overlayVisible,
+    overlayOrigin,
     selectedEpubProgress,
     readerProgress,
     currentPage: readerPage.current,

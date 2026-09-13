@@ -5,8 +5,23 @@
  * `reader-overrides`) lets a book reopen with its panels exactly as left.
  */
 
-import { AppError } from "@read-aware/core";
+import { AppError, type ReaderPanelsView } from "@read-aware/core";
 import { afterLocalKVWrites, localKV, onLocalKVChange } from "../../../platform/local-store";
+import { actorFromEvent, causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+
+/** Join only inputs that changed this committed view. Old untouched state must
+ * not turn a later independent user action into a continuation of an old loop. */
+export function readerPanelRenderActor(previous: ReaderPanelsView | null, next: ReaderPanelsView,
+  sources: { layout: DomainActor; sizes: DomainActor; transient: DomainActor; controls: DomainActor; environment: DomainActor }): DomainActor {
+  const inputs: DomainActor[] = [];
+  const controlsChanged = !previous || previous.controlsVisible !== next.controlsVisible;
+  if (controlsChanged) inputs.push(sources.controls);
+  if (!previous || previous.layout !== next.layout) inputs.push(sources.environment);
+  if (!previous || JSON.stringify(previous.sizes) !== JSON.stringify(next.sizes)) inputs.push(sources.sizes);
+  if (!previous || (["toc", "chat"] as const).some(panel => previous.panels[panel].open !== next.panels[panel].open)) inputs.push(sources.layout);
+  if (previous && (!controlsChanged || next.controlsVisible) && (["annotations", "appearance"] as const).some(panel => previous.panels[panel].open !== next.panels[panel].open)) inputs.push(sources.transient);
+  return actorFromEvent(mergeEventCauses(inputs.map(origin => stampEventCause({}, origin)), {}));
+}
 
 const STORAGE_KEY = "read-aware-reader-panels";
 
@@ -44,10 +59,16 @@ function readStore(raw: string | null): PanelLayoutStore {
   }
 }
 
+let renderState: { raw: string | null; origin: DomainActor } | undefined;
 export const readerPanelLayoutStore = {
   getSnapshot: (): string | null => localKV.getItem(STORAGE_KEY),
-  subscribe: (listener: () => void): (() => void) => onLocalKVChange(key => {
-    if (key === STORAGE_KEY) listener();
+  getRenderSnapshot: () => {
+    const raw = localKV.getItem(STORAGE_KEY);
+    if (!renderState || raw !== renderState.raw) renderState = { raw, origin: causalActor("system") };
+    return renderState;
+  },
+  subscribe: (listener: () => void): (() => void) => onLocalKVChange((key, raw, origin) => {
+    if (key === STORAGE_KEY) { renderState = { raw, origin }; listener(); }
   }),
 };
 
@@ -62,7 +83,9 @@ export function updateReaderPanelLayout(
   bookId: string,
   update: (previous: Readonly<ReaderPanelLayout>) => ReaderPanelLayout,
   signal?: AbortSignal,
+  origin: DomainActor = "user",
 ): Promise<ReaderPanelLayout> {
+  origin = causalActor(origin);
   const work = afterLocalKVWrites(() => {
     signal?.throwIfAborted();
     if (typeof bookId !== "string" || !bookId) throw new AppError("reader/invalid-target", "Panel layout requires a book");
@@ -76,7 +99,7 @@ export function updateReaderPanelLayout(
     if (layout.tocOpen === previous.tocOpen && layout.notesOpen === previous.notesOpen) return layout;
     const store = readStore(raw);
     Object.defineProperty(store, bookId, { value: layout, enumerable: true, configurable: true, writable: true });
-    return localKV.setItemAsync(STORAGE_KEY, JSON.stringify(store)).then(() => layout);
+    return localKV.setItemAsync(STORAGE_KEY, JSON.stringify(store), origin).then(() => layout);
   });
   if (!signal) return work;
   // Cancellation settles the caller promptly; it cannot undo an IPC write that

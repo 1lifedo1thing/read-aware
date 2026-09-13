@@ -439,6 +439,7 @@ function App() {
                 annotationNavigationRequest={reader.annotationNavigationRequest}
                 fractionNavigationRequest={reader.fractionNavigationRequest}
                 overlayVisible={reader.overlayVisible}
+                overlayOrigin={reader.overlayOrigin}
                 selectedEpubProgress={reader.selectedEpubProgress}
                 readerProgress={reader.readerProgress}
                 currentPage={reader.currentPage}

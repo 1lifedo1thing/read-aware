@@ -14,15 +14,15 @@ export const readingAiActions = new ReadingAiActions({
   preferences: () => store.get(aiPreferencesAtom),
   snapshot: () => readingRuntime.snapshot(),
   readRange: readBookRange,
-  chapter: async (bookId, href, signal) => {
+  chapter: async (bookId, href, signal, origin) => {
     signal?.throwIfAborted();
-    const chapters = await getExtractedChapters(bookId);
+    const chapters = await getExtractedChapters(bookId, origin);
     signal?.throwIfAborted();
     const index = chapters.findIndex(chapter => chapter.hrefs?.some(candidate => hrefMatches(candidate, href)));
     return index < 0 ? undefined : index;
   },
   prompt: (action, index) => readingAiPrompt(i18n.language, action, index),
-  openChat: (bookId, sessionId, signal) => readerPanels.setPanel("chat", true, signal, { bookId, sessionId }),
+  openChat: (bookId, sessionId, signal, origin) => readerPanels.setPanel("chat", true, signal, { bookId, sessionId }, origin),
   observe: handler => {
     const stopSettings = store.sub(aiPreferencesAtom, handler), stopReader = readingRuntime.observe(handler);
     return () => { stopSettings(); stopReader(); };

@@ -46,7 +46,7 @@ test("panel receipt waits for durable apply and a matching fresh DOM commit", as
   f.release(); await tick(); expect(settled).toBe(false); expect(f.token).toBe(1);
   f.commit(0); await tick(); expect(settled).toBe(false);
   f.commit(); expect(await promise).toMatchObject({ status: "completed", panel: "toc", snapshot: { sessionId: f.id, panels: { toc: { open: true, visible: true } } } });
-  expect(f.reading.snapshot()).toEqual(before);
+  expect(f.reading.snapshot()).toEqual({ ...before, revision: before.revision + 1, change: { origin: "user", reason: "controls" } });
   f.binding.dispose();
 });
 test("width changes share session arbitration and await persistence and commit without opening panels", async () => {

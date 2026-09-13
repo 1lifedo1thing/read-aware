@@ -8,7 +8,9 @@ import { LocalWriteFailureToasts } from "../../../components/LocalWriteFailureTo
 import { initI18n } from "../../../i18n";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { readerPanels } from "../../../services/reader-panels";
-import { flushLocalKV, localKV } from "../../../platform/local-store";
+import { flushLocalKV, localKV, onLocalKVChange, onLocalKVCommit } from "../../../platform/local-store";
+import { actorCause, causalActor, eventCause, reactionActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+import { buildPluginContext } from "../../plugins/runtime/plugin-context";
 import { getReaderPanelLayout, updateReaderPanelLayout } from "../lib/reader-panel-layout";
 import { useReaderControls } from "./useReaderControls";
 import { useReaderPanels } from "./useReaderPanels";
@@ -39,7 +41,7 @@ if (process.env.PANEL_LAYOUT_CASE === "1") {
   }
   function Harness({ bookId, exclusive }: { bookId: string; exclusive: boolean }) {
     const controls = useReaderControls();
-    state = useReaderPanels(bookId, controls.visible, exclusive);
+    state = useReaderPanels(bookId, controls.visible, exclusive, controls.origin);
     useLayoutEffect(() => readingRuntime.bindControls(sessionId, controls.controls), [bookId, controls.controls]);
     return <><section aria-label="toc" inert={!(controls.visible && state.toc)} /><section aria-label="chat" inert={!(controls.visible && state.chat)} />
       {state.appearance && <div role="dialog">Appearance</div>}{state.annotations && <div role="dialog">Annotations</div>}</>;
@@ -220,10 +222,70 @@ if (process.env.PANEL_LAYOUT_CASE === "1") {
     expect(state.chat).toBe(false); expect(state.chatFocusRequestId).toBe(0);
     expect(readerPanels.snapshot()?.controlsVisible).toBe(false);
   });
+  test("public all/book plugin reactions retain one cause through chrome, optimistic view, durable layout and receipt", async () => {
+    hold = false;
+    for (const mode of ["all", "book"] as const) {
+      const runtime = buildPluginContext({ id: `panel-${mode}`, name: "Panel", version: "1", schemaVersion: 1, requires: {}, permissions: ["reading:write", "library:read"] }, "1", [],
+        mode === "book" ? { mode, bookId: "book" } : { mode });
+      runtime.lifecycle.promote();
+      const observations: object[] = [], commits: object[] = [];
+      const stop = readerPanels.observe(value => { if (value) observations.push(value); });
+      const stopCommit = onLocalKVCommit(commit => { if (commit.entries.some(entry => entry.key === key)) commits.push(commit); });
+      try {
+        const incoming = stampEventCause({}, causalActor("user"));
+        await runtime.reactions.deliver({}, incoming, async reaction => {
+          const origin = runtime.reactions.actor(reaction);
+          const bound = runtime.context.withEvent({ reaction });
+          await Promise.resolve();
+          const request = begin(() => bound.services.ui.reader!.setPanel!("toc", true));
+          await flush(); const receipt = await request;
+          expect(eventCause(receipt.snapshot)!.root).toBe(actorCause(origin)!.root);
+          expect(eventCause(commits.at(-1)!)!.root).toBe(actorCause(origin)!.root);
+          expect(eventCause(readingRuntime.snapshot())!.root).toBe(actorCause(origin)!.root);
+          const cause = eventCause(observations.at(-1)!)!;
+          expect(cause.root).toBe(actorCause(origin)!.root);
+          expect(() => reactionActor(`plugin:panel-${mode}`, actorCause(origin)!.steps[0]!, cause)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+        });
+        const previous = eventCause(readerPanels.snapshot()!)!.root;
+        const close = requestPanel("toc", false); await flush(); await close;
+        expect(eventCause(readerPanels.snapshot()!)!.root).not.toBe(previous);
+      } finally { stop(); stopCommit(); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); }
+    }
+  });
+  test("width failure and transient panel feedback retain their source; independent control hiding has its own root", async () => {
+    const origin = causalActor("plugin:panels");
+    const width = begin(() => readerPanels.setWidth("toc", 450, undefined, undefined, origin)).catch(error => error);
+    await flush(); expect(eventCause(readerPanels.snapshot()!)!.root).toBe(actorCause(origin)!.root);
+    await act(async () => { pending.shift()!.reject({ code: "db/locked", message: "failed" }); await tick(); }); await width;
+    expect(readerPanels.snapshot()?.sizes.toc).toBe(288);
+    expect(eventCause(readerPanels.snapshot()!)!.root).toBe(actorCause(origin)!.root);
+    const transient = requestPanel("appearance", true, undefined, undefined, origin); await flush(); await transient;
+    expect(eventCause(readerPanels.snapshot()!)!.root).toBe(actorCause(origin)!.root);
+    const user = causalActor("user");
+    const hide = begin(() => readingRuntime.setControls(false, undefined, undefined, user)); await flush(); await hide;
+    expect(readerPanels.snapshot()?.panels.appearance.open).toBe(false);
+    expect(eventCause(readerPanels.snapshot()!)!.root).toBe(actorCause(user)!.root);
+  });
+  test("reentrant KV mirrors never relabel the latest rendered value with an older notification", async () => {
+    hold = false;
+    const first = causalActor("plugin:first"), second = causalActor("plugin:second");
+    let newer: Promise<void> | undefined;
+    const stop = onLocalKVChange((changedKey, value) => {
+      if (changedKey === key && value?.includes('"tocOpen":true') && !newer) newer = localKV.setItemAsync(key, JSON.stringify({ book: { tocOpen: false, notesOpen: true } }), second);
+    });
+    const seen: DomainActor[] = [];
+    const stopAfter = onLocalKVChange((changedKey, _value, origin) => { if (changedKey === key) seen.push(origin); });
+    try {
+      await act(async () => { await localKV.setItemAsync(key, JSON.stringify({ book: { tocOpen: true, notesOpen: false } }), first); await newer; await tick(); });
+      expect(seen).toEqual([second]);
+      expect(readerPanels.snapshot()?.panels.chat.open).toBe(true);
+      expect(eventCause(readerPanels.snapshot()!)!.root).toBe(actorCause(second)!.root);
+    } finally { stop(); stopAfter(); }
+  });
 } else {
   test("isolated shared panel service, persistence and React lifecycle cases", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], { env: { ...process.env, PANEL_LAYOUT_CASE: "1" }, stdout: "ignore", stderr: "pipe" });
     const output = await new Response(child.stderr).text();
-    expect(await child.exited, output).toBe(0); expect(output).toContain("15 pass");
+    expect(await child.exited, output).toBe(0); expect(output).toContain("18 pass");
   }, 30_000);
 }

@@ -26,7 +26,7 @@ test("actual Agent ports execute a captured selection in the existing book turn,
     const end = chunks.find(chunk => chunk.type === "tool-step" && chunk.phase === "end");
     expect(end).toMatchObject({ tool: "define_term", isError: false });
     expect(JSON.parse((end as { output: string }).output)).toMatchObject({ status: "context", context: { action: "defineTerm", bookId: "book", selection: { text: "Selected meaning" } } });
-    expect(readerPanels.setPanel).toHaveBeenCalledWith("chat", true, expect.any(AbortSignal), { bookId: "book", sessionId: "session" });
+    expect(readerPanels.setPanel).toHaveBeenCalledWith("chat", true, expect.any(AbortSignal), { bookId: "book", sessionId: "session" }, expect.objectContaining({ origin: "agent", cause: expect.any(Object) }));
     expect(sends).toBe(0);
   } finally { scripted.dispose(); unbind(); for (const spy of spies) spy.mockRestore(); }
 });

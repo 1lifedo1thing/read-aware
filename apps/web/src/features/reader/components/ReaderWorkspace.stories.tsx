@@ -52,6 +52,7 @@ const meta = {
     annotationNavigationRequest: null,
     fractionNavigationRequest: null,
     overlayVisible: true,
+    overlayOrigin: "user",
     selectedEpubProgress: null,
     readerProgress: 0.62,
     currentPage: 120,

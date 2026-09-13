@@ -25,7 +25,7 @@ test("width command uses the activation signal and cannot be reused after retire
   const spy = spyOn(readerPanels, "setWidth").mockRejectedValue(new Error("expected probe")); cleanups.push(() => spy.mockRestore());
   const command = runtime.context.services.ui.reader!.setWidth!;
   await expect(command("chat", 400, { sessionId: "session" })).rejects.toThrow("expected probe");
-  expect(spy).toHaveBeenCalledWith("chat", 400, runtime.lifecycle.signal, { sessionId: "session" });
+  expect(spy).toHaveBeenCalledWith("chat", 400, runtime.lifecycle.signal, { sessionId: "session" }, "plugin:panel-permission");
   runtime.lifecycle.stop(); expect(() => command("chat", 400)).toThrow();
 });
 test("panel commands carry the plugin lifetime signal and stale captured methods reject after retirement", async () => {
@@ -33,7 +33,7 @@ test("panel commands carry the plugin lifetime signal and stale captured methods
   const spy = spyOn(readerPanels, "setPanel").mockRejectedValue(new Error("expected probe")); cleanups.push(() => spy.mockRestore());
   const command = runtime.context.services.ui.reader!.setPanel!;
   await expect(command("toc", true, { sessionId: "session" })).rejects.toThrow("expected probe");
-  expect(spy).toHaveBeenCalledWith("toc", true, runtime.lifecycle.signal, { sessionId: "session" });
+  expect(spy).toHaveBeenCalledWith("toc", true, runtime.lifecycle.signal, { sessionId: "session" }, "plugin:panel-permission");
   runtime.lifecycle.stop(); expect(runtime.lifecycle.signal.aborted).toBe(true);
   expect(() => command("toc", true)).toThrow();
   await expect(runtime.context.services.ui.reader!.snapshot()).rejects.toThrow();

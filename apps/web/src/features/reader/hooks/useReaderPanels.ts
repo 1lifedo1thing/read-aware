@@ -5,9 +5,10 @@ import { useToast } from "@read-aware/ui";
 import { describeError } from "../../../i18n";
 import { IpcError } from "../../../platform/ipc";
 import { createLogger } from "../../../platform/logger";
+import { actorFromEvent, causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { readerPanels } from "../../../services/reader-panels";
-import { getReaderPanelLayout, readerPanelLayoutStore, updateReaderPanelLayout } from "../lib/reader-panel-layout";
+import { getReaderPanelLayout, readerPanelLayoutStore, updateReaderPanelLayout, readerPanelRenderActor } from "../lib/reader-panel-layout";
 import { readerPanelSizesAtom, updateReaderPanelWidth } from "../lib/reader-panel-sizes";
 import { askAiRequestAtom } from "../../ai/state/chat-intent";
 import { readerPanelAcknowledgementsAtom, readerPanelIntentAtom, type ReaderPanelIntent } from "../state/panel-intent";
@@ -41,11 +42,12 @@ function usePanelIntent(bookId: string, channel: "panel" | "ask", intent: Reader
 }
 
 /** Native controls and external actors use the same bound presentation adapter. */
-export function useReaderPanels(bookId: string, visible: boolean, exclusive: boolean) {
+export function useReaderPanels(bookId: string, visible: boolean, exclusive: boolean, controlsOrigin: DomainActor = "system") {
   const sizes = useAtomValue(readerPanelSizesAtom);
-  const raw = useSyncExternalStore(readerPanelLayoutStore.subscribe, readerPanelLayoutStore.getSnapshot);
-  const layout = useMemo(() => getReaderPanelLayout(bookId, raw), [bookId, raw]);
-  const [transient, setTransient] = useState({ bookId, annotations: false, appearance: false });
+  const layoutState = useSyncExternalStore(readerPanelLayoutStore.subscribe, readerPanelLayoutStore.getRenderSnapshot);
+  const layout = useMemo(() => getReaderPanelLayout(bookId, layoutState.raw), [bookId, layoutState]);
+  const [transient, setTransient] = useState(() => ({ bookId, annotations: false, appearance: false, origin: causalActor("system") }));
+  const environmentOrigin = useMemo(() => causalActor("system"), [exclusive]);
   const [token, setToken] = useState(0);
   const [chatFocusRequestId, setChatFocusRequestId] = useState(0);
   const { toast } = useToast();
@@ -64,36 +66,38 @@ export function useReaderPanels(bookId: string, visible: boolean, exclusive: boo
       annotations: { open: selected.annotations, visible: selected.annotations },
       appearance: { open: selected.appearance, visible: selected.appearance },
     } };
+    const origin = readerPanelRenderActor(committed.current, view, { layout: layoutState.origin,
+      sizes: actorFromEvent(sizes), transient: transient.origin, controls: controlsOrigin, environment: environmentOrigin });
     committed.current = view;
-    if (boundBook.current === bookId) binding.current?.publish(view, token);
+    if (boundBook.current === bookId) binding.current?.publish(view, token, origin);
   });
-  useEffect(() => { if (!visible) setTransient({ bookId, annotations: false, appearance: false }); }, [visible, bookId]);
+  useEffect(() => { if (!visible) setTransient({ bookId, annotations: false, appearance: false, origin: causalActor(controlsOrigin) }); }, [visible, bookId, controlsOrigin]);
   useEffect(() => {
     let sessionId: string | null = null;
     const stop = readingRuntime.observe(state => {
       const id = state.status === "ready" && state.bookId === bookId ? state.sessionId : null;
       if (id === sessionId) return;
       sessionId = id;
-      binding.current?.dispose(); binding.current = null; boundBook.current = null;
+      binding.current?.dispose(actorFromEvent(state)); binding.current = null; boundBook.current = null;
       if (!id || !committed.current) return;
       boundBook.current = bookId;
       binding.current = readerPanels.bind(id, bookId, {
         applyWidth: updateReaderPanelWidth,
-        apply: async (panel, open, signal) => {
+        apply: async (panel, open, signal, origin) => {
           signal.throwIfAborted();
           if (panel === "toc" || panel === "chat") {
             const key = panel === "toc" ? "tocOpen" : "notesOpen";
             await updateReaderPanelLayout(bookId, previous => ({ ...previous, [key]: open,
               ...(open && environment.current.exclusive ? { [key === "tocOpen" ? "notesOpen" : "tocOpen"]: false } : {}),
-            }), signal);
+            }), signal, origin);
           } else setTransient(previous => signal.aborted ? previous : ({
-            ...(previous.bookId === bookId ? previous : { bookId, annotations: false, appearance: false }), [panel]: open,
+            ...(previous.bookId === bookId ? previous : { bookId, annotations: false, appearance: false }), [panel]: open, origin,
           }));
           signal.throwIfAborted();
           if (panel === "chat" && open) setChatFocusRequestId(value => signal.aborted ? value : value + 1);
         },
         requestCommit: setToken,
-      }, committed.current);
+      }, committed.current, actorFromEvent(state));
     });
     return () => { stop(); binding.current?.dispose(); binding.current = null; boundBook.current = null; };
   }, [bookId]);

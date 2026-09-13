@@ -1,14 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { KVWriteQueue, type KVCommit } from "./kv-write-queue";
+import { actorCause, causalActor, eventCause, type DomainActor } from "./domain-actor";
 
 function fixture() {
   const mirror = new Map<string, string>([["plugin.key", "original"]]);
   const disk = new Map(mirror);
   const pending: { key: string; value: string | null; resolve(): void; reject(error: Error): void }[] = [];
   const committed: unknown[] = [], origins: string[] = [], failures: unknown[] = [], failureOwners: string[] = [], transactions: KVCommit[] = [];
+  const changes: { value: string | null; origin: DomainActor }[] = [];
   const queue = new KVWriteQueue({
     read: key => mirror.get(key) ?? null,
-    mirror: (key, value) => { if (value === null) mirror.delete(key); else mirror.set(key, value); },
+    mirror: (key, value, origin) => { changes.push({ value, origin }); if (value === null) mirror.delete(key); else mirror.set(key, value); },
     persist: (key, value) => new Promise<void>((resolve, reject) => pending.push({ key, value, reject, resolve: () => {
       if (value === null) disk.delete(key); else disk.set(key, value); resolve();
     } })),
@@ -16,11 +18,27 @@ function fixture() {
     settled: commit => { transactions.push(commit); },
     failed: (key, error, owner) => { failures.push([key, error]); failureOwners.push(owner); },
   });
-  return { queue, mirror, disk, pending, committed, origins, failures, failureOwners, transactions };
+  return { queue, mirror, disk, pending, committed, origins, failures, failureOwners, transactions, changes };
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe("durable KV write queue", () => {
+  test("optimistic, durable and rollback feedback retains the actual mutation rather than the last completed request", async () => {
+    const f = fixture(), firstOrigin = causalActor("plugin:first"), secondOrigin = causalActor("plugin:second");
+    const first = f.queue.write("plugin.key", "first", "local", firstOrigin);
+    const second = f.queue.write("plugin.key", "second", "local", secondOrigin);
+    expect(f.changes.map(change => change.origin)).toEqual([firstOrigin, secondOrigin]);
+    await tick(); f.pending[0].resolve(); await first;
+    expect(eventCause(f.transactions[0])).toBe(actorCause(firstOrigin));
+    expect(f.changes.at(-1)).toEqual({ value: "second", origin: secondOrigin });
+    await tick(); f.pending[1].reject(Error("rollback")); await expect(second).rejects.toThrow("rollback");
+    expect(f.changes.at(-1)).toEqual({ value: "first", origin: secondOrigin });
+    expect(f.transactions).toHaveLength(1);
+    const next = f.queue.write("plugin.key", "user"); const nextOrigin = f.changes.at(-1)!.origin;
+    expect(actorCause(nextOrigin)!.root).not.toBe(actorCause(secondOrigin)!.root);
+    await tick(); f.pending[2].resolve(); await next;
+    expect(eventCause(f.transactions[1])).toBe(actorCause(nextOrigin));
+  });
   test("failure presentation ownership belongs to each queued operation, not a global suppression flag", async () => {
     const f = fixture();
     let reject!: (error: Error) => void;

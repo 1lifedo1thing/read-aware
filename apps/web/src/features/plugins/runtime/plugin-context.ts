@@ -1316,10 +1316,10 @@ export function buildPluginContext(
       observe: handler => track(() => ({ dispose: readerPanels.observe(handler) })),
       ...(reading.commands ? { setPanel: (panel: import("@read-aware/core").ReaderPanel, open: boolean, guard?: import("@read-aware/core").ReadingSessionGuard) => {
         lifecycle.assertActive("services.ui.reader.setPanel");
-        return readerPanels.setPanel(panel, open, lifecycle.signal, guard);
+        return readerPanels.setPanel(panel, open, lifecycle.signal, guard, operationActor);
       }, setWidth: (panel: import("@read-aware/core").ResizableReaderPanel, width: number, guard?: import("@read-aware/core").ReadingSessionGuard) => {
         lifecycle.assertActive("services.ui.reader.setWidth");
-        return readerPanels.setWidth(panel, width, lifecycle.signal, guard);
+        return readerPanels.setWidth(panel, width, lifecycle.signal, guard, operationActor);
       }, focus: (target: import("@read-aware/core").ReaderFocusTarget, guard?: import("@read-aware/core").ReadingSessionGuard) => {
         lifecycle.assertActive("services.ui.reader.focus");
         return readerFocus.focus(target, lifecycle.signal, guard);
@@ -1373,8 +1373,8 @@ export function buildPluginContext(
               catch (error) { log.debug("reader panels outside book grant", error); }
             }));
           },
-          ...(rawReader.setPanel ? { setPanel: (panel: import("@read-aware/core").ReaderPanel, open: boolean, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedCurrentCommand("services.ui.reader.setPanel", signal => readerPanels.setPanel(panel, open, signal, guard), undefined, true, value => objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.setPanel")) } : {}),
-          ...(rawReader.setWidth ? { setWidth: (panel: import("@read-aware/core").ResizableReaderPanel, width: number, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedCurrentCommand("services.ui.reader.setWidth", signal => readerPanels.setWidth(panel, width, signal, guard), undefined, true, value => objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.setWidth")) } : {}),
+          ...(rawReader.setPanel ? { setPanel: (panel: import("@read-aware/core").ReaderPanel, open: boolean, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedCurrentCommand("services.ui.reader.setPanel", signal => readerPanels.setPanel(panel, open, signal, guard, operationActor), undefined, true, value => objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.setPanel")) } : {}),
+          ...(rawReader.setWidth ? { setWidth: (panel: import("@read-aware/core").ResizableReaderPanel, width: number, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedCurrentCommand("services.ui.reader.setWidth", signal => readerPanels.setWidth(panel, width, signal, guard, operationActor), undefined, true, value => objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.setWidth")) } : {}),
           ...(rawReader.focus ? { focus: (target: import("@read-aware/core").ReaderFocusTarget, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedCurrentCommand("services.ui.reader.focus", signal => readerFocus.focus(target, signal, guard), undefined, true, value => objectAccess.assertReturnedBook(value.bookId, "services.ui.reader.focus")) } : {}),
           ...(rawReader.previewReference && domain.library ? { previewReference: (query: import("@read-aware/core").BookReferenceQuery, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedRead(query.reference.bookId, "services.ui.reader.previewReference", signal => readerReferencePreview.open(referencePreviewOwner, query,
             (input, readSignal) => domain.library!.queries.books.readReference(input, readSignal), signal, guard), undefined, value => {

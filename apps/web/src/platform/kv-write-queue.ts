@@ -1,7 +1,7 @@
-import { actorCause, actorOrigin, stampEventCause, type DomainActor } from "./domain-actor";
+import { actorCause, actorOrigin, causalActor, stampEventCause, type DomainActor } from "./domain-actor";
 import type { EventOrigin } from "@read-aware/core";
 
-type Mutation = { value: string | null; done: Promise<void> };
+type Mutation = { value: string | null; origin: DomainActor; done: Promise<void> };
 type KeyState = { durable: string | null; mutations: Mutation[] };
 export type KVWriteOrigin = "local" | "remote";
 /** A caller-owned failure still rejects and is logged; its caller owns user presentation. */
@@ -25,7 +25,7 @@ export class KVWriteQueue {
 
   constructor(private readonly deps: {
     read(key: string): string | null;
-    mirror(key: string, value: string | null): void;
+    mirror(key: string, value: string | null, origin: DomainActor): void;
     persist(key: string, value: string | null, origin: KVWriteOrigin): Promise<void>;
     committed(key: string, value: string | null, origin: KVWriteOrigin): void;
     settled?(commit: KVCommit): void;
@@ -65,10 +65,11 @@ export class KVWriteQueue {
     failureOwner: KVFailureOwner = "store",
   ): Promise<void> {
     actorCause(actor ?? undefined);
+    const cause = causalActor(actor ?? "system");
     const entries = [...values].map(([key, value]) => {
       const state = this.keys.get(key) ?? { durable: this.deps.read(key), mutations: [] };
       this.keys.set(key, state);
-      const mutation: Mutation = { value, done: Promise.resolve() };
+      const mutation: Mutation = { value, origin: cause, done: Promise.resolve() };
       state.mutations.push(mutation);
       return { key, value, state, mutation };
     });
@@ -85,11 +86,11 @@ export class KVWriteQueue {
         for (const { key, state } of entries) {
           state.mutations.shift();
           const latest = state.mutations.at(-1);
-          this.deps.mirror(key, latest ? latest.value : state.durable);
+          this.deps.mirror(key, latest ? latest.value : state.durable, latest?.origin ?? cause);
           if (!state.mutations.length) this.keys.delete(key);
         }
         if (failure) this.deps.failed(entries[0]?.key ?? "replacement", failure.error, failureOwner);
-        else this.deps.settled?.(stampEventCause({ entries: entries.map(({ key, value }) => ({ key, value })), source, actor: actor === null ? null : actorOrigin(actor) }, actor ?? undefined));
+        else this.deps.settled?.(stampEventCause({ entries: entries.map(({ key, value }) => ({ key, value })), source, actor: actor === null ? null : actorOrigin(actor) }, cause));
       }
     });
     for (const { mutation } of entries) mutation.done = done;
@@ -97,7 +98,8 @@ export class KVWriteQueue {
     this.tail = done.then(() => {}, () => {});
     for (const { key, state } of entries) {
       // A synchronous observer may already have queued a newer mutation.
-      this.deps.mirror(key, state.mutations.at(-1)!.value);
+      const latest = state.mutations.at(-1)!;
+      this.deps.mirror(key, latest.value, latest.origin);
     }
     return done;
   }

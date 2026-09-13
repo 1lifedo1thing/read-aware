@@ -3,6 +3,7 @@ import { AppError, READING_AI_ACTIONS, type ReadingAiContext, type ReadingAiActi
 import { ReadingSessionController } from "../domain/reading-session-controller";
 import { ReadingAiActions } from "./reading-ai-actions";
 import { readingAiPrompt } from "../features/ai/lib/reading-ai-prompts";
+import { actorCause, causalActor, type DomainActor } from "../platform/domain-actor";
 
 const deferred = () => { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done; }); return { promise, resolve }; };
 function fixture(timeout = 1000) {
@@ -12,19 +13,30 @@ function fixture(timeout = 1000) {
   session.selection!.textLength = session.selection!.text.length;
   const preferences = { features: { explainSelection: true, defineTerm: true, translate: true, summarizeChapter: true, askConversation: false },
     sendHighlightedText: true, sendSurroundingContext: true };
-  const listeners = new Set<() => void>(), reads: unknown[] = [], opened: string[] = [];
+  const listeners = new Set<() => void>(), reads: unknown[] = [], opened: string[] = [], origins: DomainActor[] = [];
   const controls = { beforeOpen: async () => {}, beforeChapter: async () => {}, chapterIndex: 2 as number | undefined,
     page: async (offset: number): Promise<BookRangePage> => ({ range: session.selection!.range!, offset, sectionIndex: 0, totalLength: 8,
       text: offset ? "5678" : "1234", nextOffset: offset ? null : 4, context: { before: "", after: "" } }) };
   const service = new ReadingAiActions({ preferences: () => preferences, snapshot: () => session,
     readRange: async query => { reads.push(query); return controls.page(query.offset ?? 0); },
-    chapter: async (bookId, href) => { reads.push({ bookId, href }); await controls.beforeChapter(); return controls.chapterIndex; },
+    chapter: async (bookId, href, _signal, origin) => { origins.push(origin); reads.push({ bookId, href }); await controls.beforeChapter(); return controls.chapterIndex; },
     prompt: (action, index) => readingAiPrompt("en", action, index),
-    openChat: async (bookId, sessionId) => { opened.push(`${bookId}:${sessionId}`); await controls.beforeOpen(); },
+    openChat: async (bookId, sessionId, _signal, origin) => { origins.push(origin); opened.push(`${bookId}:${sessionId}`); await controls.beforeOpen(); },
     observe: listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
   }, timeout);
-  return { service, controls, preferences, session, reads, opened, listeners, changed: () => { for (const listener of listeners) listener(); } };
+  return { service, controls, preferences, session, reads, opened, origins, listeners, changed: () => { for (const listener of listeners) listener(); } };
 }
+
+test("reading actions capture one cause before chapter preparation and retain it through delayed panel opening", async () => {
+  const f = fixture(), gate = deferred(), origin = causalActor("agent");
+  f.controls.beforeChapter = () => gate.promise;
+  const pending = f.service.run("summarizeChapter", "book", undefined, origin);
+  expect(f.origins).toEqual([origin]); gate.resolve(); await pending;
+  expect(f.origins).toEqual([origin, origin]);
+  await f.service.run("summarizeChapter", "book");
+  expect(f.origins[2]).toBe(f.origins[3]);
+  expect(actorCause(f.origins[2])!.root).not.toBe(actorCause(origin)!.root);
+});
 
 test("all four actions preserve intent and exact captured target, independent of conversational Q&A", async () => {
   const f = fixture(), received: ReadingAiContext[] = [];
