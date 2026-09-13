@@ -242,7 +242,7 @@ const catalogMap: Record<string, Record<string, string[]>> = {
   schemas: { views:["EXT03","EXT04","EXT05","EXT06"], settings:["CFG09"], themes:["EXT08"] },
 };
 const nativeMap = pairs([
-  ["library_stage_import", "LIB06"], ["library_put_cover library_cover_backlog", "LIB09 LIB10"],
+  ["library_begin_import library_stage_import library_finish_import", "LIB06"], ["library_put_cover library_cover_backlog", "LIB09 LIB10"],
   ["library_duplicate_groups library_merge_preview library_merge_commit library_resolve_book", "LIB11"],
   ["resource_store_plugin_asset resource_open_plugin_asset plugin_asset_get plugin_asset_list plugin_asset_policy plugin_asset_delete", "MORE07 SYS13"],
   ["append_events commit_events rebuild_projections verify_projections read_events_since list_event_aggregate_ids", "OPS11"],

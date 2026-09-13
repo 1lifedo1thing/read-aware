@@ -415,7 +415,7 @@
 - Capability services：14 个。
 - Capability schemas：3 个。
 - Settings path：74 个。
-- Native command：228 个。
+- Native command：230 个。
 - Native plugin：12 个。
 - Menu placement：16 个。
 - Shortcut：19 个。
@@ -1142,6 +1142,8 @@
 | 当前注册项 | 矩阵行 | 说明 |
 | --- | --- | --- |
 | `import::library_stage_import` | [LIB06](#LIB06) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::library_begin_import` | [LIB06](#LIB06) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::library_finish_import` | [LIB06](#LIB06) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `covers::library_put_cover` | [LIB09](#LIB09) [LIB10](#LIB10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `covers::library_cover_backlog` | [LIB09](#LIB09) [LIB10](#LIB10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::append_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
