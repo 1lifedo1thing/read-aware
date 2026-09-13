@@ -1,0 +1,13 @@
+{
+  "status": "外部阻塞",
+  "passedBoundary": [
+    "实际发布包Connect account打开Google/GitHub/email登录入口",
+    "未输入凭据、Escape取消；原一书四标注保留"
+  ],
+  "blocker": "隔离资料未连接测试账户；没有可用于登录及远端删除验证的测试账户，禁止使用正式账户",
+  "notPerformed": [
+    "登录成功",
+    "远端删除账号"
+  ],
+  "cleanup": "未发送登录请求、未写凭据、未修改书籍"
+}
