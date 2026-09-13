@@ -22,7 +22,12 @@ export default {
         ["otherAnnotations", () => annotations.queries.page({ bookId: input.other, limit: 2 })],
       ] as const) {
         let code = "allowed";
-        try { await call(); } catch (error) { code = (error as { code?: string }).code ?? "unknown"; }
+        try {
+          const value = await call();
+          if (name === "otherBook" && (value as { id?: string } | null)?.id !== input.other) {
+            throw new Error("Second fixture book was not readable");
+          }
+        } catch (error) { code = (error as { code?: string }).code ?? "unknown"; }
         const expected = ctx.grants.book.mode === "all" ? "allowed" : "plugin/object-access-denied";
         if (code !== expected) throw new Error(`${name}: expected ${expected}, received ${code}`);
         checks[name] = code;
