@@ -422,9 +422,10 @@ async function liveAnnotationPage(ctx, input, render) {
   };
   return { ...(await content(() => ctx.domains.annotations.queries.page(query))).view, live: { subscribe(channel) {
     let disposed = false, revision = 0;
-    const subscription = ctx.domains.annotations.events.observe({ kind: "page", query }, async (event) => {
-      if (disposed)
+    const subscription = ctx.domains.annotations.events.observe({ kind: "page", query }, async (event, delivery) => {
+      if (disposed || delivery?.reaction?.status === "cycle")
         return;
+      const reaction = ctx.withEvent(delivery);
       const result = event.status === "error" ? { view: failure(event.errorCode), failed: false } : await content(async () => {
         if (event.result.kind !== "page")
           throw Error("Expected annotation page observation");
@@ -432,7 +433,7 @@ async function liveAnnotationPage(ctx, input, render) {
       });
       if (disposed)
         return;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: result.view });
+      await reaction.services.ui.publishView(channel, { revision: ++revision, view: result.view });
       if (result.failed)
         throw result.error;
     });

@@ -2,6 +2,16 @@ import type { PluginModule } from "@read-aware/plugin-types";
 
 const plugin: PluginModule = {
   activate(ctx) {
+    if (ctx.manifest.description === "annotation-observation-reaction") {
+      ctx.domains.annotations!.events.observe({ kind: "page", query: { bookId: "b" } }, async (snapshot, delivery) => {
+        if (snapshot.status !== "ready" || "reaction" in snapshot) throw new Error("Annotation snapshot shape changed");
+        const bound = ctx.withEvent(delivery);
+        await Promise.resolve();
+        await bound.domains.annotations!.commands!.applyChanges([{ op: "updateNote", annotationId: "n",
+          expectedRevision: `ann1:${"a".repeat(64)}`, body: "changed" }]);
+      });
+      return;
+    }
     if (ctx.manifest.description === "observation-reaction") {
       ctx.domains.settings.queries.observe({}, async (snapshot, delivery) => {
         if (snapshot.status !== "ready" || "reaction" in snapshot) throw new Error("Snapshot shape changed");

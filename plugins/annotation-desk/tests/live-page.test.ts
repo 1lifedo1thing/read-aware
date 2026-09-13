@@ -1,17 +1,35 @@
 import { expect, test } from "bun:test";
-import type { AnnotationObservation, AnnotationPageQuery, PluginViewUpdate } from "@read-aware/plugin-types";
+import type { AnnotationObservation, AnnotationPageQuery, PluginViewUpdate, PluginReactionEvent } from "@read-aware/plugin-types";
 import { liveAnnotationPage } from "../src/live-page";
 import type { DeskContext } from "../src/types";
 
 function fixture() {
-  let handler!: (event: AnnotationObservation) => unknown, stopped = false;
+  let handler!: (event: AnnotationObservation, delivery?: PluginReactionEvent) => unknown, stopped = false;
   const updates: PluginViewUpdate[] = [];
   const page = { items: [], nextCursor: null, consistency: "live" as const };
   const ctx = { locale: "en", domains: { annotations: { queries: { page: async () => page }, events: {
     observe: (_query: unknown, callback: typeof handler) => { handler = callback; return { dispose() { stopped = true; } }; },
   } } }, services: { ui: { publishView: async (_channel: unknown, update: PluginViewUpdate) => { updates.push(update); } } } } as unknown as DeskContext;
-  return { ctx, page, updates, emit: (event: AnnotationObservation) => handler(event), stopped: () => stopped };
+  const bound: (PluginReactionEvent | undefined)[] = [];
+  ctx.withEvent = event => { bound.push(event); return ctx; };
+  return { ctx, page, updates, bound, emit: (event: AnnotationObservation, delivery?: PluginReactionEvent) => handler(event, delivery), stopped: () => stopped };
 }
+
+test("automatic publication binds the delivery while repeated causal reactions stop before rendering", async () => {
+  const f = fixture(), calls: string[] = [];
+  const view = await liveAnnotationPage(f.ctx, {}, async () => { calls.push("render"); return { kind: "list", items: [] }; });
+  const bound = { ...f.ctx, services: { ...f.ctx.services, ui: { ...f.ctx.services.ui,
+    publishView: async () => { calls.push("bound publication"); return { status: "applied" as const }; },
+  } } };
+  f.ctx.withEvent = delivery => { f.bound.push(delivery); return bound as DeskContext; };
+  const sub = await view.live!.subscribe({ id: "channel" });
+  const event = { status: "ready" as const, revision: 1, result: { kind: "page" as const, page: f.page } };
+  const delivery = { reaction: { id: "host-lease", status: "ready" as const } };
+  await f.emit(event, delivery);
+  expect(f.bound).toEqual([delivery]); expect(f.updates).toEqual([]);
+  await f.emit({ ...event, revision: 2 }, { reaction: { id: "cycle", status: "cycle" } });
+  expect(calls).toEqual(["render", "render", "bound publication"]); sub.dispose();
+});
 test("live pages clear stale actions on error and restore fresh snapshots without leaking raw errors", async () => {
   const f = fixture(); let title = "initial";
   const view = await liveAnnotationPage(f.ctx, {}, async () => ({ kind: "list", title, items: [], actions: [{ id: "old", label: "Select", run() {} }] }));

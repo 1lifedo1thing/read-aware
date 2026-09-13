@@ -39,6 +39,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
   }
   const observations: [object | undefined, string, number][] = [
     [context.domains.settings?.queries, "observe", 1],
+    [context.domains.annotations?.events, "observe", 1],
     [context.domains.library?.events, "observeInvalidation", 0],
     [context.domains.conversations?.events, "observeInvalidation", 0],
     [context.services.storage, "observeDocuments", 1],

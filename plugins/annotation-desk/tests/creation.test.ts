@@ -111,9 +111,10 @@ test("compiled plugin exposes both selection actions and the desk create flow wi
   expect(view(await root.actions!.find(action => action.id === "new-note")!.run()).kind).toBe("form");
   expect(f.notes).toHaveLength(1); expect(f.highlights).toHaveLength(1);
   const manifest = await Bun.file(new URL("../dist/manifest.json", import.meta.url)).json();
-  expect(manifest.version).toBe("0.7.0");
+  expect(manifest.version).toBe("0.8.0");
   expect(manifest.permissions).toEqual(["annotations:write", "library:read", "reading:write"]);
   expect(manifest.requires.contributions.selectionActions).toBe("^1.2.0");
+  expect(manifest.requires.services.plugins).toBe("^1.4.0");
   for (const locale of ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"]) {
     for (const key of ["newNote", "newHighlight", "created", "viewCreated", "chooseBook", "bodyRequired", "selectionLimit", "unanchored"] as const) expect(tr(locale, key).length).toBeGreaterThan(0);
   }

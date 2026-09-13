@@ -1581,8 +1581,8 @@ export function buildPluginContext(
             try {
               objectAccess.assertBook(bookId, "annotations.events.observe");
               if (event.status === "ready" && event.result.kind === "page") verifyPage("annotations.events.observe")(event.result.page);
-              handler(event);
-            } catch (error) { log.debug("annotation observation outside book grant", error); }
+            } catch (error) { log.debug("annotation observation outside book grant", error); return; }
+            return handler(event);
           }) }));
         },
       } as typeof ctx.domains.annotations.events;

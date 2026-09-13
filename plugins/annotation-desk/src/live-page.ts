@@ -16,14 +16,15 @@ export async function liveAnnotationPage(ctx: DeskContext, input: AnnotationPage
   };
   return { ...(await content(() => ctx.domains.annotations.queries.page(query))).view, live: { subscribe(channel) {
     let disposed = false, revision = 0;
-    const subscription = ctx.domains.annotations.events.observe({ kind: "page", query }, async event => {
-      if (disposed) return;
+    const subscription = ctx.domains.annotations.events.observe({ kind: "page", query }, async (event, delivery) => {
+      if (disposed || delivery?.reaction?.status === "cycle") return;
+      const reaction = ctx.withEvent(delivery);
       const result = event.status === "error" ? { view: failure(event.errorCode), failed: false } : await content(async () => {
         if (event.result.kind !== "page") throw Error("Expected annotation page observation");
         return event.result.page;
       });
       if (disposed) return;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: result.view });
+      await reaction.services.ui.publishView(channel, { revision: ++revision, view: result.view });
       // A joined book read can fail even when the annotation page is unchanged.
       // Do not acknowledge it: the host retries delivery after the next settled read.
       if (result.failed) throw result.error;

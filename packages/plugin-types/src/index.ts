@@ -1654,7 +1654,7 @@ export type PluginAnnotationsDomain = {
     subscribe: DomainSubscribe<AnnotationDomainEventType>;
     /** Since 1.4. Initial authorized snapshot, then changed results/errors/recovery. Disposal ends polling. */
     observe(query: import("@read-aware/core").AnnotationObservationQuery,
-      handler: (event: import("@read-aware/core").AnnotationObservation) => unknown): PluginDisposable;
+      handler: PluginObservationHandler<import("@read-aware/core").AnnotationObservation>): PluginDisposable;
   };
 };
 
@@ -2516,7 +2516,9 @@ export type PluginContext = {
    * retains its cause. A cycle token rejects operations with plugin/event-cycle.
    * Independent user actions use the original activation context. Plugins 1.3
    * also accepts the second callback argument from settings.observe,
-   * library/conversations.observeInvalidation and storage.observeDocuments. */
+   * library/conversations.observeInvalidation and storage.observeDocuments.
+   * Plugins 1.4 adds annotations.events.observe, retaining causes through query
+   * retries and remote/restore invalidation. The snapshot contains no token. */
   withEvent(event: PluginReactionEvent | undefined): PluginContext;
   readonly manifest: Readonly<PluginManifest>;
   readonly appVersion: string;

@@ -33,6 +33,7 @@ import type { Annotation } from "../features/annotations/lib/annotation-types";
 import { inspectAnnotation, commitAnnotationMutations } from "../features/annotations/lib/annotation-mutations";
 import { ANNOTATION_EVENTS, domainSubscribe, type DomainEventSubscribe } from "./events";
 import { AnnotationObserver, type AnnotationQueryObservation } from "./annotation-observer";
+import { annotationObservationSources } from "./annotation-observation-sources";
 import { createLogger } from "../platform/logger";
 import { prepareAnnotationSource } from "./annotation-source";
 
@@ -48,7 +49,7 @@ const nativeObserver = new AnnotationObserver(observationDeps);
 /** Host-only collection surface; this does not enlarge the public Worker query. */
 export function observeAllAnnotations(handler: (event: AnnotationQueryObservation<Annotation[]>) => unknown,
   lifetime?: AbortSignal): () => void {
-  return nativeObserver.observeSnapshot(() => listAnnotations(), handler, lifetime);
+  return nativeObserver.observeSnapshot(() => listAnnotations(), handler, lifetime, annotationObservationSources({ kind: "page" }));
 }
 
 /** Native surfaces already need the whole book; do not enlarge the public Worker payload contract. */
@@ -57,7 +58,8 @@ export function observeBookAnnotations(bookId: string, handler: (event: Annotati
   if (typeof bookId !== "string" || !bookId.trim() || bookId.length > 512) {
     throw new AppError("annotations/invalid-input", "A book ID is required");
   }
-  return nativeObserver.observeSnapshot(() => listAnnotations({ bookId }), handler, lifetime);
+  return nativeObserver.observeSnapshot(() => listAnnotations({ bookId }), handler, lifetime,
+    annotationObservationSources({ kind: "page", query: { bookId } }));
 }
 
 export function toAnnotationItem(annotation: Annotation): AnnotationItem {
@@ -237,6 +239,7 @@ export function createAnnotationsDomain(origin: DomainActor, lifetime?: AbortSig
     events: { subscribe: domainSubscribe(ANNOTATION_EVENTS, actorOrigin(origin)),
       observe: (query, handler) => observer.observe(query, async accepted => accepted.kind === "page"
         ? { kind: "page", page: await queries.page(accepted.query) }
-        : { kind: "inspect", snapshot: await queries.inspect(accepted.annotationId) }, handler, lifetime) },
+        : { kind: "inspect", snapshot: await queries.inspect(accepted.annotationId) }, handler, lifetime,
+        accepted => annotationObservationSources(accepted, origin)) },
   };
 }

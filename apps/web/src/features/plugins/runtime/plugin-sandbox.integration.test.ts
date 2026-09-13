@@ -93,6 +93,28 @@ test("real Worker receives observation causality separately from the unchanged s
   expect(await s.next(message => message.t === "result" && message.id === 936)).toMatchObject({ ok: true });
 });
 
+test("real Worker annotation observations bind conditional edits across await without changing the snapshot", async () => {
+  const s = sandbox("annotation-observation-reaction", "event-reaction-probe.ts", {
+    shape: { domains: { annotations: { events: { observe: "fn" }, commands: { applyChanges: "fn" } } }, services: {}, contributions: {} },
+  });
+  const registration = await s.next(message => message.method === "domains.annotations.events.observe");
+  const args = data(registration.args!) as [object, () => string];
+  expect(args[0]).toEqual({ kind: "page", query: { bookId: "b" } });
+  const handle = args[1]();
+  s.worker.postMessage({ t: "result", id: registration.id, ok: true, value: null, disposable: "annotation-subscription" });
+  await s.next(message => message.t === "ready");
+  s.worker.postMessage({ t: "sync", patch: { phase: "active" } });
+  const reaction = { id: "annotation-lease", status: "ready" };
+  s.worker.postMessage({ t: "invoke", id: 937, handle, args: [
+    { status: "ready", revision: 1, result: { kind: "page", page: { items: [], nextCursor: null, consistency: "live" } } }, { reaction },
+  ] });
+  const call = await s.next(message => message.method === "domains.annotations.commands.applyChanges");
+  expect((call as unknown as { reaction: unknown }).reaction).toEqual(reaction);
+  expect(data(call.args!)).toEqual([[{ op: "updateNote", annotationId: "n", expectedRevision: `ann1:${"a".repeat(64)}`, body: "changed" }]]);
+  s.worker.postMessage({ t: "result", id: call.id, ok: true, value: { atomic: true, changes: [] } });
+  expect(await s.next(message => message.t === "result" && message.id === 937)).toMatchObject({ ok: true });
+});
+
 test.each([undefined, 0, 2, "1"])("real Worker rejects incompatible boot version %s before loading plugin code", async protocolVersion => {
   const s = sandbox("must-not-activate", "wire-probe.ts", { protocolVersion });
   expect(await s.next(message => message.t === "failed")).toMatchObject({ error: "Host protocol or transport version rejected" });
