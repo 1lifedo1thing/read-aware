@@ -152,9 +152,14 @@ fn structured_mime_xml_owns_its_package_and_contains_every_extension() {
             _ => {}
         }
     }
-    assert_eq!(globs.len(), 14);
-    for ext in book_types().into_iter().flat_map(|kind| kind.extensions) {
-        assert!(globs.contains(&format!("*.{ext}")));
+    let expected_globs: Vec<_> = book_types()
+        .into_iter()
+        .flat_map(|kind| kind.extensions)
+        .map(|ext| format!("*.{ext}"))
+        .collect();
+    assert_eq!(globs.len(), expected_globs.len());
+    for glob in expected_globs {
+        assert!(globs.contains(&glob));
     }
 }
 

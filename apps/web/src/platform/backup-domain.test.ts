@@ -4,17 +4,28 @@ if (process.env.BACKUP_DOMAIN_PROOF === "1") {
   type Pending = { command: string; args: any; resolve(value?: unknown): void; reject(error: unknown): void };
   const pending: Pending[] = [], calls: string[] = [];
   const holds = new Set<string>();
+  const credentialObligations = new Set<string>();
   let summary: string | null = "before";
   const revision = `profile2:${"a".repeat(64)}`;
   const native = async (command: string, args: any): Promise<unknown> => {
     calls.push(command);
-    if (holds.has(command)) return new Promise((resolve, reject) => pending.push({ command, args, resolve, reject }));
+    if (holds.has(command)) return new Promise((resolve, reject) => pending.push({ command, args, resolve: value => {
+      if (command === "secret_set" && args?.roam !== false && typeof args?.key === "string" && args.key.startsWith("ai-api-key")) credentialObligations.add(args.key);
+      if (command === "restored_credentials_publish") {
+        for (const event of args?.events ?? []) {
+          const key = event?.payload?.key;
+          if (typeof key === "string" && key.startsWith("secret:")) credentialObligations.delete(key.slice("secret:".length));
+        }
+      }
+      resolve(value);
+    }, reject }));
     if (command === "local_device_get") return { deviceId: "domain-proof", lastHlcWallMs: null, lastHlcCounter: null };
     if (command === "profile_initialize") return { migrated: false, snapshot: { summary, revision } };
     if (command === "profile_inspect") return { summary, revision };
     if (command === "profile_restore") { summary = args.event.payload.summary; return { changed: true, revision, persistence: "event-log" }; }
     if (command === "commit_events") return { appended: args.events.length, applied: args.events.length };
-    if (["secret_keys", "reading_sessions_pending", "restored_credentials_pending"].includes(command)) return [];
+    if (command === "restored_credentials_pending") return [...credentialObligations];
+    if (["secret_keys", "reading_sessions_pending"].includes(command)) return [];
     if (command === "backup_close_reading_sessions") return [];
     return undefined;
   };
@@ -45,7 +56,7 @@ if (process.env.BACKUP_DOMAIN_PROOF === "1") {
   test("domain backup drains actual KV/secret publication tails and delayed envelope preparation", async () => {
     await secrets.hydrateSecrets();
     await secrets.setSecretAsync("sync.master-key", btoa(String.fromCharCode(...new Uint8Array(32).fill(17))));
-    holds.add("set_kv"); holds.add("secret_set"); holds.add("local_device_get"); holds.add("commit_events");
+    holds.add("set_kv"); holds.add("secret_set"); holds.add("local_device_get"); holds.add("commit_events"); holds.add("restored_credentials_publish");
     const setting = kv.localKV.setItemAsync("read-aware-app-settings", '{"theme":"dark"}');
     const secret = secrets.setSecretAsync("ai-api-key.proof", "synthetic");
     expect(kv.localKV.getItem("read-aware-app-settings")).toBe('{"theme":"dark"}');
@@ -54,11 +65,16 @@ if (process.env.BACKUP_DOMAIN_PROOF === "1") {
     const backup = withDomainBackup(async () => { captured = true; });
     await tick(); take("set_kv").resolve(); take("secret_set").resolve();
     await Promise.all([setting, secret]); await tick(); expect(captured).toBe(false);
-    take("local_device_get").resolve({ deviceId: "domain-proof", lastHlcWallMs: null, lastHlcCounter: null });
+    const deviceReads = [take("local_device_get"), take("local_device_get")];
+    for (const read of deviceReads) read.resolve({ deviceId: "domain-proof", lastHlcWallMs: null, lastHlcCounter: null });
     await tick(); expect(captured).toBe(false);
-    const commits = [take("commit_events"), take("commit_events")];
+    const commits = [take("commit_events")];
     expect(JSON.stringify(commits.map(item => item.args))).not.toContain("synthetic");
     for (const commit of commits) commit.resolve({ appended: 1, applied: 1 });
+    await tick(); expect(captured).toBe(false);
+    const publication = take("restored_credentials_publish");
+    expect(JSON.stringify(publication.args)).not.toContain("synthetic");
+    publication.resolve({ events: publication.args.events, awaitingConnection: false });
     await backup; expect(captured).toBe(true); expect(durableWrites.size).toBe(0); holds.clear();
   });
 

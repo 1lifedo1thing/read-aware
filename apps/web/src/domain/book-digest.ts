@@ -39,10 +39,13 @@ export async function saveBookDigest(bookId: string, digest: ChapterDigest, expe
   const checkSource = async () => {
     if (!copy.contentVersion || await getDigestContentVersion(bookId, signal) !== copy.contentVersion) throw new AppError("memory/conflict", "Digest source changed before commit");
   };
-  await checkSource();
   const draft: DomainEventDraft = { type: "book.chapterDigested", origin: "agent", payload: { ...copy, bookId, flavor: copy.flavor ?? "narrative" } };
   return runDomainWrite(async () => {
     assertLive(signal);
+    // Admission must precede the source recheck. During backup capture a
+    // conditional write is rejected before it can read native state or mint an
+    // event, just like every other domain writer.
+    await checkSource();
     const [event] = await mintEventRows([draft]);
     assertLive(signal);
     await checkSource();

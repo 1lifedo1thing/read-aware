@@ -106,24 +106,25 @@ if (process.env.BACKUP_MIGRATIONS_PROOF === "1") {
     expect(cleared).toEqual(["read-aware-vocabulary"]); holds.clear(); expect(durableWrites.size).toBe(0);
   });
 
-  test("local wipe and anti-reimport flags drain together; transport preparation may itself await backup", async () => {
+  test("local wipe and WebView anti-reimport acknowledgement drain together; transport preparation may itself await backup", async () => {
     let prepared = 0;
     const transport = spyOn(sync, "syncRelayClient").mockReturnValue({ logout: async () => {
       await withDomainBackup(async () => { prepared++; });
     } } as ReturnType<typeof sync.syncRelayClient>);
-    holds.add("wipe_all_data"); holds.add("set_kv");
+    holds.add("wipe_all_data"); holds.add("delete_kv");
     try {
       const work = deleteAllData(); await tick(); expect(prepared).toBe(1);
-      let captured = false; const backup = withDomainBackup(async () => { captured = true; });
-      await tick(); expect(captured).toBe(false); take("wipe_all_data").resolve();
-      await tick(); expect(captured).toBe(false); take("set_kv").resolve();
-      await tick(); expect(captured).toBe(false); take("set_kv").resolve();
+      let captured = false; const backup = withDomainBackup(async () => { captured = true; }).catch(error => error);
+      await tick(); expect(await backup).toMatchObject({ code: "backup/busy" }); expect(captured).toBe(false); take("wipe_all_data").resolve();
+      await tick(); expect(captured).toBe(false);
+      const acknowledgement = take("delete_kv");
+      expect(acknowledgement.args).toEqual({ key: "read-aware-wipe-webview-pending" });
+      acknowledgement.resolve();
       await work; await backup; expect(legacyClears).toBe(1); holds.clear();
-      await withDomainBackup(async () => {
-        const before = calls.length;
-        await expect(deleteAllData()).rejects.toMatchObject({ code: "backup/busy" });
-        expect(calls).toHaveLength(before); expect(legacyClears).toBe(1);
-      });
+      const before = calls.length;
+      await expect(deleteAllData()).rejects.toMatchObject({ code: "backup/busy" });
+      expect(calls).toHaveLength(before); expect(legacyClears).toBe(1);
+      await expect(withDomainBackup(async () => {})).rejects.toMatchObject({ code: "backup/busy" });
     } finally { transport.mockRestore(); }
   });
 } else {

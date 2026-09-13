@@ -1107,7 +1107,7 @@ pub(crate) fn wipe_all_data_inner(conn: &mut Connection, data_dir: &Path) -> Res
         tx.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES(?1,'1',strftime('%Y-%m-%dT%H:%M:%fZ','now'))", [key])?;
     }
     tx.commit()?;
-    let finish = || -> Result<(), CommandError> {
+    let mut finish = || -> Result<(), CommandError> {
         conn.execute_batch("VACUUM;")?;
         let blobs_dir = data_dir.join("blobs");
         if blobs_dir.exists() {
@@ -1117,7 +1117,14 @@ pub(crate) fn wipe_all_data_inner(conn: &mut Connection, data_dir: &Path) -> Res
         if key_file.exists() {
             std::fs::remove_file(&key_file).map_err(|e| CommandError::context("removing secret key", e))?;
         }
-        conn.execute("DELETE FROM app_kv WHERE key='read-aware-wipe-pending'", [])?;
+        // The app_kv cleanup fires the source-table DELETE trigger and can
+        // recreate the clock after the wipe deleted it. Keep that cleanup and
+        // the final retirement in one transaction: if retirement or commit
+        // fails, rollback preserves the pending marker for restart recovery.
+        let cleanup_tx = conn.transaction()?;
+        cleanup_tx.execute("DELETE FROM app_kv WHERE key='read-aware-wipe-pending'", [])?;
+        super::context_bundle_publication::retire_source_clock(&cleanup_tx)?;
+        cleanup_tx.commit()?;
         Ok(())
     };
     finish().map_err(|error| CommandError::context_coded("data/wipe-incomplete", "Local records cleared; cleanup remains pending", error))

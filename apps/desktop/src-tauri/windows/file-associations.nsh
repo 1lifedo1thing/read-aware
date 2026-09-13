@@ -44,8 +44,10 @@
     !insertmacro READ_AWARE_REMOVE_OPEN_WITH "cbz"
     !insertmacro READ_AWARE_REMOVE_OPEN_WITH "cbr"
     !insertmacro READ_AWARE_REMOVE_OPEN_WITH "txt"
+    !insertmacro READ_AWARE_REMOVE_OPEN_WITH "text"
     !insertmacro READ_AWARE_REMOVE_OPEN_WITH "html"
     !insertmacro READ_AWARE_REMOVE_OPEN_WITH "htm"
+    !insertmacro READ_AWARE_REMOVE_OPEN_WITH "xhtml"
     !insertmacro READ_AWARE_REMOVE_OPEN_WITH "pdf"
     ClearErrors
     DeleteRegKey HKCU "Software\Classes\${BUNDLEID}.Book"

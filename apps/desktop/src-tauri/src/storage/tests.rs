@@ -2102,6 +2102,38 @@ fn wipe_all_data_file_failure_keeps_durable_recovery_and_anti_import_flags() {
 }
 
 #[test]
+fn wipe_all_data_clock_retirement_failure_keeps_pending_marker_for_recovery() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut conn = migrated_conn();
+    commit_events_inner(&mut conn, &[imported("wipe-clock", 1_000, "wipe-book", "Synthetic")]).unwrap();
+    // The first wipe transaction deletes the old clock before writing the
+    // anti-import flags. The trigger therefore fires only for the final
+    // post-commit retirement, after `read-aware-wipe-pending` is deleted.
+    conn.execute_batch(
+        "CREATE TRIGGER reject_clock_retirement
+         BEFORE DELETE ON context_bundle_source_clock
+         WHEN NOT EXISTS (SELECT 1 FROM app_kv WHERE key='read-aware-wipe-pending')
+          AND EXISTS (SELECT 1 FROM app_kv WHERE key='read-aware-wipe-webview-pending')
+         BEGIN SELECT RAISE(ABORT,'synthetic clock retirement failure'); END",
+    )
+    .unwrap();
+
+    let error = wipe_all_data_inner(&mut conn, dir.path()).unwrap_err();
+    assert_eq!(error.code, "data/wipe-incomplete");
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 0);
+    assert_eq!(
+        scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"),
+        1,
+        "the cleanup transaction rollback must retain restart recovery"
+    );
+
+    conn.execute_batch("DROP TRIGGER reject_clock_retirement").unwrap();
+    wipe_all_data_inner(&mut conn, dir.path()).unwrap();
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"), 0);
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM context_bundle_source_clock"), 0);
+}
+
+#[test]
 fn wipe_all_data_transaction_failure_preserves_records_files_and_identity() {
     let dir = tempfile::tempdir().unwrap();
     let mut conn = migrated_conn();

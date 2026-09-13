@@ -73,6 +73,15 @@ pub(super) fn install_blob_source_clock(conn: &Connection) -> Result<(), Command
     Ok(())
 }
 
+/// Retire the current generation after a completed local-data wipe. The wipe
+/// leaves the clock row absent so retained resource proofs fail closed until a
+/// fresh source revision is explicitly acquired; source writes can still
+/// lazily mint a new generation through their triggers.
+pub(super) fn retire_source_clock(conn: &Connection) -> Result<(), CommandError> {
+    conn.execute("DELETE FROM context_bundle_source_clock", [])?;
+    Ok(())
+}
+
 pub(crate) fn context_bundle_source_revision_inner(
     conn: &mut Connection,
 ) -> Result<String, CommandError> {
