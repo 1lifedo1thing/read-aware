@@ -1,0 +1,1155 @@
+{
+  "flow": 86,
+  "date": "2026-09-13",
+  "boundary": "primary macOS debug Tauri PID15611 / bridge9224; installed compiled Dictionary1.4.0 Worker, mounted book/global ChatPanel, production AgentThread, native HTTP and SQLite. Fixed Responses plans, no remote model.",
+  "fixtures": {
+    "bookId": "b5c26194-5fb6-4fd7-8437-763aebcad20a",
+    "globalId": "thread-5e9ee288-050f-4414-98f5-b33a448caecc",
+    "words": [
+      {
+        "bookTitle": "ANN86 retrieval source",
+        "cacheId": "nglqu0",
+        "context": "ANN86_SYNTHETIC_SOURCE ann86alpha",
+        "term": "ann86alpha",
+        "wordId": "English ann86alpha"
+      },
+      {
+        "bookTitle": "ANN86 retrieval source",
+        "cacheId": "1mfq8o",
+        "context": "ANN86_SYNTHETIC_SOURCE ann86beta",
+        "term": "ann86beta",
+        "wordId": "English ann86beta"
+      },
+      {
+        "bookTitle": "ANN86 retrieval source",
+        "cacheId": "1tk3194",
+        "context": "ANN86_SYNTHETIC_SOURCE ann86gamma",
+        "term": "ann86gamma",
+        "wordId": "English ann86gamma"
+      }
+    ],
+    "cacheSetup": "Native pluginDocsPut seeded three unique lookup cache entries only. Actual compiled save_word read caches and wrote words; lookup_word and dictionary inference were not called.",
+    "globalVocabularySemantics": "Saved words have bookTitle provenance but null bookId. Dictionary retrieval is shared vocabulary in both declared scopes; this is not per-book vocabulary isolation."
+  },
+  "baseline": {
+    "books": [
+      {
+        "addedAt": "2026-09-08T14:23:58.647Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "reading-paint-probe.pdf",
+        "fileSize": 3289,
+        "format": "pdf",
+        "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "lastOpenedAt": "2026-09-12T22:18:31.987Z",
+        "starred": false,
+        "title": "Reading Paint Probe",
+        "updatedAt": "2026-09-12T22:18:31.987Z"
+      },
+      {
+        "addedAt": "2026-09-08T14:21:21.622Z",
+        "author": "ReadAware Tests",
+        "collectionId": null,
+        "fileName": "reading-capability-probe.fb2",
+        "fileSize": 22220,
+        "format": "fb2",
+        "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+        "lastOpenedAt": "2026-09-12T21:58:05.361Z",
+        "narrativity": "narrative",
+        "starred": false,
+        "title": "Reading Capability Probe",
+        "updatedAt": "2026-09-12T21:58:05.361Z"
+      }
+    ],
+    "originalConversationHash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "originalMessageCount": 2,
+    "selected": "\"__global__\"",
+    "config": null,
+    "plugins": [
+      {
+        "enabled": true,
+        "id": "annotation-desk",
+        "version": "0.7.0"
+      },
+      {
+        "enabled": true,
+        "id": "dictionary",
+        "version": "1.4.0"
+      },
+      {
+        "enabled": true,
+        "id": "editorial-themes",
+        "version": "1.0.0"
+      },
+      {
+        "enabled": true,
+        "id": "jumper",
+        "version": "0.8.0"
+      },
+      {
+        "enabled": true,
+        "id": "library-desk",
+        "version": "0.12.0"
+      },
+      {
+        "enabled": true,
+        "id": "listening-desk",
+        "version": "0.10.0"
+      },
+      {
+        "enabled": true,
+        "id": "maintenance-desk",
+        "version": "0.4.0"
+      },
+      {
+        "enabled": true,
+        "id": "memory-desk",
+        "version": "0.13.0"
+      },
+      {
+        "enabled": true,
+        "id": "reading-goals",
+        "version": "0.5.0"
+      },
+      {
+        "enabled": true,
+        "id": "rss-reader",
+        "version": "0.20.0"
+      },
+      {
+        "enabled": true,
+        "id": "sentence-reader",
+        "version": "1.1.0"
+      },
+      {
+        "enabled": true,
+        "id": "text-desk",
+        "version": "0.22.0"
+      },
+      {
+        "enabled": true,
+        "id": "tts",
+        "version": "0.6.0"
+      },
+      {
+        "enabled": true,
+        "id": "webdav-sync",
+        "version": "0.3.0"
+      },
+      {
+        "enabled": true,
+        "id": "workspace-profiles",
+        "version": "0.6.0"
+      }
+    ],
+    "words": [],
+    "lookups": []
+  },
+  "observations": {
+    "savedNativeWords": [
+      {
+        "anchor": null,
+        "bookId": null,
+        "id": "English ann86gamma",
+        "json": "{\"term\":\"ann86gamma\",\"source\":\"provided\",\"language\":\"English\",\"targetLanguage\":\"auto\",\"entry\":{\"headword\":\"ann86gamma\",\"senses\":[{\"definition\":\"ANN86 common synthetic definition for ann86gamma\"}]},\"context\":\"ANN86_SYNTHETIC_SOURCE ann86gamma\",\"bookTitle\":\"ANN86 retrieval source\",\"addedAt\":\"2026-09-13T07:22:52.205Z\"}",
+        "revision": "1ef3092bb2114c16e49a3ebecf449ba7",
+        "updatedAt": "2026-09-13T07:22:52.207Z"
+      },
+      {
+        "anchor": null,
+        "bookId": null,
+        "id": "English ann86beta",
+        "json": "{\"term\":\"ann86beta\",\"source\":\"provided\",\"language\":\"English\",\"targetLanguage\":\"auto\",\"entry\":{\"headword\":\"ann86beta\",\"senses\":[{\"definition\":\"ANN86 common synthetic definition for ann86beta\"}]},\"context\":\"ANN86_SYNTHETIC_SOURCE ann86beta\",\"bookTitle\":\"ANN86 retrieval source\",\"addedAt\":\"2026-09-13T07:22:52.126Z\"}",
+        "revision": "7f868e8e09c160804b4fae1d099f5b62",
+        "updatedAt": "2026-09-13T07:22:52.128Z"
+      },
+      {
+        "anchor": null,
+        "bookId": null,
+        "id": "English ann86alpha",
+        "json": "{\"term\":\"ann86alpha\",\"source\":\"provided\",\"language\":\"English\",\"targetLanguage\":\"auto\",\"entry\":{\"headword\":\"ann86alpha\",\"senses\":[{\"definition\":\"ANN86 common synthetic definition for ann86alpha\"}]},\"context\":\"ANN86_SYNTHETIC_SOURCE ann86alpha\",\"bookTitle\":\"ANN86 retrieval source\",\"addedAt\":\"2026-09-13T07:22:52.017Z\"}",
+        "revision": "304d596f750be920483e1c4902d2c674",
+        "updatedAt": "2026-09-13T07:22:52.020Z"
+      }
+    ],
+    "requestRecords": [
+      {
+        "request": 1,
+        "step": "plugin_dictionary_save_word",
+        "args": {
+          "word": "ann86alpha",
+          "context": "ANN86_SYNTHETIC_SOURCE ann86alpha",
+          "bookTitle": "ANN86 retrieval source"
+        },
+        "previousResult": null,
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 2,
+        "step": "plugin_dictionary_save_word",
+        "args": {
+          "word": "ann86beta",
+          "context": "ANN86_SYNTHETIC_SOURCE ann86beta",
+          "bookTitle": "ANN86 retrieval source"
+        },
+        "previousResult": {
+          "saved": "ann86alpha",
+          "language": "English",
+          "total": 1
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 3,
+        "step": "plugin_dictionary_save_word",
+        "args": {
+          "word": "ann86gamma",
+          "context": "ANN86_SYNTHETIC_SOURCE ann86gamma",
+          "bookTitle": "ANN86 retrieval source"
+        },
+        "previousResult": {
+          "saved": "ann86beta",
+          "language": "English",
+          "total": 2
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 4,
+        "step": "plugin_dictionary_retrieve_saved_vocabulary",
+        "args": {
+          "query": "ann86",
+          "limit": 1
+        },
+        "previousResult": {
+          "saved": "ann86gamma",
+          "language": "English",
+          "total": 3
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 5,
+        "step": "plugin_dictionary_retrieve_saved_vocabulary",
+        "args": {
+          "query": "ann86",
+          "limit": 2
+        },
+        "previousResult": {
+          "source": "Dictionary",
+          "items": [
+            {
+              "title": "ann86gamma",
+              "location": "ANN86 retrieval source",
+              "content": "ANN86 common synthetic definition for ann86gamma — ANN86_SYNTHETIC_SOURCE ann86gamma"
+            }
+          ]
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 6,
+        "step": "plugin_dictionary_retrieve_saved_vocabulary",
+        "args": {
+          "query": "ann86missing",
+          "limit": 2
+        },
+        "previousResult": {
+          "source": "Dictionary",
+          "items": [
+            {
+              "title": "ann86gamma",
+              "location": "ANN86 retrieval source",
+              "content": "ANN86 common synthetic definition for ann86gamma — ANN86_SYNTHETIC_SOURCE ann86gamma"
+            },
+            {
+              "title": "ann86beta",
+              "location": "ANN86 retrieval source",
+              "content": "ANN86 common synthetic definition for ann86beta — ANN86_SYNTHETIC_SOURCE ann86beta"
+            }
+          ]
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 7,
+        "step": "get_host_capabilities",
+        "args": {
+          "catalog": "host",
+          "limit": 2
+        },
+        "previousResult": {
+          "source": "Dictionary",
+          "items": []
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 8,
+        "step": "get_host_capabilities",
+        "args": {
+          "catalog": "host",
+          "limit": 2,
+          "offset": 2,
+          "revision": "hc1:b7c9e87b0344b3e119ca81b81ebdb5db155f9b345ee7ee2ddd738455182b3138"
+        },
+        "previousResult": {
+          "catalog": "host",
+          "scope": "book",
+          "revision": "hc1:b7c9e87b0344b3e119ca81b81ebdb5db155f9b345ee7ee2ddd738455182b3138",
+          "items": [
+            {
+              "family": "contributions",
+              "id": "agentContextProviders",
+              "version": "1.1.0",
+              "pluginPermissions": [
+                "agent:context"
+              ]
+            },
+            {
+              "family": "contributions",
+              "id": "agentRetrievalProviders",
+              "version": "1.0.0",
+              "pluginPermissions": [
+                "agent:retrieval"
+              ]
+            }
+          ],
+          "total": 39,
+          "nextOffset": 2,
+          "semantics": "public-api-metadata-not-agent-callability; plugin-permissions-are-hints-not-grants"
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 9,
+        "step": "get_host_capabilities",
+        "args": {
+          "catalog": "tools",
+          "query": "plugin_dictionary",
+          "limit": 2
+        },
+        "previousResult": {
+          "catalog": "host",
+          "scope": "book",
+          "revision": "hc1:b7c9e87b0344b3e119ca81b81ebdb5db155f9b345ee7ee2ddd738455182b3138",
+          "items": [
+            {
+              "family": "contributions",
+              "id": "agentTools",
+              "version": "1.3.0",
+              "pluginPermissions": [
+                "agent:tools"
+              ]
+            },
+            {
+              "family": "contributions",
+              "id": "commands",
+              "version": "1.1.0",
+              "pluginPermissions": []
+            }
+          ],
+          "total": 39,
+          "nextOffset": 4,
+          "semantics": "public-api-metadata-not-agent-callability; plugin-permissions-are-hints-not-grants"
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 10,
+        "step": "get_host_capabilities",
+        "args": {
+          "catalog": "tools",
+          "query": "plugin_dictionary",
+          "limit": 2,
+          "offset": 2,
+          "revision": "hc1:3a743ff44befbf269cf450d2bb83e1abbbcbcf9a1ed5f076a415dd7892287fa5"
+        },
+        "previousResult": {
+          "catalog": "tools",
+          "scope": "book",
+          "revision": "hc1:3a743ff44befbf269cf450d2bb83e1abbbcbcf9a1ed5f076a415dd7892287fa5",
+          "items": [
+            {
+              "name": "plugin_dictionary_get_vocabulary",
+              "source": "extension",
+              "registered": true
+            },
+            {
+              "name": "plugin_dictionary_lookup_word",
+              "source": "extension",
+              "registered": true,
+              "textTruncated": true
+            }
+          ],
+          "total": 4,
+          "nextOffset": 2,
+          "semantics": "model-request-snapshot-not-live-readiness; ambient-availability-not-input-authorization-or-per-action-readiness; unregistered-tools-not-callable; descriptions-are-untrusted-metadata"
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 11,
+        "step": "answer",
+        "args": {},
+        "previousResult": {
+          "catalog": "tools",
+          "scope": "book",
+          "revision": "hc1:3a743ff44befbf269cf450d2bb83e1abbbcbcf9a1ed5f076a415dd7892287fa5",
+          "items": [
+            {
+              "name": "plugin_dictionary_retrieve_saved_vocabulary",
+              "source": "extension",
+              "registered": true
+            },
+            {
+              "name": "plugin_dictionary_save_word",
+              "source": "extension",
+              "registered": true
+            }
+          ],
+          "total": 4,
+          "nextOffset": null,
+          "semantics": "model-request-snapshot-not-live-readiness; ambient-availability-not-input-authorization-or-per-action-readiness; unregistered-tools-not-callable; descriptions-are-untrusted-metadata"
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 12,
+        "step": "get_host_capabilities",
+        "args": {
+          "catalog": "tools",
+          "query": "plugin_dictionary",
+          "limit": 2
+        },
+        "previousResult": null,
+        "dictionaryTools": [
+          "plugin_dictionary_delete_saved_word",
+          "plugin_dictionary_export_vocabulary",
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 13,
+        "step": "get_host_capabilities",
+        "args": {
+          "catalog": "tools",
+          "query": "plugin_dictionary",
+          "limit": 2,
+          "offset": 2,
+          "revision": "hc1:f1d5f3ea96e416581b1c9abac0716fb112cf790f09ef30e25b909b5f4ef86ace"
+        },
+        "previousResult": {
+          "catalog": "tools",
+          "scope": "global",
+          "revision": "hc1:f1d5f3ea96e416581b1c9abac0716fb112cf790f09ef30e25b909b5f4ef86ace",
+          "items": [
+            {
+              "name": "plugin_dictionary_delete_saved_word",
+              "source": "extension",
+              "registered": true
+            },
+            {
+              "name": "plugin_dictionary_export_vocabulary",
+              "source": "extension",
+              "registered": true
+            }
+          ],
+          "total": 6,
+          "nextOffset": 2,
+          "semantics": "model-request-snapshot-not-live-readiness; ambient-availability-not-input-authorization-or-per-action-readiness; unregistered-tools-not-callable; descriptions-are-untrusted-metadata"
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_delete_saved_word",
+          "plugin_dictionary_export_vocabulary",
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 14,
+        "step": "get_host_capabilities",
+        "args": {
+          "catalog": "tools",
+          "query": "plugin_dictionary",
+          "limit": 2,
+          "offset": 4,
+          "revision": "hc1:f1d5f3ea96e416581b1c9abac0716fb112cf790f09ef30e25b909b5f4ef86ace"
+        },
+        "previousResult": {
+          "catalog": "tools",
+          "scope": "global",
+          "revision": "hc1:f1d5f3ea96e416581b1c9abac0716fb112cf790f09ef30e25b909b5f4ef86ace",
+          "items": [
+            {
+              "name": "plugin_dictionary_get_vocabulary",
+              "source": "extension",
+              "registered": true
+            },
+            {
+              "name": "plugin_dictionary_lookup_word",
+              "source": "extension",
+              "registered": true,
+              "textTruncated": true
+            }
+          ],
+          "total": 6,
+          "nextOffset": 4,
+          "semantics": "model-request-snapshot-not-live-readiness; ambient-availability-not-input-authorization-or-per-action-readiness; unregistered-tools-not-callable; descriptions-are-untrusted-metadata"
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_delete_saved_word",
+          "plugin_dictionary_export_vocabulary",
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 15,
+        "step": "plugin_dictionary_retrieve_saved_vocabulary",
+        "args": {
+          "query": "ann86alpha",
+          "limit": 10
+        },
+        "previousResult": {
+          "catalog": "tools",
+          "scope": "global",
+          "revision": "hc1:f1d5f3ea96e416581b1c9abac0716fb112cf790f09ef30e25b909b5f4ef86ace",
+          "items": [
+            {
+              "name": "plugin_dictionary_retrieve_saved_vocabulary",
+              "source": "extension",
+              "registered": true
+            },
+            {
+              "name": "plugin_dictionary_save_word",
+              "source": "extension",
+              "registered": true
+            }
+          ],
+          "total": 6,
+          "nextOffset": null,
+          "semantics": "model-request-snapshot-not-live-readiness; ambient-availability-not-input-authorization-or-per-action-readiness; unregistered-tools-not-callable; descriptions-are-untrusted-metadata"
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_delete_saved_word",
+          "plugin_dictionary_export_vocabulary",
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 16,
+        "step": "answer",
+        "args": {},
+        "previousResult": {
+          "source": "Dictionary",
+          "items": [
+            {
+              "title": "ann86alpha",
+              "location": "ANN86 retrieval source",
+              "content": "ANN86 common synthetic definition for ann86alpha — ANN86_SYNTHETIC_SOURCE ann86alpha"
+            }
+          ]
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_delete_saved_word",
+          "plugin_dictionary_export_vocabulary",
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 17,
+        "step": "get_host_capabilities",
+        "args": {
+          "catalog": "tools",
+          "query": "plugin_dictionary",
+          "limit": 2,
+          "offset": 2,
+          "revision": "hc1:f1d5f3ea96e416581b1c9abac0716fb112cf790f09ef30e25b909b5f4ef86ace"
+        },
+        "previousResult": {
+          "source": "Dictionary",
+          "items": [
+            {
+              "title": "ann86alpha",
+              "location": "ANN86 retrieval source",
+              "content": "ANN86 common synthetic definition for ann86alpha — ANN86_SYNTHETIC_SOURCE ann86alpha"
+            }
+          ]
+        },
+        "dictionaryTools": []
+      },
+      {
+        "request": 18,
+        "step": "get_host_capabilities",
+        "args": {
+          "catalog": "tools",
+          "query": "plugin_dictionary",
+          "limit": 2
+        },
+        "previousResult": {
+          "error": "Capability catalog or query changed; restart pagination"
+        },
+        "dictionaryTools": []
+      },
+      {
+        "request": 19,
+        "step": "answer",
+        "args": {},
+        "previousResult": {
+          "catalog": "tools",
+          "scope": "global",
+          "revision": "hc1:c756026fc7c0cbd2c79b4285f3649be06aa7e6e2f7fbe3c03ccaf059aec2cdef",
+          "items": [],
+          "total": 0,
+          "nextOffset": null,
+          "semantics": "model-request-snapshot-not-live-readiness; ambient-availability-not-input-authorization-or-per-action-readiness; unregistered-tools-not-callable; descriptions-are-untrusted-metadata"
+        },
+        "dictionaryTools": []
+      },
+      {
+        "request": 20,
+        "step": "get_host_capabilities",
+        "args": {
+          "catalog": "tools",
+          "query": "plugin_dictionary",
+          "limit": 10
+        },
+        "previousResult": {
+          "catalog": "tools",
+          "scope": "global",
+          "revision": "hc1:c756026fc7c0cbd2c79b4285f3649be06aa7e6e2f7fbe3c03ccaf059aec2cdef",
+          "items": [],
+          "total": 0,
+          "nextOffset": null,
+          "semantics": "model-request-snapshot-not-live-readiness; ambient-availability-not-input-authorization-or-per-action-readiness; unregistered-tools-not-callable; descriptions-are-untrusted-metadata"
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_delete_saved_word",
+          "plugin_dictionary_export_vocabulary",
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 21,
+        "step": "plugin_dictionary_retrieve_saved_vocabulary",
+        "args": {
+          "query": "ann86",
+          "limit": 3
+        },
+        "previousResult": {
+          "catalog": "tools",
+          "scope": "global",
+          "revision": "hc1:f1d5f3ea96e416581b1c9abac0716fb112cf790f09ef30e25b909b5f4ef86ace",
+          "items": [
+            {
+              "name": "plugin_dictionary_delete_saved_word",
+              "source": "extension",
+              "registered": true
+            },
+            {
+              "name": "plugin_dictionary_export_vocabulary",
+              "source": "extension",
+              "registered": true
+            },
+            {
+              "name": "plugin_dictionary_get_vocabulary",
+              "source": "extension",
+              "registered": true
+            },
+            {
+              "name": "plugin_dictionary_lookup_word",
+              "source": "extension",
+              "registered": true,
+              "textTruncated": true
+            },
+            {
+              "name": "plugin_dictionary_retrieve_saved_vocabulary",
+              "source": "extension",
+              "registered": true
+            },
+            {
+              "name": "plugin_dictionary_save_word",
+              "source": "extension",
+              "registered": true
+            }
+          ],
+          "total": 6,
+          "nextOffset": null,
+          "semantics": "model-request-snapshot-not-live-readiness; ambient-availability-not-input-authorization-or-per-action-readiness; unregistered-tools-not-callable; descriptions-are-untrusted-metadata"
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_delete_saved_word",
+          "plugin_dictionary_export_vocabulary",
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      },
+      {
+        "request": 22,
+        "step": "answer",
+        "args": {},
+        "previousResult": {
+          "source": "Dictionary",
+          "items": [
+            {
+              "title": "ann86gamma",
+              "location": "ANN86 retrieval source",
+              "content": "ANN86 common synthetic definition for ann86gamma — ANN86_SYNTHETIC_SOURCE ann86gamma"
+            },
+            {
+              "title": "ann86beta",
+              "location": "ANN86 retrieval source",
+              "content": "ANN86 common synthetic definition for ann86beta — ANN86_SYNTHETIC_SOURCE ann86beta"
+            },
+            {
+              "title": "ann86alpha",
+              "location": "ANN86 retrieval source",
+              "content": "ANN86 common synthetic definition for ann86alpha — ANN86_SYNTHETIC_SOURCE ann86alpha"
+            }
+          ]
+        },
+        "dictionaryTools": [
+          "plugin_dictionary_delete_saved_word",
+          "plugin_dictionary_export_vocabulary",
+          "plugin_dictionary_lookup_word",
+          "plugin_dictionary_get_vocabulary",
+          "plugin_dictionary_save_word",
+          "plugin_dictionary_retrieve_saved_vocabulary"
+        ]
+      }
+    ],
+    "nativePersistence": {
+      "bookMessages": 2,
+      "globalMessages": 6,
+      "toolParts": [
+        {
+          "tool": "plugin_dictionary_save_word",
+          "state": "done",
+          "input": {
+            "word": "ann86alpha",
+            "context": "ANN86_SYNTHETIC_SOURCE ann86alpha",
+            "bookTitle": "ANN86 retrieval source"
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "plugin_dictionary_save_word",
+          "state": "done",
+          "input": {
+            "word": "ann86beta",
+            "context": "ANN86_SYNTHETIC_SOURCE ann86beta",
+            "bookTitle": "ANN86 retrieval source"
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "plugin_dictionary_save_word",
+          "state": "done",
+          "input": {
+            "word": "ann86gamma",
+            "context": "ANN86_SYNTHETIC_SOURCE ann86gamma",
+            "bookTitle": "ANN86 retrieval source"
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "plugin_dictionary_retrieve_saved_vocabulary",
+          "state": "done",
+          "input": {
+            "query": "ann86",
+            "limit": 1
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "plugin_dictionary_retrieve_saved_vocabulary",
+          "state": "done",
+          "input": {
+            "query": "ann86",
+            "limit": 2
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "plugin_dictionary_retrieve_saved_vocabulary",
+          "state": "done",
+          "input": {
+            "query": "ann86missing",
+            "limit": 2
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "get_host_capabilities",
+          "state": "done",
+          "input": {
+            "catalog": "host",
+            "limit": 2
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "get_host_capabilities",
+          "state": "done",
+          "input": {
+            "catalog": "host",
+            "limit": 2,
+            "offset": 2,
+            "revision": "hc1:b7c9e87b0344b3e119ca81b81ebdb5db155f9b345ee7ee2ddd738455182b3138"
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "get_host_capabilities",
+          "state": "done",
+          "input": {
+            "catalog": "tools",
+            "query": "plugin_dictionary",
+            "limit": 2
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "get_host_capabilities",
+          "state": "done",
+          "input": {
+            "catalog": "tools",
+            "query": "plugin_dictionary",
+            "limit": 2,
+            "offset": 2,
+            "revision": "hc1:3a743ff44befbf269cf450d2bb83e1abbbcbcf9a1ed5f076a415dd7892287fa5"
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "get_host_capabilities",
+          "state": "done",
+          "input": {
+            "catalog": "tools",
+            "query": "plugin_dictionary",
+            "limit": 2
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "get_host_capabilities",
+          "state": "done",
+          "input": {
+            "catalog": "tools",
+            "query": "plugin_dictionary",
+            "limit": 2,
+            "offset": 2,
+            "revision": "hc1:f1d5f3ea96e416581b1c9abac0716fb112cf790f09ef30e25b909b5f4ef86ace"
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "get_host_capabilities",
+          "state": "done",
+          "input": {
+            "catalog": "tools",
+            "query": "plugin_dictionary",
+            "limit": 2,
+            "offset": 4,
+            "revision": "hc1:f1d5f3ea96e416581b1c9abac0716fb112cf790f09ef30e25b909b5f4ef86ace"
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "plugin_dictionary_retrieve_saved_vocabulary",
+          "state": "done",
+          "input": {
+            "query": "ann86alpha",
+            "limit": 10
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "get_host_capabilities",
+          "state": "error",
+          "input": {
+            "catalog": "tools",
+            "query": "plugin_dictionary",
+            "limit": 2,
+            "offset": 2,
+            "revision": "hc1:f1d5f3ea96e416581b1c9abac0716fb112cf790f09ef30e25b909b5f4ef86ace"
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "get_host_capabilities",
+          "state": "done",
+          "input": {
+            "catalog": "tools",
+            "query": "plugin_dictionary",
+            "limit": 2
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "get_host_capabilities",
+          "state": "done",
+          "input": {
+            "catalog": "tools",
+            "query": "plugin_dictionary",
+            "limit": 10
+          },
+          "outputPersisted": true
+        },
+        {
+          "tool": "plugin_dictionary_retrieve_saved_vocabulary",
+          "state": "done",
+          "input": {
+            "query": "ann86",
+            "limit": 3
+          },
+          "outputPersisted": true
+        }
+      ],
+      "allToolResultsMatchedWire": true
+    },
+    "oldCachedCallWhileDisabled": {
+      "code": "plugin/unavailable",
+      "message": "Retrieval registration has retired"
+    },
+    "oldCachedCallAfterReactivation": {
+      "code": "plugin/unavailable",
+      "message": "Retrieval registration has retired"
+    },
+    "ui": "Completed book/global transcripts showed tool rows and final controlled text; stale page row showed failed. No pixels/physical focus claim.",
+    "pagination": "host sampled first two pages (2+2 of39); Dictionary tools book2+2=4, global2+2+2=6; global adds delete_saved_word/export_vocabulary. Each catalog/scope/query has its own revision.",
+    "disabled": "Actual setPluginEnabled(false) removes compiled Worker contributions. Next live Agent request has no Dictionary tool; stale offset/revision returns 'Capability catalog or query changed; restart pagination'; fresh tools page has total0.",
+    "restored": "setPluginEnabled(true) reactivates compiled Worker. Next live Agent request lists6 tools and retrieves3 persisted words. Identical metadata returns the earlier global revision; revision is content-based, not an activation generation token."
+  },
+  "cleanup": {
+    "backupAbsent": true,
+    "bookMessages": [],
+    "books": [
+      {
+        "addedAt": "2026-09-08T14:23:58.647Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "reading-paint-probe.pdf",
+        "fileSize": 3289,
+        "format": "pdf",
+        "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "lastOpenedAt": "2026-09-12T22:18:31.987Z",
+        "starred": false,
+        "title": "Reading Paint Probe",
+        "updatedAt": "2026-09-12T22:18:31.987Z"
+      },
+      {
+        "addedAt": "2026-09-08T14:21:21.622Z",
+        "author": "ReadAware Tests",
+        "collectionId": null,
+        "fileName": "reading-capability-probe.fb2",
+        "fileSize": 22220,
+        "format": "fb2",
+        "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+        "lastOpenedAt": "2026-09-12T21:58:05.361Z",
+        "narrativity": "narrative",
+        "starred": false,
+        "title": "Reading Capability Probe",
+        "updatedAt": "2026-09-12T21:58:05.361Z"
+      }
+    ],
+    "buildMemory": {
+      "path": "ai.preferences.buildMemory",
+      "target": {
+        "kind": "global"
+      },
+      "value": true
+    },
+    "config": null,
+    "enabledRawSame": true,
+    "globalMessages": [],
+    "hash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "lookups": [],
+    "originalMessageCount": 2,
+    "plugins": [
+      {
+        "enabled": true,
+        "id": "annotation-desk",
+        "version": "0.7.0"
+      },
+      {
+        "enabled": true,
+        "id": "dictionary",
+        "version": "1.4.0"
+      },
+      {
+        "enabled": true,
+        "id": "editorial-themes",
+        "version": "1.0.0"
+      },
+      {
+        "enabled": true,
+        "id": "jumper",
+        "version": "0.8.0"
+      },
+      {
+        "enabled": true,
+        "id": "library-desk",
+        "version": "0.12.0"
+      },
+      {
+        "enabled": true,
+        "id": "listening-desk",
+        "version": "0.10.0"
+      },
+      {
+        "enabled": true,
+        "id": "maintenance-desk",
+        "version": "0.4.0"
+      },
+      {
+        "enabled": true,
+        "id": "memory-desk",
+        "version": "0.13.0"
+      },
+      {
+        "enabled": true,
+        "id": "reading-goals",
+        "version": "0.5.0"
+      },
+      {
+        "enabled": true,
+        "id": "rss-reader",
+        "version": "0.20.0"
+      },
+      {
+        "enabled": true,
+        "id": "sentence-reader",
+        "version": "1.1.0"
+      },
+      {
+        "enabled": true,
+        "id": "text-desk",
+        "version": "0.22.0"
+      },
+      {
+        "enabled": true,
+        "id": "tts",
+        "version": "0.6.0"
+      },
+      {
+        "enabled": true,
+        "id": "webdav-sync",
+        "version": "0.3.0"
+      },
+      {
+        "enabled": true,
+        "id": "workspace-profiles",
+        "version": "0.6.0"
+      }
+    ],
+    "pluginsUnchanged": true,
+    "selected": "\"__global__\"",
+    "words": [],
+    "native": {
+      "ownedAnnotations": 0,
+      "bookfileStorageUri": null,
+      "booktextStorageUri": null,
+      "ownedRemovalCleanup": 0,
+      "ownedImportCleanup": 0
+    },
+    "credentialsRestored": true,
+    "server": {
+      "session": 63293,
+      "exitCode": 130,
+      "port19843": "No listener"
+    },
+    "extraStartup": {
+      "reason": "bun --check also started this script; no model request was issued",
+      "session": 45239,
+      "exitCode": 130
+    },
+    "recheckNote": "An initial multi-operation WebView cleanup returned before later operations ran. Explicit native re-read showed residual owned words/thread and enabled-map delta; separate awaited cleanup calls removed them and restored exact map before final verification."
+  },
+  "validation": [
+    "Actual22 native HTTP requests /18 tool results across4 mounted product chat turns",
+    "Persisted native tool-part results compared to server-observed results",
+    "JSON/path/diff checks; no broad suite rerun"
+  ],
+  "limits": [
+    "No live model semantic judgment, remote provider, packaged build or physical focus/pixels.",
+    "Host catalog first4 entries and Dictionary-filtered tool pages only; not all39 host entries/all tools/12k response budget.",
+    "Retrieval limits1/2/3 and one exact match with limit10; no claim of maximum payload, adversarial source text or every query shape.",
+    "Toggle used production host function, not Settings pointer interaction; old adapter call was explicit instrumentation, not model-generated stale call.",
+    "Installation decline, dependency/version failure and installation consent remain independent CON01 evidence."
+  ]
+}
