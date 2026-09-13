@@ -1,0 +1,72 @@
+[
+  {
+    "group": "agent_other",
+    "pass": 243,
+    "skip": 0,
+    "fail": 0,
+    "files": 41
+  },
+  {
+    "group": "web_platform_services",
+    "pass": 503,
+    "skip": 0,
+    "fail": 0,
+    "files": 121
+  },
+  {
+    "group": "relay_landing",
+    "pass": 139,
+    "skip": 1,
+    "fail": 0,
+    "files": 12
+  },
+  {
+    "group": "agent_runtime",
+    "pass": 160,
+    "skip": 0,
+    "fail": 0,
+    "files": 29
+  },
+  {
+    "group": "web_ai",
+    "pass": 73,
+    "skip": 0,
+    "fail": 0,
+    "files": 19
+  },
+  {
+    "group": "web_domain",
+    "pass": 247,
+    "skip": 0,
+    "fail": 0,
+    "files": 52
+  },
+  {
+    "group": "core_plugins_scripts",
+    "pass": 485,
+    "skip": 0,
+    "fail": 0,
+    "files": 95
+  },
+  {
+    "group": "web_plugins",
+    "pass": 502,
+    "skip": 0,
+    "fail": 0,
+    "files": 80
+  },
+  {
+    "group": "web_features_other",
+    "pass": 428,
+    "skip": 0,
+    "fail": 0,
+    "files": 93
+  },
+  {
+    "group": "agent_tools",
+    "pass": 216,
+    "skip": 0,
+    "fail": 0,
+    "files": 55
+  }
+]

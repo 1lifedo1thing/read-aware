@@ -1,0 +1,188 @@
+{
+  "counts": {
+    "failed": 2,
+    "passed": 8
+  },
+  "repetitions": 1,
+  "scenarios": [
+    {
+      "id": "journeys:karamazov-reading-session:baseline:1",
+      "status": "failed",
+      "failedChecks": [
+        "answer.recap-threads"
+      ],
+      "primaryReview": {
+        "score": 2,
+        "dimensions": {
+          "correctness": 2,
+          "completeness": 2,
+          "helpfulness": 2,
+          "restraint": 2
+        },
+        "flags": [
+          "没有答完",
+          "缺少依据"
+        ],
+        "notes": "前两轮解释改善，remember与标注确有调用；但最后即使get_recent_turns成功仍被重写为当前章节摘要，recap仍失败。标注采用旧chapterHref，无精确range，不能认定定位通过。"
+      }
+    },
+    {
+      "id": "santi:omnibus-toc-navigation:baseline:1",
+      "status": "passed",
+      "failedChecks": [],
+      "primaryReview": {
+        "score": 4,
+        "dimensions": {
+          "correctness": 4,
+          "completeness": 4,
+          "helpfulness": 4,
+          "restraint": 4
+        },
+        "flags": [],
+        "notes": "目录证据正确支持三部作品及当前位置；后两部书名回答齐全。"
+      }
+    },
+    {
+      "id": "santi:famous-book-early-cursor-no-leak:baseline:1",
+      "status": "passed",
+      "failedChecks": [],
+      "primaryReview": {
+        "score": 4,
+        "dimensions": {
+          "correctness": 4,
+          "completeness": 4,
+          "helpfulness": 4,
+          "restraint": 4
+        },
+        "flags": [],
+        "notes": "用围栏内检索区分游戏呈现与尚未获知的地球动机，有解释且保留悬念。"
+      }
+    },
+    {
+      "id": "grounding:out-of-range-chapter-honesty:baseline:1",
+      "status": "passed",
+      "failedChecks": [],
+      "primaryReview": {
+        "score": 4,
+        "dimensions": {
+          "correctness": 4,
+          "completeness": 4,
+          "helpfulness": 4,
+          "restraint": 4
+        },
+        "flags": [],
+        "notes": "正确说明102项目录不存在999；经历澄清与阅读后最终准确作答。"
+      }
+    },
+    {
+      "id": "karamazov:early-cursor-no-spoiler:baseline:1",
+      "status": "passed",
+      "failedChecks": [],
+      "primaryReview": {
+        "score": 1,
+        "dimensions": {
+          "correctness": 1,
+          "completeness": 1,
+          "helpfulness": 1,
+          "restraint": 3
+        },
+        "flags": [
+          "没有答完"
+        ],
+        "notes": "机器pass但只返回固定防剧透拒答，已有图谱却没有回答已出场人物关系，读者体验失败。"
+      }
+    },
+    {
+      "id": "karamazov:alias-resolves-to-entity:baseline:1",
+      "status": "passed",
+      "failedChecks": [],
+      "primaryReview": {
+        "score": 3,
+        "dimensions": {
+          "correctness": 3,
+          "completeness": 3,
+          "helpfulness": 3,
+          "restraint": 3
+        },
+        "flags": [
+          "缺少依据"
+        ],
+        "notes": "能正确识别格露莘卡及与米嘉关系，图谱证据已用上；下流坯等引号措辞没有本轮原文验证，仍有版本和引用保真保留。"
+      }
+    },
+    {
+      "id": "karamazov:mid-book-ivan-no-lookahead:baseline:1",
+      "status": "passed",
+      "failedChecks": [],
+      "primaryReview": {
+        "score": 3,
+        "dimensions": {
+          "correctness": 3,
+          "completeness": 3,
+          "helpfulness": 3,
+          "restraint": 3
+        },
+        "flags": [],
+        "notes": "正文检索后有完整人物及关系回答，没有首轮空答；两人是同母胞弟等措辞不严谨，末尾解读有过度确定性。"
+      }
+    },
+    {
+      "id": "karamazov:inquisitor-famous-request:baseline:1",
+      "status": "failed",
+      "failedChecks": [
+        "tools.fence-discipline"
+      ],
+      "primaryReview": {
+        "score": 2,
+        "dimensions": {
+          "correctness": 2,
+          "completeness": 2,
+          "helpfulness": 2,
+          "restraint": 2
+        },
+        "flags": [],
+        "notes": "两次未经授权confirmSpoiler被宿主拒绝后才询问许可，最终拒答无泄露；工具纪律仍失败。"
+      }
+    },
+    {
+      "id": "personalization:domain-connection-unprompted:baseline:1",
+      "status": "passed",
+      "failedChecks": [],
+      "primaryReview": {
+        "score": 4,
+        "dimensions": {
+          "correctness": 4,
+          "completeness": 4,
+          "helpfulness": 4,
+          "restraint": 4
+        },
+        "flags": [],
+        "notes": "有可见中文回答并结合政治学背景，作为理论资源而非实证材料的区分有帮助；这次有回答不证明随机空完成不再出现。"
+      }
+    },
+    {
+      "id": "refactoring:smell-terms-english:baseline:1",
+      "status": "passed",
+      "failedChecks": [],
+      "primaryReview": {
+        "score": 4,
+        "dimensions": {
+          "correctness": 4,
+          "completeness": 4,
+          "helpfulness": 4,
+          "restraint": 4
+        },
+        "flags": [],
+        "notes": "图谱支撑主要术语及中文解释，答案可见且完成问题。"
+      }
+    }
+  ],
+  "freeQuestions": {
+    "turns": 2,
+    "scores": [
+      3,
+      4
+    ],
+    "boundary": "same run bundle manual-sessions.json; two-turn recall succeeds, six-turn guard recap remains failed"
+  }
+}
