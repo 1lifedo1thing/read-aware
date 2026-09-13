@@ -1238,3 +1238,23 @@ selection显示Copied；打开Chat后Message自动聚焦，系统粘贴得到精
 debug两书、release一书保持，release无菜单覆盖键。自有成功导出文件保留/tmp，
 两份取消/中止文件不存在。候选版本的web类型及既有菜单6项测试通过，不能作为
 候选修复有效证据；没有保留产品代码修改或重复全量门禁。
+## 第四十八流程：自动记忆开关、编译插件候选与在途撤销
+
+复用现有memory-policy端点、真实Tauri AgentRuntime和原生HTTP。探针改为复用
+已安装编译Reading Goals 0.5.0的真实Worker，不重复启动同ID源码Worker；只创建
+自有Memory Policy Probe书及目标。受控服务回答固定文本，提炼返回空列表，
+因此落盘的目标记忆明确来自插件候选，而不是把模型语义质量算作通过。
+
+buildMemory关闭时一轮聊天完成，wire仅chat，目标仍作为阅读上下文可见，但无
+提炼、摘要、记忆；实际remember工具返回ai/memory-disabled。通过Reading Goals
+表单开启后，新轮产生chat/extraction/summary，目标以book preference保存，摘要
+读回Memory policy probe summary.。改目标后令下一轮提炼等待，关闭再立即开启
+偏好，服务端cancelled=true；释放后没有新候选/摘要写入，原记忆ID和时间保持。
+再主动发起新轮，才保存更新后的目标候选，wire重新出现extraction/summary。
+
+证据：[memory-build-policy-observations.json](./memory-build-policy-observations.json)。
+直接runtime探针不走聊天UI持久回调，turns始终0，因此不证明UI历史保留。首次
+inference Worker启动失败，清理后重试成功；设置探针内存恢复状态受准备期编辑
+失效影响，最后按已核对的原值恢复buildMemory=true并重新读取。临时配置及加密
+备份键已清除，原两书保留，自有书/活动记忆/摘要均无残留，Reading Goals仍有
+原12项贡献。本地服务正常停止143，desktop类型检查通过；不重复全量门禁。

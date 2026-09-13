@@ -130,7 +130,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET20 | ai.preferences.features.translate | F6 | 实际Agent工具关闭/恢复开关，当前选区Translate入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
 | SET21 | ai.preferences.features.summarizeChapter | F6 | 实际Agent工具关闭/恢复开关，当前选区Summarize chapter入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
 | SET22 | ai.preferences.features.askConversation | F6 | 实际Agent工具关闭/恢复开关，当前选区Ask AI入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
-| SET23 | ai.preferences.buildMemory | F6 | 待验 |
+| SET23 | ai.preferences.buildMemory | F6 | 本机真实Tauri关闭后聊天正常、无提炼/摘要和候选写入，remember拒绝；编译Reading Goals开启后目标记忆/摘要落盘；活动提炼关闭再开启取消且不复活，新轮恢复通过；空闲维护/进程中断/UI历史/真实模型质量待验，见第四十八流程 |
 | SET24 | ai.preferences.sendHighlightedText | F6 | 真实Tauri Agent请求四种偏好组合按选区权限过滤标记，本地历史保留而Agent历史/会话读取去除；等待请求收紧后ai/context-changed并取消，见第四十六流程；受控响应不计模型质量 |
 | SET25 | ai.preferences.sendSurroundingContext | F6 | 真实Tauri Agent关闭上下文后不发送viewport，仍可发送被允许的显式选区；两项全关均去除，Worker/Agent设置通过；受控端点/其他平台边界见第四十六流程 |
 | SET26 | ai.preferences.localOnly | F6 | 真实Worker普通/流式/结构化、Agent ask/turn/connection六入口开启localOnly均ai/local-only且无新增推理请求；活动插件流取消/deltas空通过；受控端点非模型质量，见第四十六流程 |
@@ -195,7 +195,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | AI11 | 每轮上下文 provider | F4 | 待验 |
 | AI12 | 按需插件检索 provider | F4 | 待验 |
 | MEM01 | 查询长期记忆 | F5 | 本机真 Worker 目标候选落盘及 Agent 原生端口 106 条分页无重复通过；前台视觉待环境恢复 |
-| MEM02 | 显式记住事实/偏好 | F5 | 显式新建/重新记住待验；共享原生创建端的自动同文去重另记 MEM03 |
+| MEM02 | 显式记住事实/偏好 | F5 | 第48流程真实Agent remember在buildMemory关闭时ai/memory-disabled通过；显式新建/重新记住待验；共享原生创建端的自动同文去重另记 MEM03 |
 | MEM03 | 轮后抽取/去重/强化记忆 | F5 | 本机插件候选管线落盘/同文去重/遗忘同文抑制通过；模型抽取/强化待验 |
 | MEM04 | 记忆巩固、修订/替代/遗忘 | F5 | 本机条件遗忘/同文抑制、并发旧巩固拒绝及新版本替代通过；模型巩固质量待验 |
 | MEM05 | 用户反馈记忆质量/纠错 | F5 | 本机 Memory Desk 纠错/置顶/确认遗忘与 SQLite 重读通过；前台视觉/其他 scope 待验 |

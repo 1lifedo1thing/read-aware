@@ -1,8 +1,7 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import { getDefaultStore } from "jotai";
-import type { PluginDisposable, PluginManifest, PluginFormView } from "@read-aware/plugin-types";
+import type { PluginFormView } from "@read-aware/plugin-types";
 import type { Id } from "@read-aware/core";
-import manifest from "../../../../plugins/reading-goals/manifest.json";
 import { buildMemoryTools } from "../../../../packages/agent/src/tools/memory-tools";
 import { createLibraryDomain } from "../../src/domain/library";
 import { createReadingDomain } from "../../src/domain/reading";
@@ -10,14 +9,14 @@ import { localKV } from "../../src/platform/local-store";
 import { commitDomainEvents } from "../../src/platform/domain-events";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { getAgentRuntime, discardAgentThread } from "../../src/features/ai/agent/agent-runtime";
-import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
+import { installedPluginsAtom, pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
-import { startPluginWorker } from "../../src/features/plugins/runtime/plugin-worker-host";
+import { setPluginEnabled } from "../../src/features/plugins/runtime/plugin-host";
+import { clearConversation } from "../../src/features/ai/lib/conversation-store";
 import { pluginDocsDelete, pluginDocsGet } from "../../src/features/plugins/runtime/plugin-backend";
 
 const bookKey = "capability-memory-probe.book";
-const disposables: PluginDisposable[] = [];
-let worker: Awaited<ReturnType<typeof startPluginWorker>> | undefined;
+let originalEnabled: boolean | undefined;
 async function assertIsolated() {
   const path = await appDataDir();
   if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw new Error("Use isolated capability-e2e data");
@@ -30,13 +29,15 @@ function bookId(): Id {
 export async function prepareMemoryProbe() {
   await assertIsolated();
   if (localKV.getItem(bookKey)) throw new Error("Clean up previous memory probe first");
+  const plugin = getDefaultStore().get(installedPluginsAtom).find(item => item.manifest.id === "reading-goals");
+  if (!plugin?.builtin) throw new Error("Requires compiled Reading Goals in the isolated profile");
+  originalEnabled = plugin.enabled;
+  if (!plugin.enabled) await setPluginEnabled("reading-goals", true);
   const source = `<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>science</genre><author><nickname>ReadAware Tests</nickname></author><book-title>Memory Policy Probe</book-title><lang>en</lang></title-info><document-info><author><nickname>ReadAware</nickname></author><date>2026-09-09</date><id>memory-policy-${crypto.randomUUID()}</id><version>1</version></document-info></description><body><section id="one"><title><p>Reading goals</p></title><p>Memory policy probe content. This is synthetic text, not a user book.</p></section></body></FictionBook>`;
   const book = await createLibraryDomain("user").commands.books.importBook({ fileName: "memory-policy-probe.fb2", data: new TextEncoder().encode(source) });
   await localKV.setItemAsync(bookKey, book.id);
-  worker = await startPluginWorker(manifest as PluginManifest, "0.5.4", disposables, { moduleUrl: new URL("../../../../plugins/reading-goals/src/index.ts", import.meta.url).href });
-  await worker.checkHealth(); worker.promote();
   await createReadingDomain("agent").commands.openBook(book.id);
-  return { bookId: book.id, contributions: inspectContributions("reading-goals").length };
+  return { bookId: book.id, pluginVersion: plugin.manifest.version, contributions: inspectContributions("reading-goals").length };
 }
 async function goalForms(): Promise<PluginFormView[]> {
   const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === "reading-goals" && command.id === "open");
@@ -80,8 +81,6 @@ export async function explicitProbeMemory() {
 }
 export async function cleanupMemoryProbe() {
   await assertIsolated();
-  await worker?.terminate(); worker = undefined;
-  for (const disposable of disposables.splice(0).reverse()) disposable.dispose();
   const id = localKV.getItem(bookKey);
   if (id) {
     const library = createLibraryDomain("user");
@@ -92,10 +91,13 @@ export async function cleanupMemoryProbe() {
     const memories = await deps.memory.searchMemories({ scopes: [`book:${id}`], limit: 100 });
     for (const memory of memories) await commitDomainEvents({ type: "memory.forgotten", payload: { memoryId: memory.id, reason: "user" }, origin: "user" });
     await discardAgentThread("book", id);
+    await clearConversation(id);
     await localKV.removeItemAsync(`read-aware-plugin.reading-goals.goal:${id}`);
     await pluginDocsDelete("reading-goals", "goals", id);
     if (book) await library.commands.books.remove(id);
     await localKV.removeItemAsync(bookKey);
   }
+  if (originalEnabled === false) await setPluginEnabled("reading-goals", false);
+  originalEnabled = undefined;
   return { contributions: inspectContributions("reading-goals").length };
 }
