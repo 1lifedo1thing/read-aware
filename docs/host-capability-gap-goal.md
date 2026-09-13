@@ -32,3 +32,6 @@
 - I05：已提交 `a87d4b9c`，声明式 editor、Annotation Desk CAS 消费者及编译产物接通；保存等待时继续输入、新 revision 先/后到达和外部冲突的 5 项交互检查通过，schema 20 项及 consumer/capability 26 项通过。真实 Worker/Tauri 和焦点验收待集中。
 - 五项实现已收齐，现进入已证实模型/标注修复：连续性代理负责 thread/history 的安全重写与回顾证据，标注代理负责精确选区 fixture/工具与写入回执，主代理整合并冻结后续验收范围。本轮 live 尚未启动；集中 Tauri 已开始，I01 原生契约通过。标注夹具已补真实选区和精确写入断言（`adb55736`），其模型行为仍待 live；不把上一轮的 8/10 或 220/247 当作本轮结论。
 - 已冻结本轮验收：10 个模型场景（journeys 2、karamazov 2、santi 1、annotations 3、personalization 1、grounding 1）和 I01–I05 的 5 组隔离桌面流程。复用旧基线，每场景最多两次修后运行，失败不刷绿；每项改动能力补自由问题并由主代理四维审阅。执行清单存于本地 `.eval/gap-closure/acceptance-plan.json`。
+
+- 集中验收首轮：模型10场景机器7过/3败；人工逐条审阅已写入各run，另两项机器pass为人工partial（表达过长/依据不足），没有换算成全量通过。目录误拒、当前选区标注拒绝进入最后相关修复；未经授权confirmSpoiler尝试被宿主拒绝但模型纪律仍失败。新自由笔记题的实际正文、分号和句号保留通过。
+- 真实Full2：两本非空TXT经生产导入落盘；Worker全库/指定书，以及当前书A、当前书B的正向读取与跨书拒绝均通过（`22eb9439`、`8f242da4`）。同一Worker切书/撤权、真实写入、备份授权、搜索与editor交互仍pending，未把新启动Worker当撤权证明。
