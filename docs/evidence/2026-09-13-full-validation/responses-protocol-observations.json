@@ -1,0 +1,353 @@
+{
+  "date": "2026-09-13",
+  "flow": 59,
+  "baseline": "142480e7",
+  "profile": "com.readaware.app.capability-e2e",
+  "platform": "macOS debug Tauri / native HTTP",
+  "boundary": "Mounted product ChatPanel with DOM input, real AgentRuntime, native Responses transport and SQLite conversation storage. Controlled loopback SSE/tool choice; not real provider/model quality or physical input/pixels.",
+  "setup": {
+    "bookId": "2af7857c-ce7c-400b-a7be-0c3e084ad1f5",
+    "api": "openai-responses",
+    "maxOutputTokens": 2048,
+    "thinking": "medium",
+    "backup": "Original null config, absent custom credential and buildMemory=true restored. Backup was encrypted in the isolated native secret store.",
+    "discardedAttempt": "Remote-origin credential write correctly rejected by pending local publication. First owned book removed, backup restored; probe revised to use normal local configuration writes before the accepted run.",
+    "initialAttemptBook": "2b7169a2-d25f-4e7b-973c-a8c19bc43dbe"
+  },
+  "requests": [
+    {
+      "selected": true,
+      "viewport": true,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "api": "responses",
+      "model": "privacy-probe",
+      "maxOutputTokens": 2048,
+      "reasoningEffort": "medium",
+      "toolResults": 0
+    },
+    {
+      "selected": true,
+      "viewport": true,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "api": "responses",
+      "model": "privacy-probe",
+      "maxOutputTokens": 2048,
+      "reasoningEffort": "medium",
+      "toolResults": 1
+    },
+    {
+      "selected": true,
+      "viewport": true,
+      "grounding": false,
+      "held": true,
+      "cancelled": true,
+      "api": "responses",
+      "model": "privacy-probe",
+      "maxOutputTokens": 2048,
+      "reasoningEffort": "medium",
+      "toolResults": 1
+    },
+    {
+      "selected": true,
+      "viewport": true,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "api": "responses",
+      "model": "privacy-probe",
+      "maxOutputTokens": 2048,
+      "reasoningEffort": "medium",
+      "toolResults": 0
+    },
+    {
+      "selected": true,
+      "viewport": true,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "api": "responses",
+      "model": "privacy-probe",
+      "maxOutputTokens": 2048,
+      "reasoningEffort": "medium",
+      "toolResults": 0
+    },
+    {
+      "selected": true,
+      "viewport": true,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "api": "responses",
+      "model": "privacy-probe",
+      "maxOutputTokens": 2048,
+      "reasoningEffort": "medium",
+      "toolResults": 1
+    }
+  ],
+  "success": {
+    "messages": [
+      {
+        "content": "Check this synthetic book table of contents with the protocol probe.",
+        "createdAt": "2026-09-13T03:12:34.019Z",
+        "id": "f995b51f-6330-4fda-ba3d-bedfbb001e8c",
+        "role": "user"
+      },
+      {
+        "content": "Responses native protocol probe completed.",
+        "createdAt": "2026-09-13T03:12:36.379Z",
+        "id": "a67b2194-1e5f-4670-ac97-26330178a30d",
+        "parts": [
+          {
+            "id": "call_resp_probe_1|fc_resp_probe_1",
+            "input": "{}",
+            "output": "[\n  {\n    \"chapterIndex\": 0,\n    \"chapterNumber\": 1,\n    \"title\": \"Privacy sample\",\n    \"chars\": 121\n  }\n]",
+            "state": "done",
+            "tool": "get_toc",
+            "type": "tool"
+          },
+          {
+            "text": "Responses native protocol probe completed.",
+            "type": "text"
+          }
+        ],
+        "role": "assistant"
+      }
+    ],
+    "text": "\nShelf\n\nContents\n\nNotes\nReading Context Policy Probe\n1 / 1 · 100%\n\nRead by sentence or paragraph\n\nReading appearance\n\nChat\n\nMore\n\nPrivacy sample\nCheck this synthetic book table of contents with the protocol probe.\n\nCopy message\n\nReading the table of contents\nResponses native protocol probe completed.\n\nCopy message\n\nRegenerate response\n\n"
+  },
+  "cancelled": {
+    "messages": [
+      {
+        "content": "Check this synthetic book table of contents with the protocol probe.",
+        "createdAt": "2026-09-13T03:12:34.019Z",
+        "id": "f995b51f-6330-4fda-ba3d-bedfbb001e8c",
+        "role": "user"
+      },
+      {
+        "content": "Responses native protocol probe completed.",
+        "createdAt": "2026-09-13T03:12:36.379Z",
+        "id": "a67b2194-1e5f-4670-ac97-26330178a30d",
+        "parts": [
+          {
+            "id": "call_resp_probe_1|fc_resp_probe_1",
+            "input": "{}",
+            "output": "[\n  {\n    \"chapterIndex\": 0,\n    \"chapterNumber\": 1,\n    \"title\": \"Privacy sample\",\n    \"chars\": 121\n  }\n]",
+            "state": "done",
+            "tool": "get_toc",
+            "type": "tool"
+          },
+          {
+            "text": "Responses native protocol probe completed.",
+            "type": "text"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "Hold this controlled request so I can cancel it.",
+        "createdAt": "2026-09-13T03:13:17.089Z",
+        "id": "b27883ef-c0cc-45c7-8a61-ac62f6ec4c36",
+        "role": "user"
+      }
+    ],
+    "stopPresent": false,
+    "text": "\nShelf\n\nContents\n\nNotes\nReading Context Policy Probe\n1 / 1 · 100%\n\nRead by sentence or paragraph\n\nReading appearance\n\nChat\n\nMore\n\nPrivacy sample\nCheck this synthetic book table of contents with the protocol probe.\n\nCopy message\n\nReading the table of contents\nResponses native protocol probe completed.\n\nCopy message\nHold this controlled request so I can cancel it.\n\nCopy message\n\nRegenerate response\n\n"
+  },
+  "failure": {
+    "buttons": [
+      {
+        "aria": "Copy message",
+        "text": ""
+      },
+      {
+        "aria": null,
+        "text": "Reading the table of contents\n"
+      },
+      {
+        "aria": "Copy message",
+        "text": ""
+      },
+      {
+        "aria": "Copy message",
+        "text": ""
+      },
+      {
+        "aria": "Copy message",
+        "text": ""
+      },
+      {
+        "aria": null,
+        "text": "Retry"
+      },
+      {
+        "aria": "Send",
+        "text": ""
+      }
+    ],
+    "messages": [
+      {
+        "content": "Check this synthetic book table of contents with the protocol probe.",
+        "createdAt": "2026-09-13T03:12:34.019Z",
+        "id": "f995b51f-6330-4fda-ba3d-bedfbb001e8c",
+        "role": "user"
+      },
+      {
+        "content": "Responses native protocol probe completed.",
+        "createdAt": "2026-09-13T03:12:36.379Z",
+        "id": "a67b2194-1e5f-4670-ac97-26330178a30d",
+        "parts": [
+          {
+            "id": "call_resp_probe_1|fc_resp_probe_1",
+            "input": "{}",
+            "output": "[\n  {\n    \"chapterIndex\": 0,\n    \"chapterNumber\": 1,\n    \"title\": \"Privacy sample\",\n    \"chars\": 121\n  }\n]",
+            "state": "done",
+            "tool": "get_toc",
+            "type": "tool"
+          },
+          {
+            "text": "Responses native protocol probe completed.",
+            "type": "text"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "Hold this controlled request so I can cancel it.",
+        "createdAt": "2026-09-13T03:13:17.089Z",
+        "id": "b27883ef-c0cc-45c7-8a61-ac62f6ec4c36",
+        "role": "user"
+      },
+      {
+        "content": "Exercise the controlled Responses error.",
+        "createdAt": "2026-09-13T03:13:59.825Z",
+        "id": "bcff3ae9-d276-4758-8ca7-95979b888732",
+        "role": "user"
+      },
+      {
+        "content": "",
+        "createdAt": "2026-09-13T03:14:00.080Z",
+        "error": "server_error: Controlled Responses failure",
+        "id": "e659ae8d-6969-4ba6-b36f-ab7afc50cb57",
+        "role": "assistant"
+      }
+    ],
+    "text": "\nShelf\n\nContents\n\nNotes\nReading Context Policy Probe\n1 / 1 · 100%\n\nRead by sentence or paragraph\n\nReading appearance\n\nChat\n\nMore\n\nPrivacy sample\nCheck this synthetic book table of contents with the protocol probe.\n\nCopy message\n\nReading the table of contents\nResponses native protocol probe completed.\n\nCopy message\nHold this controlled request so I can cancel it.\n\nCopy message\nExercise the controlled Responses error.\n\nCopy message\nGeneration failed\nRetry\nThe AI provider had a temporary problem. Try again shortly.\n\n"
+  },
+  "retried": {
+    "messages": [
+      {
+        "content": "Check this synthetic book table of contents with the protocol probe.",
+        "createdAt": "2026-09-13T03:12:34.019Z",
+        "id": "f995b51f-6330-4fda-ba3d-bedfbb001e8c",
+        "role": "user"
+      },
+      {
+        "content": "Responses native protocol probe completed.",
+        "createdAt": "2026-09-13T03:12:36.379Z",
+        "id": "a67b2194-1e5f-4670-ac97-26330178a30d",
+        "parts": [
+          {
+            "id": "call_resp_probe_1|fc_resp_probe_1",
+            "input": "{}",
+            "output": "[\n  {\n    \"chapterIndex\": 0,\n    \"chapterNumber\": 1,\n    \"title\": \"Privacy sample\",\n    \"chars\": 121\n  }\n]",
+            "state": "done",
+            "tool": "get_toc",
+            "type": "tool"
+          },
+          {
+            "text": "Responses native protocol probe completed.",
+            "type": "text"
+          }
+        ],
+        "role": "assistant"
+      },
+      {
+        "content": "Hold this controlled request so I can cancel it.",
+        "createdAt": "2026-09-13T03:13:17.089Z",
+        "id": "b27883ef-c0cc-45c7-8a61-ac62f6ec4c36",
+        "role": "user"
+      },
+      {
+        "content": "Exercise the controlled Responses error.",
+        "createdAt": "2026-09-13T03:13:59.825Z",
+        "id": "bcff3ae9-d276-4758-8ca7-95979b888732",
+        "role": "user"
+      },
+      {
+        "content": "Responses native protocol probe completed.",
+        "createdAt": "2026-09-13T03:14:22.412Z",
+        "id": "f61f807a-d4db-48b5-b699-d0ca3e0cbb47",
+        "parts": [
+          {
+            "id": "call_resp_probe_5|fc_resp_probe_5",
+            "input": "{}",
+            "output": "[\n  {\n    \"chapterIndex\": 0,\n    \"chapterNumber\": 1,\n    \"title\": \"Privacy sample\",\n    \"chars\": 121\n  }\n]",
+            "state": "done",
+            "tool": "get_toc",
+            "type": "tool"
+          },
+          {
+            "text": "Responses native protocol probe completed.",
+            "type": "text"
+          }
+        ],
+        "role": "assistant"
+      }
+    ],
+    "text": "\nShelf\n\nContents\n\nNotes\nReading Context Policy Probe\n1 / 1 · 100%\n\nRead by sentence or paragraph\n\nReading appearance\n\nChat\n\nMore\n\nPrivacy sample\nCheck this synthetic book table of contents with the protocol probe.\n\nCopy message\n\nReading the table of contents\nResponses native protocol probe completed.\n\nCopy message\nHold this controlled request so I can cancel it.\n\nCopy message\nExercise the controlled Responses error.\n\nCopy message\n\nReading the table of contents\nResponses native protocol probe completed.\n\nCopy message\n\nRegenerate response\n\n"
+  },
+  "reopened": {
+    "answers": 2,
+    "text": "\nShelf\n\nContents\n\nNotes\nReading Context Policy Probe\n1 / 1 · 100%\n\nRead by sentence or paragraph\n\nReading appearance\n\nChat\n\nMore\n\nPrivacy sample\nCheck this synthetic book table of contents with the protocol probe.\n\nCopy message\n\nReading the table of contents\nResponses native protocol probe completed.\n\nCopy message\nHold this controlled request so I can cancel it.\n\nCopy message\nExercise the controlled Responses error.\n\nCopy message\n\nReading the table of contents\nResponses native protocol probe completed.\n\nCopy message\n\nRegenerate response\n\n"
+  },
+  "restored": {
+    "buildMemoryRestored": true,
+    "configRestored": true,
+    "credentialRestored": true
+  },
+  "final": {
+    "backupExists": false,
+    "books": [
+      {
+        "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "title": "Reading Paint Probe"
+      },
+      {
+        "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+        "title": "Reading Capability Probe"
+      }
+    ],
+    "checks": [
+      {
+        "blob": null,
+        "book": null,
+        "id": "2b7169a2-d25f-4e7b-973c-a8c19bc43dbe",
+        "messages": 0
+      },
+      {
+        "blob": null,
+        "book": null,
+        "id": "2af7857c-ce7c-400b-a7be-0c3e084ad1f5",
+        "messages": 0
+      }
+    ],
+    "configPresent": false,
+    "customCredentialPresent": false,
+    "text": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n"
+  },
+  "validation": {
+    "desktopTypes": "bun run typecheck:desktop in apps/web passed",
+    "nonAuthoritativeAttempt": "Root bunx resolved a different TypeScript toolchain and produced unrelated baseline errors; package-owned TypeScript invocation passed.",
+    "server": "owned PID 63330 terminated; session 30936 exit 143; no listener on 19843"
+  },
+  "pending": [
+    "Actual remote Responses provider, authentication and model semantics",
+    "Non-streaming/structured/image/reasoning content variants",
+    "Other platforms, packaged build and process restart",
+    "Physical input, accessibility focus and pixels"
+  ]
+}

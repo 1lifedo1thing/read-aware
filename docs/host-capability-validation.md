@@ -50,7 +50,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | TXT05 | 启动、重建、暂停让路正文抽取 | F2 | 本机准备/重建、共享取消/退役隔离、激活期禁止、宿主忙拒绝通过；Worker重启历史已有证据；让路/截止/进程重启待验 |
 | TXT06 | 当前书及跨书多查询正文检索 | F2 | 编译Text Desk真实Worker三查询两章桶去重、两书索引搜索/详情/无命中/空输入拒绝通过，宿主重读及global Agent结果一致；取消/迟到结果不交付/明确重试已复验，完整负载/其他格式待验，见第三十七/三十八流程 |
 | TXT07 | 引擎全文精确搜索并返回 CFI | F2 | 本机FB2真Worker跨三节精确搜索45条分页20/20/5及末项CFI打开原文通过；book/global Agent按12条续页一致；其他格式待验，见第四十流程 |
-| TXT08 | 搜索分页、取消、背压和过期查询淘汰 | F2 | 本机FB2分页45条无重漏、取消/迟到隔离/换查询退役、Worker32读上限/释放恢复、blob换源旧游标拒绝通过；读取中换源时编译Text Desk/Worker/Agent三路旧结果均stale，释放旧parser后新搜索及详情通过；用户替换工作流/其他格式/packaged/平台待验，见第三十八、四十至四十二及五十二流程 |
+| TXT08 | 搜索分页、取消、背压和过期查询淘汰 | F2 | 本机FB2分页45条无重漏、取消/迟到隔离/换查询退役、Worker32读上限/释放恢复、blob换源旧游标拒绝通过；读取中换源时编译Text Desk/Worker/Agent三路旧结果均stale，释放旧parser后新搜索及详情通过；当前没有独立替换原文件公共命令，不把换源保护当成已实现的用户替换界面；其他格式/packaged/平台待验，见第三十八、四十至四十二及五十二流程 |
 | TXT09 | 读取当前可见文本/阅读游标 | F2 | 本机FB2实际开书后会话ready返回正文及range/available/未截断状态；本轮窗口hidden，不计前台可见范围像素校验，PDF/自动游标边界待验，见第三十七流程 |
 | TXT10 | 选区附近句段上下文 | F2 | 本机 Text Desk 命中段落与前后文显示通过；其他状态待验 |
 | TXT11 | 书内脚注/链接目标解析与预览 | F2 | 本机 FB2 真实Worker列举/读脚注/宿主浮层通过；其他格式待验 |
@@ -101,8 +101,8 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | CFG04 | 阅读对齐 reading.textAlign | F6 | Worker三目标与实际设置UI Justified、预览computed justify、原生重读通过；FB2实际正文justify↔start通过；其他格式待验，见第二十五流程 |
 | CFG05 | 固定版式颜色 reading.fixedLayoutColor | F6 | Worker theme/original三目标与重置、原生读写通过；PDF实际颜色与UI入口待验，见第二十五流程 |
 | CFG06 | 更新内容弹窗 general.whatsNewDialog | F6 | 真实UI/Worker/Agent开关及启动合成版本变更：关闭消费提示、重开不补弹、新提示加载日志/关闭及原生重启不重弹通过；实际升级/packaged待验，见第四十四流程 |
-| CFG07 | AI 提供商/端点/密钥配置 | F6 | 本机实际Tauri表单清除/自定义配置/原生连接测试、custom↔OpenAI凭据隔离及返回恢复通过；原15凭据槽/配置全量恢复核对；锁屏DOM非物理输入，远端provider/Responses/进程重启待验，见第五十流程 |
-| CFG08 | 模型目录刷新、连接测试与模型能力 | F6 | 部分通过：原生模型目录刷新/视觉发现与真实Qwen调用（15）；配置表单连接测试、在途编辑不误认证新配置（50）通过。Responses协议、其他远端provider、发布包待验；账户阻止的GPT路由不计模型失败 |
+| CFG07 | AI 提供商/端点/密钥配置 | F6 | 本机实际Tauri表单清除/自定义配置/原生连接测试、custom↔OpenAI凭据隔离及返回恢复通过；原15凭据槽/配置全量恢复核对；Responses受控原生聊天工具往返/取消/失败重试通过（59），原配置/自定义凭据恢复；锁屏DOM非物理输入，远端provider/进程重启待验，见第五十、五十九流程 |
+| CFG08 | 模型目录刷新、连接测试与模型能力 | F6 | 部分通过：原生模型目录刷新/视觉发现与真实Qwen调用（15）；配置表单连接测试、在途编辑不误认证新配置（50）通过。Responses受控原生聊天协议通过（59）；其连接测试界面/其他远端provider/发布包待验，账户阻止的GPT路由不计模型失败 |
 | CFG09 | 插件非敏感设置的动态路径 | F6 | 待验 |
 | CFG10 | 设置变化事件/外部写入刷新 | F6 | 本机真实 Worker 观察本地设置/目录变化、remote与restore来源注入、停止订阅通过；跨设备待验 |
 | CFG11 | 聊天/笔记内容字体：跟随阅读或独立字号/字体/行距 | F6 | 本机Worker/Agent修改后书内消息/输入框/笔记列表独立Menlo及跟随全局Lora、字号行距实际computed和关书重开通过；全局聊天/笔记编辑器/像素仍待验，见第二十八/五十一流程 |
@@ -151,7 +151,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET41 | ai.connection.thinkingLevel | F6 | 实际表单Smart high保存且原生smart请求reasoningEffort=high；仅受控custom，其他模型/actor待验，见第五十流程 |
 | SET42 | ai.connection.fastThinkingLevel | F6 | 实际独立Fast low保存且fast请求reasoningEffort=low；关闭独立后随Smart high，其他模型/actor待验，见第五十流程 |
 | SET43 | ai.connection.custom.endpointConfigured | F6 | 实际自定义端点填入后只读endpointConfigured=true、原生loopback连接测试成功；清除后描述符不再提供，其他端点/平台待验，见第五十流程 |
-| SET44 | ai.connection.custom.api | F6 | 实际UI Completions连接测试/推理通过；切Responses关闭重开保存、切回Completions通过；Responses真实调用待验，见第五十流程 |
+| SET44 | ai.connection.custom.api | F6 | 实际UI Completions连接测试/推理及Responses保存重开通过（50）；真实Tauri聊天Responses流/工具往返、原生取消、失败/Retry及关书重开历史通过（59）；受控端点不计远端模型/非流式/其他内容类型，发布包待验 |
 | SET45 | ai.connection.custom.supportsThinking | F6 | 实际UI开启后smart/fast发送对应reasoningEffort；关闭后请求不再带reasoningEffort通过；远端支持语义待验，见第五十流程 |
 | SET46 | ai.connection.custom.maxOutputTokens | F6 | 实际UI负数aria-invalid且阻止测试/未落盘；2048保存且smart/fast实际原生请求上限2048通过；其他上限/actor待验，见第五十流程 |
 | SET47 | reading.textAlign | F6 | Worker目标覆盖与实际设置UI Justified、预览及FB2正文computed justify、原生KV通过；其他格式待验，见第二十五流程 |
@@ -187,7 +187,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | AI03 | 发送/流式生成/停止/重试聊天回合 | F4 | 部分通过：真实书内UI发送、受控HTTP流式响应、跟随/原生滚轮暂停与恢复、结束后重开历史（49）通过；全局聊天、停止/重试及真实模型语义各自待验 |
 | AI04 | 提问、选项澄清、批准/拒绝高风险动作 | F4 | 部分通过：实际Agent工具经ChatInteractionPrompt拒绝/批准两书删除并核对原生结果（24），不调用模型；合并拒绝/取消/批准/目标变化后旧许可拒绝亦通过（58）；完整提问/选项澄清及模型选择动作待验 |
 | AI05 | Agent 展示可点击书卡与词典卡 | F4 | 待验 |
-| AI06 | 一次性文本/结构化/流式 LLM 推理 | F4 | 部分通过：Text Desk真实模型识图（15）、smart/fast受控原生请求模型/上限/思考参数（50）通过；完整结构化/流式协议及其他提供者待验，受控端点不计语义质量 |
+| AI06 | 一次性文本/结构化/流式 LLM 推理 | F4 | 部分通过：Text Desk真实模型识图（15）、smart/fast受控原生请求模型/上限/思考参数（50）；Responses原生SSE文本/工具往返、取消/失败重试（59）通过。非流式/完整结构化/图片思考变体及其他提供者待验，受控端点不计语义质量 |
 | AI07 | 推理取消、超时、用量/预算/成本可见性 | F4 | 待验 |
 | AI08 | 书内 scope/游标/选区自动 grounding | F4 | 待验 |
 | AI09 | 剧透边界、请求允许超前内容 | F4 | 首轮失败已修复；2个定向模型样本通过，产品复核仍有保留；Tauri待验 |

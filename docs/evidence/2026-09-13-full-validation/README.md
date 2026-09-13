@@ -1610,3 +1610,36 @@ judge却仍满分。首个实际请求显示系统把注入纪要称作读者已
 初次回归暴露旧测试仍期待chapter #0，已按现有zero-based chapterIndex标注修正，
 没有放宽围栏/选区断言；最终相关检查通过。未重跑全量门禁、未操作桌面资料，
 这批远端模型/内存端口证据不能代替Tauri或发布包验收。
+
+## 第五十九流程：Responses 原生聊天、工具往返、取消与失败重试
+
+复用primary隔离Tauri PID15611/port9224和已有reading-context探针，给现有
+loopback服务补Responses SSE协议。通过实际ChatPanel输入/Send触发产品
+AgentRuntime，原生HTTP发到/v1/responses：model=privacy-probe、输出上限2048、
+reasoning.effort=medium。端点第一次发get_toc函数调用，宿主执行得到合成书目录，
+第二次请求含一个function_call_output；最终文本流显示在聊天内，原生重读记录
+含两条消息和done工具部件。这不是模型自主选工具的证据，回答及工具选择均受控。
+
+第二轮端点保持响应未完成，实际Stop generating后服务端cancelled=true，UI停止
+等待，SQLite仅保留用户问题，没有新增成功回答；放行旧响应也未交付。下一轮
+受控response.failed显示Generation failed和安全的临时错误提示，提供Retry。
+点击Retry后重新完成get_toc→工具结果→文本，共六次原生请求；失败空回答被
+替换，最终三条用户消息/两条成功回答。返回书架再打开自有书，实际聊天保持两份
+成功文本和工具记录。只读原生会话重读与UI一致，未用内存端口代替持久化。
+
+准备阶段一次remote来源写凭据被原生ui/superseded拒绝：该槽有待发布的本地选择。
+这是探针用错写入来源，未改产品保护；先清理第一次自有书并恢复备份，再将探针
+改为正常local配置写入，才开始上面的协议验收。配置与自定义凭据从加密备份恢复，
+原buildMemory=true恢复。两次自有书/源blob/聊天均清零，备份键删除，原两书保留。
+自有服务PID63330/会话30936正常终止143，19843无监听；产品原生实例保留。
+
+仅修改现有测试探针/端点。apps/web的typecheck:desktop通过；首次从仓库根
+bunx获取的另一套编译器报出BlobPart/Bun类型等差异，改用项目配置的编译器检查，
+没有修改业务代码绕过它。未重跑全量门禁，没有新增产品修复。本条不证明远端
+Responses认证/模型质量、非流式/结构化/图片/思考内容变体、发布包、其他平台、
+物理输入或像素。证据见[responses-protocol-observations.json](./responses-protocol-observations.json)。
+
+同时纠正TXT08的一条范围描述：检查LibraryCommands和现有Library Desk入口后，
+当前没有独立的用户替换原书文件命令/界面；原先写成用户替换流程待验不准确。
+第五十二流程的原生blob换源仍证明过期保护，不能把它当作这一产品入口已存在。
+备份恢复中的文件替换与迁移仍单列，不因这次范围澄清判为已验，也未新增产品语义。

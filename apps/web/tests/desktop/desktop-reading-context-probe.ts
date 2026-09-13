@@ -3,7 +3,10 @@ import type { Id } from "@read-aware/core";
 import { createLibraryDomain } from "../../src/domain/library";
 import { createReadingDomain } from "../../src/domain/reading";
 import { localKV } from "../../src/platform/local-store";
-import { getAIConfig } from "../../src/features/ai/lib/ai-config";
+import { AI_CONFIG_KEY, encodeAIConfig, getAIConfig } from "../../src/features/ai/lib/ai-config";
+import { getSecret, setSecretAsync, deleteSecretAsync } from "../../src/platform/secret-store";
+import { invoke } from "../../src/platform/ipc";
+import { createSettingsDomain } from "../../src/domain/settings/domain";
 import { getAgentRuntime, discardAgentThread } from "../../src/features/ai/agent/agent-runtime";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { clearConversation, loadConversation, saveConversation } from "../../src/features/ai/lib/conversation-store";
@@ -12,6 +15,36 @@ import { buildReaderTools } from "../../../../packages/agent/src/tools/reader-to
 
 const bookKey = "capability-reading-context-probe.book";
 const selection = "SELECTION_MARKER_947";
+const responsesBackupKey = "capability-responses-probe.backup";
+type ResponsesBackup = { config: string | null; customKey: string; buildMemory: boolean };
+
+export async function prepareResponsesConfig() {
+  await assertIsolated();
+  if (await invoke("secret_get", { key: responsesBackupKey })) throw Error("Restore previous Responses probe first");
+  const settings = createSettingsDomain("user");
+  const backup: ResponsesBackup = { config: localKV.getItem(AI_CONFIG_KEY), customKey: getSecret("ai-api-key.custom"), buildMemory: (await settings.queries.read("ai.preferences.buildMemory")).value as boolean };
+  await invoke("secret_set", { key: responsesBackupKey, value: JSON.stringify(backup) });
+  await settings.commands.update([{ path: "ai.preferences.buildMemory", value: false }]);
+  await setSecretAsync("ai-api-key.custom", "controlled-responses-probe");
+  await localKV.setItemAsync(AI_CONFIG_KEY, encodeAIConfig({ provider: "custom", apiKey: "controlled-responses-probe", model: "privacy-probe", thinkingLevel: "medium", customBaseUrl: "http://127.0.0.1:19843/v1", customApi: "openai-responses", customSupportsThinking: true, customMaxOutputTokens: 2048 }));
+  return { configured: true, api: getAIConfig()?.customApi };
+}
+
+export async function restoreResponsesConfig() {
+  await assertIsolated();
+  const raw = await invoke<string | null>("secret_get", { key: responsesBackupKey });
+  if (!raw) throw Error("Responses backup missing");
+  const backup = JSON.parse(raw) as ResponsesBackup;
+  if (backup.config === null) await localKV.removeItemAsync(AI_CONFIG_KEY);
+  else await localKV.setItemAsync(AI_CONFIG_KEY, backup.config);
+  if (backup.customKey) await setSecretAsync("ai-api-key.custom", backup.customKey);
+  else await deleteSecretAsync("ai-api-key.custom");
+  await createSettingsDomain("user").commands.update([{ path: "ai.preferences.buildMemory", value: backup.buildMemory }]);
+  const restored = localKV.getItem(AI_CONFIG_KEY) === backup.config && getSecret("ai-api-key.custom") === backup.customKey;
+  if (!restored) throw Error("Responses configuration restore mismatch");
+  await invoke("secret_delete", { key: responsesBackupKey });
+  return { configRestored: true, credentialRestored: true, buildMemoryRestored: (await createSettingsDomain("user").queries.read("ai.preferences.buildMemory")).value === backup.buildMemory };
+}
 async function assertIsolated() {
   const path = await appDataDir();
   if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw new Error("Use isolated capability-e2e data");
