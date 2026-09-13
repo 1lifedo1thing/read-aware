@@ -2084,3 +2084,23 @@ days:5、pace:fast、remind:false。初始选项/false没有自动提交或充�
 book scope/其他取值边界、发布包、其他平台和真实模型选择行为仍待验。
 测试会话已清除，原两书和原会话hash保持；AI配置/凭据/buildMemory恢复、
 19843服务退出130。详见[提问与表单记录](./agent-interaction-form-observations.json)。
+
+## 第七十九流程：Worker原生临时资源与Agent UTF-8游标
+
+基线`02d8f3b2`，primary真实Tauri/两Worker/原生文件。分两次追加1MiB+257字节，
+派发后修改原Uint8Array不影响已接收数据；五次262144字节分页读回、跨块48字节
+范围与EOF均逐字节核对一致，SHA256为1c8878d50fece145559721d69c169f7e37ea609c66a7adf837e5114401386b06。
+写入前read、重复offset、超过1MiB分块、commit后追加均ui/invalid-target；另一
+Worker的stat/read/commit均fs/not-found，外来release不影响原owner读回。
+16个引用达到owner额度，第17个ui/unavailable；release未封口写入幂等、可重新
+创建。保留一份ready及一份2字节writing后退役，18个创建过的原生句柄直接读取
+全部fs/not-found，测试贡献清零。观察包装仅记录真实create返回的私有id，不替换I/O。
+
+Agent实际工具/宿主原生端口读取18字节BOM+ASCII+中文+emoji+组合字符，4字节
+请求返回游标4/7/11/14/18，重组无损；字符中间、NUL二进制、非法及截断UTF-8
+均拒绝；跨会话拒绝，原书export-only仍memory/forbidden。release幂等及释放后
+read拒绝，所有自有引用清理。原两书/原会话hash/清理意图为空保持。
+
+desktop类型及位置/生产依赖门禁通过。无产品代码修改；测试Worker/宿主造数
+不冒称编译第一方消费者或真实模型轮次，原生picker证据复用第76等流程。1GiB/
+2GiB、宿主64引用、TTL、进程崩溃、发布包与其他平台独立待验。详见[资源流记录](./resource-stream-observations.json)。
