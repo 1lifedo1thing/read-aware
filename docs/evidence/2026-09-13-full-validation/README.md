@@ -2142,3 +2142,16 @@ Library Desk检查TXT/1节→确认导入→原文件关联打开通过，无需
 这是macOS发布包/真实编译Worker/系统确认框/TextEdit的证据，未启用release MCP，
 未放宽CSP。完整像素焦点、小时TTL、强杀、关联失败、其他格式/平台、URL和深链接
 仍独立待验；初始Agent失败不拼接成新的成功模型轮次。详见[外部关联记录](./external-resource-observations.json)。
+
+## 第八十二流程：发布包诊断预览、原生保存与日志目录
+
+沿第80发布包（PID35546）实际设置About→Export，界面先展示本地bundle及数据
+提醒，确认后进入系统Save。保存12570字节JSON，界面显示Diagnostics bundle saved；
+重读文件含0.5.4/macos、生成时间、原生readaware.log片段，与磁盘日志逐字匹配。
+完整性检查实际重放73事件，consistent=true、drift=[]，不是用手写成功回执代替检查。
+
+点击日志Reveal后Finder真实打开Logs并选中隔离profile目录；只关闭新开的Logs
+窗口，原Playground窗口保留。原一书四标注不变，原始诊断包仅保留在忽略的.eval，
+临时导出路径已移除，不提交日志或记录全文。本流程没有上传报告或发送消息，
+发送回执/真实崩溃、插件或Agent诊断入口、轮转/截断与失败路径、其他平台仍待验。
+详见[诊断导出记录](./diagnostics-export-observations.json)。

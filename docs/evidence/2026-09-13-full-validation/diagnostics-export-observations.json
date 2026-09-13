@@ -1,0 +1,54 @@
+{
+  "flow": 82,
+  "date": "2026-09-13",
+  "boundary": "macOS aarch64 release Tauri / native preview-save dialog / native log file and projection verification / Finder Reveal",
+  "releaseSha256": "5afa96a2d2b349a169f8e9fd667f0a13ecc463c80b92b9bfa77cc423eb73723a",
+  "releasePid": 35546,
+  "action": "Settings > About > Export > bundle preview > Export > native Save",
+  "observedNotice": "Done Diagnostics bundle saved.",
+  "file": {
+    "bytes": 12570,
+    "sha256": "c047d9aad834cfc0e64d1322edbd1a6530a934eeba7c75900bc2a38c542ecdd2",
+    "generatedAt": "2026-09-13T07:11:14.829Z",
+    "appVersion": "0.5.4",
+    "platform": "macos",
+    "language": "en-US",
+    "logs": [
+      {
+        "name": "readaware.log",
+        "textLength": 11934,
+        "truncated": false
+      }
+    ],
+    "exportedLogTailMatchesNativeLog": true,
+    "projections": {
+      "consistent": true,
+      "eventsReplayed": 73,
+      "drift": []
+    }
+  },
+  "reveal": {
+    "finderWindow": "Logs",
+    "selectedItem": "com.readaware.app.validation-packaged-e2e",
+    "ownedFinderWindowClosed": true,
+    "originalFinderWindowRestored": "Playground"
+  },
+  "cleanup": {
+    "originalBooks": [
+      [
+        "5506162d-7bd7-43c4-bf81-6495ee6067d3",
+        "Packaged Lifecycle Probe"
+      ]
+    ],
+    "annotations": 4,
+    "rawBundleRetainedOnlyInIgnoredEval": true,
+    "temporaryExportPathRemoved": true
+  },
+  "limits": [
+    "No report uploaded or message sent; send/receipt and real crash recovery remain unverified",
+    "No plugin or Agent aggregate diagnostics invocation in this flow",
+    "Not all log rotation/truncation or failed assembly/save paths tested",
+    "No other platform or production release deployment claim",
+    "Raw log/record bundle not committed"
+  ]
+}
