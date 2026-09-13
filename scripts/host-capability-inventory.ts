@@ -10,7 +10,7 @@ import { DEFAULT_GENERAL_SETTINGS } from "../apps/web/src/features/settings/lib/
 import { DEFAULT_AI_PREFERENCES } from "../apps/web/src/features/settings/lib/ai-preferences";
 import { DEFAULT_READER_SETTINGS } from "../apps/web/src/features/settings/lib/reader-settings";
 import { DEFAULT_CONTENT_TYPOGRAPHY } from "../apps/web/src/features/settings/lib/content-typography";
-import { groups, staticSettingPaths, readOnlySettings } from "../docs/host-capability-matrix.data";
+import { groups, settingPathId, staticSettingPaths, readOnlySettings } from "../docs/host-capability-matrix.data";
 
 const ts = createRequire(new URL("../apps/web/package.json", import.meta.url))("typescript") as typeof import("../apps/web/node_modules/typescript");
 const ids = new Set(groups.flatMap(g => g.rows.map(r => r.id)));
@@ -392,7 +392,7 @@ export function collectInventory(): Inventory[] {
   if (JSON.stringify(settings.map(s => s.path).sort()) !== JSON.stringify([...staticSettingPaths].sort())) throw new Error("Static settings roster drift");
   for (const setting of settings) {
     if (!!setting.write === readOnlySettings.has(setting.path)) throw new Error(`Setting mutability drift: ${setting.path}`);
-    add("Settings path", setting.path, [`SET${String(staticSettingPaths.indexOf(setting.path)+1).padStart(2,"0")}`], setting.write ? "[代码] 目录可读写；实际效果见主表" : "[代码] 只读状态");
+    add("Settings path", setting.path, [settingPathId(setting.path)], setting.write ? "[代码] 目录可读写；实际效果见主表" : "[代码] 只读状态");
   }
   const rust = readFileSync("apps/desktop/src-tauri/src/lib.rs","utf8");
   const block = rust.match(/tauri::generate_handler!\[([\s\S]*?)\]/)?.[1];

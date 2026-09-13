@@ -7,6 +7,8 @@
 
 ## 最近交付与接续入口
 
+当前 active goal：[有界实现补齐与集中验收](./host-capability-gap-goal.md)，基线 `f312d24a`。先按 I01–I05 移除 localOnly、补齐对象授权、有界搜索、类型化提供者复用、声明式文本编辑，再处理已证实模型/标注问题和集中验收。当前处于契约核对/实现阶段；用户已明确删除 localOnly，保留独立文本发送设置；不重复全量评测，未满足交付条件不得以一轮结束结清。
+
 当前 [第二轮有界全量验证](./evidence/2026-09-13-full-validation-2/README.md) 已收口：固定 597 文件 2996 pass/0 fail/1 skip，Cargo 474 pass/0 fail/2 ignored，类型与生成契约通过；真实 Tauri 补验 wipe 恢复、备份取消与写屏障、快捷键持久化。模型首轮 220/247 pass、26 fail、1 timeout；唯一一次定向 8/10 pass，主代理质评仅 5 满意/2 保留/3 不满意。全部失败及代表 pass、两轮自由问题已审阅。Luna/max 分工，主代理接管尾部修复，提交 `8bce2c40`、`168d355f`、`c2cf4e28`、`ca8f0a69`；六轮 recap、精确标注、工具纪律及原外部阻塞保留。执行完成不等于全部验收通过，不自动下一 goal，不推送。
 
 本次 [Luna / max 并行回归试跑](./evidence/2026-09-13-luna-parallel-trial/report.md) 已收口，未创建 goal：597 个 JS/TS 文件首轮 2971 pass / 26 fail / 1 skip；Rust 470 pass / 3 fail / 2 ignored。11 个子代理分组中 10 个完成，1 个由主代理接管。类型检查通过；能力库存映射和远程市场兼容检查失败。未修产品源码，未新增桌面或真实模型证据。后续优先定位备份门禁、wipe 时钟及 Windows 卸载遗漏；不自动扩展阶段。

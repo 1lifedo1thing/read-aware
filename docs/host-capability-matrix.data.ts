@@ -535,8 +535,6 @@ export const sources: Record<string, string> = {
   OVERRIDES: "apps/web/src/features/settings/lib/reader-overrides.ts",
   GENERAL: "apps/web/src/features/settings/lib/general-settings.ts",
   AIPREFS: "apps/web/src/features/settings/lib/ai-preferences.ts",
-  INFERENCEPOLICY: "packages/agent/src/models/inference-policy.ts",
-  HOSTINFERENCEPOLICY: "apps/web/src/features/ai/agent/inference-policy.ts",
   INFERENCEEVIDENCE: "docs/evidence/inference-local-only-2026-09-09.json",
   AICONFIG: "apps/web/src/features/ai/lib/ai-config.ts",
   MODELCATALOG: "apps/web/src/features/ai/lib/model-catalog.ts",
@@ -1105,7 +1103,7 @@ export const staticSettingPaths = [
   "ai.preferences.features.defineTerm", "ai.preferences.features.translate",
   "ai.preferences.features.summarizeChapter", "ai.preferences.features.askConversation",
   "ai.preferences.buildMemory", "ai.preferences.sendHighlightedText",
-  "ai.preferences.sendSurroundingContext", "ai.preferences.localOnly", "ai.preferences.followStreaming",
+  "ai.preferences.sendSurroundingContext", "ai.preferences.followStreaming",
   "ai.connection.configured", "ai.connection.credentialConfigured", "menus.primaryNav.visible",
   "menus.primaryNav.overflow", "menus.shelfHeader.visible", "menus.shelfHeader.overflow",
   "menus.readerHeader.visible", "menus.readerHeader.overflow", "menus.selection.visible",
@@ -1122,6 +1120,12 @@ export const staticSettingPaths = [
   "shortcuts.next-chapter", "shortcuts.prev-chapter", "shortcuts.toggle-controls", "shortcuts.reader-mode-next-unit", "shortcuts.reader-mode-prev-unit",
   "shortcuts.selection-copy", "shortcuts.selection-highlight", "shortcuts.selection-underline", "shortcuts.selection-add-note", "shortcuts.selection-look-up", "shortcuts.selection-ask-ai",
 ];
+const retiredSettingSlot = 25;
+export const settingPathId = (path: string): string => {
+  const index = staticSettingPaths.indexOf(path);
+  if (index < 0) throw new Error(`Unknown active setting path: ${path}`);
+  return `SET${String(index + 1 + (index >= retiredSettingSlot ? 1 : 0)).padStart(2, "0")}`;
+};
 export const ineffectiveSettings = new Set<string>();
 const readingAiTools: Record<string, string> = {
   "ai.preferences.features.explainSelection": "explain_selection",
@@ -1133,33 +1137,30 @@ export const readOnlySettings = new Set([
   "ai.connection.configured", "ai.connection.credentialConfigured", "ai.connection.provider",
   "ai.connection.custom.endpointConfigured",
 ]);
-groups.splice(5, 0, { name: `设置字段逐项覆盖（${staticSettingPaths.length} 个具体路径）`, rows: staticSettingPaths.map((path, i) => {
+const settingRows = staticSettingPaths.map((path) => {
   const ineffective = ineffectiveSettings.has(path);
   const readingAi = readingAiTools[path];
   const startup = path === "general.launchAtStartup";
   const fileAssociations = path === "general.fileAssociations";
-  const localOnly = path === "ai.preferences.localOnly";
   const buildMemory = path === "ai.preferences.buildMemory";
   const readingContext = path === "ai.preferences.sendHighlightedText" || path === "ai.preferences.sendSurroundingContext";
-  const partial = ineffective || localOnly || readingContext;
+  const partial = ineffective || readingContext;
   const readonly = readOnlySettings.has(path);
   const effect = ineffective
     ? "保存值有实现；全生产源码扫描未找到对应效果消费者。不能算行为已实现或端到端覆盖。"
-    : readingAi ? "实现关闭条件已满足，接通（待 E2E）：四动作共用生产 ReadingAiActions，选区 More 菜单、命令面板和双 scope Agent 工具随对应开关显示/移除，缓存工具执行再次复核，独立于 askConversation。固定当前书/会话/来源版本与选区或章节；完整选区最多32000 UTF-16，预览不足按版本化 Range 续读，缺失/过长拒绝不截断。章节意图固定提取章节序号，要求既有 Agent 读取整章而非视口；翻译跟随界面语言。原生/全局入口打开本书聊天，等待真实 send 接受；loading 可等，忙/取消/目标失效/关闭不可迟到发送，同步已接受回执不被晚取消覆盖。书内 Agent 返回上下文并在当前回合回答，不递归发送。文本隐私和 localOnly 同一执行门控，等待中 off/on 永久作废旧调用，已接受推理沿用聊天停止/错误/重试。定向服务、实际端口、挂载 UI 和 Agent 请求间发现测试通过，不是模型效果证明；正式插件设置持久/撤权、真实 Tauri 菜单/命令/对话、全格式整章/长选区、失败并发和 packaged 依 host-capability-stage-three.md 验收。"
+    : readingAi ? "实现关闭条件已满足，接通（待 E2E）：四动作共用生产 ReadingAiActions，选区 More 菜单、命令面板和双 scope Agent 工具随对应开关显示/移除，缓存工具执行再次复核，独立于 askConversation。固定当前书/会话/来源版本与选区或章节；完整选区最多32000 UTF-16，预览不足按版本化 Range 续读，缺失/过长拒绝不截断。章节意图固定提取章节序号，要求既有 Agent 读取整章而非视口；翻译跟随界面语言。原生/全局入口打开本书聊天，等待真实 send 接受；loading 可等，忙/取消/目标失效/关闭不可迟到发送，同步已接受回执不被晚取消覆盖。书内 Agent 返回上下文并在当前回合回答，不递归发送。文本隐私与会话策略同一执行门控，等待中开关变化永久作废旧调用，已接受推理沿用聊天停止/错误/重试。定向服务、实际端口、挂载 UI 和 Agent 请求间发现测试通过，不是模型效果证明；正式插件设置持久/撤权、真实 Tauri 菜单/命令/对话、全格式整章/长选区、失败并发和 packaged 依 host-capability-stage-three.md 验收。"
     : fileAssociations ? "实现关闭条件已满足，接通（待 E2E）。冷启动 argv、第二实例 argv、macOS Opened 共用原生队列；持久提交才发布接收策略，关闭清队列/换 epoch，重开不重放。原生导入准入再次校验 epoch，已准入导入可完成但迟到导航被抑制，不撤销已派发导航；StrictMode 试挂载不吞冷启动队列，读失败不当空成功。macOS 保留 Info.plist 的 14 扩展声明，八语言如实说明。Windows 真实管理 HKCU/<identifier>.Book、14 个 OpenWithProgids 与 shell 通知；不写 UserChoice/其他默认，逐值核验和 SQLite 失败补偿；currentUser NSIS 首启注册、owner 卸载清理，旧通用类只按证明归属迁移，机器级旧类明确拒绝。Linux 使用同一 productName.desktop 的用户覆盖与 owner XML，真实 xdg-mime 用户级安装/注销、MIME/desktop 缓存刷新，按身份更新安装路径，AppImage 使用持久路径；只改自有 Added/Removed 关联，保留其他处理器、默认选择和登录 scheme。三个文件预读/读回、失败补偿与外部冲突拒绝，子进程截止/终止后才补偿；DEB/RPM 声明工具依赖。无原始 OS/path 插件权限。平台原生编译、定向权限/SQLite/临时 XDG 工具测试不等于产品验收：真实冷/热打开、实际处理器列表、安装/升级/卸载、并发/撤权与 packaged 正式插件完整轮次仍按 host-capability-stage-three.md 执行。"
     : startup ? "实现关闭条件已满足：tauri-plugin-autostart 按应用 identifier 管理设备本地启动注册；原生 KV 单项/批量/删除/前缀恢复/清空在同一 DB 锁下先应用并核验 OS 注册，再提交 SQLite，失败补偿，补偿失败如实拒绝并记录。UI/Agent/授权插件读取实际注册，不把历史占位值当生效值；一般设置按字段提交，不恢复系统中已关闭的旧值；原生失败回滚前端持久镜像。无 Worker 原始 autostart 权限或路径参数；排队取消在原生读取后再检查。UI loading/error/busy、focus 和外部持久提交刷新、局部授权与退休均有定向测试。审计的 auto-launch Cargo patch 修复三平台安装路径/参数序列化及 macOS/Linux 完整写入，纯测试不安装启动项。状态表示本应用注册，不承诺绕过 OS 登录策略。第三段 host-capability-stage-three.md 规定隔离 Tauri、真实登录启动、系统外部控制、SQLite/OS 故障及 packaged 插件轮次，尚未执行。"
-    : localOnly ? "宿主模型调用已有实时执行策略：Agent smart/fast、后台补全、Worker llm.ask 普通/结构化/流式及连接测试同源拒绝 ai/local-only；进行中调用取消，迟到结果/重试被抑制，恢复只允许新调用。当前无本地模型后端，Custom loopback 也拒绝。隔离 macOS debug 双端/取消/持久失败回滚/原生连接 UI 已验；任意插件 HTTP、TTS、同步不受此策略约束，完整隐私边界与 packaged/跨平台仍未完成，保留部分。"
     : buildMemory ? "实时控制宿主记忆构建：显式 remember、轮后抽取/强化/插件候选/旧历史领养/摘要、巩固、章节 digest/自动叙事分类及 onboarding seed 均受约束。关闭返回 ai/memory-disabled，取消在途模型调用和已排队任务，重开不复活旧任务。普通聊天/历史、旧记忆检索、用户删除和插件自有目标保存不受影响；重开后的新任务可处理保留历史。摘要写入/清除等待持久回执；已派发底层写不保证撤销，但七类受保护写的回执全部收束后外层才结束取消；迟到失败记日志，退役 guard 不可复用，读/模型物理 IO 不在保证内。隔离 macOS debug 双端、真实 UI 聊天、候选入库、取消和 SQLite 失败已验；packaged/跨平台未验。"
     : readingContext ? "已有真实 Agent 消费者：selection 关闭过滤自动附件与历史附件检索/匹配；任一文本开关关闭都移除可能重叠的 viewport；surrounding 关闭不装配 grounding。保留本地附件和手写问题，get_reading_session 同样过滤文本；切策略重建缓存上下文。收紧返回 ai/context-changed，取消在途/准备中回合和排队记忆任务，重开不复活旧请求。Agent 设置与授权 Worker 设置写入、四组合请求、SQLite 历史保留和在途传输取消已在隔离 macOS debug 验证。LLM 1.1 readingContext 已将结构化正文纳入同一过滤/取消，Dictionary 1.3 已迁移，必需字段被禁止时报 ai/context-withheld；双端三模式四组合、实际缓存/拒绝、重试及三并发取消有桌面证据。插件本地 selection/lookup 回调、任意自行组装 prompt/HTTP/TTS、独立正文/标注检索与旧回答/记忆/纪要不因此清除或禁用；完整隐私、packaged/跨平台仍未闭合，保留部分。"
     : readonly ? "只读状态，不返回密钥/端点凭据；不等于配置命令。"
       : path === "general.autoUpdate" ? "实际消费者只控制自动检查，不表示无批准自动安装。"
         : path.startsWith("menus.") ? "只影响菜单排列/显示，不调用菜单动作。"
           : "目录有读写且存在产品消费者；仍受格式、配置、scope、授权与持久化契约约束。";
-  return cap(`SET${String(i + 1).padStart(2, "0")}`, path, partial ? "部分" : "实装",
+  return cap(settingPathId(path), path, partial ? "部分" : "实装",
     actor(partial ? "部分" : startup || fileAssociations || readingAi ? "接通（待 E2E）" : "接通", readingAi ? `get_settings/update_settings + ${readingAi}（双scope）` : readonly ? "get_settings" : "get_settings/update_settings", "类型化设置工具"),
     actor(partial ? "部分" : startup || fileAssociations || readingAi ? "接通（待 E2E）" : "接通", readonly ? "settings discover/read（需路径授权）" : "settings discover/read/update（需路径授权）", "类型化设置领域"),
-    ["SETTINGS","SETDOMAIN","SETTOOLS", ...(localOnly ? ["AIPREFS", "INFERENCEPOLICY", "HOSTINFERENCEPOLICY", "INFERENCEEVIDENCE"]
-      : startup ? ["DESKTOPSTARTUP", "DESKTOPPREFERENCES", "STARTUPUI", "STARTUPTEST", "STARTUPDEPENDENCY"]
+    ["SETTINGS","SETDOMAIN","SETTOOLS", ...(startup ? ["DESKTOPSTARTUP", "DESKTOPPREFERENCES", "STARTUPUI", "STARTUPTEST", "STARTUPDEPENDENCY"]
       : readingAi ? ["READINGAIACTIONS", "READINGAIRUNTIME", "READINGAITOOLS", "READINGAIPROOF", "READINGAISURFACES", "READINGAIPORTPROOF"]
       : fileAssociations ? ["DESKTOPPREFERENCES", "EXTERNALOPENQUEUE", "EXTERNALOPENHOOK", "EXTERNALOPENPROOF", "GENERAL", "FILEASSOCIATIONS", "WINASSOCIATIONS", "ASSOCIATIONPROOF", "ASSOCIATIONINSTALLER", "LINUXASSOCIATIONS", "LINUXASSOCIATIONNATIVE", "LINUXASSOCIATIONPROOF"]
       : buildMemory ? ["MEMORYPOLICY", "HOSTMEMORYPOLICY", "READINGGOALS", "MEMORYPOLICYPROOF"]
@@ -1170,7 +1171,11 @@ groups.splice(5, 0, { name: `设置字段逐项覆盖（${staticSettingPaths.len
           : [path.startsWith("ai.preferences") ? "AIPREFS" : path.startsWith("general") ? "GENERAL" : path.startsWith("reading") ? "PREFS" : path.startsWith("menus") ? "MENUSTATE" : "UI"])],
     ineffective ? "仅设置页/设置存储/目录；效果未接" : readingAi ? "设置页/授权设置插件；选区菜单/命令面板/Agent动作；既有本书聊天" : "设置页；Agent；授权插件可调用（不代表每个插件实际调用）",
     effect);
-}) });
+});
+settingRows.splice(retiredSettingSlot, 0, cap("SET26", "ai.preferences.localOnly（用户要求已移除）", "占位",
+  absent("用户要求已移除；不提供该设置入口"), absent("用户要求已移除；不提供该设置入口"),
+  ["AIPREFS", "INFERENCEEVIDENCE"], "无活动消费者；仅保留历史占位", "用户明确要求移除该开关；此行仅保留稳定 ID，不属于活动设置路径列表。"));
+groups.splice(5, 0, { name: `设置字段逐项覆盖（${staticSettingPaths.length} 个活动路径；SET26 为历史占位）`, rows: settingRows });
 
 groups.push({ name: "组合能力与遗漏补查", rows: [
   cap("MORE01", "周期调度/启动补跑/失败记录", "实装", actor("接通", "list_plugin_schedules/manage_plugin_schedule 全局", "枚举与批准 pause/resume/run"), actor("接通", "schedules 2.0 bind/list/observe/control", "自有计划状态与受控执行"), ["SCHED","SCHEDCONTROL","SCHEDTOOLS","API","CTX","RSS","ROAM","RSSREFRESH","RSSSCHEDULEVIEW","RSSSCHEDULEPROOF","RSSCACHEPROOF"], "RSS 现有每小时刷新；Agent 与插件正式入口", "每插件最多64个绑定，全App最多1024个，回调每插件2/全App8并行并轮转准入，查询偏移分页 1–100/默认 50，观察初始+串行合并变化。暂停/恢复等持久写；手动 run 越过暂停/间隔一次，不恢复自动计划。每 key 跨重绑定共享 flight，already-running 不假称完成；开始记录落库后才派发 callback，结束记录落库后才 completed，失败不会刷新 lastSuccessAt。旧时间戳只迁为 lastStartedAt；未完成记录显示 interrupted，不伪造成功。新/旧调度记录排除偏好漫游；不是完整执行历史。退休停止新调用与迟到结果写，已派发持久写参与生命周期 drain；不保证物理副作用回滚。每秒扫描，周期任务至少 15 分钟间隔，错过多轮合并一次，关 App 不运行；最后绑定释放计时器。定向持久/并发/权限测试已验，组合插件与 Tauri 重启/升级验收待集中进行。 RSS0.13已迁Schedules2.0并组合自动刷新实时页、暂停/恢复/立即运行，使用Schedules2.0/UI1.2和既有全局Agent工具；缺绑定移除操作，离开退订，重复运行不假报完成。修正计划回调吞掉部分/全部刷新失败：四并发批次完成后抛首个捕获错误，宿主不推进lastSuccessAt；普通Refresh all仍汇总部分成功，旧记录不改。插件27项基础测试、编译入口/类型/构建通过，新调度原生Worker/Tauri/Agent及重启组合留集中验收。"),
