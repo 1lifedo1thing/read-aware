@@ -1678,3 +1678,25 @@ AgentWorkspace现显式传global给ChatTranscript和ChatComposer，分别显示�
 web与desktop类型检查通过，无新测试框架或全量门禁。书内独立清空界面/Agent
 批准、存储失败、进程重启/发布包、其他平台和跨设备仍待验；受控文本不计真实
 模型质量。详见[global-conversation-observations.json](./global-conversation-observations.json)。
+
+## 第六十一流程：Agent 批准清空书内聊天
+
+复用隔离 Tauri、现有 reading-context 合成书及批准探针，由生产全局
+manage_conversation 工具配真实 RuntimeDeps 请求清空另一份书内会话。实际
+ChatInteractionPrompt 显示目标 book ID，说明清空聊天及缓存摘要、保留长期记忆、
+事件历史和已完成操作。点击 Keep it 返回 cleared:false，原生两条历史保持；
+第二次等待时取消得到 AbortError，批准提示收起，两条历史仍在。
+
+从书架重新打开自有书，实际 ChatPanel 显示两条合成历史。第三次点击批准，
+工具返回 completed，SQLite 消息归零，已挂载面板同步回到本书空态；关书重开后
+仍无旧历史。这里不使用模型决定工具，不证明远端回答质量或物理输入；用户报告
+解锁后 CUA 仍返回 Mac is locked，因此没有把本次 DOM 点击当作桌面焦点/像素证据。
+
+当前 ChatPanel 没有独立清空按钮，书内 Agent 也按现有契约不暴露管理工具；
+本次验证的是全局 Agent 管理其他书内会话的批准入口，不新增按钮或改变该语义。
+插件清空入口的既有证据另列。清空不等于擦除长期记忆、事件或已完成动作。
+
+自有书、源 blob、聊天及批准界面均清零；原两书保留，原有两条消息的完整序列
+哈希与基线一致。没有改模型配置、凭据或启动服务。仅扩展现有批准探针，项目
+desktop 类型检查通过，无产品修复。存储故障、生成中书内清空、进程重启、
+发布包及跨设备保持待验。详见[book-conversation-clear-observations.json](./book-conversation-clear-observations.json)。

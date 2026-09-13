@@ -6,6 +6,7 @@ import { errorCode } from "@read-aware/core";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
 import { buildDeleteBooksTool, buildListBookRemovalCleanupTool } from "../../../../packages/agent/src/tools/delete-books";
 import { buildBookMergeTools } from "../../../../packages/agent/src/tools/book-merge-tools";
+import { buildConversationControlTools } from "../../../../packages/agent/src/tools/conversation-control-tools";
 import { interactionFromToolDetails } from "../../../../packages/agent/src/tools/user-interaction";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { ChatInteractionPrompt } from "../../src/features/ai/components/ChatInteractionPrompt";
@@ -81,6 +82,16 @@ export async function beginAgentDuplicateMerge(input: { bookId: string; expected
   const tool = buildBookMergeTools({ kind: "global", threadId: "capability-merge" }, deps)
     .find(tool => tool.name === "merge_duplicate_books")!;
   return beginApproval((signal, update) => tool.execute(`merge-${++sequence}`, { ...input }, signal, update));
+}
+export async function beginAgentBookConversationClear(bookId: string) {
+  await isolated(); if (pending) throw Error("Agent request already pending");
+  const book = await getBookRecord(bookId);
+  if (book?.title !== "Reading Context Policy Probe") throw Error("Only owned reading context fixtures may be cleared");
+  const tool = buildConversationControlTools({ kind: "global", threadId: "capability-conversation-clear" }, buildRuntimeDeps())
+    .find(tool => tool.name === "manage_conversation")!;
+  return beginApproval((signal, update) => tool.execute(`clear-${++sequence}`, {
+    action: "clear", target: { kind: "book", id: bookId },
+  }, signal, update));
 }
 function beginApproval(run: (signal: AbortSignal, update: (value: { details?: unknown }) => void) => Promise<unknown>) {
   root?.unmount(); surface?.remove();
