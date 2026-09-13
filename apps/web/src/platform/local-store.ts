@@ -144,15 +144,16 @@ export const localKV = {
     return snapshot?.get(key) ?? null;
   },
 
-  setItem(key: string, value: string, origin: KVWriteOrigin = "local"): void {
+  setItem(key: string, value: string, origin: KVWriteOrigin = "local", actor: DomainActor | null = null): void {
+    actorCause(actor ?? undefined);
     if (!isTauri()) {
       localStorage.setItem(key, value);
-      const cause = causalActor("system");
+      const cause = causalActor(actor ?? "system");
       notifyChange(key, value, cause);
-      notifyCommit(stampEventCause({ entries: [{ key, value }], source: origin, actor: null }, cause));
+      notifyCommit(stampEventCause({ entries: [{ key, value }], source: origin, actor: actor === null ? null : actorOrigin(actor) }, cause));
       return;
     }
-    void writeLocal([key], () => writes.write(key, value, origin));
+    void writeLocal([key], () => writes.write(key, value, origin, actor));
   },
 
   removeItem(key: string, origin: KVWriteOrigin = "local"): void {

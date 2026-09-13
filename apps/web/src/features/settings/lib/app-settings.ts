@@ -1,4 +1,5 @@
 import { localKV } from "../../../platform/local-store";
+import type { DomainActor } from "../../../platform/domain-actor";
 import { isPluginRef } from "../../plugins/lib/plugin-theme";
 import { getAppSkinSnapshot } from "./app-skin";
 
@@ -46,8 +47,8 @@ export function getAppSettings(): AppSettings {
   }
 }
 
-export function saveAppSettings(settings: AppSettings): void {
-  localKV.setItem(STORAGE_KEY, JSON.stringify(settings));
+export function saveAppSettings(settings: AppSettings, origin: DomainActor = "user"): void {
+  localKV.setItem(STORAGE_KEY, JSON.stringify(settings), "local", origin);
 }
 
 /**

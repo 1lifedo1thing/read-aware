@@ -87,6 +87,8 @@ export class Paginator extends HTMLElement {
     #justAnchored = false
     #locked = false // while true, prevent any further navigation
     #styles: Styles
+    #styleRevision = 0
+    #layoutValues = new Map<string, string | null>()
     #styleMap = new WeakMap<Document, [HTMLStyleElement, HTMLStyleElement]>()
     #mediaQuery = matchMedia('(prefers-color-scheme: dark)')
     #mediaQueryListener
@@ -311,6 +313,8 @@ export class Paginator extends HTMLElement {
         this.#mediaQuery.addEventListener('change', this.#mediaQueryListener)
     }
     attributeChangedCallback(name: string, _: string | null, value: string | null) {
+        if (this.#layoutValues.get(name) === value) return
+        this.#layoutValues.set(name, value)
         switch (name) {
             case 'flow':
                 this.render()
@@ -327,6 +331,19 @@ export class Paginator extends HTMLElement {
                 this.render()
                 break
         }
+    }
+    /** Host presentation changes carry one identity through all attributes and
+     * their resulting anchor feedback, including deferred CE reactions. */
+    setLayoutAttributes(values: Partial<Record<'flow' | 'gap' | 'margin' | 'max-inline-size' | 'max-block-size' | 'max-column-count', string>>, context: object = {}) {
+        let changed = false
+        for (const [name, value] of Object.entries(values)) {
+            if (this.getAttribute(name) === value && this.#layoutValues.get(name) === value) continue
+            changed = true
+            this.#layoutValues.set(name, value)
+            this.setAttribute(name, value)
+            if (name !== 'flow') this.#top.style.setProperty('--_' + name, value)
+        }
+        if (changed) this.render(context)
     }
     #transformController: AbortController | undefined
     open(book: Book) {
@@ -440,8 +457,9 @@ export class Paginator extends HTMLElement {
 
         return { height, width, margin, gap, columnWidth }
     }
-    render() {
+    render(context = this.#anchorContext) {
         if (!this.#view) return
+        this.#anchorContext = context
         this.#view.render(this.#beforeRender({
             vertical: this.#vertical,
             rtl: this.#rtl,
@@ -731,7 +749,7 @@ export class Paginator extends HTMLElement {
         if (index === this.#index && this.#view?.ready) await this.#display({ index, anchor, select, context }, navigation)
         else {
             const onLoad = (detail: LoadDetail) => {
-                this.setStyles(this.#styles)
+                this.setStyles(this.#styles, context)
                 this.dispatchEvent(new CustomEvent('load', { detail }))
             }
             const section = this.sections[index]
@@ -834,31 +852,34 @@ export class Paginator extends HTMLElement {
         }]
         return []
     }
-    setStyles(styles: Styles) {
+    setStyles(styles: Styles, context: object = {}) {
         this.#styles = styles
+        const view = this.#view
         const doc = this.#view?.document
         if (!doc) return
         const $$styles = this.#styleMap.get(doc)
         if (!$$styles) return
         const [$beforeStyle, $style] = $$styles
-        if (Array.isArray(styles)) {
-            const [beforeStyle, style] = styles
-            $beforeStyle.textContent = beforeStyle
-            $style.textContent = style
-        } else $style.textContent = styles ?? ''
+        const [before, after] = Array.isArray(styles) ? styles : ['', styles ?? '']
+        if ($beforeStyle.textContent === before && $style.textContent === after) return
+        const revision = ++this.#styleRevision
+        this.#anchorContext = context
+        $beforeStyle.textContent = before
+        $style.textContent = after
 
         // NOTE: needs `requestAnimationFrame` in Chromium
         requestAnimationFrame(() => {
-            if (this.#view?.document === doc) this.#background.style.background = getBackground(doc)
+            if (this.#view === view && revision === this.#styleRevision) this.#background.style.background = getBackground(doc)
         })
 
         // needed because the resize observer doesn't work in Firefox
-        doc.fonts?.ready.then(() => this.#view?.expand())
+        doc.fonts?.ready.then(() => { if (this.#view === view && revision === this.#styleRevision) view?.expand() })
     }
     focusView() {
         this.#view?.document?.defaultView?.focus()
     }
     destroy() {
+        this.#styleRevision++
         this.#navigation++
         this.#transformController?.abort()
         this.#observer.disconnect()

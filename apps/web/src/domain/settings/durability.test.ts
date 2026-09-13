@@ -121,7 +121,7 @@ describe("settings durable command boundary", () => {
     expect(seen).toHaveLength(1);
     getDefaultStore().set(appSettingsAtom, { ...DEFAULT_APP_SETTINGS, theme: "light" });
     await tick(); pending.shift()!.resolve(); await tick();
-    expect(seen.at(-1)).toMatchObject({ source: "local", origin: null, snapshot: { settings: [{ path: "appearance.theme", value: "light" }] } });
+    expect(seen.at(-1)).toMatchObject({ source: "local", origin: "user", snapshot: { settings: [{ path: "appearance.theme", value: "light" }] } });
     const update = createSettingsDomain("agent").commands.update([{ path: "appearance.theme", value: "dark" }]);
     await tick(); pending.shift()!.resolve(); await update; await tick();
     expect(seen.at(-1)).toMatchObject({ source: "local", origin: "agent" });

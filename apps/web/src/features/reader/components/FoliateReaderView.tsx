@@ -1930,15 +1930,16 @@ export function FoliateReaderView({
         const { flow, maxColumnCount } = layoutForReadingMode(readingMode);
         // Before the first navigation, so the opening render already draws the
         // page in the reader's palette instead of flashing white and redrawing.
-        if (fixedLayout) applyReaderPageColors(readerSettingsRef.current, view.renderer);
+        if (fixedLayout) applyReaderPageColors(readerSettingsRef.current, view.renderer, openingActor);
         if (fixedLayout && view.renderer && 'setLayout' in view.renderer) {
           // WebKit may defer custom-element attribute reactions until after the
           // first navigation. Configure fixed layout atomically so that first
           // paint cannot race against the old, paired-spread model.
-          view.renderer.setLayout(flow, maxColumnCount);
+          view.renderer.setLayout(flow, maxColumnCount, openingContext);
         } else {
-          view.renderer?.setAttribute("flow", flow);
-          view.renderer?.setAttribute("max-column-count", String(maxColumnCount));
+          if (view.renderer && "setLayoutAttributes" in view.renderer) view.renderer.setLayoutAttributes({
+            flow, "max-column-count": String(maxColumnCount),
+          }, openingContext);
         }
         if (fixedLayout && view.renderer) {
           // Every finished page raster keeps the busy signal fresh while the
@@ -1959,13 +1960,12 @@ export function FoliateReaderView({
           const height = readerRootRef.current?.clientHeight ?? window.innerHeight;
           const effectiveColumns = width > height ? maxColumnCount : 1;
           const margins = readerSettingsRef.current.pageMargins;
-          view.renderer?.setAttribute("gap", readerGapForMargins(margins));
-          view.renderer?.setAttribute(
-            "max-inline-size",
-            `${computeReaderMaxInlineSize(width, margins, effectiveColumns)}px`,
-          );
+          if (view.renderer && "setLayoutAttributes" in view.renderer) view.renderer.setLayoutAttributes({
+            gap: readerGapForMargins(margins),
+            "max-inline-size": `${computeReaderMaxInlineSize(width, margins, effectiveColumns)}px`,
+          }, openingContext);
         }
-        void injectReaderStyles(readerSettingsRef.current, view.renderer);
+        void injectReaderStyles(readerSettingsRef.current, view.renderer, openingActor);
         // Glide page turns / arrow-key scrolls instead of snapping (unless motion
         // is reduced). The runtime watcher effect keeps this in sync afterwards.
         syncRendererAnimated(view.renderer);

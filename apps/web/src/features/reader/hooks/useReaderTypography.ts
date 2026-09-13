@@ -27,6 +27,8 @@ import {
 } from "../../plugins/state/plugin-store";
 import { fixedLayoutPageColors } from "../lib/fixed-layout-colors";
 import type { FoliateRenderer, FoliateView } from "../lib/foliate-engine";
+import { actorFromEvent, causalActor, eventCause, type DomainActor } from "../../../platform/domain-actor";
+import { readingRenderContext } from "../lib/reading-render-context";
 
 type Options = {
   readerSettings: ReaderSettings;
@@ -43,14 +45,14 @@ export type ReaderTypography = {
   /** Latest settings, for callers that apply them outside React's flow. */
   settingsRef: RefObject<ReaderSettings>;
   /** Recompute and push the text measure onto the renderer. */
-  applyMaxInlineSize: () => void;
+  applyMaxInlineSize: (origin?: DomainActor) => void;
   /** Rebuild and inject the reader stylesheet (loading webfonts first). */
-  injectStyles: (settings: ReaderSettings, renderer?: FoliateRenderer) => Promise<void>;
+  injectStyles: (settings: ReaderSettings, renderer?: FoliateRenderer, origin?: DomainActor) => Promise<void>;
   /**
    * Push the palette onto a fixed-layout renderer, which draws it into the
    * page. No-op for reflowable books — they take the palette as CSS instead.
    */
-  applyPageColors: (settings: ReaderSettings, renderer?: FoliateRenderer) => void;
+  applyPageColors: (settings: ReaderSettings, renderer?: FoliateRenderer, origin?: DomainActor) => void;
 };
 
 export function useReaderTypography({
@@ -63,6 +65,8 @@ export function useReaderTypography({
   layoutForReadingMode,
 }: Options): ReaderTypography {
   const settingsRef = useRef(readerSettings);
+  const styleRequests = useRef(new WeakMap<FoliateRenderer, object>());
+  useEffect(() => () => { styleRequests.current = new WeakMap(); }, []);
 
   /**
    * Drive the responsive text measure through foliate's `max-inline-size`
@@ -71,7 +75,7 @@ export function useReaderTypography({
    * ignored — the attribute is the only lever, and it must be recomputed from
    * the live reader width (it cannot use vw).
    */
-  const applyMaxInlineSize = useCallback(() => {
+  const applyMaxInlineSize = useCallback((origin: DomainActor = "system") => {
     const renderer = viewRef.current?.renderer;
     if (!renderer || isFixedLayoutRef.current) return;
     const width =
@@ -89,8 +93,9 @@ export function useReaderTypography({
     const effectiveColumns = width > height ? maxColumnCount : 1;
     const margins = settingsRef.current.pageMargins;
     const px = computeReaderMaxInlineSize(width, margins, effectiveColumns);
-    renderer.setAttribute("max-inline-size", `${px}px`);
-    renderer.setAttribute("gap", readerGapForMargins(margins));
+    if ("setLayoutAttributes" in renderer) renderer.setLayoutAttributes({
+      "max-inline-size": `${px}px`, gap: readerGapForMargins(margins),
+    }, readingRenderContext(origin));
   }, [
     isFixedLayoutRef,
     layoutForReadingMode,
@@ -105,6 +110,7 @@ export function useReaderTypography({
   // font. Subscribing here re-injects when a plugin (de)activates mid-read.
   const pluginThemes = useAtomValue(pluginThemesAtom);
   const pluginFonts = useAtomValue(pluginFontsAtom);
+  const previousInputs = useRef<{ settings: ReaderSettings; fonts: typeof pluginFonts; themes: typeof pluginThemes; origin: DomainActor } | undefined>(undefined);
 
   /**
    * Inject the reader stylesheet, first ensuring the active curated webfont is
@@ -113,7 +119,10 @@ export function useReaderTypography({
    * folder; system fonts need no @font-face at all.
    */
   const injectStyles = useCallback(
-    async (settings: ReaderSettings, renderer = viewRef.current?.renderer) => {
+    async (settings: ReaderSettings, renderer = viewRef.current?.renderer, origin?: DomainActor) => {
+      if (!renderer || !("setStyles" in renderer)) return;
+      const request = {}, context = readingRenderContext(origin ?? (eventCause(settings) ? actorFromEvent(settings) : "system"));
+      styleRequests.current.set(renderer, request);
       const id = curatedFontId(settings.fontFamily);
       const pluginFont = isPluginFont(settings.fontFamily)
         ? findRegisteredByRef(settings.fontFamily, pluginFonts)
@@ -126,21 +135,24 @@ export function useReaderTypography({
           ? pluginFontFaceCss(pluginFont)
           : "";
       const palette = resolveReaderPalette(settings.theme, pluginThemes);
-      if (renderer && 'setStyles' in renderer) renderer.setStyles(
+      if (styleRequests.current.get(renderer) !== request || viewRef.current?.renderer !== renderer) return;
+      renderer.setStyles(
         buildReaderContentCss(settings, { palette, fontFaceCss, pluginFont }),
+        context,
       );
     },
     [viewRef, pluginFonts, pluginThemes],
   );
 
   const applyPageColors = useCallback(
-    (settings: ReaderSettings, renderer = viewRef.current?.renderer) => {
+    (settings: ReaderSettings, renderer = viewRef.current?.renderer, origin?: DomainActor) => {
       if (!renderer || !('setPageColors' in renderer)) return;
       renderer.setPageColors(
         fixedLayoutPageColors(
           resolveReaderPalette(settings.theme, pluginThemes),
           settings.fixedLayoutColor,
         ),
+        readingRenderContext(origin ?? (eventCause(settings) ? actorFromEvent(settings) : "system")),
       );
     },
     [viewRef, pluginThemes],
@@ -149,11 +161,17 @@ export function useReaderTypography({
   // Settings change -> re-inject reader CSS, refresh the text measure, and
   // redraw a fixed-layout book in the new palette.
   useEffect(() => {
+    // A settings change keeps that write's identity. Registry-only changes
+    // still await the contribution-source migration and use a system root.
+    const previous = previousInputs.current;
+    const origin = previous?.settings !== readerSettings && eventCause(readerSettings) ? actorFromEvent(readerSettings)
+      : previous?.fonts === pluginFonts && previous.themes === pluginThemes ? previous.origin : causalActor("system");
+    previousInputs.current = { settings: readerSettings, fonts: pluginFonts, themes: pluginThemes, origin };
     settingsRef.current = readerSettings;
-    void injectStyles(readerSettings);
-    applyMaxInlineSize();
-    applyPageColors(readerSettings);
-  }, [readerSettings, applyMaxInlineSize, injectStyles, applyPageColors]);
+    void injectStyles(readerSettings, undefined, origin);
+    applyMaxInlineSize(origin);
+    applyPageColors(readerSettings, undefined, origin);
+  }, [readerSettings, pluginFonts, pluginThemes, applyMaxInlineSize, injectStyles, applyPageColors]);
 
   return { settingsRef, applyMaxInlineSize, injectStyles, applyPageColors };
 }

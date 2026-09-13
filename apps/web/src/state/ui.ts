@@ -1,4 +1,5 @@
 import { atom, getDefaultStore } from "jotai";
+import { causalActor, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import {
   APP_SETTINGS_KEY,
   getAppSettings,
@@ -114,17 +115,22 @@ export const settingsSectionRequestAtom = atom<SettingsSectionId | null>(null);
 export const syncLoginTokenAtom = atom<string | null>(null);
 
 /** Resolved app chrome theme (`light`/`dark`), kept current by `useAppearance`. */
-export const resolvedAppThemeAtom = atom<"light" | "dark">(
-  resolveAppTheme(getAppSettings().theme),
+export const resolvedAppThemeStateAtom = atom(stampEventCause({ value: resolveAppTheme(getAppSettings().theme) }));
+export const resolvedAppThemeAtom = atom(
+  get => get(resolvedAppThemeStateAtom).value,
+  (get, set, value: "light" | "dark", origin: DomainActor = "system") => {
+    if (get(resolvedAppThemeStateAtom).value !== value) set(resolvedAppThemeStateAtom, stampEventCause({ value }, origin));
+  },
 );
 
-const appSettingsBaseAtom = atom<AppSettings>(getAppSettings());
+const appSettingsBaseAtom = atom<AppSettings>(stampEventCause({ ...getAppSettings() }));
 
 export const appSettingsAtom = atom(
   (get) => get(appSettingsBaseAtom),
   (_get, set, next: AppSettings) => {
-    set(appSettingsBaseAtom, next);
-    saveAppSettings(next);
+    const origin = causalActor("user");
+    set(appSettingsBaseAtom, stampEventCause({ ...next }, origin));
+    saveAppSettings(next, origin);
   },
 );
 
@@ -148,30 +154,18 @@ export const aiPreferencesAtom = atom(
   },
 );
 
-const readerPreferencesBaseAtom = atom<ReaderSettingsPreferences>(getReaderPreferences());
+const readerPreferencesBaseAtom = atom<ReaderSettingsPreferences>(stampEventCause({ ...getReaderPreferences() }));
 
 export const readerPreferencesAtom = atom(
   (get) => get(readerPreferencesBaseAtom),
   (_get, set, next: ReaderSettingsPreferences) => {
-    set(readerPreferencesBaseAtom, next);
-    saveReaderPreferences(next);
+    const origin = causalActor("user");
+    set(readerPreferencesBaseAtom, stampEventCause({ ...next }, origin));
+    saveReaderPreferences(next, origin);
   },
 );
 
 const contentTypographyBaseAtom = atom<ContentTypographySettings>(getContentTypography());
-
-// Roamed preferences landing via sync pull: the overlay already rewrote the
-// KV cache; re-seed the BASE atoms so mounted UI follows (useAppearance then
-// re-applies the theme). Base atoms, not the public setters — the remote
-// device logged the event, and saving here would echo it straight back.
-// Lifetime listener for the same reason as plugin-storage-changed below.
-onAppEvent("roaming-preferences-changed", () => {
-  const store = getDefaultStore();
-  store.set(appSettingsBaseAtom, getAppSettings());
-  store.set(aiPreferencesBaseAtom, getAIPreferences());
-  // ai-config has no atom: the chat transport reads it per-send, so the KV
-  // overlay alone is enough there.
-});
 
 /** Typography for the app's content surfaces (chat, notes, plugin markdown). */
 export const contentTypographyAtom = atom(
@@ -216,29 +210,32 @@ export const textUnitModeSettingsAtom = atom(
   },
 );
 
-const readerOverridesBaseAtom = atom<ReaderOverrides>(getReaderOverrides());
+const readerOverridesBaseAtom = atom<ReaderOverrides>(stampEventCause(getReaderOverrides()));
 
 /** Per-book appearance overrides keyed by book id. See `useReaderAppearance`. */
 export const readerOverridesAtom = atom(
   (get) => get(readerOverridesBaseAtom),
   (_get, set, next: ReaderOverrides) => {
-    set(readerOverridesBaseAtom, next);
-    saveReaderOverrides(next);
+    const origin = causalActor("user");
+    set(readerOverridesBaseAtom, stampEventCause({ ...next }, origin));
+    saveReaderOverrides(next, origin);
   },
 );
 
 // KV is the shared optimistic/durable overlay. Re-seed base atoms on writes,
 // remote edits and rollback without sending a second persistence command.
-onLocalKVChange((key) => {
+// Roaming overlays also use localKV; their later broad invalidation must not
+// re-label a value that has already been superseded by a local write.
+onLocalKVChange((key, _value, origin) => {
   const store = getDefaultStore();
   switch (key) {
-    case APP_SETTINGS_KEY: store.set(appSettingsBaseAtom, getAppSettings()); break;
+    case APP_SETTINGS_KEY: store.set(appSettingsBaseAtom, stampEventCause({ ...getAppSettings() }, origin)); break;
     case CONTENT_TYPOGRAPHY_KEY: store.set(contentTypographyBaseAtom, getContentTypography()); break;
     case AI_PREFERENCES_KEY: store.set(aiPreferencesBaseAtom, getAIPreferences()); break;
     case SHELF_VIEW_KEY: store.set(shelfViewBaseAtom, getShelfView()); break;
     case SHORTCUT_BINDINGS_KEY: store.set(shortcutBindingsBaseAtom, getShortcutBindings()); break;
-    case READER_PREFERENCES_KEY: store.set(readerPreferencesBaseAtom, getReaderPreferences()); break;
-    case READER_OVERRIDES_KEY: store.set(readerOverridesBaseAtom, getReaderOverrides()); break;
+    case READER_PREFERENCES_KEY: store.set(readerPreferencesBaseAtom, stampEventCause({ ...getReaderPreferences() }, origin)); break;
+    case READER_OVERRIDES_KEY: store.set(readerOverridesBaseAtom, stampEventCause(getReaderOverrides(), origin)); break;
     case GENERAL_SETTINGS_KEY: {
       const settings = getGeneralSettings();
       store.set(generalSettingsBaseAtom, settings);

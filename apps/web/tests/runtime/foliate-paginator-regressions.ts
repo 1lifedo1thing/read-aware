@@ -41,8 +41,16 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
       equal(events.at(-1)?.context, target); equal(loads.at(-1)?.context, target);
       renderer.render();
       equal(events.at(-1)?.context, target);
+      const settings = {}, dimensions = {};
+      renderer.setStyles('body { font-size: 23px !important; line-height: 1.8 !important; }', settings);
+      await renderer.getContents()[0]?.doc.fonts.ready;
+      // CSS expansion keeps its operation while source-document font work settles.
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      equal(events.at(-1)?.context, settings);
+      renderer.setLayoutAttributes({ 'max-inline-size': '470px', gap: '8%' }, dimensions);
+      equal(events.at(-1)?.context, dimensions);
       await renderer.prev();
-      equal(!!events.at(-1)?.context, true); equal(events.at(-1)?.context === target, false);
+      equal(!!events.at(-1)?.context, true); equal(events.at(-1)?.context === dimensions, false);
     } finally { dispose(renderer, urls); }
   });
 

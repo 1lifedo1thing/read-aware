@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { actorFromEvent, causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { useAtomValue, useSetAtom } from "jotai";
 import { appSettingsAtom, resolvedAppThemeAtom } from "../../../state/ui";
 import {
@@ -28,12 +29,13 @@ export function useAppearance(): void {
   const pluginThemes = useAtomValue(pluginThemesAtom);
   const pluginsReady = useAtomValue(pluginsReadyAtom);
   const setResolvedTheme = useSetAtom(resolvedAppThemeAtom);
+  const previousTheme = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const root = document.documentElement;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
 
-    const apply = () => {
+    const apply = (origin: DomainActor) => {
       const pref = appSettings.theme;
       let resolved: "light" | "dark";
       let skin: RegisteredPluginTheme | null = null;
@@ -65,13 +67,16 @@ export function useAppearance(): void {
 
       root.dataset.theme = resolved;
       root.style.colorScheme = resolved;
-      setResolvedTheme(resolved);
+      setResolvedTheme(resolved, origin);
       applyAppSkin(skin, bootPending);
     };
 
-    apply();
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
+    const source = previousTheme.current !== appSettings.theme ? actorFromEvent(appSettings) : causalActor("system");
+    previousTheme.current = appSettings.theme;
+    apply(source);
+    const systemChanged = () => apply(causalActor("system"));
+    media.addEventListener("change", systemChanged);
+    return () => media.removeEventListener("change", systemChanged);
   }, [appSettings.theme, pluginThemes, pluginsReady, setResolvedTheme]);
 
   useEffect(() => {

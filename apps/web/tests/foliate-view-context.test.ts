@@ -69,14 +69,15 @@ test("View and fixed layout preserve navigation ownership through delayed feedba
     const fixed = new FixedLayout(), source = Promise.withResolvers<string>();
     Object.defineProperties(fixed, { clientWidth: { value: 400 }, clientHeight: { value: 600 } });
     document.body.append(fixed);
-    const first = {}, latest = {}, observed: RelocateDetail[] = [], shown: LoadDetail[] = [];
+    const first = {}, latest = {}, observed: RelocateDetail[] = [], shown: LoadDetail[] = [], painted: object[] = [];
     let reads = 0;
     try {
       fixed.open({ rendition: { layout: "pre-paginated", spread: "none", viewport: "width=600,height=800" },
         sections: [{ id: 0, size: 100, load: () => { reads++; return source.promise; } },
-          { id: 1, size: 100, load: () => "about:blank" }] });
+          { id: 1, size: 100, load: () => ({ src: "about:blank", onZoom: async () => {} }) }] });
       fixed.addEventListener("relocate", event => observed.push((event as CustomEvent<RelocateDetail>).detail));
       fixed.addEventListener("load", event => shown.push((event as CustomEvent<LoadDetail>).detail));
+      fixed.addEventListener("rendered", event => painted.push((event as CustomEvent<{ context: object }>).detail.context));
       const old = fixed.goTo({ index: 0, context: first });
       await Bun.sleep(0); expect(reads).toBe(1);
       const replacement = fixed.goTo({ index: 0, context: latest });
@@ -92,11 +93,32 @@ test("View and fixed layout preserve navigation ownership through delayed feedba
         later.resolve({ index: 0, context: first }); await pending;
         expect(fixed.index).toBe(1); expect(observed.at(-1)?.context).toBe(latest);
       }
+      const colors = {}, layout = {};
+      fixed.setPageColors({ background: "#fff", foreground: "#111" }, colors);
+      await fixed.waitForCurrentRender();
+      expect(painted.at(-1)).toBe(colors);
+      fixed.setLayout("paginated", 1, layout);
+      await Bun.sleep(0); await fixed.waitForCurrentRender();
+      expect(observed.at(-1)?.context).toBe(layout);
     } finally {
       source.resolve("about:blank"); fixed.destroy(); fixed.remove();
       if (previousCreate) Object.defineProperty(document, "createElement", previousCreate);
       else Reflect.deleteProperty(document, "createElement");
     }
+
+    const { Paginator }: typeof import("../foliate-js/src/paginator") = await import(new URL("../public/foliate-js/paginator.js", import.meta.url).href);
+    const paginator = new Paginator(), renders: object[] = [], appearance = {};
+    // Verify the real attribute reaction bridge without claiming layout.
+    paginator.render = context => { if (context) renders.push(context); };
+    try {
+      paginator.setLayoutAttributes({ flow: "scrolled", "max-inline-size": "500px", gap: "10%" }, appearance);
+      expect(renders).toEqual([appearance]);
+      paginator.attributeChangedCallback("flow", null, "scrolled");
+      paginator.attributeChangedCallback("max-inline-size", null, "500px");
+      paginator.setLayoutAttributes({ flow: "scrolled", "max-inline-size": "500px", gap: "10%" }, {});
+      expect(renders).toEqual([appearance]);
+      expect(paginator.getAttribute("max-inline-size")).toBe("500px");
+    } finally { paginator.destroy(); }
   } finally {
     for (const [key, descriptor] of previous) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key);

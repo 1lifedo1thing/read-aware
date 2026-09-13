@@ -8,6 +8,7 @@ import {
 } from "./reader-settings";
 
 import { localKV } from "../../../platform/local-store";
+import type { DomainActor } from "../../../platform/domain-actor";
 
 export const READER_OVERRIDES_KEY = "read-aware-reader-overrides";
 const STORAGE_KEY = READER_OVERRIDES_KEY;
@@ -68,6 +69,6 @@ export function getReaderOverrides(): ReaderOverrides {
   }
 }
 
-export function saveReaderOverrides(overrides: ReaderOverrides): void {
-  localKV.setItem(STORAGE_KEY, JSON.stringify(overrides));
+export function saveReaderOverrides(overrides: ReaderOverrides, origin: DomainActor = "user"): void {
+  localKV.setItem(STORAGE_KEY, JSON.stringify(overrides), "local", origin);
 }

@@ -1,16 +1,16 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import {
   readerOverridesAtom,
   readerPreferencesAtom,
-  resolvedAppThemeAtom,
+  resolvedAppThemeStateAtom,
 } from "../../../state/ui";
 import {
-  toEffectiveReaderSettings,
   type ReaderSettings,
   type ReaderSettingsPreferences,
 } from "../../settings/lib/reader-settings";
 import type { ReaderAppearanceScope } from "../../settings/lib/reader-overrides";
+import { projectReaderAppearance, type ReaderAppearanceProjection } from "../lib/reader-appearance-source";
 
 export type { ReaderAppearanceScope };
 
@@ -35,7 +35,8 @@ type UseReaderAppearanceResult = {
 export function useReaderAppearance(bookId: string): UseReaderAppearanceResult {
   const [globalPrefs, setGlobalPrefs] = useAtom(readerPreferencesAtom);
   const [overrides, setOverrides] = useAtom(readerOverridesAtom);
-  const appTheme = useAtomValue(resolvedAppThemeAtom);
+  const appTheme = useAtomValue(resolvedAppThemeStateAtom);
+  const committed = useRef<ReaderAppearanceProjection | undefined>(undefined);
 
   const override = overrides[bookId];
   const scope: ReaderAppearanceScope = override?.scope === "book" ? "book" : "global";
@@ -43,10 +44,13 @@ export function useReaderAppearance(bookId: string): UseReaderAppearanceResult {
   // Keep a stable reference so consumers that key effects on the settings object
   // (e.g. the reader re-injecting CSS) only react to genuine changes, not to
   // every render — a fresh object each render would reset reader scroll position.
-  const effective = useMemo(
-    () => toEffectiveReaderSettings(prefs, appTheme),
-    [prefs, appTheme],
+  const projection = useMemo(
+    () => projectReaderAppearance({ bookId, scope, prefs, source: scope === "book" ? overrides : globalPrefs,
+      scopeSource: overrides, theme: appTheme }, committed.current),
+    [bookId, scope, prefs, overrides, globalPrefs, appTheme],
   );
+  useLayoutEffect(() => { committed.current = projection; }, [projection]);
+  const effective = projection.value;
 
   const setScope = useCallback(
     (next: ReaderAppearanceScope) => {

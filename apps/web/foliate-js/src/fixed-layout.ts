@@ -1033,7 +1033,7 @@ export class FixedLayout extends HTMLElement {
             return arr
         }, [{}])
     }
-    #rebuildSpreads() {
+    #rebuildSpreads(context: object = {}) {
         if (!this.book) return
         const currentIndex = this.index
         this.#buildSpreads()
@@ -1042,7 +1042,7 @@ export class FixedLayout extends HTMLElement {
         this.#clearFrameCache()
         if (this.scrolled) this.#buildStack()
         this.#index = -1
-        if (currentIndex >= 0) void this.goTo({ index: currentIndex })
+        if (currentIndex >= 0) void this.goTo({ index: currentIndex, context })
     }
     // READAWARE: page colors for lazily rendered frames (PDF), as
     // `{ background, foreground? }` — see pdf.js for what each one means — or
@@ -1050,11 +1050,12 @@ export class FixedLayout extends HTMLElement {
     // invalidates every live frame's cached scale to force a redraw — cached
     // hidden spreads included, or turning a page after a palette change would
     // flash the old colors.
-    setPageColors(pageColors: PageColors) {
+    setPageColors(pageColors: PageColors, context: object = {}) {
         const next = pageColors?.background ? pageColors : null
         if (next?.background === this.#pageColors?.background
             && next?.foreground === this.#pageColors?.foreground) return
         this.#pageColors = next
+        this.#positionContext = context
         for (const frames of this.#liveFrames.values())
             this.#eachFrame(frames, frame => {
                 this.#cancelFrameRender(frame)
@@ -1074,12 +1075,13 @@ export class FixedLayout extends HTMLElement {
         // Repaint the warm window in the new colors behind the visible page.
         if (!this.scrolled) this.#schedulePreload()
     }
-    setLayout(flow: string, maxColumnCount: number) {
+    setLayout(flow: string, maxColumnCount: number, context: object = {}) {
+        if (this.#flow === flow && this.#maxColumnCount === maxColumnCount) return
         this.#flow = flow
         this.#maxColumnCount = maxColumnCount
         this.setAttribute('flow', flow)
         this.setAttribute('max-column-count', String(maxColumnCount))
-        this.#rebuildSpreads()
+        this.#rebuildSpreads(context)
     }
     get scrolled() {
         return (this.#flow ?? this.getAttribute('flow')) === 'scrolled'

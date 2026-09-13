@@ -1,5 +1,6 @@
 import { hasCoarsePointer } from "../../../platform/environment";
 import { localKV } from "../../../platform/local-store";
+import { copyEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { isPluginRef } from "../../plugins/lib/plugin-theme";
 
 export const READER_PREFERENCES_KEY = "read-aware-reader-settings";
@@ -299,8 +300,8 @@ export function getReaderPreferences(): ReaderSettingsPreferences {
   }
 }
 
-export function saveReaderPreferences(prefs: ReaderSettingsPreferences): void {
-  localKV.setItem(STORAGE_KEY, JSON.stringify(prefs));
+export function saveReaderPreferences(prefs: ReaderSettingsPreferences, origin: DomainActor = "user"): void {
+  localKV.setItem(STORAGE_KEY, JSON.stringify(prefs), "local", origin);
 }
 
 /** Resolve a (possibly `auto`) page color against the resolved app theme. */
@@ -317,5 +318,5 @@ export function toEffectiveReaderSettings(
   prefs: ReaderSettingsPreferences,
   appTheme: "light" | "dark",
 ): ReaderSettings {
-  return { ...prefs, theme: resolveReaderTheme(prefs.theme, appTheme) };
+  return copyEventCause(prefs, { ...prefs, theme: resolveReaderTheme(prefs.theme, appTheme) });
 }
