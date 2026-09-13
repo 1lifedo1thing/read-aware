@@ -94,7 +94,8 @@ fn write(conn: &Connection, placement: &Placement) -> Result<(), CommandError> {
     conn.execute(
         "INSERT INTO app_kv (key, value_json, updated_at)
          VALUES (?1, ?2, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-         ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at",
+         ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at
+         WHERE app_kv.value_json IS NOT excluded.value_json",
         params![STORAGE_KEY, serde_json::to_string(placement)?],
     )?;
     Ok(())
@@ -413,6 +414,29 @@ mod tests {
         state.normal.width = -1.0;
         write(&conn, &state).unwrap();
         assert!(read(&conn).is_err());
+    }
+
+    #[test]
+    fn unchanged_placement_does_not_write_or_invalidate_database_readers() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE app_kv (key TEXT PRIMARY KEY, value_json TEXT NOT NULL, updated_at TEXT NOT NULL);
+            CREATE TABLE write_clock (value INTEGER NOT NULL);
+            INSERT INTO write_clock VALUES (0);
+            CREATE TRIGGER placement_update AFTER UPDATE ON app_kv BEGIN UPDATE write_clock SET value=value+1; END;").unwrap();
+        let mut state = placement();
+        write(&conn, &state).unwrap();
+        conn.execute("UPDATE app_kv SET updated_at='baseline'", []).unwrap();
+        let changes = conn.total_changes();
+        // Focus changes can repeatedly schedule a save of identical bounds.
+        write(&conn, &state).unwrap();
+        write(&conn, &state).unwrap();
+        assert_eq!(conn.total_changes(), changes);
+        assert_eq!(conn.query_row("SELECT updated_at FROM app_kv", [], |row| row.get::<_, String>(0)).unwrap(), "baseline");
+        assert_eq!(conn.query_row("SELECT value FROM write_clock", [], |row| row.get::<_, i64>(0)).unwrap(), 1);
+        state.normal.x += 20;
+        write(&conn, &state).unwrap();
+        assert_eq!(read(&conn).unwrap(), Some(state));
+        assert_eq!(conn.query_row("SELECT value FROM write_clock", [], |row| row.get::<_, i64>(0)).unwrap(), 2);
     }
 
     #[test]
