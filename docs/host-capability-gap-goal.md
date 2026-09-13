@@ -26,8 +26,9 @@
 ## 当前交接
 
 - I01：用户明确要求移除 localOnly。设置/UI/公开路径、模型门禁和旧值兼容已实现；11 项设置/阅读动作检查及 web 类型检查通过，模型代理报告 615 项 Agent 检查通过。已提交 `aec2c801`；当前说明已生成并通过契约检查，73 个保留设置 ID 未移动。集中桌面验收待完成。
-- I02：已批准全库/当前书/指定一本书的最小授权契约，进入实现；未知或无法安全裁剪的跨书操作在受限模式拒绝，尚未验收。
+- I02：实现已提交 `df0bfed9`。全库/当前书/指定一本书授权接到 UI、持久化、Worker metadata、domain/resource/贡献入口和 Annotation Desk；备份重新确认授权并随恢复事务写入，本机授权不被源覆盖。主代理补修 export-only 读取策略回归、无 library 权限时 workspace 绕过、固定书列表误依赖当前书。宿主生命周期/UI/消费者/备份定向检查、当前 web 类型检查通过；Worker 协议/metadata 检查通过，Tauri 真实权限/写入/撤权验收待集中执行。
 - I04：现有 TTS/内容提供者类型化消费链足够，复用现有实现，真实运行验收待完成。
 - I03：已提交 `bd805a9d`。公开搜索 helper 与 Jumper/Text Desk 已接通跨页/进度/取消/可见预算终态；helper 6 项、Jumper 11 项、Text Desk 4 项与相关类型/构建通过；编译消费者已提交 `ad31f5e1`，包含异步进度超时和版本变化丢弃旧结果。真实 Tauri/Worker 验收待集中进行。
 - I05：已提交 `a87d4b9c`，声明式 editor、Annotation Desk CAS 消费者及编译产物接通；保存等待时继续输入、新 revision 先/后到达和外部冲突的 5 项交互检查通过，schema 20 项及 consumer/capability 26 项通过。真实 Worker/Tauri 和焦点验收待集中。
-- 尚未进入模型修复及集中验收，不把上一轮的 8/10 或 220/247 当作本轮结论。
+- 五项实现已收齐，现进入已证实模型/标注修复：连续性代理负责 thread/history 的安全重写与回顾证据，标注代理负责精确选区 fixture/工具与写入回执，主代理整合并冻结后续验收范围。尚未启动本轮 live 或集中 Tauri，不把上一轮的 8/10 或 220/247 当作本轮结论。
+- 已冻结本轮验收：10 个模型场景（journeys 2、karamazov 2、santi 1、annotations 3、personalization 1、grounding 1）和 I01–I05 的 5 组隔离桌面流程。复用旧基线，每场景最多两次修后运行，失败不刷绿；每项改动能力补自由问题并由主代理四维审阅。执行清单存于本地 `.eval/gap-closure/acceptance-plan.json`。

@@ -7,7 +7,7 @@
 
 ## 最近交付与接续入口
 
-当前 active goal：[有界实现补齐与集中验收](./host-capability-gap-goal.md)，基线 `f312d24a`。I01 按用户决定删除 localOnly（`aec2c801`/`7a11f5b0`）；I03 有界搜索接到 Jumper/Text Desk 并编译（`bd805a9d`/`ad31f5e1`）；I05 editor 与 Annotation Desk 条件保存接通（`a87d4b9c`）。上述定向检查通过，真实 Worker/Tauri 待集中。I04 复用已有类型化提供者链；I02 正在补宿主对象授权、资源/贡献旁路和用户授权入口。随后才进入已证实模型/标注修复和集中验收；未满足条件不结清 goal，不重复全量评测。
+当前 active goal：[有界实现补齐与集中验收](./host-capability-gap-goal.md)，基线 `f312d24a`。I01 删除 localOnly；I03 有界搜索、I05 editor、I04 既有类型化提供者链和 I02 对象授权实现已收齐。I02 提交 `df0bfed9`：UI/宿主持久授权/Worker/domain/resource/Annotation Desk/备份原子授权接线，定向检查及 web 类型检查通过；真实 Tauri 尚待集中。当前进入长会话安全重写/回顾、精确标注与真实回执的已证实修复，连续性与标注代理并行，主代理整合。后续只跑冻结的受影响场景及代表回归，不重复全量；实现完成不冒充验收通过，goal 仍 active。
 
 当前 [第二轮有界全量验证](./evidence/2026-09-13-full-validation-2/README.md) 已收口：固定 597 文件 2996 pass/0 fail/1 skip，Cargo 474 pass/0 fail/2 ignored，类型与生成契约通过；真实 Tauri 补验 wipe 恢复、备份取消与写屏障、快捷键持久化。模型首轮 220/247 pass、26 fail、1 timeout；唯一一次定向 8/10 pass，主代理质评仅 5 满意/2 保留/3 不满意。全部失败及代表 pass、两轮自由问题已审阅。Luna/max 分工，主代理接管尾部修复，提交 `8bce2c40`、`168d355f`、`c2cf4e28`、`ca8f0a69`；六轮 recap、精确标注、工具纪律及原外部阻塞保留。执行完成不等于全部验收通过，不自动下一 goal，不推送。
 
