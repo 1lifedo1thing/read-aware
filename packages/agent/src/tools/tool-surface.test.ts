@@ -227,6 +227,18 @@ function resultText(result: AgentToolResult<unknown>): string {
   return content.text;
 }
 
+function bindFixtureContentVersion(value: unknown, contentVersion: string): void {
+  if (Array.isArray(value)) {
+    for (const item of value) bindFixtureContentVersion(item, contentVersion);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  for (const [key, child] of Object.entries(value)) {
+    if (key === "contentVersion") (value as Record<string, unknown>)[key] = contentVersion;
+    else bindFixtureContentVersion(child, contentVersion);
+  }
+}
+
 function toolNames(scope: ThreadScope): string[] {
   const { deps } = createInMemoryDeps(seed());
   return buildAgentTools(scope, deps).map((tool) => tool.name);
@@ -252,6 +264,9 @@ describe("tool surface contract", () => {
         if (!params) continue; // 完备性由上面的用例把守
         // 每个工具独立的 fixture：破坏性工具（fixture 自动批准权限）不得污染后续用例
         const { deps } = createInMemoryDeps(seed());
+        const contentVersion = (await deps.reader.getSession()).location?.contentVersion;
+        if (!contentVersion) throw new Error("expected the fixture reader to expose a content version");
+        bindFixtureContentVersion(params, contentVersion);
         deps.bookText.listReferences = async input => ({ bookId: input.bookId, contentVersion: input.contentVersion, sectionIndex: input.sectionIndex,
           status: "available", items: [], total: 0, nextOffset: null });
         deps.bookText.readReference = async input => ({ reference: input.reference, status: "resolved", label: "Note", text: "Reference preview",

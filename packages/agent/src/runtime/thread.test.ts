@@ -484,7 +484,7 @@ describe("AgentThread", () => {
       }),
     );
 
-    expect(captured?.systemPrompt).toContain('chapter #1 ("Chapter 2")');
+    expect(captured?.systemPrompt).toContain('zero-based chapterIndex 1 ("Chapter 2")');
   });
 
   test("adds the latest cursor at the new-turn suffix without invalidating the cached prefix", async () => {
@@ -559,7 +559,7 @@ describe("AgentThread", () => {
     // 换章 → 会话重置 → prompt 重建：新画像与新章节一起生效
     await collect(thread.sendTurn({ text: "q3", readingCursor: { chapter: "ch2.xhtml" } }));
     expect(prompts[2]).toContain("NEW PROFILE");
-    expect(prompts[2]).toContain('chapter #1 ("Chapter 2")');
+    expect(prompts[2]).toContain('zero-based chapterIndex 1 ("Chapter 2")');
   });
 
   test("chapter session: turns in the same chapter share the accumulated context", async () => {

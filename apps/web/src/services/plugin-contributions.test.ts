@@ -3,6 +3,7 @@ import { CONTRIBUTION_CATALOG } from "@read-aware/core";
 import * as registry from "../features/plugins/state/plugin-store";
 import { registerSyncTransport } from "../platform/sync/transport-registry";
 import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
+import { pluginUriRegistry } from "../features/plugins/lib/plugin-uri";
 import { pluginContributions, pluginContributionPage } from "./plugin-contributions";
 import { hostIO } from "./host-io";
 
@@ -23,11 +24,12 @@ test("every current contribution point is discoverable without invoking or expos
   const transport = registerSyncTransport("discovery", { id: "main", label: "PRIVATE LABEL", open: forbidden });
   const actor = buildPluginContext({ id: "discovery-consumer", name: "Consumer", version: "1", schemaVersion: 1,
     requires: { services: { plugins: "^1.1.0" } }, permissions: [] }, "1", []);
+  const uriHandler = pluginUriRegistry.register({ id: "main", open: forbidden, pluginId: "discovery", pluginName: "Name", key: "discovery:main" });
   actor.lifecycle.promote();
   try {
     const page = await actor.context.services.plugins.contributions({ pluginId: "discovery" });
     expect(Object.keys(CONTRIBUTION_CATALOG).sort()).toEqual(page.contributions.map(item => item.point).sort());
-    expect(page.total).toBe(15); expect(calls).toBe(0);
+    expect(page.total).toBe(16); expect(calls).toBe(0);
     expect(JSON.stringify(page)).not.toMatch(/PRIVATE|secret|\/private\/|execute|synthesize|label/);
     expect(page.contributions.find(item => item.point === "syncTransports")?.key).toBe("plugin:discovery:main");
     expect(await hostIO.listPluginContributions({ pluginId: "discovery" })).toEqual(page);
@@ -39,7 +41,7 @@ test("every current contribution point is discoverable without invoking or expos
     page.contributions[0]!.key = "changed";
     expect(JSON.stringify(await pluginContributions.list({ pluginId: "discovery" }))).not.toContain("changed");
     actor.lifecycle.stop(); await expect(actor.context.services.plugins.contributions()).rejects.toThrow();
-  } finally { actor.lifecycle.stop(); for (const item of registrations) item.dispose(); await transport(); }
+  } finally { actor.lifecycle.stop(); uriHandler.dispose(); for (const item of registrations) item.dispose(); await transport(); }
 });
 
 test("observation is initial, serial, coalesced and retired with its consumer", async () => {

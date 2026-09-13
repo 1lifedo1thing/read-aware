@@ -11,6 +11,7 @@ import { useImageViewer } from "../src/features/reader/hooks/useImageViewer";
 import { readerImageOpen } from "../src/services/reader-image-open";
 import type { BookImageData } from "../src/features/library/lib/book-images";
 
+if (process.env.READER_IMAGE_CONTROLS_CASE === "1") {
 test("native lightbox and public controls share zoom, pan, rotation, reset and committed close under StrictMode", async () => {
   const dom = new JSDOM("<div id='root'></div>", { url: "http://localhost" });
   const values = { window: dom.window, document: dom.window.document, IS_REACT_ACT_ENVIRONMENT: true };
@@ -106,3 +107,13 @@ test("API opening mounts the same lightbox, releases URLs and yields to native a
     for (const [key, value] of saved) { if (value) Object.defineProperty(globalThis, key, value); else Reflect.deleteProperty(globalThis, key); }
   }
 });
+} else {
+  test("isolated reader image controls contract", async () => {
+    const child = Bun.spawn([process.execPath, "test", import.meta.path], {
+      env: { ...process.env, READER_IMAGE_CONTROLS_CASE: "1" }, stdout: "ignore", stderr: "pipe",
+    });
+    const output = await new Response(child.stderr).text();
+    expect(await child.exited, output).toBe(0);
+    expect(output).toContain("2 pass");
+  }, 30_000);
+}

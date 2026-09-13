@@ -7,6 +7,7 @@ import { PluginToastBridge } from "../src/features/plugins/components/PluginToas
 import { initI18n } from "../src/i18n";
 import { setPluginToastHandler, showPluginToast } from "../src/features/plugins/lib/plugin-toast";
 
+if (process.env.PLUGIN_TOAST_BRIDGE_CASE === "1") {
 test("mounted toast bridge localizes errors, gates retry and cleans up manual/timeout/unmount paths", async () => {
   const dom = new JSDOM("<div id='root'></div>", { url: "http://localhost" });
   const values = { window: dom.window, document: dom.window.document, IS_REACT_ACT_ENVIRONMENT: true };
@@ -35,3 +36,13 @@ test("mounted toast bridge localizes errors, gates retry and cleans up manual/ti
     for (const [key, value] of saved) { if (value) Object.defineProperty(globalThis, key, value); else Reflect.deleteProperty(globalThis, key); }
   }
 });
+} else {
+  test("isolated mounted toast bridge contract", async () => {
+    const child = Bun.spawn([process.execPath, "test", import.meta.path], {
+      env: { ...process.env, PLUGIN_TOAST_BRIDGE_CASE: "1" }, stdout: "ignore", stderr: "pipe",
+    });
+    const output = await new Response(child.stderr).text();
+    expect(await child.exited, output).toBe(0);
+    expect(output).toContain("1 pass");
+  }, 30_000);
+}

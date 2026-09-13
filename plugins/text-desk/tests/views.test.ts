@@ -5,7 +5,7 @@ import { textDesk, textDetail } from "../src/views";
 function harness() {
   const calls: string[] = [], opened: string[] = [];
   let fail = "", openFails = false;
-  const ctx = { locale: "en", domains: {
+  const ctx = { locale: "en", services: { llm: undefined }, domains: {
     library: { queries: { books: {
       list: async () => Array.from({ length: 22 }, (_, i) => ({ id: String(i), title: `Book ${i}`, format: "epub" })),
       getTextState: async (id: string) => {

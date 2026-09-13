@@ -24,6 +24,7 @@ test("native editor awaits durable writes, shares actor ordering, and keeps fail
   let hold = false;
   Object.assign(dom.window, { __TAURI_INTERNALS__: { invoke: (command: string, args: { entries: [string, string][]; key: string; value: string }) => {
     if (command === "local_device_get") return Promise.resolve({ deviceId: "shortcut-editor", lastHlcWallMs: null, lastHlcCounter: null });
+    if (command === "desktop_startup_enabled") return Promise.resolve(false);
     if (command !== "set_kv" && command !== "set_kv_batch") return Promise.resolve();
     const entries = command === "set_kv" ? [[args.key, args.value] as [string, string]] : args.entries;
     return new Promise<void>((resolve, reject) => {

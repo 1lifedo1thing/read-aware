@@ -134,8 +134,8 @@ test("compiled command exposes the image workflow with existing grants and retai
   await action(direct, "reset");
   expect(f.requests).toEqual([{ id: "viewer", action: "reset" }]);
   const manifest = await Bun.file(new URL("../dist/manifest.json", import.meta.url)).json();
-  expect(manifest.version).toBe("0.18.0");
+  expect(manifest.version).toBe("0.22.0");
   expect(manifest.requires.schemas.views).toBe("^1.9.0");
   expect(manifest.requires.services.ui).toBe("^1.13.0");
-  expect(manifest.permissions).toEqual(["library:write", "reading:write", "service:clipboard"]);
+  expect(manifest.permissions).toEqual(["library:write", "reading:write", "service:clipboard", "service:llm"]);
 });
