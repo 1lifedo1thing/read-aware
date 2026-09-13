@@ -6,6 +6,7 @@ import { adjacentTocEntry, flattenToc } from "./epub-utils";
 import { readingPagination } from "./reading-pagination";
 import { readingVisibleText } from "./reading-visible-text";
 import { readingRenderActor, readingRenderContext } from "./reading-render-context";
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 
 export async function waitForReadingPaint(view: FoliateView): Promise<void> {
   const renderer = view.renderer;
@@ -84,9 +85,9 @@ export function createReadingEngineAdapter(view: FoliateView, bookId: string, co
   };
 }
 
-export function attachReadingEngine(view: FoliateView, sessionId: string, bookId: string, contentVersion: string, sourceRevision = contentVersion): () => void {
+export function attachReadingEngine(view: FoliateView, sessionId: string, bookId: string, contentVersion: string, sourceRevision = contentVersion, source?: DomainActor): (origin?: DomainActor) => void {
   if (readingRuntime.snapshot().sessionId !== sessionId) return () => {};
-  const openingActor = readingRuntime.openingActor(sessionId);
+  const openingActor = causalActor(source ?? readingRuntime.openingActor(sessionId));
   const location = () => currentLocation(view, bookId, contentVersion);
   const engine = createReadingEngineAdapter(view, bookId, contentVersion, sourceRevision);
   const publish = (event?: Event) => {
@@ -94,8 +95,8 @@ export function attachReadingEngine(view: FoliateView, sessionId: string, bookId
     const origin = event ? readingRenderActor((event as CustomEvent<object>).detail) : openingActor;
     readingRuntime.relocate(sessionId, location(), visible.text, engine, visible.state, origin);
   };
-  const detach = readingRuntime.attach(sessionId, engine, location());
+  const detach = readingRuntime.attach(sessionId, engine, location(), openingActor);
   view.addEventListener("relocate", publish);
   publish();
-  return () => { view.removeEventListener("relocate", publish); detach(); };
+  return origin => { view.removeEventListener("relocate", publish); detach(origin); };
 }

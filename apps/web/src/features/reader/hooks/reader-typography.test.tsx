@@ -1,5 +1,5 @@
 import { expect, mock, test } from "bun:test";
-import { act, StrictMode } from "react";
+import { act, StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { JSDOM } from "jsdom";
 import type { ReaderSettings } from "../../settings/lib/reader-settings";
@@ -12,6 +12,9 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
   mock.module("../../settings/lib/curated-font-loader", () => ({ ensureCuratedFontFaceCss: (id: string) => waiting.get(id) ?? Promise.resolve("") }));
   const { useReaderTypography } = await import("./useReaderTypography");
   const { useReaderAppearance } = await import("./useReaderAppearance");
+  const { useReaderEngineLoadSource } = await import("./useReaderEngineLoadSource");
+  const { readingRuntime } = await import("../../../domain/reading-runtime");
+  const { attachReadingEngine } = await import("../lib/reading-engine-adapter");
   const { useAppearance } = await import("../../settings/hooks/useAppearance");
   const { DEFAULT_READER_PREFERENCES, READER_PREFERENCES_KEY } = await import("../../settings/lib/reader-settings");
   const { READER_OVERRIDES_KEY } = await import("../../settings/lib/reader-overrides");
@@ -40,12 +43,24 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
     const rendered: { css: string; context: object }[] = [], layouts: object[] = [];
     const renderer = { setStyles(css: string, context: object) { rendered.push({ css, context }); },
       setLayoutAttributes(_values: object, context: object) { layouts.push(context); } } as unknown as FoliateRenderer;
-    const viewRef = { current: { renderer } as FoliateView }, viewportRef = { current: dom.window.document.body };
+    const events = new EventTarget();
+    const viewRef = { current: { renderer, lastLocation: { cfi: "current", fraction: 0.5, section: { current: 0, total: 1 } },
+      addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events),
+    } as unknown as FoliateView }, viewportRef = { current: dom.window.document.body };
+    const loadedBook = { fileName: "book.epub", format: "epub" as const };
+    const sessionId = readingRuntime.begin("book", undefined, causalActor("user"));
+    let engineSource!: ReturnType<typeof useReaderEngineLoadSource>;
+    const retirements: object[] = [];
     let appearance!: ReturnType<typeof useReaderAppearance>, typography!: ReturnType<typeof useReaderTypography>;
     const layoutForReadingMode = () => ({ maxColumnCount: 1 });
     const isFixedLayoutRef = { current: false }, readingModeRef = { current: "scroll" as const };
     function Harness() {
       useAppearance(); appearance = useReaderAppearance("book");
+      engineSource = useReaderEngineLoadSource(loadedBook, "book", appearance.effective.readingMode, appearance.effective);
+      useEffect(() => {
+        const detach = attachReadingEngine(viewRef.current, sessionId, "book", "version", "version", engineSource.current!.origin);
+        return () => { retirements.push(stampEventCause({}, engineSource.current!.origin)); detach(engineSource.current!.origin); };
+      }, [appearance.effective.readingMode]);
       typography = useReaderTypography({ readerSettings: appearance.effective, viewRef, readerRootRef: viewportRef, viewportRef,
         isFixedLayoutRef, readingModeRef, layoutForReadingMode });
       return null;
@@ -58,6 +73,8 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
       await localKV.setItemAsync(READER_OVERRIDES_KEY, "{}");
       await localKV.setItemAsync(APP_SETTINGS_KEY, JSON.stringify({ theme: "light", motion: "system" }));
       await act(async () => { root.render(<StrictMode><Harness /></StrictMode>); await tick(); });
+      expect(eventCause(readingRuntime.snapshot())?.root).toBe(actorCause(readingRuntime.openingActor(sessionId))?.root);
+      const originalLoad = engineSource.current;
       for (const target of [{ kind: "global" }, { kind: "book", bookId: "book" }] as const) {
         await runtime.reactions.deliver({}, stampEventCause({}, causalActor("user")), async reaction => {
           const bound = runtime.context.withEvent({ reaction }), origin = runtime.reactions.actor(reaction);
@@ -83,6 +100,31 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
       const currentAppSettings = getDefaultStore().get(appSettingsAtom);
       await act(async () => { emitAppEvent("roaming-preferences-changed", { keys: [APP_SETTINGS_KEY] }); await tick(); });
       expect(getDefaultStore().get(appSettingsAtom)).toBe(currentAppSettings);
+      expect(engineSource.current).toBe(originalLoad);
+      // A real public settings reaction rebuilds this same session, preserving
+      // its cause through outgoing cleanup and the adapter's ready/relocate.
+      const rule = {};
+      await runtime.reactions.deliver(rule, stampEventCause({}, causalActor("user")), async reaction => {
+        const actor = runtime.reactions.actor(reaction);
+        const next = appearance.effective.readingMode === "scroll" ? "paginated-single" : "scroll";
+        await act(async () => { await runtime.context.withEvent({ reaction }).domains.settings.commands.update([
+          { path: "reading.readingMode", value: next, target: { kind: "global" } },
+        ]); await tick(); });
+        expect(eventCause(retirements.at(-1)!)?.root).toBe(actorCause(actor)?.root);
+        expect(eventCause(readingRuntime.snapshot())?.steps).toEqual(actorCause(actor)?.steps);
+        expect(eventCause(readingRuntime.snapshot())?.root).toBe(actorCause(actor)?.root);
+        expect(readingRuntime.snapshot().status).toBe("ready");
+        expect(readingRuntime.snapshot().sessionId).toBe(sessionId);
+      });
+      await runtime.reactions.deliver(rule, readingRuntime.snapshot(), reaction => {
+        expect(reaction.status).toBe("cycle");
+        expect(() => runtime.reactions.actor(reaction)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+      });
+      const reactedRoot = eventCause(readingRuntime.snapshot())!.root;
+      await act(async () => { appearance.updatePrefs({ ...appearance.prefs,
+        readingMode: appearance.effective.readingMode === "scroll" ? "paginated-single" : "scroll" }); await flushLocalKV(); await tick(); });
+      expect(eventCause(readingRuntime.snapshot())?.root).not.toBe(reactedRoot);
+      await runtime.reactions.deliver(rule, readingRuntime.snapshot(), reaction => { expect(reaction.status).not.toBe("cycle"); });
       await runtime.reactions.deliver({}, stampEventCause({}, causalActor("user")), async reaction => {
         const origin = runtime.reactions.actor(reaction), previousSize = appearance.effective.fontSize;
         heldWrite = Promise.withResolvers<void>();
@@ -119,6 +161,7 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
     } finally {
       heldWrite?.resolve();
       await act(async () => root.unmount()); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups();
+      readingRuntime.closed();
       waiting.clear(); dom.window.close();
       for (const [key, descriptor] of saved) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key); }
     }

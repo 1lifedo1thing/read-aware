@@ -11,6 +11,35 @@ const reaction = () => reactionActor("plugin:reader", "react-to-reading", eventC
 const at = { bookId: "book", contentVersion: "v1", cfi: "start" };
 const engine = () => ({ navigate: async () => at, step: async () => at });
 
+test("layout detach, delayed attachment, selection binding, playback retirement and failure preserve the rebuild source", async () => {
+  const runtime = new ReadingSessionController(), opening = causalActor("user"), layout = reaction();
+  const id = runtime.begin("book", undefined, opening);
+  const detach = runtime.attach(id, engine(), at);
+  const player = new ReadAloudController({ speak: (_text, callbacks) => { callbacks.onStart(); return { cancel() {} }; }, play: () => ({ cancel() {} }),
+    systemAvailable: () => true, report: () => {} });
+  player.update({ enabled: true, unit: { text: "Playing passage", cfiRange: "current" }, voice: null,
+    next: async () => "end-of-book", peekNext: () => null }, opening);
+  await player.start(opening);
+  const releasePlayback = runtime.bindPlayback(id, player);
+  detach(layout); releasePlayback(layout);
+  expect(eventCause(player.snapshot())).toBe(actorCause(layout));
+  expect(eventCause(runtime.snapshot())).toBe(actorCause(layout));
+  await tick();
+  const replacement = runtime.attach(id, engine(), at, layout);
+  const releaseSelection = runtime.bindSelection(id, { retire() {}, validate: async () => {},
+    select: async () => { throw Error("Not selecting"); }, clear: async () => {} }, layout);
+  expect(eventCause(runtime.snapshot())).toBe(actorCause(layout));
+  const ready = runtime.snapshot(); detach(opening);
+  expect(runtime.snapshot()).toEqual(ready);
+  const next = causalActor("user"); replacement(next); releaseSelection(next);
+  expect(eventCause(runtime.snapshot())).toBe(actorCause(next));
+  runtime.fail(id, Error("Layout failed"), next);
+  expect(eventCause(runtime.snapshot())).toBe(actorCause(next));
+  expect(runtime.openingActor(id)).toBe(opening);
+  expect(JSON.stringify(runtime.snapshot())).not.toContain("react-to-reading");
+  runtime.closed();
+});
+
 test("opening, delayed readiness, failure and demand cooldown retain their exact request source", async () => {
   const actor = reaction(), snapshots: ReadingSessionSnapshot[] = [];
   const runtime = new ReadingSessionController(undefined, 1000, 5);

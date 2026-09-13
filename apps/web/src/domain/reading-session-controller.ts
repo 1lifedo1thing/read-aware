@@ -124,7 +124,7 @@ export class ReadingSessionController {
     if (intent === undefined) this.intent++;
     else if (this.intentActor?.intent === intent) origin = this.intentActor.origin;
     origin = causalActor(origin);
-    this.detachPlayback();
+    this.detachPlayback(origin);
     this.detachMode();
     this.detachControls();
     this.detachSelection();
@@ -141,20 +141,20 @@ export class ReadingSessionController {
     return this.session.origin;
   }
 
-  attach(id: string, engine: ReadingEngineAdapter, location: ReadingLocation): () => void {
+  attach(id: string, engine: ReadingEngineAdapter, location: ReadingLocation, source?: DomainActor): (origin?: DomainActor) => void {
     if (this.session?.id !== id) return () => {};
+    const origin = causalActor(source ?? this.session.origin);
     this.session.engine = engine;
     this.session.error = undefined;
     if (this.userOpening?.id === id) {
       this.recordJump(this.userOpening.before, location);
       this.userOpening = undefined;
     }
-    const origin = this.session.origin;
     this.publish({ status: "ready", location, ...noVisibleText(), errorCode: undefined, pagination: paginationOf(engine), sourceRevision: engine.sourceRevision ?? null }, { origin, reason: "ready" });
-    return () => {
+    return (detachOrigin = origin) => {
       if (this.session?.id !== id || this.session.engine !== engine) return;
       this.session.engine = undefined;
-      this.publish({ status: "loading", ...noVisibleText(), selection: null, pagination: null }, { origin, reason: "detach" });
+      this.publish({ status: "loading", ...noVisibleText(), selection: null, pagination: null }, { origin: detachOrigin, reason: "detach" });
     };
   }
 
@@ -175,14 +175,15 @@ export class ReadingSessionController {
     this.publish({ selection: selection ? structuredClone(selection) : null }, { origin, reason: "selection" });
   }
 
-  bindSelection(id: string, adapter: ReadingSelectionAdapter): () => void {
+  bindSelection(id: string, adapter: ReadingSelectionAdapter, source?: DomainActor): (origin?: DomainActor) => void {
     if (this.session?.id !== id) return () => {};
+    const origin = causalActor(source ?? this.session.origin);
     this.detachSelection();
     const binding = { id, adapter }; this.selectionAdapter = binding;
-    this.publish({ selection: null }, { origin: this.session.origin, reason: "selection" });
-    return () => {
+    this.publish({ selection: null }, { origin, reason: "selection" });
+    return (detachOrigin = origin) => {
       if (this.selectionAdapter !== binding) return;
-      this.detachSelection(); this.publish({ selection: null });
+      this.detachSelection(); this.publish({ selection: null }, { origin: detachOrigin, reason: "selection" });
     };
   }
 
@@ -241,23 +242,24 @@ export class ReadingSessionController {
     return { status: "completed", sessionId: binding.id, selection: null };
   }
 
-  fail(id: string, error: unknown): void {
+  fail(id: string, error: unknown, source?: DomainActor): void {
     if (this.session?.id !== id) return;
+    const origin = causalActor(source ?? this.session.origin);
     this.session.error = error;
-    this.detachPlayback();
+    this.detachPlayback(origin);
     this.detachMode();
     this.detachControls();
     this.detachSelection();
-    this.publish({ status: "error", ...noVisibleText(), selection: null, errorCode: errorCode(error) ?? "reader/load-failed", playback: unavailablePlayback(), mode: unavailableMode(), controls: null, pagination: null }, { origin: this.session.origin, reason: "error" });
+    this.publish({ status: "error", ...noVisibleText(), selection: null, errorCode: errorCode(error) ?? "reader/load-failed", playback: unavailablePlayback(), mode: unavailableMode(), controls: null, pagination: null }, { origin, reason: "error" });
   }
 
   closed(): void {
-    const origin = this.closingActor?.session === this.session && this.closingActor?.intent === this.intent
-      ? this.closingActor.origin : "system";
+    const origin = causalActor(this.closingActor?.session === this.session && this.closingActor?.intent === this.intent
+      ? this.closingActor.origin : "system");
     this.closingActor = undefined;
     if (this.state.location && this.cursor >= 0) this.history[this.cursor] = this.state.location;
     this.intent++;
-    this.detachPlayback();
+    this.detachPlayback(origin);
     this.detachMode();
     this.session = undefined;
     this.detachControls();
@@ -302,19 +304,20 @@ export class ReadingSessionController {
     binding?.dispose(); binding?.adapter.retire();
   }
 
-  bindMode(id: string, adapter: ReadingModeAdapter): () => void {
+  bindMode(id: string, adapter: ReadingModeAdapter, source?: DomainActor): (origin?: DomainActor) => void {
     if (this.session?.id !== id) return () => {};
+    const origin = causalActor(source ?? this.session.origin);
     this.detachMode();
     const binding = { id, adapter, dispose: () => {} };
     this.modeAdapter = binding;
     binding.dispose = adapter.observe(origin => {
       if (this.modeAdapter === binding && this.session?.id === id) this.publish({ mode: adapter.snapshot() }, { origin: origin ?? "system", reason: "mode" });
     });
-    this.publish({ mode: adapter.snapshot() }, { origin: this.session.origin, reason: "mode" });
-    return () => {
+    this.publish({ mode: adapter.snapshot() }, { origin, reason: "mode" });
+    return (detachOrigin = origin) => {
       if (this.modeAdapter !== binding) return;
       this.detachMode();
-      this.publish({ mode: unavailableMode() });
+      this.publish({ mode: unavailableMode() }, { origin: detachOrigin, reason: "mode" });
     };
   }
 
@@ -385,19 +388,20 @@ export class ReadingSessionController {
     });
   }
 
-  bindPlayback(id: string, adapter: ReadingPlaybackAdapter): () => void {
+  bindPlayback(id: string, adapter: ReadingPlaybackAdapter, source?: DomainActor): (origin?: DomainActor) => void {
     if (this.session?.id !== id) return () => {};
-    this.detachPlayback();
+    const origin = causalActor(source ?? this.session.origin);
+    this.detachPlayback(origin);
     const binding = { id, adapter, dispose: () => {} };
     this.playbackAdapter = binding;
     binding.dispose = adapter.observe(origin => {
       if (this.playbackAdapter === binding && this.session?.id === id) this.publish({ playback: adapter.snapshot() }, { origin: origin ?? "system", reason: "playback" });
     });
-    this.publish({ playback: adapter.snapshot() }, { origin: this.session.origin, reason: "playback" });
-    return () => {
+    this.publish({ playback: adapter.snapshot() }, { origin, reason: "playback" });
+    return (detachOrigin = origin) => {
       if (this.playbackAdapter !== binding) return;
-      this.detachPlayback();
-      this.publish({ playback: unavailablePlayback() });
+      this.detachPlayback(detachOrigin);
+      this.publish({ playback: unavailablePlayback() }, { origin: detachOrigin, reason: "playback" });
     };
   }
 
@@ -418,11 +422,11 @@ export class ReadingSessionController {
     return { status: "completed", sessionId: binding.id, playback };
   }
 
-  private detachPlayback(): void {
+  private detachPlayback(origin: DomainActor = "system"): void {
     const binding = this.playbackAdapter;
     this.playbackAdapter = undefined;
     binding?.dispose();
-    binding?.adapter.stop();
+    binding?.adapter.stop(undefined, origin);
   }
 
   close(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<void> {

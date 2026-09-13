@@ -10,7 +10,7 @@ import { ReadAloudController } from "../lib/read-aloud-controller";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { createLogger } from "../../../platform/logger";
 import type { TextUnitTarget } from "./useTextUnitNavigator";
-import type { DomainActor } from "../../../platform/domain-actor";
+import { actorFromEvent, type DomainActor } from "../../../platform/domain-actor";
 
 const log = createLogger("read-aloud");
 
@@ -57,13 +57,14 @@ export function useReadAloud({ bookId, enabled, current, peekNext, origin = "sys
 
   useEffect(() => {
     let sessionId: string | null = null;
-    let release: (() => void) | undefined;
+    let release: ((origin?: DomainActor) => void) | undefined;
     const unobserve = readingRuntime.observe(state => {
       const id = state.bookId === bookId && state.status === "ready" ? state.sessionId : null;
       if (id === sessionId) return;
       sessionId = id;
-      release?.(); release = undefined;
-      if (id) release = readingRuntime.bindPlayback(id, controller);
+      const source = actorFromEvent(state);
+      release?.(source); release = undefined;
+      if (id) release = readingRuntime.bindPlayback(id, controller, source);
     });
     return () => { unobserve(); release?.(); controller.stop(); };
   }, [bookId, controller]);

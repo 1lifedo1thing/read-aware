@@ -3,7 +3,7 @@ import { useAtomValue } from "jotai";
 import { useLocale } from "../../../i18n";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { afterLocalKVWrites, onLocalKVCommit } from "../../../platform/local-store";
-import { actorFromEvent, causalActor, eventCause } from "../../../platform/domain-actor";
+import { actorFromEvent, causalActor, eventCause, type DomainActor } from "../../../platform/domain-actor";
 import { pluginSettingsKey } from "../../plugins/lib/plugin-settings";
 import { readerModesAtom, setActiveReaderMode, releaseActiveReaderMode } from "../../plugins/state/plugin-store";
 import { resolvePluginText } from "../../plugins/lib/plugin-i18n";
@@ -89,16 +89,17 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
 
   useEffect(() => {
     let sessionId: string | null = null;
-    let release: (() => void) | undefined;
+    let release: ((origin?: DomainActor) => void) | undefined;
     const unobserve = readingRuntime.observe(state => {
       const id = state.bookId === bookId && state.status === "ready" ? state.sessionId : null;
       if (id === sessionId) return;
       sessionId = id;
-      release?.(); release = undefined;
+      const origin = actorFromEvent(state);
+      release?.(origin); release = undefined;
       if (id) release = readingRuntime.bindMode(id, { snapshot: controller.snapshot, observe: controller.observe, generation: controller.generation,
         waitForPosition: (position, signal) => controller.waitForPosition(position, signal),
         step: (direction, signal, origin) => controller.step(direction, signal, origin),
-        configure: (input, signal, origin) => controller.configure(input, signal, origin), retire });
+        configure: (input, signal, origin) => controller.configure(input, signal, origin), retire }, origin);
     });
     return () => { unobserve(); release?.(); retire(); void afterLocalKVWrites(() => configurationWrites.release()); };
   }, [bookId, controller, retire, configurationWrites]);

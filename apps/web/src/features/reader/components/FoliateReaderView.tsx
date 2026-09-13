@@ -80,6 +80,7 @@ import {
 import { subscribeWheelPhaseEdges } from "../../../platform/wheel-phase";
 import { useDelayedFlag } from "../hooks/useDelayedFlag";
 import { useReaderTypography } from "../hooks/useReaderTypography";
+import { useReaderEngineLoadSource } from "../hooks/useReaderEngineLoadSource";
 import { useReaderPagination } from "../hooks/useReaderPagination";
 import { useReaderTextActions } from "../hooks/useReaderTextActions";
 import {
@@ -418,6 +419,7 @@ export function FoliateReaderView({
     : readerSettings.readingMode;
   const readingModeRef = useRef(readingMode);
   useEffect(() => { readingModeRef.current = readingMode; }, [readingMode]);
+  const engineLoadSource = useReaderEngineLoadSource(initialBook, selectedBook?.id, readingMode, readerSettings);
 
   // Reader-shell auto-dismissal state. `shellScrollAccumRef` is the signed
   // scroll distance since the shell opened (scroll mode); `prevReadingLocationRef`
@@ -1847,10 +1849,10 @@ export function FoliateReaderView({
     let cancelled = false;
     let view: FoliateView | null = null;
     let releaseBook: (() => Promise<void>) | undefined;
-    const cleanups: Array<() => void> = [];
+    const cleanups: Array<(origin?: DomainActor) => void> = [];
     const runtimeSession = readingRuntime.snapshot();
     const sessionId = runtimeSession.bookId === selectedBook?.id ? runtimeSession.sessionId : null;
-    const openingActor = sessionId ? readingRuntime.openingActor(sessionId) : causalActor("system");
+    const openingActor = engineLoadSource.current?.origin ?? (sessionId ? readingRuntime.openingActor(sessionId) : causalActor("system"));
     const openingContext = readingRenderContext(openingActor);
 
     clearSelection(openingActor);
@@ -2168,21 +2170,21 @@ export function FoliateReaderView({
           cleanups.push(() => emphasis.retire());
           assertContentNotInvalidated(selectedBook.id, invalidation);
           const sourceRevision = contentProvider ? virtualSourceRevision(selectedBook.id, contentProvider, initialBook.virtual!.key) : contentVersion;
-          if (!cancelled) cleanups.push(attachReadingEngine(view, sessionId, selectedBook.id, contentVersion, sourceRevision));
+          if (!cancelled) cleanups.push(attachReadingEngine(view, sessionId, selectedBook.id, contentVersion, sourceRevision, openingActor));
           const identity = { view, sessionId, bookId: selectedBook.id, contentVersion };
           selectionContentRef.current = identity;
           cleanups.push(readingRuntime.bindSelection(sessionId, createReadingSelectionAdapter(view,
-            () => selectionRef.current, (doc, index, origin) => captureSelectionFromDoc(doc, index, { origin }), clearSelection, selectionRender)));
+            () => selectionRef.current, (doc, index, origin) => captureSelectionFromDoc(doc, index, { origin }), clearSelection, selectionRender), openingActor));
           cleanups.push(readingEmphasis.bind(sessionId, selectedBook.id, contentVersion, emphasis));
-          cleanups.push(() => {
+          cleanups.push((origin = openingActor) => {
             if (selectionContentRef.current !== identity) return;
             selectionContentRef.current = null;
-            readingRuntime.selectionChanged(sessionId, null);
+            readingRuntime.selectionChanged(sessionId, null, origin);
           });
         }
         if (book && !cancelled) onBookReadyRef.current?.(book);
       } catch (nextError) {
-        if (sessionId && !cancelled) readingRuntime.fail(sessionId, nextError);
+        if (sessionId && !cancelled) readingRuntime.fail(sessionId, nextError, openingActor);
         if (!cancelled) setError(describeReaderFailure(nextError));
         await view?.close().catch(error => log.warn('Could not close failed reader', error));
         await releaseBook?.().catch(error => log.warn('Could not close failed book', error));
@@ -2193,7 +2195,8 @@ export function FoliateReaderView({
 
     return () => {
       cancelled = true;
-      for (const cleanup of cleanups) cleanup();
+      const retiringActor = engineLoadSource.current?.origin ?? openingActor;
+      for (const cleanup of cleanups) cleanup(retiringActor);
       highlightsRef.current = [];
       notesRef.current = [];
       void view?.close().catch(error => log.warn('Could not close reader', error));

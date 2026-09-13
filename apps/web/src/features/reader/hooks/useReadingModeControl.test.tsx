@@ -30,7 +30,7 @@ test("provider replacement and external preferences converge without replaying a
   try {
     const id = readingRuntime.begin("mode-owner-test");
     const location = { bookId: "mode-owner-test", contentVersion: "v1", cfi: "first" };
-    readingRuntime.attach(id, { navigate: async () => location, step: async () => location }, location);
+    const detachEngine = readingRuntime.attach(id, { navigate: async () => location, step: async () => location }, location);
     updateTextUnitModeSettings("mode-owner-a:reader", { unitId: "paragraph" });
     off = register("mode-owner-a");
     await act(async () => { root.render(<Harness />); });
@@ -71,6 +71,13 @@ test("provider replacement and external preferences converge without replaying a
     expect(state.request.unitId).toBe("sentence");
     expect(actorCause(state.request.origin)).toBe(actorCause(preferenceActor));
     expect(eventCause(readingRuntime.snapshot())).toBe(actorCause(preferenceActor));
+    const layoutActor = reactionActor("plugin:layout-client", "switch-layout", eventCause(stampEventCause({}))!);
+    await act(async () => { detachEngine(layoutActor); });
+    expect(readingRuntime.snapshot().status).toBe("loading");
+    expect(eventCause(readingRuntime.snapshot())).toBe(actorCause(layoutActor));
+    await act(async () => { readingRuntime.attach(id, { navigate: async () => location, step: async () => location }, location, layoutActor); });
+    expect(readingRuntime.snapshot().status).toBe("ready");
+    expect(eventCause(readingRuntime.snapshot())).toBe(actorCause(layoutActor));
     const abort = new AbortController();
     let work!: Promise<unknown>;
     await act(async () => { work = state.controller.configure({ active: true, unitId: "paragraph" }, abort.signal).catch(error => error); });
