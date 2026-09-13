@@ -1209,3 +1209,32 @@ localOnly，返回ai/local-only、deltas=[]，第7条服务端记录cancelled=tr
 结果不输出真实密钥。停止确认为此脚本的PID9104，本地服务退出143。无代码改动，
 不重复全量门禁。buildMemory仅暂关以隔离维护任务，不据此关闭其语义验收；
 其他模型/平台、UI配置流程和发布包仍独立待验。
+
+## 第四十七流程：解锁后的原生复制、文本保存与取消边界
+
+用户再次确认解锁，CUA现可操作隔离release。沿用此前synthetic选区，点击Copy
+selection显示Copied；打开Chat后Message自动聚焦，系统粘贴得到精确synthetic。
+清空草稿、关闭Chat，未发送请求。debug真实buildHostIOTools/buildRuntimeDeps
+的copy_to_clipboard写入ReadAware Agent clipboard ✓ 中文，系统粘贴进本地搜索
+逐字相同；预先中止的第二次复制返回AbortError，再粘贴仍为原文本。搜索已清空关闭。
+
+同一真实Agent工具链export_text_file打开macOS Save面板，保存自有/tmp文本，
+46字节UTF-8与输入逐字节一致。第二次Cancel返回saved:false，无文件；第三次
+面板打开后AbortController中止，再点击Save，返回AbortError/code20且未生成文件。
+两次正常面板关闭后原生AX焦点回到应用HTML。只验证实际工具/端口与操作系统链路，
+不计模型选择工具或推理质量；未读取/发送用户资料。
+
+菜单编辑器原生重排/跨区域拖动未改变布局，正常重启旧包并验证截图坐标点击后
+仍相同。曾试改拖动ID为ref以避免dragstart重绘，但发布包复验无效，候选源码已
+撤回，未将推测提交为修复。为定位，将现有隔离debug二进制包装成/tmp下原生app，
+同一profile/9224与CUA并用；旧原生进程先正常关闭，Vite单独启动。窗口事件记录
+收到mousedown(356,547)、mousemove(339,547)、dragstart及后续dragend(338,219)，
+没有目标dragover/drop，落点与预期(322,547)偏离。无法据此归因菜单代码，保留
+原生拖动验收未完成；不以合成DOM拖放代替本项。监听和临时工具句柄均已移除。
+
+证据：[native-clipboard-export-observations.json](./native-clipboard-export-observations.json)。
+撤回候选后的源码与30ceb578一致，release重新构建通过并已正常重启；当前发布包
+因重建包含第38/39/43流程源码，但不自动增加这些流程的release运行通过声明。
+debug两书、release一书保持，release无菜单覆盖键。自有成功导出文件保留/tmp，
+两份取消/中止文件不存在。候选版本的web类型及既有菜单6项测试通过，不能作为
+候选修复有效证据；没有保留产品代码修改或重复全量门禁。

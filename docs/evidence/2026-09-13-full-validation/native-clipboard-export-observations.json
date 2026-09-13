@@ -1,0 +1,153 @@
+{
+  "date": "2026-09-13",
+  "baseline": "30ceb578",
+  "flow": 47,
+  "profiles": {
+    "selectionCopy": "com.readaware.app.validation-packaged-e2e; release bundle before this turn's rebuild",
+    "hostIO": "com.readaware.app.capability-e2e; original debug executable wrapped in /tmp/ReadAware Capability Tests.app; actual Tauri IPC/native dialogs",
+    "platform": "macOS aarch64"
+  },
+  "selectionCopy": {
+    "bookId": "5506162d-7bd7-43c4-bf81-6495ee6067d3",
+    "selection": "synthetic",
+    "action": "Native Copy selection button",
+    "receipt": "Copied",
+    "observed": "Open Chat, Message receives focus, system paste inserts exact synthetic",
+    "cleanup": "Draft selected and cleared, Chat closed; no Send"
+  },
+  "hostIO": {
+    "consumer": "Actual buildHostIOTools(buildRuntimeDeps()) tools invoked in Tauri; deterministic tool/port acceptance, no model decision claimed",
+    "save": {
+      "filename": "/tmp/readaware-native-io-20260913.txt",
+      "content": "ReadAware native export\n中文与 Unicode ✓\n",
+      "byteLength": 46,
+      "sha256": "2c771a8b654a52ef723a1df6e4b00688002b5d13a9c684a75e7300ee3b7290dc",
+      "bytesExactlyEqual": true,
+      "receipt": {
+        "result": {
+          "content": [
+            {
+              "text": "{\"saved\":true}",
+              "type": "text"
+            }
+          ]
+        },
+        "status": "done"
+      }
+    },
+    "cancel": {
+      "nativeAction": "Cancel in save panel",
+      "receipt": {
+        "result": {
+          "content": [
+            {
+              "text": "{\"saved\":false}",
+              "type": "text"
+            }
+          ]
+        },
+        "status": "done"
+      },
+      "fileExists": false
+    },
+    "abortWhilePanelOpen": {
+      "sequence": [
+        "Open save panel",
+        "AbortController.abort()",
+        "Native Save button"
+      ],
+      "receipt": {
+        "code": 20,
+        "message": "The operation was aborted.",
+        "name": "AbortError",
+        "status": "failed"
+      },
+      "fileExists": false
+    },
+    "clipboard": {
+      "text": "ReadAware Agent clipboard ✓ 中文",
+      "receipt": {
+        "copied": true
+      },
+      "observation": "System paste into local Search inserts exact Unicode text",
+      "preAbortedWrite": {
+        "name": "AbortError",
+        "code": 20,
+        "originalClipboardPreservedBySecondPaste": true
+      },
+      "cleanup": "Search value cleared and search closed"
+    },
+    "dialogFocus": "After Save and Cancel, native AX focuses app HTML content"
+  },
+  "menuDrag": {
+    "status": "Unverified; native automation delivers dragstart but no target dragover/drop",
+    "sourceUnchanged": true,
+    "attempts": "Shelf reorder, shelf to overflow, primary navigation insertion; unchanged UI; repeated after normal old-bundle restart and verified screenshot coordinate click",
+    "discardedCandidate": "Replace dragId state with ref to avoid source rerender during WebKit dragstart; rebuilt and tested release; still unchanged; source reverted and pristine release rebuilt/restarted",
+    "events": [
+      {
+        "data": null,
+        "defaultPrevented": false,
+        "target": "<span draggable=\"true\" class=\"flex h-8 w-8 shrink-0 cursor-grab select-none items-center justify-center rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg\" aria-describedby=\"_r_s_-tooltip\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"",
+        "type": "mousedown",
+        "x": 356,
+        "y": 547
+      },
+      {
+        "data": null,
+        "defaultPrevented": false,
+        "type": "mousemove",
+        "x": 339,
+        "y": 547
+      },
+      {
+        "data": [
+          "text/plain"
+        ],
+        "defaultPrevented": false,
+        "target": "<span draggable=\"true\" class=\"flex h-8 w-8 shrink-0 cursor-grab select-none items-center justify-center rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg opacity-40\" aria-describedby=\"_r_s_-tooltip\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1",
+        "type": "dragstart",
+        "x": 356,
+        "y": 547
+      },
+      {
+        "data": [],
+        "defaultPrevented": false,
+        "target": "<span draggable=\"true\" class=\"flex h-8 w-8 shrink-0 cursor-grab select-none items-center justify-center rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg\" aria-describedby=\"_r_s_-tooltip\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"",
+        "type": "dragend",
+        "x": 338,
+        "y": 219
+      },
+      {
+        "data": null,
+        "defaultPrevented": false,
+        "target": "<span draggable=\"true\" class=\"flex h-8 w-8 shrink-0 cursor-grab select-none items-center justify-center rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg\" aria-describedby=\"_r_r_-tooltip\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"",
+        "type": "mousedown",
+        "x": 322,
+        "y": 547
+      }
+    ],
+    "inference": "Source receives dragstart; native dragend eventually reports (338,219), outside intended (322,547). Tool timing/coordinate or native drag handling remains unresolved; no product bug or fix asserted."
+  },
+  "cleanup": {
+    "temporaryEventListenersAndWindowHandlesRemoved": true,
+    "debugBookCount": 2,
+    "releaseBookCount": 1,
+    "releaseMenuOverrideKeyAbsent": true,
+    "sourcePatchReverted": true,
+    "exportArtifactRetained": "/tmp/readaware-native-io-20260913.txt",
+    "cancelledArtifactsAbsent": true
+  },
+  "validation": {
+    "webTypecheck": "passed for discarded candidate",
+    "existingMenuConfigTests": "6 passed / 8 assertions for discarded candidate",
+    "restoredReleaseBuild": "passed, source identical to 30ceb578",
+    "noNewCodeTests": "No product source change retained"
+  },
+  "remaining": [
+    "Real native menu target drag/drop and cross-zone/reorder result",
+    "Plugin clipboard writer and additional actor/export boundaries",
+    "Disk failure, multi-window save races, Windows/Linux",
+    "followStreaming, buildMemory and remaining full goal matrix boundaries"
+  ]
+}
