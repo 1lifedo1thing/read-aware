@@ -1,4 +1,11 @@
 import { Channel } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
+import { createFullBackupImport } from "../../src/features/settings/lib/full-backup-import-task";
+import { applyFullBackup } from "../../src/features/settings/lib/full-backup-apply";
+import { chooseBackupData, chooseBackupRows, loadBackupReviewModel } from "../../src/features/settings/lib/full-backup-review-model";
+import { migrateFullBackupPrograms } from "../../src/features/settings/lib/full-backup-program-migration";
+import { createLibraryDomain } from "../../src/domain/library";
+import { getPluginBookAccess } from "../../src/features/plugins/state/plugin-store";
 import { invoke } from "../../src/platform/ipc";
 import { flushLocalKV, localKV } from "../../src/platform/local-store";
 import { withPluginDataBackup } from "../../src/platform/plugin-data-access";
@@ -12,6 +19,7 @@ import { assertFull2BookAccessProfile } from "./desktop-book-access-fixture";
 let fixture: { id: string; archive: string; password: string } | undefined;
 const fence = <T>(run: () => Promise<T>) => withSyncBackup(() => withPluginDataBackup("export", () => withBackupCapture(run)));
 const kvSnapshot = async () => Object.entries(await invoke<Record<string, string>>("load_kv_all")).sort(([a], [b]) => a.localeCompare(b));
+const grantSnapshot = (value: unknown) => JSON.stringify(Object.entries((value ?? {}) as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)));
 
 /** Capture our own inert source candidate. Password never leaves module memory. */
 export async function prepareFull2BackupGrantFixture() {
@@ -47,6 +55,68 @@ export function releaseFull2BackupGrantFixture() {
   const archive = fixture?.archive;
   fixture = undefined;
   return { archive };
+}
+
+/** Reattach only the explicitly recorded owned ID after the required reload. */
+export async function cleanupFull2RestoredGrantFixture(id: string) {
+  await assertFull2BookAccessProfile();
+  if (!/^full2-backup-grant-[0-9a-f-]{36}$/.test(id)) throw new Error("Not an owned fixture ID");
+  const plugin = (await listPluginEntries()).find(plugin => plugin.id === id);
+  if (!plugin || plugin.builtin || JSON.parse(plugin.manifest).name !== "Full2 Backup Grant Probe") throw new Error("Owned fixture identity mismatch");
+  const reloadedGrant = getPluginBookAccess(id);
+  const bookIds = (await createLibraryDomain("user").queries.books.list()).map(book => book.id);
+  await uninstallPlugin(id);
+  await localKV.removeItemAsync(`read-aware-plugin-host.schema.${id}`);
+  await localKV.removeItemAsync(`read-aware-plugin.${id}.schedule-state`);
+  await flushLocalKV();
+  if ((await listPluginEntries()).some(plugin => plugin.id === id)) throw new Error("Fixture plugin remained");
+  return { bookIds, reloadedGrant, cleaned: id };
+}
+
+/** Explicit synthetic consent, actual migration Worker and native transaction.
+ * Successful apply holds production write barriers until the driver reloads.
+ */
+export async function runFull2BackupGrantApplyProbe(bookId: string) {
+  await assertFull2BookAccessProfile();
+  if (!fixture) throw new Error("Prepare fixture first");
+  const current = fixture;
+  const books = await createLibraryDomain("user").queries.books.list();
+  if (!books.some(book => book.id === bookId)) throw new Error("Grant book missing");
+  const beforeKV = await invoke<Record<string, string>>("load_kv_all");
+  const priorGrants = JSON.parse(beforeKV["read-aware-plugins-book-access"] ?? "{}");
+  const prepare = createFullBackupImport({
+    id: () => crypto.randomUUID(), selectSource: async () => current.archive,
+    open: (taskId, source, password) => invoke("backup_import_open", { taskId, source, password, progress: new Channel() }),
+    plan: taskId => fence(() => invoke("backup_import_plan", { taskId, progress: new Channel() })),
+    read: (taskId, query) => invoke("backup_import_review", { taskId, query }),
+    checkRows: (taskId, expectedRevision) => invoke("backup_import_check_rows", { taskId, expectedRevision }),
+    chooseRows: (taskId, request) => invoke("backup_import_choose_rows", { taskId, request }),
+    stageProgram: (taskId, request) => invoke("backup_import_stage_program", { taskId, request }),
+    stageStorage: (taskId, token, query) => invoke("backup_import_stage_storage", { taskId, token, query }),
+    apply: applyFullBackup, cancel: taskId => invoke("backup_import_cancel", { taskId }),
+    warn: message => { throw new Error(message); },
+  });
+  const review = await prepare(current.password);
+  if (!review) throw new Error("Review missing");
+  try {
+    const model = chooseBackupData(await loadBackupReviewModel(review), "target");
+    model.decisions = await chooseBackupRows(review, "target");
+    const source = model.programs.find(program => program.id === current.id)?.candidates.find(candidate => candidate.side === "source");
+    if (!source) throw new Error("Owned source candidate missing");
+    model.programChoices[current.id] = { program: { side: source.side, root: source.root, sha256: source.sha256 }, data: "source" };
+    const checked = await review.checkRows(model.decisions.revision);
+    if (!checked.constraintsPassed || review.plan.conflictingEvents) throw new Error("Restore constraints failed");
+    const grant = { mode: "book" as const, bookId };
+    const programResults = await migrateFullBackupPrograms(review, new Map(Object.entries(model.programChoices)), new Map([[current.id, grant]]), await getVersion());
+    if (!programResults[current.id]?.consented || JSON.stringify(programResults[current.id]?.bookAccess) !== JSON.stringify(grant)) throw new Error("Selected grant lost before apply");
+    const receipt = await review.apply({ rowRevision: model.decisions.revision, files: model.fileChoices, programs: model.programChoices, credentials: model.credentialChoices, programResults });
+    const persisted = await invoke<Record<string, string>>("load_kv_all");
+    const grants = JSON.parse(persisted["read-aware-plugins-book-access"] ?? "{}");
+    if (grantSnapshot(grants[current.id]) !== grantSnapshot(grant)) throw new Error("Restored grant differs from selection");
+    for (const [id, value] of Object.entries(priorGrants)) if (grantSnapshot(grants[id]) !== grantSnapshot(value)) throw new Error(`Existing grant changed: ${id}`);
+    if (!(await listPluginEntries()).some(plugin => plugin.id === current.id)) throw new Error("Restored plugin files missing");
+    return { receipt, id: current.id, archive: current.archive, grant: grants[current.id], priorGrantsPreserved: true, expectedBookIds: books.map(book => book.id), requiresReload: true, boundary: "synthetic consent choice through real migration Worker and native apply; consent UI pending" };
+  } finally { await review.dispose(); }
 }
 
 /** Native retained-review cancellation; UI consent controls are a separate gate. */
