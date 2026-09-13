@@ -9,7 +9,6 @@ import { createCompleteFn } from "./complete";
 import { classifyModelFailure } from "./failure";
 import { buildProviderRegistry } from "./registry";
 import type { AgentFetch } from "./transport";
-import type { InferencePolicy } from "./inference-policy";
 
 function extractText(message: AssistantMessage): string {
   return message.content
@@ -22,11 +21,11 @@ function extractText(message: AssistantMessage): string {
 export async function testLlmConnection(
   account: LlmAccount,
   modelId: string,
-  options: { fetch?: AgentFetch; inferencePolicy?: InferencePolicy } = {},
+  options: { fetch?: AgentFetch } = {},
 ): Promise<string> {
   const registry = buildProviderRegistry();
   const resolveModel = createModelResolver(account, { smart: modelId, fast: modelId }, registry);
-  const complete = createCompleteFn(registry, account, undefined, options.fetch, options.inferencePolicy);
+  const complete = createCompleteFn(registry, account, undefined, options.fetch);
   const message = await complete(resolveModel("smart"), {
     messages: [
       { role: "user", content: 'Reply with the single word "ok".', timestamp: Date.now() },

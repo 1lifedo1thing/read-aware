@@ -203,10 +203,6 @@
     "sendSurroundingContext": {
       "title": "傳送周邊上下文",
       "description": "包含鄰近段落，讓回答緊扣文本內容。"
-    },
-    "localOnly": {
-      "title": "僅本機模式",
-      "description": "絕不呼叫遠端模型。在本機模型可用之前，AI 功能保持關閉。"
     }
   },
   "aiConfig": {

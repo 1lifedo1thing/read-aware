@@ -11,7 +11,7 @@ function fixture(timeout = 1000) {
     selection: { id: "selection", text: "Complete selected passage", textLength: 25, range: { bookId: "book", contentVersion: "v1", cfi: "epubcfi(/6/2!/4/2:0,/4/2:25)" } } });
   session.selection!.textLength = session.selection!.text.length;
   const preferences = { features: { explainSelection: true, defineTerm: true, translate: true, summarizeChapter: true, askConversation: false },
-    sendHighlightedText: true, sendSurroundingContext: true, localOnly: false };
+    sendHighlightedText: true, sendSurroundingContext: true };
   const listeners = new Set<() => void>(), reads: unknown[] = [], opened: string[] = [];
   const controls = { beforeOpen: async () => {}, beforeChapter: async () => {}, chapterIndex: 2 as number | undefined,
     page: async (offset: number): Promise<BookRangePage> => ({ range: session.selection!.range!, offset, sectionIndex: 0, totalLength: 8,
@@ -52,8 +52,7 @@ test("disabled features and privacy gates reject retained invocations before rea
     await expect(f.service.run(action, "book")).rejects.toMatchObject({ code: "ui/unavailable" });
     f.preferences.features[action] = true;
   }
-  f.preferences.localOnly = true; await expect(f.service.run("translate")).rejects.toMatchObject({ code: "ai/local-only" });
-  f.preferences.localOnly = false; f.preferences.sendHighlightedText = false;
+  f.preferences.sendHighlightedText = false;
   for (const action of ["explainSelection", "defineTerm", "translate"] as ReadingAiAction[]) await expect(f.service.run(action)).rejects.toMatchObject({ code: "ai/context-withheld" });
   f.preferences.sendSurroundingContext = false; await expect(f.service.run("summarizeChapter")).rejects.toMatchObject({ code: "ai/context-withheld" });
   await expect(f.service.run("invented" as ReadingAiAction)).rejects.toMatchObject({ code: "ui/unavailable" });

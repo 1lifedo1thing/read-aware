@@ -13,19 +13,8 @@ import { sanitizeCustomOpenAIPayload } from "./custom-openai";
 import type { ProviderRegistry } from "./registry";
 import type { ThinkingLevel } from "./roles";
 import { asProviderFetch, type AgentFetch } from "./transport";
-import { guardedInferenceStream, inferenceCall, type InferenceCall, type InferencePolicy } from "./inference-policy";
 
-function callFetch(fetch: FetchFunction | undefined, call: InferenceCall | undefined): FetchFunction | undefined {
-  if (!call) return fetch;
-  const transport = fetch ?? globalThis.fetch;
-  return asProviderFetch((input, init) => {
-    call.assertAllowed();
-    return transport(input, init);
-  });
-}
-
-/** Host lifecycle tracking observes the provider's actual terminal promise,
- * not the policy wrapper which may reject earlier on cancellation. */
+/** Host lifecycle tracking observes the provider's actual terminal promise. */
 export type InferenceSourceTracking = { trackSource?: (source: Promise<unknown>) => void };
 
 export type CompleteFn = (
@@ -79,24 +68,17 @@ export function createCompleteFn(
   account: LlmAccount,
   thinking?: ThinkingLevel,
   fetch?: AgentFetch,
-  policy?: InferencePolicy,
 ): CompleteFn {
   const providerFetch = asProviderFetch(fetch);
   return async (model, context, options) => {
     const { trackSource, ...providerOptions } = options ?? {};
-    const call = policy ? inferenceCall(policy, options?.signal) : undefined;
-    try {
-      call?.assertAllowed();
-      const result = registry.completeSimple(
-        model,
-        context,
-        requestOptions(account, thinking, callFetch(providerFetch, call), call ? { ...providerOptions, signal: call.signal } : providerOptions),
-      );
-      trackSource?.(result);
-      const message = await (call ? call.wait(result) : result);
-      call?.assertAllowed();
-      return message;
-    } finally { call?.dispose(); }
+    const result = registry.completeSimple(
+      model,
+      context,
+      requestOptions(account, thinking, providerFetch, providerOptions),
+    );
+    trackSource?.(result);
+    return result;
   };
 }
 
@@ -112,21 +94,16 @@ export function createStreamFn(
   account: LlmAccount,
   thinking?: ThinkingLevel,
   fetch?: AgentFetch,
-  policy?: InferencePolicy,
 ): StreamFn {
   const providerFetch = asProviderFetch(fetch);
   return (model, context, options) => {
     const { trackSource, ...providerOptions } = options ?? {};
-    const call = policy ? inferenceCall(policy, options?.signal) : undefined;
-    const start = () => {
-      const source = registry.streamSimple(
-        model,
-        context,
-        requestOptions(account, thinking, callFetch(providerFetch ?? options?.fetch, call), call ? { ...providerOptions, signal: call.signal } : providerOptions),
-      );
-      trackSource?.(source.result());
-      return source;
-    };
-    return call ? guardedInferenceStream(model, call, start) : start();
+    const source = registry.streamSimple(
+      model,
+      context,
+      requestOptions(account, thinking, providerFetch ?? options?.fetch, providerOptions),
+    );
+    trackSource?.(source.result());
+    return source;
   };
 }

@@ -203,10 +203,6 @@
     "sendSurroundingContext": {
       "title": "Send surrounding context",
       "description": "Include nearby paragraphs so answers stay grounded in the text."
-    },
-    "localOnly": {
-      "title": "Local-only mode",
-      "description": "Never call a remote model. AI features stay off until a local model is available."
     }
   },
   "aiConfig": {

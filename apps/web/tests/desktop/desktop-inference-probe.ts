@@ -7,7 +7,6 @@ import { invoke } from "../../src/platform/ipc";
 import { flushSecretWrites, getSecret, hydrateSecrets } from "../../src/platform/secret-store";
 import { AI_CONFIG_KEY, DEFAULT_MODELS, encodeAIConfig } from "../../src/features/ai/lib/ai-config";
 import { getAgentRuntime, discardAgentThread } from "../../src/features/ai/agent/agent-runtime";
-import { inferencePolicy } from "../../src/features/ai/agent/inference-policy";
 import { appHttpFetch } from "../../src/platform/http-client";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
@@ -72,7 +71,7 @@ export async function agentInference(mode: "ask" | "turn" | "connection" | "HOLD
       return { status: "completed", chunks };
     }
     const text = mode === "connection"
-      ? await testLlmConnection(account, "privacy-probe", { fetch: appHttpFetch, inferencePolicy })
+      ? await testLlmConnection(account, "privacy-probe", { fetch: appHttpFetch })
       : await runtime.ask({ prompt: `privacy probe ${mode}` });
     return { status: "completed", text };
   } catch (error) {

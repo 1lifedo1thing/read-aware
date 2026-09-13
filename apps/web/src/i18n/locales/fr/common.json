@@ -125,7 +125,6 @@
     "dbError": "La base de données locale a rencontré un problème.",
     "secretsUnavailable": "Le coffre d'identifiants ne peut pas s'ouvrir ; les clés ne peuvent momentanément être ni enregistrées ni lues.",
     "aiNotConfigured": "L'IA n'est pas encore configurée — ajoutez une clé d'API pour commencer à discuter.",
-    "aiLocalOnly": "Le mode local uniquement a désactivé les requêtes IA. Vous pouvez le modifier dans les paramètres IA.",
     "aiMemoryDisabled": "La création de mémoire est désactivée. Vous pouvez l'activer dans les paramètres IA.",
     "aiContextChanged": "Les paramètres de confidentialité de lecture ont changé. La requête a été arrêtée. Réessayez avec les paramètres actuels.",
     "aiContextWithheld": "Cette action nécessite du texte de lecture dont vos paramètres de confidentialité empêchent l’envoi. Vérifiez les paramètres de confidentialité de l’IA.",

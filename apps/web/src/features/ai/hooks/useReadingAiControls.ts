@@ -15,7 +15,7 @@ export function useReadingAiControls(active: boolean, selectionId?: string | nul
   useEffect(() => active ? readingRuntime.observe(setSession) : undefined, [active]);
   return useMemo(() => ({
     actions: READING_AI_ACTIONS.filter(action => preferences.features[action] === true),
-    disabled: (action: ReadingAiAction) => session.status !== "ready" || preferences.localOnly
+    disabled: (action: ReadingAiAction) => session.status !== "ready"
       || (action === "summarizeChapter" ? !preferences.sendSurroundingContext || !session.location?.href
         : !preferences.sendHighlightedText || !session.selection?.text.trim()
           || selectionId !== undefined && selectionId !== session.selection?.id),

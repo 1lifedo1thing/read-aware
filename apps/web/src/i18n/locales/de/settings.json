@@ -203,10 +203,6 @@
     "sendSurroundingContext": {
       "title": "Umgebenden Kontext senden",
       "description": "Benachbarte Absätze einbeziehen, damit Antworten im Text verankert bleiben."
-    },
-    "localOnly": {
-      "title": "Nur-lokal-Modus",
-      "description": "Niemals ein Remote-Modell aufrufen. KI-Funktionen bleiben deaktiviert, bis ein lokales Modell verfügbar ist."
     }
   },
   "aiConfig": {

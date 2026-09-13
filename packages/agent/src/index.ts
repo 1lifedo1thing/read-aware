@@ -30,7 +30,6 @@ export type { CatalogState } from "./models/catalog-store";
 export type { CatalogModel } from "./models/catalog-data";
 export type { CompleteFn } from "./models/complete";
 export { classifyModelFailure } from "./models/failure";
-export type { InferencePolicy } from "./models/inference-policy";
 export type { MemoryBuildPolicy } from "./memory/build-policy";
 export type { ReadingContextPolicy, ReadingContextPermissions } from "./runtime/reading-context-policy";
 export type { AgentFetch } from "./models/transport";

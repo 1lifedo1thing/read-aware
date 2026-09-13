@@ -1,6 +1,6 @@
 import { AppError, READING_AI_ACTIONS, type ReadingAiAction, type ReadingAiContext, type ReadingAiPort, type ReadingSessionSnapshot, type BookRangeQuery, type BookRangePage } from "@read-aware/core";
 
-type Preferences = { features: Record<ReadingAiAction, boolean>; sendHighlightedText: boolean; sendSurroundingContext: boolean; localOnly: boolean };
+type Preferences = { features: Record<ReadingAiAction, boolean>; sendHighlightedText: boolean; sendSurroundingContext: boolean };
 type Surface = { send(context: ReadingAiContext): "loading" | "busy" | "started" };
 type Host = {
   preferences(): Preferences;
@@ -22,7 +22,6 @@ export class ReadingAiActions implements ReadingAiPort {
   private gate(action: ReadingAiAction) {
     const prefs = this.host.preferences();
     if (!READING_AI_ACTIONS.includes(action) || prefs.features[action] !== true) throw new AppError("ui/unavailable", "Reading AI action is disabled");
-    if (prefs.localOnly) throw new AppError("ai/local-only", "Remote reading assistance is disabled");
     if (!(action === "summarizeChapter" ? prefs.sendSurroundingContext : prefs.sendHighlightedText)) {
       throw new AppError("ai/context-withheld", "Reading action input is withheld by privacy settings");
     }

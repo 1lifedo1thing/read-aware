@@ -30,7 +30,7 @@ export async function prepareGraphTaskProbeConfiguration() {
   await invoke("secret_set", { key: BACKUP_KEY, value: JSON.stringify(restore) });
   await setSecretAsync("ai-api-key.custom", "loopback-test-only");
   localKV.setItem(AI_CONFIG_KEY, encodeAIConfig({ provider: "custom", apiKey: "loopback-test-only", model: "graph-task", customApi: "openai-completions", customBaseUrl: "http://127.0.0.1:19844/v1", thinkingLevel: "off" }));
-  localKV.setItem(AI_PREFERENCES_KEY, JSON.stringify({ ...getAIPreferences(), buildMemory: false, localOnly: false }));
+  localKV.setItem(AI_PREFERENCES_KEY, JSON.stringify({ ...getAIPreferences(), buildMemory: false }));
   await flushLocalKV(); return { recoveryAvailable: true };
 }
 export async function recoverGraphTaskProbeConfiguration() {

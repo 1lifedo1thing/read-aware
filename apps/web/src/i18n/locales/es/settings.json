@@ -203,10 +203,6 @@
     "sendSurroundingContext": {
       "title": "Enviar el contexto circundante",
       "description": "Incluye los párrafos cercanos para que las respuestas se ajusten al texto."
-    },
-    "localOnly": {
-      "title": "Modo solo local",
-      "description": "Nunca llama a un modelo remoto. Las funciones de IA quedan desactivadas hasta que haya un modelo local disponible."
     }
   },
   "aiConfig": {

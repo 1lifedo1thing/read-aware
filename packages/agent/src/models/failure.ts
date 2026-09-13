@@ -17,7 +17,6 @@
 import {
   AppError,
   ERR_AI_AUTH,
-  ERR_AI_LOCAL_ONLY,
   ERR_AI_MEMORY_DISABLED,
   ERR_AI_CONTEXT_CHANGED,
   ERR_AI_CONTEXT_WITHHELD,
@@ -32,7 +31,6 @@ import {
 
 /** Ordered: the first matching category wins. */
 const CATEGORIES: Array<{ code: string; retryable: boolean; pattern: RegExp }> = [
-  { code: ERR_AI_LOCAL_ONLY, retryable: false, pattern: /\[ai\/local-only\]/ },
   { code: ERR_AI_MEMORY_DISABLED, retryable: false, pattern: /\[ai\/memory-disabled\]/ },
   { code: ERR_AI_CONTEXT_CHANGED, retryable: true, pattern: /\[ai\/context-changed\]/ },
   { code: ERR_AI_CONTEXT_WITHHELD, retryable: false, pattern: /\[ai\/context-withheld\]/ },

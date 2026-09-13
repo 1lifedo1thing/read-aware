@@ -805,7 +805,6 @@ export function buildSettingDefinitions(
           "Send surrounding context",
           "sendSurroundingContext",
         ],
-        ["ai.preferences.localOnly", "Local only", "localOnly"],
         [
           "ai.preferences.followStreaming",
           "Follow streaming",

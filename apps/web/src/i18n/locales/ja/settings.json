@@ -203,10 +203,6 @@
     "sendSurroundingContext": {
       "title": "周辺のコンテキストを送信",
       "description": "回答が本文に基づくよう、近くの段落を含めます。"
-    },
-    "localOnly": {
-      "title": "ローカルのみモード",
-      "description": "リモートモデルを一切呼び出しません。ローカルモデルが利用可能になるまでAI機能はオフのままです。"
     }
   },
   "aiConfig": {

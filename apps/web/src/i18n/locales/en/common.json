@@ -125,7 +125,6 @@
     "dbError": "The local database ran into a problem.",
     "secretsUnavailable": "The credential store can't be opened, so keys can't be saved or read.",
     "aiNotConfigured": "AI isn't set up yet — add an API key to start chatting.",
-    "aiLocalOnly": "Local-only mode has disabled AI requests. You can change this in AI settings.",
     "aiMemoryDisabled": "Building memory is disabled. You can enable it in AI settings.",
     "aiContextChanged": "Reading privacy settings changed, so this request was stopped. Try again with the current settings.",
     "aiContextWithheld": "This action needs reading text that your privacy settings withhold. Review AI privacy settings to continue.",

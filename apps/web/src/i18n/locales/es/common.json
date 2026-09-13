@@ -125,7 +125,6 @@
     "dbError": "La base de datos local tuvo un problema.",
     "secretsUnavailable": "No se puede abrir el almacén de credenciales, así que las claves no se pueden guardar ni leer.",
     "aiNotConfigured": "La IA aún no está configurada: añade una clave de API para empezar a conversar.",
-    "aiLocalOnly": "El modo solo local ha desactivado las solicitudes de IA. Puedes cambiarlo en los ajustes de IA.",
     "aiMemoryDisabled": "La creación de memoria está desactivada. Puedes activarla en los ajustes de IA.",
     "aiContextChanged": "Los ajustes de privacidad de lectura han cambiado y la solicitud se ha detenido. Vuelve a intentarlo con los ajustes actuales.",
     "aiContextWithheld": "Esta acción necesita texto de lectura que tus ajustes de privacidad no permiten enviar. Revisa los ajustes de privacidad de la IA.",

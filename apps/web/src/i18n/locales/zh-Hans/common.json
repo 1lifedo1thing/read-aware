@@ -125,7 +125,6 @@
     "dbError": "本地数据库出现了问题。",
     "secretsUnavailable": "无法打开凭据存储，密钥暂时无法保存或读取。",
     "aiNotConfigured": "尚未配置 AI——添加 API 密钥即可开始对话。",
-    "aiLocalOnly": "仅本地模式已禁止 AI 请求，可在 AI 设置中更改。",
     "aiMemoryDisabled": "记忆构建已关闭，可在 AI 设置中启用。",
     "aiContextChanged": "阅读隐私设置已更改，本次请求已停止。请按当前设置重试。",
     "aiContextWithheld": "此操作需要隐私设置禁止发送的阅读文本。请检查 AI 隐私设置后继续。",

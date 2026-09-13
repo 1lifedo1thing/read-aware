@@ -28,7 +28,6 @@ export type AIPreferences = {
   buildMemory: boolean;
   sendHighlightedText: boolean;
   sendSurroundingContext: boolean;
-  localOnly: boolean;
   /**
    * Auto-scroll the chat transcript while a reply streams in. Off (default)
    * keeps the view anchored where the reply begins — nobody reads at token
@@ -48,7 +47,6 @@ export const DEFAULT_AI_PREFERENCES: AIPreferences = {
   buildMemory: true,
   sendHighlightedText: true,
   sendSurroundingContext: true,
-  localOnly: false,
   followStreaming: false,
 };
 
@@ -57,20 +55,24 @@ export function getAIPreferences(): AIPreferences {
     const raw = localKV.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_AI_PREFERENCES;
     const parsed = JSON.parse(raw) as Partial<AIPreferences>;
-    return {
-      features: { ...DEFAULT_AI_PREFERENCES.features, ...(parsed.features ?? {}) },
-      buildMemory: parsed.buildMemory ?? DEFAULT_AI_PREFERENCES.buildMemory,
-      sendHighlightedText: parsed.sendHighlightedText ?? DEFAULT_AI_PREFERENCES.sendHighlightedText,
-      sendSurroundingContext:
-        parsed.sendSurroundingContext ?? DEFAULT_AI_PREFERENCES.sendSurroundingContext,
-      localOnly: parsed.localOnly ?? DEFAULT_AI_PREFERENCES.localOnly,
-      followStreaming: parsed.followStreaming ?? DEFAULT_AI_PREFERENCES.followStreaming,
-    };
+    return normalizeAIPreferences(parsed);
   } catch {
     return DEFAULT_AI_PREFERENCES;
   }
 }
 
+/** Keep only supported fields when reading or saving older preferences. */
+export function normalizeAIPreferences(parsed: Partial<AIPreferences>): AIPreferences {
+  return {
+    features: { ...DEFAULT_AI_PREFERENCES.features, ...(parsed.features ?? {}) },
+    buildMemory: parsed.buildMemory ?? DEFAULT_AI_PREFERENCES.buildMemory,
+    sendHighlightedText: parsed.sendHighlightedText ?? DEFAULT_AI_PREFERENCES.sendHighlightedText,
+    sendSurroundingContext:
+      parsed.sendSurroundingContext ?? DEFAULT_AI_PREFERENCES.sendSurroundingContext,
+    followStreaming: parsed.followStreaming ?? DEFAULT_AI_PREFERENCES.followStreaming,
+  };
+}
+
 export function saveAIPreferences(prefs: AIPreferences): void {
-  localKV.setItem(STORAGE_KEY, JSON.stringify(prefs));
+  localKV.setItem(STORAGE_KEY, JSON.stringify(normalizeAIPreferences(prefs)));
 }

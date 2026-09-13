@@ -67,3 +67,12 @@ describe("Settings Domain actor policy", () => {
     await expect(settings.queries.read("appearance.theme")).rejects.toMatchObject({ code: "settings/forbidden" });
   });
 });
+
+test("retired localOnly path cannot be discovered or updated", async () => {
+  const settings = createSettingsDomain("user");
+  expect((await settings.queries.discover()).map(entry => entry.path))
+    .not.toContain("ai.preferences.localOnly");
+  await expect(settings.queries.read("ai.preferences.localOnly")).rejects.toThrow();
+  await expect(settings.commands.update([{ path: "ai.preferences.localOnly", value: true }]))
+    .rejects.toThrow();
+});

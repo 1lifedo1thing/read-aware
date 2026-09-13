@@ -4,7 +4,6 @@ import { getDefaultStore } from "jotai";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { createLibraryDomain } from "../../src/domain/library";
-import { createSettingsDomain } from "../../src/domain/settings/domain";
 import { pluginCommandsAtom, pluginToolsAtom } from "../../src/features/plugins/state/plugin-store";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { assertPluginCapabilityRequirements } from "../../src/features/plugins/runtime/plugin-capabilities";
@@ -15,7 +14,6 @@ import dictionaryManifest from "../../../../plugins/dictionary/manifest.json";
 const dictionaryId = "capability-dictionary-session";
 const workers: SandboxedPlugin[] = [];
 const owned: PluginDisposable[] = [];
-let originalLocalOnly: boolean | undefined;
 async function isolated() {
   const path = await appDataDir();
   if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw Error("Use isolated capability-e2e data");
@@ -23,10 +21,7 @@ async function isolated() {
 }
 export async function prepareSessionBoundaryProbe() {
   const path = await isolated();
-  if (workers.length || originalLocalOnly !== undefined) throw Error("Probe already active");
-  const settings = createSettingsDomain("user");
-  originalLocalOnly = (await settings.queries.read("ai.preferences.localOnly")).value as boolean;
-  await settings.commands.update([{ path: "ai.preferences.localOnly", value: true }]);
+  if (workers.length) throw Error("Probe already active");
   const books = (await createLibraryDomain("user").queries.books.list()).filter(book => ["Reading Capability Probe", "Reading Paint Probe"].includes(book.title));
   if (books.length !== 2) throw Error("Expected the two existing synthetic probe books");
   for (const title of [...books.map(book => book.title), undefined]) {
@@ -79,13 +74,8 @@ export async function cleanupSessionBoundaryProbe() {
   for (const worker of workers.splice(0)) await worker.terminate();
   for (const disposable of owned.splice(0).reverse()) disposable.dispose();
   await pluginDocsClear(dictionaryId);
-  if (originalLocalOnly !== undefined) {
-    await createSettingsDomain("user").commands.update([{ path: "ai.preferences.localOnly", value: originalLocalOnly }]);
-    originalLocalOnly = undefined;
-  }
   await buildRuntimeDeps().reader.close();
   return { documents: (await pluginDocsList(dictionaryId, "lookups")).length,
     commands: getDefaultStore().get(pluginCommandsAtom).filter(c => c.pluginId.startsWith("capability-session-")).length,
-    tools: getDefaultStore().get(pluginToolsAtom).filter(t => t.pluginId === dictionaryId).length,
-    localOnly: (await createSettingsDomain("user").queries.read("ai.preferences.localOnly")).value };
+    tools: getDefaultStore().get(pluginToolsAtom).filter(t => t.pluginId === dictionaryId).length };
 }

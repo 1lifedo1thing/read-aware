@@ -147,17 +147,6 @@ function AIAdvancedPreferences({
             />
           }
         />
-        <SettingsRow
-          title={t("ai.localOnly.title")}
-          description={t("ai.localOnly.description")}
-          control={
-            <Toggle
-              aria-label={t("ai.localOnly.title")}
-              checked={prefs.localOnly}
-              onChange={(localOnly) => onChange({ ...prefs, localOnly })}
-            />
-          }
-        />
       </SettingsGroup>
     </Stack>
   );
