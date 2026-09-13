@@ -1,0 +1,206 @@
+{
+  "flow": 66,
+  "date": "2026-09-13",
+  "baseline": "a51ec00a",
+  "environment": "macOS debug Tauri 9224; compiled Text Desk 0.22.0 real Worker; synthetic CBR from flow65",
+  "import": {
+    "byteLength": 615,
+    "extraction": {
+      "chapterCount": 0,
+      "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+      "metadata": {
+        "author": "",
+        "title": "fixture.cbr"
+      },
+      "sectionCount": 3,
+      "textCharacters": 0,
+      "titles": []
+    },
+    "fileName": "fixture.cbr",
+    "imported": {
+      "addedAt": "2026-09-13T04:31:30.637Z",
+      "author": "Unknown author",
+      "collectionId": null,
+      "fileName": "fixture.cbr",
+      "fileSize": 615,
+      "format": "cbr",
+      "id": "64844ceb-ca77-4783-958b-5b69a92d5050",
+      "starred": false,
+      "title": "Fixture",
+      "updatedAt": "2026-09-13T04:31:30.637Z"
+    },
+    "state": {
+      "bookId": "64844ceb-ca77-4783-958b-5b69a92d5050",
+      "chapterCount": 0,
+      "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+      "progress": {
+        "completed": 3,
+        "failed": 0,
+        "total": 3,
+        "unsupported": 0
+      },
+      "status": "ready",
+      "text": "textless"
+    }
+  },
+  "plugin": {
+    "plugin": {
+      "enabled": true,
+      "version": "0.22.0"
+    }
+  },
+  "entry": "Registered Text Desk command > fixture.cbr > Book images > Source section 1 > Image 1 > Image controls",
+  "observed": {
+    "opened": "Three dialogs: native decoded 64x96 image, root Text Desk and nested image controls.",
+    "zoom": {
+      "image": [
+        {
+          "h": 96,
+          "transform": "translate(0px) rotate(0deg) scale(1.5)",
+          "w": 64
+        }
+      ],
+      "imports": [
+        "import { useImageControls } from \"/src/features/reader/hooks/useImageControls.ts?t=1789265412019\";",
+        "  useImageControls(zoom, session, onClose, void 0, viewerId);",
+        "  return [useTranslation, useZoomPan, useImageControls];"
+      ],
+      "text": "\nImage controls\nZoom\n150%\nRotation\n0°\nHorizontal offset\n0%\nVertical offset\n0%\nZoom in\nZoom out\nRotate\nReset image\nPan left\nPan right\nPan up\nPan down\nShow image\nClose image\nRefresh\nClose"
+    },
+    "rotate": {
+      "text": "\nImage controls\nZoom\n100%\nRotation\n90°\nHorizontal offset\n0%\nVertical offset\n0%\nZoom in\nZoom out\nRotate\nReset image\nPan left\nPan right\nPan up\nPan down\nShow image\nClose image\nRefresh\nClose",
+      "transform": "translate(0px) rotate(90deg) scale(1)"
+    },
+    "panAtScale1": {
+      "text": "\nImage controls\nZoom\n100%\nRotation\n90°\nHorizontal offset\n0%\nVertical offset\n0%\nZoom in\nZoom out\nRotate\nReset image\nPan left\nPan right\nPan up\nPan down\nShow image\nClose image\nRefresh\nClose",
+      "transform": "translate(0px) rotate(90deg) scale(1)"
+    },
+    "panRight": {
+      "text": "\nImage controls\nZoom\n150%\nRotation\n90°\nHorizontal offset\n15%\nVertical offset\n0%\nZoom in\nZoom out\nRotate\nReset image\nPan left\nPan right\nPan up\nPan down\nShow image\nClose image\nRefresh\nClose",
+      "transform": "translate(135px) rotate(90deg) scale(1.5)"
+    },
+    "panDown": {
+      "text": "\nImage controls\nZoom\n150%\nRotation\n90°\nHorizontal offset\n15%\nVertical offset\n15%\nZoom in\nZoom out\nRotate\nReset image\nPan left\nPan right\nPan up\nPan down\nShow image\nClose image\nRefresh\nClose",
+      "transform": "translate(135px, 112.5px) rotate(90deg) scale(1.5)"
+    },
+    "reset": {
+      "text": "\nImage controls\nZoom\n100%\nRotation\n0°\nHorizontal offset\n0%\nVertical offset\n0%\nZoom in\nZoom out\nRotate\nReset image\nPan left\nPan right\nPan up\nPan down\nShow image\nClose image\nRefresh\nClose",
+      "transform": "translate(0px) rotate(0deg) scale(1)"
+    },
+    "showImage": {
+      "dialogs": [
+        {
+          "buttons": [
+            "Zoom out",
+            "Zoom in",
+            "Rotate",
+            "Copy image",
+            "Close image viewer"
+          ],
+          "text": "\n\n"
+        }
+      ],
+      "images": [
+        {
+          "h": 96,
+          "transform": "translate(0px) rotate(0deg) scale(1)",
+          "w": 64
+        }
+      ],
+      "snapshot": {
+        "bookId": "64844ceb-ca77-4783-958b-5b69a92d5050",
+        "id": "5fbd4395-b304-4cb2-a903-39712ac13783",
+        "panX": 0,
+        "panY": 0,
+        "revision": 9,
+        "rotation": 0,
+        "scale": 1,
+        "sessionId": "647c8b1e-abcf-4894-bdb8-4f7189058d9f"
+      }
+    },
+    "nativeButtonZoom": {
+      "bookId": "64844ceb-ca77-4783-958b-5b69a92d5050",
+      "id": "5fbd4395-b304-4cb2-a903-39712ac13783",
+      "panX": 0,
+      "panY": 0,
+      "revision": 10,
+      "rotation": 0,
+      "scale": 1.5,
+      "sessionId": "647c8b1e-abcf-4894-bdb8-4f7189058d9f"
+    },
+    "replacement": {
+      "closed": null,
+      "current": {
+        "bookId": "64844ceb-ca77-4783-958b-5b69a92d5050",
+        "id": "e885b0e3-136a-42f9-8c07-019d21b4f147",
+        "panX": 0,
+        "panY": 0,
+        "revision": 12,
+        "rotation": 0,
+        "scale": 1,
+        "sessionId": "647c8b1e-abcf-4894-bdb8-4f7189058d9f"
+      },
+      "opened": {
+        "snapshot": {
+          "bookId": "64844ceb-ca77-4783-958b-5b69a92d5050",
+          "id": "e885b0e3-136a-42f9-8c07-019d21b4f147",
+          "panX": 0,
+          "panY": 0,
+          "revision": 12,
+          "rotation": 0,
+          "scale": 1,
+          "sessionId": "647c8b1e-abcf-4894-bdb8-4f7189058d9f"
+        },
+        "status": "opened"
+      },
+      "stale": {
+        "code": "reader/superseded",
+        "message": "The image viewer or its intent changed"
+      }
+    },
+    "workerClose": {
+      "images": [
+        {
+          "height": 96,
+          "style": "translate(0px) rotate(0deg) scale(1)",
+          "width": 64
+        }
+      ],
+      "text": "Text Desk\nImage controls\nZoom\n100%\nRotation\n0°\nHorizontal offset\n0%\nVertical offset\n0%\nZoom in\nZoom out\nRotate\nReset image\nPan left\nPan right\nPan up\nPan down\nShow image\nClose image\nRefresh\nClose"
+    },
+    "cleanup": {
+      "before": {
+        "dialogs": 0,
+        "image": null
+      },
+      "cleanup": {
+        "remainingBookIds": [
+          "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+        ],
+        "remainingOwned": 0,
+        "removed": [
+          "64844ceb-ca77-4783-958b-5b69a92d5050"
+        ]
+      }
+    },
+    "nativeCleanup": {
+      "book": null,
+      "conversation": {
+        "count": 2,
+        "hash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a"
+      },
+      "cover": null,
+      "source": null
+    }
+  },
+  "reusedEvidence": "../image-conversation-composition-2026-09-11.json: Text Desk 0.11.1 FB2, historical screenshots/control results; no current screenshot claim.",
+  "setupCorrection": "Unversioned direct module imports raised contribution point already registered. Used actual Vite-served dependency URLs for mounted Jotai/plugin store/run-result, then invoked the registered compiled command successfully. No app restart, source edit or registry workaround.",
+  "limits": [
+    "No physical gestures, focus/Escape, screenshots, packaging or cross-platform claim.",
+    "Old-viewer rejection observed at production host service; not an old captured Worker action.",
+    "Replacement image opened through production readerImageOpen/readBookImage, first image through actual Worker UI.",
+    "READ12 remains partial: image lightbox controls are not manual book-page zoom; large fixed-layout automatic-fit variants still pending.",
+    "No code change or new tests; relevant flow65 source/type evidence reused."
+  ]
+}

@@ -1821,3 +1821,26 @@ ready或目录目标位置当成每页已渲染。其他损坏格式与RAR变体
 反馈且没有循环重试。第64批release不含本批修复，需重建后另验；原生选择器、
 物理焦点/画面、RAR4/加密/分卷、其他actor及跨平台证据不在本批内。
 详见[cbr-format-observations.json](./cbr-format-observations.json)。
+
+## 第六十六流程：CBR 的真实插件图片发现与灯箱控制
+
+复用第65批压缩RAR5样本与当前代码，通过已注册Text Desk0.22.0编译Worker
+打开书目、Book images、第一源节、Image1预览和Image controls；实际灯箱
+解码64×96。插件Zoom in后150%，Rotate后90°且按既有语义复位缩放；重新
+放大后右/下平移各15%，DOM translate为135/112.5px，与900×750阶段一致。
+原倍率1的平移保持0，符合仅放大后平移的既有规则。Reset恢复100%/0°/0偏移。
+
+Show image退出根/子插件窗口，只保留灯箱；宿主Zoom in按钮也使同一viewer
+状态到1.5。宿主Close后snapshot=null；通过生产图片打开服务读取第三页形成
+新viewer，旧ID的rotate明确reader/superseded，新图scale1/rotation0保持。
+再次启动实际image-controls命令，点击Close image后灯箱及插件窗口均0。
+旧ID拒绝来自真实宿主服务，不冒称保留了旧Worker按钮；本批无物理手势/截图。
+
+READ12原表遗漏已存在的FB2证据，现复用2026-09-11 Text Desk0.11.1的
+真实灯箱与600/900宽画面结果，并注明版本；这不证明当前CBR画面或书页手动
+缩放。第一次未版本化模块导入导致重复contribution注册错误，改用当前Vite
+实际依赖URL后调用成功，没有重启/改产品注册规则，不计为产品修复。
+
+自有书/源/封面已清零，原两书与原会话两条完整hash保持。无代码改动，不重跑
+第65批已通过的门禁。大图自动适配、物理焦点/Escape/手势、packaged及其他
+平台仍待验。详见[cbr-image-controls-observations.json](./cbr-image-controls-observations.json)。
