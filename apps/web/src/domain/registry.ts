@@ -1,9 +1,9 @@
+import type { DomainActor } from "../platform/domain-actor";
 /** Single runtime registry for every active product domain. */
 import type {
   DomainGrants,
   DomainId,
-  EventOrigin,
-} from "@read-aware/core";
+  } from "@read-aware/core";
 import { createAnnotationsDomain } from "./annotations";
 import { createConversationsDomain } from "./conversations";
 import {
@@ -25,7 +25,7 @@ type DomainSurface = {
 
 type DomainDefinition<TSurface extends DomainSurface = DomainSurface> = {
   events: readonly string[];
-  create(origin: EventOrigin, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants?: DomainGrants): TSurface;
+  create(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants?: DomainGrants): TSurface;
 };
 
 export const DOMAIN_REGISTRY = {
@@ -47,7 +47,7 @@ export const DOMAIN_REGISTRY = {
   },
   settings: {
     events: ["settings.changed"],
-    create: (origin: EventOrigin) => createSettingsDomain(origin),
+    create: (origin: DomainActor) => createSettingsDomain(origin),
   },
   memory: { events: [], create: createMemoryDomain },
 } satisfies Record<DomainId, DomainDefinition>;
@@ -67,7 +67,7 @@ export type ActorDomainView = Partial<{
 }>;
 
 /** Without explicit grants a caller is the host itself and acts with every domain. */
-export function createDomainApi(origin: EventOrigin, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants?: DomainGrants): DomainApi {
+export function createDomainApi(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants?: DomainGrants): DomainApi {
   return Object.fromEntries(
     Object.entries(DOMAIN_REGISTRY).map(([id, definition]) => [
       id,
@@ -83,7 +83,7 @@ export type { DomainAccess, DomainGrants, DomainId } from "@read-aware/core";
  * write additionally exposes commands and implies read.
  */
 export function createActorDomainView(
-  origin: EventOrigin,
+  origin: DomainActor,
   grants: DomainGrants,
   lifetime?: AbortSignal,
   trackCleanup?: (work: Promise<void>) => void,

@@ -1,5 +1,6 @@
+import type { DomainActor } from "../../../platform/domain-actor";
 import { runDomainWrite } from "../../../platform/domain-write-gate";
-import type { EventOrigin, BookImportPhase } from "@read-aware/core";
+import type { BookImportPhase } from "@read-aware/core";
 import type { TFunction } from "i18next";
 import { invoke } from "../../../platform/ipc";
 import { putDesktopBlob } from "../../../platform/blob-store";
@@ -75,7 +76,7 @@ export type ImportBookOptions = {
   t: TFunction<"shelf">;
   /** Shelf books already loaded — the free name+size duplicate check. */
   knownBooks: readonly LibraryBook[];
-  origin?: EventOrigin;
+  origin?: DomainActor;
   /** Cancellation before the first durable write; accepted imports are finalized. */
   signal?: AbortSignal;
   /** Host resource lease/admission recheck immediately before that first write. */

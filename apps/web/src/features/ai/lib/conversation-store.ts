@@ -1,9 +1,9 @@
+import type { DomainActor } from "../../../platform/domain-actor";
 import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { isTauri } from "../../../platform/environment";
 import { broadcastDomainEventDrafts, commitDomainEvents, mintEventRows, type DomainEventDraft } from "../../../platform/domain-events";
 import { createLogger } from "../../../platform/logger";
-import type { EventOrigin } from "@read-aware/core";
 import type { ChatAssistantPart, ChatAttachment, ChatMessage } from "./chat-types";
 
 const log = createLogger("conversation-store");
@@ -220,7 +220,7 @@ export async function saveConversation(
   });
 }
 
-export async function clearConversation(conversationId: string, origin: EventOrigin = "user", signal?: AbortSignal): Promise<void> {
+export async function clearConversation(conversationId: string, origin: DomainActor = "user", signal?: AbortSignal): Promise<void> {
   signal?.throwIfAborted();
   if (!isTauri()) {
     memoryStore.delete(conversationId);

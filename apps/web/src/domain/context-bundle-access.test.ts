@@ -1,3 +1,4 @@
+import { actorOrigin, type DomainActor } from "../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { AppError, createContextBundle, FULL_DOMAIN_GRANTS, type ContextBundle, type DomainGrants, type ResourceRef } from "@read-aware/core";
 import { createContextBundleAccess } from "./context-bundle-access";
@@ -20,10 +21,10 @@ function fixture(grants: DomainGrants = FULL_DOMAIN_GRANTS, lifetime?: AbortSign
   const step = async (name: string) => { calls.push(name); await controls.before(name); };
   const receipt = { version: "cb1:x", changed: true, persistence: "event-log" as const };
   const producer = {
-    captureProfile: async (origin: string, signal?: AbortSignal) => { await step(`profile:${origin}:${signal?.aborted}`); return { bundle: await artifact(), receipt }; },
-    captureIntent: async (scope: unknown, origin: string) => { await step(`intent:${JSON.stringify(scope)}:${origin}`); return { bundle: await artifact(), receipt }; },
-    captureBook: async (bookId: string, origin: string) => { await step(`book:${bookId}:${origin}`); return { bundle: await artifact("book_memory_context"), receipt }; },
-    captureConversation: async (target: unknown, origin: string) => { await step(`conversation:${JSON.stringify(target)}:${origin}`); return { bundle: await artifact(), receipt }; },
+    captureProfile: async (origin: DomainActor, signal?: AbortSignal) => { await step(`profile:${actorOrigin(origin)}:${signal?.aborted}`); return { bundle: await artifact(), receipt }; },
+    captureIntent: async (scope: unknown, origin: DomainActor) => { await step(`intent:${JSON.stringify(scope)}:${actorOrigin(origin)}`); return { bundle: await artifact(), receipt }; },
+    captureBook: async (bookId: string, origin: DomainActor) => { await step(`book:${bookId}:${actorOrigin(origin)}`); return { bundle: await artifact("book_memory_context"), receipt }; },
+    captureConversation: async (target: unknown, origin: DomainActor) => { await step(`conversation:${JSON.stringify(target)}:${actorOrigin(origin)}`); return { bundle: await artifact(), receipt }; },
   };
   const owner = { release: async (id: string) => { released.push(id); } } as unknown as ResourceOwner;
   const access = createContextBundleAccess({

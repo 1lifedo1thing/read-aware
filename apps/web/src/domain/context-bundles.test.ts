@@ -1,3 +1,4 @@
+import { actorOrigin } from "../platform/domain-actor";
 import { withDomainBackup } from "../platform/domain-write-gate";
 import { expect, test } from "bun:test";
 import { AppError, type ContextBundle, type ProfileContextSnapshot } from "@read-aware/core";
@@ -35,7 +36,7 @@ function fixture() {
     insights: { prepare: () => step("prepare-insights"), read: async target => {
       readTarget = structuredClone(target); await step("read-insights"); return structuredClone(insights);
     } },
-    mint: async drafts => { await step("mint"); return drafts.map(draft => ({ ...draft, id: "minted", hlc: { wallMs: 1, counter: 0, deviceId: "local" } })); },
+    mint: async drafts => { await step("mint"); return drafts.map(draft => ({ ...draft, origin: draft.origin === undefined ? undefined : actorOrigin(draft.origin), id: "minted", hlc: { wallMs: 1, counter: 0, deviceId: "local" } })); },
     broadcast: drafts => { calls.push("broadcast"); broadcasts.push(...structuredClone(drafts)); },
     invoke: async <T>(command: string, args?: unknown): Promise<T> => {
       await step(command);

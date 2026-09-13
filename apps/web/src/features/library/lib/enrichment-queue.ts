@@ -1,6 +1,7 @@
-import { AppError, errorCode, type BookEnrichmentJob, type EventOrigin } from "@read-aware/core";
+import type { DomainActor } from "../../../platform/domain-actor";
+import { AppError, errorCode, type BookEnrichmentJob } from "@read-aware/core";
 
-export type EnrichmentRequest = { bookId: string; cover: boolean; metadata: boolean; origin?: EventOrigin };
+export type EnrichmentRequest = { bookId: string; cover: boolean; metadata: boolean; origin?: DomainActor };
 export type EnrichmentOutcome = { reason: BookEnrichmentJob["reason"] };
 type Entry = { request: EnrichmentRequest; job: BookEnrichmentJob; done: Promise<BookEnrichmentJob> };
 const idle = (): BookEnrichmentJob => ({ phase: "idle", startedAt: null, finishedAt: null, errorCode: null, reason: null });

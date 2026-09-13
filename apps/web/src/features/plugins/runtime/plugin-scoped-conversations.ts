@@ -1,3 +1,4 @@
+import { copyEventCause } from "../../../platform/domain-actor";
 import { AppError, normalizeConversationTarget, normalizeConversationTurnRequest,
   type ConversationRuntimeSnapshot, type ConversationTarget, type EventOrigin } from "@read-aware/core";
 import type { PluginConversationsDomain, PluginConversationRuntimeSnapshot, ConversationDomainEventType, PluginDomainEvent } from "@read-aware/plugin-types";
@@ -85,7 +86,7 @@ export function scopePluginConversations(domain: NonNullable<ActorDomainView["co
           if ("bookId" in broadcast.payload && broadcast.payload.bookId !== undefined && broadcast.payload.bookId !== broadcast.payload.conversationId) return;
         } catch { return; }
         // The shared subscription already matched the exact requested event.
-        return handler(structuredClone(broadcast) as PluginDomainEvent<typeof event>);
+        return handler(copyEventCause(broadcast, structuredClone(broadcast)) as PluginDomainEvent<typeof event>);
       }) }));
     },
     observeRuntime(handler) {

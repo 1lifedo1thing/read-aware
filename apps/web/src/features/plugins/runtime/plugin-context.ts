@@ -1,3 +1,4 @@
+import { copyEventCause } from "../../../platform/domain-actor";
 import { inferenceHistoryStorage } from "./plugin-inference-history-storage";
 import { resourceModelImage } from "../../../services/model-image";
 import { createPluginStoragePolicy } from "./plugin-storage-policy";
@@ -993,7 +994,7 @@ export function buildPluginContext(
               return [change];
             } catch { return []; }
           });
-          if (changes.length) handler({ ...event, changes });
+          if (changes.length) handler(copyEventCause(event, { ...event, changes }));
         }) })),
       },
     };

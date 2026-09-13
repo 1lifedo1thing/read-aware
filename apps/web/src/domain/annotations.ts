@@ -1,3 +1,4 @@
+import { actorOrigin, type DomainActor } from "../platform/domain-actor";
 /**
  * Annotations domain — highlights, notes, and asks over annotation-db.
  * Commands enforce the verb's invariants once, for every actor: kind checks
@@ -16,7 +17,6 @@ import type {
   AnnotationObservation,
   AnnotationObservationQuery,
   AskItem,
-  EventOrigin,
   HighlightColor,
   HighlightItem,
   HighlightStyle,
@@ -152,7 +152,7 @@ export type AnnotationsDomain = {
   };
 };
 
-export function createAnnotationsDomain(origin: EventOrigin, lifetime?: AbortSignal): AnnotationsDomain {
+export function createAnnotationsDomain(origin: DomainActor, lifetime?: AbortSignal): AnnotationsDomain {
   const annotationId = (id: string) => {
     if (typeof id !== "string" || !id.trim() || id.length > 512) throw new AppError("annotations/invalid-input", "A non-empty annotation ID is required");
     return id;
@@ -218,7 +218,7 @@ export function createAnnotationsDomain(origin: EventOrigin, lifetime?: AbortSig
       return toAnnotationItem(note) as NoteItem;
     },
     createAsk: async (input) => {
-      if (origin !== "agent") {
+      if (actorOrigin(origin) !== "agent") {
         throw new AppError("annotations/forbidden", "ask.recorded is an agent-only verb");
       }
       const ask = await createAsk(
@@ -234,7 +234,7 @@ export function createAnnotationsDomain(origin: EventOrigin, lifetime?: AbortSig
   return {
     queries,
     commands,
-    events: { subscribe: domainSubscribe(ANNOTATION_EVENTS, origin),
+    events: { subscribe: domainSubscribe(ANNOTATION_EVENTS, actorOrigin(origin)),
       observe: (query, handler) => observer.observe(query, async accepted => accepted.kind === "page"
         ? { kind: "page", page: await queries.page(accepted.query) }
         : { kind: "inspect", snapshot: await queries.inspect(accepted.annotationId) }, handler, lifetime) },

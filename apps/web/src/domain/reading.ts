@@ -1,5 +1,6 @@
+import { actorOrigin, type DomainActor } from "../platform/domain-actor";
 /** Reading domain - reading lifecycle, progress projections, and time. */
-import type { BookStats, EventOrigin, StatsOverview, ReadingTarget, ReadingSessionSnapshot, ReadingSessionGuard, ReadingNavigationReceipt } from "@read-aware/core";
+import type { BookStats, StatsOverview, ReadingTarget, ReadingSessionSnapshot, ReadingSessionGuard, ReadingNavigationReceipt } from "@read-aware/core";
 import { readingRuntime } from "./reading-runtime";
 import { readingEmphasis, agentEmphasisOwner } from "./reading-emphasis";
 import { queryReadingTime, readingTimeObserver } from "./reading-time";
@@ -78,8 +79,8 @@ export type ReadingDomain = {
   };
 };
 
-export function createReadingDomain(origin: EventOrigin, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void): ReadingDomain {
-  const emphasis = readingEmphasis.forOwner(origin === "agent" ? agentEmphasisOwner : {}, lifetime, trackCleanup);
+export function createReadingDomain(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void): ReadingDomain {
+  const emphasis = readingEmphasis.forOwner(actorOrigin(origin) === "agent" ? agentEmphasisOwner : {}, lifetime, trackCleanup);
   const queries: ReadingQueries = {
     emphasis: async () => emphasis.list(),
     session: async () => readingRuntime.snapshot(),
@@ -161,7 +162,7 @@ export function createReadingDomain(origin: EventOrigin, lifetime?: AbortSignal,
   return {
     queries,
     commands,
-    events: { subscribe: domainSubscribe(READING_EVENTS, origin), observeEmphasis: emphasis.observe, observeSession: handler => readingRuntime.observe(handler),
+    events: { subscribe: domainSubscribe(READING_EVENTS, actorOrigin(origin)), observeEmphasis: emphasis.observe, observeSession: handler => readingRuntime.observe(handler),
       observeTime: (query, handler) => readingTimeObserver.observe(query, handler) },
   };
 }

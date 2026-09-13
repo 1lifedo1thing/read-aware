@@ -1,10 +1,11 @@
+import { actorOrigin, type DomainActor } from "../platform/domain-actor";
 /**
  * Conversations domain — authorized queries and controls over AI threads (one
  * persistent thread per book, keyed by the book id, plus user-created
  * global threads). Message generation stays with the chat runtime; controls
  * share its turn drain rather than fabricating user/assistant messages.
  */
-import type { ChatMessageSummary, EventOrigin, ThreadSummary } from "@read-aware/core";
+import type { ChatMessageSummary, ThreadSummary } from "@read-aware/core";
 import { normalizeConversationTarget, type ConversationTarget } from "@read-aware/core";
 import { getStoredConversationInsights } from "../features/ai/lib/conversation-insights-store";
 import {
@@ -50,7 +51,7 @@ export type ConversationsDomain = {
   };
 };
 
-export function createConversationsDomain(origin: EventOrigin, lifetime?: AbortSignal): ConversationsDomain {
+export function createConversationsDomain(origin: DomainActor, lifetime?: AbortSignal): ConversationsDomain {
   return {
     queries: {
       getInsights: async input => {
@@ -58,7 +59,7 @@ export function createConversationsDomain(origin: EventOrigin, lifetime?: AbortS
         const target = normalizeConversationTarget(input);
         return getStoredConversationInsights(`${target.kind}:${target.id}`) ?? null;
       },
-      turnRequests: async () => conversationTurnRequests.list(origin),
+      turnRequests: async () => conversationTurnRequests.list(actorOrigin(origin)),
       runtime: async () => conversationSnapshot(),
       getBookThread: async (bookId) => toMessages(await loadConversation(String(bookId))),
       listThreads: async () =>
@@ -70,6 +71,6 @@ export function createConversationsDomain(origin: EventOrigin, lifetime?: AbortS
       getThread: async (threadId) => toMessages(await loadConversation(String(threadId))),
     },
     commands: conversationCommands(origin),
-    events: { observeInvalidation: handler => observeConversationInvalidation(handler, lifetime), subscribe: domainSubscribe(CONVERSATION_EVENTS, origin), observeRuntime: observeConversations },
+    events: { observeInvalidation: handler => observeConversationInvalidation(handler, lifetime), subscribe: domainSubscribe(CONVERSATION_EVENTS, actorOrigin(origin)), observeRuntime: observeConversations },
   };
 }

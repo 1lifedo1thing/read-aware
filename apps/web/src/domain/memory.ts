@@ -1,4 +1,5 @@
-import { AppError, FULL_DOMAIN_GRANTS, type DomainGrants, type EventOrigin } from "@read-aware/core";
+import type { DomainActor } from "../platform/domain-actor";
+import { AppError, FULL_DOMAIN_GRANTS, type DomainGrants } from "@read-aware/core";
 import { createBookMemoryPort } from "../features/ai/agent/ports/book-memory-port";
 import { createMemoryPort } from "../features/ai/agent/ports/memory-port";
 import { createProfilePort } from "../features/ai/agent/ports/profile-port";
@@ -29,7 +30,7 @@ const observer = new MemoryObserver({
 
 /** Memory reads do not import books, construct digests, or grant raw projection writes.
  * Context bundles also check the recipe's other source domains against the actor's grants. */
-export function createMemoryDomain(origin: EventOrigin, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants: DomainGrants = FULL_DOMAIN_GRANTS) {
+export function createMemoryDomain(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants: DomainGrants = FULL_DOMAIN_GRANTS) {
   const entitySignal = (signal?: AbortSignal) => lifetime && signal ? AbortSignal.any([lifetime, signal]) : lifetime ?? signal;
   const context = contextBundleAccess({ origin, grants, lifetime });
   const memory = createMemoryPort(), bookMemory = createBookMemoryPort();

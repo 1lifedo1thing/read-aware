@@ -1,6 +1,7 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { runDomainWrite } from "../platform/domain-write-gate";
 import { AppError, type BookMergePreview, type BookMergeReceipt, type BookMergeRequest, type DuplicateBookPage,
-  type DuplicateBookQuery, type EventOrigin } from "@read-aware/core";
+  type DuplicateBookQuery } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { isTauri } from "../platform/environment";
 import { mintEventRows, broadcastDomainEventDrafts, type DomainEventDraft } from "../platform/domain-events";
@@ -25,7 +26,7 @@ export async function previewBookMerge(bookId: string, signal?: AbortSignal): Pr
 export async function resolveMergedBook(bookId: string, signal?: AbortSignal): Promise<string | null> {
   id(bookId); live(signal); const resolved = await invoke<string | null>("library_resolve_book", { bookId }); live(signal); return resolved;
 }
-export async function mergeDuplicateBooks(input: BookMergeRequest, origin: EventOrigin, signal?: AbortSignal): Promise<BookMergeReceipt> {
+export async function mergeDuplicateBooks(input: BookMergeRequest, origin: DomainActor, signal?: AbortSignal): Promise<BookMergeReceipt> {
   if (!input || typeof input !== "object" || Object.keys(input).some(key => !["bookId", "expectedRevision"].includes(key))) throw new AppError("ui/invalid-target", "Invalid merge request");
   const { bookId, expectedRevision } = input; id(bookId);
   if (typeof expectedRevision !== "string" || !/^bmg1:[a-f0-9]{64}$/.test(expectedRevision)) throw new AppError("ui/invalid-target", "A current merge preview is required");

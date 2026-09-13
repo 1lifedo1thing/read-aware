@@ -1,5 +1,6 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { runDomainWrite } from "../platform/domain-write-gate";
-import { AppError, normalizeMemoryMutation, validateMemoryId, type EventOrigin, type MemoryMutation, type MemoryMutationReceipt, type MemorySnapshot } from "@read-aware/core";
+import { AppError, normalizeMemoryMutation, validateMemoryId, type MemoryMutation, type MemoryMutationReceipt, type MemorySnapshot } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { isTauri } from "../platform/environment";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../platform/domain-events";
@@ -11,12 +12,12 @@ export async function inspectMemory(id: string, signal?: AbortSignal): Promise<M
   const snapshot = await invoke<MemorySnapshot | null>("memory_inspect", { id });
   assertLive(signal); return snapshot;
 }
-export function memoryMutationDraft(input: MemoryMutation, origin: EventOrigin): DomainEventDraft {
+export function memoryMutationDraft(input: MemoryMutation, origin: DomainActor): DomainEventDraft {
   if (input.op === "correct") return { type: "memory.revised", payload: { memoryId: input.memoryId, content: input.content }, origin };
   if (input.op === "setPinned") return { type: "memory.feedback", payload: { memoryId: input.memoryId, signal: input.pinned ? "pin" : "unpin" }, origin };
   return { type: "memory.forgotten", payload: { memoryId: input.memoryId, reason: "user" }, origin };
 }
-export async function mutateMemory(input: MemoryMutation, origin: EventOrigin, signal?: AbortSignal): Promise<MemoryMutationReceipt> {
+export async function mutateMemory(input: MemoryMutation, origin: DomainActor, signal?: AbortSignal): Promise<MemoryMutationReceipt> {
   const change = normalizeMemoryMutation(input);
   assertDesktop(); assertLive(signal);
   const draft = memoryMutationDraft(change, origin);

@@ -1,3 +1,4 @@
+import type { DomainActor } from "../../platform/domain-actor";
 import { AI_CONFIG_KEY, encodeAIConfig } from "../../features/ai/lib/ai-config";
 import { MENU_CONFIG_KEY } from "../../features/menus/state/menu-config";
 import { pluginSettingsKey } from "../../features/plugins/lib/plugin-settings";
@@ -13,10 +14,9 @@ import { CONTENT_TYPOGRAPHY_KEY } from "../../features/settings/lib/content-typo
 import { DEFAULT_COLOR_KEY } from "../../features/annotations/lib/annotation-prefs";
 import { CHANNEL_KV_KEY } from "../../features/update/lib/update-channel";
 import type { SettingsDraft } from "./catalog-runtime";
-import type { EventOrigin } from "@read-aware/core";
 
 /** Only validated catalog edits reach this host-owned transaction. Secrets are never written here. */
-export function commitSettingsDraft(before: SettingsDraft, next: SettingsDraft, origin: EventOrigin, applyStartup = false): Promise<void> {
+export function commitSettingsDraft(before: SettingsDraft, next: SettingsDraft, origin: DomainActor, applyStartup = false): Promise<void> {
   const entries = new Map<string, string>();
   const record = (key: string, previous: unknown, value: unknown) => {
     const encoded = JSON.stringify(value);

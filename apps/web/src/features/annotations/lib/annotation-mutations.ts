@@ -1,5 +1,6 @@
+import type { DomainActor } from "../../../platform/domain-actor";
 import { runDomainWrite } from "../../../platform/domain-write-gate";
-import { AppError, validateAnnotationMutations, type AnnotationCommitResult, type AnnotationMutation, type EventOrigin } from "@read-aware/core";
+import { AppError, validateAnnotationMutations, type AnnotationCommitResult, type AnnotationMutation } from "@read-aware/core";
 import { invoke } from "../../../platform/ipc";
 import { isTauri } from "../../../platform/environment";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../../../platform/domain-events";
@@ -11,7 +12,7 @@ export async function inspectAnnotation(id: string, bounded = false): Promise<{ 
   return invoke("annotation_inspect", { id, bounded });
 }
 
-export async function commitAnnotationMutations(changes: AnnotationMutation[], origin: EventOrigin, signal?: AbortSignal): Promise<AnnotationCommitResult> {
+export async function commitAnnotationMutations(changes: AnnotationMutation[], origin: DomainActor, signal?: AbortSignal): Promise<AnnotationCommitResult> {
   validateAnnotationMutations(changes);
   if (!isTauri()) throw new AppError("annotations/unavailable", "Annotation storage requires the desktop shell");
   // Only semantic operations enter here; plugins never supply event envelopes.

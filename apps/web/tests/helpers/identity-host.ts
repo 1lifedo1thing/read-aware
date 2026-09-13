@@ -1,3 +1,4 @@
+import { actorOrigin } from "../../src/platform/domain-actor";
 import type { IdentityConsolidationPlan, IdentityConsolidationReceipt, IdentityConsolidationSnapshot } from "@read-aware/core";
 import { createIdentityConsolidationService } from "../../src/domain/identity-consolidation";
 import type { DomainEventDraft } from "../../src/platform/domain-events";
@@ -28,7 +29,7 @@ export function identityHost() {
     mint: async drafts => {
       minted.push(...structuredClone(drafts));
       await controls.beforeMint();
-      return drafts.map(draft => ({ ...draft, id: `event-${++counter}`, hlc: { wallMs: 1, counter, deviceId: "test" },
+      return drafts.map(draft => ({ ...draft, origin: draft.origin === undefined ? undefined : actorOrigin(draft.origin), id: `event-${++counter}`, hlc: { wallMs: 1, counter, deviceId: "test" },
         ...(draft.type === "profile.updated" ? {} : { aggregateType: "entity", aggregateId: draft.type === "entity.resolved" ? draft.payload.entityId
           : draft.type === "entity.merged" ? draft.payload.keepId : undefined }) }));
     },

@@ -1,9 +1,10 @@
+import type { DomainActor } from "../../../platform/domain-actor";
 import { atom, getDefaultStore } from "jotai";
 import { onAppEvent } from "../../../platform/app-events";
 import { afterLocalKVWrites, localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { isTauri } from "../../../platform/environment";
-import { normalizeConversationTarget, type EventOrigin } from "@read-aware/core";
+import { normalizeConversationTarget } from "@read-aware/core";
 import { GLOBAL_CONVERSATION_ID, isGlobalThreadId } from "../lib/conversation-store";
 
 const ACTIVE_THREAD_KEY = "read-aware-active-global-thread";
@@ -27,7 +28,7 @@ function readStoredThreadId(): string {
 const baseAtom = atom<string>(readStoredThreadId());
 const log = createLogger("global-thread");
 
-export function selectGlobalThread(threadId: string, origin: EventOrigin = "user", signal?: AbortSignal): Promise<void> {
+export function selectGlobalThread(threadId: string, origin: DomainActor = "user", signal?: AbortSignal): Promise<void> {
   const target = normalizeConversationTarget({ kind: "global", id: threadId });
   return afterLocalKVWrites(async () => {
     signal?.throwIfAborted();

@@ -65,7 +65,7 @@ onAppEvent("book-removed", ({ bookId }) => {
 });
 
 export const getBookTextSnapshot = (bookId: string): Promise<BookTextSnapshot> => repository.snapshot(bookId);
-export const createBookTextTaskOwner = (lifetime?: AbortSignal, origin: import("@read-aware/core").EventOrigin = "user", trackCleanup?: (work: Promise<void>) => void) => new BookTextTaskOwner(repository, (message, error) => log.warn(message, error), lifetime, createTextTaskHistory(origin, trackCleanup));
+export const createBookTextTaskOwner = (lifetime?: AbortSignal, origin: import("../../../platform/domain-actor").DomainActor = "user", trackCleanup?: (work: Promise<void>) => void) => new BookTextTaskOwner(repository, (message, error) => log.warn(message, error), lifetime, createTextTaskHistory(origin, trackCleanup));
 export const getDigestChapterSource = (bookId: string, index: number, version: string, signal?: AbortSignal) => repository.chapter(bookId, index, version, signal);
 export const getPersistedBookText = (bookId: string) => repository.persisted(bookId);
 // Borrow the active parser with its registered version, never attach a new hash to an old parser.

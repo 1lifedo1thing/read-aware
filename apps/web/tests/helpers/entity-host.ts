@@ -1,3 +1,4 @@
+import { actorOrigin } from "../../src/platform/domain-actor";
 import type { EntityDecisionReceipt, EntityPage } from "@read-aware/core";
 import { createEntityRegistryService } from "../../src/domain/entity-registry";
 import type { DomainEventDraft } from "../../src/platform/domain-events";
@@ -21,7 +22,7 @@ export function entityHost() {
     mint: async drafts => {
       minted.push(...structuredClone(drafts));
       await controls.beforeMint();
-      return drafts.map(draft => ({ ...draft, id: "event", hlc: { wallMs: 1, counter: 0, deviceId: "test" },
+      return drafts.map(draft => ({ ...draft, origin: draft.origin === undefined ? undefined : actorOrigin(draft.origin), id: "event", hlc: { wallMs: 1, counter: 0, deviceId: "test" },
         aggregateType: "entity", aggregateId: draft.type === "entity.resolved" ? draft.payload.entityId
           : draft.type === "entity.merged" ? draft.payload.keepId : undefined }));
     },

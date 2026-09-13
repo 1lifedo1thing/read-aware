@@ -1,5 +1,6 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { AppError, errorCode, type BookEnrichmentSnapshot, type BookEnrichmentReceipt,
-  type BookEnrichmentObservation, type EventOrigin } from "@read-aware/core";
+  type BookEnrichmentObservation } from "@read-aware/core";
 import { getBookRecord, hasLocalBookFile } from "../features/library/lib/library-db";
 import { enrichmentQueue, ENRICHMENT_FORMATS, metadataNeedsEnrichment } from "../features/library/lib/book-enrichment";
 import { isTauri } from "../platform/environment";
@@ -22,7 +23,7 @@ export async function getBookEnrichment(bookId: string, signal?: AbortSignal): P
     job: enrichmentQueue.snapshot(bookId) };
 }
 
-export async function retryBookEnrichment(bookId: string, origin: EventOrigin, signal?: AbortSignal): Promise<BookEnrichmentReceipt> {
+export async function retryBookEnrichment(bookId: string, origin: DomainActor, signal?: AbortSignal): Promise<BookEnrichmentReceipt> {
   const snapshot = await getBookEnrichment(bookId, signal);
   signal?.throwIfAborted();
   if (["queued", "running"].includes(snapshot.job.phase)) return { status: "already-running", snapshot };

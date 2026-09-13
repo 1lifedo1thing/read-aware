@@ -1,6 +1,7 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { runDomainWrite } from "../platform/domain-write-gate";
 import { normalizeEntityDecision, normalizeEntityQuery,
-  type EntityDecision, type EntityDecisionReceipt, type EntityPage, type EntityQuery, type EventOrigin } from "@read-aware/core";
+  type EntityDecision, type EntityDecisionReceipt, type EntityPage, type EntityQuery } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../platform/domain-events";
 
@@ -16,7 +17,7 @@ export function createEntityRegistryService(host: EntityHost) {
       signal?.throwIfAborted();
       return page;
     },
-    decide: async (input: EntityDecision, origin: EventOrigin, signal?: AbortSignal): Promise<EntityDecisionReceipt> => {
+    decide: async (input: EntityDecision, origin: DomainActor, signal?: AbortSignal): Promise<EntityDecisionReceipt> => {
       const decision = normalizeEntityDecision(input);
       signal?.throwIfAborted();
       const draft: DomainEventDraft = decision.op === "resolve"

@@ -1,6 +1,7 @@
+import { actorOrigin, type DomainActor } from "../../../platform/domain-actor";
 import { runDomainWrite, type RunDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
-import { AppError, normalizeBookRemovalCleanupQuery, type BookRemovalCleanupPage, type BookRemovalCleanupQuery, type EventOrigin } from "@read-aware/core";
+import { AppError, normalizeBookRemovalCleanupQuery, type BookRemovalCleanupPage, type BookRemovalCleanupQuery } from "@read-aware/core";
 import { removeBookBatch, releaseRemovedBookFiles } from "./book-removal";
 import { createLogger } from "../../../platform/logger";
 import {
@@ -64,7 +65,7 @@ async function putBookRecord(book: LibraryBook): Promise<void> {
   await invoke("library_put_book", { book });
 }
 
-async function deleteBookRecords(bookIds: string[], origin?: EventOrigin) {
+async function deleteBookRecords(bookIds: string[], origin?: DomainActor) {
   assertDesktop("Removing books");
   // `book.removed` drops the row and its annotations on apply; the blobs
   // (file + cover) are object-storage content and are released separately.
@@ -105,11 +106,11 @@ export function sortBooks(books: LibraryBook[]) {
  */
 export async function addVirtualLibraryBook(
   input: { title: string; author?: string; binding: VirtualBookBinding },
-  origin?: EventOrigin,
+  origin?: DomainActor,
   signal?: AbortSignal,
 ): Promise<LibraryBook> {
   assertDesktop("Adding a virtual book");
-  if (origin !== `plugin:${input.binding.pluginId}`) throw new AppError("plugin/unavailable", "Virtual book owner mismatch");
+  if (actorOrigin(origin ?? "user") !== `plugin:${input.binding.pluginId}`) throw new AppError("plugin/unavailable", "Virtual book owner mismatch");
   const bookId = crypto.randomUUID();
   await commitBoundVirtualBook(bookId, input.binding, [
     {
@@ -136,7 +137,7 @@ export async function updateVirtualLibraryBookTitle(
   bookId: string,
   title: string,
   author?: string,
-  origin?: EventOrigin,
+  origin?: DomainActor,
 ): Promise<void> {
   const book = await getBookRecord(bookId);
   if (!book || book.format !== "virtual") return;
@@ -286,7 +287,7 @@ export async function getStoredBookFile(
 export async function updateBookMetadata(
   bookId: string,
   patch: { title?: string; author?: string },
-  origin?: EventOrigin,
+  origin?: DomainActor,
 ): Promise<LibraryBook | null> {
   const existingBook = await getBookRecord(bookId);
   if (!existingBook) return null;
@@ -316,7 +317,7 @@ export async function updateBookMetadata(
 export async function setLibraryBookFinished(
   bookId: string,
   finished: boolean,
-  origin?: EventOrigin,
+  origin?: DomainActor,
 ) {
   const existingBook = await getBookRecord(bookId);
   if (!existingBook) return null;
@@ -328,7 +329,7 @@ export async function setLibraryBookFinished(
 export async function setLibraryBookStarred(
   bookId: string,
   starred: boolean,
-  origin?: EventOrigin,
+  origin?: DomainActor,
 ) {
   const existingBook = await getBookRecord(bookId);
   if (!existingBook) return null;
@@ -342,7 +343,7 @@ export async function listCollections() {
   return collections.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function createCollection(name: string, origin?: EventOrigin): Promise<Collection> {
+export async function createCollection(name: string, origin?: DomainActor): Promise<Collection> {
   const collection: Collection = {
     id: crypto.randomUUID(),
     name: name.trim() || "Untitled collection",
@@ -359,7 +360,7 @@ export async function createCollection(name: string, origin?: EventOrigin): Prom
 export async function renameCollection(
   id: string,
   name: string,
-  origin?: EventOrigin,
+  origin?: DomainActor,
 ): Promise<Collection | null> {
   const existing = (await getAllCollectionRecords()).find((c) => c.id === id);
   if (!existing) return null;
@@ -378,7 +379,7 @@ export async function renameCollection(
  * `collection.removed` implies the membership clearing on replay — no per-book
  * `book.removedFromCollection` events are emitted for it.
  */
-export async function deleteCollection(id: string, origin?: EventOrigin) {
+export async function deleteCollection(id: string, origin?: DomainActor) {
   assertDesktop("Deleting a collection");
   await commitDomainEvents({
     type: "collection.removed",
@@ -391,7 +392,7 @@ export async function deleteCollection(id: string, origin?: EventOrigin) {
 export async function setBooksCollection(
   bookIds: string[],
   collectionId: string | null,
-  origin?: EventOrigin,
+  origin?: DomainActor,
 ) {
   if (bookIds.length === 0) return;
   const idSet = new Set(bookIds);
@@ -415,7 +416,7 @@ export async function setBooksCollection(
   );
 }
 
-export async function removeLibraryBooks(bookIds: string[], origin?: EventOrigin) {
+export async function removeLibraryBooks(bookIds: string[], origin?: DomainActor) {
   return deleteBookRecords(bookIds, origin);
 }
 
@@ -441,7 +442,7 @@ export async function markLibraryBookOpened(bookId: string) {
   return getBookRecord(bookId);
 }
 
-export async function removeLibraryBook(bookId: string, origin?: EventOrigin) {
+export async function removeLibraryBook(bookId: string, origin?: DomainActor) {
   const receipt = await deleteBookRecords([bookId], origin);
   // Preserve the existing single-delete error contract. Batch callers get the
   // committed/cleanup distinction and can retry the same IDs explicitly.

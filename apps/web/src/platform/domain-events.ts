@@ -30,6 +30,7 @@ import { isTauri } from "./environment";
 import { createHlcClock } from "./hlc";
 import { createLogger } from "./logger";
 import { runDomainWrite } from "./domain-write-gate";
+import { actorCause, actorOrigin, stampEventCause, type DomainActor } from "./domain-actor";
 
 const log = createLogger("domain-events");
 
@@ -41,7 +42,7 @@ const log = createLogger("domain-events");
  */
 export type DomainEventDraft = DomainEvent extends infer E
   ? E extends DomainEventEnvelope<infer T, infer P>
-    ? { type: T; payload: P; createdAt?: string; origin?: EventOrigin }
+    ? { type: T; payload: P; createdAt?: string; origin?: DomainActor }
     : never
   : never;
 
@@ -155,6 +156,7 @@ export async function mintEventRowsAfterCurrentFrontier(drafts: DomainEventDraft
 }
 
 function toEventRow(draft: DomainEventDraft, deviceId: string): EventRowWire {
+  actorCause(draft.origin);
   const route = AGGREGATE_ROUTES[draft.type];
   const aggregateId = route
     ? (draft.payload as Record<string, unknown>)[route.idKey]
@@ -165,7 +167,7 @@ function toEventRow(draft: DomainEventDraft, deviceId: string): EventRowWire {
     hlc: nextHlc(deviceId),
     aggregateType: route?.type,
     aggregateId: typeof aggregateId === "string" ? aggregateId : undefined,
-    origin: draft.origin,
+    origin: draft.origin === undefined ? undefined : actorOrigin(draft.origin),
     createdAt: draft.createdAt,
     payload: draft.payload,
   };
@@ -208,15 +210,16 @@ export function broadcastDomainEventDrafts(drafts: DomainEventDraft[]): void {
 }
 
 function broadcastDomainEvents(drafts: DomainEventDraft[]): void {
+  for (const draft of drafts) actorCause(draft.origin);
   if (domainListeners.size === 0) return;
   const now = new Date().toISOString();
   for (const draft of drafts) {
-    const event = {
+    const event = stampEventCause({
       type: draft.type,
       payload: draft.payload,
       createdAt: draft.createdAt ?? now,
-      origin: draft.origin ?? "user",
-    } as DomainEventBroadcast;
+      origin: draft.origin === undefined ? "user" : actorOrigin(draft.origin),
+    } as DomainEventBroadcast, draft.origin);
     for (const listener of [...domainListeners]) {
       try {
         listener(event);

@@ -1,5 +1,5 @@
+import { stampEventCause, actorOrigin, type DomainActor } from "../../platform/domain-actor";
 import type {
-  EventOrigin,
   SettingCatalogEntry,
   SettingChange,
   SettingReadResult,
@@ -95,11 +95,11 @@ function canAccess(
 }
 
 function actorPolicy(
-  origin: EventOrigin,
+  origin: DomainActor,
   policy: SettingsAccessPolicy | undefined,
 ): SettingsAccessPolicy {
   if (policy) return policy;
-  return origin.startsWith("plugin:") ? {} : FULL_ACCESS;
+  return actorOrigin(origin).startsWith("plugin:") ? {} : FULL_ACCESS;
 }
 
 function readDraft(): SettingsDraft {
@@ -177,7 +177,7 @@ function filterSnapshot(policy: SettingsAccessPolicy, snapshot: SettingsSnapshot
 }
 
 async function applySettingsChanges(
-  origin: EventOrigin,
+  origin: DomainActor,
   changes: SettingChange[],
   policy: SettingsAccessPolicy,
   signal?: AbortSignal,
@@ -199,14 +199,14 @@ async function applySettingsChanges(
   return commitResult(origin, before, result);
 }
 
-async function commitResult(origin: EventOrigin, before: SettingsDraft, result: { draft: SettingsDraft; changed: SettingChange[] }, query?: SettingsQuery): Promise<SettingsUpdateResult> {
+async function commitResult(origin: DomainActor, before: SettingsDraft, result: { draft: SettingsDraft; changed: SettingChange[] }, query?: SettingsQuery): Promise<SettingsUpdateResult> {
   await commitSettingsDraft(before, result.draft, origin, result.changed.some(change => change.path === "general.launchAtStartup"));
   if (result.changed.length > 0) {
-    const event: SettingsChangedEvent = {
+    const event: SettingsChangedEvent = stampEventCause({
       type: "settings.changed",
-      origin,
+      origin: actorOrigin(origin),
       changes: result.changed,
-    };
+    }, origin);
     for (const listener of [...listeners]) {
       try {
         listener(event);
@@ -224,7 +224,7 @@ async function commitResult(origin: EventOrigin, before: SettingsDraft, result: 
 // Read each patch from the settled predecessor, not from a failed optimistic
 // record. Different actors share this order, including after rejected writes.
 let updateTail: Promise<unknown> = Promise.resolve();
-function enqueueSettingsChanges(origin: EventOrigin, changes: SettingChange[], policy: SettingsAccessPolicy, signal?: AbortSignal): Promise<SettingsUpdateResult> {
+function enqueueSettingsChanges(origin: DomainActor, changes: SettingChange[], policy: SettingsAccessPolicy, signal?: AbortSignal): Promise<SettingsUpdateResult> {
   const accepted = structuredClone(changes);
   const pluginIds = accepted.flatMap(change => /^plugins\.([a-z0-9-]+)\./.exec(change.path)?.[1] ?? []);
   const previous = updateTail;
@@ -257,9 +257,9 @@ export type SettingsDomain = {
 };
 
 export function createSettingsDomain(
-  origin: EventOrigin,
+  origin: DomainActor,
   access?: SettingsAccessPolicy,
-  networkAllowed = !origin.startsWith("plugin:"),
+  networkAllowed = !actorOrigin(origin).startsWith("plugin:"),
 ): SettingsDomain {
   initializeSettingsObservation();
   const policy = actorPolicy(origin, access);

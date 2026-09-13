@@ -1,4 +1,5 @@
-import { AppError, errorCode, type EventOrigin, type BookImportReceipt, type BookImportPhase } from "@read-aware/core";
+import type { DomainActor } from "../platform/domain-actor";
+import { AppError, errorCode, type BookImportReceipt, type BookImportPhase } from "@read-aware/core";
 import type { ResourceOwner } from "../services/resource-owner";
 import { i18n } from "../i18n";
 import { emitAppEvent } from "../platform/app-events";
@@ -10,7 +11,7 @@ import { createLogger } from "../platform/logger";
 const log = createLogger("resource-import");
 
 /** Library mutation over an actor's resource lease, not filesystem authority. */
-export function importResourceBook(owner: ResourceOwner, id: string, origin: EventOrigin, signal?: AbortSignal,
+export function importResourceBook(owner: ResourceOwner, id: string, origin: DomainActor, signal?: AbortSignal,
   onProgress?: (phase: BookImportPhase) => void): Promise<BookImportReceipt> {
   return owner.useForWrite(id, async (resource, beforeWrite) => {
     const knownBooks = await listLibraryBooks();

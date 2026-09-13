@@ -1,6 +1,7 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { runDomainWrite } from "../platform/domain-write-gate";
 import { AppError, conversationContextBundle, normalizeConversationTarget, normalizeReadingIntentScope, profileContextBundle, readingIntentContextBundle,
-  type ContextBundle, type ConversationTarget, type EventOrigin, type ProfileContextSnapshot, type ReadingIntentScope } from "@read-aware/core";
+  type ContextBundle, type ConversationTarget, type ProfileContextSnapshot, type ReadingIntentScope } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../platform/domain-events";
 import { createLogger } from "../platform/logger";
@@ -18,7 +19,7 @@ type Host = { invoke: typeof invoke; mint: typeof mintEventRows; broadcast: type
 
 /** Internal producer. Actor authorization and file export are separate consumers. */
 export function createContextBundleService(host: Host) {
-  const capture = async (origin: EventOrigin, assemble: () => Promise<ContextBundle>, signal?: AbortSignal, prepare?: () => Promise<void>) => {
+  const capture = async (origin: DomainActor, assemble: () => Promise<ContextBundle>, signal?: AbortSignal, prepare?: () => Promise<void>) => {
     signal?.throwIfAborted();
     await host.initialize();
     signal?.throwIfAborted();
@@ -41,17 +42,17 @@ export function createContextBundleService(host: Host) {
     });
   };
   return {
-    async captureBook(bookId: string, origin: EventOrigin, signal?: AbortSignal) {
+    async captureBook(bookId: string, origin: DomainActor, signal?: AbortSignal) {
       const sources = host.books.open(bookId, signal);
       try { return await capture(origin, sources.read, sources.signal); }
       finally { sources.dispose(); }
     },
-    async captureIntent(input: ReadingIntentScope, origin: EventOrigin, signal?: AbortSignal) {
+    async captureIntent(input: ReadingIntentScope, origin: DomainActor, signal?: AbortSignal) {
       const scope = normalizeReadingIntentScope(input), sources = host.intents.open(scope, signal);
       try { return await capture(origin, async () => readingIntentContextBundle(scope, await sources.read()), sources.signal, sources.prepare); }
       finally { sources.dispose(); }
     },
-    async captureProfile(origin: EventOrigin, signal?: AbortSignal): Promise<{ bundle: ContextBundle; receipt: Receipt }> {
+    async captureProfile(origin: DomainActor, signal?: AbortSignal): Promise<{ bundle: ContextBundle; receipt: Receipt }> {
       return capture(origin, async () => {
         const snapshot = await host.invoke<ProfileContextSnapshot>("profile_context");
         signal?.throwIfAborted();
@@ -60,7 +61,7 @@ export function createContextBundleService(host: Host) {
         return bundle;
       }, signal);
     },
-    async captureConversation(input: ConversationTarget, origin: EventOrigin, signal?: AbortSignal) {
+    async captureConversation(input: ConversationTarget, origin: DomainActor, signal?: AbortSignal) {
       const target = normalizeConversationTarget(input);
       return capture(origin, async () => {
         const snapshot = await host.insights.read(target);

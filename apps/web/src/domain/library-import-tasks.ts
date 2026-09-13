@@ -1,4 +1,5 @@
-import { AppError, type BookImportRequest, type EventOrigin } from "@read-aware/core";
+import type { DomainActor } from "../platform/domain-actor";
+import { AppError, type BookImportRequest } from "@read-aware/core";
 import { BookImportTaskOwner } from "../features/library/lib/book-import-tasks";
 import { importBook } from "../features/library/lib/book-import";
 import { listLibraryBooks } from "../features/library/lib/library-db";
@@ -11,7 +12,7 @@ import { importResourceBook } from "./library-resource-import";
 import { toBookSummary } from "./library";
 
 const log = createLogger("import-tasks");
-export function createBookImportTasks(resources: ResourceOwner, origin: EventOrigin, lifetime = resources.signal,
+export function createBookImportTasks(resources: ResourceOwner, origin: DomainActor, lifetime = resources.signal,
   trackCleanup?: (work: Promise<void>) => void) {
   const signal = lifetime === resources.signal ? lifetime : AbortSignal.any([resources.signal, lifetime]);
   const owner = new BookImportTaskOwner(error => log.warn("Import task failed", error), signal);

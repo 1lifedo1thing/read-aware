@@ -1,5 +1,6 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { runDomainWrite } from "../platform/domain-write-gate";
-import { AppError, normalizeOnboardingChange, type EventOrigin, type OnboardingChange, type OnboardingReceipt } from "@read-aware/core";
+import { AppError, normalizeOnboardingChange, type OnboardingChange, type OnboardingReceipt } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../platform/domain-events";
 import { initializeUserProfile } from "./user-profile";
@@ -7,7 +8,7 @@ import { getAIPreferences } from "../features/settings/lib/ai-preferences";
 
 type Host = { allowed(): boolean; initialize(): Promise<void>; invoke: typeof invoke; mint: typeof mintEventRows; broadcast: typeof broadcastDomainEventDrafts };
 export function createOnboardingService(host: Host) {
-  return async (input: OnboardingChange, origin: EventOrigin, signal?: AbortSignal): Promise<OnboardingReceipt> => {
+  return async (input: OnboardingChange, origin: DomainActor, signal?: AbortSignal): Promise<OnboardingReceipt> => {
     const accepted = normalizeOnboardingChange(input);
     const allowed = () => { if (!host.allowed()) throw new AppError("ai/memory-disabled", "Building memory is disabled"); };
     allowed();

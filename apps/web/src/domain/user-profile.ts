@@ -1,6 +1,7 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { runDomainWrite, type RunDomainWrite } from "../platform/domain-write-gate";
 import { normalizeUserProfileChange, normalizeUserProfileQuery, userProfilePage,
-  type EventOrigin, type UserProfileChange, type UserProfileQuery, type UserProfileReceipt, type UserProfileSnapshot } from "@read-aware/core";
+  type UserProfileChange, type UserProfileQuery, type UserProfileReceipt, type UserProfileSnapshot } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../platform/domain-events";
 
@@ -24,7 +25,7 @@ export function createUserProfileService(host: ProfileHost) {
     signal?.throwIfAborted();
     return snapshot;
   };
-  const write = async (command: "profile_commit" | "profile_restore", input: UserProfileChange, origin: EventOrigin, signal?: AbortSignal, run: RunDomainWrite = runDomainWrite) => {
+  const write = async (command: "profile_commit" | "profile_restore", input: UserProfileChange, origin: DomainActor, signal?: AbortSignal, run: RunDomainWrite = runDomainWrite) => {
     signal?.throwIfAborted();
     await initialize(run);
     signal?.throwIfAborted();
@@ -38,7 +39,7 @@ export function createUserProfileService(host: ProfileHost) {
       return receipt;
     });
   };
-  const change = async (input: UserProfileChange, origin: EventOrigin, signal?: AbortSignal) =>
+  const change = async (input: UserProfileChange, origin: DomainActor, signal?: AbortSignal) =>
     write("profile_commit", normalizeUserProfileChange(input), origin, signal);
   return {
     initialize, readSnapshot, change,

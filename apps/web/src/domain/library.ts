@@ -1,3 +1,4 @@
+import { actorOrigin, type DomainActor } from "../platform/domain-actor";
 /**
  * Library domain - books, source content, metadata, and collections.
  *
@@ -9,7 +10,6 @@ import type {
   BookSummary,
   ChapterRef,
   CollectionSummary,
-  EventOrigin,
   BookNavigationToc,
   BookLocationSearch,
   BookLocationSearchPage,
@@ -169,8 +169,8 @@ export type LibraryDomain = {
 
 const agentTextTasks = createBookTextTaskOwner(undefined, "agent");
 
-export function createLibraryDomain(origin: EventOrigin, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void): LibraryDomain {
-  const textTasks = origin === "agent" ? agentTextTasks : createBookTextTaskOwner(lifetime, origin, trackCleanup);
+export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void): LibraryDomain {
+  const textTasks = actorOrigin(origin) === "agent" ? agentTextTasks : createBookTextTaskOwner(lifetime, origin, trackCleanup);
   const queries: LibraryQueries = {
     books: {
       getNavigationToc: getBookNavigationToc,
@@ -303,7 +303,7 @@ export function createLibraryDomain(origin: EventOrigin, lifetime?: AbortSignal,
   return {
     queries,
     commands,
-    events: { observeInvalidation: handler => observeLibraryInvalidation(handler, lifetime), subscribe: domainSubscribe(LIBRARY_EVENTS, origin), observeTextTask: (bookId, taskId, listener) => textTasks.observe(bookId, taskId, listener),
+    events: { observeInvalidation: handler => observeLibraryInvalidation(handler, lifetime), subscribe: domainSubscribe(LIBRARY_EVENTS, actorOrigin(origin)), observeTextTask: (bookId, taskId, listener) => textTasks.observe(bookId, taskId, listener),
       observeEnrichment: createEnrichmentObserver(lifetime), observeContentState: createContentStateObserver(lifetime) },
   };
 }

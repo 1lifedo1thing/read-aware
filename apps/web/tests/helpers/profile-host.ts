@@ -1,3 +1,4 @@
+import { actorOrigin } from "../../src/platform/domain-actor";
 import { AppError, userProfileRevision, type UserProfileSnapshot } from "@read-aware/core";
 import { createUserProfileService } from "../../src/domain/user-profile";
 import type { DomainEventDraft } from "../../src/platform/domain-events";
@@ -16,7 +17,7 @@ export async function profileHost(summary: string | null = "Original") {
   const service = createUserProfileService({
     mint: async drafts => {
       await controls.beforeMint();
-      return drafts.map(draft => ({ ...draft, id: crypto.randomUUID(), hlc: { wallMs: 1, counter: 1, deviceId: "test" } }));
+      return drafts.map(draft => ({ ...draft, origin: draft.origin === undefined ? undefined : actorOrigin(draft.origin), id: crypto.randomUUID(), hlc: { wallMs: 1, counter: 1, deviceId: "test" } }));
     },
     broadcast: drafts => { broadcasts.push(...structuredClone(drafts)); },
     invoke: async <T>(command: string, args?: unknown): Promise<T> => {

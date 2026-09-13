@@ -1,4 +1,5 @@
-import { AppError, normalizeConversationTarget, type ConversationTarget, type ConversationRuntimeSnapshot, type EventOrigin } from "@read-aware/core";
+import { actorOrigin, type DomainActor } from "../platform/domain-actor";
+import { AppError, normalizeConversationTarget, type ConversationTarget, type ConversationRuntimeSnapshot } from "@read-aware/core";
 import { getDefaultStore } from "jotai";
 import { activeGlobalThreadAtom, selectGlobalThread } from "../features/ai/state/global-thread";
 import { clearConversation, listGlobalThreads, newGlobalThreadId } from "../features/ai/lib/conversation-store";
@@ -23,7 +24,7 @@ export function observeConversations(handler: (value: ConversationRuntimeSnapsho
   };
   const off = conversationRuntime.observe(publish); publish(); return off;
 }
-export function conversationCommands(origin: EventOrigin) {
+export function conversationCommands(origin: DomainActor) {
   const validate = async (input: ConversationTarget, signal?: AbortSignal) => {
     const target = normalizeConversationTarget(input); signal?.throwIfAborted();
     if (target.kind === "book" && !await getBookRecord(target.id)) throw new AppError("library/book-not-found", "Conversation book does not exist");
@@ -31,9 +32,9 @@ export function conversationCommands(origin: EventOrigin) {
   };
   return {
     requestTurn: async (input: import("@read-aware/core").ConversationTurnRequest, signal?: AbortSignal, onRetire?: () => void) =>
-      conversationTurnRequests.request(origin, input, signal, onRetire),
+      conversationTurnRequests.request(actorOrigin(origin), input, signal, onRetire),
     cancelTurnRequest: async (id: string, signal?: AbortSignal) => {
-      signal?.throwIfAborted(); return conversationTurnRequests.cancel(origin, id);
+      signal?.throwIfAborted(); return conversationTurnRequests.cancel(actorOrigin(origin), id);
     },
     createThread: async (signal?: AbortSignal) => {
       signal?.throwIfAborted(); const id = newGlobalThreadId();

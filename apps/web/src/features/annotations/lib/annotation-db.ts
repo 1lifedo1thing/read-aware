@@ -1,3 +1,4 @@
+import type { DomainActor } from "../../../platform/domain-actor";
 /**
  * Storage for annotations (highlights, notes, asks): the desktop SQLite
  * `annotations` table (Rust `annotation_*` commands; search is FTS5-backed).
@@ -8,7 +9,7 @@
 
 import { runDomainWrite, type RunDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
-import { normalizeAnnotationPageQuery, type AnnotationPageQuery, type EventOrigin, type BookTextRange } from "@read-aware/core";
+import { normalizeAnnotationPageQuery, type AnnotationPageQuery, type BookTextRange } from "@read-aware/core";
 import type { Annotation, AnnotationFilters, Ask, Highlight, Note } from "./annotation-types";
 import { isTauri } from "../../../platform/environment";
 import { commitDomainEvents, mintEventRows, broadcastDomainEventDrafts, type DomainEventDraft } from "../../../platform/domain-events";
@@ -119,7 +120,7 @@ export async function createHighlight(
   text: string,
   color: Highlight["color"] = "yellow",
   style: NonNullable<Highlight["style"]> = "highlight",
-  origin?: EventOrigin,
+  origin?: DomainActor,
   source?: CreationSource,
 ): Promise<Highlight> {
   const highlightId = crypto.randomUUID();
@@ -152,7 +153,7 @@ export async function createNote(
   chapterHref: string | null,
   text: string,
   content: string,
-  origin?: EventOrigin,
+  origin?: DomainActor,
   source?: CreationSource,
 ): Promise<Note> {
   const noteId = crypto.randomUUID();

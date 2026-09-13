@@ -1,3 +1,4 @@
+import { actorCause, actorOrigin, stampEventCause, type DomainActor } from "./domain-actor";
 import type { EventOrigin } from "@read-aware/core";
 
 type Mutation = { value: string | null; done: Promise<void> };
@@ -31,12 +32,12 @@ export class KVWriteQueue {
     failed(key: string, error: unknown, owner: KVFailureOwner): void;
   }) {}
 
-  write(key: string, value: string | null, origin: KVWriteOrigin = "local", actor: EventOrigin | null = null): Promise<void> {
+  write(key: string, value: string | null, origin: KVWriteOrigin = "local", actor: DomainActor | null = null): Promise<void> {
     return this.enqueue(new Map([[key, value]]), () => this.deps.persist(key, value, origin), origin, actor);
   }
 
   /** Atomic user edits publish only after the entire native transaction commits. */
-  batch(values: ReadonlyMap<string, string | null>, persist: () => Promise<void>, actor: EventOrigin | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store"): Promise<void> {
+  batch(values: ReadonlyMap<string, string | null>, persist: () => Promise<void>, actor: DomainActor | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store"): Promise<void> {
     return this.enqueue(values, persist, "local", actor, source, failureOwner);
   }
 
@@ -59,10 +60,11 @@ export class KVWriteQueue {
     values: ReadonlyMap<string, string | null>,
     persist: () => Promise<void>,
     origin?: KVWriteOrigin,
-    actor: EventOrigin | null = null,
+    actor: DomainActor | null = null,
     source: KVCommit["source"] = origin ?? "restore",
     failureOwner: KVFailureOwner = "store",
   ): Promise<void> {
+    actorCause(actor ?? undefined);
     const entries = [...values].map(([key, value]) => {
       const state = this.keys.get(key) ?? { durable: this.deps.read(key), mutations: [] };
       this.keys.set(key, state);
@@ -87,7 +89,7 @@ export class KVWriteQueue {
           if (!state.mutations.length) this.keys.delete(key);
         }
         if (failure) this.deps.failed(entries[0]?.key ?? "replacement", failure.error, failureOwner);
-        else this.deps.settled?.({ entries: entries.map(({ key, value }) => ({ key, value })), source, actor });
+        else this.deps.settled?.(stampEventCause({ entries: entries.map(({ key, value }) => ({ key, value })), source, actor: actor === null ? null : actorOrigin(actor) }, actor ?? undefined));
       }
     });
     for (const { mutation } of entries) mutation.done = done;

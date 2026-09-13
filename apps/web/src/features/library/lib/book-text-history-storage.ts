@@ -1,4 +1,4 @@
-import type { EventOrigin } from "@read-aware/core";
+import { actorOrigin, type DomainActor } from "../../../platform/domain-actor";
 import { localKV, afterLocalKVWrites } from "../../../platform/local-store";
 import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { durableWrites } from "../../../platform/write-settlement";
@@ -8,9 +8,9 @@ import { BookTextTaskHistory, type TextHistoryStorage } from "./book-text-task-h
 
 /** Hidden host collection joins plugin snapshot/rollback/full backup/uninstall.
  * Host Agent/user ledgers remain local KV metadata; no business-event replay. */
-export function createTextTaskHistory(origin: EventOrigin, trackCleanup?: (work: Promise<void>) => void): BookTextTaskHistory {
-  const pluginId = origin.startsWith("plugin:") ? origin.slice(7) : null;
-  const key = `read-aware-text-task-history:${origin}`;
+export function createTextTaskHistory(origin: DomainActor, trackCleanup?: (work: Promise<void>) => void): BookTextTaskHistory {
+  const pluginId = actorOrigin(origin).startsWith("plugin:") ? actorOrigin(origin).slice(7) : null;
+  const key = `read-aware-text-task-history:${actorOrigin(origin)}`;
   const storage: TextHistoryStorage = pluginId ? {
     read: async () => (await pluginDocsGet(pluginId, "_host_text_history", "recent"))?.json ?? null,
     write: value => pluginDocsPut(pluginId, "_host_text_history", "recent", value),

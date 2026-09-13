@@ -1,6 +1,7 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { runDomainWrite } from "../platform/domain-write-gate";
 import { AppError, normalizeBookClassification, validateClassificationBookId,
-  type BookClassificationChange, type BookClassificationReceipt, type BookClassificationSnapshot, type DigestFlavor, type EventOrigin } from "@read-aware/core";
+  type BookClassificationChange, type BookClassificationReceipt, type BookClassificationSnapshot, type DigestFlavor } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { isTauri } from "../platform/environment";
 import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "../platform/domain-events";
@@ -25,7 +26,7 @@ async function commit(draft: DomainEventDraft, expectedRevision: string | undefi
     return result;
   });
 }
-export function changeBookClassification(input: BookClassificationChange, origin: EventOrigin, signal?: AbortSignal): Promise<BookClassificationReceipt> {
+export function changeBookClassification(input: BookClassificationChange, origin: DomainActor, signal?: AbortSignal): Promise<BookClassificationReceipt> {
   const change = normalizeBookClassification(input);
   return commit({ type: "book.narrativityClassified", origin, payload: { bookId: change.bookId, narrativity: change.narrativity } }, change.expectedRevision, signal);
 }

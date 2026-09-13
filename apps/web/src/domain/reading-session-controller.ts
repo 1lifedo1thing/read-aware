@@ -1,7 +1,10 @@
+import { actorOrigin, copyEventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import { AppError, errorCode, type EventOrigin, type ReadingModeConfiguration, type ReadingModeSnapshot, type ReadingModeReceipt, type ReadingPlaybackSnapshot, type ReadingPlaybackReceipt, type ReadingLocation, type ReadingNavigationReceipt, type ReadingSessionSnapshot, type ReadingSessionGuard, type ReadingTarget } from "@read-aware/core";
 import type { ReadingModeStepOutcome, ReadingModeStepReceipt, ReadingStep, ReadingPaginationSnapshot } from "@read-aware/core";
-import type { ReadingSessionChange, ReadingDemandSnapshot, ReadingControlsSnapshot, ReadingControlsReceipt, ReadingVisibleTextState } from "@read-aware/core";
+import type { ReadingSessionChange as PublicReadingSessionChange, ReadingDemandSnapshot, ReadingControlsSnapshot, ReadingControlsReceipt, ReadingVisibleTextState } from "@read-aware/core";
 import { normalizeBookRangeQuery, type BookTextRange, type ReadingSelectionSnapshot, type ReadingSelectionReceipt } from "@read-aware/core";
+
+type ReadingSessionChange = Omit<PublicReadingSessionChange, "origin"> & { origin: DomainActor };
 
 export type ReadingSelectionAdapter = {
   validate(range: BookTextRange, signal: AbortSignal): Promise<void>;
@@ -68,8 +71,8 @@ export class ReadingSessionController {
   private demandTimer: ReturnType<typeof setTimeout> | undefined;
   private intent = 0;
   private openingIntent: number | null = null;
-  private intentActor: { intent: number; origin: EventOrigin } | undefined;
-  private closingActor: { session: Session; intent: number; origin: EventOrigin } | undefined;
+  private intentActor: { intent: number; origin: DomainActor } | undefined;
+  private closingActor: { session: Session; intent: number; origin: DomainActor } | undefined;
 
   get hasPendingOpening(): boolean { return this.openingIntent === this.intent; }
   private readonly engineTails = new WeakMap<ReadingEngineAdapter, Promise<unknown>>();
@@ -86,7 +89,7 @@ export class ReadingSessionController {
 
   constructor(private readonly report: (error: unknown) => void = () => {}, private readonly deadlineMs = 30_000, private readonly readerCooldownMs = 1500) {}
 
-  snapshot(): ReadingSessionSnapshot { return structuredClone(this.state); }
+  snapshot(): ReadingSessionSnapshot { return copyEventCause(this.state, structuredClone(this.state)); }
 
   get readerDemandDelay(): number { return Math.max(0, (this.state.readerDemand?.idleAt ?? 0) - Date.now()); }
 
@@ -116,7 +119,7 @@ export class ReadingSessionController {
     return () => { if (this.shell === shell) this.shell = undefined; };
   }
 
-  begin(bookId: string, intent?: number, origin: EventOrigin = "system"): string {
+  begin(bookId: string, intent?: number, origin: DomainActor = "system"): string {
     if (intent !== undefined && intent !== this.intent) throw new AppError("reader/superseded", "Book opening was replaced");
     if (intent === undefined) this.intent++;
     else if (this.intentActor?.intent === intent) origin = this.intentActor.origin;
@@ -180,7 +183,7 @@ export class ReadingSessionController {
     binding?.adapter.retire();
   }
 
-  async selectRange(input: BookTextRange, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<ReadingSelectionReceipt> {
+  async selectRange(input: BookTextRange, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingSelectionReceipt> {
     const range = normalizeBookRangeQuery({ range: input }).range;
     signal?.throwIfAborted(); this.checkGuard(guard);
     const binding = this.selectionAdapter;
@@ -214,7 +217,7 @@ export class ReadingSessionController {
     } finally { off(); signal?.removeEventListener("abort", cancel); }
   }
 
-  async clearSelection(expectedId: string, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<ReadingSelectionReceipt> {
+  async clearSelection(expectedId: string, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingSelectionReceipt> {
     signal?.throwIfAborted(); this.checkGuard(guard);
     if (typeof expectedId !== "string" || !expectedId.trim() || expectedId.length > 256) throw new AppError("reader/invalid-target", "An observed selection ID is required");
     const binding = this.selectionAdapter;
@@ -266,7 +269,7 @@ export class ReadingSessionController {
     };
   }
 
-  async setControls(visible: boolean, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<ReadingControlsReceipt> {
+  async setControls(visible: boolean, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingControlsReceipt> {
     if (signal?.aborted) throw signal.reason;
     this.checkGuard(guard);
     if (typeof visible !== "boolean") throw new AppError("reader/invalid-target", "Controls visibility must be boolean");
@@ -302,7 +305,7 @@ export class ReadingSessionController {
     };
   }
 
-  async configureMode(input: ReadingModeConfiguration, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<ReadingModeReceipt> {
+  async configureMode(input: ReadingModeConfiguration, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingModeReceipt> {
     if (signal?.aborted) throw signal.reason;
     this.checkGuard(guard);
     const binding = this.modeAdapter;
@@ -320,7 +323,7 @@ export class ReadingSessionController {
     binding?.dispose(); binding?.adapter.retire();
   }
 
-  async stepMode(direction: "next" | "previous", signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<ReadingModeStepReceipt> {
+  async stepMode(direction: "next" | "previous", signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingModeStepReceipt> {
     if (signal?.aborted) throw signal.reason;
     this.checkGuard(guard);
     if (direction !== "next" && direction !== "previous") throw new AppError("reader/invalid-target", "Invalid unit direction");
@@ -344,7 +347,7 @@ export class ReadingSessionController {
     } finally { unobserve(); signal?.removeEventListener("abort", cancel); }
   }
 
-  returnToMode(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<ReadingNavigationReceipt> {
+  returnToMode(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingNavigationReceipt> {
     if (signal?.aborted) return Promise.reject(signal.reason);
     try { this.checkGuard(guard); } catch (error) { return Promise.reject(error); }
     const mode = this.state.mode;
@@ -382,13 +385,13 @@ export class ReadingSessionController {
     };
   }
 
-  async controlPlayback(action: "start" | "stop", owner: EventOrigin, signal?: AbortSignal, guard?: ReadingSessionGuard): Promise<ReadingPlaybackReceipt> {
+  async controlPlayback(action: "start" | "stop", owner: DomainActor, signal?: AbortSignal, guard?: ReadingSessionGuard): Promise<ReadingPlaybackReceipt> {
     if (signal?.aborted) throw signal.reason;
     this.checkGuard(guard);
     if (action !== "start" && action !== "stop") throw new AppError("reader/invalid-target", "Invalid playback action");
     const binding = this.playbackAdapter;
     if (!binding || this.session?.id !== binding.id || this.state.status !== "ready") throw new AppError("reader/unavailable", "Read aloud is not attached to a ready reader");
-    if (action === "start") await binding.adapter.start(owner, signal);
+    if (action === "start") await binding.adapter.start(actorOrigin(owner), signal);
     else binding.adapter.stop();
     signal?.throwIfAborted(); this.checkGuard(guard);
     if (this.playbackAdapter !== binding) throw new AppError("reader/superseded", "Playback session was replaced");
@@ -404,7 +407,7 @@ export class ReadingSessionController {
     binding?.adapter.stop();
   }
 
-  close(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<void> {
+  close(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<void> {
     if (signal?.aborted) return Promise.reject(signal.reason);
     try { this.checkGuard(guard); } catch (error) { return Promise.reject(error); }
     if (!this.session && !this.hasPendingOpening) return Promise.resolve();
@@ -435,7 +438,7 @@ export class ReadingSessionController {
     });
   }
 
-  navigate(target: ReadingTarget, signal?: AbortSignal, origin: EventOrigin = "system"): Promise<ReadingNavigationReceipt> {
+  navigate(target: ReadingTarget, signal?: AbortSignal, origin: DomainActor = "system"): Promise<ReadingNavigationReceipt> {
     const validString = (value: unknown, max = 8192) => value === undefined || typeof value === "string" && value.length > 0 && value.length <= max;
     if (!target || typeof target !== "object" || !validString(target.bookId) || !validString(target.cfi)
       || !validString(target.href) || !validString(target.contentVersion, 256)) {
@@ -459,24 +462,24 @@ export class ReadingSessionController {
     return this.run({ ...target, bookId }, signal, { change: { origin, reason: "navigate" } });
   }
 
-  back(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<ReadingNavigationReceipt> {
+  back(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingNavigationReceipt> {
     if (this.cursor <= 0) return Promise.reject(new AppError("reader/no-history", "No previous reading location"));
     return this.run(this.history[this.cursor - 1], signal, { historyIndex: this.cursor - 1, guard, change: { origin, reason: "back" } });
   }
 
-  forward(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<ReadingNavigationReceipt> {
+  forward(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingNavigationReceipt> {
     if (this.cursor < 0 || this.cursor >= this.history.length - 1) return Promise.reject(new AppError("reader/no-history", "No next reading location"));
     return this.run(this.history[this.cursor + 1], signal, { historyIndex: this.cursor + 1, guard, change: { origin, reason: "forward" } });
   }
 
-  step(direction: ReadingStep, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<ReadingNavigationReceipt> {
+  step(direction: ReadingStep, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingNavigationReceipt> {
     if (!["next", "previous", "next-section", "previous-section", "next-chapter", "previous-chapter", "start", "end"].includes(direction)) return Promise.reject(new AppError("reader/invalid-target", "Invalid navigation step"));
     const bookId = this.session?.bookId;
     if (!bookId) return Promise.reject(new AppError("reader/no-session", "No active reading session"));
     return this.run({ bookId }, signal, { direction, guard, change: { origin, reason: "step" } });
   }
 
-  reload(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: EventOrigin = "system"): Promise<ReadingNavigationReceipt> {
+  reload(signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingNavigationReceipt> {
     const bookId = this.session?.bookId;
     if (!bookId) return Promise.reject(new AppError("reader/no-session", "No active reading session"));
     return this.run({ bookId }, signal, { direction: "start", guard, reload: true, change: { origin, reason: "reload" } });
@@ -634,7 +637,7 @@ export class ReadingSessionController {
   /** Acknowledgement metadata must not replay a captured UI value: observers can
    * already have committed a newer value while the original receipt settled. */
   private publishCommand(change: ReadingSessionChange): void {
-    if (this.state.change?.origin !== change.origin || this.state.change.reason !== change.reason) this.publish({}, change);
+    if (this.state.change?.origin !== actorOrigin(change.origin) || this.state.change.reason !== change.reason) this.publish({}, change);
   }
 
   private publish(patch: Partial<ReadingSessionSnapshot>, change?: ReadingSessionChange): void {
@@ -647,8 +650,8 @@ export class ReadingSessionController {
       clearTimeout(this.demandTimer); this.demandTimer = undefined;
       patch = { ...patch, sourceRevision: null, readerDemand: { active: false, lastActivityAt: null, idleAt: null, reason: null } };
     }
-    this.state = { ...this.state, ...patch, change: { ...(change ?? { origin: "system", reason }) }, revision: this.state.revision + 1,
-      history: { canGoBack: this.cursor > 0, canGoForward: this.cursor >= 0 && this.cursor < this.history.length - 1 } };
+    this.state = stampEventCause({ ...this.state, ...patch, change: { origin: change ? actorOrigin(change.origin) : "system", reason: change?.reason ?? reason }, revision: this.state.revision + 1,
+      history: { canGoBack: this.cursor > 0, canGoForward: this.cursor >= 0 && this.cursor < this.history.length - 1 } }, change?.origin);
     for (const listener of [...this.listeners]) this.deliver(listener);
     for (const notify of [...this.changes]) notify();
   }

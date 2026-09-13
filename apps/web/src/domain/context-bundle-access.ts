@@ -1,6 +1,7 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { AppError, assertContextBundleGrants, contextBundleSelector, normalizeContextBundleHistoryQuery, normalizeContextBundleReadQuery,
   type ContextBundle, type ContextBundleCaptureReceipt, type ContextBundleHistoryPage, type ContextBundleHistoryQuery, type ContextBundleReadQuery,
-  type ContextBundleSelector, type DomainGrants, type EventOrigin, type ResourceRef } from "@read-aware/core";
+  type ContextBundleSelector, type DomainGrants, type ResourceRef } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
 import { createLogger } from "../platform/logger";
 import { initializeUserProfile } from "./user-profile";
@@ -20,7 +21,7 @@ type Host = {
   exportBundle: typeof exportContextBundle;
   report(error: unknown): void;
 };
-export type ContextBundleActor = { origin: EventOrigin; grants: DomainGrants; lifetime?: AbortSignal };
+export type ContextBundleActor = { origin: DomainActor; grants: DomainGrants; lifetime?: AbortSignal };
 
 export type ContextBundleAccess = {
   capture(selector: ContextBundleSelector, signal?: AbortSignal): Promise<ContextBundleCaptureReceipt>;

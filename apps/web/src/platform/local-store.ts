@@ -1,3 +1,4 @@
+import { actorCause, actorOrigin, copyEventCause, stampEventCause, type DomainActor } from "./domain-actor";
 /**
  * The device-local persistence seam.
  *
@@ -20,7 +21,7 @@
  * Tauri, the snapshot is empty and reads fall back to defaults.
  */
 import { runObservedDomainWrite, runDomainWrite, type RunDomainWrite } from "./domain-write-gate";
-import { AppError, errorCode, type EventOrigin } from "@read-aware/core";
+import { AppError, errorCode } from "@read-aware/core";
 import { invoke } from "./ipc";
 import { emitAppEvent } from "./app-events";
 import { isTauri } from "./environment";
@@ -73,7 +74,7 @@ export function onLocalKVCommit(listener: (commit: KVCommit) => void): () => voi
 }
 function notifyCommit(commit: KVCommit): void {
   for (const listener of [...commitListeners]) {
-    try { listener(structuredClone(commit)); } catch (error) { log.error("KV transaction observer failed", error); }
+    try { listener(copyEventCause(commit, structuredClone(commit))); } catch (error) { log.error("KV transaction observer failed", error); }
   }
 }
 
@@ -159,18 +160,20 @@ export const localKV = {
     void writeLocal([key], () => writes.write(key, null, origin));
   },
 
-  setItemAsync(key: string, value: string, actor: EventOrigin | null = null): Promise<void> {
+  setItemAsync(key: string, value: string, actor: DomainActor | null = null): Promise<void> {
+    actorCause(actor ?? undefined);
     if (isTauri()) return writeLocal([key], () => writes.write(key, value, "local", actor));
     localStorage.setItem(key, value);
     notifyChange(key, value);
-    notifyCommit({ entries: [{ key, value }], source: "local", actor });
+    notifyCommit(stampEventCause({ entries: [{ key, value }], source: "local", actor: actor === null ? null : actorOrigin(actor) }, actor ?? undefined));
     return Promise.resolve();
   },
-  removeItemAsync(key: string, actor: EventOrigin | null = null): Promise<void> {
+  removeItemAsync(key: string, actor: DomainActor | null = null): Promise<void> {
+    actorCause(actor ?? undefined);
     if (isTauri()) return writeLocal([key], () => writes.write(key, null, "local", actor));
     localStorage.removeItem(key);
     notifyChange(key, null);
-    notifyCommit({ entries: [{ key, value: null }], source: "local", actor });
+    notifyCommit(stampEventCause({ entries: [{ key, value: null }], source: "local", actor: actor === null ? null : actorOrigin(actor) }, actor ?? undefined));
     return Promise.resolve();
   },
 
@@ -201,14 +204,15 @@ export const localKV = {
 
 /** Join host-owned KV metadata to a native domain transaction using the same
  * ordered optimistic mirror and rollback as ordinary KV writes. Desktop only. */
-export function commitLocalKVTransaction(entries: ReadonlyMap<string, string | null>, persist: () => Promise<void>, actor: EventOrigin): Promise<void> {
+export function commitLocalKVTransaction(entries: ReadonlyMap<string, string | null>, persist: () => Promise<void>, actor: DomainActor): Promise<void> {
   if (!isTauri()) return Promise.reject(new AppError("plugin/unavailable", "Native KV transaction requires desktop"));
   const values = new Map(entries);
   return writeLocal(values.keys(), () => writes.batch(values, persist, actor, "local", "caller"), "caller");
 }
 
 /** Host-only multi-record settings commit; never exposes raw KV authority to actors. */
-export function setLocalKVBatch(entries: ReadonlyMap<string, string | null>, actor: EventOrigin | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store", run: RunDomainWrite = runDomainWrite): Promise<void> {
+export function setLocalKVBatch(entries: ReadonlyMap<string, string | null>, actor: DomainActor | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store", run: RunDomainWrite = runDomainWrite): Promise<void> {
+  actorCause(actor ?? undefined);
   if (entries.size === 0) return Promise.resolve();
   const values = new Map(entries);
   if (isTauri()) {
@@ -230,7 +234,7 @@ export function setLocalKVBatch(entries: ReadonlyMap<string, string | null>, act
     return Promise.reject(error);
   }
   for (const [key, value] of values) notifyChange(key, value);
-  notifyCommit({ entries: [...values].map(([key, value]) => ({ key, value })), source, actor });
+  notifyCommit(stampEventCause({ entries: [...values].map(([key, value]) => ({ key, value })), source, actor: actor === null ? null : actorOrigin(actor) }, actor ?? undefined));
   return Promise.resolve();
 }
 

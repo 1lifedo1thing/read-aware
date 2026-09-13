@@ -1,3 +1,4 @@
+import { actorOrigin } from "../platform/domain-actor";
 import { withDomainBackup } from "../platform/domain-write-gate";
 import { expect, test } from "bun:test";
 import { AppError, type OnboardingReceipt } from "@read-aware/core";
@@ -13,7 +14,7 @@ test.each(["committed", "replayed", "failed", "cancel-before", "disabled"])("onb
   const service = createOnboardingService({ allowed: () => enabled, initialize: async () => {},
     mint: async drafts => {
       if (mode === "cancel-before" || mode === "disabled") { entered.resolve(); await gate.promise; }
-      return drafts.map(draft => ({ ...draft, id: "minted", hlc: { wallMs: 1, counter: 1, deviceId: "test" } }));
+      return drafts.map(draft => ({ ...draft, origin: draft.origin === undefined ? undefined : actorOrigin(draft.origin), id: "minted", hlc: { wallMs: 1, counter: 1, deviceId: "test" } }));
     }, broadcast: drafts => { broadcasts.push(...drafts); },
     invoke: async <T>(command: string, args: unknown): Promise<T> => {
       calls.push({ command, args: structuredClone(args) }); entered.resolve(); await gate.promise;
