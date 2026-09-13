@@ -5,7 +5,8 @@ import { applyFullBackup } from "../../src/features/settings/lib/full-backup-app
 import { chooseBackupData, chooseBackupRows, loadBackupReviewModel } from "../../src/features/settings/lib/full-backup-review-model";
 import { migrateFullBackupPrograms } from "../../src/features/settings/lib/full-backup-program-migration";
 import { createLibraryDomain } from "../../src/domain/library";
-import { getPluginBookAccess } from "../../src/features/plugins/state/plugin-store";
+import { getPluginBookAccess, requestInstallConsent } from "../../src/features/plugins/state/plugin-store";
+import { parseManifestJson } from "../../src/features/plugins/lib/manifest";
 import { invoke } from "../../src/platform/ipc";
 import { flushLocalKV, localKV } from "../../src/platform/local-store";
 import { withPluginDataBackup } from "../../src/platform/plugin-data-access";
@@ -76,7 +77,7 @@ export async function cleanupFull2RestoredGrantFixture(id: string) {
 /** Explicit synthetic consent, actual migration Worker and native transaction.
  * Successful apply holds production write barriers until the driver reloads.
  */
-export async function runFull2BackupGrantApplyProbe(bookId: string) {
+export async function runFull2BackupGrantApplyProbe(bookId: string, consent: "synthetic" | "dialog" = "synthetic") {
   await assertFull2BookAccessProfile();
   if (!fixture) throw new Error("Prepare fixture first");
   const current = fixture;
@@ -107,6 +108,16 @@ export async function runFull2BackupGrantApplyProbe(bookId: string) {
     const checked = await review.checkRows(model.decisions.revision);
     if (!checked.constraintsPassed || review.plan.conflictingEvents) throw new Error("Restore constraints failed");
     const grant = { mode: "book" as const, bookId };
+    if (consent === "dialog") {
+      const beforeConsent = await kvSnapshot();
+      const beforePlugins = await listPluginEntries();
+      const decision = await requestInstallConsent(parseManifestJson(source.manifest), undefined, books.map(book => ({ id: book.id, title: book.title })));
+      if (!decision.approved) {
+        if (JSON.stringify(beforeConsent) !== JSON.stringify(await kvSnapshot()) || JSON.stringify(beforePlugins) !== JSON.stringify(await listPluginEntries())) throw new Error("Consent cancellation changed native state");
+        return { cancelled: true, nativeUnchanged: true, id: current.id };
+      }
+      if (grantSnapshot(decision.grant) !== grantSnapshot(grant)) throw new Error("Select the recorded fixture book in the consent dialog");
+    }
     const programResults = await migrateFullBackupPrograms(review, new Map(Object.entries(model.programChoices)), new Map([[current.id, grant]]), await getVersion());
     if (!programResults[current.id]?.consented || JSON.stringify(programResults[current.id]?.bookAccess) !== JSON.stringify(grant)) throw new Error("Selected grant lost before apply");
     const receipt = await review.apply({ rowRevision: model.decisions.revision, files: model.fileChoices, programs: model.programChoices, credentials: model.credentialChoices, programResults });
@@ -115,7 +126,7 @@ export async function runFull2BackupGrantApplyProbe(bookId: string) {
     if (grantSnapshot(grants[current.id]) !== grantSnapshot(grant)) throw new Error("Restored grant differs from selection");
     for (const [id, value] of Object.entries(priorGrants)) if (grantSnapshot(grants[id]) !== grantSnapshot(value)) throw new Error(`Existing grant changed: ${id}`);
     if (!(await listPluginEntries()).some(plugin => plugin.id === current.id)) throw new Error("Restored plugin files missing");
-    return { receipt, id: current.id, archive: current.archive, grant: grants[current.id], priorGrantsPreserved: true, expectedBookIds: books.map(book => book.id), requiresReload: true, boundary: "synthetic consent choice through real migration Worker and native apply; consent UI pending" };
+    return { receipt, id: current.id, archive: current.archive, grant: grants[current.id], priorGrantsPreserved: true, expectedBookIds: books.map(book => book.id), requiresReload: true, boundary: `${consent} consent choice through real migration Worker and native apply` };
   } finally { await review.dispose(); }
 }
 
