@@ -2457,3 +2457,12 @@ export type PluginModule = {
   migrate?(ctx: PluginMigrationContext, migration: PluginMigration): void | Promise<void>;
   deactivate?(): void | Promise<void>;
 };
+
+export {
+  searchAllBookLocations,
+  type BookLocationSearchPageReader,
+  type BookLocationSearchProgress,
+  type BookLocationSearchRunStatus,
+  type BookLocationSearchRun,
+  type BookLocationSearchRunOptions,
+} from "./book-location-search";

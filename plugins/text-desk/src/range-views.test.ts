@@ -1,22 +1,30 @@
 import { expect, test } from "bun:test";
-import type { BookRangeQuery, PluginContext, PluginDetailView, PluginListView } from "@read-aware/plugin-types";
+import type { BookRangeQuery, PluginContext, PluginDetailView, PluginListView, PluginView, PluginViewUpdate } from "@read-aware/plugin-types";
 import { capturedRangeDetail, rangeDetail, rangeResults, rangeSearchForm } from "./range-views";
 
 function fixture() {
   const range = { bookId: "book", contentVersion: "v1", cfi: "epubcfi(/6/2!/4/2,/1:0,/1:6)" };
-  const reads: BookRangeQuery[] = [], jumps: unknown[] = [], searches: unknown[] = [];
-  const ctx = { locale: "en", domains: {
+  const reads: BookRangeQuery[] = [], jumps: unknown[] = [], searches: unknown[] = [], updates: PluginViewUpdate[] = [];
+  const ctx = { locale: "en", services: { ui: { publishView: async (_channel: unknown, update: PluginViewUpdate) => {
+    updates.push(update); return { status: "applied" as const };
+  } } }, domains: {
     library: { queries: { books: {
-      searchLocations: async (input: unknown) => { searches.push(input); return { bookId: "book", contentVersion: "v1", hits: [
-        { id: "one", range, location: range, excerpt: { pre: "before ", match: "needle", post: " after" } },
-      ], nextCursor: "next", textStatus: "available" }; },
+      searchLocations: async (input: any) => { searches.push(input); return input.cursor
+        ? { bookId: "book", contentVersion: "v1", hits: [], nextCursor: null, textStatus: "available", scannedSections: 1, totalSections: 1 }
+        : { bookId: "book", contentVersion: "v1", hits: [{ id: "one", sectionIndex: 0, range, location: range,
+          excerpt: { pre: "before ", match: "needle", post: " after" } }], nextCursor: "next", textStatus: "partial", scannedSections: 0, totalSections: 1 }; },
       readRange: async (input: BookRangeQuery) => { reads.push(input); return { range: input.range, sectionIndex: 0,
         text: input.offset ? "dle" : "nee", offset: input.offset ?? 0, totalLength: 6, nextOffset: input.offset ? null : 3,
         context: { before: "before ", after: " after" } }; },
     } } },
     reading: { commands: { goTo: async (target: unknown) => { jumps.push(target); } } },
   } } as unknown as PluginContext;
-  return { ctx, range, reads, jumps, searches };
+  return { ctx, range, reads, jumps, searches, updates };
+}
+async function mount(view: PluginView, id = "channel") {
+  const subscription = await view.live!.subscribe({ id });
+  await Bun.sleep(0);
+  return subscription;
 }
 
 test("selection composition consumes the captured source and never restamps a missing legacy anchor", async () => {
@@ -28,13 +36,18 @@ test("selection composition consumes the captured source and never restamps a mi
 });
 
 test("passage form validates before queries; result selection reads without moving the reader", async () => {
-  const { ctx, range, reads, jumps, searches } = fixture();
+  const { ctx, range, reads, jumps, searches, updates } = fixture();
   const form = rangeSearchForm(ctx, "book");
   for (const query of [" ", "x".repeat(501)]) expect(await form.onSubmit({ query })).toHaveProperty("fieldErrors.query");
   expect(searches).toEqual([]);
   const result = await form.onSubmit({ query: " needle ", matchCase: true, wholeWords: false });
-  expect(searches).toEqual([{ bookId: "book", query: "needle", matchCase: true, wholeWords: false, limit: 20 }]);
-  const list = result!.view as PluginListView;
+  expect(result!.view).toMatchObject({ kind: "blocks", blocks: [{ kind: "progress", value: null }] });
+  await mount(result!.view!);
+  expect(searches).toEqual([
+    { bookId: "book", query: "needle", matchCase: true, wholeWords: false, limit: 20 },
+    { bookId: "book", query: "needle", matchCase: true, wholeWords: false, limit: 20, cursor: "next", contentVersion: "v1" },
+  ]);
+  const list = updates[updates.length - 1]!.view as PluginListView;
   const selected = await list.items[0].onSelect!();
   expect(reads).toEqual([{ range }]);
   expect(jumps).toEqual([]);
@@ -44,8 +57,6 @@ test("passage form validates before queries; result selection reads without movi
   expect(reads[1]).toEqual({ range, offset: 3 });
   await detail.actions!.find(a => a.id === "open-passage")!.run();
   expect(jumps).toEqual([range]);
-  await list.actions!.find(action => action.id === "next")!.run();
-  expect(searches[1]).toMatchObject({ contentVersion: "v1", cursor: "next" });
 });
 
 test("stale reads and failed searches reject, never display a fabricated empty or usable passage", async () => {
@@ -54,7 +65,7 @@ test("stale reads and failed searches reject, never display a fabricated empty o
   ctx.domains.library!.queries.books.readRange = async () => { throw failure; };
   await expect(rangeDetail(ctx, { range })).rejects.toBe(failure);
   ctx.domains.library!.queries.books.searchLocations = async () => { throw failure; };
-  await expect(rangeResults(ctx, { bookId: "book", query: "needle" })).rejects.toBe(failure);
+  await expect(rangeResults(ctx, { bookId: "book", query: "needle" })).resolves.toMatchObject({ emptyText: "The book changed; search again", items: [] });
 });
 
 test("select passage composes open-if-needed with versioned selection and waits before closing", async () => {

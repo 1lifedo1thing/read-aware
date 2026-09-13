@@ -33,7 +33,7 @@ function fixture() {
     updates.push(update); return { status: "applied" };
   } } }, domains: {
     library: { queries: { books: { getNavigationToc: async () => ({ bookId: "book", contentVersion: "v1", entries }),
-      searchLocations: async () => ({ bookId: "book", contentVersion: "v1", hits: [], nextCursor: "next", textStatus: "partial", scannedSections: 32, totalSections: 40 }),
+      searchLocations: async () => ({ bookId: "book", contentVersion: "v1", hits: [], nextCursor: null, textStatus: "available", scannedSections: 1, totalSections: 1 }),
     } } },
     reading: { queries: { session: async () => ({ bookId: "book", sessionId: "session", history: { canGoBack: true, canGoForward: true } }) },
       commands: { goTo: async (target: ReadingLocation) => { jumps.push(target); } },
@@ -85,21 +85,26 @@ test("ambiguous chapters return choices instead of picking a destination", async
   expect(jumps).toEqual([location]);
 });
 
-test("empty search batches retain continuation and the pinned revision", async () => {
+test("empty paged searches consume continuation and retain the pinned revision", async () => {
   const { ctx, updates } = fixture();
+  const requests: unknown[] = [];
+  ctx.domains.library.queries.books.searchLocations = async input => {
+    requests.push(input);
+    return input.cursor
+      ? { bookId: "book", contentVersion: "v1", hits: [], nextCursor: null, textStatus: "available", scannedSections: 2, totalSections: 2 }
+      : { bookId: "book", contentVersion: "v1", hits: [], nextCursor: "next", textStatus: "partial", scannedSections: 1, totalSections: 2 };
+  };
   const task = (await (await form(ctx)).onSubmit({ mode: "text", query: "needle" }))!.view!;
   expect(task).toMatchObject({ kind: "blocks", blocks: [{ kind: "progress", value: null }] });
   await mount(task);
   const result = list({ view: updates[updates.length - 1]!.view });
-  expect(result.emptyText).toBe("本批次没有匹配结果。");
-  let input: unknown;
-  ctx.domains.library.queries.books.searchLocations = async next => {
-    input = next;
-    return { bookId: "book", contentVersion: "v1", hits: [], nextCursor: null, textStatus: "available", scannedSections: 40, totalSections: 40 };
-  };
-  await mount((await result.actions![0].run())!.view!, "next");
-  expect(list({ view: updates[updates.length - 1]!.view }).emptyText).toBe("没有匹配结果。");
-  expect(input).toMatchObject({ bookId: "book", query: "needle", cursor: "next", contentVersion: "v1" });
+  expect(result.emptyText).toBe("没有匹配结果。");
+  expect(requests).toEqual([
+    { bookId: "book", query: "needle", matchCase: false, wholeWords: false, limit: 20 },
+    { bookId: "book", query: "needle", matchCase: false, wholeWords: false, limit: 20, cursor: "next", contentVersion: "v1" },
+  ]);
+  expect(updates.some(update => update.view.kind === "blocks" && update.view.blocks[0]?.kind === "progress"
+    && update.view.blocks[0].value === 1)).toBe(true);
 });
 
 test("cancel stops only the current query and ignores a late successful reply", async () => {
@@ -165,7 +170,7 @@ test("failed searches show a host error code and retry uses a fresh signal and t
   const retry = await error.blocks[1].actions[0].run();
   expect(retry!.navigation).toBe("replace");
   await mount(retry!.view!, "retry");
-  expect(inputs).toEqual([input, input]);
+  expect(inputs).toEqual([{ ...input, limit: 50 }, { ...input, limit: 50 }]);
   expect(signals[0]).not.toBe(signals[1]);
 });
 
@@ -200,9 +205,9 @@ test("completed text matches retain their versioned location and do not search a
   expect(jumps).toEqual([location]);
 });
 
-test("stale locations do not offer a guaranteed-failing retry of the same cursor", async () => {
+test("stale locations discard hits and do not offer a guaranteed-failing retry of the same cursor", async () => {
   const { ctx, updates } = fixture();
   ctx.domains.library.queries.books.searchLocations = async () => { throw { code: "reader/stale-location" }; };
   await mount(textSearchView(ctx, { bookId: "book", query: "needle", cursor: "old" }));
-  expect(updates[updates.length - 1]!.view).toMatchObject({ kind: "blocks", blocks: [{ kind: "error", code: "reader/stale-location" }] });
+  expect(updates[updates.length - 1]!.view).toMatchObject({ kind: "list", items: [], emptyText: "书籍内容已变化，请重新搜索。", actions: [] });
 });

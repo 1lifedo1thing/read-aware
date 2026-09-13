@@ -1,4 +1,4 @@
-import type { BookLocationSearch, PluginListView, PluginView, PluginViewChannel, PluginViewContent } from "@read-aware/plugin-types";
+import { searchAllBookLocations, type BookLocationSearch, type BookLocationSearchProgress, type PluginListView, type PluginView, type PluginViewChannel, type PluginViewContent } from "@read-aware/plugin-types";
 import { tr } from "./strings";
 import type { JumperContext } from "./types";
 
@@ -9,6 +9,13 @@ export function textSearchView(ctx: JumperContext, input: BookLocationSearch): P
     run: () => ({ view: textSearchView(ctx, input), navigation: "replace" as const }) };
   const cancelled = (): PluginViewContent => ({ kind: "list", title: input.query, items: [],
     emptyText: tr(ctx.locale, "cancelled"), actions: [retry] });
+  const progress = (value: BookLocationSearchProgress): PluginViewContent => ({ kind: "blocks", title: input.query, blocks: [
+    { kind: "progress", value: value.totalSections ? Math.min(value.scannedSections, value.totalSections) : null,
+      ...(value.totalSections ? { max: value.totalSections, showValue: true } : {}),
+      label: value.totalSections ? `${tr(ctx.locale, "searching")} (${value.scannedSections}/${value.totalSections})` : tr(ctx.locale, "searching"), cancel: {
+        id: "cancel", label: tr(ctx.locale, "cancel"), run: async () => { stop(); await publish(); },
+      } },
+  ] });
   const stop = () => {
     controller.abort();
     if (pending) { pending = false; current = cancelled(); }
@@ -34,19 +41,32 @@ export function textSearchView(ctx: JumperContext, input: BookLocationSearch): P
     await publish();
     if (controller.signal.aborted) return;
     try {
-      const page = await ctx.domains.library.queries.books.searchLocations(input, { signal: controller.signal });
+      const run = await searchAllBookLocations(
+        (pageInput, options) => ctx.domains.library.queries.books.searchLocations(pageInput, options),
+        input,
+        { signal: controller.signal, onProgress: async value => {
+          if (controller.signal.aborted || !pending) return;
+          current = progress(value);
+          await publish();
+        } },
+      );
       if (controller.signal.aborted) return;
-      const result: PluginListView = { kind: "list", title: input.query,
-        emptyText: tr(ctx.locale, page.nextCursor ? "pending" : page.textStatus === "textless" ? "textless"
-          : page.textStatus === "unsupported" || page.textStatus === "partial" ? "unsupported" : "noHits"),
-        items: page.hits.map(hit => ({ id: hit.id, title: hit.excerpt.pre + hit.excerpt.match + hit.excerpt.post,
+      if (run.status === "cancelled") { pending = false; current = cancelled(); await publish(); return; }
+      const emptyKey = run.status === "timed-out" ? "timedOut"
+        : run.status === "scan-limit" ? "scanLimit"
+          : run.status === "result-limit" ? "resultLimit"
+            : run.status === "stale" ? "stale"
+              : run.textStatus === "textless" ? "textless"
+                : run.textStatus === "unsupported" || run.textStatus === "partial" ? "unsupported" : "noHits";
+      const resultTitle = run.status === "completed" ? input.query : `${input.query} · ${tr(ctx.locale, emptyKey)}`;
+      const result: PluginListView = { kind: "list", title: resultTitle,
+        emptyText: tr(ctx.locale, emptyKey),
+        items: run.hits.map(hit => ({ id: hit.id, title: hit.excerpt.pre + hit.excerpt.match + hit.excerpt.post,
           icon: "magnifying-glass", onSelect: async () => {
             await ctx.domains.reading.commands.goTo(hit.location);
             return { close: true };
           } })),
-        actions: page.nextCursor ? [{ id: "more", label: tr(ctx.locale, "more"), icon: "arrow-right", run: () => ({
-          view: textSearchView(ctx, { ...input, contentVersion: page.contentVersion, cursor: page.nextCursor! }),
-        }) }] : [],
+        actions: run.status === "timed-out" || run.status === "scan-limit" || run.status === "result-limit" ? [retry] : [],
       };
       current = result;
     } catch (error) {
