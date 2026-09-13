@@ -14,10 +14,12 @@ import { registerActiveBookContent, withBookContent } from "../../src/features/l
 import { retainBook } from "../../src/features/reader/lib/book-lifetime";
 import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
 import textDeskManifest from "../../../../plugins/text-desk/manifest.json";
+import { getDesktopBlob, getDesktopBlobInfo, putDesktopBlob } from "../../src/platform/blob-store";
 
 const workers = new Map<string, SandboxedPlugin>();
 const disposables: PluginDisposable[] = [];
 let books: Record<string, string> = {};
+let originalSource: Uint8Array | undefined;
 let heldSearch: { entered: number; returned: number; release: () => void; finish: () => void; task: Promise<void> } | undefined;
 async function isolated() {
   const path = await appDataDir();
@@ -65,6 +67,7 @@ export async function cleanupTextSearchProbe() {
   const shutdown = await Promise.allSettled([...workers.values()].map(worker => worker.terminate())); workers.clear();
   for (const disposable of disposables.splice(0).reverse()) disposable.dispose();
   const cleanup = await cleanupTextStateProbe(); books = {};
+  originalSource = undefined;
   return { ...cleanup, sourceError, shutdownErrors: shutdown.flatMap(result => result.status === "rejected" ? [String(result.reason)] : []),
     searchContributions: ids.reduce((count, id) => count + inspectContributions(id).length, 0) };
 }
@@ -113,4 +116,57 @@ export async function textSearchLifecycleStatus(releaseRead = false) {
   if (releaseRead) heldSearch.release();
   return { entered: heldSearch.entered, returned: heldSearch.returned,
     textState: await getBookTextSnapshot(books.normal!) };
+}
+
+/** Bounded real Worker burst against the held real parser; no mocked search result. */
+export async function startTextSearchPressureProbe() {
+  const seed = await startTextSearchLifecycleProbe();
+  const id = "capability-search-pressure";
+  const worker = await startPluginWorker({ id, name: id, description: books.normal,
+    schemaVersion: 1, version: "1.0.0", permissions: ["library:read"],
+    requires: { domains: { library: "^1.4.0" } } }, "0.5.4", disposables,
+  { moduleUrl: new URL("./text-search-probe.ts", import.meta.url).href });
+  workers.set(id, worker); await worker.checkHealth(); worker.promote();
+  return { ...seed, pressurePluginId: id };
+}
+
+export async function textSearchPressureCommand(id: "pressure-start" | "pressure-cancel" | "pressure-retry" | "pressure-status") {
+  await isolated();
+  const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === "capability-search-pressure" && item.id === id);
+  if (!command) throw Error("Pressure probe command missing");
+  return parseProbeToast((await command.run())!.toast!);
+}
+
+export async function startTextSearchSourceProbe() {
+  await isolated();
+  if (heldSearch || workers.size) throw Error("Clean the previous search probe first");
+  const seed = await seedTextStateBooks(); books = seed.books;
+  const id = "capability-search-source";
+  const worker = await startPluginWorker({ id, name: id, description: books.normal,
+    schemaVersion: 1, version: "1.0.0", permissions: ["library:read"],
+    requires: { domains: { library: "^1.4.0" } } }, "0.5.4", disposables,
+  { moduleUrl: new URL("./text-search-probe.ts", import.meta.url).href });
+  workers.set(id, worker); await worker.checkHealth(); worker.promote();
+  return { ...seed, pluginId: id };
+}
+
+export async function replaceTextSearchSource(restore = false) {
+  await isolated();
+  if (!books.normal || !workers.has("capability-search-source")) throw Error("No owned source probe");
+  const key = `bookfile:${books.normal}`;
+  originalSource ??= await getDesktopBlob(key) ?? undefined;
+  if (!originalSource) throw Error("Owned source missing");
+  const original = new TextDecoder().decode(originalSource);
+  const changed = original.replace("Text preparation probe: this section contains enough text for the chapter index.",
+    "Replacement text source: the changed text belongs to a newer revision.");
+  if (changed === original) throw Error("Owned fixture content did not match");
+  await putDesktopBlob(key, restore ? originalSource : new TextEncoder().encode(changed));
+  return getDesktopBlobInfo(key);
+}
+
+export async function textSearchSourceCommand(id: "source-capture" | "source-stale" | "source-refresh") {
+  await isolated();
+  const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === "capability-search-source" && item.id === id);
+  if (!command) throw Error("Source probe command missing");
+  return parseProbeToast((await command.run())!.toast!);
 }

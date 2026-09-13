@@ -1081,3 +1081,28 @@ searched index。通过真实domain重查旧词确有一条exact命中，故新�
 自有三书、贡献均0，shutdownErrors=[]；原两书保留、导入意图0。本轮证明实际
 Worker视图返回/替换时取消旧请求并共享抽取后的结果隔离，不声称任意并发背压、
 物理强停、其他格式或前台焦点通过。当前CUA仍报告Mac锁定；未重复同一锁定操作。
+
+## 第四十二流程：真实Worker搜索背压与实际源文件版本变化
+
+在既有desktop-text-search-probe和Worker探针补有界入口，不建新框架。导入实际
+FB2，沿用真实解析器、仅暂停createDocument返回。测试Worker经公开searchLocations
+并发40次：32个真实读取进入等待、8个plugin/busy。取消第0个调用立即回到调用者
+（原始DOMException code=20）；物理读取还没结束时新增第41个仍plugin/busy。
+放行后32个底层读取返回，其中取消项不交付、其他31项各1个正确命中；随后第42个
+成功，parser entered/returned=33/33。清理shutdownErrors=[]、贡献/自有书0。
+编译Text Desk也由复用驱动加载，但发起40并发的是测试Worker，不冒称产品UI并发。
+
+另导入独立自有FB2，真实Worker捕获limit=1的text搜索页、nextCursor与Text范围。
+经真实putDesktopBlob写入不同正文Replacement text source...，原生sha256由
+b9819046…变为2d5cc607…；旧游标（不另传旧版本）、显式旧版本查询和旧range三项
+均reader/stale-location。重新搜索/读范围得到新版本及Replacement上下文、CFI
+偏移由0–4变为12–16。book/global Agent真实RuntimeDeps旧游标/范围同样拒绝，
+新查询各返回一条新正文命中；没有模型回合，不计语义质量。恢复原字节后哈希
+完全相同，Worker重新读回原Text及原上下文。自有三书和Worker全部清理。
+
+证据：[text-search-pressure-source-observations.json](./text-search-pressure-source-observations.json)。
+驱动desktop类型检查通过；无产品代码变更，不重复全量门禁。第一次脚本使用了
+不存在的subscriptions API，激活失败后先清理再改为实际deactivate钩子，未计产品
+失败。原验收两书/导入意图0保持。本轮是请求之间经托管blob写入换源；读取中途
+换源、用户文件替换工作流、绕过blob登记的外部改写、其他格式/packaged/平台仍
+独立待验，不把本轮扩写成这些边界的证明。

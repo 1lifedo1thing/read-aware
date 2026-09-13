@@ -1,0 +1,918 @@
+{
+  "flow": 42,
+  "date": "2026-09-13",
+  "baseline": "272150a0",
+  "boundary": "macOS debug Tauri 2.11.2, real test Worker/public plugin API, native imported FB2 and blob writes; pressure gates only real parser reads; no model turn or foreground pixels",
+  "pressure": {
+    "cancelledHeld": {
+      "parser": {
+        "entered": 32,
+        "returned": 0,
+        "textState": {
+          "bookId": "6309aa84-7781-43fd-bb50-35af65fc803b",
+          "chapterCount": 0,
+          "contentVersion": "sha256:711dcb905ff3b58ef8aeecc8e0fe6a1aae261d85e3a00aac07612b9738346fd3",
+          "progress": null,
+          "status": "unprepared",
+          "text": "unknown"
+        }
+      },
+      "worker": {
+        "results": [
+          {
+            "code": 20,
+            "status": "rejected"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          }
+        ]
+      }
+    },
+    "cleanup": {
+      "contributions": 0,
+      "remainingBooks": 0,
+      "searchContributions": 0,
+      "shutdownErrors": []
+    },
+    "held": {
+      "parser": {
+        "entered": 32,
+        "returned": 0,
+        "textState": {
+          "bookId": "6309aa84-7781-43fd-bb50-35af65fc803b",
+          "chapterCount": 0,
+          "contentVersion": "sha256:711dcb905ff3b58ef8aeecc8e0fe6a1aae261d85e3a00aac07612b9738346fd3",
+          "progress": null,
+          "status": "unprepared",
+          "text": "unknown"
+        }
+      },
+      "worker": {
+        "results": [
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "status": "pending"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          }
+        ]
+      }
+    },
+    "released": {
+      "parser": {
+        "entered": 32,
+        "returned": 32,
+        "textState": {
+          "bookId": "6309aa84-7781-43fd-bb50-35af65fc803b",
+          "chapterCount": 0,
+          "contentVersion": "sha256:711dcb905ff3b58ef8aeecc8e0fe6a1aae261d85e3a00aac07612b9738346fd3",
+          "progress": null,
+          "status": "unprepared",
+          "text": "unknown"
+        }
+      },
+      "worker": {
+        "results": [
+          {
+            "code": 20,
+            "status": "rejected"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          }
+        ]
+      }
+    },
+    "retry": {
+      "parser": {
+        "entered": 33,
+        "returned": 33,
+        "textState": {
+          "bookId": "6309aa84-7781-43fd-bb50-35af65fc803b",
+          "chapterCount": 0,
+          "contentVersion": "sha256:711dcb905ff3b58ef8aeecc8e0fe6a1aae261d85e3a00aac07612b9738346fd3",
+          "progress": null,
+          "status": "unprepared",
+          "text": "unknown"
+        }
+      },
+      "worker": {
+        "results": [
+          {
+            "code": 20,
+            "status": "rejected"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "code": "plugin/busy",
+            "status": "rejected"
+          },
+          {
+            "count": 1,
+            "status": "fulfilled"
+          }
+        ]
+      }
+    },
+    "seed": {
+      "books": {
+        "blank": "91befa12-4297-4e73-8501-c77f659faa09",
+        "normal": "6309aa84-7781-43fd-bb50-35af65fc803b",
+        "short": "98cce479-c062-4790-8ffb-bf16880fd899"
+      },
+      "dataDir": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+      "pluginId": "capability-search-lifecycle-desk",
+      "pressurePluginId": "capability-search-pressure"
+    }
+  },
+  "source": {
+    "agent": {
+      "book": {
+        "find_book_locations": {
+          "code": "reader/stale-location",
+          "completed": false
+        },
+        "fresh": {
+          "contentVersion": "sha256:2d5cc607e9d439f4cdf1d5b2e2752d4559288506f25bb85215ad07033193c3f0",
+          "count": 1,
+          "excerpt": {
+            "match": "Replacement text",
+            "post": " source: the changed text belongs to a newer revis…",
+            "pre": ""
+          }
+        },
+        "read_book_range": {
+          "code": "reader/stale-location",
+          "completed": false
+        }
+      },
+      "global": {
+        "find_book_locations": {
+          "code": "reader/stale-location",
+          "completed": false
+        },
+        "fresh": {
+          "contentVersion": "sha256:2d5cc607e9d439f4cdf1d5b2e2752d4559288506f25bb85215ad07033193c3f0",
+          "count": 1,
+          "excerpt": {
+            "match": "Replacement text",
+            "post": " source: the changed text belongs to a newer revis…",
+            "pre": ""
+          }
+        },
+        "read_book_range": {
+          "code": "reader/stale-location",
+          "completed": false
+        }
+      }
+    },
+    "capture": {
+      "page": {
+        "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+        "contentVersion": "sha256:b9819046f73942b11b18bddac9009533834ab1c9b7a0a18ed420e25c1bafe1f0",
+        "hits": [
+          {
+            "excerpt": {
+              "match": "Text",
+              "post": " preparation probe: this section contains enough t…",
+              "pre": ""
+            },
+            "id": "0:0",
+            "location": {
+              "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+              "cfi": "epubcfi(/6/2!/4/2/2,/1:0,/1:4)",
+              "contentVersion": "sha256:b9819046f73942b11b18bddac9009533834ab1c9b7a0a18ed420e25c1bafe1f0"
+            },
+            "range": {
+              "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+              "cfi": "epubcfi(/6/2!/4/2/2,/1:0,/1:4)",
+              "contentVersion": "sha256:b9819046f73942b11b18bddac9009533834ab1c9b7a0a18ed420e25c1bafe1f0"
+            },
+            "sectionIndex": 0
+          }
+        ],
+        "nextCursor": "eyJ2ZXJzaW9uIjoic2hhMjU2OmI5ODE5MDQ2ZjczOTQyYjExYjE4YmRkYWM5MDA5NTMzODM0YWIxYzliN2EwYTE4ZWQ0MjBlMjVjMWJhZmUxZjAiLCJxdWVyeSI6ImYzZDllYzM1NjQzZTU5MzJkOWY5MWRkMjQxMTBhY2UxNTMxOTM4NzNlNTAxYmNkY2FkMGJlYmFjNTlmYzg0MzciLCJzZWN0aW9uIjowLCJtYXRjaCI6MSwidGV4dFNlZW4iOnRydWUsInN1cHBvcnRlZCI6dHJ1ZSwidW5zdXBwb3J0ZWQiOmZhbHNlfQ==",
+        "scannedSections": 0,
+        "textStatus": "available",
+        "totalSections": 1
+      },
+      "range": {
+        "context": {
+          "after": " preparation probe: this section contains enough text for the chapter index.",
+          "before": ""
+        },
+        "nextOffset": null,
+        "offset": 0,
+        "range": {
+          "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+          "cfi": "epubcfi(/6/2!/4/2/2,/1:0,/1:4)",
+          "contentVersion": "sha256:b9819046f73942b11b18bddac9009533834ab1c9b7a0a18ed420e25c1bafe1f0"
+        },
+        "sectionIndex": 0,
+        "text": "Text",
+        "totalLength": 4
+      }
+    },
+    "cleanup": {
+      "contributions": 0,
+      "remainingBooks": 0,
+      "searchContributions": 0,
+      "shutdownErrors": []
+    },
+    "fresh": {
+      "page": {
+        "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+        "contentVersion": "sha256:2d5cc607e9d439f4cdf1d5b2e2752d4559288506f25bb85215ad07033193c3f0",
+        "hits": [
+          {
+            "excerpt": {
+              "match": "text",
+              "post": " source: the changed text belongs to a newer revis…",
+              "pre": "Replacement "
+            },
+            "id": "0:0",
+            "location": {
+              "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+              "cfi": "epubcfi(/6/2!/4/2/2,/1:12,/1:16)",
+              "contentVersion": "sha256:2d5cc607e9d439f4cdf1d5b2e2752d4559288506f25bb85215ad07033193c3f0"
+            },
+            "range": {
+              "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+              "cfi": "epubcfi(/6/2!/4/2/2,/1:12,/1:16)",
+              "contentVersion": "sha256:2d5cc607e9d439f4cdf1d5b2e2752d4559288506f25bb85215ad07033193c3f0"
+            },
+            "sectionIndex": 0
+          }
+        ],
+        "nextCursor": "eyJ2ZXJzaW9uIjoic2hhMjU2OjJkNWNjNjA3ZTlkNDM5ZjRjZGYxZDViMmUyNzUyZDQ1NTkyODg1MDZmMjViYjg1MjE1YWQwNzAzMzE5M2MzZjAiLCJxdWVyeSI6ImYzZDllYzM1NjQzZTU5MzJkOWY5MWRkMjQxMTBhY2UxNTMxOTM4NzNlNTAxYmNkY2FkMGJlYmFjNTlmYzg0MzciLCJzZWN0aW9uIjowLCJtYXRjaCI6MSwidGV4dFNlZW4iOnRydWUsInN1cHBvcnRlZCI6dHJ1ZSwidW5zdXBwb3J0ZWQiOmZhbHNlfQ==",
+        "scannedSections": 0,
+        "textStatus": "available",
+        "totalSections": 1
+      },
+      "range": {
+        "context": {
+          "after": " source: the changed text belongs to a newer revision.",
+          "before": "Replacement "
+        },
+        "nextOffset": null,
+        "offset": 0,
+        "range": {
+          "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+          "cfi": "epubcfi(/6/2!/4/2/2,/1:12,/1:16)",
+          "contentVersion": "sha256:2d5cc607e9d439f4cdf1d5b2e2752d4559288506f25bb85215ad07033193c3f0"
+        },
+        "sectionIndex": 0,
+        "text": "text",
+        "totalLength": 4
+      }
+    },
+    "replaced": {
+      "byteSize": 626,
+      "mimeType": null,
+      "sha256": "2d5cc607e9d439f4cdf1d5b2e2752d4559288506f25bb85215ad07033193c3f0"
+    },
+    "restored": {
+      "byteSize": 636,
+      "mimeType": null,
+      "sha256": "b9819046f73942b11b18bddac9009533834ab1c9b7a0a18ed420e25c1bafe1f0"
+    },
+    "restoredRead": {
+      "page": {
+        "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+        "contentVersion": "sha256:b9819046f73942b11b18bddac9009533834ab1c9b7a0a18ed420e25c1bafe1f0",
+        "hits": [
+          {
+            "excerpt": {
+              "match": "Text",
+              "post": " preparation probe: this section contains enough t…",
+              "pre": ""
+            },
+            "id": "0:0",
+            "location": {
+              "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+              "cfi": "epubcfi(/6/2!/4/2/2,/1:0,/1:4)",
+              "contentVersion": "sha256:b9819046f73942b11b18bddac9009533834ab1c9b7a0a18ed420e25c1bafe1f0"
+            },
+            "range": {
+              "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+              "cfi": "epubcfi(/6/2!/4/2/2,/1:0,/1:4)",
+              "contentVersion": "sha256:b9819046f73942b11b18bddac9009533834ab1c9b7a0a18ed420e25c1bafe1f0"
+            },
+            "sectionIndex": 0
+          }
+        ],
+        "nextCursor": "eyJ2ZXJzaW9uIjoic2hhMjU2OmI5ODE5MDQ2ZjczOTQyYjExYjE4YmRkYWM5MDA5NTMzODM0YWIxYzliN2EwYTE4ZWQ0MjBlMjVjMWJhZmUxZjAiLCJxdWVyeSI6ImYzZDllYzM1NjQzZTU5MzJkOWY5MWRkMjQxMTBhY2UxNTMxOTM4NzNlNTAxYmNkY2FkMGJlYmFjNTlmYzg0MzciLCJzZWN0aW9uIjowLCJtYXRjaCI6MSwidGV4dFNlZW4iOnRydWUsInN1cHBvcnRlZCI6dHJ1ZSwidW5zdXBwb3J0ZWQiOmZhbHNlfQ==",
+        "scannedSections": 0,
+        "textStatus": "available",
+        "totalSections": 1
+      },
+      "range": {
+        "context": {
+          "after": " preparation probe: this section contains enough text for the chapter index.",
+          "before": ""
+        },
+        "nextOffset": null,
+        "offset": 0,
+        "range": {
+          "bookId": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+          "cfi": "epubcfi(/6/2!/4/2/2,/1:0,/1:4)",
+          "contentVersion": "sha256:b9819046f73942b11b18bddac9009533834ab1c9b7a0a18ed420e25c1bafe1f0"
+        },
+        "sectionIndex": 0,
+        "text": "Text",
+        "totalLength": 4
+      }
+    },
+    "seed": {
+      "books": {
+        "blank": "0c4bb86c-0d2b-4da5-8311-15e7a86504dc",
+        "normal": "5fe9f231-9b13-4f3a-b08b-1e25a740f785",
+        "short": "6fd68dd2-5f55-4e88-888c-97382aabfa8f"
+      },
+      "dataDir": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+      "pluginId": "capability-search-source"
+    },
+    "stale": {
+      "cursor": {
+        "code": "reader/stale-location",
+        "completed": false
+      },
+      "range": {
+        "code": "reader/stale-location",
+        "completed": false
+      },
+      "version": {
+        "code": "reader/stale-location",
+        "completed": false
+      }
+    }
+  },
+  "limits": [
+    "Custom test Worker makes the 40 concurrent calls; compiled Text Desk is loaded by existing fixture but does not issue this burst",
+    "Cancellation observation code 20 is caller AbortController DOMException code; not claimed as stable application error code",
+    "Source rewritten through real native blob IPC on exact owned synthetic book, not via a user-facing replacement/import workflow",
+    "Source changed between requests; mid-read replacement, source mutation outside managed blob store, packaged and other platforms not proven",
+    "One initial probe activation failed from nonexistent subscriptions API, cleaned before correction; not counted as product failure"
+  ]
+}
