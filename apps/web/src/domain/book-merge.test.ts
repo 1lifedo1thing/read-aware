@@ -35,7 +35,7 @@ test("duplicate queries respect read grants; merge uses the canonical preview an
   expect(f.mint).toHaveBeenCalledWith([{ type: "book.merged", origin: "plugin:writer", payload: { keepId: "a", mergedId: "b" } }]);
   expect(f.invoke).toHaveBeenLastCalledWith("library_merge_commit", { bookId: "b", expectedRevision: f.preview.revision, events: [] });
   expect(f.broadcast).toHaveBeenCalledTimes(1);
-  expect(f.emit).toHaveBeenCalledWith("library-changed", {});
+  expect(f.emit).toHaveBeenCalledWith("library-changed", {}, "plugin:writer");
 });
 
 test("stale previews, invalid pages and pre-dispatch cancellation cannot commit", async () => {

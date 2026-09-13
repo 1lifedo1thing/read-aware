@@ -3,8 +3,10 @@ import { AppError } from "@read-aware/core";
 import type { PluginDocumentObservation, PluginDocumentObservationResult } from "@read-aware/plugin-types";
 import { PluginLifecycleController } from "./plugin-lifecycle";
 import { PluginDocumentObserver } from "./plugin-document-observer";
+import { eventCause, reactionActor, stampEventCause } from "../../../platform/domain-actor";
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+const reaction = (step: string) => reactionActor("plugin:docs", step, eventCause(stampEventCause({}))!);
 function fixture() {
   const lifecycle = new PluginLifecycleController([]), timers = new Set<() => void>(), errors: unknown[] = [];
   const observer = new PluginDocumentObserver(lifecycle, { schedule(work) { timers.add(work); return () => { timers.delete(work); }; }, report(error) { errors.push(error); } });
@@ -55,4 +57,58 @@ test("observer quotas span collections and subscriptions cannot run during migra
   subscriptions[0]!.dispose();
   expect(() => f.observer.observe(async () => ({ kind: "get", document: null }), () => {})).not.toThrow();
   f.lifecycle.stop(); await tick(); expect(f.timers.size).toBe(0);
+});
+
+test("a document read spanning commits is retried with both causes, while conflicts and unrelated IDs do not contaminate it", async () => {
+  const f = fixture(); f.lifecycle.promote();
+  const seen: PluginDocumentObservation[] = [];
+  let reads = 0, value = 0, release!: (result: PluginDocumentObservationResult) => void;
+  const sample = (): PluginDocumentObservationResult => ({ kind: "get", document: { id: "one", data: value, revision: String(value), updatedAt: "now" } });
+  f.observer.observe<unknown>(() => ++reads === 2 ? new Promise(resolve => { release = resolve; }) : Promise.resolve(sample()), event => { seen.push(event); }, target => target.id === "one");
+  await tick();
+  const target = { collection: "notes", id: "one" };
+  await f.observer.write([target], reaction("a"), async () => { value = 1; });
+  const old = sample(); await f.next();
+  await f.observer.write([target], reaction("b"), async () => { value = 2; });
+  release(old); await tick(); expect(seen).toHaveLength(1);
+  await f.next(); expect(seen).toHaveLength(2);
+  expect(eventCause(seen[1]!)!.steps).toEqual(["a", "b"]);
+  expect(seen[1]).toMatchObject({ result: { document: { data: 2 } } });
+  await expect(f.observer.write([target], reaction("failed"), async () => { throw Error("no commit"); })).rejects.toThrow("no commit");
+  await f.observer.write([target], reaction("conflict"), async () => false, result => result);
+  await f.observer.write([{ ...target, id: "unrelated" }], reaction("other"), async () => {});
+  value = 3; await f.next();
+  expect(eventCause(seen[2]!)!.steps).toEqual([]);
+  f.lifecycle.stop();
+});
+
+test("unacknowledged local writes hold reads, and failed callback retries retain their cause", async () => {
+  const f = fixture(); f.lifecycle.promote();
+  let finish!: () => void, reads = 0;
+  const pending = f.observer.write([{ collection: "notes", id: "one" }], reaction("start"), () => new Promise<void>(resolve => { finish = resolve; }));
+  const seen: PluginDocumentObservation[] = [];
+  f.observer.observe(async () => { reads++; return { kind: "get", document: null }; }, event => {
+    seen.push(event); if (seen.length === 1) throw Error("retry delivery");
+  });
+  await tick(); expect(reads).toBe(0); finish(); await pending; await tick();
+  expect(eventCause(seen[0]!)!.steps).toEqual(["start"]);
+  await f.next(); expect(seen).toHaveLength(2);
+  expect(eventCause(seen[1]!)!.steps).toEqual(["start"]);
+  expect(() => reactionActor("plugin:docs", "start", eventCause(seen[1]!)!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+  f.lifecycle.stop();
+});
+
+test("stable read errors and recovery do not erase the pending document mutation's cause", async () => {
+  const f = fixture(); f.lifecycle.promote();
+  let fail = false;
+  const seen: PluginDocumentObservation[] = [];
+  f.observer.observe(async () => { if (fail) throw new AppError("db/locked", "controlled"); return { kind: "get", document: null }; }, event => { seen.push(event); });
+  await tick();
+  await f.observer.write([{ collection: "notes", id: "one" }], reaction("source"), async () => {});
+  fail = true; await f.next(); await f.next(); await f.next();
+  expect(seen).toHaveLength(2);
+  fail = false; await f.next(); expect(seen).toHaveLength(3);
+  expect(eventCause(seen[2]!)!.steps).toEqual(["source"]);
+  expect(() => reactionActor("plugin:docs", "source", eventCause(seen[2]!)!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+  f.lifecycle.stop();
 });

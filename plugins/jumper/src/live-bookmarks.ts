@@ -20,10 +20,11 @@ export async function liveBookmarks(ctx: JumperContext, query: PluginDocumentObs
   catch (error) { initial = failure(code(error)); }
   return { ...initial, live: { subscribe(channel) {
     let disposed = false, revision = 0;
-    const subscription = ctx.services.storage.observeDocuments(query, async event => {
+    const subscription = ctx.services.storage.observeDocuments(query, async (event, delivery) => {
       if (disposed) return;
+      const reaction = ctx.withEvent(delivery);
       const view = event.status === "ready" ? await content(event.result) : failure(event.errorCode);
-      if (!disposed) await ctx.services.ui.publishView(channel, { revision: ++revision, view });
+      if (!disposed) await reaction.services.ui.publishView(channel, { revision: ++revision, view });
     });
     return { dispose() { disposed = true; subscription.dispose(); } };
   } } };

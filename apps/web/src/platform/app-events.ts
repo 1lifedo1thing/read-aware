@@ -9,6 +9,7 @@
  * broadcast under their canonical names.
  */
 import { createLogger } from "./logger";
+import { eventCause, stampEventCause, type DomainActor } from "./domain-actor";
 
 const log = createLogger("app-events");
 
@@ -71,7 +72,8 @@ export function onAppEvent<K extends AppEventName>(
   };
 }
 
-export function emitAppEvent<K extends AppEventName>(event: K, payload: AppEventMap[K]): void {
+export function emitAppEvent<K extends AppEventName>(event: K, payload: AppEventMap[K], actor?: DomainActor): void {
+  if (actor !== undefined || !eventCause(payload)) stampEventCause(payload, actor);
   const set = listeners.get(event);
   if (!set) return;
   for (const handler of [...set]) {

@@ -6,9 +6,24 @@ import { createProjectionInvalidationObserver } from "./projection-invalidation"
 import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
 import { createIpcSyncStore } from "../platform/sync/sync-store";
 import { restoreCollection, restoreLibraryBook } from "../features/library/lib/library-db";
+import { eventCause, reactionActor, stampEventCause } from "../platform/domain-actor";
 
 const tick = () => Bun.sleep(0);
 const manifest = { id: "invalidation", name: "Invalidation", version: "1", schemaVersion: 1, requires: {} };
+
+test("coalesced domain and derived app notifications keep the originating reaction", async () => {
+  const observe = createProjectionInvalidationObserver(() => true, ["library-changed"]), seen: ProjectionInvalidation[] = [];
+  const gate = Promise.withResolvers<void>();
+  const actor = reactionActor("plugin:origin", "origin-rule", eventCause(stampEventCause({}))!);
+  const off = observe(async event => { seen.push(event); if (event.source === "initial") await gate.promise; });
+  try {
+    broadcastDomainEventDrafts([{ type: "book.starred", origin: actor, payload: { bookId: "book", starred: true } }]);
+    await Promise.resolve(); emitAppEvent("library-changed", {}, actor);
+    gate.resolve(); await tick();
+    expect(seen).toHaveLength(2); expect(seen[1]?.source).toBe("mixed");
+    expect(() => reactionActor("plugin:origin", "origin-rule", eventCause(seen[1]!)!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+  } finally { gate.resolve(); off(); }
+});
 
 test("authorized domain observers receive serial reload hints, not remote business events", async () => {
   const actor = buildPluginContext({ ...manifest, permissions: ["library:read", "conversations:read"] }, "1", []);

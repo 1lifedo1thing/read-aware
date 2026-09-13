@@ -1317,6 +1317,10 @@ export type PluginToolBookCards = {
 export type PluginReactionToken = Readonly<{ id: string; status: "ready" | "cycle" }>;
 export type PluginReactionEvent = { readonly reaction?: PluginReactionToken };
 
+/** Plugins 1.3: observation snapshots keep their existing shape. Use the second
+ * argument with ctx.withEvent for automatic follow-up operations. */
+export type PluginObservationHandler<T> = (snapshot: T, delivery?: PluginReactionEvent) => unknown;
+
 export type PluginDomainEvent<K extends DomainEventType = DomainEventType> = {
   [T in DomainEventType]: {
     type: T;
@@ -1539,7 +1543,7 @@ export type PluginLibraryDomain = {
     observeContentState(bookId: string, handler: (event: import("@read-aware/core").BookContentObservation) => unknown): PluginDisposable;
     /** Initial and coalesced reload hints, including remote projection changes.
      * Re-query authorized data; not an event log or a conditional-write token. */
-    observeInvalidation(handler: (event: import("@read-aware/core").ProjectionInvalidation) => unknown): PluginDisposable;
+    observeInvalidation(handler: PluginObservationHandler<import("@read-aware/core").ProjectionInvalidation>): PluginDisposable;
   };
 };
 
@@ -1693,7 +1697,7 @@ export type PluginConversationsDomain = {
     clear(target: import("@read-aware/core").ConversationTarget): Promise<import("@read-aware/core").ConversationControlReceipt>;
   };
   events: { subscribe: DomainSubscribe<ConversationDomainEventType>;
-    observeInvalidation(handler: (event: import("@read-aware/core").ProjectionInvalidation) => unknown): PluginDisposable;
+    observeInvalidation(handler: PluginObservationHandler<import("@read-aware/core").ProjectionInvalidation>): PluginDisposable;
     observeRuntime(handler: (snapshot: PluginConversationRuntimeSnapshot) => unknown): PluginDisposable };
 };
 
@@ -1704,7 +1708,7 @@ export type PluginSettingsDomain = {
     /** Since settings 1.3: one host snapshot after prior queued writes settle, filtered by exact path grants. */
     snapshot(query?: SettingsQuery): Promise<import("@read-aware/core").SettingsSnapshot>;
     /** Settled snapshots after native, domain, remote, restore and catalog changes. Coalesces slow callbacks. */
-    observe(query: SettingsQuery, handler: (observation: import("@read-aware/core").SettingsObservation) => unknown): PluginDisposable;
+    observe(query: SettingsQuery, handler: PluginObservationHandler<import("@read-aware/core").SettingsObservation>): PluginDisposable;
     discover(query?: SettingsQuery): Promise<SettingCatalogEntry[]>;
     /** Settings 1.8: bounded options; same path grants as discover. Includes
      * installed system families for reading/content fonts without font paths or bytes.
@@ -1875,7 +1879,7 @@ export type PluginStorage = {
    * errors/recovery. At most 64 active observers per activation; reads and
    * callbacks settle before the next one-second poll. Not a replayable write
    * stream. Dispose or plugin retirement stops delivery; sequence is not CAS. */
-  observeDocuments<T = unknown>(query: PluginDocumentObservationQuery, handler: (event: PluginDocumentObservation<T>) => unknown): PluginDisposable;
+  observeDocuments<T = unknown>(query: PluginDocumentObservationQuery, handler: PluginObservationHandler<PluginDocumentObservation<T>>): PluginDisposable;
   /**
    * Fires when this plugin's namespace is written from OUTSIDE the plugin —
    * its settings page, the reading agent, another surface editing the same
@@ -2510,8 +2514,10 @@ export type PluginContext = {
    * await. Existing permissions, object grants, resources and task owners remain
    * unchanged. New calls after the callback settles are rejected; accepted work
    * retains its cause. A cycle token rejects operations with plugin/event-cycle.
-   * Independent user actions use the original activation context. */
-  withEvent(event: PluginReactionEvent): PluginContext;
+   * Independent user actions use the original activation context. Plugins 1.3
+   * also accepts the second callback argument from settings.observe,
+   * library/conversations.observeInvalidation and storage.observeDocuments. */
+  withEvent(event: PluginReactionEvent | undefined): PluginContext;
   readonly manifest: Readonly<PluginManifest>;
   readonly appVersion: string;
   readonly locale: string;

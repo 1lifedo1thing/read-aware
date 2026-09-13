@@ -17,6 +17,7 @@ import { CHANNEL_KV_KEY } from "../../features/update/lib/update-channel";
 import { headerActionsAtom, installedPluginsAtom, pluginFontsAtom, pluginThemesAtom, selectionActionsAtom, textUnitReaderModeAtom } from "../../features/plugins/state/plugin-store";
 import { shortcutEnvironmentAtom } from "../../features/settings/state/shortcut-state";
 import { SettingsObservationHub } from "./observation";
+import { copyEventCause } from "../../platform/domain-actor";
 
 const keys = new Set([AI_CONFIG_KEY, MENU_CONFIG_KEY, APP_SETTINGS_KEY, GENERAL_SETTINGS_KEY, SHELF_VIEW_KEY,
   SHORTCUT_BINDINGS_KEY, AI_PREFERENCES_KEY, READER_PREFERENCES_KEY, READER_OVERRIDES_KEY, CONTENT_TYPOGRAPHY_KEY, DEFAULT_COLOR_KEY, CHANNEL_KV_KEY]);
@@ -28,7 +29,7 @@ export function initializeSettingsObservation(): void {
   started = true;
   onLocalKVCommit(commit => {
     if (!commit.entries.some(({ key }) => keys.has(key) || (key.startsWith("read-aware-plugin.") && key.endsWith(".settings")))) return;
-    settingsObservation.invalidate({ source: commit.source, origin: commit.actor });
+    settingsObservation.invalidate(copyEventCause(commit, { source: commit.source, origin: commit.actor }));
   });
   onSecretCommit((key, source) => {
     if (key === "ai-api-key" || key.startsWith("ai-api-key.")) settingsObservation.invalidate({ source, origin: null });

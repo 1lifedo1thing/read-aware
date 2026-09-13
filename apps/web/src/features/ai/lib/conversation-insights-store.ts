@@ -2,6 +2,7 @@ import { AppError, normalizeConversationTarget, type ConversationInsightsSnapsho
 import { afterLocalKVWrites, flushLocalKV, localKV } from "../../../platform/local-store";
 import { invoke } from "../../../platform/ipc";
 import { emitAppEvent } from "../../../platform/app-events";
+import type { DomainActor } from "../../../platform/domain-actor";
 import { GLOBAL_CONVERSATION_ID } from "./conversation-store";
 
 const INSIGHTS_KEY = "read-aware-agent-insights";
@@ -38,22 +39,22 @@ export function getStoredConversationInsights(threadKey: string): string | undef
   return undefined;
 }
 
-export function putStoredConversationInsights(threadKey: string, summary: string): Promise<void> {
+export function putStoredConversationInsights(threadKey: string, summary: string, origin: DomainActor = "agent"): Promise<void> {
   return afterLocalKVWrites(async () => {
     const insights = readInsights();
     insights[threadKey] = summary;
-    await localKV.setItemAsync(INSIGHTS_KEY, JSON.stringify(insights));
-    emitAppEvent("conversations-changed", {});
+    await localKV.setItemAsync(INSIGHTS_KEY, JSON.stringify(insights), origin);
+    emitAppEvent("conversations-changed", {}, origin);
   });
 }
 
-export function clearStoredConversationInsights(threadKey: string): Promise<void> {
+export function clearStoredConversationInsights(threadKey: string, origin: DomainActor = "agent"): Promise<void> {
   return afterLocalKVWrites(async () => {
     const insights = readInsights();
     const keys = threadKey === `global:${GLOBAL_CONVERSATION_ID}` ? [threadKey, "global"] : [threadKey];
     if (!keys.some(key => Object.hasOwn(insights, key))) return;
     for (const key of keys) delete insights[key];
-    await localKV.setItemAsync(INSIGHTS_KEY, JSON.stringify(insights));
-    emitAppEvent("conversations-changed", {});
+    await localKV.setItemAsync(INSIGHTS_KEY, JSON.stringify(insights), origin);
+    emitAppEvent("conversations-changed", {}, origin);
   });
 }

@@ -37,7 +37,7 @@ export function createBookImportTasks(resources: ResourceOwner, origin: DomainAc
       return owner.start(name, async (taskSignal, progress) => {
         const knownBooks = await listLibraryBooks();
         const outcome = await importBook({ kind: "file", file }, { t: i18n.getFixedT(null, "shelf"), knownBooks, origin: actor, signal: taskSignal, onProgress: progress });
-        emitAppEvent("library-changed", {});
+        emitAppEvent("library-changed", {}, actor);
         return { status: outcome.status, book: toBookSummary(outcome.book) };
       });
     },

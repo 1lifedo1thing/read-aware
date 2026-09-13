@@ -93,4 +93,16 @@ describe("AgentRuntime maintenance", () => {
     expect(stores.insights.get("book:book-1")).toBeUndefined();
     expect(stores.insights.get("book:book-2")).toBe("keep this context");
   });
+
+  test("host-origin discard awaits its causal insight writer instead of using the default Agent writer", async () => {
+    const fixture = createInMemoryDeps(), { runtime } = makeRuntime(fixture);
+    fixture.deps.conversations.clearInsights = async () => { throw Error("wrong actor writer"); };
+    const gate = Promise.withResolvers<void>(), writes: string[] = [];
+    let settled = false;
+    const pending = runtime.discardThread({ kind: "book", bookId: "book-1" as Id }, async key => {
+      writes.push(key); await gate.promise;
+    }).then(() => { settled = true; });
+    await Promise.resolve(); expect(writes).toEqual(["book:book-1"]); expect(settled).toBe(false);
+    gate.resolve(); await pending; expect(settled).toBe(true);
+  });
 });

@@ -99,6 +99,7 @@ import {
 import { registerSyncTransport } from "../../../platform/sync/transport-registry";
 import { releasePluginCallbacks } from "./plugin-callback-wire";
 import { createPluginDocuments } from "./plugin-documents";
+import { PluginDocumentObserver } from "./plugin-document-observer";
 import { createPluginLogging } from "./plugin-logging";
 import {
   registerCommandContribution,
@@ -366,7 +367,7 @@ export function buildPluginContext(
   });
   const activationLifecycle = { get phase() { return lifecycle.phase; } };
   const owners: DomainActorOwners = {};
-  const documents = createPluginDocuments(manifest.id, lifecycle);
+  const documentObserver = new PluginDocumentObserver(lifecycle);
   const logging = createPluginLogging(manifest.id, manifest.version, lifecycle);
   const scopedWorkspaceState = { revision: 0 };
   const scopedConversationState = { revision: 0 };
@@ -378,6 +379,7 @@ export function buildPluginContext(
     if (typeof operationActor === "object") {
       const cached = contexts.get(operationActor); if (cached) return cached;
     }
+  const documents = createPluginDocuments(manifest.id, lifecycle, undefined, operationActor, documentObserver);
   const domain = createActorDomainView(
     operationActor,
     domainGrantsFromPermissions(manifest.permissions ?? []),
@@ -955,8 +957,8 @@ export function buildPluginContext(
               if (bookId) objectAccess.assertBook(bookId, "settings.queries.observe");
               if (event.status === "ready") {
                 const snapshot = sanitizeSettingsSnapshot(event.snapshot, query?.target);
-                handler({ ...event, snapshot });
-              } else handler(event);
+                return handler(copyEventCause(event, { ...event, snapshot }));
+              } else return handler(event);
             } catch (error) { log.debug("settings observation outside book grant", error); }
           }) }));
         },
@@ -1661,8 +1663,8 @@ export function buildPluginContext(
   if (objectAccess.restricted && domain.conversations) {
     ctx.domains.conversations = scopePluginConversations(domain.conversations, objectAccess, lifecycle, {
       current: () => latestCurrent,
-      observe: handler => readingRuntime.observe(() => handler()),
-    }, selfOrigin, scopedConversationState);
+      observe: handler => readingRuntime.observe(snapshot => handler(snapshot)),
+    }, operationActor, scopedConversationState);
   }
 
   if (domain.memory) {

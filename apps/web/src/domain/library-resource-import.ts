@@ -19,7 +19,7 @@ export function importResourceBook(owner: ResourceOwner, id: string, origin: Dom
       name: resource.name, size: resource.size, type: resource.mimeType },
     { t: i18n.getFixedT(null, "shelf"), knownBooks, origin, signal, beforeWrite, onProgress });
     // Duplicates may have repaired a synced-in book's missing local original.
-    emitAppEvent("library-changed", {});
+    emitAppEvent("library-changed", {}, origin);
     return { status: outcome.status, book: toBookSummary(outcome.book) };
   }, signal).catch(error => {
     // The task/caller owns an expected pre-admission cancellation result.

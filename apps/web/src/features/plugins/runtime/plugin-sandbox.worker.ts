@@ -217,7 +217,7 @@ function buildContext(
   const ctx = remoteNamespace("", namespaces as ContextShape, reaction) as Record<string, unknown>;
 
   const call = (method: string, args: unknown[], signal?: AbortSignal) => callHost(method, args, signal, reaction);
-  ctx.withEvent = (event: import("@read-aware/plugin-types").PluginReactionEvent) => {
+  ctx.withEvent = (event: import("@read-aware/plugin-types").PluginReactionEvent | undefined) => {
     if (!event?.reaction) throw codedError("Event has no reaction lease", "plugin/invalid-cause");
     return buildContext(manifest, appVersion, capabilities, grants, shape, Object.freeze({ ...event.reaction }));
   };

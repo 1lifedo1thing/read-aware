@@ -320,12 +320,32 @@ fail. Independent user actions use the original activation context. Keeping the
 root context for an automatic reaction discards causality, so first-party event
 writers must use the binding. `ignoreSelf` remains a delivery filter.
 
-Current coverage is local domain/settings subscriptions, their subsequent
-semantic writes, import tasks and graph digest/classification writes. Snapshot
-observers, merged/reloaded observations and all derived publication paths are
-still being connected under C04; this is not complete cross-plugin loop coverage
-or a durable/replayable event log. RSS 0.21 uses the binding for removed-book
-cleanup. Real desktop combination acceptance remains pending.
+Plugins 1.3 additionally supplies a second callback argument to settings
+`queries.observe`, library/conversations `events.observeInvalidation`, and
+storage `observeDocuments`. Pass that delivery argument to `ctx.withEvent`;
+the first snapshot keeps its original shape. Coalesced notifications retain
+host-private causal branches. Repeated steps in one root are rejected; when a
+new independent trigger is coalesced with a spent path, only eligible roots
+continue. Both depth and retained roots are bounded at 32. No ancestry or token
+is persisted as business data.
+
+Private document reads wait for matching dispatched writes to settle and retry
+if a commit crossed the read. Conflicts and failed writes do not publish a
+mutation. Failed callback retries and read-error recovery retain the pending
+cause. Exact-document observers filter collection and ID; page observers join
+changes to their collection before comparing the query result. Contexts within
+one activation share the observer and its write barrier. Jumper 0.9 and
+Workspace Profiles 0.7 use event-bound view publication; later user actions in
+those views keep the activation context.
+
+Current coverage includes the above observations, local domain/settings
+subscriptions, their semantic writes, import tasks, graph digest/classification
+writes and derived library/conversation projection notifications. RSS 0.21 uses
+the binding for removed-book cleanup. Other snapshots, reader lifecycle
+feedback, settings catalog/credential invalidations and remaining derived
+publication paths are still being connected under C04. This is not complete
+cross-plugin loop coverage or a durable/replayable event log. Real desktop
+combination acceptance remains pending.
 
 Conversations 1.1 adds `queries.runtime()` and `events.observeRuntime(handler)`
 (initial snapshot plus changes), with mounted session identities, loading,

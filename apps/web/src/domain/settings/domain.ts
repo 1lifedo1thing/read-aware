@@ -282,7 +282,7 @@ export function createSettingsDomain(
       snapshot: settledSnapshot,
       observe: (query, handler) => {
         const accepted = structuredClone(query);
-        return settingsObservation.observe(() => settledSnapshot(accepted), handler);
+        return settingsObservation.observe(() => settledSnapshot(accepted), handler, origin);
       },
       discover: async (query) => {
         const accepted = query === undefined ? undefined : structuredClone(query);

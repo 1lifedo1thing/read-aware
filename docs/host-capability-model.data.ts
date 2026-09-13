@@ -185,7 +185,7 @@ export const units: Unit[] = [
   unit("Q3", "Contract", "consistency/observation", "快照、变更和业务写入", "CON07-08 OPS05 OPS11 STAT04-05 CFG10", "",
     "授权 snapshot + revision + invalidation/订阅后重读，覆盖本地、同步和外部写；持久命令在 commit_events 事务完成后确认。CAS/批次只加在会丢用户编辑或部分成功的业务操作。",
     "每轮快照可满足多数查询，不需要让模型订阅所有事件。导航历史与业务撤销不可混用。",
-    "plugins1.2 ctx.withEvent(event)已接本地域/设置订阅的宿主令牌、Worker调用信封和按actor领域/服务上下文，保留原授权/资源/任务owner；插件须让自动反应显式使用绑定上下文，独立用户动作保留根上下文。重复订阅因果链及过期/跨激活令牌拒绝，导入及图谱派生写保留actor。RSS0.21已迁移删除清理回调；快照观察与合并重读因果源仍未接，C04不计完成。library1.18/conversations1.3 events.observeInvalidation已接授权初始通知及本地/宿主/远端/恢复来源，串行合并、每领域64观察、退休清理；只有订阅revision/source，无记录payload。sync-store在投影提交后发通知，不等整个同步成功；暂存不发，回填重放/完成与bootstrap均覆盖。书籍/集合恢复提交也发，书籍文件失败不隐瞒已提交行。Agent仍按需读投影，无新增模型订阅。不是CAS/数据库快照/完整sync成功，旧subscribe不补远端业务事件；其他观察契约不变。基础受控IPC/权限/生命周期检查通过，组合插件/真实Tauri后置。",
+    "plugins1.3 ctx.withEvent(event/delivery)已接本地域/设置订阅的宿主令牌、Worker调用信封和按actor领域/服务上下文，保留原授权/资源/任务owner；插件须让自动反应显式使用绑定上下文，独立用户动作保留根上下文。重复订阅因果链及过期/跨激活令牌拒绝，导入及图谱派生写保留actor。RSS0.21已迁移删除清理回调；设置快照、书库/会话投影失效、插件私有文档观察已接第二参数令牌，权限过滤后交付，首参数形状不变。合并按根保留路径，拒绝同根重复而让独立新根继续；32根/32深度有界。文档读等待匹配写回执并拒绝跨提交旧样本，失败/冲突不发变更，读取错误恢复和回调重试不丢原因；Jumper0.9/Workspace Profiles0.7消费自动视图发布。阅读器异步反馈、其他观察及设置目录/凭据失效来源仍缺，C04不计完成。library1.18/conversations1.3 events.observeInvalidation已接授权初始通知及本地/宿主/远端/恢复来源，串行合并、每领域64观察、退休清理；只有订阅revision/source，无记录payload。sync-store在投影提交后发通知，不等整个同步成功；暂存不发，回填重放/完成与bootstrap均覆盖。书籍/集合恢复提交也发，书籍文件失败不隐瞒已提交行。Agent仍按需读投影，无新增模型订阅。不是CAS/数据库快照/完整sync成功，旧subscribe不补远端业务事件；其他观察契约不变。基础受控IPC/权限/生命周期检查通过，组合插件/真实Tauri后置。",
     "不建设通用 durable event bus/exactly-once/跨插件分布式事务；不要求每次查询带全局快照隔离。无法撤销的外部效果如实报告。",
     "远端变更、事件乱序/重复、subscribe 首次竞态、合法新写后旧失败回滚都不静默产生陈旧 UI；依旧以存储事务为持久边界。"),
   unit("Q4", "Contract", "coverage gate", "行为映射与语义回归门禁", "CON10", "",

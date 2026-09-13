@@ -1,6 +1,6 @@
-import { copyEventCause } from "../../../platform/domain-actor";
+import { actorOrigin, copyEventCause, eventCause, ObservationCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { AppError, normalizeConversationTarget, normalizeConversationTurnRequest,
-  type ConversationRuntimeSnapshot, type ConversationTarget, type EventOrigin } from "@read-aware/core";
+  type ConversationRuntimeSnapshot, type ConversationTarget, type ProjectionInvalidation } from "@read-aware/core";
 import type { PluginConversationsDomain, PluginConversationRuntimeSnapshot, ConversationDomainEventType, PluginDomainEvent } from "@read-aware/plugin-types";
 import type { ActorDomainView } from "../../../domain/registry";
 import { pluginObjectAccessDenied, type CurrentBookSnapshot, type PluginBookAccessPolicy } from "../../../domain/plugin-object-access";
@@ -9,7 +9,7 @@ import type { PluginLifecycleController } from "./plugin-lifecycle";
 
 type Reader = {
   current(): CurrentBookSnapshot;
-  observe(handler: () => void): () => void;
+  observe(handler: (event?: object) => void): () => void;
 };
 const log = createLogger("scoped-conversations");
 
@@ -18,7 +18,7 @@ const log = createLogger("scoped-conversations");
  * or retires it; accepting it is still exclusively a host UI action. */
 export function scopePluginConversations(domain: NonNullable<ActorDomainView["conversations"]>,
   policy: PluginBookAccessPolicy, lifecycle: PluginLifecycleController, reader: Reader,
-  origin: EventOrigin, state: { revision: number; projectedKey?: string } = { revision: 0 }): PluginConversationsDomain {
+  origin: DomainActor, state: { revision: number; projectedKey?: string } = { revision: 0 }): PluginConversationsDomain {
   const denied = (operation: string): never => { throw pluginObjectAccessDenied(`conversations.${operation}`); };
   const book = () => policy.grant.mode === "book" ? policy.grant.bookId : reader.current().bookId;
   const requireBook = () => book() ?? denied("current book");
@@ -79,7 +79,7 @@ export function scopePluginConversations(domain: NonNullable<ActorDomainView["co
     subscribe(event, handler, options) {
       if (typeof handler !== "function") throw new AppError("ui/invalid-target", "Expected a conversation event callback");
       return lifecycle.stage(() => ({ dispose: domain.events.subscribe<ConversationDomainEventType>(event, broadcast => {
-        if (lifecycle.signal.aborted || options?.ignoreSelf && broadcast.origin === origin) return;
+        if (lifecycle.signal.aborted || options?.ignoreSelf && broadcast.origin === actorOrigin(origin)) return;
         try {
           target({ kind: "book", id: broadcast.payload.conversationId });
           if ("bookId" in broadcast.payload && broadcast.payload.bookId !== undefined && broadcast.payload.bookId !== broadcast.payload.conversationId) return;
@@ -112,14 +112,26 @@ export function scopePluginConversations(domain: NonNullable<ActorDomainView["co
     observeInvalidation: handler => {
       if (typeof handler !== "function") throw new AppError("ui/invalid-target", "Expected a conversation invalidation callback");
       return lifecycle.stage(() => {
-      let revision = 0;
-      const publish = (source: import("@read-aware/core").ProjectionInvalidation["source"]) => handler({ revision: ++revision, source });
-      const offDomain = domain.events.observeInvalidation(event => publish(event.source));
-      const offReader = reader.observe(() => {
-        try { Promise.resolve(publish("host")).catch(error => log.warn("Conversation invalidation failed", error)); }
-        catch (error) { log.warn("Conversation invalidation failed", error); }
-      });
-      return { dispose: () => { offDomain(); offReader(); } };
+        let revision = 0, running = false, stopped = false;
+        const pending = new Set<ProjectionInvalidation["source"]>(), causes = new ObservationCauses(origin);
+        const publish = async (source: ProjectionInvalidation["source"], event?: object) => {
+          if (stopped || lifecycle.signal.aborted) return;
+          pending.add(source);
+          causes.add(event && eventCause(event) ? event : stampEventCause({}));
+          if (running) return;
+          running = true;
+          try {
+            while (pending.size && !stopped && !lifecycle.signal.aborted) {
+              const source = pending.size === 1 ? [...pending][0]! : "mixed";
+              pending.clear();
+              try { await handler(causes.take({ revision: ++revision, source })); }
+              catch (error) { log.warn("Conversation invalidation failed", error); }
+            }
+          } finally { running = false; }
+        };
+        const offDomain = domain.events.observeInvalidation(event => publish(event.source, event));
+        const offReader = reader.observe(event => { void publish("host", event); });
+        return { dispose: () => { stopped = true; pending.clear(); offDomain(); offReader(); } };
       });
     },
   }, ...(commands ? { commands: {

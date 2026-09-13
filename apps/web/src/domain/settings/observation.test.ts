@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { AppError, type SettingsObservation, type SettingsSnapshot } from "@read-aware/core";
 import { SettingsObservationHub } from "./observation";
+import { eventCause, reactionActor, stampEventCause } from "../../platform/domain-actor";
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 const snapshot = (value = "light", revision = 0): SettingsSnapshot => ({ revision, target: { kind: "global" }, overrides: [],
@@ -28,10 +29,13 @@ test("a commit during a held read is retried rather than attributed to the wrong
   const hub = new SettingsObservationHub(() => {}), seen: SettingsObservation[] = [];
   let release!: (value: SettingsSnapshot) => void, reads = 0;
   const stop = hub.observe(() => ++reads === 2 ? new Promise(resolve => { release = resolve; }) : Promise.resolve(snapshot(String(reads), hub.revision)), state => { seen.push(state); });
-  await tick(); hub.invalidate({ source: "local", origin: "agent" }); await tick();
-  hub.invalidate({ source: "local", origin: "plugin:next" }); release(snapshot("outdated", 1)); await tick();
+  const a = reactionActor("agent", "a", eventCause(stampEventCause({}))!);
+  const b = reactionActor("plugin:next", "b", eventCause(stampEventCause({}))!);
+  await tick(); hub.invalidate(stampEventCause({ source: "local", origin: "agent" }, a)); await tick();
+  hub.invalidate(stampEventCause({ source: "local", origin: "plugin:next" }, b)); release(snapshot("outdated", 1)); await tick();
   expect(seen).toHaveLength(2); expect(reads).toBe(3);
-  expect(seen[1]).toMatchObject({ source: "local", origin: null, snapshot: { revision: 2 } }); stop();
+  expect(seen[1]).toMatchObject({ source: "local", origin: null, snapshot: { revision: 2 } });
+  expect(eventCause(seen[1]!)!.steps).toEqual(["a", "b"]); stop();
 });
 
 test("read errors retain stable codes, recovery publishes and callback failure does not poison delivery", async () => {

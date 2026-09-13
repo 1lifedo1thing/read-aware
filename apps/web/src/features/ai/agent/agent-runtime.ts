@@ -71,14 +71,14 @@ export function getAgentRuntime(): AgentRuntime | null {
 }
 
 /** Clear hidden pi state when the corresponding persisted conversation is removed. */
-export async function discardAgentThread(kind: "book" | "global", id: string): Promise<void> {
+export async function discardAgentThread(kind: "book" | "global", id: string, origin: import("../../../platform/domain-actor").DomainActor = "agent"): Promise<void> {
   const scope: ThreadScope =
     kind === "book"
       ? { kind: "book", bookId: id as Id }
       : { kind: "global", threadId: id };
   if (cached) {
-    await cached.runtime.discardThread(scope);
+    await cached.runtime.discardThread(scope, key => clearStoredConversationInsights(key, origin));
   } else {
-    await clearStoredConversationInsights(threadScopeKey(scope));
+    await clearStoredConversationInsights(threadScopeKey(scope), origin);
   }
 }

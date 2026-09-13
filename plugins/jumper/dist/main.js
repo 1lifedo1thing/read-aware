@@ -147,7 +147,7 @@ var HOST_SERVICE_CATALOG = {
   ui: { version: "1.15.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
   session: { version: "2.0.0", permission: null },
-  plugins: { version: "1.2.0", permission: null },
+  plugins: { version: "1.3.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
   logging: { version: "1.0.0", permission: null },
@@ -870,12 +870,13 @@ async function liveBookmarks(ctx, query, read, render) {
   }
   return { ...initial, live: { subscribe(channel) {
     let disposed = false, revision = 0;
-    const subscription = ctx.services.storage.observeDocuments(query, async (event) => {
+    const subscription = ctx.services.storage.observeDocuments(query, async (event, delivery) => {
       if (disposed)
         return;
+      const reaction = ctx.withEvent(delivery);
       const view = event.status === "ready" ? await content(event.result) : failure(event.errorCode);
       if (!disposed)
-        await ctx.services.ui.publishView(channel, { revision: ++revision, view });
+        await reaction.services.ui.publishView(channel, { revision: ++revision, view });
     });
     return { dispose() {
       disposed = true;

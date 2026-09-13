@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { PluginDetailView, PluginDocument, PluginDocumentChange, PluginDocumentObservation, PluginDocumentObservationQuery, PluginFormView, PluginListView, PluginModule, PluginView, PluginViewResult, ReadingSessionSnapshot } from "@read-aware/plugin-types";
+import type { PluginDetailView, PluginDocument, PluginDocumentChange, PluginDocumentObservation, PluginDocumentObservationQuery, PluginReactionEvent, PluginFormView, PluginListView, PluginModule, PluginView, PluginViewResult, ReadingSessionSnapshot } from "@read-aware/plugin-types";
 import { bookmarkDetail, bookmarksView, saveBookmarkView } from "../src/bookmark-views";
 import { captureBookmark, parseBookmark, type Bookmark } from "../src/bookmarks";
 import type { JumperContext } from "../src/types";
@@ -10,7 +10,7 @@ function fixture() {
   const documents = new Map<string, PluginDocument>();
   let revision = 0, generation = 0, missing = false, failWrite = false;
   const writes: PluginDocumentChange[][] = [], moves: unknown[] = [], pages: unknown[] = [];
-  const observers = new Set<{ query: PluginDocumentObservationQuery; handler: (event: PluginDocumentObservation) => unknown }>();
+  const observers = new Set<{ query: PluginDocumentObservationQuery; handler: (event: PluginDocumentObservation, delivery?: PluginReactionEvent) => unknown }>();
   const updates: PluginView[] = [];
   const session = { status: "ready", sessionId: "session-a", bookId: "book-a", location: structuredClone(location), selection: null,
     history: { canGoBack: false, canGoForward: false },
@@ -27,12 +27,13 @@ function fixture() {
         nextCursor: offset + query.limit < filtered.length ? `${generation}:${offset + query.limit}` : null };
     },
   };
-  const ctx = { locale: "en", domains: {
+  const delivery = { reaction: { id: "bookmark-observation", status: "ready" as const } };
+  const ctx = { withEvent: (event: PluginReactionEvent) => { expect(event).toBe(delivery); return ctx; }, locale: "en", domains: {
     reading: { queries: { session: async () => session }, commands: { goTo: async (target: unknown) => { moves.push(target); return { status: "completed" }; } },
       events: { observeSession: () => ({ dispose() {} }) } },
     library: { queries: { books: { get: async (id: string) => missing ? null : { id, title: id === "book-a" ? "Book A" : "Book B" } } } },
   }, services: { ui: { publishView: async (_channel: unknown, update: { view: PluginView }) => { updates.push(update.view); return { status: "applied" }; } }, storage: {
-    observeDocuments: (query: PluginDocumentObservationQuery, handler: (event: PluginDocumentObservation) => unknown) => {
+    observeDocuments: (query: PluginDocumentObservationQuery, handler: (event: PluginDocumentObservation, delivery?: PluginReactionEvent) => unknown) => {
       const entry = { query: structuredClone(query), handler }; observers.add(entry);
       return { dispose() { observers.delete(entry); } };
     },
@@ -57,7 +58,7 @@ function fixture() {
       const event = errorCode ? { status: "error", errorCode, sequence: 1 } : { status: "ready", sequence: 1,
         result: query.kind === "get" ? { kind: "get", document: await collection.get(query.id) }
           : { kind: "page", page: await collection.page({ limit: 40, ...query.filter }) } };
-      await handler(event as PluginDocumentObservation);
+      await handler(event as PluginDocumentObservation, delivery);
     }
   };
   return { ctx, documents, writes, moves, pages, session, seed, emit, observers, updates, missing: () => { missing = true; }, fail: () => { failWrite = true; } };

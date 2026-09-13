@@ -1,7 +1,8 @@
 import { AppError, errorCode, type SettingsObservation, type SettingsObservationCause, type SettingsSnapshot } from "@read-aware/core";
+import { copyEventCause, eventCause, mergeEventCauses, stampEventCause, type DomainActor } from "../../platform/domain-actor";
 
 const mergeCause = (a: SettingsObservationCause | undefined, b: SettingsObservationCause): SettingsObservationCause =>
-  !a ? b : { source: a.source === b.source ? a.source : "mixed", origin: a.origin === b.origin ? a.origin : null };
+  !a ? b : mergeEventCauses([a, b], { source: a.source === b.source ? a.source : "mixed", origin: a.origin === b.origin ? a.origin : null });
 
 /** Invalidation clock, not a second settings store. Each consumer reads the settled authorized projection. */
 export class SettingsObservationHub {
@@ -10,11 +11,12 @@ export class SettingsObservationHub {
   constructor(private readonly report: (error: unknown) => void) {}
 
   invalidate(cause: SettingsObservationCause): void {
+    if (!eventCause(cause)) stampEventCause(cause);
     this.revision++;
     for (const listener of [...this.listeners]) listener(cause);
   }
 
-  observe(read: () => Promise<SettingsSnapshot>, handler: (observation: SettingsObservation) => unknown): () => void {
+  observe(read: () => Promise<SettingsSnapshot>, handler: (observation: SettingsObservation) => unknown, actor?: DomainActor): () => void {
     if (this.listeners.size >= 64) throw new AppError("settings/observer-limit", "Too many settings observers");
     let disposed = false, running = false, dirty = false, first = true;
     let pending: SettingsObservationCause | undefined, previous: string | undefined;
@@ -39,7 +41,7 @@ export class SettingsObservationHub {
           if (identity === previous) continue;
           previous = identity;
           if (first) { observation.source = "initial"; observation.origin = null; first = false; }
-          try { await handler(observation); } catch (error) { this.report(error); }
+          try { await handler(copyEventCause(cause, observation)); } catch (error) { this.report(error); }
         }
       } finally { running = false; }
     };
@@ -47,7 +49,7 @@ export class SettingsObservationHub {
       if (disposed) return;
       pending = mergeCause(pending, cause); dirty = true; void run();
     };
-    this.listeners.add(notify); notify({ source: "initial", origin: null });
+    this.listeners.add(notify); notify(stampEventCause({ source: "initial", origin: null }, actor));
     return () => { disposed = true; this.listeners.delete(notify); };
   }
 }

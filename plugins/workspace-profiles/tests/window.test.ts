@@ -117,7 +117,7 @@ test("compiled header and command both expose window controls without new host A
   }
   expect(f.requests).toEqual([{ action: "maximize" }, { action: "maximize" }]);
   const manifest = await Bun.file(new URL("../dist/manifest.json", import.meta.url)).json();
-  expect(manifest.version).toBe("0.6.0");
+  expect(manifest.version).toBe("0.7.0");
   expect(manifest.requires.services.ui).toBe("^1.11.0");
   expect(manifest.permissions).toEqual(["agent:tools"]);
 });

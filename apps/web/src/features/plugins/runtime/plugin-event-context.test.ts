@@ -1,9 +1,10 @@
 import { expect, spyOn, test } from "bun:test";
-import type { PluginContext } from "@read-aware/plugin-types";
+import type { PluginContext, PluginReactionEvent } from "@read-aware/plugin-types";
 import { buildPluginContext } from "./plugin-context";
 import { actorCause, eventCause, stampEventCause } from "../../../platform/domain-actor";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import * as resources from "../../../services/resources";
+import * as ipc from "../../../platform/ipc";
 import { createSettingsDomain } from "../../../domain/settings/domain";
 import { deferred } from "../../../../tests/helpers/entity-host";
 
@@ -82,7 +83,7 @@ function memoryStorage() {
   };
 }
 
-test("two public plugin settings reactions stop A to B to A and preserve a new user's independent root", async () => {
+test.each(["events", "observations"] as const)("two public plugin settings %s stop A to B to A and preserve a new user's independent root", async mode => {
   const restoreStorage = memoryStorage(), settings = createSettingsDomain("user");
   const theme = (await settings.queries.read("appearance.theme")).value;
   const motion = (await settings.queries.read("appearance.motion")).value;
@@ -93,10 +94,22 @@ test("two public plugin settings reactions stop A to B to A and preserve a new u
   };
   const a = make("causal-a", "appearance.theme", "appearance.motion"), b = make("causal-b", "appearance.motion", "appearance.theme");
   let done = deferred(), cycles = 0, motionValue = motion, themeValue = theme;
-  const roots: string[] = [];
+  const roots: string[] = [], errors: unknown[] = [];
+  const subscribe = (runtime: ReturnType<typeof make>, path: string, handler: (delivery: PluginReactionEvent) => unknown) => {
+    if (mode === "events") return runtime.context.domains.settings.events.subscribe(event => {
+      if (event.changes.some(change => change.path === path)) return handler(event);
+    });
+    let seen: unknown;
+    return runtime.context.domains.settings.queries.observe({}, (snapshot, delivery) => {
+      expect("reaction" in snapshot).toBe(false);
+      if (snapshot.status !== "ready") return;
+      const next = snapshot.snapshot.settings.find(setting => setting.path === path)?.value;
+      const changed = next !== seen; seen = next;
+      if (snapshot.source !== "initial" && changed) return handler(delivery!);
+    });
+  };
   try {
-    a.context.domains.settings.events.subscribe(async event => {
-      if (!event.changes.some(change => change.path === "appearance.theme")) return;
+    subscribe(a, "appearance.theme", async event => {
       if (event.reaction?.status === "cycle") {
         expect(() => a.context.withEvent(event)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
         cycles++; done.resolve(); return;
@@ -107,21 +120,63 @@ test("two public plugin settings reactions stop A to B to A and preserve a new u
       await Promise.resolve();
       await bound.domains.settings.commands.update([{ path: "appearance.motion", value: motionValue }]);
     });
-    b.context.domains.settings.events.subscribe(async event => {
-      if (!event.changes.some(change => change.path === "appearance.motion")) return;
+    subscribe(b, "appearance.motion", async event => {
+      if (event.reaction?.status === "cycle") { errors.push("independent B trigger was classified as a cycle"); return; }
       const bound = b.context.withEvent(event);
       // Undo the user's theme change; this publishes the event back to A.
       await bound.domains.settings.commands.update([{ path: "appearance.theme", value: themeValue }]);
     });
+    await Bun.sleep(0);
     for (let i = 0; i < 2; i++) {
       done = deferred(); themeValue = (await settings.queries.read("appearance.theme")).value;
       await settings.commands.update([{ path: "appearance.theme", value: themeValue === "dark" ? "light" : "dark" }]);
       await done.promise; await Promise.all([a.reactions.drain(), b.reactions.drain()]);
+      expect((await settings.queries.read("appearance.theme")).value).toBe(themeValue);
     }
     expect(cycles).toBe(2); expect(roots).toHaveLength(2); expect(roots[0]).not.toBe(roots[1]);
+    expect(errors).toEqual([]);
   } finally {
     a.lifecycle.stop(); b.lifecycle.stop(); await Promise.all([a.lifecycle.drainCleanups(), b.lifecycle.drainCleanups()]);
     await settings.commands.update([{ path: "appearance.theme", value: theme }, { path: "appearance.motion", value: motion }]);
     restoreStorage();
   }
+});
+
+test("public document observation follows an event-bound transaction and refuses its repeated write", async () => {
+  const runtime = buildPluginContext({ id: "document-reaction", name: "Documents", version: "1", schemaVersion: 1, requires: {} }, "1", []);
+  let row: object | null = null, writes = 0;
+  const done = deferred();
+  const invoke = spyOn(ipc, "invoke").mockImplementation(async (command, input) => {
+    const args = input as { pluginId: string; id: string; json: string; changes: { id: string; json: string }[] };
+    expect(args.pluginId).toBe("document-reaction");
+    if (command === "plugin_docs_get") return row as never;
+    if (command === "plugin_docs_put" || command === "plugin_docs_apply") {
+      const change = command === "plugin_docs_put" ? args : args.changes[0]!;
+      row = { id: change.id, json: change.json, revision: String(++writes).repeat(32), updatedAt: "now" };
+      return (command === "plugin_docs_apply" ? { status: "applied", documents: [] } : undefined) as never;
+    }
+    throw Error(`Unexpected native command ${command}`);
+  });
+  let retained!: PluginContext;
+  try {
+    runtime.lifecycle.promote();
+    runtime.context.services.storage.observeDocuments<number>({ kind: "get", collection: "notes", id: "one" }, async (snapshot, delivery) => {
+      if (snapshot.status !== "ready" || snapshot.result.kind !== "get" || !snapshot.result.document) return;
+      expect("reaction" in snapshot).toBe(false);
+      if (snapshot.result.document.data === 2) {
+        expect(delivery?.reaction?.status).toBe("cycle");
+        expect(() => runtime.context.withEvent(delivery)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+        done.resolve(); return;
+      }
+      retained = runtime.context.withEvent(delivery);
+      await Promise.resolve();
+      expect(await retained.services.storage.applyDocuments([{ kind: "put", collection: "notes", id: "one", expectedRevision: snapshot.result.document.revision, data: 2 }])).toMatchObject({ status: "applied" });
+    });
+    await Bun.sleep(0);
+    await runtime.context.services.storage.collection("notes").put("one", 1);
+    await done.promise;
+    expect(writes).toBe(2);
+    expect(() => retained.services.storage.collection("notes").put("one", 3)).toThrow(expect.objectContaining({ code: "plugin/invalid-cause" }));
+    expect(writes).toBe(2);
+  } finally { runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); invoke.mockRestore(); }
 });

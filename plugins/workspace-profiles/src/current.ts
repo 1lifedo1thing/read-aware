@@ -12,9 +12,9 @@ export async function currentWorkspaceView(ctx: PluginContext): Promise<PluginVi
       kind: "text" as const, text: `${settingLabel(ctx.locale, setting.path)}: ${String(setting.value)}`,
     })),
   ] });
-  return { ...content(), live: { subscribe: channel => ctx.domains.settings.queries.observe({ target: { kind: "global" } }, async state => {
+  return { ...content(), live: { subscribe: channel => ctx.domains.settings.queries.observe({ target: { kind: "global" } }, async (state, delivery) => {
     if (state.status === "ready") { snapshot = state.snapshot; error = undefined; }
     else error = state.code;
-    await ctx.services.ui.publishView(channel, { revision: ++revision, view: content() });
+    await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: content() });
   }) } };
 }

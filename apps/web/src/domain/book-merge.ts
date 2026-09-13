@@ -37,7 +37,7 @@ export async function mergeDuplicateBooks(input: BookMergeRequest, origin: Domai
   return runDomainWrite(async () => {
     const events = await mintEventRows(drafts); live(signal);
     const receipt = await invoke<BookMergeReceipt>("library_merge_commit", { bookId, expectedRevision, events });
-    broadcastDomainEventDrafts(drafts); emitAppEvent("library-changed", {});
+    broadcastDomainEventDrafts(drafts); emitAppEvent("library-changed", {}, origin);
     return receipt;
   });
 }

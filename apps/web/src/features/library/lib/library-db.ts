@@ -72,7 +72,7 @@ async function deleteBookRecords(bookIds: string[], origin?: DomainActor) {
   return runDomainWrite(() => removeBookBatch(bookIds, {
     commit: ids => commitDomainEvents(...ids.map(bookId => ({ type: "book.removed" as const, payload: { bookId }, origin }))),
     releaseFiles: ids => invoke("library_release_book_files", { ids }),
-    removed: bookId => emitAppEvent("book-removed", { bookId }),
+    removed: bookId => emitAppEvent("book-removed", { bookId }, origin),
     warn: error => createLogger("library").warn("Books removed but local file release failed", error),
   }));
 }

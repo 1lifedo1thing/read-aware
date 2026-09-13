@@ -6,6 +6,7 @@ import {
 } from "./plugin-backend";
 import type { PluginLifecycleController } from "./plugin-lifecycle";
 import { PluginDocumentObserver } from "./plugin-document-observer";
+import { actorCause, type DomainActor } from "../../../platform/domain-actor";
 
 const encoder = new TextEncoder();
 export const DOCUMENT_BYTES = 4 * 1024 * 1024;
@@ -79,30 +80,42 @@ function pageFilter(filter?: PluginDocumentPageFilter) {
 const nativeDocuments = { pluginDocsApply, pluginDocsDelete, pluginDocsGet, pluginDocsList, pluginDocsPage, pluginDocsPut };
 export type PluginDocumentsBackend = typeof nativeDocuments;
 
-export function createPluginDocuments(pluginId: string, lifecycle: PluginLifecycleController, backend: PluginDocumentsBackend = nativeDocuments): Pick<PluginStorage, "collection" | "applyDocuments" | "observeDocuments"> {
-  const observer = new PluginDocumentObserver(lifecycle);
+export function createPluginDocuments(pluginId: string, lifecycle: PluginLifecycleController, backend: PluginDocumentsBackend = nativeDocuments,
+  actor: DomainActor = `plugin:${pluginId}`, observer = new PluginDocumentObserver(lifecycle)): Pick<PluginStorage, "collection" | "applyDocuments" | "observeDocuments"> {
+  actorCause(actor);
   const storage: Pick<PluginStorage, "collection" | "applyDocuments" | "observeDocuments"> = {
     observeDocuments: <T>(input: import("@read-aware/plugin-types").PluginDocumentObservationQuery, handler: (event: import("@read-aware/plugin-types").PluginDocumentObservation<T>) => unknown) => {
       if (!input || typeof input !== "object" || Array.isArray(input)) return invalid("Invalid document observation query");
-      const collection = storage.collection(collectionName(input.collection));
+      const name = collectionName(input.collection), collection = storage.collection(name);
       if (input.kind === "get" && Object.keys(input).every(key => ["kind", "collection", "id"].includes(key))) {
         const id = key(input.id, 1024);
-        return observer.observe(async () => ({ kind: "get", document: await collection.get<T>(id) }), handler);
+        return observer.observe(async () => ({ kind: "get", document: await collection.get<T>(id) }), handler,
+          target => target.collection === name && target.id === id, actor);
       }
       if (input.kind === "page" && Object.keys(input).every(key => ["kind", "collection", "filter"].includes(key))) {
         const filter = pageFilter(input.filter);
-        return observer.observe(async () => ({ kind: "page", page: await collection.page<T>(filter) }), handler);
+        return observer.observe(async () => ({ kind: "page", page: await collection.page<T>(filter) }), handler,
+          target => target.collection === name, actor);
       }
       return invalid("Invalid document observation query");
     },
-    applyDocuments: changes => lifecycle.storageWrite("services.storage.applyDocuments", () =>
-      backend.pluginDocsApply(pluginId, normalizeDocumentChanges(changes))),
+    applyDocuments: changes => lifecycle.storageWrite("services.storage.applyDocuments", () => {
+      const normalized = normalizeDocumentChanges(changes);
+      return observer.write(normalized.filter(change => change.kind !== "check"), actor,
+        () => backend.pluginDocsApply(pluginId, normalized), result => result.status === "applied");
+    }),
     collection: name => {
       const collection = collectionName(name);
       const api: PluginDocumentCollection = {
-        put: (id, data, options) => lifecycle.storageWrite("services.storage.collection.put", () =>
-          backend.pluginDocsPut(pluginId, collection, String(id), JSON.stringify(data ?? null), { bookId: options?.bookId, anchor: options?.anchor })),
-        delete: id => lifecycle.storageWrite("services.storage.collection.delete", () => backend.pluginDocsDelete(pluginId, collection, String(id))),
+        put: (id, data, options) => lifecycle.storageWrite("services.storage.collection.put", () => {
+          const target = { collection, id: String(id) };
+          return observer.write([target], actor, () => backend.pluginDocsPut(pluginId, collection, target.id,
+            JSON.stringify(data ?? null), { bookId: options?.bookId, anchor: options?.anchor }));
+        }),
+        delete: id => lifecycle.storageWrite("services.storage.collection.delete", () => {
+          const target = { collection, id: String(id) };
+          return observer.write([target], actor, () => backend.pluginDocsDelete(pluginId, collection, target.id));
+        }),
         get: <T>(id: string) => lifecycle.read("services.storage.collection.get", async () => {
           const row = await backend.pluginDocsGet(pluginId, collection, String(id));
           return row ? document<T>(row) : null;

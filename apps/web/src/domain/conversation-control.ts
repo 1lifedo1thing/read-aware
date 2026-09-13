@@ -62,10 +62,10 @@ export function conversationCommands(origin: DomainActor) {
         // Lazy import avoids making the Agent's port construction import its own runtime.
         const { discardAgentThread } = await import("../features/ai/agent/agent-runtime");
         signal?.throwIfAborted();
-        await discardAgentThread(target.kind, target.id);
+        await discardAgentThread(target.kind, target.id, origin);
         signal?.throwIfAborted();
         await clearConversation(target.id, origin, signal);
-        emitAppEvent("conversations-changed", {});
+        emitAppEvent("conversations-changed", {}, origin);
       }, signal);
       return { status: "completed" as const, target };
     },

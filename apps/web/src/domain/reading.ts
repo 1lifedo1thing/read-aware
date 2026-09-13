@@ -156,7 +156,7 @@ export function createReadingDomain(origin: DomainActor, lifetime?: AbortSignal,
     close: (signal, guard) => readingRuntime.close(signal, guard, origin),
     setFinished: async (bookId, finished) => {
       await setLibraryBookFinished(String(bookId), finished === true, origin);
-      emitAppEvent("library-changed", {});
+      emitAppEvent("library-changed", {}, origin);
     },
   };
 

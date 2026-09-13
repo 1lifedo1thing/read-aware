@@ -186,7 +186,7 @@ async function applyParsedBook(request: EnrichmentRequest, parsed: FoliateBook):
 
     if (events.length === 0) return { reason: "not-needed" };
     await commitDomainEvents(...events);
-    emitAppEvent("book-changed", { bookId: request.bookId });
+    emitAppEvent("book-changed", { bookId: request.bookId }, request.origin);
     return { reason: null };
   });
 }

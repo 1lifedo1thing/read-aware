@@ -85,7 +85,7 @@ export function toBookSummary(book: LibraryBook): BookSummary {
   };
 }
 
-const notifyLibraryChanged = (): void => emitAppEvent("library-changed", {});
+const notifyLibraryChanged = (actor: DomainActor): void => emitAppEvent("library-changed", {}, actor);
 
 export async function getExtractedChapters(bookId: string): Promise<ExtractedChapter[]> {
   return ensureBookTextExtracted(bookId);
@@ -238,7 +238,7 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
           { kind: "file", file },
           { t: i18n.getFixedT(null, "shelf"), knownBooks: await listLibraryBooks(), origin, signal: inputSignal },
         );
-        if (outcome.status === "imported") notifyLibraryChanged();
+        if (outcome.status === "imported") notifyLibraryChanged(origin);
         return toBookSummary(outcome.book);
       },
       editMetadata: async (bookId, patch) => {
@@ -247,19 +247,19 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
           { title: patch.title, author: patch.author },
           origin,
         );
-        notifyLibraryChanged();
+        notifyLibraryChanged(origin);
       },
       setStarred: async (bookId, starred) => {
         await setLibraryBookStarred(String(bookId), starred === true, origin);
-        notifyLibraryChanged();
+        notifyLibraryChanged(origin);
       },
       remove: async (bookId) => {
         await removeLibraryBook(String(bookId), origin);
-        notifyLibraryChanged();
+        notifyLibraryChanged(origin);
       },
       removeMany: async (bookIds) => {
         const receipt = await removeLibraryBooks(bookIds, origin);
-        notifyLibraryChanged();
+        notifyLibraryChanged(origin);
         return receipt;
       },
       retryRemovalCleanup: retryLibraryBookFileRelease,
@@ -268,27 +268,27 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
           { title: String(input.title), author: input.author, binding: input.binding },
           origin, lifetime,
         );
-        notifyLibraryChanged();
+        notifyLibraryChanged(origin);
         return toBookSummary(book);
       },
       updateVirtualBookTitle: async (bookId, title, author) => {
         await updateVirtualLibraryBookTitle(String(bookId), String(title), author, origin);
-        notifyLibraryChanged();
+        notifyLibraryChanged(origin);
       },
     },
     collections: {
       create: async (name) => {
         const collection = await createCollection(String(name), origin);
-        notifyLibraryChanged();
+        notifyLibraryChanged(origin);
         return { id: collection.id, name: collection.name, createdAt: collection.createdAt };
       },
       rename: async (collectionId, name) => {
         await renameCollection(String(collectionId), String(name), origin);
-        notifyLibraryChanged();
+        notifyLibraryChanged(origin);
       },
       remove: async (collectionId) => {
         await deleteCollection(String(collectionId), origin);
-        notifyLibraryChanged();
+        notifyLibraryChanged(origin);
       },
       assignBooks: async (bookIds, collectionId) => {
         await setBooksCollection(
@@ -296,7 +296,7 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
           collectionId == null ? null : String(collectionId),
           origin,
         );
-        notifyLibraryChanged();
+        notifyLibraryChanged(origin);
       },
     },
   };
@@ -304,7 +304,7 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
   return {
     queries,
     commands,
-    events: { observeInvalidation: handler => observeLibraryInvalidation(handler, lifetime), subscribe: domainSubscribe(LIBRARY_EVENTS, actorOrigin(origin)), observeTextTask: (bookId, taskId, listener) => textTasks.observe(bookId, taskId, listener),
+    events: { observeInvalidation: handler => observeLibraryInvalidation(handler, lifetime, origin), subscribe: domainSubscribe(LIBRARY_EVENTS, actorOrigin(origin)), observeTextTask: (bookId, taskId, listener) => textTasks.observe(bookId, taskId, listener),
       observeEnrichment: createEnrichmentObserver(lifetime), observeContentState: createContentStateObserver(lifetime) },
   };
 }

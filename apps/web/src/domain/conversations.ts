@@ -71,6 +71,6 @@ export function createConversationsDomain(origin: DomainActor, lifetime?: AbortS
       getThread: async (threadId) => toMessages(await loadConversation(String(threadId))),
     },
     commands: conversationCommands(origin),
-    events: { observeInvalidation: handler => observeConversationInvalidation(handler, lifetime), subscribe: domainSubscribe(CONVERSATION_EVENTS, actorOrigin(origin)), observeRuntime: observeConversations },
+    events: { observeInvalidation: handler => observeConversationInvalidation(handler, lifetime, origin), subscribe: domainSubscribe(CONVERSATION_EVENTS, actorOrigin(origin)), observeRuntime: observeConversations },
   };
 }

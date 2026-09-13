@@ -1,11 +1,34 @@
 import { expect, test } from "bun:test";
-import { actorCause, actorOrigin, copyEventCause, eventCause, reactionActor, stampEventCause, type DomainActor } from "./domain-actor";
+import { actorCause, actorOrigin, copyEventCause, eventCause, mergeEventCauses, reactionActor, stampEventCause, type DomainActor } from "./domain-actor";
 import { broadcastDomainEventDrafts, onDomainEventBroadcast, type DomainEventBroadcast } from "./domain-events";
 import { createUserProfileService } from "../domain/user-profile";
 import { KVWriteQueue, type KVCommit } from "./kv-write-queue";
 import { ReadingSessionController } from "../domain/reading-session-controller";
 
 const root = () => eventCause(stampEventCause({}))!;
+
+test("coalescing preserves both causal paths without serializing them or resetting depth", () => {
+  const cause = root();
+  const a = stampEventCause({}, reactionActor("plugin:a", "a", cause));
+  const b = stampEventCause({}, reactionActor("plugin:b", "b", cause));
+  const merged = mergeEventCauses([a, b], { value: "snapshot" });
+  expect(JSON.stringify(merged)).toBe('{"value":"snapshot"}');
+  for (const step of ["a", "b"]) expect(() => reactionActor("plugin:a", step, eventCause(merged)!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+  expect(() => mergeEventCauses([{}], {})).toThrow(expect.objectContaining({ code: "plugin/invalid-cause" }));
+  const many = Array.from({ length: 40 }, (_, index) => stampEventCause({}, reactionActor("plugin:a", String(index), root())));
+  const saturated = eventCause(mergeEventCauses(many, {}))!;
+  expect(saturated.steps).toHaveLength(32);
+  expect(() => reactionActor("plugin:b", "new", saturated)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+});
+
+test("coalescing an independent trigger with a spent reaction carries only the eligible root forward", () => {
+  const old = stampEventCause({}, reactionActor("plugin:a", "a", root()));
+  const independent = stampEventCause({});
+  const merged = eventCause(mergeEventCauses([old, independent], {}))!;
+  const next = reactionActor("plugin:a", "a", merged);
+  expect(actorCause(next)!.root).toBe(eventCause(independent)!.root);
+  expect(() => reactionActor("plugin:a", "a", actorCause(next)!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+});
 
 test("cross-domain reactions reject A to B to A before repeating an effect, while independent actions and distinct rules work", async () => {
   const events: DomainEventBroadcast[] = [];

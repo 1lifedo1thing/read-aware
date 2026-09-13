@@ -12,7 +12,7 @@ if (process.env.PLUGIN_BACKUP_DATA_PROOF === "1") {
       if (["set_kv", "delete_kv", "secret_set", "secret_delete", "plugin_docs_put", "plugin_docs_delete", "plugin_docs_apply", "commit_events"].includes(command) && hold) {
         return new Promise((resolve, reject) => pending.push({ command, resolve, reject }));
       }
-      return Promise.resolve();
+      return Promise.resolve(command === "plugin_docs_apply" ? { status: "applied", documents: [] } : undefined);
     },
   } } });
   const { buildPluginContext } = await import("./plugin-context");
@@ -43,7 +43,7 @@ if (process.env.PLUGIN_BACKUP_DATA_PROOF === "1") {
       secrets.set("token", "later"), secrets.remove("token"), late.context.services.storage.set("new", 1)];
     for (const write of rejected) await expect(write).rejects.toMatchObject({ code: "backup/busy" });
     expect(commands).toHaveLength(count);
-    for (const work of pending.splice(0)) work.resolve();
+    for (const work of pending.splice(0)) work.resolve(work.command === "plugin_docs_apply" ? { status: "applied", documents: [] } : undefined);
     await Promise.all(saved); await Bun.sleep(0);
     expect(entered).toBe(false); expect(pending.map(work => work.command)).toEqual(["commit_events"]);
     pending.shift()!.resolve({ appended: 1, applied: 1 }); await Bun.sleep(0);

@@ -4,7 +4,7 @@ import { PluginEventReactions } from "./plugin-event-reactions";
 
 /** In-realm equivalent of the Worker envelope. Each call revalidates the lease;
  * immutable per-call actors, resources and activation owners stay in the host. */
-export function bindPluginEventContext(event: PluginReactionEvent, reactions: PluginEventReactions,
+export function bindPluginEventContext(event: PluginReactionEvent | undefined, reactions: PluginEventReactions,
   contextForActor: (actor: DomainActor) => PluginContext): PluginContext {
   const token = event?.reaction!;
   const context = contextForActor(reactions.actor(token));
@@ -23,7 +23,8 @@ export function bindPluginEventContext(event: PluginReactionEvent, reactions: Pl
 }
 
 /** Applied after authorization/scope filtering, so no token-bearing event can
- * bypass the existing event projection. Snapshots are handled by their owners. */
+ * bypass the existing event projection. Observation metadata is separate from
+ * the snapshot, preserving its shape and host-private provenance. */
 export function attachPluginEventReactions(context: PluginContext, reactions: PluginEventReactions): void {
   for (const [name, domain] of Object.entries(context.domains)) {
     const events = domain?.events as { subscribe?: (...args: any[]) => unknown } | undefined;
@@ -34,6 +35,23 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
       args[index] = (event: object) => reactions.deliver(subscription, event,
         reaction => handler({ ...event, reaction }));
       return subscribe(...args);
+    };
+  }
+  const observations: [object | undefined, string, number][] = [
+    [context.domains.settings?.queries, "observe", 1],
+    [context.domains.library?.events, "observeInvalidation", 0],
+    [context.domains.conversations?.events, "observeInvalidation", 0],
+    [context.services.storage, "observeDocuments", 1],
+  ];
+  for (const [namespace, key, index] of observations) {
+    const methods = namespace as Record<string, (...args: any[]) => unknown> | undefined;
+    const observe = methods?.[key];
+    if (!observe) continue;
+    methods![key] = (...args: any[]) => {
+      const handler = args[index], subscription = {};
+      args[index] = (snapshot: object) => reactions.deliver(subscription, snapshot,
+        reaction => handler(snapshot, { reaction }));
+      return observe(...args);
     };
   }
 }

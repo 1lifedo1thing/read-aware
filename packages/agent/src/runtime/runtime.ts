@@ -129,11 +129,11 @@ export class AgentRuntime {
   }
 
   /** Drop one thread and its hidden rolling summary after the transcript is cleared. */
-  async discardThread(scope: ThreadScope): Promise<void> {
+  async discardThread(scope: ThreadScope, clearInsights?: (threadKey: string) => Promise<void>): Promise<void> {
     const key = threadScopeKey(scope);
     this.threads.get(key)?.dispose();
     this.threads.delete(key);
-    await this.deps.conversations.clearInsights(key);
+    await (clearInsights ? clearInsights(key) : this.deps.conversations.clearInsights(key));
   }
 
   /**

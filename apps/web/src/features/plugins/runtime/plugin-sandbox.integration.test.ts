@@ -73,6 +73,26 @@ test("real Worker event context keeps its opaque lease across await, nested name
   expect(await s.next(message => message.t === "result" && message.id === 935)).toMatchObject({ ok: true });
 });
 
+test("real Worker receives observation causality separately from the unchanged snapshot", async () => {
+  const s = sandbox("observation-reaction", "event-reaction-probe.ts", {
+    shape: { domains: { settings: { queries: { observe: "fn" } } }, services: {}, contributions: {} },
+  });
+  const registration = await s.next(message => message.method === "domains.settings.queries.observe");
+  const handle = (data(registration.args!) as [object, () => string])[1]();
+  s.worker.postMessage({ t: "result", id: registration.id, ok: true, value: null, disposable: "observation-subscription" });
+  await s.next(message => message.t === "ready");
+  s.worker.postMessage({ t: "sync", patch: { phase: "active" } });
+  const reaction = { id: "observation-lease", status: "ready" };
+  s.worker.postMessage({ t: "invoke", id: 936, handle, args: [
+    { status: "ready", source: "local", origin: "user", snapshot: { revision: 7, target: { kind: "global" }, settings: [], overrides: [] } }, { reaction },
+  ] });
+  const call = await s.next(message => message.method === "services.storage.set");
+  expect((call as unknown as { reaction: unknown }).reaction).toEqual(reaction);
+  expect(data(call.args!)).toEqual(["observed", 7]);
+  s.worker.postMessage({ t: "result", id: call.id, ok: true, value: null });
+  expect(await s.next(message => message.t === "result" && message.id === 936)).toMatchObject({ ok: true });
+});
+
 test.each([undefined, 0, 2, "1"])("real Worker rejects incompatible boot version %s before loading plugin code", async protocolVersion => {
   const s = sandbox("must-not-activate", "wire-probe.ts", { protocolVersion });
   expect(await s.next(message => message.t === "failed")).toMatchObject({ error: "Host protocol or transport version rejected" });
