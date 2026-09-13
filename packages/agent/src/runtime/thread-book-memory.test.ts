@@ -63,7 +63,7 @@ test("future selection is a conversation signal, not authority to widen chapter 
   try {
     await f.send({ readingCursor: { chapter: "ch0" }, attachments: [{ text: "Selection", chapter: "ch2" }] });
     expect(f.prompts[0]).not.toContain("Narrative evidence"); expect(f.prompts[0]).not.toContain("Future narrative");
-    expect(f.prompts[0]).toContain('chapter #0 ("Chapter 0")');
+    expect(f.prompts[0]).toContain('zero-based chapterIndex 0 ("Chapter 0")');
   } finally { await f.close(); }
 });
 test("a degraded digest read retries on the next same-chapter turn instead of freezing the omission", async () => {

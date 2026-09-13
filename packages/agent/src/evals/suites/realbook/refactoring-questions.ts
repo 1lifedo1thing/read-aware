@@ -243,6 +243,7 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
     criteria: { guidance: "catalog-as-reference is the book's own intent (Introducing the Catalog)" },
     rubric: [
       "Gives a real usage path (read the opening + smells, keep the catalog for lookup) grounded in the book's own structure, not a lecture about finishing books",
+      "Does not infer that the reader completed or understood earlier chapters from their current location or the supplied chapter summaries; prerequisite reading is a suggestion, not an invented reading history",
     ],
   }),
   bookQuestion({

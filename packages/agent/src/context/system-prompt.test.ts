@@ -73,6 +73,24 @@ describe("book system prompt", () => {
     expect(prompt).toContain("The reader has marked this book finished.");
   });
 
+  test("available chapter summaries preserve evidence without inventing reading history", () => {
+    for (const flavor of ["narrative", "expository"] as const) {
+      const prompt = buildSystemPrompt(
+        { kind: "book", bookId: "book-1" as Id },
+        {
+          book: { id: "book-1" as Id, title: "Jumped ahead", status: "reading", narrativity: flavor },
+          currentChapter: { index: 4, title: "Later section" },
+          chapterDigests: [{ chapterIndex: 0, summary: "Earlier source evidence", characters: [], relations: [], flavor, digestVersion: 2 }],
+        },
+      );
+      expect(prompt).toContain("Earlier source evidence");
+      expect(prompt).toContain("not a record of chapters the reader has completed");
+      expect(prompt).not.toContain("chapters the reader has finished");
+      expect(prompt).not.toContain("Recent finished chapters");
+      expect(prompt).not.toContain("The reader has marked this book finished.");
+    }
+  });
+
   test("keeps shelf cards on the global surface", () => {
     const prompt = buildSystemPrompt(
       { kind: "global", threadId: "thread-1" },
