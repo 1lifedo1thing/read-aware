@@ -11,8 +11,8 @@ let originalEnabled = false;
 
 async function isolated() {
   const path = await appDataDir();
-  if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) {
-    throw Error("Maintenance acceptance requires isolated capability-e2e data");
+  if (!/\/com\.readaware\.app\.(capability-e2e|validation-repair-e2e)$/.test(path.replace(/[/\\]$/, ""))) {
+    throw Error("Maintenance acceptance requires an isolated capability or repair profile");
   }
   return path;
 }

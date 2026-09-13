@@ -1,0 +1,455 @@
+{
+  "flow": 53,
+  "baseline": "b6bc63e6",
+  "date": "2026-09-13",
+  "runtime": "Fresh com.readaware.app.validation-repair-e2e, debug native PID34183/9225, Vite5184. Separate from prior primary/backup/release profiles.",
+  "method": "One synthetic FB2 imported through product domain. Test-only direct SQLite title changes create projection drift without changing the event log. Actual compiled Maintenance Desk0.4 Worker and real Agent maintenance tools use host preview and mounted Confirm/Done/Reload controls. Native database lock gates cancellation timing; a temporary BEFORE INSERT trigger causes native rebuild transaction failure. No mocked repair result.",
+  "observations": {
+    "repairBaseline": {
+      "bookId": "1995d560-a50d-4284-a187-15ea37675b00",
+      "path": "/Users/ahpx/Library/Application Support/com.readaware.app.validation-repair-e2e",
+      "plugin": {
+        "contributions": 2,
+        "enabled": true,
+        "id": "maintenance-desk",
+        "path": "/Users/ahpx/Library/Application Support/com.readaware.app.validation-repair-e2e",
+        "version": "0.4.0"
+      },
+      "report": {
+        "checkedAt": "2026-09-13T01:42:28.430Z",
+        "consistent": true,
+        "driftedTables": 0,
+        "eventsReplayed": 2,
+        "onlyLiveRows": 0,
+        "onlyReplayedRows": 0,
+        "scope": "event-projections"
+      }
+    },
+    "repairDrift": {
+      "checkedAt": "2026-09-13T01:42:42.103Z",
+      "consistent": false,
+      "driftedTables": 1,
+      "eventsReplayed": 2,
+      "onlyLiveRows": 1,
+      "onlyReplayedRows": 1,
+      "scope": "event-projections"
+    },
+    "repairPluginPreview": {
+      "buttons": [
+        {
+          "label": null,
+          "text": "WebDAV Sync"
+        },
+        {
+          "label": "Close settings",
+          "text": ""
+        },
+        {
+          "label": null,
+          "text": "Check for updates"
+        },
+        {
+          "label": null,
+          "text": "Stable"
+        },
+        {
+          "label": null,
+          "text": "Beta"
+        },
+        {
+          "label": null,
+          "text": "Export"
+        },
+        {
+          "label": null,
+          "text": "Send report…"
+        },
+        {
+          "label": null,
+          "text": "Reveal"
+        },
+        {
+          "label": null,
+          "text": "Check for differences"
+        },
+        {
+          "label": null,
+          "text": ""
+        },
+        {
+          "label": null,
+          "text": "Done"
+        },
+        {
+          "label": null,
+          "text": "Confirm repair"
+        }
+      ],
+      "state": {
+        "report": {
+          "checkedAt": "2026-09-13T01:43:17.374Z",
+          "consistent": false,
+          "driftedTables": 1,
+          "eventsReplayed": 2,
+          "onlyLiveRows": 1,
+          "onlyReplayedRows": 1,
+          "scope": "event-projections"
+        },
+        "step": "preview"
+      },
+      "text": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nFB2\nProjection Repair Probe\nReadAware Tests\nProjection Repair Probe\nReadAware Tests\n\n\n\nSettings\n\nGeneral\n\nReading\n\nAI\n\nPlugins\n\nTheme\n\nCustomize\n\nShortcuts\n\nData & Sync\n\nAbout\n\nRSS Reader\n\nSentence Reader\n\nTTS Voices\n\nWebDAV Sync\n\nAbout\nVersion, build, and the engine that powers reading.\nReadAware\nVersion\n0.5.4 「Lake Baikal」\nBuild\nDesktop (Tauri)\nUpdates\nCheck for and install the latest release.\nUp to date\nCheck for updates\nUpdate channel\nStable gets finished releases. Beta also gets pre-releases — earlier features, rougher edges.\n\nStable\nBeta\nReading engine\nEvery format — EPUB, MOBI, AZW3, FB2, CBZ, CBR, TXT, HTML, PDF — opens in one reader, with the same selection, annotation and progress model.\n\nfoliate-js\nThe open-source reading engine ReadAware is built on.\nVendored\nDiagnostics\nDiagnostic logs and integrity-check samples may include personal data, including book, note or conversation records. Review the bundle before exporting or sending it. Nothing is sent without your confirmation.\n\nExport diagnostics\nSave the bundle as a JSON file to attach to an email or issue.\nExport\nReport a problem\nReview the bundle, then send it to the developers.\nSend report…\nLog files\nThe rotating log files the bundle is built from.\nReveal\nRepair local projections\nRepair local projections\nCompare local data with the event log before repairing.\nCheck for differences\nHelp\nWebsite\nProduct news, downloads, and docs.\nreadaware.app\nContact\nQuestions, bugs, or feedback — reach out directly.\nhi@ahpx.me\n\nRepair local projections\nDifferences: 1 tables, 1 rows only in current data, 1 rows only in replayed data.\n\nRepair rebuilds local projections from the complete event log at confirmation time. Edits absent from the log will be discarded. Original files, backups and other devices are not repaired. Writes pause until you reload.\n\nDone\nConfirm repair"
+    },
+    "repairCancelled": {
+      "report": {
+        "checkedAt": "2026-09-13T01:43:38.626Z",
+        "consistent": false,
+        "driftedTables": 1,
+        "eventsReplayed": 2,
+        "onlyLiveRows": 1,
+        "onlyReplayedRows": 1,
+        "scope": "event-projections"
+      },
+      "state": null,
+      "title": "Projection-only drift"
+    },
+    "repairCancelledJournal": {
+      "buttons": [
+        {
+          "label": "Remove Projection Repair Probe",
+          "text": ""
+        },
+        {
+          "label": null,
+          "text": ""
+        },
+        {
+          "label": "Back",
+          "text": ""
+        },
+        {
+          "label": null,
+          "text": "Clear finished operations"
+        },
+        {
+          "label": null,
+          "text": "Maintenance Desk"
+        },
+        {
+          "label": null,
+          "text": "Close"
+        }
+      ],
+      "text": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nFB2\nProjection Repair Probe\nReadAware Tests\nProjection Repair Probe\nReadAware Tests\n\n\n\n\nMaintenance Desk\n\nRecent operations\nRepair local projections\n2026-09-13T01:43:16.824Z\nWait cancelled; started operations may continue\nClear finished operations\nMaintenance Desk\nClose"
+    },
+    "repairCompetingAgent": {
+      "buttons": [
+        "",
+        "Done",
+        "Confirm repair"
+      ],
+      "competing": {
+        "code": "ui/unavailable"
+      },
+      "state": {
+        "report": {
+          "checkedAt": "2026-09-13T01:44:44.679Z",
+          "consistent": false,
+          "driftedTables": 1,
+          "eventsReplayed": 2,
+          "onlyLiveRows": 1,
+          "onlyReplayedRows": 1,
+          "scope": "event-projections"
+        },
+        "step": "preview"
+      }
+    },
+    "repairPluginDone": {
+      "buttons": [
+        {
+          "label": null,
+          "text": "Reveal"
+        },
+        {
+          "label": null,
+          "text": "Check for differences"
+        },
+        {
+          "label": null,
+          "text": ""
+        },
+        {
+          "label": null,
+          "text": "Reload app"
+        }
+      ],
+      "state": {
+        "step": "done"
+      },
+      "text": "rds. Review the bundle before exporting or sending it. Nothing is sent without your confirmation.\n\nExport diagnostics\nSave the bundle as a JSON file to attach to an email or issue.\nExport\nReport a problem\nReview the bundle, then send it to the developers.\nSend report…\nLog files\nThe rotating log files the bundle is built from.\nReveal\nRepair local projections\nRepair local projections\nCompare local data with the event log before repairing.\nCheck for differences\nHelp\nWebsite\nProduct news, downloads, and docs.\nreadaware.app\nContact\nQuestions, bugs, or feedback — reach out directly.\nhi@ahpx.me\n\nRepair local projections\nProjections rebuilt. Writes remain paused until you reload the app.\n\nReload app",
+      "title": "Projection Repair Probe"
+    },
+    "repairWriteBarrier": {
+      "state": {
+        "step": "done"
+      },
+      "title": "Projection Repair Probe",
+      "write": {
+        "accepted": false,
+        "code": "backup/busy"
+      }
+    },
+    "repairPluginReceipt": {
+      "buttons": [
+        {
+          "label": null,
+          "text": ""
+        },
+        {
+          "label": "Back",
+          "text": ""
+        },
+        {
+          "label": null,
+          "text": "Clear finished operations"
+        },
+        {
+          "label": null,
+          "text": "Maintenance Desk"
+        },
+        {
+          "label": null,
+          "text": "Close"
+        }
+      ],
+      "text": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nFB2\nProjection Repair Probe\nReadAware Tests\nProjection Repair Probe\nReadAware Tests\n\n\n\n\nMaintenance Desk\n\nRecent operations\nRepair local projections\n2026-09-13T01:44:44.622Z\nProjections rebuilt; reload required\nRepair local projections\n2026-09-13T01:43:16.824Z\nWait cancelled; started operations may continue\nClear finished operations\nMaintenance Desk\nClose"
+    },
+    "repairRemounted": {
+      "buttons": [
+        "Check for differences",
+        "",
+        "Reload app"
+      ],
+      "state": {
+        "step": "done"
+      },
+      "text": "es\nHelp\nWebsite\nProduct news, downloads, and docs.\nreadaware.app\nContact\nQuestions, bugs, or feedback — reach out directly.\nhi@ahpx.me\n\nRepair local projections\nProjections rebuilt. Writes remain paused until you reload the app.\n\nReload app"
+    },
+    "repairReloaded": {
+      "afterTitle": "Projection Repair Confirmed Write",
+      "beforeTitle": "Projection Repair Probe",
+      "report": {
+        "checkedAt": "2026-09-13T01:46:18.244Z",
+        "consistent": true,
+        "driftedTables": 0,
+        "eventsReplayed": 4,
+        "onlyLiveRows": 0,
+        "onlyReplayedRows": 0,
+        "scope": "event-projections"
+      },
+      "verification": {
+        "content": [
+          {
+            "text": "{\"scope\":\"event-projections\",\"checkedAt\":\"2026-09-13T01:46:18.258Z\",\"consistent\":true,\"eventsReplayed\":4,\"driftedTables\":0,\"onlyLiveRows\":0,\"onlyReplayedRows\":0}",
+            "type": "text"
+          }
+        ]
+      }
+    },
+    "repairAgentPreview": {
+      "buttons": [
+        "",
+        "Done",
+        "Confirm repair"
+      ],
+      "caller": {
+        "status": "waiting"
+      },
+      "state": {
+        "report": {
+          "checkedAt": "2026-09-13T01:46:56.473Z",
+          "consistent": false,
+          "driftedTables": 1,
+          "eventsReplayed": 4,
+          "onlyLiveRows": 1,
+          "onlyReplayedRows": 1,
+          "scope": "event-projections"
+        },
+        "step": "preview"
+      }
+    },
+    "repairAbortWorking": {
+      "after": {
+        "step": "working"
+      },
+      "before": {
+        "step": "working"
+      },
+      "caller": {
+        "status": "waiting"
+      }
+    },
+    "repairAbortCommitted": {
+      "buttons": [
+        "Check for differences",
+        "",
+        "Reload app"
+      ],
+      "caller": {
+        "code": 20,
+        "name": "AbortError",
+        "status": "failed"
+      },
+      "state": {
+        "step": "done"
+      },
+      "text": "\nCheck for differences\nHelp\nWebsite\nProduct news, downloads, and docs.\nreadaware.app\nContact\nQuestions, bugs, or feedback — reach out directly.\nhi@ahpx.me\n\nRepair local projections\nProjections rebuilt. Writes remain paused until you reload the app.\n\nReload app",
+      "title": "Projection Repair Confirmed Write",
+      "write": {
+        "accepted": false,
+        "code": "backup/busy"
+      }
+    },
+    "repairAbortReloaded": {
+      "originalSourcePresent": true,
+      "report": {
+        "checkedAt": "2026-09-13T01:48:32.381Z",
+        "consistent": true,
+        "driftedTables": 0,
+        "eventsReplayed": 4,
+        "onlyLiveRows": 0,
+        "onlyReplayedRows": 0,
+        "scope": "event-projections"
+      },
+      "sourceInfo": {
+        "byteSize": 545,
+        "mimeType": null,
+        "sha256": "030cfbba3683768eccc7ba3eabc4faeb216da553fd556b162a26a75702e3f126"
+      }
+    },
+    "repairNativeFailure": {
+      "buttons": [
+        "Check for differences",
+        "",
+        "Done"
+      ],
+      "caller": {
+        "code": "db/error",
+        "status": "failed"
+      },
+      "state": {
+        "code": "db/error",
+        "step": "failed"
+      },
+      "text": "file to attach to an email or issue.\nExport\nReport a problem\nReview the bundle, then send it to the developers.\nSend report…\nLog files\nThe rotating log files the bundle is built from.\nReveal\nRepair local projections\nRepair local projections\nCompare local data with the event log before repairing.\nCheck for differences\nHelp\nWebsite\nProduct news, downloads, and docs.\nreadaware.app\nContact\nQuestions, bugs, or feedback — reach out directly.\nhi@ahpx.me\n\nRepair local projections\nThe local database ran into a problem.\nDone",
+      "title": "Projection-only rollback drift"
+    },
+    "repairFailureReleased": {
+      "book": {
+        "addedAt": "2026-09-13T01:42:28.252Z",
+        "author": "ReadAware Tests",
+        "collectionId": null,
+        "fileName": "projection-repair.fb2",
+        "fileSize": 545,
+        "format": "fb2",
+        "id": "1995d560-a50d-4284-a187-15ea37675b00",
+        "starred": true,
+        "title": "Projection-only rollback drift",
+        "updatedAt": "2026-09-13T01:46:18.206Z"
+      },
+      "report": {
+        "checkedAt": "2026-09-13T01:49:22.593Z",
+        "consistent": false,
+        "driftedTables": 1,
+        "eventsReplayed": 5,
+        "onlyLiveRows": 1,
+        "onlyReplayedRows": 1,
+        "scope": "event-projections"
+      },
+      "writeAccepted": true
+    },
+    "repairFinalReceipt": {
+      "book": {
+        "addedAt": "2026-09-13T01:42:28.252Z",
+        "author": "ReadAware Tests",
+        "collectionId": null,
+        "fileName": "projection-repair.fb2",
+        "fileSize": 545,
+        "format": "fb2",
+        "id": "1995d560-a50d-4284-a187-15ea37675b00",
+        "starred": true,
+        "title": "Projection Repair Confirmed Write",
+        "updatedAt": "2026-09-13T01:46:18.206Z"
+      },
+      "buttons": [
+        "Check for differences",
+        "",
+        "Reload app"
+      ],
+      "caller": {
+        "result": {
+          "content": [
+            {
+              "text": "{\"action\":\"repair\",\"status\":\"rebuilt-reload-required\"}",
+              "type": "text"
+            }
+          ]
+        },
+        "status": "completed"
+      },
+      "state": {
+        "step": "done"
+      }
+    },
+    "repairFinalCleanup": {
+      "after": {
+        "checkedAt": "2026-09-13T01:50:34.282Z",
+        "consistent": true,
+        "driftedTables": 0,
+        "eventsReplayed": 6,
+        "onlyLiveRows": 0,
+        "onlyReplayedRows": 0,
+        "scope": "event-projections"
+      },
+      "before": {
+        "checkedAt": "2026-09-13T01:50:34.217Z",
+        "consistent": true,
+        "driftedTables": 0,
+        "eventsReplayed": 5,
+        "onlyLiveRows": 0,
+        "onlyReplayedRows": 0,
+        "scope": "event-projections"
+      },
+      "book": null,
+      "cleanup": {
+        "bookIds": [
+          "1995d560-a50d-4284-a187-15ea37675b00"
+        ],
+        "files": {
+          "status": "released"
+        }
+      },
+      "source": null,
+      "state": null
+    }
+  },
+  "cleanup": {
+    "books": 0,
+    "failureTriggers": 0,
+    "sourceReleased": true,
+    "diagnosticsConsistent": true,
+    "devSession": 19264,
+    "appClosedViaNativeWindowAPI": true,
+    "devExitCode": 0
+  },
+  "checks": [
+    "Fresh native debug build succeeded with existing unused RestoreFacts.chunks warning",
+    "Desktop helper typecheck exit0",
+    "Evidence JSON/diff checks"
+  ],
+  "limits": [
+    "DOM actions are not physical input or screenshot proof",
+    "No incomplete-log/backfill/bootstrap/checkpoint/cross-device proof",
+    "No real user database or restore-from-backup proof",
+    "No packaged or other platform verification"
+  ]
+}

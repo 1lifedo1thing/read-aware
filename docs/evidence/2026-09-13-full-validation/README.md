@@ -1355,3 +1355,34 @@ Replacement text source及1-23/23和剩余新上下文，确认可恢复继续�
 searchContributions0、shutdownErrors=[]。desktop类型检查通过，仅已有测试
 探针和证据修改；无产品代码改动，不重复全量门禁。用户文件替换工作流、绕过
 blob登记的外部改写、读取中readRange换源、其他格式/packaged/平台仍独立待验。
+
+## 第五十三流程：原生投影修复、写入屏障、取消及事务回滚
+
+独立启动com.readaware.app.validation-repair-e2e，避免重建改变此前测试现场。
+debug构建成功，PID34183/port9225；现有maintenance探针只新增该隔离profile
+白名单。导入唯一合成FB2后原生诊断2事件一致；只在该自有SQLite行注入未记入
+日志的标题差异，诊断准确返回1差异表、两侧各1行。真实编译Maintenance Desk0.4
+请求宿主预览，实际Done取消后差异/标题保留，插件Recent operations记录取消。
+
+再次从插件请求，Agent真实request_projection_repair并发请求返回ui/unavailable，
+不能抢占现有宿主确认。实际Confirm repair后标题恢复日志原值，插件收到
+Projections rebuilt; reload required。旧界面editMetadata被backup/busy拒绝，
+关设置/开插件查回执/重开设置后done和Reload app提示仍保留。点击Reload后
+标题保持，正常领域写成功，Agent verify_local_data仅返回汇总且4事件一致。
+
+再次注入差异，经Agent实际工具发起修复。预览后独立SQLite连接BEGIN IMMEDIATE
+短暂持有写锁；实际Confirm后200ms观测working，再取消调用者并释放锁。调用者
+AbortError20，宿主仍完成重建并保持done；旧镜像写入仍backup/busy，重载后校验
+一致，原FB2正文与545字节源仍在。证明取消等待不会撤销确认后的原生事务。
+
+第三次差异预览后注入仅此库的临时BEFORE INSERT触发器，使真实重建中途失败。
+Agent得到db/error、宿主显示数据库错误；事务回滚保留原差异标题，没有空书库。
+移除触发器后正常收藏写成功，证明失败释放写入屏障；差异仍存在。再次实际
+Agent请求/Confirm后得到rebuilt-reload-required，正确标题及新收藏事实都保留。
+重载再校验5事件一致；删除自有书后源released，最终6事件一致、books0、触发器0。
+应用经原生window.close正常退出，dev会话19264终止0，PID34183已不存在。
+
+证据：[projection-repair-observations.json](./projection-repair-observations.json)。
+真实SQLite/Worker/Tauri挂载UI，不计物理输入/像素；不完整日志、checkpoint/
+bootstrap/回填/genesis迁移、跨设备/平台和发布包仍待验。只有现有探针白名单和
+证据修改，desktop类型检查通过，无产品改动和重复全量门禁。
