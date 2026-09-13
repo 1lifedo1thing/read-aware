@@ -137,10 +137,10 @@ export async function textSearchPressureCommand(id: "pressure-start" | "pressure
   return parseProbeToast((await command.run())!.toast!);
 }
 
-export async function startTextSearchSourceProbe() {
+export async function startTextSearchSourceProbe(holdReads = false) {
   await isolated();
   if (heldSearch || workers.size) throw Error("Clean the previous search probe first");
-  const seed = await seedTextStateBooks(); books = seed.books;
+  const seed = holdReads ? await startTextSearchLifecycleProbe() : await seedTextStateBooks(); books = seed.books;
   const id = "capability-search-source";
   const worker = await startPluginWorker({ id, name: id, description: books.normal,
     schemaVersion: 1, version: "1.0.0", permissions: ["library:read"],
@@ -148,6 +148,19 @@ export async function startTextSearchSourceProbe() {
   { moduleUrl: new URL("./text-search-probe.ts", import.meta.url).href });
   workers.set(id, worker); await worker.checkHealth(); worker.promote();
   return { ...seed, pluginId: id };
+}
+
+/** Retire the deliberately held parser so a fresh query can acquire the new source. */
+export async function finishTextSearchSourceReader() {
+  await isolated();
+  if (!heldSearch) throw Error("No owned held reader");
+  const state = heldSearch;
+  state.release(); state.finish();
+  let code: string | undefined;
+  try { await state.task; }
+  catch (error) { code = error && typeof error === "object" && "code" in error ? String(error.code) : String(error); }
+  heldSearch = undefined;
+  return { entered: state.entered, returned: state.returned, code };
 }
 
 export async function replaceTextSearchSource(restore = false) {

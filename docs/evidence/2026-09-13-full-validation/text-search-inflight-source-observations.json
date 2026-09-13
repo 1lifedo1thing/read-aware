@@ -1,0 +1,304 @@
+{
+  "flow": 52,
+  "baseline": "153207fa",
+  "date": "2026-09-13",
+  "runtime": "macOS native debug Tauri capability-e2e port9224",
+  "method": "Existing real FB2 parser with section-read timing held; actual native putDesktopBlob changes source while three reads wait. Real compiled Text Desk, test Worker, Agent RuntimeDeps. DOM UI actions, no physical/pixel evidence.",
+  "observations": {
+    "inflightSourceHeld": {
+      "reader": {
+        "entered": 3,
+        "returned": 0,
+        "textState": {
+          "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+          "chapterCount": 0,
+          "contentVersion": "sha256:c892551474e85df28ac7ef7f4a7b4d97d9ffaa3e38e12792beee84ca3821a4e0",
+          "progress": null,
+          "status": "unprepared",
+          "text": "unknown"
+        }
+      },
+      "state": {
+        "agent": {
+          "status": "running"
+        },
+        "seed": {
+          "books": {
+            "blank": "766db512-9f19-444c-8439-9d133536b052",
+            "normal": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+            "short": "847bfc50-84a8-47ae-85da-d382a5a3feb9"
+          },
+          "dataDir": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+          "pluginId": "capability-search-source"
+        },
+        "status": "ready",
+        "worker": {
+          "status": "running"
+        }
+      },
+      "ui": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nPDF\nText State Probe blank d5e88d56-6adc-4eec-a969-d42cc29415db\nUnknown author\nText State Probe blank d5e88d56-6adc-4eec-a969-d42cc29415db\nUnknown author\n\n\n\n\n\nFB2\nText State Probe normal 4174c49c-7a72-4df8-9fa9-8f91bd671329\nReadAware Tests\nText State Probe normal 4174c49c-7a72-4df8-9fa9-8f91bd671329\nReadAware Tests\n\n\n\n\n\nFB2\nText State Probe short dd4964e9-acb1-44d5-a003-56717eb90079\nReadAware Tests\nText State Probe short dd4964e9-acb1-44d5-a003-56717eb90079\nReadAware Tests\n\n\n\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nText Desk search lifecycle\n\nFind a passage\nPassage\n\n\nMatch case\n\nWhole words\nSearch\nClose"
+    },
+    "inflightSourceReplaced": {
+      "blob": {
+        "byteSize": 626,
+        "mimeType": null,
+        "sha256": "df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467"
+      },
+      "held": {
+        "entered": 3,
+        "returned": 0,
+        "textState": {
+          "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+          "chapterCount": 0,
+          "contentVersion": "sha256:df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467",
+          "progress": null,
+          "status": "unprepared",
+          "text": "unknown"
+        }
+      },
+      "released": {
+        "entered": 3,
+        "returned": 0,
+        "textState": {
+          "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+          "chapterCount": 0,
+          "contentVersion": "sha256:df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467",
+          "progress": null,
+          "status": "unprepared",
+          "text": "unknown"
+        }
+      }
+    },
+    "inflightSourceRejected": {
+      "alerts": [],
+      "reader": {
+        "entered": 3,
+        "returned": 3,
+        "textState": {
+          "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+          "chapterCount": 0,
+          "contentVersion": "sha256:df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467",
+          "progress": null,
+          "status": "unprepared",
+          "text": "unknown"
+        }
+      },
+      "state": {
+        "agent": {
+          "code": "reader/stale-location",
+          "message": "AppError: Book content revision changed",
+          "status": "failed"
+        },
+        "seed": {
+          "books": {
+            "blank": "766db512-9f19-444c-8439-9d133536b052",
+            "normal": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+            "short": "847bfc50-84a8-47ae-85da-d382a5a3feb9"
+          },
+          "dataDir": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+          "pluginId": "capability-search-source"
+        },
+        "status": "ready",
+        "worker": {
+          "code": "reader/stale-location",
+          "message": "AppError: Book content revision changed",
+          "status": "failed"
+        }
+      },
+      "ui": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nPDF\nText State Probe blank d5e88d56-6adc-4eec-a969-d42cc29415db\nUnknown author\nText State Probe blank d5e88d56-6adc-4eec-a969-d42cc29415db\nUnknown author\n\n\n\n\n\nFB2\nText State Probe normal 4174c49c-7a72-4df8-9fa9-8f91bd671329\nReadAware Tests\nText State Probe normal 4174c49c-7a72-4df8-9fa9-8f91bd671329\nReadAware Tests\n\n\n\n\n\nFB2\nText State Probe short dd4964e9-acb1-44d5-a003-56717eb90079\nReadAware Tests\nText State Probe short dd4964e9-acb1-44d5-a003-56717eb90079\nReadAware Tests\n\n\n\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nText Desk search lifecycle\n\nFind a passage\nPassage\n\n\nMatch case\n\nWhole words\nSearch\nClose"
+    },
+    "inflightSourceRetired": {
+      "code": "reader/stale-location",
+      "entered": 3,
+      "returned": 3
+    },
+    "inflightSourceFresh": {
+      "agent": {
+        "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+        "contentVersion": "sha256:df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467",
+        "hits": [
+          {
+            "excerpt": {
+              "match": "Replacement text source",
+              "post": ": the changed text belongs to a newer revision.",
+              "pre": ""
+            },
+            "id": "0:0",
+            "location": {
+              "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+              "cfi": "epubcfi(/6/2!/4/2/2,/1:0,/1:23)",
+              "contentVersion": "sha256:df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467"
+            },
+            "range": {
+              "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+              "cfi": "epubcfi(/6/2!/4/2/2,/1:0,/1:23)",
+              "contentVersion": "sha256:df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467"
+            },
+            "sectionIndex": 0
+          }
+        ],
+        "nextCursor": null,
+        "scannedSections": 1,
+        "textStatus": "available",
+        "totalSections": 1
+      },
+      "worker": {
+        "page": {
+          "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+          "contentVersion": "sha256:df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467",
+          "hits": [
+            {
+              "excerpt": {
+                "match": "text",
+                "post": " source: the changed text belongs to a newer revis…",
+                "pre": "Replacement "
+              },
+              "id": "0:0",
+              "location": {
+                "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+                "cfi": "epubcfi(/6/2!/4/2/2,/1:12,/1:16)",
+                "contentVersion": "sha256:df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467"
+              },
+              "range": {
+                "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+                "cfi": "epubcfi(/6/2!/4/2/2,/1:12,/1:16)",
+                "contentVersion": "sha256:df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467"
+              },
+              "sectionIndex": 0
+            }
+          ],
+          "nextCursor": "eyJ2ZXJzaW9uIjoic2hhMjU2OmRmMGNkNGNiMTY3OGUyMDU2OGNjMjcwZGU1ZmRiZTVjYWNlYzA4OTBmN2MwYWU0M2U2ZjU1OWFmMjZmNzc0NjciLCJxdWVyeSI6ImMzZjRlZTQ4MzY5YTBhYTQwYzhmZjc5MmU4OGM0ZWM1Yjg4ODkzYTM4MmJmZjRlZGExYWNmNDQzYzgzYzYyMTciLCJzZWN0aW9uIjowLCJtYXRjaCI6MSwidGV4dFNlZW4iOnRydWUsInN1cHBvcnRlZCI6dHJ1ZSwidW5zdXBwb3J0ZWQiOmZhbHNlfQ==",
+          "scannedSections": 0,
+          "textStatus": "available",
+          "totalSections": 1
+        },
+        "range": {
+          "context": {
+            "after": " source: the changed text belongs to a newer revision.",
+            "before": "Replacement "
+          },
+          "nextOffset": null,
+          "offset": 0,
+          "range": {
+            "bookId": "549f2a03-c557-4dac-ac0e-e45ee38f0ff5",
+            "cfi": "epubcfi(/6/2!/4/2/2,/1:12,/1:16)",
+            "contentVersion": "sha256:df0cd4cb1678e20568cc270de5fdbe5cacec0890f7c0ae43e6f559af26f77467"
+          },
+          "sectionIndex": 0,
+          "text": "text",
+          "totalLength": 4
+        }
+      }
+    },
+    "inflightSourceUIFresh": {
+      "buttons": [
+        {
+          "label": "Star Reading Capability Probe",
+          "text": ""
+        },
+        {
+          "label": "Info about Reading Capability Probe",
+          "text": ""
+        },
+        {
+          "label": "Remove Reading Capability Probe",
+          "text": ""
+        },
+        {
+          "label": null,
+          "text": ""
+        },
+        {
+          "label": "Back",
+          "text": ""
+        },
+        {
+          "label": "Mark these results",
+          "text": ""
+        },
+        {
+          "label": null,
+          "text": "Replacement text source: the changed text belongs to a newer revision.Source section 1 · 0:0"
+        },
+        {
+          "label": null,
+          "text": "Close"
+        }
+      ],
+      "text": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nPDF\nText State Probe blank d5e88d56-6adc-4eec-a969-d42cc29415db\nUnknown author\nText State Probe blank d5e88d56-6adc-4eec-a969-d42cc29415db\nUnknown author\n\n\n\n\n\nFB2\nText State Probe normal 4174c49c-7a72-4df8-9fa9-8f91bd671329\nReadAware Tests\nText State Probe normal 4174c49c-7a72-4df8-9fa9-8f91bd671329\nReadAware Tests\n\n\n\n\n\nFB2\nText State Probe short dd4964e9-acb1-44d5-a003-56717eb90079\nReadAware Tests\nText State Probe short dd4964e9-acb1-44d5-a003-56717eb90079\nReadAware Tests\n\n\n\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nText Desk search lifecycle\n\nReplacement text source\n\nMark these results\n\nReplacement text source: the changed text belongs to a newer revision.\nSource section 1 · 0:0\nClose"
+    },
+    "inflightSourceUIDetail": {
+      "buttons": [
+        {
+          "label": "Info about Reading Capability Probe",
+          "text": ""
+        },
+        {
+          "label": "Remove Reading Capability Probe",
+          "text": ""
+        },
+        {
+          "label": null,
+          "text": ""
+        },
+        {
+          "label": "Back",
+          "text": ""
+        },
+        {
+          "label": null,
+          "text": "Temporary highlight"
+        },
+        {
+          "label": null,
+          "text": "Select passage"
+        },
+        {
+          "label": null,
+          "text": "Open passage"
+        },
+        {
+          "label": null,
+          "text": "Find a passage"
+        },
+        {
+          "label": null,
+          "text": "Close"
+        }
+      ],
+      "text": "management\n\nReading stats\n\nSettings\n\nMore\n\n\nPDF\nText State Probe blank d5e88d56-6adc-4eec-a969-d42cc29415db\nUnknown author\nText State Probe blank d5e88d56-6adc-4eec-a969-d42cc29415db\nUnknown author\n\n\n\n\n\nFB2\nText State Probe normal 4174c49c-7a72-4df8-9fa9-8f91bd671329\nReadAware Tests\nText State Probe normal 4174c49c-7a72-4df8-9fa9-8f91bd671329\nReadAware Tests\n\n\n\n\n\nFB2\nText State Probe short dd4964e9-acb1-44d5-a003-56717eb90079\nReadAware Tests\nText State Probe short dd4964e9-acb1-44d5-a003-56717eb90079\nReadAware Tests\n\n\n\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nText Desk search lifecycle\n\nPassage\nReplacement text source\n1-23 / 23\n: the changed text belongs to a newer revision.\nTemporary highlight\nSelect passage\nOpen passage\nFind a passage\nClose"
+    },
+    "inflightSourceClean": {
+      "cleanup": {
+        "contributions": 0,
+        "remainingBooks": 0,
+        "searchContributions": 0,
+        "shutdownErrors": []
+      },
+      "restored": {
+        "byteSize": 636,
+        "mimeType": null,
+        "sha256": "c892551474e85df28ac7ef7f4a7b4d97d9ffaa3e38e12792beee84ca3821a4e0"
+      }
+    }
+  },
+  "uiFailureEvidence": {
+    "source": "Tauri console",
+    "timestamp": "2026-09-13T01:37:41.077Z",
+    "logger": "plugin-views",
+    "message": "Plugin view action failed",
+    "code": "reader/stale-location",
+    "retryable": false,
+    "note": "Failure toast text was not captured; no claim about visual error copy. Search form remained and accepted new query."
+  },
+  "checks": [
+    "desktop typecheck exit0; only existing desktop fixture changed",
+    "git diff --check"
+  ],
+  "limits": [
+    "No user-facing file replacement workflow",
+    "No unregistered external file rewrite",
+    "No in-flight readRange proof",
+    "No other formats, packaged, platforms or model quality"
+  ]
+}

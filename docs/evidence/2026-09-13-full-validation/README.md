@@ -1334,3 +1334,24 @@ iframe样式，不将该设置回执作为阅读正文绘制证据。关闭跟�
 Worker贡献0，Reading Goals原12贡献保留。只有证据文档改动；JSON解析和diff
 检查通过，无需重跑未变化产品代码的测试。全局聊天/插件内容、其他字形、原生
 进程重启、发布包和平台保留各自未验边界。
+
+## 第五十二流程：读取进行中换源，旧结果拒绝及新搜索恢复
+
+复用既有text-search生命周期探针和源替换探针，只新增组合开关及释放旧解析器
+入口。导入真实自有FB2、使用真实parser，只暂停章节读取时点；编译Text Desk
+Find a passage实际表单、测试Worker searchLocations、Agent真实RuntimeDeps
+同时读取，观测entered3/returned0。原生putDesktopBlob换入不同正文后哈希由
+c8925514…变为df0cd4cb…，此时仍returned0，随后放行实际读取。
+
+entered3/returned3，测试Worker和Agent都拒绝reader/stale-location；Text Desk
+真实视图action日志也为同码，表单保持且没有旧命中。未抓到短暂toast文案，
+不将日志等同于画面错误提示通过。结束旧parser注册的租约也因实际版本变化
+返回同码；清理预期的旧读取上下文后，Worker新搜索/range和Agent新搜索都读到
+Replacement正文。Text Desk表单重新搜索，真实列表出现新句子，点击详情得到
+Replacement text source及1-23/23和剩余新上下文，确认可恢复继续操作。
+
+证据：[text-search-inflight-source-observations.json](./text-search-inflight-source-observations.json)。
+恢复源哈希与起点相同，关闭视图后清理自有三书和Worker，remainingBooks0、
+searchContributions0、shutdownErrors=[]。desktop类型检查通过，仅已有测试
+探针和证据修改；无产品代码改动，不重复全量门禁。用户文件替换工作流、绕过
+blob登记的外部改写、读取中readRange换源、其他格式/packaged/平台仍独立待验。
