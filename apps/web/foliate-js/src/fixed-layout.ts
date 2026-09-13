@@ -1,7 +1,7 @@
 import type { Anchor, Book, BookSection, MaybePromise, PageColors, PageSource, Rendition, ResolvedNavigation } from './book.js'
 import { anchorElement, anchorRange, anchorValue, isRange } from './navigation.js'
 import type { Overlayer } from './overlayer.js'
-import type { Content, RelocateReason } from './renderer.js'
+import type { Content, RelocateReason, NativeInputBridge } from './renderer.js'
 import { getViewport, parseViewport, type Dimensions } from './viewport.js'
 
 // READAWARE: rendering budgets, canvas-memory driven. A PDF page rastered at
@@ -69,6 +69,7 @@ type StackEntry = {
 }
 
 export class FixedLayout extends HTMLElement {
+    inputBridge?: NativeInputBridge
     book: Book | undefined
     rtl = false
 

@@ -13,8 +13,10 @@ import { useTranslation } from "../../../i18n";
 import type { ChatSelectionAttachment } from "../lib/chat-types";
 import { AttachmentChip } from "./AttachmentChip";
 import { useReaderFocusTarget } from "../../reader/hooks/useReaderFocusTarget";
+import type { DomainActor } from "../../../platform/domain-actor";
+import { focusWithReadingSource } from "../../reader/lib/reading-document-input";
 
-export type ChatComposerHandle = { focus: () => void; adoptDraft: (text: string) => boolean };
+export type ChatComposerHandle = { focus: (origin?: DomainActor) => void; adoptDraft: (text: string) => boolean };
 
 type ChatComposerProps = {
   scope?: "book" | "global";
@@ -52,11 +54,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     useImperativeHandle(
       ref,
       () => ({
-        focus: () => textareaRef.current?.focus({ preventScroll: true }),
+        focus: origin => { if (textareaRef.current) focusWithReadingSource(textareaRef.current, origin); },
         adoptDraft: text => {
           if (valueRef.current.length > 0) return false;
           valueRef.current = text; setValue(text);
-          textareaRef.current?.focus({ preventScroll: true });
+          if (textareaRef.current) focusWithReadingSource(textareaRef.current, "user");
           return true;
         },
       }),

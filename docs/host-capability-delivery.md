@@ -7,7 +7,7 @@
 
 ## 最近交付与接续入口
 
-当前目标：[九类缺失能力补全](./host-capability-completion-goal.md)，基线 `4657c3d0`。C01–C03按书记忆/会话/受限工作区已接，真实桌面组合待集中验收。排版/字体来源已提交 `29f0e58a`。C04本批接同书布局切换的整引擎重建：React提交捕获actor，在旧引擎清理前更新；新引擎初始定位、就绪/失败、选区绑定与清理沿用它，首次开书身份不被改写。朗读/模式绑定按触发会话状态的actor退役/重绑。公开settings→React hooks/受控IPC→真实宿主适配器的循环拒绝和独立用户根、延迟就绪/失败/旧清理、模式重绑及相邻播放/选区检查通过；Web/desktop类型通过，未运行新增Tauri整引擎/音频验收。下一步接窗口响应式布局/图片ResizeObserver、自动chat/灯箱与显式焦点/原生选区，再接贡献换代、设置目录/凭据及其余观察来源。原生选区settle和原始doc scroll仍会默认user；focus服务尚未传actor，Foliate焦点RAF也无context，须连接实际反馈而非只加参数。reading.observeSession的公共reaction仍未开放。C04未完成，C05–C09未实施且全部保留；Tauri/SQLite/模型验收集中后置。
+当前目标：[九类缺失能力补全](./host-capability-completion-goal.md)，基线 `4657c3d0`。C01–C03已接，真实桌面组合待集中验收；同书布局重建批次已提交 `41c0f6c4`。C04本批接显式Agent/插件焦点、聊天/AskAI/灯箱自动焦点与导航产生的原生选区反馈。焦点/选区实际DOM样本保存来源，已发布选区不重复捕获，新输入/导航/文档替换淘汰旧settle、RAF及拖选回调；原生嵌套焦点和迟到光标默认动作按实际变化区分。公开all/book双插件焦点循环拒绝及独立用户根、JSDOM/受控滚动、React面板请求及编译Foliate导航选区/deselect协议通过；相邻21项和Web/desktop类型通过。Tauri iframe焦点与新导航取消候选已添加，尚未执行。下一步接窗口响应式布局/图片ResizeObserver、其他异步原生反馈、贡献换代、设置目录/凭据及其余观察来源。reading.observeSession公共reaction仍未开放。C04未完成，C05–C09未实施且完整保留；Tauri/SQLite/模型验收集中后置。
 
 历史目标：[有界实现补齐与集中验收](./host-capability-gap-goal.md)，基线 `f312d24a`。五项实现已接通，localOnly 按用户要求删除。真实 Full2 已验证对象授权读取/创建/CAS/越权拒绝和插件授权重启、类型化播放取消与清理、搜索 200 条预算终态；编辑器 Worker 保存/取消/冲突和备份原生取消/授权恢复事务已通过；可见交互、授权弹窗与键盘焦点已补验。窗口无变化重复写入导致备份误拒已由 `5450ba03` 修复并在重建 Full2 实例通过真实授权恢复。冻结模型首轮 7/10，仅复测 3 项后机器合并 9/10；人工仍有失败/partial，已达到运行上限，不追加采样。剩余具体条件及证据边界见目标文档；实现完成不冒充验收通过，goal 仍 active，不推送。
 

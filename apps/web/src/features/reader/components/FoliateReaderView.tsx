@@ -97,6 +97,7 @@ import { readingRuntime } from "../../../domain/reading-runtime";
 import { useReferencePreview } from "../hooks/useReferencePreview";
 import { attachReadingEngine, waitForReadingPaint } from "../lib/reading-engine-adapter";
 import { readingRenderActor, readingRenderContext } from "../lib/reading-render-context";
+import { acknowledgeReadingSelection, readingInputContext, readingNativeInput, readingSelectionFeedback } from "../lib/reading-document-input";
 import { captureReadingSelection, type SelectionContentIdentity } from "../lib/selection-range";
 import { useSelectionRender } from "../hooks/useSelectionRender";
 import { createReadingSelectionAdapter } from "../lib/reading-selection-adapter";
@@ -399,7 +400,7 @@ export function FoliateReaderView({
     lookUp: () => void;
     askAI: () => void;
   } | null>(null);
-  const clearNativeSelectionRef = useRef<(() => void) | null>(null);
+  const clearNativeSelectionRef = useRef<((origin: DomainActor) => void) | null>(null);
   const suppressContentClickRef = useRef(false);
   const suppressContentClickTimeoutRef = useRef<number | null>(null);
   const shellTapIntentRef = useRef<ShellTapIntent | null>(null);
@@ -657,9 +658,9 @@ export function FoliateReaderView({
         : 0;
   }, [initialProgress?.cfi, initialProgress?.href, initialProgress?.progressPercent]);
 
-  const clearNativeSelection = useCallback(() => {
+  const clearNativeSelection = useCallback((origin: DomainActor) => {
     try {
-      clearNativeSelectionRef.current?.();
+      clearNativeSelectionRef.current?.(origin);
     } catch {
       // Selection cleanup can race with section teardown during navigation.
     } finally {
@@ -681,7 +682,7 @@ export function FoliateReaderView({
   const clearSelection = useCallback((source: DomainActor = "user") => {
     const origin = causalActor(source);
     cancelPendingShellOpen();
-    clearNativeSelection();
+    clearNativeSelection(origin);
     selectionRef.current = null;
     suppressContentClickRef.current = false;
     if (suppressContentClickTimeoutRef.current != null) {
@@ -755,8 +756,9 @@ export function FoliateReaderView({
       return false;
     }
 
-    clearNativeSelectionRef.current = () => {
+    clearNativeSelectionRef.current = origin => {
       (win?.getSelection?.() ?? doc.getSelection?.())?.removeAllRanges();
+      acknowledgeReadingSelection(doc, origin);
     };
 
     const viewportRect = readerRoot.getBoundingClientRect();
@@ -794,11 +796,12 @@ export function FoliateReaderView({
     setActiveAnnotation(null);
     selectionRef.current = nextSelection;
     setSelection(nextSelection);
+    acknowledgeReadingSelection(doc, origin);
     if (identity) readingRuntime.selectionChanged(identity.sessionId, captured, origin);
     if (suppressContentClick) armContentClickSuppression();
     // iOS：原生选中菜单会和 app 的选择菜单叠成双份（#10）。捕获完成后立刻
     // 清掉原生选区——菜单没了依附；高亮由 ReaderSelectionHighlight 自绘补回。
-    if (isIOS()) clearNativeSelectionRef.current?.();
+    if (isIOS()) clearNativeSelectionRef.current?.(origin);
 
     return true;
   }, [armContentClickSuppression, clearSelection]);
@@ -1446,10 +1449,13 @@ export function FoliateReaderView({
     // dragging a handle keeps deferring it, releasing re-anchors the menu.
     if (hasCoarsePointer()) {
       let settleTimer: number | null = null;
-      doc.addEventListener("selectionchange", () => {
+      doc.addEventListener("selectionchange", event => {
         if (settleTimer != null) window.clearTimeout(settleTimer);
+        const feedback = readingSelectionFeedback(doc, event);
+        if (feedback.handled) { settleTimer = null; return; }
         settleTimer = window.setTimeout(() => {
           settleTimer = null;
+          if (!feedback.current() || !viewRef.current?.renderer?.getContents().some(content => content.doc === doc)) return;
           const sel = doc.getSelection?.();
           const hasSelection =
             !!sel &&
@@ -1457,11 +1463,11 @@ export function FoliateReaderView({
             !sel.getRangeAt(0).collapsed &&
             getNormalizedSelectionText(sel).length > 0;
           if (hasSelection) {
-            captureSelectionFromDoc(doc, index, { suppressContentClick: true });
+            captureSelectionFromDoc(doc, index, { suppressContentClick: true, origin: feedback.origin });
           } else if (selectionRef.current) {
             // The system selection was dismissed (tap elsewhere, Cut/Copy…);
             // don't leave our menu floating over nothing.
-            clearSelection();
+            clearSelection(feedback.origin);
           }
         }, TOUCH_SELECTION_SETTLE_MS);
       });
@@ -1690,8 +1696,9 @@ export function FoliateReaderView({
     // A native intra-section scroll (anchor jump, focus) should still drop a live
     // selection; shell dismissal is driven by the wheel-distance accumulator and
     // the relocate page check, not by the raw scroll event.
-    doc.addEventListener("scroll", () => {
-      clearSelection();
+    doc.addEventListener("scroll", event => {
+      if (!viewRef.current?.renderer?.getContents().some(content => content.doc === doc)) return;
+      clearSelection(readingRenderActor(readingInputContext(event)));
     }, true);
 
     // Wheel routing (see handleWheelEvent): trackpad page turns in paginated
@@ -1920,6 +1927,7 @@ export function FoliateReaderView({
         if (selectedBook) textUnitNavigatorRef.current.handleContentVersion(selectedBook.id, contentVersion, openingActor);
         await view.open(parsedBook);
         if (cancelled) return;
+        if (view.renderer) view.renderer.inputBridge = readingNativeInput;
 
         const book = view.book;
         const fixedLayout = book ? isFixedLayoutBook(book) : false;

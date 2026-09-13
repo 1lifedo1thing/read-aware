@@ -8,6 +8,7 @@ import { ChatTranscript } from "./ChatTranscript";
 import { ChatTurnRequest } from "./ChatTurnRequest";
 import { useConversationTurnRequests } from "../hooks/useConversationTurnRequests";
 import { useReadingAiSurface } from "../hooks/useReadingAiSurface";
+import { actorFromEvent, causalActor, type DomainActor } from "../../../platform/domain-actor";
 
 /**
  * The book's AI conversation, rendered as panel content (the note panel owns the
@@ -18,6 +19,7 @@ export function ChatPanel({
   bookId,
   bookTitle,
   focusRequestId = 0,
+  focusOrigin,
   readingCursor = null,
 }: {
   bookId: string;
@@ -30,6 +32,7 @@ export function ChatPanel({
    * the phone's soft keyboard over a page the reader only meant to look at.
    */
   focusRequestId?: number;
+  focusOrigin?: DomainActor;
   /** Live viewport snapshot, sampled again by the conversation hook at send time. */
   readingCursor?: ChatReadingCursor | null;
 }) {
@@ -46,9 +49,10 @@ export function ChatPanel({
   // later, after the slide-in has started so focus lands cleanly).
   useEffect(() => {
     if (!focusRequestId) return;
-    const frame = requestAnimationFrame(() => composerRef.current?.focus());
+    const origin = causalActor(focusOrigin ?? "user");
+    const frame = requestAnimationFrame(() => composerRef.current?.focus(origin));
     return () => cancelAnimationFrame(frame);
-  }, [focusRequestId]);
+  }, [focusRequestId, focusOrigin]);
 
   // Adopt a dispatch from the reader. A passage goes into the composer for the
   // reader to write around; a prompt is sent as its own turn. We track the last
@@ -65,7 +69,8 @@ export function ChatPanel({
     setPendingAttachment(askAiRequest.attachment ?? null);
     // Defer focus a frame: the shell switches to this tab off the same dispatch,
     // so the composer may still be in a hidden (display:none) tab panel right now.
-    const frame = requestAnimationFrame(() => composerRef.current?.focus());
+    const origin = actorFromEvent(askAiRequest);
+    const frame = requestAnimationFrame(() => composerRef.current?.focus(origin));
     return () => cancelAnimationFrame(frame);
   }, [askAiRequest, bookId, conversation]);
 

@@ -6,6 +6,7 @@
  */
 import { atom } from "jotai";
 import type { ReaderPanel } from "@read-aware/core";
+import { causalActor, stampEventCause } from "../../../platform/domain-actor";
 
 export type ReaderPanelKind = ReaderPanel;
 
@@ -25,5 +26,5 @@ export function createReaderPanelIntent(
   bookId: string,
   panel: ReaderPanelKind,
 ): ReaderPanelIntent {
-  return { id: crypto.randomUUID(), bookId, panel };
+  return stampEventCause({ id: crypto.randomUUID(), bookId, panel }, causalActor("user"));
 }

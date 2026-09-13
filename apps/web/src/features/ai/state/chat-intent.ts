@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import type { ChatSelectionAttachment } from "../lib/chat-types";
+import { causalActor, eventCause, stampEventCause } from "../../../platform/domain-actor";
 
 /**
  * A pending dispatch into the book's conversation. The reader's selection and
@@ -33,7 +34,10 @@ export interface AskAiRequest {
  * shell (opens the Chat tab) and the panel (adopts the attachment) can both
  * react to the same dispatch without a clear-vs-read race.
  */
-export const askAiRequestAtom = atom<AskAiRequest | null>(null);
+const askAiRequestBaseAtom = atom<AskAiRequest | null>(null);
+export const askAiRequestAtom = atom(get => get(askAiRequestBaseAtom), (_get, set, request: AskAiRequest | null) => {
+  set(askAiRequestBaseAtom, request && !eventCause(request) ? stampEventCause({ ...request }, causalActor("user")) : request);
+});
 
 /**
  * A pending "open this book" dispatch from a chat book card. The reader session

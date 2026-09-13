@@ -12,3 +12,11 @@ export type RelocateDetail = {
 export type Content = { doc: Document; index: number; overlayer?: Overlayer }
 export type LoadDetail = { doc: Document; index: number; context?: object }
 export type CreateOverlayerDetail = LoadDetail & { attach: (overlayer: Overlayer) => void }
+
+/** Host-only provenance for browser feedback. Contexts remain opaque to the
+ * renderer; this is not exposed to books or plugins. */
+export type NativeInputBridge = {
+    context(event: Event): object
+    selectionChanged(doc: Document, context: object): void
+    focusDocument(doc: Document, context: object): void
+}

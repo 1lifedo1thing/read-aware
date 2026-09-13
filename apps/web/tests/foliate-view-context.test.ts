@@ -2,6 +2,9 @@ import { expect, test } from "bun:test";
 import { withDom } from "./helpers/foliate-dom";
 import type { Book, ResolvedNavigation } from "../foliate-js/src/book";
 import type { LoadDetail, RelocateDetail } from "../foliate-js/src/renderer";
+import { readingNativeInput, readingSelectionFeedback } from "../src/features/reader/lib/reading-document-input";
+import { readingRenderContext } from "../src/features/reader/lib/reading-render-context";
+import { actorCause, causalActor } from "../src/platform/domain-actor";
 
 // Exercise the actual View protocol with a controlled renderer. This does not
 // prove browser layout, iframe loading or paint; those have native scenarios.
@@ -51,6 +54,21 @@ test("View and fixed layout preserve navigation ownership through delayed feedba
       await view.goTo(1); const native = movements.at(-1)?.context;
       expect(native).toBeDefined(); expect(native).not.toBe(initial);
       expect(loads.at(-1)?.context).toBe(native); expect(relocations.at(-1)?.context).toBe(native);
+      const paragraph = document.createElement("p"); paragraph.textContent = "Native selection feedback"; document.body.append(paragraph);
+      const range = document.createRange(); range.selectNodeContents(paragraph);
+      const source = causalActor("plugin:selection-protocol"), context = readingRenderContext(source);
+      renderer.inputBridge = readingNativeInput;
+      // Actual compiled paginator's navigation listener mutates the DOM caret.
+      renderer.dispatchEvent(new CustomEvent("relocate", { detail: { reason: "navigation", range, index: 0, context } }));
+      const selectionEvent = new Event("selectionchange"); document.dispatchEvent(selectionEvent);
+      expect(actorCause(readingSelectionFeedback(document, selectionEvent).origin)).toBe(actorCause(source));
+      const originalContents = renderer.getContents;
+      renderer.getContents = () => [{ doc: document, index: 0 }];
+      document.getSelection()!.removeAllRanges(); document.getSelection()!.addRange(range);
+      view.deselect(context); expect(document.getSelection()!.rangeCount).toBe(0);
+      const clearEvent = new Event("selectionchange"); document.dispatchEvent(clearEvent);
+      expect(actorCause(readingSelectionFeedback(document, clearEvent).origin)).toBe(actorCause(source));
+      renderer.getContents = originalContents; paragraph.remove();
     } finally { await view.close(); }
 
     // JSDOM does not load iframes inside shadow roots. Supply documents and

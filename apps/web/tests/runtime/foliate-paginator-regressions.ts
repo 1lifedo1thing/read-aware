@@ -1,6 +1,9 @@
 import type { Book } from "../../foliate-js/src/book";
 import type { Paginator } from "../../foliate-js/src/paginator";
 import type { LoadDetail, RelocateDetail } from "../../foliate-js/src/renderer";
+import { focusWithReadingSource, readingNativeInput } from "../../src/features/reader/lib/reading-document-input";
+import { readingRenderActor } from "../../src/features/reader/lib/reading-render-context";
+import { actorCause, causalActor } from "../../src/platform/domain-actor";
 
 type Result = { name: string; passed: boolean; details?: string };
 
@@ -51,6 +54,38 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
       equal(events.at(-1)?.context, dimensions);
       await renderer.prev();
       equal(!!events.at(-1)?.context, true); equal(events.at(-1)?.context === dimensions, false);
+    } finally { dispose(renderer, urls); }
+  });
+
+  await check("native document focus retains its source and a later navigation retires the queued focus scroll", async () => {
+    const urls = [page("Focusable content ".repeat(1500))], renderer = mount();
+    const events: RelocateDetail[] = [];
+    const frame = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    renderer.addEventListener("relocate", event => events.push((event as CustomEvent<RelocateDetail>).detail));
+    try {
+      renderer.open({ sections: [{ id: 0, size: 20000, load: () => urls[0] }] });
+      renderer.inputBridge = readingNativeInput;
+      await renderer.goTo({ index: 0, context: {} });
+      const doc = renderer.getContents()[0]!.doc;
+      const first = doc.createElement("button"), second = doc.createElement("button");
+      first.textContent = "First focus"; second.textContent = "Superseded focus";
+      doc.body.append(first, second);
+      await frame();
+      const origin = causalActor("plugin:focus-regression");
+      const cause = (event?: RelocateDetail) => event?.context ? actorCause(readingRenderActor(event.context)) : undefined;
+      const start = events.length;
+      focusWithReadingSource(first, origin);
+      equal(doc.activeElement, first);
+      await frame();
+      equal(events.slice(start).some(event => cause(event) === actorCause(origin)), true);
+      equal(cause(events.at(-1)), actorCause(origin));
+      const old = causalActor("plugin:retired-focus"), current = {};
+      const next = events.length;
+      focusWithReadingSource(second, old);
+      await renderer.goTo({ index: 0, anchor: 0, context: current });
+      await frame();
+      equal(events.slice(next).some(event => cause(event) === actorCause(old)), false);
+      equal(events.at(-1)?.context, current);
     } finally { dispose(renderer, urls); }
   });
 

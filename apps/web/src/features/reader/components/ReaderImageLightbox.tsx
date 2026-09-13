@@ -18,6 +18,7 @@ import { useZoomPan } from "../hooks/useZoomPan";
 import { useImageControls } from "../hooks/useImageControls";
 import type { DomainActor } from "../../../platform/domain-actor";
 import type { ImageViewLifetime } from "../hooks/useImageViewer";
+import { focusWithReadingSource } from "../lib/reading-document-input";
 
 const log = createLogger("reader");
 
@@ -72,7 +73,7 @@ export function ReaderImageLightbox({ src, alt, onClose, session, viewerId, life
   // realm holds focus, and before this landed an Esc pressed while the book
   // still had it never reached the top window — the viewer felt stuck open.
   useEffect(() => {
-    dialogRef.current?.focus();
+    if (dialogRef.current) focusWithReadingSource(dialogRef.current, lifetime?.opening ?? "user");
   }, []);
 
   useEffect(() => {

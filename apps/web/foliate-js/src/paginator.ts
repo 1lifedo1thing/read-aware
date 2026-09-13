@@ -4,7 +4,7 @@ import type { Anchor, Book, BookSection, MaybePromise, ResolvedNavigation, Resou
 
 import type { Overlayer } from './overlayer.js'
 
-import type { Content, LoadDetail, RelocateDetail, RelocateReason } from './renderer.js'
+import type { Content, LoadDetail, RelocateDetail, RelocateReason, NativeInputBridge } from './renderer.js'
 
 
 type Styles = string | [string, string] | null | undefined
@@ -59,6 +59,9 @@ const animate = (a: number, b: number, duration: number, ease: (fraction: number
 
 // NOTE: everything here assumes the so-called "negative scroll type" for RTL
 export class Paginator extends HTMLElement {
+    inputBridge?: NativeInputBridge
+    #inputRevision = 0
+    #focusRequest: object | undefined
     bookDir: string | null | undefined
     sections: BookSection[] = []
     heads: Element[] | null = null
@@ -243,14 +246,14 @@ export class Paginator extends HTMLElement {
         }, 250))
 
         const opts = { passive: false }
-        const input = () => { this.#scrollFeedback = undefined; this.#justAnchored = false }
-        for (const name of ['wheel', 'touchstart', 'keydown']) this.addEventListener(name, input, { capture: true, passive: true })
+        const input = () => { this.#inputRevision++; this.#focusRequest = undefined; this.#scrollFeedback = undefined; this.#justAnchored = false }
+        for (const name of ['pointerdown', 'wheel', 'touchstart', 'keydown']) this.addEventListener(name, input, { capture: true, passive: true })
         this.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
         this.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
         this.addEventListener('touchend', this.#onTouchEnd.bind(this))
         this.addEventListener('load', event => {
             const { doc } = (event as CustomEvent<LoadDetail>).detail
-            for (const name of ['wheel', 'touchstart', 'keydown']) doc.addEventListener(name, input, { capture: true, passive: true })
+            for (const name of ['pointerdown', 'wheel', 'touchstart', 'keydown']) doc.addEventListener(name, input, { capture: true, passive: true })
             doc.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
             doc.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
             doc.addEventListener('touchend', this.#onTouchEnd.bind(this))
@@ -258,22 +261,30 @@ export class Paginator extends HTMLElement {
 
         this.addEventListener('relocate', event => {
             const { detail } = event as CustomEvent<RelocateDetail>
-            if (detail.reason === 'selection') setSelectionTo(this.#anchor, 0)
+            const select = (anchor: Anchor | null, collapse: -1 | 0 | 1) => {
+                setSelectionTo(anchor, collapse)
+                const doc = anchor && typeof anchor !== 'number'
+                    ? 'startContainer' in anchor ? anchor.startContainer.ownerDocument : anchor.ownerDocument : null
+                if (doc) this.inputBridge?.selectionChanged(doc, detail.context ?? {})
+            }
+            if (detail.reason === 'selection') select(this.#anchor, 0)
             else if (detail.reason === 'navigation') {
-                if (this.#anchor === 1) setSelectionTo(detail.range, 1)
+                if (this.#anchor === 1) select(detail.range, 1)
                 else if (typeof this.#anchor === 'number')
-                    setSelectionTo(detail.range, -1)
-                else setSelectionTo(this.#anchor, -1)
+                    select(detail.range, -1)
+                else select(this.#anchor, -1)
             }
         })
-        const checkPointerSelection = debounce((range: Range, sel: Selection) => {
-            if (!sel.rangeCount) return
+        const checkPointerSelection = debounce((range: Range, sel: Selection, selected: Range, context: object, revision: number, navigation: number) => {
+            if (!sel.rangeCount || this.#inputRevision !== revision || this.#navigation !== navigation || this.#view?.document !== selected.startContainer.ownerDocument) return
             const selRange = sel.getRangeAt(0)
+            if (selRange.startContainer !== selected.startContainer || selRange.endContainer !== selected.endContainer
+                || selRange.startOffset !== selected.startOffset || selRange.endOffset !== selected.endOffset) return
             const backward = selectionIsBackward(sel)
             if (backward && selRange.compareBoundaryPoints(Range.START_TO_START, range) < 0)
-                this.prev()
+                this.prev(undefined, context)
             else if (!backward && selRange.compareBoundaryPoints(Range.END_TO_END, range) > 0)
-                this.next()
+                this.next(undefined, context)
         }, 700)
         this.addEventListener('load', event => {
             const { doc } = (event as CustomEvent<LoadDetail>).detail
@@ -283,26 +294,33 @@ export class Paginator extends HTMLElement {
             let isKeyboardSelecting = false
             doc.addEventListener('keydown', () => isKeyboardSelecting = true)
             doc.addEventListener('keyup', () => isKeyboardSelecting = false)
-            doc.addEventListener('selectionchange', () => {
+            doc.addEventListener('selectionchange', event => {
                 if (this.scrolled) return
                 const range = this.#lastVisibleRange
                 if (!range) return
                 const sel = doc.getSelection()
                 if (!sel?.rangeCount) return
+                const context = this.inputBridge?.context(event) ?? {}
                 if (isPointerSelecting && sel.type === 'Range')
-                    checkPointerSelection(range, sel)
+                    checkPointerSelection(range, sel, sel.getRangeAt(0).cloneRange(), context, this.#inputRevision, this.#navigation)
                 else if (isKeyboardSelecting) {
                     const selRange = sel.getRangeAt(0).cloneRange()
                     const backward = selectionIsBackward(sel)
                     if (!backward) selRange.collapse()
-                    this.#scrollToAnchor(selRange)
+                    this.#scrollToAnchor(selRange, 'anchor', context)
                 }
             })
             doc.addEventListener('focusin', e => {
                 const target = e.target
                 if (this.scrolled || !target || !('nodeType' in target) || target.nodeType !== 1) return
                 // NOTE: `requestAnimationFrame` is needed in WebKit
-                requestAnimationFrame(() => this.#scrollToAnchor(target as Element))
+                const request = {}, context = this.inputBridge?.context(e) ?? {}, navigation = this.#navigation
+                this.#focusRequest = request
+                requestAnimationFrame(() => {
+                    if (this.#focusRequest !== request || this.#navigation !== navigation || this.#view?.document !== doc || doc.activeElement !== target) return
+                    this.#focusRequest = undefined
+                    void this.#scrollToAnchor(target as Element, 'anchor', context)
+                })
             })
         })
 
@@ -739,7 +757,7 @@ export class Paginator extends HTMLElement {
         if (!doc) return
         await this.scrollToAnchor((typeof anchor === 'function'
             ? anchor(doc) : anchor) ?? 0, select, context)
-        if (hasFocus) this.focusView()
+        if (hasFocus) this.focusView(context)
     }
     #canGoToIndex(index: number): boolean {
         return Number.isInteger(index) && index >= 0 && index <= this.sections.length - 1
@@ -875,10 +893,16 @@ export class Paginator extends HTMLElement {
         // needed because the resize observer doesn't work in Firefox
         doc.fonts?.ready.then(() => { if (this.#view === view && revision === this.#styleRevision) view?.expand() })
     }
-    focusView() {
-        this.#view?.document?.defaultView?.focus()
+    focusView(context: object = {}) {
+        const doc = this.#view?.document
+        if (!doc) return
+        if (this.inputBridge) this.inputBridge.focusDocument(doc, context)
+        else doc.defaultView?.focus()
     }
     destroy() {
+        this.#inputRevision++
+        this.#focusRequest = undefined
+        this.inputBridge = undefined
         this.#styleRevision++
         this.#navigation++
         this.#transformController?.abort()

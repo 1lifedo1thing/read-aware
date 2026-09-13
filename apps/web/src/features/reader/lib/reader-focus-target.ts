@@ -1,4 +1,6 @@
 import type { ReaderFocusOutcome } from "@read-aware/core";
+import type { DomainActor } from "../../../platform/domain-actor";
+import { focusWithReadingSource } from "./reading-document-input";
 
 function visible(element: HTMLElement): boolean {
   if (!element.isConnected || element.closest('[inert],[hidden],[aria-hidden="true"]') || !element.getClientRects().length) return false;
@@ -11,13 +13,13 @@ function visible(element: HTMLElement): boolean {
 }
 
 /** Never dismiss a foreground surface or scroll a hidden panel into view. */
-export function focusReaderElement(element: HTMLElement | null): ReaderFocusOutcome {
+export function focusReaderElement(element: HTMLElement | null, origin: DomainActor = "user"): ReaderFocusOutcome {
   if (!element?.isConnected) return { status: "not-focused", reason: "missing" };
   if (!visible(element)) return { status: "not-focused", reason: "hidden" };
   const document = element.ownerDocument;
   for (const overlay of document.querySelectorAll<HTMLElement>('[aria-modal="true"],[role="dialog"],[role="menu"]')) {
     if (!overlay.contains(element) && visible(overlay)) return { status: "not-focused", reason: "blocked" };
   }
-  element.focus({ preventScroll: true });
+  focusWithReadingSource(element, origin);
   return document.activeElement === element ? { status: "focused" } : { status: "not-focused", reason: "rejected" };
 }

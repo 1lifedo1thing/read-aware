@@ -13,7 +13,7 @@ export function useReaderFocusTarget(bookId: string | undefined, target: ReaderF
       const next = state.status === "ready" && state.bookId === bookId ? state.sessionId : null;
       if (next === sessionId) return;
       release?.(); release = undefined; sessionId = next;
-      if (next) release = readerFocus.bind(target, { sessionId: next, bookId, focus: () => focusReaderElement(ref.current) });
+      if (next) release = readerFocus.bind(target, { sessionId: next, bookId, focus: origin => focusReaderElement(ref.current, origin) });
     });
     return () => { stop(); release?.(); };
   }, [bookId, target, ref]);

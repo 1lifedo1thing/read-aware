@@ -313,8 +313,12 @@ export class View extends HTMLElement {
     async select(target: NavigationTarget, context?: object) {
         if (await this.#navigate(target, true, context)) this.history.pushState(target)
     }
-    deselect() {
-        for (const { doc } of this.#requireRenderer().getContents()) doc.defaultView?.getSelection()?.removeAllRanges()
+    deselect(context: object = {}) {
+        const renderer = this.#requireRenderer()
+        for (const { doc } of renderer.getContents()) {
+            doc.defaultView?.getSelection()?.removeAllRanges()
+            renderer.inputBridge?.selectionChanged(doc, context)
+        }
     }
     getSectionFractions() { return (this.#sectionProgress?.sectionFractions ?? []).map(value => value + Number.EPSILON) }
     getProgressOf(index: number, range?: Range | null) {

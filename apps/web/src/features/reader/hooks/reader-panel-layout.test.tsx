@@ -243,6 +243,9 @@ if (process.env.PANEL_LAYOUT_CASE === "1") {
           expect(eventCause(commits.at(-1)!)!.root).toBe(actorCause(origin)!.root);
           expect(eventCause(readingRuntime.snapshot())!.root).toBe(actorCause(origin)!.root);
           const cause = eventCause(observations.at(-1)!)!;
+          const chat = begin(() => bound.services.ui.reader!.setPanel!("chat", true));
+          await flush(); await chat;
+          expect(actorCause(state.chatFocusOrigin)).toBe(actorCause(origin));
           expect(cause.root).toBe(actorCause(origin)!.root);
           expect(() => reactionActor(`plugin:panel-${mode}`, actorCause(origin)!.steps[0]!, cause)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
         });

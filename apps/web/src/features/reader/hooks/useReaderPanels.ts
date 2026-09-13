@@ -5,7 +5,7 @@ import { useToast } from "@read-aware/ui";
 import { describeError } from "../../../i18n";
 import { IpcError } from "../../../platform/ipc";
 import { createLogger } from "../../../platform/logger";
-import { actorFromEvent, causalActor, type DomainActor } from "../../../platform/domain-actor";
+import { actorFromEvent, causalActor, copyEventCause, eventCause, type DomainActor } from "../../../platform/domain-actor";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { readerPanels } from "../../../services/reader-panels";
 import { getReaderPanelLayout, readerPanelLayoutStore, updateReaderPanelLayout, readerPanelRenderActor } from "../lib/reader-panel-layout";
@@ -19,6 +19,7 @@ function usePanelIntent(bookId: string, channel: "panel" | "ask", intent: Reader
   const store = useStore();
   const handled = useRef<string | null>(null);
   const id = intent?.id, targetBook = intent?.bookId, panel = intent?.panel;
+  const origin = useMemo(() => intent && eventCause(intent) ? actorFromEvent(intent) : causalActor("user"), [intent]);
   useEffect(() => {
     if (!id || !panel || targetBook !== bookId || handled.current === id || store.get(readerPanelAcknowledgementsAtom)[channel] === id) return;
     const controller = new AbortController();
@@ -26,7 +27,7 @@ function usePanelIntent(bookId: string, channel: "panel" | "ask", intent: Reader
     const stop = readerPanels.observe(snapshot => {
       if (dispatched || !snapshot || snapshot.bookId !== bookId) return;
       dispatched = true; handled.current = id;
-      void readerPanels.setPanel(panel, true, controller.signal, snapshot).then(() => {
+      void readerPanels.setPanel(panel, true, controller.signal, snapshot, origin).then(() => {
         store.set(readerPanelAcknowledgementsAtom, previous => ({ ...previous, [channel]: id }));
       }).catch(error => {
         if (!controller.signal.aborted) report(error);
@@ -38,7 +39,7 @@ function usePanelIntent(bookId: string, channel: "panel" | "ask", intent: Reader
       if (dispatched && !settled && handled.current === id) handled.current = null;
       controller.abort(new AppError("reader/superseded", "Reader panel intent retired"));
     };
-  }, [bookId, channel, id, targetBook, panel, report, store]);
+  }, [bookId, channel, id, targetBook, panel, origin, report, store]);
 }
 
 /** Native controls and external actors use the same bound presentation adapter. */
@@ -49,7 +50,7 @@ export function useReaderPanels(bookId: string, visible: boolean, exclusive: boo
   const [transient, setTransient] = useState(() => ({ bookId, annotations: false, appearance: false, origin: causalActor("system") }));
   const environmentOrigin = useMemo(() => causalActor("system"), [exclusive]);
   const [token, setToken] = useState(0);
-  const [chatFocusRequestId, setChatFocusRequestId] = useState(0);
+  const [chatFocus, setChatFocus] = useState(() => ({ id: 0, origin: causalActor("system") }));
   const { toast } = useToast();
   const binding = useRef<ReturnType<typeof readerPanels.bind> | null>(null);
   const boundBook = useRef<string | null>(null);
@@ -94,7 +95,7 @@ export function useReaderPanels(bookId: string, visible: boolean, exclusive: boo
             ...(previous.bookId === bookId ? previous : { bookId, annotations: false, appearance: false }), [panel]: open, origin,
           }));
           signal.throwIfAborted();
-          if (panel === "chat" && open) setChatFocusRequestId(value => signal.aborted ? value : value + 1);
+          if (panel === "chat" && open) setChatFocus(value => signal.aborted ? value : { id: value.id + 1, origin });
         },
         requestCommit: setToken,
       }, committed.current, actorFromEvent(state));
@@ -113,9 +114,11 @@ export function useReaderPanels(bookId: string, visible: boolean, exclusive: boo
   }, [bookId, report]);
   const panelIntent = useAtomValue(readerPanelIntentAtom);
   const askAiRequest = useAtomValue(askAiRequestAtom);
+  const askPanelIntent = useMemo(() => askAiRequest ? copyEventCause(askAiRequest,
+    { id: askAiRequest.id, bookId: askAiRequest.bookId, panel: "chat" as const }) : null, [askAiRequest]);
   // One consumer owns both revealing chrome and opening the target. A second
   // reveal in useReaderSession would supersede this service's pending command.
   usePanelIntent(bookId, "panel", panelIntent, report);
-  usePanelIntent(bookId, "ask", askAiRequest ? { id: askAiRequest.id, bookId: askAiRequest.bookId, panel: "chat" } : null, report);
-  return { ...selected, chatFocusRequestId, setPanel };
+  usePanelIntent(bookId, "ask", askPanelIntent, report);
+  return { ...selected, chatFocusRequestId: chatFocus.id, chatFocusOrigin: chatFocus.origin, setPanel };
 }

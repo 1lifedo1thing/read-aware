@@ -120,7 +120,7 @@ export function ReaderShellOverlay({
   // TOC + chat panels persist per book (restored when the book reopens); the
   // appearance popover is transient and resets each session.
   const isPhone = usePhoneViewport();
-  const { toc: tocOpen, chat: notesOpen, appearance: appearanceOpen, annotations: annotationsOpen, chatFocusRequestId, setPanel } = useReaderPanels(bookId, visible, isPhone, visibilityOrigin);
+  const { toc: tocOpen, chat: notesOpen, appearance: appearanceOpen, annotations: annotationsOpen, chatFocusRequestId, chatFocusOrigin, setPanel } = useReaderPanels(bookId, visible, isPhone, visibilityOrigin);
   const setTocOpen = (open: boolean) => setPanel("toc", open);
   const setNotesOpen = (open: boolean) => setPanel("chat", open);
   const setAppearanceOpen = (open: boolean) => setPanel("appearance", open);
@@ -570,6 +570,7 @@ export function ReaderShellOverlay({
             bookId={bookId}
             bookTitle={title}
             focusRequestId={chatFocusRequestId}
+            focusOrigin={chatFocusOrigin}
             readingCursor={readingCursor}
           />
         </section>

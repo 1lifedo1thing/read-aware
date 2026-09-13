@@ -1,8 +1,9 @@
 import { AppError, assertReaderFocusTarget, type ReaderFocusOutcome, type ReaderFocusReceipt, type ReaderFocusTarget, type ReadingSessionGuard } from "@read-aware/core";
 import type { ReadingSessionController } from "../domain/reading-session-controller";
 import { readingRuntime } from "../domain/reading-runtime";
+import { causalActor, type DomainActor } from "../platform/domain-actor";
 
-type Binding = { sessionId: string; bookId: string; focus(): ReaderFocusOutcome };
+type Binding = { sessionId: string; bookId: string; focus(origin: DomainActor): ReaderFocusOutcome };
 
 /** Host-only semantic targets. No element, selector or callback crosses the public API. */
 export class ReaderFocusService {
@@ -14,7 +15,7 @@ export class ReaderFocusService {
     return () => { if (this.targets.get(target) === binding) this.targets.delete(target); };
   }
 
-  async focus(target: ReaderFocusTarget, signal?: AbortSignal, guard?: ReadingSessionGuard): Promise<ReaderFocusReceipt> {
+  async focus(target: ReaderFocusTarget, signal?: AbortSignal, guard?: ReadingSessionGuard, source: DomainActor = "user"): Promise<ReaderFocusReceipt> {
     assertReaderFocusTarget(target);
     signal?.throwIfAborted();
     if (guard !== undefined && (!guard || typeof guard !== "object" || Array.isArray(guard)
@@ -28,7 +29,7 @@ export class ReaderFocusService {
     const identity = { target, sessionId: current.sessionId, bookId: current.bookId };
     const binding = this.targets.get(target);
     if (!binding || binding.sessionId !== current.sessionId || binding.bookId !== current.bookId) return { ...identity, status: "not-focused", reason: "missing" };
-    const outcome = binding.focus();
+    const outcome = binding.focus(causalActor(source));
     const after = this.reading.snapshot();
     // Focus handlers may synchronously replace the reader or the target.
     if (after.status !== "ready" || after.sessionId !== current.sessionId || this.targets.get(target) !== binding) {
