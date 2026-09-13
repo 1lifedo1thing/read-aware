@@ -298,6 +298,18 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
         scope,
         seed: baseSeed(),
         seedSummary: book.seedSummary(config.progressPercent),
+        setup: async ({ deps }) => {
+          // This scenario starts with an active selection, not only a quoted attachment.
+          const start = chapterText.indexOf(sentence);
+          if (start < 0) throw new Error(`${config.slug} annotation selection is not in its source chapter`);
+          const { contentVersion } = await deps.bookText.getNavigationToc(book.bookId);
+          const range = { bookId: book.bookId, contentVersion,
+            cfi: `epubcfi(fixture:${config.annotationChapter}:${start}:${start + sentence.length})`,
+            textQuote: { exact: sentence } };
+          const page = await deps.bookText.readRange({ range, limit: 12000, contextChars: 0 });
+          if (page.text !== sentence || page.nextOffset !== null) throw new Error("Annotation selection source mismatch");
+          await deps.reader.selectRange(page.range);
+        },
         turns: [
           {
             text: "帮我把选中的这段话高亮，另外加一条笔记：这里值得回头再读。",

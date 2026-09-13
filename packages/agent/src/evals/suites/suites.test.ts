@@ -51,6 +51,26 @@ describe("behavior acceptance boundaries", () => {
     expect(wider.checks.find(check => check.id === "state.highlight-selection-boundary")?.passed).toBe(false);
   });
 
+  test("active annotation selections expose the complete source range matching each attachment", async () => {
+    for (const suite of allSuites) {
+      for (const scenario of suite.scenarios.filter(entry => entry.id.endsWith("-annotate-verbatim"))) {
+        const context = createInMemoryDeps(scenario.seed);
+        await scenario.setup?.(context);
+        const session = await context.deps.reader.getSession();
+        const selected = scenario.turns[0]!.attachments![0]!.text;
+        expect(session.selection?.text, scenario.id).toBe(selected);
+        expect(session.selection?.range, scenario.id).toBeDefined();
+        const range = session.selection!.range!;
+        const source = await context.deps.bookText.readRange({ range, limit: 12000, contextChars: 0 });
+        expect(range.bookId).toBe(session.bookId!);
+        expect(range.contentVersion).toBe(session.location!.contentVersion);
+        expect(source.text).toBe(selected);
+        expect(source.nextOffset).toBeNull();
+        expect(source.sectionIndex).toBe(scenario.turns[0]!.readingCursor!.chapterIndex!);
+      }
+    }
+  });
+
   test("memory correction accepts conditional edits only when the active user state contains the correction", async () => {
     const scenario = evalSuites.personalization.scenarios.find(s => s.id === "memory-update-correction")!;
     const output = behaviorObservation({ tools: [{ turn: 1, id: "correct", name: "manage_memory", args: { action: "correct" }, isError: false }],
