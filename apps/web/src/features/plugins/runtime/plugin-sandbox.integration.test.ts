@@ -27,7 +27,7 @@ function sandbox(scenario: string, fixture = "wire-probe.ts", bootPatch: Record<
   worker.postMessage({
     t: "boot", protocolVersion: 1, url: new URL(`../../../../tests/desktop/${fixture}`, import.meta.url).href,
     manifest: { id: "wire-test", name: "Wire test", description: scenario, version: "1.0.0", schemaVersion: 1, requires: {} },
-    appVersion: "1.0.0", capabilities: { domains: {}, services: {}, contributions: {}, schemas: {} }, locale: "en", phase: "activating", storage: {},
+    appVersion: "1.0.0", capabilities: { domains: {}, services: {}, contributions: {}, schemas: {} }, grants: { book: { mode: "all" } }, locale: "en", phase: "activating", storage: {},
     shape: { domains: { library: { queries: { books: { searchLocations: "fn" } } }, reading: { commands: { step: "fn" } } }, services: { llm: { ask: "fn", askDetailed: "fn", policy: "fn", getRequest: "fn", listRequests: "fn", cancelRequest: "fn" }, logging: { write: "fn", policy: "fn" }, network: { fetch: "fn", openStream: "fn", readStream: "fn", closeStream: "fn" } }, contributions: { commands: { register: "fn" }, agentContextProviders: { register: "fn" } }, __collection: { put: "fn", get: "fn", page: "fn" } },
     ...bootPatch,
   });
@@ -57,6 +57,18 @@ test.each([undefined, 0, 2, "1"])("real Worker rejects incompatible boot version
   const s = sandbox("must-not-activate", "wire-probe.ts", { protocolVersion });
   expect(await s.next(message => message.t === "failed")).toMatchObject({ error: "Host protocol or transport version rejected" });
   expect(s.messages.some(message => message.t === "call" || message.t === "hello" || message.t === "ready")).toBe(false);
+});
+
+test("real Worker receives a frozen explicit book grant and cannot widen it", async () => {
+  const s = sandbox("grant-metadata", "wire-probe.ts", { grants: { book: { mode: "book", bookId: "book-a" } } });
+  const registration = await s.next(message => message.method === "contributions.commands.register");
+  const handle = (data(registration.args!) as { run: () => string }[])[0]!.run();
+  s.worker.postMessage({ t: "result", id: registration.id, ok: true, value: null, disposable: "grant-registration" });
+  await s.next(message => message.t === "ready");
+  s.worker.postMessage({ t: "sync", patch: { phase: "active" } });
+  s.worker.postMessage({ t: "invoke", id: 909, handle, args: [] });
+  const result = resultData(await s.next(message => message.t === "result" && message.id === 909));
+  expect(result).toMatchObject({ ok: true, value: { toast: '{"book":{"mode":"book","bookId":"book-a"}}|{"book":{"mode":"book","bookId":"book-a"}}' } });
 });
 
 test("real Worker rejects malformed host invocations and results without losing the next call", async () => {

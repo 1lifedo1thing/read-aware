@@ -146,7 +146,31 @@
     "installConfirm": {
       "title": "安装 {{name}}?",
       "confirm": "安装",
-      "cancel": "取消"
+      "cancel": "取消",
+      "installing": "安装中…"
+    },
+    "bookAccess": {
+      "label": "书籍访问范围",
+      "all": "全部书籍",
+      "allDescription": "在插件声明的域权限允许时，可对整个书库执行书籍操作。",
+      "current": "当前书籍",
+      "currentDescription": "跟随阅读器中当前打开的书籍。",
+      "book": "指定一本书",
+      "bookDescription": "将书籍对象访问限制为书库中选定的一本书。",
+      "bookLabel": "书籍",
+      "bookPlaceholder": "选择书籍…",
+      "noBooks": "没有可供选择的书籍。",
+      "invalidBook": "请选择可用的书籍后再继续。",
+      "restrictedNotice": "书籍范围只会收窄对象访问，不会新增域权限。无法安全收窄的记忆和对话操作可能不可用。",
+      "summary": "当前授权：{{scope}}",
+      "legacy": "全部书籍——既有域授权",
+      "change": "修改书籍访问",
+      "editTitle": "修改 {{name}} 的书籍访问",
+      "editDescription": "选择此插件的书籍范围。宿主会先停用并重启插件，再应用新的授权。",
+      "save": "保存访问范围",
+      "saving": "保存中…",
+      "cancel": "取消",
+      "updateFailed": "无法更新书籍访问范围，请重试或选择其他范围。"
     },
     "configure": "设置",
     "builtin": "内置",

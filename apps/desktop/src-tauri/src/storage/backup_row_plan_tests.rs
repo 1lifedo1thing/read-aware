@@ -187,6 +187,11 @@ fn backup_row_plan_routes_credentials_runtime_bindings_and_arbitrary_plugin_keys
             "read-aware-sync-transport-journal",
             "private transport journal",
         );
+        kv(
+            conn,
+            "read-aware-plugins-book-access",
+            r#"{"proof":{"mode":"current"}}"#,
+        );
         kv(conn, "read-aware-plugin.proof.schedule-state", "running");
         kv(
             conn,
@@ -220,7 +225,7 @@ fn backup_row_plan_routes_credentials_runtime_bindings_and_arbitrary_plugin_keys
             .iter()
             .filter(|&&value| value == RowPolicy::PreserveDevice)
             .count(),
-        2
+        3
     );
     assert!(policies.contains(&RowPolicy::ResealCredential));
     assert!(policies.contains(&RowPolicy::ReviewRuntimeHistory));

@@ -146,7 +146,31 @@
     "installConfirm": {
       "title": "{{name}} をインストールしますか?",
       "confirm": "インストール",
-      "cancel": "キャンセル"
+      "cancel": "キャンセル",
+      "installing": "インストール中…"
+    },
+    "bookAccess": {
+      "label": "書籍へのアクセス",
+      "all": "すべての書籍",
+      "allDescription": "プラグインのドメイン権限が許す範囲で、ライブラリ全体の書籍操作を許可します。",
+      "current": "現在の書籍",
+      "currentDescription": "リーダーで開いている書籍に追従します。",
+      "book": "指定した1冊",
+      "bookDescription": "書籍オブジェクトへのアクセスをライブラリで選択した1冊に限定します。",
+      "bookLabel": "書籍",
+      "bookPlaceholder": "書籍を選択…",
+      "noBooks": "選択できる書籍がありません。",
+      "invalidBook": "続行する前に利用可能な書籍を選択してください。",
+      "restrictedNotice": "書籍の範囲はオブジェクトへのアクセスを狭めるだけで、ドメイン権限を追加しません。安全に絞れないメモリや会話の操作は利用できない場合があります。",
+      "summary": "現在の権限: {{scope}}",
+      "legacy": "すべての書籍 — 既存のドメイン承認",
+      "change": "書籍アクセスを変更",
+      "editTitle": "{{name}} の書籍アクセスを変更",
+      "editDescription": "このプラグインの書籍範囲を選択します。ホストは新しい権限を適用する前にプラグインを停止して再起動します。",
+      "save": "アクセスを保存",
+      "saving": "保存中…",
+      "cancel": "キャンセル",
+      "updateFailed": "書籍アクセスを更新できませんでした。もう一度試すか、別の範囲を選択してください。"
     },
     "configure": "設定",
     "builtin": "内蔵",

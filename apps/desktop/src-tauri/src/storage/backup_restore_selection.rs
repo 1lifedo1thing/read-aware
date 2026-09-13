@@ -134,10 +134,17 @@ pub(super) fn validate_program_results(
             continue;
         };
         let result = &results[&program.id];
-        if result.program != *reference || (reference.side == Side::Source && !result.consented) {
+        if result.program != *reference
+            || (reference.side == Side::Source
+                && (!result.consented || result.book_access.is_none()))
+            || (reference.side == Side::Target && result.book_access.is_some())
+        {
             return Err(incomplete(
-                "Selected program bytes need matching user consent and a staged result",
+                "Selected program bytes need matching user consent, book grant and staged result",
             ));
+        }
+        if let Some(book_access) = &result.book_access {
+            book_access.validate()?;
         }
         let candidate = facts
             .iter()

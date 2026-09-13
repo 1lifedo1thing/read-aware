@@ -2,15 +2,37 @@ import type { PluginBlock, PluginEditorView, PluginView } from "@read-aware/plug
 import { reviewView } from "./batch";
 import { colorForm, commit } from "./mutations";
 import { tr } from "./strings";
-import type { DeskContext, Refresh } from "./types";
+import {
+  assertAnnotationBooks,
+  BOOK_ACCESS_DENIED,
+  isBookAccessDenied,
+  scopeErrorView,
+  type DeskContext,
+  type Refresh,
+} from "./types";
 
-export async function detailView(ctx: DeskContext, id: string, refresh: Refresh): Promise<PluginView> {
+export async function detailView(ctx: DeskContext, id: string, refresh: Refresh, expectedBookId?: string): Promise<PluginView> {
+  if (expectedBookId !== undefined) {
+    try {
+      await assertAnnotationBooks(ctx, [expectedBookId], "annotations.queries.inspect");
+    } catch (error) {
+      return scopeErrorView(ctx, error);
+    }
+  }
   const snapshot = await ctx.domains.annotations.queries.inspect(id);
   if (!snapshot) return { kind: "blocks", blocks: [
     { kind: "text", text: tr(ctx.locale, "missing") },
     { kind: "actions", actions: [{ id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: refresh }] },
   ] };
   const item = snapshot.annotation;
+  if (expectedBookId !== undefined && item.bookId !== expectedBookId) {
+    return scopeErrorView(ctx, { code: BOOK_ACCESS_DENIED });
+  }
+  try {
+    await assertAnnotationBooks(ctx, [item.bookId], "annotations.queries.inspect");
+  } catch (error) {
+    return scopeErrorView(ctx, error);
+  }
   const book = await ctx.domains.library.queries.books.get(item.bookId);
   const content: PluginBlock[] = [];
   if (item.kind === "note") {
@@ -27,7 +49,13 @@ export async function detailView(ctx: DeskContext, id: string, refresh: Refresh)
         // mismatched view revision must fail before a write is attempted.
         if (revision !== snapshot.revision) return { fieldErrors: { editor: tr(ctx.locale, "conflict") } };
         if (value.length > 100_000) return { fieldErrors: { editor: tr(ctx.locale, "bodyLimit") } };
-        return commit(ctx, [{ op: "updateNote", annotationId: id, expectedRevision: snapshot.revision, body: value }], "editor", refresh);
+        try {
+          await assertAnnotationBooks(ctx, [item.bookId], "annotations.commands.applyChanges");
+        } catch (error) {
+          if (isBookAccessDenied(error)) return { fieldErrors: { editor: tr(ctx.locale, "accessDenied") } };
+          throw error;
+        }
+        return commit(ctx, [{ op: "updateNote", annotationId: id, expectedRevision: snapshot.revision, body: value }], "editor", refresh, item.bookId);
       },
       // Cancellation only navigates away; the host discards its local draft
       // before invoking this callback, and no annotation command is issued.
@@ -46,6 +74,6 @@ export async function detailView(ctx: DeskContext, id: string, refresh: Refresh)
         return { close: true };
       } }] : []),
       { id: "review", label: tr(ctx.locale, "review"), icon: "list-bullets", run: async () => ({ view: await reviewView(ctx, [snapshot], refresh) }) },
-      { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await detailView(ctx, id, refresh), navigation: "replace" }) },
+      { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await detailView(ctx, id, refresh, item.bookId), navigation: "replace" }) },
     ] };
 }

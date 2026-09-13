@@ -19,6 +19,7 @@ import type {
   PluginDisposable,
   PluginMigration,
   PluginManifest,
+  PluginBookAccess,
   PluginStorage,
 } from "@read-aware/plugin-types";
 import { AppError, errorCode } from "@read-aware/core";
@@ -65,6 +66,8 @@ export type SandboxedPlugin = {
 };
 
 export type StartPluginWorkerOptions = {
+  /** Host-owned object grant for this activation; never read from Worker input. */
+  bookAccess?: PluginBookAccess;
   /** Alternate entry URL for a separately staged update candidate. */
   moduleUrl?: string;
   /** Private restore namespace; never receives live storage broadcasts. */
@@ -167,7 +170,7 @@ function resolveMethod(
  * exactly what `buildPluginContext` decided to grant, no more and no less.
  */
 /** Data (not callables) the Worker mirrors locally to keep sync reads sync. */
-const SHAPE_SKIP = new Set(["manifest", "appVersion", "locale", "lifecycle", "capabilities"]);
+const SHAPE_SKIP = new Set(["manifest", "appVersion", "locale", "lifecycle", "capabilities", "grants"]);
 
 function describeShape(value: unknown, depth = 0): ContextShape {
   const shape: ContextShape = {};
@@ -205,7 +208,7 @@ export function startPluginWorker(
   disposables: PluginDisposable[],
   options: StartPluginWorkerOptions = {},
 ): Promise<SandboxedPlugin> {
-  const runtime = buildPluginContext(manifest, appVersion, disposables);
+  const runtime = buildPluginContext(manifest, appVersion, disposables, options.bookAccess);
   const ctx = options.restoreStorage ? {
     ...runtime.context,
     services: { ...runtime.context.services, storage: options.restoreStorage.create(runtime.lifecycle) },
@@ -709,6 +712,7 @@ export function startPluginWorker(
       manifest,
       appVersion,
       capabilities: ctx.capabilities,
+      grants: ctx.grants,
       shape: describeContext(ctx),
       storage: storageSnapshot(),
       locale: ctx.locale,

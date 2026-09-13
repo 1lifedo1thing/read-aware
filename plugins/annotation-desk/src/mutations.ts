@@ -1,14 +1,23 @@
 import type { AnnotationMutation, AnnotationSnapshot, PluginFormView, PluginViewResult } from "@read-aware/plugin-types";
-import type { DeskContext, Refresh } from "./types";
+import { assertAnnotationBooks, isBookAccessDenied, type DeskContext, type Refresh } from "./types";
 import { tr } from "./strings";
 
-export async function commit(ctx: DeskContext, changes: AnnotationMutation[], field: string, refresh: Refresh): Promise<PluginViewResult> {
+export async function commit(ctx: DeskContext, changes: AnnotationMutation[], field: string, refresh: Refresh, bookId?: string): Promise<PluginViewResult> {
+  if (bookId !== undefined) {
+    try {
+      await assertAnnotationBooks(ctx, [bookId], "annotations.commands.applyChanges");
+    } catch (error) {
+      if (isBookAccessDenied(error)) return { fieldErrors: { [field]: tr(ctx.locale, "accessDenied") } };
+      throw error;
+    }
+  }
   try {
     await ctx.domains.annotations.commands.applyChanges(changes);
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "annotations/conflict") {
       return { fieldErrors: { [field]: tr(ctx.locale, "conflict") } };
     }
+    if (isBookAccessDenied(error)) return { fieldErrors: { [field]: tr(ctx.locale, "accessDenied") } };
     throw error;
   }
   try {
@@ -36,7 +45,14 @@ export function colorForm(ctx: DeskContext, snapshots: AnnotationSnapshot[], ref
     const color = colors.find(color => color === values.color);
     const style = styles.find(style => style === values.style);
     if (!color || !style) return { fieldErrors: { [!color ? "color" : "style"]: tr(ctx.locale, "invalid") } };
+    let bookId: string | undefined;
+    try {
+      bookId = await assertAnnotationBooks(ctx, snapshots.map(snapshot => snapshot.annotation.bookId), "annotations.commands.applyChanges");
+    } catch (error) {
+      if (isBookAccessDenied(error)) return { fieldErrors: { color: tr(ctx.locale, "accessDenied") } };
+      throw error;
+    }
     return commit(ctx, snapshots.map(({ annotation, revision }) => ({ op: "recolorHighlight", annotationId: annotation.id,
-      expectedRevision: revision, color, style })), "color", refresh);
+      expectedRevision: revision, color, style })), "color", refresh, bookId);
   } };
 }

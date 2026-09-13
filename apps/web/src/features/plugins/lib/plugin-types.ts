@@ -19,6 +19,7 @@ import type {
   PluginToolDefinition,
   PluginVoice,
   PluginVoiceProvider,
+  PluginBookAccess,
 } from "@read-aware/plugin-types";
 
 export * from "@read-aware/plugin-types";
@@ -90,6 +91,9 @@ export type RegisteredTool = PluginToolDefinition & {
   pluginName: string;
   /** Host-installed authorization closure; never accepted from plugin input. */
   resolveBookCards?: import("../runtime/plugin-book-cards").PluginBookCardResolver;
+  /** Host-owned object scope; used again when the Agent invokes this callback. */
+  bookAccess?: PluginBookAccess;
+  assertBookAccess?: (bookId: string) => void;
 };
 
 export type RegisteredAgentContextProvider = PluginAgentContextProvider & {
@@ -98,18 +102,25 @@ export type RegisteredAgentContextProvider = PluginAgentContextProvider & {
   pluginName: string;
   /** Host-owned realm guard; plugin-supplied values are never retained. */
   readingIntentLifetime?: AbortSignal;
+  bookAccess?: PluginBookAccess;
+  assertBookAccess?: (bookId: string) => void;
 };
 
 export type RegisteredAgentRetrievalProvider = PluginAgentRetrievalProvider & {
   key: ContributionKey;
   pluginId: string;
   pluginName: string;
+  bookAccess?: PluginBookAccess;
+  assertBookAccess?: (bookId: string) => void;
 };
 
 export type RegisteredMemoryCandidateProvider = PluginMemoryCandidateProvider & {
   key: ContributionKey;
   pluginId: string;
   pluginName: string;
+  /** Host-owned object grant used when the Agent invokes this callback. */
+  bookAccess?: PluginBookAccess;
+  assertBookAccess?: (bookId: string) => void;
 };
 
 /**
@@ -143,6 +154,10 @@ export type RegisteredPluginFont = PluginFontContribution & {
 export type InstalledPlugin = {
   manifest: PluginManifest;
   enabled: boolean;
+  /** User-selected object grant; absent only for legacy installs. */
+  bookAccess?: PluginBookAccess;
+  /** Lets settings disclose that `bookAccess` was derived from old domain consent. */
+  bookAccessSource?: "legacy-domain" | "user";
   /** Shipped in the app bundle: default-enabled, not uninstallable. */
   builtin?: boolean;
   error?: string;

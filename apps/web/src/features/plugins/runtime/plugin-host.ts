@@ -8,6 +8,7 @@
  * Plugin CODE runs in a Worker (plugin-sandbox.worker.ts), not here. This
  * module only decides what may start and holds the handle for tearing it down.
  */
+import { AppError } from "@read-aware/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { getDefaultStore } from "jotai";
 import { withContributionActivation } from "../state/contribution-activation";
@@ -23,9 +24,13 @@ import type {
   InstalledPlugin,
   PluginDisposable,
   PluginManifest,
+  PluginBookAccess,
 } from "../lib/plugin-types";
 import {
   forgetPluginEnabled,
+  getPluginBookAccess,
+  persistPluginBookAccess,
+  forgetPluginBookAccess,
   installedPluginsAtom,
   isPluginEnabled,
   markPluginsReady,
@@ -75,6 +80,21 @@ type ActivePlugin = {
 };
 
 const active = new Map<string, ActivePlugin>();
+const activating = new Map<string, Promise<void>>();
+const deactivating = new Map<string, Promise<void>>();
+const changingBookAccess = new Set<string>();
+
+function assertBookAccessNotChanging(id: string): void {
+  if (changingBookAccess.has(id)) throw new AppError("plugin/data-busy", "Plugin book access is being changed");
+}
+
+function checkedBookAccess(grant: PluginBookAccess): PluginBookAccess {
+  if (grant?.mode === "all" || grant?.mode === "current") return { mode: grant.mode };
+  if (grant?.mode === "book" && typeof grant.bookId === "string" && grant.bookId.trim() && grant.bookId.length <= 512) {
+    return { mode: "book", bookId: grant.bookId };
+  }
+  throw new AppError("plugin/invalid-input", "Invalid plugin book access");
+}
 let appVersion = "0.0.0";
 let initialized = false;
 
@@ -127,8 +147,15 @@ export async function initializePlugins(): Promise<void> {
           `manifest.id "${manifest.id}" does not match folder name "${entry.id}"`,
         );
       }
+      let access: ReturnType<typeof getPluginBookAccess> | undefined;
+      let accessError: string | undefined;
+      try { access = getPluginBookAccess(manifest.id); }
+      catch (error) { accessError = errorMessage(error); }
       installed.push({
         manifest,
+        bookAccess: access?.grant,
+        bookAccessSource: access?.source,
+        error: accessError,
         enabled: isPluginEnabled(manifest.id, entry.builtin === true),
         builtin: entry.builtin === true,
       });
@@ -180,15 +207,24 @@ export async function shutdownPlugins(signal?: AbortSignal): Promise<void> {
  * entry. The plugin's code never enters this realm — `startPluginWorker` runs
  * it in a Worker and brokers everything through its permission-gated context.
  */
-async function activatePlugin(manifest: PluginManifest): Promise<void> {
-  if (active.has(manifest.id)) return;
-  try {
-    active.set(manifest.id, await startPluginInstance(manifest));
-    updateInstalledPlugin(manifest.id, { error: undefined });
-  } catch (error) {
-    log.error(`activation of "${manifest.id}" failed`, error);
-    updateInstalledPlugin(manifest.id, { error: errorMessage(error) });
-  }
+function activatePlugin(manifest: PluginManifest): Promise<void> {
+  if (active.has(manifest.id)) return Promise.resolve();
+  const pending = activating.get(manifest.id);
+  if (pending) return pending;
+  assertBookAccessNotChanging(manifest.id);
+  const work = (async () => {
+    try {
+      await deactivating.get(manifest.id);
+      active.set(manifest.id, await startPluginInstance(manifest));
+      updateInstalledPlugin(manifest.id, { error: undefined });
+    } catch (error) {
+      log.error(`activation of "${manifest.id}" failed`, error);
+      updateInstalledPlugin(manifest.id, { error: errorMessage(error) });
+    }
+  })();
+  activating.set(manifest.id, work);
+  void work.finally(() => { if (activating.get(manifest.id) === work) activating.delete(manifest.id); });
+  return work;
 }
 
 function assertManifestCanActivate(manifest: PluginManifest): void {
@@ -212,7 +248,10 @@ async function startPluginInstance(
   let sandbox: SandboxedPlugin | undefined;
   try {
     const { deferPromotion = false, ...workerOptions } = options;
-    sandbox = await startPluginWorker(manifest, appVersion, disposables, workerOptions);
+    sandbox = await startPluginWorker(manifest, appVersion, disposables, {
+      ...workerOptions,
+      bookAccess: checkedBookAccess(workerOptions.bookAccess ?? getPluginBookAccess(manifest.id).grant),
+    });
     await sandbox.checkHealth();
     const instance = { manifest, sandbox, disposables, candidateToken, promoted: false };
     if (!deferPromotion) await withPluginDataUpdate(manifest.id, async () => {
@@ -311,11 +350,19 @@ function registerManifestContributions(
 }
 
 /** Dispose every contribution, then tear the plugin's realm down. */
-async function deactivatePlugin(id: string): Promise<void> {
+function deactivatePlugin(id: string): Promise<void> {
+  const pending = deactivating.get(id);
+  if (pending) return pending;
   const entry = active.get(id);
-  if (!entry) return;
+  if (!entry) return Promise.resolve();
   active.delete(id);
-  await stopPluginInstance(entry);
+  const work = stopPluginInstance(entry);
+  deactivating.set(id, work);
+  const release = () => { if (deactivating.get(id) === work) deactivating.delete(id); };
+  // Failed teardown remains a barrier: a retry must not start a new realm
+  // over an old writer whose termination was never confirmed.
+  void work.then(release, () => {});
+  return work;
 }
 
 async function stopPluginInstance(entry: ActivePlugin): Promise<void> {
@@ -340,6 +387,7 @@ async function stopPluginInstance(entry: ActivePlugin): Promise<void> {
 
 /** Settings toggle — persists, then (de)activates immediately, no restart. */
 export async function setPluginEnabled(id: string, enabled: boolean): Promise<void> {
+  assertBookAccessNotChanging(id);
   persistPluginEnabled(id, enabled);
   updateInstalledPlugin(id, { enabled, error: undefined });
   if (enabled) {
@@ -347,6 +395,29 @@ export async function setPluginEnabled(id: string, enabled: boolean): Promise<vo
     if (plugin) await activatePlugin(plugin.manifest);
   } else {
     await deactivatePlugin(id);
+  }
+}
+
+/** Change authority only after the old realm and its writes have drained. */
+export async function updatePluginBookAccess(id: string, input: PluginBookAccess): Promise<void> {
+  const grant = checkedBookAccess(input);
+  assertBookAccessNotChanging(id);
+  const plugin = getInstalled().find(entry => entry.manifest.id === id);
+  if (!plugin) throw new AppError("plugin/invalid-input", "Plugin is not installed");
+  changingBookAccess.add(id);
+  try {
+    await activating.get(id);
+    await withPluginDataUpdate(id, async scope => {
+      await deactivatePlugin(id);
+      await persistPluginBookAccess(id, grant);
+      updateInstalledPlugin(id, { bookAccess: grant, bookAccessSource: "user", error: undefined });
+      if (plugin.enabled) active.set(id, await startPluginInstance(plugin.manifest, { bookAccess: grant }, undefined, scope));
+    });
+  } catch (error) {
+    updateInstalledPlugin(id, { error: errorMessage(error) });
+    throw error;
+  } finally {
+    changingBookAccess.delete(id);
   }
 }
 
@@ -394,14 +465,20 @@ async function restartPreviousInstance(previous: ActivePlugin, dataUpdate: Plugi
  * previous version still owns the durable on-disk slot. Only then commit the
  * candidate, switch runtime ownership, and retire the previous sandbox.
  */
-async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<InstalledPlugin> {
+async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: PluginBookAccess): Promise<InstalledPlugin> {
   let manifest: PluginManifest;
+  let previousAccess: ReturnType<typeof getPluginBookAccess>;
+  let grant: PluginBookAccess;
   try {
     manifest = parseCandidate(entry);
+    assertBookAccessNotChanging(manifest.id);
+    previousAccess = getPluginBookAccess(manifest.id);
+    grant = checkedBookAccess(requestedGrant ?? previousAccess.grant);
   } catch (error) {
     await discardPluginCandidate(entry.token).catch(() => {});
     throw error;
   }
+  let grantPersisted = false;
   const existing = getInstalled().find((plugin) => plugin.manifest.id === manifest.id);
 
   if (existing?.builtin) {
@@ -415,13 +492,18 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
   const recoverJournal = async () => {
     if (journal && !recovered) { await rollbackPluginUpdate(journal); recovered = true; }
     publication?.rollback();
+    if (grantPersisted) {
+      if (previousAccess.source === "legacy-domain") await forgetPluginBookAccess(manifest.id);
+      else await persistPluginBookAccess(manifest.id, previousAccess.grant);
+      grantPersisted = false;
+    }
   };
   let publication: PluginPreferencePublication | undefined;
   let accepted = false;
   let candidateRuntimeError: string | undefined;
   let committed: Awaited<ReturnType<typeof commitPluginCandidate>> | undefined;
   let previousQuiesced = false;
-  const plugin: InstalledPlugin = { manifest, enabled: true };
+  const plugin: InstalledPlugin = { manifest, enabled: true, bookAccess: grant, bookAccessSource: requestedGrant ? "user" : previousAccess.source };
 
   let entered = false;
   await withPluginDataUpdate(manifest.id, async dataUpdate => {
@@ -433,6 +515,7 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
           {
             moduleUrl: pluginCandidateModuleUrl(entry.token, manifest.main ?? "main.js"),
             instanceId: `${manifest.id}@candidate:${entry.token}`,
+            bookAccess: grant,
             onRuntimeError: (message) => {
               if (accepted) updateInstalledPlugin(manifest.id, { error: message });
               else candidateRuntimeError = message;
@@ -473,6 +556,10 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
       promoteCandidate: (next) => promotePluginInstance(next),
       accept: async (next) => {
         if (!journal) throw new Error("plugin update has no durable baseline");
+        if (requestedGrant) {
+          await persistPluginBookAccess(manifest.id, grant);
+          grantPersisted = true;
+        }
         const decision = await acceptPluginUpdate(journal);
         publication?.rebase(decision.accepted!.kv);
         active.set(manifest.id, next);
@@ -516,7 +603,7 @@ async function applyCandidate(entry: PluginCandidateDiskEntry): Promise<Installe
 
 export type PreparedPluginInstall = {
   manifest: PluginManifest;
-  complete(): Promise<InstalledPlugin>;
+  complete(grant?: PluginBookAccess): Promise<InstalledPlugin>;
   discard(): Promise<void>;
 };
 
@@ -525,10 +612,10 @@ function preparedCandidate(entry: PluginCandidateDiskEntry): PreparedPluginInsta
   let consumed = false;
   return {
     manifest,
-    async complete() {
+    async complete(grant?: PluginBookAccess) {
       if (consumed) throw new Error("plugin candidate has already been consumed");
       consumed = true;
-      return applyCandidate(entry);
+      return applyCandidate(entry, grant);
     },
     async discard() {
       if (consumed) return;
@@ -564,8 +651,9 @@ export async function preparePluginZipInstall(zipPath: string): Promise<Prepared
 export async function installPluginFiles(
   id: string,
   files: PluginFilePayload[],
+  grant?: PluginBookAccess,
 ): Promise<InstalledPlugin> {
-  return applyCandidate(await stagePluginFiles(id, files));
+  return applyCandidate(await stagePluginFiles(id, files), grant);
 }
 
 /**
@@ -574,6 +662,7 @@ export async function installPluginFiles(
  * declared lifecycle is the plugin's own.
  */
 export async function uninstallPlugin(id: string): Promise<void> {
+  assertBookAccessNotChanging(id);
   const target = getInstalled().find((entry) => entry.manifest.id === id);
   if (target?.builtin) throw new Error(`"${id}" is a built-in plugin`);
   await withPluginDataUpdate(id, async () => {
@@ -585,6 +674,7 @@ export async function uninstallPlugin(id: string): Promise<void> {
       throw error;
     });
     forgetPluginEnabled(id);
+    await forgetPluginBookAccess(id);
     setInstalledPlugins(getInstalled().filter((entry) => entry.manifest.id !== id));
   });
 }

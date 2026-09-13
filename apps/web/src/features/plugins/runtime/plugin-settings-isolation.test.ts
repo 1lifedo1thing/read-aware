@@ -85,9 +85,9 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
   } } });
 
   test("production host update blocks external settings through rollback and restart", async () => {
-    const migration = gate(), teardown = gate(); const starts: number[] = [];
-    spyOn(worker, "startPluginWorker").mockImplementation(async input => {
-      starts.push(input.schemaVersion);
+    const migration = gate(), teardown = gate(); const starts: number[] = []; const grants: unknown[] = [];
+    spyOn(worker, "startPluginWorker").mockImplementation(async (input, _version, _disposables, options) => {
+      starts.push(input.schemaVersion); grants.push(options?.bookAccess);
       return {
         hasMigration: true, checkHealth: async () => {}, promote: () => {},
         migrate: async () => { await localKV.setItemAsync(settingsKey, '{"candidate":true}'); await migration.promise; throw new Error("migration failed"); },
@@ -100,7 +100,7 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
     await host.setPluginEnabled(id, true);
     const oldForm = buildPluginSettingsView(manifest)!;
     publications.length = 0;
-    const update = host.installPluginFiles(id, []).catch(error => error);
+    const update = host.installPluginFiles(id, [], { mode: "book", bookId: "A" }).catch(error => error);
     await tick(); expect(localKV.getItem(settingsKey)).toBe('{"candidate":true}');
     expect(publications).toEqual([]);
     await expect(Promise.resolve(oldForm.onSubmit({ enabled: false }))).rejects.toMatchObject({ code: "plugin/data-busy" });
@@ -108,6 +108,7 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
     migration.resolve(); await tick(); expect(commands).not.toContain("plugins_update_rollback");
     teardown.resolve(); expect((await update).message).toContain("migration failed");
     expect(commands).toContain("plugins_update_rollback"); expect(starts).toEqual([1, 2, 1]);
+    expect(grants).toEqual([{ mode: "all" }, { mode: "book", bookId: "A" }, { mode: "all" }]);
     expect(publications).toEqual([]);
     expect(localKV.getItem(settingsKey)).toBe('{"enabled":true}'); expect(disk.get(settingsKey)).toBe('{"enabled":true}');
     await expect(Promise.resolve(oldForm.onSubmit({ enabled: false }))).rejects.toMatchObject({ code: "plugin/settings-stale" });

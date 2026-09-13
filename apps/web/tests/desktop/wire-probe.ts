@@ -8,6 +8,11 @@ export default {
       id: "test",
       title: "Wire probe",
       run: async () => {
+        if (ctx.manifest.description === "grant-metadata") {
+          const before = JSON.stringify(ctx.grants);
+          try { (ctx.grants as unknown as { book: { mode: string } }).book.mode = "all"; } catch { /* frozen metadata is expected */ }
+          return { toast: `${before}|${JSON.stringify(ctx.grants)}` };
+        }
         if (ctx.manifest.description === "durable-storage") return { toast: await ctx.services.storage.getDurable<string>("result") ?? "missing" };
         const endpoint = ctx.services.storage.get<string>("endpoint");
         if (["pre-timeout", "live-timeout", "network-failure"].includes(ctx.manifest.description ?? "")) {

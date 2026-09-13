@@ -146,7 +146,31 @@
     "installConfirm": {
       "title": "安裝 {{name}}?",
       "confirm": "安裝",
-      "cancel": "取消"
+      "cancel": "取消",
+      "installing": "安裝中…"
+    },
+    "bookAccess": {
+      "label": "書籍存取範圍",
+      "all": "所有書籍",
+      "allDescription": "在外掛宣告的網域權限允許時，可對整個書庫執行書籍操作。",
+      "current": "目前書籍",
+      "currentDescription": "跟隨閱讀器中目前開啟的書籍。",
+      "book": "指定一本書",
+      "bookDescription": "將書籍物件存取限制為書庫中選定的一本書。",
+      "bookLabel": "書籍",
+      "bookPlaceholder": "選擇書籍…",
+      "noBooks": "沒有可供選擇的書籍。",
+      "invalidBook": "請選擇可用的書籍後再繼續。",
+      "restrictedNotice": "書籍範圍只會收窄物件存取，不會新增網域權限。無法安全收窄的記憶和對話操作可能無法使用。",
+      "summary": "目前授權：{{scope}}",
+      "legacy": "所有書籍——既有網域授權",
+      "change": "修改書籍存取",
+      "editTitle": "修改 {{name}} 的書籍存取",
+      "editDescription": "選擇此外掛的書籍範圍。主機會先停用並重新啟動外掛，再套用新的授權。",
+      "save": "儲存存取範圍",
+      "saving": "儲存中…",
+      "cancel": "取消",
+      "updateFailed": "無法更新書籍存取範圍，請重試或選擇其他範圍。"
     },
     "configure": "設定",
     "builtin": "內建",

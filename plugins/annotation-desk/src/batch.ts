@@ -3,10 +3,16 @@ import { preview, readBooks, subtitle, type Books } from "./format";
 import { exportAnnotations } from "./export";
 import { colorForm, commit } from "./mutations";
 import { tr } from "./strings";
-import type { DeskContext, Refresh } from "./types";
+import { assertAnnotationBooks, isBookAccessDenied, scopeErrorView, type DeskContext, type Refresh } from "./types";
 
 export async function reviewView(ctx: DeskContext, snapshots: AnnotationSnapshot[], refresh: Refresh): Promise<PluginView> {
   const items = snapshots.map(snapshot => snapshot.annotation);
+  let bookId: string | undefined;
+  try {
+    bookId = await assertAnnotationBooks(ctx, items.map(item => item.bookId), "annotations.review");
+  } catch (error) {
+    return scopeErrorView(ctx, error);
+  }
   const books = await readBooks(ctx, items);
   return { kind: "blocks", title: `${tr(ctx.locale, "review")} (${items.length})`, blocks: [
     { kind: "list", items: items.map(item => ({ id: item.id, title: preview(item) || tr(ctx.locale, item.kind), subtitle: subtitle(ctx, item, books),
@@ -22,7 +28,7 @@ export async function reviewView(ctx: DeskContext, snapshots: AnnotationSnapshot
       onSubmit: async values => {
         if (values.confirm !== true) return { fieldErrors: { confirm: tr(ctx.locale, "confirmRequired") } };
         return commit(ctx, snapshots.map(({ annotation, revision }) => ({ op: "remove", annotationId: annotation.id,
-          expectedRevision: revision, kind: annotation.kind })), "confirm", refresh);
+          expectedRevision: revision, kind: annotation.kind })), "confirm", refresh, bookId);
       } },
   ] };
 }
@@ -34,6 +40,15 @@ export function selectionView(ctx: DeskContext, items: PluginAnnotation[], books
     onSubmit: async values => {
       const selected = items.filter((_, index) => values[`item-${index}`] === true);
       if (!selected.length) return { fieldErrors: { "item-0": tr(ctx.locale, "choose") } };
+      try {
+        await assertAnnotationBooks(ctx, selected.map(item => item.bookId), "annotations.queries.inspect");
+      } catch (error) {
+        if (isBookAccessDenied(error)) {
+          const index = items.findIndex(item => selected.includes(item) && item.bookId !== selected[0]?.bookId);
+          return { fieldErrors: { [`item-${index < 0 ? 0 : index}`]: tr(ctx.locale, "accessDenied") } };
+        }
+        throw error;
+      }
       const snapshots: AnnotationSnapshot[] = [];
       for (const item of selected) {
         const snapshot = await ctx.domains.annotations.queries.inspect(item.id);

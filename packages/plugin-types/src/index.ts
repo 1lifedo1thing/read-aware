@@ -170,6 +170,20 @@ export type PluginCapabilityView = {
   schemas: Partial<Record<DeclarativeSchemaId, string>>;
 };
 
+/**
+ * User granted book scope for a plugin activation. `all` is the legacy
+ * domain-level grant; `current` follows the book and session currently held
+ * by the reader; `book` names one stable library object.
+ *
+ * This is host authority, not a manifest declaration. A plugin cannot widen
+ * it by passing a different book id, range, cursor, resource id, or observer
+ * query.
+ */
+export type PluginBookAccess =
+  | { mode: "all" }
+  | { mode: "current" }
+  | { mode: "book"; bookId: string };
+
 // ─── Manifest ────────────────────────────────────────────────────────────────
 
 export type PluginNetworkAccess = {
@@ -2470,6 +2484,8 @@ export type PluginContext = {
   readonly lifecycle: { readonly phase: PluginLifecyclePhase };
   /** Only capabilities visible to this plugin actor, with host-side versions. */
   readonly capabilities: Readonly<PluginCapabilityView>;
+  /** The immutable object grant selected by the user for this activation. */
+  readonly grants: Readonly<{ book: PluginBookAccess }>;
   domains: PluginDomains;
   contributions: PluginContributions;
   services: PluginHostServices;

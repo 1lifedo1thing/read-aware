@@ -146,7 +146,31 @@
     "installConfirm": {
       "title": "{{name}} installieren?",
       "confirm": "Installieren",
-      "cancel": "Abbrechen"
+      "cancel": "Abbrechen",
+      "installing": "Wird installiert…"
+    },
+    "bookAccess": {
+      "label": "Buchzugriff",
+      "all": "Alle Bücher",
+      "allDescription": "Erlaubt Buchaktionen für die ganze Bibliothek, sofern die Domänenberechtigungen des Plugins dies zulassen.",
+      "current": "Aktuelles Buch",
+      "currentDescription": "Folgt dem Buch, das im Reader geöffnet ist.",
+      "book": "Ein bestimmtes Buch",
+      "bookDescription": "Beschränkt den Zugriff auf Buchobjekte auf ein ausgewähltes Bibliotheksbuch.",
+      "bookLabel": "Buch",
+      "bookPlaceholder": "Buch auswählen…",
+      "noBooks": "Keine Bücher zur Auswahl verfügbar.",
+      "invalidBook": "Wählen Sie ein verfügbares Buch, bevor Sie fortfahren.",
+      "restrictedNotice": "Der Buchbereich beschränkt den Objektzugriff und fügt keine Domänenberechtigungen hinzu. Speicher- und Konversationsaktionen, die sich nicht sicher begrenzen lassen, können nicht verfügbar sein.",
+      "summary": "Aktueller Zugriff: {{scope}}",
+      "legacy": "Alle Bücher — bestehende Domänenberechtigung",
+      "change": "Buchzugriff ändern",
+      "editTitle": "Buchzugriff für {{name}} ändern",
+      "editDescription": "Wählen Sie den Buchbereich für dieses Plugin. Der Host stoppt und startet es vor dem Anwenden der neuen Berechtigung neu.",
+      "save": "Zugriff speichern",
+      "saving": "Wird gespeichert…",
+      "cancel": "Abbrechen",
+      "updateFailed": "Der Buchzugriff konnte nicht aktualisiert werden. Versuchen Sie es erneut oder wählen Sie einen anderen Bereich."
     },
     "configure": "Einstellungen",
     "builtin": "Integriert",

@@ -7,6 +7,7 @@
  * reactively, which is what makes enable/disable instant.
  */
 import { atom, getDefaultStore, type Getter, type Setter } from "jotai";
+import { AppError } from "@read-aware/core";
 import { localKV } from "../../../platform/local-store";
 import { observePluginCallbackOwners, releasePluginCallbacks } from "../runtime/plugin-callback-wire";
 import { createLogger } from "../../../platform/logger";
@@ -30,6 +31,7 @@ import type {
   RegisteredSelectionAction,
   RegisteredTool,
   RegisteredMemoryCandidateProvider,
+  PluginBookAccess,
 } from "../lib/plugin-types";
 import { createContributionRegistry } from "./contribution-registry";
 import { createInteractiveContributionRegistry } from "./interactive-contribution-registry";
@@ -281,6 +283,8 @@ export function updateInstalledPlugin(
 // ─── Enabled state (persisted) ───────────────────────────────────────────────
 
 const ENABLED_KEY = "read-aware-plugins-enabled";
+const BOOK_ACCESS_KEY = "read-aware-plugins-book-access";
+export const PLUGIN_BOOK_ACCESS_STATE_INVALID = "plugin/object-access-state-invalid";
 
 function readEnabledMap(): Record<string, boolean> {
   try {
@@ -313,6 +317,67 @@ export function forgetPluginEnabled(id: string): void {
   const map = readEnabledMap();
   delete map[id];
   localKV.setItem(ENABLED_KEY, JSON.stringify(map));
+}
+
+type PluginBookAccessSource = "legacy-domain" | "user";
+export type StoredPluginBookAccess = {
+  grant: PluginBookAccess;
+  source: PluginBookAccessSource;
+};
+
+function readBookAccessMap(): Record<string, unknown> {
+  const raw = localKV.getItem(BOOK_ACCESS_KEY);
+  if (raw === null) return Object.create(null) as Record<string, unknown>;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return Object.assign(Object.create(null), parsed) as Record<string, unknown>;
+    }
+  } catch { /* Invalid saved authority must never become a broad legacy grant. */ }
+  throw new AppError("plugin/invalid-input", "Saved plugin book grants are invalid");
+}
+
+function normalizeBookAccess(value: unknown): PluginBookAccess | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as { mode?: unknown; bookId?: unknown };
+  if (candidate.mode === "all" || candidate.mode === "current") return { mode: candidate.mode };
+  if (candidate.mode === "book" && typeof candidate.bookId === "string"
+    && candidate.bookId.trim() && candidate.bookId.length <= 512) {
+    return { mode: "book", bookId: candidate.bookId };
+  }
+  return null;
+}
+
+/** Only an absent entry is a legacy broad grant; malformed saved grants fail closed. */
+export function getPluginBookAccess(id: string): StoredPluginBookAccess {
+  const map = readBookAccessMap();
+  if (!Object.hasOwn(map, id)) return { grant: { mode: "all" }, source: "legacy-domain" };
+  const grant = normalizeBookAccess(map[id]);
+  if (!grant) throw new AppError("plugin/invalid-input", "Saved plugin book grant is invalid");
+  return { grant, source: "user" };
+}
+
+// Different plugins share one persisted map. Read it only after the previous
+// write settles, including rollback after a failed native commit.
+let bookAccessWriteTail: Promise<void> = Promise.resolve();
+function writeBookAccess(id: string, grant: PluginBookAccess | null): Promise<void> {
+  const work = bookAccessWriteTail.then(() => {
+    const map = readBookAccessMap();
+    if (grant) map[id] = grant; else delete map[id];
+    return localKV.setItemAsync(BOOK_ACCESS_KEY, JSON.stringify(map), "user");
+  });
+  bookAccessWriteTail = work.catch(() => {});
+  return work;
+}
+
+export function persistPluginBookAccess(id: string, grant: PluginBookAccess): Promise<void> {
+  const captured = normalizeBookAccess(grant);
+  if (!captured) return Promise.reject(new AppError("plugin/invalid-input", "Invalid plugin book grant"));
+  return writeBookAccess(id, captured);
+}
+
+export function forgetPluginBookAccess(id: string): Promise<void> {
+  return writeBookAccess(id, null);
 }
 
 // ─── Placement (user-owned pinning; docs/plugin-system.md §7) ────────────────
@@ -454,7 +519,13 @@ import type { PluginManifest } from "../lib/plugin-types";
 
 export type PluginInstallConsentRequest = {
   manifest: PluginManifest;
-  resolve: (approved: boolean) => void;
+  books?: Array<{ id: string; title: string }>;
+  resolve: (approved: boolean, grant?: PluginBookAccess) => void;
+};
+
+export type PluginInstallConsentResult = {
+  approved: boolean;
+  grant: PluginBookAccess;
 };
 
 /** The pending consent dialog request; the host component consumes it. */
@@ -464,16 +535,21 @@ export const pluginInstallConsentAtom = atom<PluginInstallConsentRequest | null>
  * Every install path funnels through this gate: show the manifest's declared
  * permissions and resolve with the user's decision before any activation.
  */
-export function requestInstallConsent(manifest: PluginManifest, signal?: AbortSignal): Promise<boolean> {
+export function requestInstallConsent(
+  manifest: PluginManifest,
+  signal?: AbortSignal,
+  books: Array<{ id: string; title: string }> = [],
+): Promise<PluginInstallConsentResult> {
   signal?.throwIfAborted();
   if (store.get(pluginInstallConsentAtom)) return Promise.reject(new Error("Plugin consent is already open"));
   return new Promise((resolve) => {
     const request: PluginInstallConsentRequest = {
       manifest,
-      resolve: approved => {
+      books: books.map(book => ({ id: book.id, title: book.title })),
+      resolve: (approved, grant = { mode: "all" }) => {
         signal?.removeEventListener("abort", abort);
         if (store.get(pluginInstallConsentAtom) === request) store.set(pluginInstallConsentAtom, null);
-        resolve(approved);
+        resolve({ approved, grant });
       },
     };
     const abort = () => request.resolve(false);

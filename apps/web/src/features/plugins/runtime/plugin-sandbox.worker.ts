@@ -205,6 +205,7 @@ function buildContext(
   manifest: PluginManifest,
   appVersion: string,
   capabilities: PluginContext["capabilities"],
+  grants: PluginContext["grants"],
   shape: ContextShape,
 ): PluginContext {
   const { __collection: collectionShape = {}, ...namespaces } = shape;
@@ -215,6 +216,17 @@ function buildContext(
   ctx.manifest = manifest;
   ctx.appVersion = appVersion;
   ctx.capabilities = capabilities;
+  // The grant is activation metadata, not an RPC namespace. Keep a frozen
+  // copy in the Worker so plugin code cannot widen or rewrite host authority.
+  const bookGrant = grants.book.mode === "book"
+    ? { mode: "book" as const, bookId: grants.book.bookId }
+    : { mode: grants.book.mode };
+  Object.defineProperty(ctx, "grants", {
+    value: Object.freeze({ book: Object.freeze(bookGrant) }),
+    enumerable: true,
+    writable: false,
+    configurable: false,
+  });
   // Mirrored locally (boot + sync patches) so the read stays synchronous.
   Object.defineProperty(ctx, "locale", { get: () => appLocale, enumerable: true });
   ctx.lifecycle = {};
@@ -369,6 +381,7 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
             message.manifest,
             message.appVersion,
             message.capabilities,
+            message.grants,
             message.shape,
           );
         await plugin.activate(pluginContext);

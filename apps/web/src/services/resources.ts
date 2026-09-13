@@ -97,7 +97,7 @@ export const resourceAdapter: ResourceAdapter = {
   imagePreview: nativeResourceFiles.imagePreview,
 };
 
-export function createResourceOwner(authorizeBook?: (id: string) => void, authorizeRead?: (ref: ResourceRef) => void): ResourceOwner {
+export function createResourceOwner(authorizeBook?: (id: string) => void, authorizeRead?: (ref: ResourceRef, bookId?: string) => void): ResourceOwner {
   return new ResourceOwner(resourceAdapter, error => log.warn("Resource cleanup failed", error), authorizeBook, Date.now, authorizeRead);
 }
 

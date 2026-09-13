@@ -129,6 +129,12 @@ pub(super) fn table(name: &str) -> Result<RowPolicy, CommandError> {
 
 pub(super) fn keyed(table: &str, key: &str) -> RowPolicy {
     use RowPolicy::*;
+    // Plugin object grants belong to this device and are reissued only by the
+    // restore consent path. Never expose the persisted map as a generic source
+    // setting that can overwrite the target authority.
+    if table == "app_kv" && key == "read-aware-plugins-book-access" {
+        return PreserveDevice;
+    }
     if table == "synced_preferences" {
         return if key.starts_with("secret:") {
             TranslateRoamingSecret

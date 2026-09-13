@@ -3,30 +3,73 @@
  * is the trust boundary): who the plugin is, the trust warning, and every
  * declared permission spelled out, before any file lands or code runs.
  */
+import { useEffect, useState } from "react";
 import { useAtomValue } from "jotai";
-import { Badge, Button, Caption, Dialog } from "@read-aware/ui";
+import { Badge, Button, Caption, Dialog, InlineError } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
-import { permissionLabelKey, permissionNameKey } from "../lib/plugin-types";
+import {
+  permissionLabelKey,
+  permissionNameKey,
+  type PluginBookAccess,
+} from "../lib/plugin-types";
 import { pluginInstallConsentAtom } from "../state/plugin-store";
+import {
+  isValidPluginBookAccess,
+  PluginBookAccessSelector,
+} from "./PluginBookAccessSelector";
 
 export function PluginInstallConsentDialog() {
   const { t } = useTranslation("plugins");
   const request = useAtomValue(pluginInstallConsentAtom);
+  const [grant, setGrant] = useState<PluginBookAccess>({ mode: "all" });
+  const [busy, setBusy] = useState(false);
+  const [invalid, setInvalid] = useState(false);
   const manifest = request?.manifest;
   const permissions = manifest?.permissions ?? [];
   const settingsAccess = manifest?.settingsAccess;
   const networkOrigins = manifest?.networkAccess?.origins ?? [];
+  const books = request?.books ?? [];
   const settingGrants = (["discover", "read", "write"] as const).flatMap(
     (operation) =>
       (settingsAccess?.[operation] ?? []).map((path) => ({ operation, path })),
   );
 
+  useEffect(() => {
+    setGrant({ mode: "all" });
+    setBusy(false);
+    setInvalid(false);
+  }, [request]);
+
+  const valid = isValidPluginBookAccess(grant, books);
+
+  const cancel = () => {
+    if (!busy) request?.resolve(false);
+  };
+
+  const confirm = () => {
+    if (!request || busy) return;
+    if (!valid) {
+      setInvalid(true);
+      return;
+    }
+    setBusy(true);
+    setInvalid(false);
+    try {
+      request.resolve(true, grant);
+    } catch {
+      // Consent resolvers normally only settle the waiting install promise;
+      // preserve the gate if a host surface rejects synchronously.
+      setBusy(false);
+      setInvalid(true);
+    }
+  };
+
   return (
     <Dialog
       open={request !== null}
-      onClose={() => request?.resolve(false)}
+      onClose={cancel}
       title={manifest ? t("settings.installConfirm.title", { name: manifest.name }) : ""}
-      className="w-full max-w-sm"
+      className="w-full max-w-md"
     >
       {manifest && (
         <div className="flex flex-col gap-3">
@@ -81,12 +124,25 @@ export function PluginInstallConsentDialog() {
             )}
           </div>
 
+          <PluginBookAccessSelector
+            value={grant}
+            books={books}
+            disabled={busy}
+            onChange={(next) => {
+              setGrant(next);
+              setInvalid(false);
+            }}
+          />
+          {invalid && (
+            <InlineError compact>{t("settings.bookAccess.invalidBook")}</InlineError>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
-            <Button size="sm" variant="ghost" onClick={() => request.resolve(false)}>
+            <Button size="sm" variant="ghost" disabled={busy} onClick={cancel}>
               {t("settings.installConfirm.cancel")}
             </Button>
-            <Button size="sm" onClick={() => request.resolve(true)}>
-              {t("settings.installConfirm.confirm")}
+            <Button size="sm" disabled={busy || !valid} aria-busy={busy} onClick={confirm}>
+              {busy ? t("settings.installConfirm.installing") : t("settings.installConfirm.confirm")}
             </Button>
           </div>
         </div>

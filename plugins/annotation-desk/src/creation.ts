@@ -1,31 +1,54 @@
 import type { PluginAnnotation, PluginBlock, PluginView, PluginViewResult, SelectionActionInput } from "@read-aware/plugin-types";
 import { detailView } from "./detail";
 import { tr } from "./strings";
-import type { DeskContext, Refresh } from "./types";
+import {
+  assertAnnotationBooks,
+  bookGrant,
+  grantedBookId,
+  grantedBooks,
+  isBookAccessDenied,
+  scopeErrorView,
+  type DeskContext,
+  type Refresh,
+} from "./types";
 
 function createdView(ctx: DeskContext, item: PluginAnnotation, refresh: Refresh): PluginView {
   return { kind: "detail", title: tr(ctx.locale, "created"), content: [
     { kind: "text", text: item.kind === "note" ? item.body : item.text },
   ], metadata: [{ kind: "label", label: tr(ctx.locale, "kind"), value: tr(ctx.locale, item.kind) }], actions: [
     { id: "inspect-created", label: tr(ctx.locale, "viewCreated"), icon: "note-pencil",
-      run: async () => ({ view: await detailView(ctx, item.id, refresh) }) },
+      run: async () => ({ view: await detailView(ctx, item.id, refresh, item.bookId) }) },
     { id: "annotations", label: tr(ctx.locale, "title"), icon: "list-bullets", run: refresh },
   ] };
 }
 
 export async function newNoteView(ctx: DeskContext, refresh: Refresh, bookId?: string): Promise<PluginView> {
-  const books = bookId ? [await ctx.domains.library.queries.books.get(bookId)].filter(book => book !== null)
-    : await ctx.domains.library.queries.books.list();
+  let scopedBookId: string | undefined;
+  let books;
+  try {
+    scopedBookId = await grantedBookId(ctx, bookId);
+    books = await grantedBooks(ctx, scopedBookId);
+  } catch (error) {
+    if (isBookAccessDenied(error)) return scopeErrorView(ctx, error);
+    throw error;
+  }
   if (!books.length) return { kind: "list", title: tr(ctx.locale, "newNote"), items: [], emptyText: tr(ctx.locale, "missingBook") };
   const choices = books.map(book => ({ value: book.id, label: book.title }));
+  const allBooks = bookGrant(ctx).mode === "all";
   return { kind: "form", title: tr(ctx.locale, "newNote"), submitLabel: tr(ctx.locale, "save"), fields: [
-    { kind: "select", id: "bookId", label: tr(ctx.locale, "book"), value: bookId ?? "",
-      options: [{ value: "", label: tr(ctx.locale, "chooseBook") }, ...choices] },
+    { kind: "select", id: "bookId", label: tr(ctx.locale, "book"), value: scopedBookId ?? "",
+      options: [...(allBooks ? [{ value: "", label: tr(ctx.locale, "chooseBook") }] : []), ...choices] },
     { kind: "textarea", id: "body", label: tr(ctx.locale, "body"), value: "", rows: 8 },
   ], onSubmit: async (values): Promise<PluginViewResult> => {
     if (!choices.some(book => book.value === values.bookId)) return { fieldErrors: { bookId: tr(ctx.locale, "invalid") } };
     if (typeof values.body !== "string" || !values.body.trim()) return { fieldErrors: { body: tr(ctx.locale, "bodyRequired") } };
     if (values.body.length > 100_000) return { fieldErrors: { body: tr(ctx.locale, "bodyLimit") } };
+    try {
+      await assertAnnotationBooks(ctx, [values.bookId as string], "annotations.commands.createNote");
+    } catch (error) {
+      if (isBookAccessDenied(error)) return { fieldErrors: { bookId: tr(ctx.locale, "accessDenied") } };
+      throw error;
+    }
     const item = await ctx.domains.annotations.commands.createNote({ bookId: values.bookId as string, body: values.body });
     // Show the write receipt first. A subsequent inspection failure must not invite a duplicate create.
     return { view: createdView(ctx, item, refresh), navigation: "replace" };
@@ -35,6 +58,10 @@ export async function newNoteView(ctx: DeskContext, refresh: Refresh, bookId?: s
 export function selectionCreationView(ctx: DeskContext, input: SelectionActionInput,
   kind: "note" | "highlight", refresh: Refresh): PluginView {
   const captured = structuredClone(input);
+  const grant = bookGrant(ctx);
+  if (grant.mode === "book" && grant.bookId !== captured.book.id) {
+    return scopeErrorView(ctx, { code: "plugin/object-access-denied" });
+  }
   if (!captured.text.trim() || captured.text.length > 100_000) return {
     kind: "blocks", blocks: [{ kind: "text", text: tr(ctx.locale, "selectionLimit") }],
   };
@@ -53,6 +80,12 @@ export function selectionCreationView(ctx: DeskContext, input: SelectionActionIn
     const location = captured.range
       ? { bookId: captured.book.id, range: captured.range }
       : { bookId: captured.book.id, anchor: captured.cfiRange, chapterHref: captured.chapterHref };
+    try {
+      await assertAnnotationBooks(ctx, [captured.book.id], "annotations.commands.create");
+    } catch (error) {
+      if (isBookAccessDenied(error)) return { view: scopeErrorView(ctx, error), navigation: "replace" };
+      throw error;
+    }
     let item: PluginAnnotation;
     if (kind === "note") {
       if (typeof values.body !== "string" || !values.body.trim()) return { fieldErrors: { body: tr(ctx.locale, "bodyRequired") } };

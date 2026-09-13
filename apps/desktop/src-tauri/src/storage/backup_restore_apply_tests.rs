@@ -122,6 +122,7 @@ fn request(plan: &FilePlan, conn: &mut Connection, root: &Path) -> RestoreReques
                 ProgramResult {
                     program: program.clone(),
                     consented: true,
+                    book_access: (program.side == Side::Source).then_some(PluginBookAccess::All),
                     has_migration: false,
                     migrated: None,
                 },
@@ -169,6 +170,33 @@ fn title(conn: &Connection) -> String {
     conn.query_row("SELECT title FROM books WHERE id='book'", [], |r| r.get(0))
         .unwrap()
 }
+
+#[test]
+fn plugin_book_access_restore_shape_matches_the_plugin_store_contract() {
+    assert_eq!(
+        serde_json::to_value(PluginBookAccess::All).unwrap(),
+        serde_json::json!({"mode":"all"})
+    );
+    assert_eq!(
+        serde_json::to_value(PluginBookAccess::Current).unwrap(),
+        serde_json::json!({"mode":"current"})
+    );
+    assert_eq!(
+        serde_json::to_value(PluginBookAccess::Book {
+            book_id: "book-1".into(),
+        })
+        .unwrap(),
+        serde_json::json!({"mode":"book","bookId":"book-1"})
+    );
+    assert!(
+        serde_json::from_value::<PluginBookAccess>(serde_json::json!({
+            "mode":"book",
+            "book_id":"book-1"
+        }))
+        .is_err()
+    );
+}
+
 use std::path::PathBuf;
 
 #[test]
@@ -182,6 +210,11 @@ fn backup_restore_apply_encrypted_archive_restores_books_files_plugins_credentia
     plugin(&src, incoming.path(), "source");
     secret(&src, incoming.path(), "source API key");
     kv(&src, "read-aware-theme", "\"dark\"");
+    kv(
+        &src,
+        "read-aware-plugins-book-access",
+        r#"{"proof":{"mode":"book","bookId":"source-book"},"source-only":{"mode":"current"}}"#,
+    );
     kv(&src, "read-aware-sync-token", "\"source connection\"");
     let snapshot =
         backup_snapshot::capture_fixture(&mut src, incoming.path(), stage.path(), |_| Ok(()))
@@ -205,6 +238,11 @@ fn backup_restore_apply_encrypted_archive_restores_books_files_plugins_credentia
         b"obsolete code",
     )
     .unwrap();
+    kv(
+        &target,
+        "read-aware-plugins-book-access",
+        r#"{"proof":{"mode":"current"},"target-only":{"mode":"book","bookId":"target-book"}}"#,
+    );
     kv(&target, "read-aware-sync-token", "\"target connection\"");
     let key = fs::read(root.path().join("secret.key")).unwrap();
     let plan = rows(src, &mut target, stage.path())
@@ -252,6 +290,23 @@ fn backup_restore_apply_encrypted_archive_restores_books_files_plugins_credentia
             )
             .unwrap(),
         "\"target queue\""
+    );
+    let grants: serde_json::Value = serde_json::from_str(
+        &target
+            .query_row(
+                "SELECT value_json FROM app_kv WHERE key='read-aware-plugins-book-access'",
+                [],
+                |r| r.get::<_, String>(0),
+            )
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        grants,
+        serde_json::json!({
+            "proof":{"mode":"all"},
+            "target-only":{"mode":"book","bookId":"target-book"}
+        })
     );
     assert_eq!(
         target

@@ -36,6 +36,7 @@ import { createLogger } from "../../../platform/logger";
 import { consumePluginResult } from "./plugin-result";
 import { clonePluginJsonResult } from "../lib/plugin-json-result";
 import { pluginCallbackOwner } from "./plugin-callback-wire";
+import { pluginObjectAccessDenied } from "../../../domain/plugin-object-access";
 
 /**
  * A card-carrying tool result (PluginToolWordCards in the contract): the
@@ -127,8 +128,15 @@ function retrievalTool(provider: RegisteredAgentRetrievalProvider, scope: Thread
       if (!query) throw new Error("query is required");
       const requested = typeof params.limit === "number" ? Math.floor(params.limit) : 5;
       const limit = Math.max(1, Math.min(MAX_RETRIEVAL_ITEMS, requested));
+      if (provider.bookAccess && provider.bookAccess.mode !== "all") {
+        if (scope.kind !== "book") throw pluginObjectAccessDenied("agent retrieval provider global scope");
+        provider.assertBookAccess?.(scope.bookId);
+      }
       return consumePluginResult(provider.retrieve({ scope: pluginScope(scope), query, limit }), result => {
         check();
+        if (provider.bookAccess && provider.bookAccess.mode !== "all" && scope.kind === "book") {
+          provider.assertBookAccess?.(scope.bookId);
+        }
         if (!Array.isArray(result)) throw new AppError("plugin/invalid-input", "Retrieval provider did not return a list");
         const items = result
           .slice(0, limit)
@@ -175,7 +183,14 @@ export function getPluginAgentTools(scope: ThreadScope, interactions?: UserInter
         content: [{ type: "text" as const, text: JSON.stringify({ executed: false, reason: "declined" }) }], details: confirmation.details,
       };
       signal?.throwIfAborted();
+      if (tool.bookAccess && tool.bookAccess.mode !== "all") {
+        if (scope.kind !== "book") throw pluginObjectAccessDenied("agent tool global scope");
+        tool.assertBookAccess?.(scope.bookId);
+      }
       const result = await consumePluginResult(tool.execute(confirmation?.params ?? (params ?? {}) as Record<string, unknown>), clonePluginJsonResult);
+      if (tool.bookAccess && tool.bookAccess.mode !== "all" && scope.kind === "book") {
+        tool.assertBookAccess?.(scope.bookId);
+      }
       const bookCards = await pluginBookCardResult(result, scope, tool.resolveBookCards, signal);
       if (bookCards) return {
         content: [{ type: "text" as const, text: JSON.stringify(bookCards.ack) }],
@@ -212,11 +227,18 @@ export async function getPluginAgentContext(
       const active = () => !request.signal?.aborted && !pluginCallbackOwner(provider.provide)?.aborted
         && getRegisteredAgentContextProviders().includes(provider);
       if (!active()) return [];
+      if (provider.bookAccess && provider.bookAccess.mode !== "all") {
+        if (request.scope.kind !== "book") throw pluginObjectAccessDenied("agent context provider global scope");
+        provider.assertBookAccess?.(request.scope.bookId);
+      }
       return consumePluginResult(provider.provide({
         scope: pluginScope(request.scope),
         userText: request.userText,
       }), blocks => {
         if (!active()) return [];
+        if (provider.bookAccess && provider.bookAccess.mode !== "all" && request.scope.kind === "book") {
+          provider.assertBookAccess?.(request.scope.bookId);
+        }
         if (!Array.isArray(blocks)) throw new AppError("plugin/invalid-input", "Context provider did not return a list");
         return blocks
           .slice(0, MAX_PROVIDER_CONTEXT_BLOCKS)

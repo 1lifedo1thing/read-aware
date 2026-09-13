@@ -146,7 +146,31 @@
     "installConfirm": {
       "title": "¿Instalar {{name}}?",
       "confirm": "Instalar",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "installing": "Instalando…"
+    },
+    "bookAccess": {
+      "label": "Acceso a libros",
+      "all": "Todos los libros",
+      "allDescription": "Permite operar sobre cualquier libro de la biblioteca cuando lo permitan los permisos de dominio del plugin.",
+      "current": "Libro actual",
+      "currentDescription": "Sigue el libro abierto en el lector.",
+      "book": "Un libro concreto",
+      "bookDescription": "Limita el acceso a objetos de libros a un libro elegido de la biblioteca.",
+      "bookLabel": "Libro",
+      "bookPlaceholder": "Elige un libro…",
+      "noBooks": "No hay libros disponibles para elegir.",
+      "invalidBook": "Elige un libro disponible antes de continuar.",
+      "restrictedNotice": "El alcance del libro limita el acceso a objetos; no añade permisos de dominio. Las operaciones de memoria y conversaciones que no puedan limitarse de forma segura podrían no estar disponibles.",
+      "summary": "Acceso actual: {{scope}}",
+      "legacy": "Todos los libros — autorización de dominio heredada",
+      "change": "Cambiar acceso a libros",
+      "editTitle": "Cambiar acceso a libros de {{name}}",
+      "editDescription": "Elige el alcance de libros para este plugin. El host lo detendrá y reiniciará antes de aplicar el nuevo permiso.",
+      "save": "Guardar acceso",
+      "saving": "Guardando…",
+      "cancel": "Cancelar",
+      "updateFailed": "No se pudo actualizar el acceso a libros. Inténtalo de nuevo o elige otro alcance."
     },
     "configure": "Ajustes",
     "builtin": "Integrado",

@@ -20,11 +20,38 @@ mod selection;
 
 /// Host-only result of the selected program's real staged probe/migration. A
 /// data-only namespace has no program/result. This is not plugin-facing IPC.
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[serde(tag = "mode", rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) enum PluginBookAccess {
+    All,
+    Current,
+    Book {
+        #[serde(rename = "bookId")]
+        book_id: String,
+    },
+}
+
+impl PluginBookAccess {
+    fn validate(&self) -> Result<(), CommandError> {
+        if let Self::Book { book_id } = self {
+            if book_id.trim().is_empty() || book_id.len() > 512 {
+                return Err(CommandError::new(
+                    "backup/incomplete",
+                    "Selected plugin book grant is invalid",
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ProgramResult {
     pub program: ProgramRef,
     pub consented: bool,
+    #[serde(default)]
+    pub book_access: Option<PluginBookAccess>,
     pub has_migration: bool,
     pub migrated: Option<storage::PluginDataSnapshot>,
 }

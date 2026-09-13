@@ -1,5 +1,5 @@
 import { AppError, HOST_CAPABILITY_CATALOG } from "@read-aware/core";
-import type { PluginContext, PluginManifest, PluginMigration } from "@read-aware/plugin-types";
+import type { PluginBookAccess, PluginContext, PluginManifest, PluginMigration } from "@read-aware/plugin-types";
 import { validateManifest } from "../lib/manifest";
 import { assertPluginWireBudget, PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
 import { PLUGIN_PROTOCOL_VERSION, validPluginCallId } from "./plugin-worker-protocol";
@@ -8,7 +8,7 @@ export type ContextShape = { [key: string]: "fn" | ContextShape };
 type Phase = PluginContext["lifecycle"]["phase"];
 export type HostMessage =
   | { t: "boot"; protocolVersion: typeof PLUGIN_PROTOCOL_VERSION; url: string; manifest: PluginManifest;
-      appVersion: string; capabilities: PluginContext["capabilities"]; shape: ContextShape;
+      appVersion: string; capabilities: PluginContext["capabilities"]; grants: PluginContext["grants"]; shape: ContextShape;
       storage: Record<string, string>; locale: string; phase: Phase }
   | { t: "invoke"; id: number; handle: string; args: unknown[] }
   | { t: "sync"; patch: { storage?: Record<string, string>; locale?: string; phase?: Phase } }
@@ -40,6 +40,15 @@ function capabilities(value: unknown): boolean {
         Object.prototype.hasOwnProperty.call(catalog, key) && text(version, 128) && /^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(version));
     });
 }
+function bookAccess(value: unknown): value is PluginBookAccess {
+  if (!record(value) || typeof value.mode !== "string") return false;
+  if (value.mode === "all" || value.mode === "current") return keys(value, ["mode"]);
+  return value.mode === "book" && keys(value, ["mode", "bookId"])
+    && text(value.bookId, 512) && value.bookId.trim().length > 0;
+}
+function grants(value: unknown): value is PluginContext["grants"] {
+  return record(value) && keys(value, ["book"]) && bookAccess(value.book);
+}
 
 /** Envelope validation shares the install-time manifest parser, not a second manifest schema. */
 export function parsePluginHostMessage(value: unknown, account?: (usage: { bytes: number; entries: number }) => void): HostMessage {
@@ -47,9 +56,10 @@ export function parsePluginHostMessage(value: unknown, account?: (usage: { bytes
   let valid = false;
   if (record(value)) switch (value.t) {
     case "boot":
-      valid = keys(value, ["t", "protocolVersion", "url", "manifest", "appVersion", "capabilities", "shape", "storage", "locale", "phase"])
+      valid = keys(value, ["t", "protocolVersion", "url", "manifest", "appVersion", "capabilities", "grants", "shape", "storage", "locale", "phase"])
         && value.protocolVersion === PLUGIN_PROTOCOL_VERSION && text(value.url, 8192) && value.url.length > 0
         && text(value.appVersion, 128) && value.appVersion.length > 0 && capabilities(value.capabilities)
+        && grants(value.grants)
         && shape(value.shape) && storage(value.storage) && text(value.locale, 128) && phase(value.phase);
       if (valid) { try { validateManifest(value.manifest); } catch { valid = false; /* Map parser diagnostics to the stable wire error. */ } }
       break;

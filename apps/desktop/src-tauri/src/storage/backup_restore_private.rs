@@ -155,6 +155,29 @@ pub(super) fn programs(
             enabled.insert(program.id.clone(), serde_json::Value::Bool(false));
             tx.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES (?1,?2,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at",params![key,serde_json::to_string(&enabled)?])?;
         }
+        if let Some(book_access) = results
+            .get(&program.id)
+            .and_then(|result| result.book_access.as_ref())
+        {
+            // The source archive's copy of this host-owned key is excluded by
+            // RowPolicy::PreserveDevice. Apply only the grant just selected in
+            // the consent dialog, in the same transaction as the restore.
+            let key = "read-aware-plugins-book-access";
+            let mut grants = match storage::get_kv_inner(tx, key)? {
+                Some(raw) => {
+                    serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&raw)
+                        .map_err(|_| {
+                            CommandError::new("backup/incomplete", "Invalid plugin book grants")
+                        })?
+                }
+                None => serde_json::Map::new(),
+            };
+            grants.insert(program.id.clone(), serde_json::to_value(book_access)?);
+            tx.execute(
+                "INSERT INTO app_kv(key,value_json,updated_at) VALUES (?1,?2,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at",
+                params![key, serde_json::to_string(&grants)?],
+            )?;
+        }
         if let Some(version) = versions.get(&program.id) {
             tx.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES (?1,?2,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at",params![schema,version.to_string()])?;
         }

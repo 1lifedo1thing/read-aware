@@ -26,7 +26,7 @@ export type ResourceAdapter = {
   imagePreview(id: string): Promise<ArrayBuffer>;
   release(id: string): Promise<void>;
 };
-type Entry = { nativeId: string; ref: ResourceRef; timer: ReturnType<typeof setTimeout>;
+type Entry = { nativeId: string; ref: ResourceRef; timer: ReturnType<typeof setTimeout>; bookId?: string;
   access?: ReturnType<typeof retainResourceAccess>; stopObserving?: () => void };
 const invalid = () => new AppError("ui/invalid-target", "Invalid resource input");
 export function resourceName(value: unknown): string {
@@ -60,7 +60,7 @@ export class ResourceOwner implements ResourcePort {
   get signal(): AbortSignal { return this.lifetime.signal; }
   constructor(private adapter: ResourceAdapter, private report: (error: unknown) => void,
     private authorizeBook: (id: string) => void = () => {}, private now = Date.now,
-    private authorizeRead: (ref: ResourceRef) => void = () => {}) {}
+    private authorizeRead: (ref: ResourceRef, bookId?: string) => void = () => {}) {}
 
   private directoryAdapter() {
     if (!this.adapter.directories) throw new AppError("ui/unavailable", "Directory resources unavailable");
@@ -218,7 +218,7 @@ export class ResourceOwner implements ResourcePort {
         }
         this.guard(signal); await this.adapter.commit(value.id);
         this.guard(signal); this.authorizeBook(bookId);
-        return this.register({ ...value, size: blob.size, name, mimeType }, "image", "ready");
+        return this.register({ ...value, size: blob.size, name, mimeType }, "image", "ready", undefined, bookId);
       } catch (error) { await this.cleanNative([value]); throw error; }
     }, signal);
   }
@@ -228,7 +228,7 @@ export class ResourceOwner implements ResourcePort {
       this.authorizeBook(bookId);
       const value = await (source === "book" ? this.adapter.openBook(bookId, signal) : this.adapter.openCover(bookId, signal));
       if (!value) { this.guard(signal); return null; }
-      try { this.guard(signal); this.authorizeBook(bookId); this.capacity([value]); return this.register(value, source, "ready"); }
+      try { this.guard(signal); this.authorizeBook(bookId); this.capacity([value]); return this.register(value, source, "ready", undefined, bookId); }
       catch (error) { await this.cleanNative([value]); throw error; }
     }, signal);
   }
@@ -249,14 +249,14 @@ export class ResourceOwner implements ResourcePort {
       catch (error) { await this.cleanNative([value]); throw error; }
     }, signal);
   }
-  stat(id: string, signal?: AbortSignal) { return this.run(async () => ({ ...this.get(id).ref }), signal); }
+  stat(id: string, signal?: AbortSignal) { return this.run(async () => { const entry = this.get(id); this.authorizeEntry(entry); return { ...entry.ref }; }, signal); }
   /** Host domain consumers only: keep the sealed resource alive throughout an import. */
   use<T>(id: string, consume: (resource: NativeResource) => Promise<T>, signal?: AbortSignal): Promise<T> {
     return this.run(async () => {
-      const entry = this.get(id, true);
+      const entry = this.get(id, true); this.authorizeEntry(entry);
       if (entry.ref.source === "context") throw invalid();
       const result = await consume({ id: entry.nativeId, name: entry.ref.name, mimeType: entry.ref.mimeType, size: entry.ref.size });
-      this.guard(signal);
+      this.guard(signal); this.authorizeEntry(entry);
       return result;
     }, signal);
   }
@@ -264,9 +264,9 @@ export class ResourceOwner implements ResourcePort {
    * After dispatch, preserve the real receipt while retaining the resource lease. */
   useForWrite<T>(id: string, consume: (resource: NativeResource, beforeWrite: () => void) => Promise<T>, signal?: AbortSignal): Promise<T> {
     return this.run(async () => {
-      const entry = this.get(id, true);
+      const entry = this.get(id, true); this.authorizeEntry(entry);
       if (entry.ref.source === "context") throw invalid();
-      const beforeWrite = () => { this.guard(signal); this.get(id, true); };
+      const beforeWrite = () => { this.guard(signal); const current = this.get(id, true); this.authorizeEntry(current); };
       return consume({ id: entry.nativeId, name: entry.ref.name, mimeType: entry.ref.mimeType, size: entry.ref.size }, beforeWrite);
     }, signal);
   }
@@ -274,10 +274,12 @@ export class ResourceOwner implements ResourcePort {
     if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(length) || length < 1 || length > RESOURCE_MAX_CHUNK) return Promise.reject(invalid());
     return this.run(async () => {
       const entry = this.get(id, true);
-      this.authorizeRead({ ...entry.ref });
+      this.authorizeEntry(entry);
+      this.authorizeRead({ ...entry.ref }, entry.bookId);
       if (offset > entry.ref.size) throw invalid();
       const data = await this.adapter.read(entry.nativeId, offset, length);
-      this.guard(signal); this.get(id, true); this.authorizeRead({ ...entry.ref });
+      this.guard(signal); const current = this.get(id, true); this.authorizeEntry(current);
+      this.authorizeRead({ ...current.ref }, current.bookId);
       if (data.byteLength !== Math.min(length, entry.ref.size - offset)) throw new AppError("fs/not-found", "Resource contents changed");
       return { data, nextOffset: offset + data.byteLength, eof: offset + data.byteLength === entry.ref.size };
     }, signal);
@@ -288,31 +290,31 @@ export class ResourceOwner implements ResourcePort {
     // Copy before entering the queue so a Worker cannot mutate an accepted chunk.
     const bytes = data instanceof Uint8Array ? data.slice() : new Uint8Array(data.slice(0));
     return this.run(async () => {
-      const entry = this.get(id);
+      const entry = this.get(id); this.authorizeEntry(entry);
       if (entry.ref.state !== "writing" || entry.ref.size !== offset) throw invalid();
       if (this.bytes() + bytes.length > RESOURCE_MAX_SIZE) throw new AppError("ui/unavailable", "Actor resource quota exceeded");
       const size = await this.adapter.append(entry.nativeId, offset, bytes);
       if (size !== offset + bytes.length) throw new AppError("internal", "Unexpected native resource size");
       entry.ref.size = size;
-      this.guard(signal);
+      this.guard(signal); this.authorizeEntry(entry);
       return { ...entry.ref };
     }, signal);
   }
   commit(id: string, signal?: AbortSignal) {
     return this.run(async () => {
-      const entry = this.get(id);
+      const entry = this.get(id); this.authorizeEntry(entry);
       if (entry.ref.source === "context") return { ...entry.ref };
       await this.adapter.commit(entry.nativeId);
       entry.ref.state = "ready";
-      this.guard(signal); return { ...entry.ref };
+      this.guard(signal); this.authorizeEntry(entry); return { ...entry.ref };
     }, signal);
   }
   save(id: string, filename?: string, signal?: AbortSignal) {
     if (filename !== undefined) resourceName(filename);
     return this.run(async () => {
-      const entry = this.get(id, true);
+      const entry = this.get(id, true); this.authorizeEntry(entry);
       const saved = await this.adapter.save(entry.nativeId, resourceName(filename ?? entry.ref.name), signal,
-        () => { this.guard(signal); this.get(id, true); });
+        () => { this.guard(signal); const current = this.get(id, true); this.authorizeEntry(current); });
       // External writes cannot be recalled after dispatch; preserve their actual receipt.
       return { saved };
     }, signal);
@@ -323,12 +325,12 @@ export class ResourceOwner implements ResourcePort {
   }
   openAssociated(id: string, signal?: AbortSignal): Promise<{ opened: boolean }> {
     return this.run(async () => {
-      const entry = this.get(id, true);
+      const entry = this.get(id, true); this.authorizeEntry(entry);
       const extension = entry.ref.name.includes(".") ? entry.ref.name.split(".").at(-1)!.toLowerCase() : "";
       if (entry.ref.source === "context" || !RESOURCE_EXTERNAL_EXTENSIONS.includes(extension)) throw new AppError("ui/invalid-target", "Resource format is not supported for external opening");
       if (!this.adapter.openAssociated) throw new AppError("ui/unavailable", "Associated applications unavailable");
       const opened = await this.adapter.openAssociated(entry.nativeId, entry.ref.name, signal,
-        () => { this.guard(signal); this.get(id, true); });
+        () => { this.guard(signal); const current = this.get(id, true); this.authorizeEntry(current); });
       // Once dispatched, preserve the real OS result; abort cannot recall a shared copy.
       return { opened };
     }, signal);
@@ -336,9 +338,10 @@ export class ResourceOwner implements ResourcePort {
   copyImage(id: string, signal?: AbortSignal): Promise<ResourceImageReceipt> {
     return this.run(async () => {
       const entry = this.get(id, true);
+      this.authorizeEntry(entry);
       if (entry.ref.source === "book" || entry.ref.source === "context") throw new AppError("ui/invalid-target", "Resource is not an image input");
       const receipt = await this.adapter.copyImage(entry.nativeId);
-      this.guard(signal); return receipt;
+      this.guard(signal); this.authorizeEntry(entry); return receipt;
     }, signal);
   }
   /** Host-rendered views and explicit model inputs. Native decoding returns a bounded, inert PNG;
@@ -347,9 +350,11 @@ export class ResourceOwner implements ResourcePort {
     return this.run(async () => {
       const entry = this.get(id, true);
       if (entry.ref.source === "book" || entry.ref.source === "context" || !entry.ref.size || entry.ref.size > BOOK_IMAGE_MAX_BYTES) throw invalid();
-      this.authorizeRead({ ...entry.ref });
+      this.authorizeEntry(entry);
+      this.authorizeRead({ ...entry.ref }, entry.bookId);
       const bytes = await this.adapter.imagePreview(entry.nativeId);
-      this.guard(signal); this.get(id, true); this.authorizeRead({ ...entry.ref });
+      this.guard(signal); const current = this.get(id, true); this.authorizeEntry(current);
+      this.authorizeRead({ ...current.ref }, current.bookId);
       if (!bytes.byteLength || bytes.byteLength > 20 * 1024 * 1024) throw invalid();
       return new Blob([bytes], { type: "image/png" });
     }, signal);
@@ -382,7 +387,7 @@ export class ResourceOwner implements ResourcePort {
       try { await this.adapter.release(value.id); } catch (error) { this.report(error); }
     }
   }
-  private register(value: NativeResource, source: ResourceRef["source"], state: ResourceRef["state"], access?: ReturnType<typeof retainResourceAccess>): ResourceRef {
+  private register(value: NativeResource, source: ResourceRef["source"], state: ResourceRef["state"], access?: ReturnType<typeof retainResourceAccess>, bookId?: string): ResourceRef {
     const id = crypto.randomUUID(), expiresAt = this.now() + RESOURCE_LIFETIME_MS;
     const ref: ResourceRef = { id, size: value.size, name: value.name, mimeType: value.mimeType, source, state, expiresAt };
     const timer = setTimeout(() => { void this.release(id).catch(this.report); }, RESOURCE_LIFETIME_MS);
@@ -392,7 +397,7 @@ export class ResourceOwner implements ResourcePort {
       const cleanup = this.tail.then(() => this.remove(id));
       this.tail = cleanup.catch(this.report);
     };
-    this.entries.set(id, { nativeId: value.id, ref, timer, access,
+    this.entries.set(id, { nativeId: value.id, ref, timer, access, bookId,
       stopObserving: access ? () => access.signal.removeEventListener("abort", revoke) : undefined });
     access?.signal.addEventListener("abort", revoke, { once: true });
     return { ...ref };
@@ -411,6 +416,9 @@ export class ResourceOwner implements ResourcePort {
     entry.access?.check();
     if (ready && entry.ref.state !== "ready") throw invalid();
     return entry;
+  }
+  private authorizeEntry(entry: Entry): void {
+    if (entry.bookId !== undefined) this.authorizeBook(entry.bookId);
   }
   private guard(signal?: AbortSignal) {
     signal?.throwIfAborted();

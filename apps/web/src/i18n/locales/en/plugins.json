@@ -151,7 +151,31 @@
     "installConfirm": {
       "title": "Install {{name}}?",
       "confirm": "Install",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "installing": "Installing…"
+    },
+    "bookAccess": {
+      "label": "Book access",
+      "all": "All books",
+      "allDescription": "Allow book operations across the library when the plugin's domain permissions allow them.",
+      "current": "Current book",
+      "currentDescription": "Follow whichever book is open in the reader.",
+      "book": "One specific book",
+      "bookDescription": "Limit book-object access to one selected library book.",
+      "bookLabel": "Book",
+      "bookPlaceholder": "Choose a book…",
+      "noBooks": "No books are available to choose.",
+      "invalidBook": "Choose an available book before continuing.",
+      "restrictedNotice": "Book scope narrows object access; it does not add domain permissions. Memory and conversation operations that cannot be safely narrowed may be unavailable.",
+      "summary": "Current grant: {{scope}}",
+      "legacy": "All books — legacy domain authorization",
+      "change": "Change book access",
+      "editTitle": "Change book access for {{name}}",
+      "editDescription": "Choose the book scope for this plugin. The host will stop and restart it before applying a new grant.",
+      "save": "Save access",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "updateFailed": "Could not update book access. Try again or choose another scope."
     },
     "configure": "Settings",
     "builtin": "Built-in",

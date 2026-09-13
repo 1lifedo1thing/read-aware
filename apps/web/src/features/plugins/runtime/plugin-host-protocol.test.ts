@@ -5,6 +5,7 @@ import { parsePluginWorkerMessage } from "./plugin-worker-protocol";
 const boot: HostMessage = { t: "boot", protocolVersion: 1, url: "https://localhost/plugin.js",
   manifest: { id: "protocol-test", name: "Protocol test", version: "1.0.0", schemaVersion: 1, requires: {} },
   appVersion: "1.0.0", capabilities: { domains: { memory: "2.5.0" }, services: {}, contributions: {}, schemas: {} },
+  grants: { book: { mode: "all" } },
   shape: { services: { storage: { get: "fn" } } }, storage: { item: "{}" }, locale: "en", phase: "activating" };
 
 test("every host envelope is explicit and preserves opaque business data", () => {
@@ -43,5 +44,23 @@ test("malformed mirrors, callback calls, migrations and bootstrap shapes are rej
   expect(() => parsePluginHostMessage({ t: "result", id: 1, ok: true, value: new Array(1_000_001) })).toThrow();
   for (const t of ["hello", "ready"]) for (const version of [undefined, 0, 2, "1"]) {
     expect(() => parsePluginWorkerMessage({ t, protocolVersion: version, ...(t === "ready" ? { hasMigration: false } : {}) })).toThrow();
+  }
+});
+
+test("boot carries one explicit immutable object grant", () => {
+  for (const grant of [{ mode: "all" }, { mode: "current" }, { mode: "book", bookId: "book-1" }]) {
+    expect(parsePluginHostMessage({ ...boot, grants: { book: grant } })).toMatchObject({ grants: { book: grant } });
+  }
+  for (const grants of [
+    undefined,
+    {},
+    { book: { mode: "all", bookId: "unexpected" } },
+    { book: { mode: "book" } },
+    { book: { mode: "book", bookId: "" } },
+    { book: { mode: "book", bookId: "   " } },
+    { book: { mode: "other" } },
+    { book: { mode: "book", bookId: "x" }, extra: true },
+  ]) {
+    expect(() => parsePluginHostMessage({ ...boot, grants })).toThrow();
   }
 });

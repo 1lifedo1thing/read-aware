@@ -146,7 +146,31 @@
     "installConfirm": {
       "title": "Installer {{name}} ?",
       "confirm": "Installer",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "installing": "Installation…"
+    },
+    "bookAccess": {
+      "label": "Accès aux livres",
+      "all": "Tous les livres",
+      "allDescription": "Autorise les opérations sur tous les livres lorsque les permissions de domaine du plugin les permettent.",
+      "current": "Livre actuel",
+      "currentDescription": "Suit le livre ouvert dans le lecteur.",
+      "book": "Un livre précis",
+      "bookDescription": "Limite l'accès aux objets d'un livre à un livre choisi dans la bibliothèque.",
+      "bookLabel": "Livre",
+      "bookPlaceholder": "Choisir un livre…",
+      "noBooks": "Aucun livre n'est disponible.",
+      "invalidBook": "Choisissez un livre disponible avant de continuer.",
+      "restrictedNotice": "La portée du livre réduit l'accès aux objets ; elle n'ajoute aucune permission de domaine. Les opérations de mémoire et de conversations impossibles à limiter sûrement peuvent être indisponibles.",
+      "summary": "Accès actuel : {{scope}}",
+      "legacy": "Tous les livres — autorisation de domaine existante",
+      "change": "Modifier l'accès aux livres",
+      "editTitle": "Modifier l'accès aux livres de {{name}}",
+      "editDescription": "Choisissez la portée des livres pour ce plugin. L'hôte l'arrêtera puis le redémarrera avant d'appliquer la nouvelle autorisation.",
+      "save": "Enregistrer l'accès",
+      "saving": "Enregistrement…",
+      "cancel": "Annuler",
+      "updateFailed": "Impossible de modifier l'accès aux livres. Réessayez ou choisissez une autre portée."
     },
     "configure": "Réglages",
     "builtin": "Intégré",

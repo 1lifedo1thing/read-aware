@@ -21,6 +21,7 @@ const strings = {
   filter: ["Apply filters", "筛选", "篩選", "絞り込む", "Применить фильтры", "Filtrer", "Filtern", "Filtrar"],
   invalidQuery: ["Use at most 500 characters.", "最多输入 500 个字符。", "最多輸入 500 個字元。", "500 文字以内で入力してください。", "Не более 500 символов.", "500 caractères maximum.", "Maximal 500 Zeichen.", "Máximo 500 caracteres."],
   invalid: ["Choose a valid option.", "请选择有效选项。", "請選擇有效選項。", "有効な項目を選択してください。", "Выберите допустимый вариант.", "Choisissez une option valide.", "Bitte gültige Option wählen.", "Elige una opción válida."],
+  accessDenied: ["This book is outside the plugin's granted access.", "这本书不在插件获准访问范围内。", "這本書不在外掛獲准的存取範圍內。", "この本はプラグインに許可された範囲外です。", "Эта книга не входит в разрешённую область плагина.", "Ce livre n’est pas autorisé pour ce plugin.", "Dieses Buch liegt außerhalb des Zugriffsbereichs des Plugins.", "Este libro está fuera del acceso concedido al complemento."],
   empty: ["No annotations", "暂无标注", "暫無標註", "注釈はありません", "Аннотаций нет", "Aucune annotation", "Keine Anmerkungen", "No hay anotaciones"],
   missing: ["Annotation no longer exists.", "这条标注已不存在。", "這則標註已不存在。", "この注釈は削除されました。", "Аннотация больше не существует.", "Cette annotation n’existe plus.", "Diese Anmerkung existiert nicht mehr.", "Esta anotación ya no existe."],
   missingBook: ["Unavailable book", "书籍不可用", "書籍無法使用", "利用できない本", "Книга недоступна", "Livre indisponible", "Buch nicht verfügbar", "Libro no disponible"],

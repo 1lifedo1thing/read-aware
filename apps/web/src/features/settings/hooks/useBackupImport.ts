@@ -1,8 +1,11 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
 import { AppError, errorCode } from "@read-aware/core";
 import { getVersion } from "@tauri-apps/api/app";
+import type { PluginBookAccess } from "@read-aware/plugin-types";
 import { describeError } from "../../../i18n/describe-error";
 import { createLogger } from "../../../platform/logger";
+import { libraryBooksAtom } from "../../library/state/library-store";
 import { requestInstallConsent } from "../../plugins/state/plugin-store";
 import { backupFileActions } from "../lib/backup-file-actions";
 import type { BackupImportResult } from "../lib/backup-io";
@@ -30,6 +33,7 @@ const log = createLogger("backup-import");
 
 export function useBackupImport() {
   const [view, setView] = useState<View | null>(null);
+  const libraryBooks = useAtomValue(libraryBooksAtom);
   const flight = useRef<Flight | null>(null), mounted = useRef(false), currentView = useRef(view);
   const publish = (value: View | null) => { currentView.current = value; if (mounted.current) setView(value); };
   const finish = (current: Flight, result: BackupImportOutcome, error?: unknown) => {
@@ -150,17 +154,18 @@ export function useBackupImport() {
       const choices = new Map(Object.entries(value.model.programChoices));
       const version = await getVersion();
       const programs = await reviewFullBackupPrograms(value.review, choices, version, current.signal);
-      const approvals = new Set<string>();
+      const grants = new Map<string, PluginBookAccess>();
+      const books = libraryBooks.map(({ id, title }) => ({ id, title }));
       for (const program of programs) {
         if (!program.consentRequired || !program.manifest) continue;
         publish({ step: "consent" });
-        const approved = await requestInstallConsent(program.manifest, current.signal);
+        const consent = await requestInstallConsent(program.manifest, current.signal, books);
         current.signal.throwIfAborted();
-        if (!approved) { publish({ ...value, busy: false }); return; }
-        approvals.add(program.id);
+        if (!consent.approved) { publish({ ...value, busy: false }); return; }
+        grants.set(program.id, structuredClone(consent.grant));
       }
       publish({ step: "running", progress: "migrating", cancelling: false });
-      const programResults = await migrateFullBackupPrograms(value.review, choices, approvals, version, current.signal);
+      const programResults = await migrateFullBackupPrograms(value.review, choices, grants, version, current.signal);
       current.signal.throwIfAborted();
       progress("restoring");
       const receipt = await value.review.apply({ rowRevision: value.model.decisions.revision, files: value.model.fileChoices,

@@ -21,6 +21,7 @@ var strings = {
   filter: ["Apply filters", "筛选", "篩選", "絞り込む", "Применить фильтры", "Filtrer", "Filtern", "Filtrar"],
   invalidQuery: ["Use at most 500 characters.", "最多输入 500 个字符。", "最多輸入 500 個字元。", "500 文字以内で入力してください。", "Не более 500 символов.", "500 caractères maximum.", "Maximal 500 Zeichen.", "Máximo 500 caracteres."],
   invalid: ["Choose a valid option.", "请选择有效选项。", "請選擇有效選項。", "有効な項目を選択してください。", "Выберите допустимый вариант.", "Choisissez une option valide.", "Bitte gültige Option wählen.", "Elige una opción válida."],
+  accessDenied: ["This book is outside the plugin's granted access.", "这本书不在插件获准访问范围内。", "這本書不在外掛獲准的存取範圍內。", "この本はプラグインに許可された範囲外です。", "Эта книга не входит в разрешённую область плагина.", "Ce livre n’est pas autorisé pour ce plugin.", "Dieses Buch liegt außerhalb des Zugriffsbereichs des Plugins.", "Este libro está fuera del acceso concedido al complemento."],
   empty: ["No annotations", "暂无标注", "暫無標註", "注釈はありません", "Аннотаций нет", "Aucune annotation", "Keine Anmerkungen", "No hay anotaciones"],
   missing: ["Annotation no longer exists.", "这条标注已不存在。", "這則標註已不存在。", "この注釈は削除されました。", "Аннотация больше не существует.", "Cette annotation n’existe plus.", "Diese Anmerkung existiert nicht mehr.", "Esta anotación ya no existe."],
   missingBook: ["Unavailable book", "书籍不可用", "書籍無法使用", "利用できない本", "Книга недоступна", "Livre indisponible", "Buch nicht verfügbar", "Libro no disponible"],
@@ -63,6 +64,54 @@ function tr(locale, key) {
 }
 
 // src/types.ts
+var BOOK_ACCESS_DENIED = "plugin/object-access-denied";
+function bookGrant(ctx) {
+  return ctx.grants?.book ?? { mode: "all" };
+}
+function accessError(operation, bookId) {
+  const target = bookId ? ` for book ${bookId}` : "";
+  return Object.assign(new Error(`${operation} is outside the plugin book grant${target}`), { code: BOOK_ACCESS_DENIED });
+}
+async function grantedBookId(ctx, requestedBookId) {
+  const grant = bookGrant(ctx);
+  if (grant.mode === "all")
+    return requestedBookId || undefined;
+  if (grant.mode === "book") {
+    if (!grant.bookId || requestedBookId !== undefined && requestedBookId !== grant.bookId) {
+      throw accessError("annotation book scope", requestedBookId);
+    }
+    return grant.bookId;
+  }
+  const session = await ctx.domains.reading.queries.session();
+  const currentBookId = session?.bookId;
+  if (!currentBookId || requestedBookId !== undefined && requestedBookId !== currentBookId) {
+    throw accessError("annotation current-book scope", requestedBookId ?? currentBookId ?? undefined);
+  }
+  return currentBookId;
+}
+async function grantedBooks(ctx, requestedBookId) {
+  const bookId = await grantedBookId(ctx, requestedBookId);
+  if (bookId) {
+    const book = await ctx.domains.library.queries.books.get(bookId);
+    return book ? [book] : [];
+  }
+  return ctx.domains.library.queries.books.list();
+}
+async function assertAnnotationBooks(ctx, bookIds, operation = "annotation batch") {
+  const ids = [...new Set(bookIds)];
+  if (bookGrant(ctx).mode === "all")
+    return;
+  if (ids.length !== 1 || !ids[0])
+    throw accessError(operation);
+  return grantedBookId(ctx, ids[0]);
+}
+function isBookAccessDenied(error) {
+  return error !== null && typeof error === "object" && "code" in error && error.code === BOOK_ACCESS_DENIED;
+}
+function scopeErrorView(ctx, error) {
+  const code = error !== null && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "annotations/observation-failed";
+  return { kind: "detail", title: tr(ctx.locale, "title"), content: [{ kind: "error", code }] };
+}
 function assertCapabilities(ctx) {
   if (!ctx.domains.annotations?.commands || !ctx.domains.reading?.commands || !ctx.domains.library) {
     throw new Error("Annotation Desk requires annotations:write, reading:write and library:read");
@@ -136,13 +185,24 @@ async function exportAnnotations(ctx, items, books, scope, format) {
 }
 
 // src/mutations.ts
-async function commit(ctx, changes, field, refresh) {
+async function commit(ctx, changes, field, refresh, bookId) {
+  if (bookId !== undefined) {
+    try {
+      await assertAnnotationBooks(ctx, [bookId], "annotations.commands.applyChanges");
+    } catch (error) {
+      if (isBookAccessDenied(error))
+        return { fieldErrors: { [field]: tr(ctx.locale, "accessDenied") } };
+      throw error;
+    }
+  }
   try {
     await ctx.domains.annotations.commands.applyChanges(changes);
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "annotations/conflict") {
       return { fieldErrors: { [field]: tr(ctx.locale, "conflict") } };
     }
+    if (isBookAccessDenied(error))
+      return { fieldErrors: { [field]: tr(ctx.locale, "accessDenied") } };
     throw error;
   }
   try {
@@ -178,19 +238,33 @@ function colorForm(ctx, snapshots, refresh) {
     const style = styles.find((style2) => style2 === values.style);
     if (!color || !style)
       return { fieldErrors: { [!color ? "color" : "style"]: tr(ctx.locale, "invalid") } };
+    let bookId;
+    try {
+      bookId = await assertAnnotationBooks(ctx, snapshots.map((snapshot) => snapshot.annotation.bookId), "annotations.commands.applyChanges");
+    } catch (error) {
+      if (isBookAccessDenied(error))
+        return { fieldErrors: { color: tr(ctx.locale, "accessDenied") } };
+      throw error;
+    }
     return commit(ctx, snapshots.map(({ annotation, revision }) => ({
       op: "recolorHighlight",
       annotationId: annotation.id,
       expectedRevision: revision,
       color,
       style
-    })), "color", refresh);
+    })), "color", refresh, bookId);
   } };
 }
 
 // src/batch.ts
 async function reviewView(ctx, snapshots, refresh) {
   const items = snapshots.map((snapshot) => snapshot.annotation);
+  let bookId;
+  try {
+    bookId = await assertAnnotationBooks(ctx, items.map((item) => item.bookId), "annotations.review");
+  } catch (error) {
+    return scopeErrorView(ctx, error);
+  }
   const books = await readBooks(ctx, items);
   return { kind: "blocks", title: `${tr(ctx.locale, "review")} (${items.length})`, blocks: [
     { kind: "list", items: items.map((item) => ({
@@ -218,7 +292,7 @@ async function reviewView(ctx, snapshots, refresh) {
           annotationId: annotation.id,
           expectedRevision: revision,
           kind: annotation.kind
-        })), "confirm", refresh);
+        })), "confirm", refresh, bookId);
       }
     }
   ] };
@@ -239,6 +313,15 @@ function selectionView(ctx, items, books, refresh) {
       const selected = items.filter((_, index) => values[`item-${index}`] === true);
       if (!selected.length)
         return { fieldErrors: { "item-0": tr(ctx.locale, "choose") } };
+      try {
+        await assertAnnotationBooks(ctx, selected.map((item) => item.bookId), "annotations.queries.inspect");
+      } catch (error) {
+        if (isBookAccessDenied(error)) {
+          const index = items.findIndex((item) => selected.includes(item) && item.bookId !== selected[0]?.bookId);
+          return { fieldErrors: { [`item-${index < 0 ? 0 : index}`]: tr(ctx.locale, "accessDenied") } };
+        }
+        throw error;
+      }
       const snapshots = [];
       for (const item of selected) {
         const snapshot = await ctx.domains.annotations.queries.inspect(item.id);
@@ -252,7 +335,14 @@ function selectionView(ctx, items, books, refresh) {
 }
 
 // src/detail.ts
-async function detailView(ctx, id, refresh) {
+async function detailView(ctx, id, refresh, expectedBookId) {
+  if (expectedBookId !== undefined) {
+    try {
+      await assertAnnotationBooks(ctx, [expectedBookId], "annotations.queries.inspect");
+    } catch (error) {
+      return scopeErrorView(ctx, error);
+    }
+  }
   const snapshot = await ctx.domains.annotations.queries.inspect(id);
   if (!snapshot)
     return { kind: "blocks", blocks: [
@@ -260,6 +350,14 @@ async function detailView(ctx, id, refresh) {
       { kind: "actions", actions: [{ id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: refresh }] }
     ] };
   const item = snapshot.annotation;
+  if (expectedBookId !== undefined && item.bookId !== expectedBookId) {
+    return scopeErrorView(ctx, { code: BOOK_ACCESS_DENIED });
+  }
+  try {
+    await assertAnnotationBooks(ctx, [item.bookId], "annotations.queries.inspect");
+  } catch (error) {
+    return scopeErrorView(ctx, error);
+  }
   const book = await ctx.domains.library.queries.books.get(item.bookId);
   const content = [];
   if (item.kind === "note") {
@@ -277,7 +375,14 @@ async function detailView(ctx, id, refresh) {
           return { fieldErrors: { editor: tr(ctx.locale, "conflict") } };
         if (value.length > 1e5)
           return { fieldErrors: { editor: tr(ctx.locale, "bodyLimit") } };
-        return commit(ctx, [{ op: "updateNote", annotationId: id, expectedRevision: snapshot.revision, body: value }], "editor", refresh);
+        try {
+          await assertAnnotationBooks(ctx, [item.bookId], "annotations.commands.applyChanges");
+        } catch (error) {
+          if (isBookAccessDenied(error))
+            return { fieldErrors: { editor: tr(ctx.locale, "accessDenied") } };
+          throw error;
+        }
+        return commit(ctx, [{ op: "updateNote", annotationId: id, expectedRevision: snapshot.revision, body: value }], "editor", refresh, item.bookId);
       },
       onCancel: refresh
     };
@@ -298,7 +403,7 @@ async function detailView(ctx, id, refresh) {
         return { close: true };
       } }] : [],
       { id: "review", label: tr(ctx.locale, "review"), icon: "list-bullets", run: async () => ({ view: await reviewView(ctx, [snapshot], refresh) }) },
-      { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await detailView(ctx, id, refresh), navigation: "replace" }) }
+      { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await detailView(ctx, id, refresh, item.bookId), navigation: "replace" }) }
     ]
   };
 }
@@ -347,23 +452,33 @@ function createdView(ctx, item, refresh) {
       id: "inspect-created",
       label: tr(ctx.locale, "viewCreated"),
       icon: "note-pencil",
-      run: async () => ({ view: await detailView(ctx, item.id, refresh) })
+      run: async () => ({ view: await detailView(ctx, item.id, refresh, item.bookId) })
     },
     { id: "annotations", label: tr(ctx.locale, "title"), icon: "list-bullets", run: refresh }
   ] };
 }
 async function newNoteView(ctx, refresh, bookId) {
-  const books = bookId ? [await ctx.domains.library.queries.books.get(bookId)].filter((book) => book !== null) : await ctx.domains.library.queries.books.list();
+  let scopedBookId;
+  let books;
+  try {
+    scopedBookId = await grantedBookId(ctx, bookId);
+    books = await grantedBooks(ctx, scopedBookId);
+  } catch (error) {
+    if (isBookAccessDenied(error))
+      return scopeErrorView(ctx, error);
+    throw error;
+  }
   if (!books.length)
     return { kind: "list", title: tr(ctx.locale, "newNote"), items: [], emptyText: tr(ctx.locale, "missingBook") };
   const choices = books.map((book) => ({ value: book.id, label: book.title }));
+  const allBooks = bookGrant(ctx).mode === "all";
   return { kind: "form", title: tr(ctx.locale, "newNote"), submitLabel: tr(ctx.locale, "save"), fields: [
     {
       kind: "select",
       id: "bookId",
       label: tr(ctx.locale, "book"),
-      value: bookId ?? "",
-      options: [{ value: "", label: tr(ctx.locale, "chooseBook") }, ...choices]
+      value: scopedBookId ?? "",
+      options: [...allBooks ? [{ value: "", label: tr(ctx.locale, "chooseBook") }] : [], ...choices]
     },
     { kind: "textarea", id: "body", label: tr(ctx.locale, "body"), value: "", rows: 8 }
   ], onSubmit: async (values) => {
@@ -373,12 +488,23 @@ async function newNoteView(ctx, refresh, bookId) {
       return { fieldErrors: { body: tr(ctx.locale, "bodyRequired") } };
     if (values.body.length > 1e5)
       return { fieldErrors: { body: tr(ctx.locale, "bodyLimit") } };
+    try {
+      await assertAnnotationBooks(ctx, [values.bookId], "annotations.commands.createNote");
+    } catch (error) {
+      if (isBookAccessDenied(error))
+        return { fieldErrors: { bookId: tr(ctx.locale, "accessDenied") } };
+      throw error;
+    }
     const item = await ctx.domains.annotations.commands.createNote({ bookId: values.bookId, body: values.body });
     return { view: createdView(ctx, item, refresh), navigation: "replace" };
   } };
 }
 function selectionCreationView(ctx, input, kind, refresh) {
   const captured = structuredClone(input);
+  const grant = bookGrant(ctx);
+  if (grant.mode === "book" && grant.bookId !== captured.book.id) {
+    return scopeErrorView(ctx, { code: "plugin/object-access-denied" });
+  }
   if (!captured.text.trim() || captured.text.length > 1e5)
     return {
       kind: "blocks",
@@ -406,6 +532,13 @@ function selectionCreationView(ctx, input, kind, refresh) {
     }
   ], onSubmit: async (values) => {
     const location = captured.range ? { bookId: captured.book.id, range: captured.range } : { bookId: captured.book.id, anchor: captured.cfiRange, chapterHref: captured.chapterHref };
+    try {
+      await assertAnnotationBooks(ctx, [captured.book.id], "annotations.commands.create");
+    } catch (error) {
+      if (isBookAccessDenied(error))
+        return { view: scopeErrorView(ctx, error), navigation: "replace" };
+      throw error;
+    }
     let item;
     if (kind === "note") {
       if (typeof values.body !== "string" || !values.body.trim())
@@ -431,44 +564,74 @@ function selectionCreationView(ctx, input, kind, refresh) {
 
 // src/views.ts
 async function filterView(ctx, state) {
-  const books = await ctx.domains.library.queries.books.list();
-  const kinds = ["highlight", "note", "ask"];
-  return { kind: "form", title: tr(ctx.locale, "filter"), submitLabel: tr(ctx.locale, "filter"), fields: [
-    {
-      kind: "select",
-      id: "bookId",
-      label: tr(ctx.locale, "book"),
-      value: state.bookId ?? "",
-      options: [{ value: "", label: tr(ctx.locale, "allBooks") }, ...books.map((book) => ({ value: book.id, label: book.title }))]
-    },
-    {
-      kind: "select",
-      id: "kind",
-      label: tr(ctx.locale, "kind"),
-      value: state.kind ?? "",
-      options: [{ value: "", label: tr(ctx.locale, "all") }, ...kinds.map((value) => ({ value, label: tr(ctx.locale, value) }))]
-    },
-    { kind: "text", id: "query", label: tr(ctx.locale, "query"), value: state.query ?? "" }
-  ], onSubmit: async (values) => {
-    if (typeof values.query !== "string" || values.query.length > 500)
-      return { fieldErrors: { query: tr(ctx.locale, "invalidQuery") } };
-    const bookId = String(values.bookId ?? "");
-    if (bookId && !books.some((book) => book.id === bookId))
-      return { fieldErrors: { bookId: tr(ctx.locale, "invalid") } };
-    const kind = kinds.find((kind2) => kind2 === values.kind);
-    if (values.kind && !kind)
-      return { fieldErrors: { kind: tr(ctx.locale, "invalid") } };
-    return { view: await deskView(ctx, { bookId: bookId || undefined, kind, query: values.query.trim() || undefined, previous: [] }), navigation: "reset" };
-  } };
+  try {
+    const allBooks = bookGrant(ctx).mode === "all";
+    const scopedBookId = allBooks ? undefined : await grantedBookId(ctx, state.bookId);
+    const books = await grantedBooks(ctx, scopedBookId);
+    const kinds = ["highlight", "note", "ask"];
+    return { kind: "form", title: tr(ctx.locale, "filter"), submitLabel: tr(ctx.locale, "filter"), fields: [
+      {
+        kind: "select",
+        id: "bookId",
+        label: tr(ctx.locale, "book"),
+        value: allBooks ? state.bookId ?? "" : scopedBookId ?? "",
+        options: [
+          ...allBooks ? [{ value: "", label: tr(ctx.locale, "allBooks") }] : [],
+          ...books.map((book) => ({ value: book.id, label: book.title }))
+        ]
+      },
+      {
+        kind: "select",
+        id: "kind",
+        label: tr(ctx.locale, "kind"),
+        value: state.kind ?? "",
+        options: [{ value: "", label: tr(ctx.locale, "all") }, ...kinds.map((value) => ({ value, label: tr(ctx.locale, value) }))]
+      },
+      { kind: "text", id: "query", label: tr(ctx.locale, "query"), value: state.query ?? "" }
+    ], onSubmit: async (values) => {
+      if (typeof values.query !== "string" || values.query.length > 500)
+        return { fieldErrors: { query: tr(ctx.locale, "invalidQuery") } };
+      const bookId = String(values.bookId ?? "");
+      if (!allBooks && bookId !== scopedBookId)
+        return { fieldErrors: { bookId: tr(ctx.locale, "accessDenied") } };
+      if (allBooks && bookId && !books.some((book) => book.id === bookId))
+        return { fieldErrors: { bookId: tr(ctx.locale, "invalid") } };
+      const kind = kinds.find((kind2) => kind2 === values.kind);
+      if (values.kind && !kind)
+        return { fieldErrors: { kind: tr(ctx.locale, "invalid") } };
+      const nextBookId = allBooks ? bookId || undefined : scopedBookId;
+      return { view: await deskView(ctx, { bookId: nextBookId, kind, query: values.query.trim() || undefined, previous: [] }), navigation: "reset" };
+    } };
+  } catch (error) {
+    if (isBookAccessDenied(error))
+      return scopeErrorView(ctx, error);
+    throw error;
+  }
 }
 async function deskView(ctx, state = { previous: [] }) {
-  state = structuredClone(state);
+  const requested = structuredClone(state);
+  try {
+    const bookId = await grantedBookId(ctx, requested.bookId);
+    state = bookId === undefined ? (({ bookId: _bookId, ...withoutBook }) => withoutBook)(requested) : { ...requested, bookId };
+  } catch (error) {
+    if (isBookAccessDenied(error))
+      return scopeErrorView(ctx, error);
+    throw error;
+  }
   const { previous, ...query } = state;
   return liveAnnotationPage(ctx, { ...query, limit: 20 }, async (page) => {
+    if (page.items.length && bookGrant(ctx).mode !== "all") {
+      await assertAnnotationBooks(ctx, page.items.map((item) => item.bookId), "annotations.queries.page");
+    }
     const books = await readBooks(ctx, page.items);
     if (state.bookId && !books.has(state.bookId))
       books.set(state.bookId, await ctx.domains.library.queries.books.get(state.bookId));
-    const refresh = async () => ({ view: await deskView(ctx, { ...state, cursor: undefined, previous: [] }), navigation: "reset" });
+    const refresh = async () => {
+      const next = { ...state, cursor: undefined, previous: [] };
+      if (bookGrant(ctx).mode === "current")
+        delete next.bookId;
+      return { view: await deskView(ctx, next), navigation: "reset" };
+    };
     const actions = [
       { id: "new-note", label: tr(ctx.locale, "newNote"), icon: "note-pencil", run: async () => ({ view: await newNoteView(ctx, refresh, state.bookId) }) },
       { id: "filter", label: tr(ctx.locale, "filter"), icon: "magnifying-glass", run: async () => ({ view: await filterView(ctx, state) }) },
@@ -507,7 +670,7 @@ async function deskView(ctx, state = { previous: [] }) {
         subtitle: subtitle(ctx, item, books),
         timestamp: item.createdAt,
         icon: item.kind === "highlight" ? "highlighter" : item.kind === "note" ? "note-pencil" : "chat-circle-dots",
-        onSelect: async () => ({ view: await detailView(ctx, item.id, refresh) })
+        onSelect: async () => ({ view: await detailView(ctx, item.id, refresh, item.bookId) })
       }))
     };
   });
@@ -532,14 +695,15 @@ var plugin = {
           })) };
         }
       });
-    ctx.contributions.headerActions.register({
-      id: "shelf",
-      title,
-      icon: "note-pencil",
-      surface: "shelf",
-      presentation: "page",
-      view: () => deskView(ctx)
-    });
+    if (bookGrant(ctx).mode === "all")
+      ctx.contributions.headerActions.register({
+        id: "shelf",
+        title,
+        icon: "note-pencil",
+        surface: "shelf",
+        presentation: "page",
+        view: () => deskView(ctx)
+      });
     ctx.contributions.headerActions.register({
       id: "reader",
       title,
@@ -554,6 +718,9 @@ var plugin = {
       icon: "note-pencil",
       keywords: "annotation note highlight organize export",
       run: async () => {
+        const grant = bookGrant(ctx);
+        if (grant.mode === "book")
+          return { view: await deskView(ctx, { bookId: grant.bookId, previous: [] }) };
         const session = await ctx.domains.reading.queries.session();
         return { view: await deskView(ctx, { bookId: session.bookId ?? undefined, previous: [] }) };
       }

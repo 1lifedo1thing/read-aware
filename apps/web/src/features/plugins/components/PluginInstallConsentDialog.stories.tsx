@@ -16,10 +16,15 @@ const manifest: PluginManifest = {
   networkAccess: { origins: ["https://dictionary.example.test", "http://localhost:8080"] },
 };
 
+const books = [
+  { id: "pale-fire", title: "Pale Fire" },
+  { id: "the-trial", title: "The Trial" },
+];
+
 /** Pairs a manifest with a resolver, as the install gate does. */
 const consent = (next: PluginManifest) =>
   withAtoms(
-    seed(pluginInstallConsentAtom, { manifest: next, resolve: () => {} }),
+    seed(pluginInstallConsentAtom, { manifest: next, books, resolve: () => {} }),
   );
 
 /**
@@ -54,6 +59,11 @@ export const EveryPermission: Story = {
 
 export const AllNetworkOrigins: Story = {
   decorators: [consent({ ...manifest, networkAccess: { origins: ["*"] } })],
+};
+
+/** Book scope is offered from the host's current library rows. */
+export const BookAccessChoices: Story = {
+  decorators: [consent(manifest)],
 };
 
 /** No author and no description: the identity line degrades to the version. */

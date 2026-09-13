@@ -84,6 +84,7 @@ import { pluginSchedules, registerPluginSchedule } from "./plugin-scheduler";
 import { resolvePluginCapabilities } from "./plugin-capabilities";
 import {
   contributionKey,
+  type PluginBookAccess,
   type PluginContext,
   type PluginDisposable,
   type PluginManifest,
@@ -107,6 +108,14 @@ import {
 import { PluginLifecycleController } from "./plugin-lifecycle";
 import { registerPluginVoiceProvider } from "./plugin-voice-provider";
 import { registerPluginContentProvider } from "./plugin-content-provider";
+import {
+  createPluginBookAccessPolicy,
+  pluginObjectAccessDenied,
+  type CurrentBookSnapshot,
+  type PluginBookAccessFenceOptions,
+  type PluginBookAccessPolicy,
+} from "../../../domain/plugin-object-access";
+import { readingRuntime } from "../../../domain/reading-runtime";
 
 const log = createLogger("plugins");
 
@@ -176,20 +185,169 @@ function guardMutationTree<T extends object>(
   ) as T;
 }
 
+function combinePluginSignals(...signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
+  const live = signals.filter((signal): signal is AbortSignal => signal !== undefined);
+  if (live.length === 0) return undefined;
+  if (live.length === 1) return live[0];
+  return AbortSignal.any(live);
+}
+
+function denyPluginBookOperation<T extends (...args: any[]) => any>(operation: string): T {
+  return ((..._args: any[]) => {
+    throw pluginObjectAccessDenied(operation);
+  }) as unknown as T;
+}
+
 export function buildPluginContext(
   manifest: PluginManifest,
   appVersion: string,
   disposables: PluginDisposable[],
+  bookAccess: PluginBookAccess = { mode: "all" },
 ): PluginContextRuntime {
+  // Keep the grant immutable inside this activation as well as on the Worker
+  // wire. The caller owns the persisted object, while all policy closures
+  // below must retain the exact grant selected for this activation.
+  const grantedBookAccess = Object.freeze(bookAccess.mode === "book"
+    ? { mode: "book" as const, bookId: bookAccess.bookId }
+    : { mode: bookAccess.mode }) as PluginBookAccess;
+  const grantedMetadata = Object.freeze({ book: grantedBookAccess }) as PluginContext["grants"];
   const permissions = new Set(manifest.permissions ?? []);
   const selfOrigin = `plugin:${manifest.id}` as const;
   const lifecycle = new PluginLifecycleController(disposables);
   const callSignal = (options?: PluginCallOptions) => pluginOperationSignal(lifecycle.signal, options);
+  let latestCurrent: CurrentBookSnapshot = (() => {
+    const snapshot = readingRuntime.snapshot();
+    return { bookId: snapshot.bookId, sessionId: snapshot.sessionId };
+  })();
+  if (grantedBookAccess.mode !== "all") {
+    const dispose = readingRuntime.observe(snapshot => {
+      latestCurrent = { bookId: snapshot.bookId, sessionId: snapshot.sessionId };
+    });
+    disposables.push({ dispose });
+  }
+  const objectAccess: PluginBookAccessPolicy = createPluginBookAccessPolicy(
+    grantedBookAccess,
+    async () => {
+      const snapshot = readingRuntime.snapshot();
+      latestCurrent = { bookId: snapshot.bookId, sessionId: snapshot.sessionId };
+      return latestCurrent;
+    },
+    grantedBookAccess.mode !== "all"
+      ? handler => readingRuntime.observe(snapshot => handler({ bookId: snapshot.bookId, sessionId: snapshot.sessionId }))
+      : undefined,
+    () => latestCurrent,
+  );
+  const assertBookScope = (bookId: string): void => objectAccess.assertBook(bookId, "plugin book callback");
+  const authorizeBook = (bookId: string): void => {
+    if (!permissions.has("library:read") && !permissions.has("library:write")) {
+      throw new AppError("memory/forbidden", "Book resources require library access");
+    }
+    objectAccess.assertBook(bookId, "book resource");
+  };
+  const scopedRead = async <T>(
+    bookId: string,
+    operation: string,
+    run: (signal?: AbortSignal) => Promise<T>,
+    options?: PluginCallOptions,
+    verify?: (value: T) => void,
+    fenceOptions?: PluginBookAccessFenceOptions,
+  ): Promise<T> => {
+    lifecycle.assertActive(operation);
+    const fence = await objectAccess.beginBook(bookId, operation, fenceOptions);
+    try {
+      const result = await lifecycle.read(
+        operation,
+        signal => run(signal),
+        combinePluginSignals(callSignal(options), fence.signal),
+      );
+      verify?.(result);
+      await fence.assertUnchanged();
+      return result;
+    } catch (error) {
+      fence.dispose();
+      throw error;
+    }
+  };
+  const scopedCurrentRead = async <T>(
+    operation: string,
+    run: (signal?: AbortSignal) => Promise<T>,
+    options?: PluginCallOptions,
+    verify?: (value: T) => void,
+  ): Promise<T> => {
+    lifecycle.assertActive(operation);
+    const fence = await objectAccess.beginCurrent(operation);
+    try {
+      const result = await lifecycle.read(
+        operation,
+        signal => run(signal),
+        combinePluginSignals(callSignal(options), fence.signal),
+      );
+      verify?.(result);
+      await fence.assertUnchanged();
+      return result;
+    } catch (error) {
+      fence.dispose();
+      throw error;
+    }
+  };
+  const scopedCommand = async <T>(
+    bookId: string,
+    operation: string,
+    run: (signal?: AbortSignal) => Promise<T>,
+    options?: PluginCallOptions,
+    signalAware = true,
+    verify?: (value: T) => void,
+    fenceOptions?: PluginBookAccessFenceOptions,
+  ): Promise<T> => {
+    lifecycle.assertActive(operation);
+    const fence = await objectAccess.beginBook(bookId, operation, fenceOptions);
+    try {
+      if (grantedBookAccess.mode === "current" && !signalAware) {
+        throw pluginObjectAccessDenied(`${operation} requires a cancellable host write`);
+      }
+      const result = await run(combinePluginSignals(callSignal(options), fence.signal));
+      verify?.(result);
+      await fence.assertUnchanged();
+      return result;
+    } catch (error) {
+      fence.dispose();
+      throw error;
+    }
+  };
+  const scopedCurrentCommand = async <T>(
+    operation: string,
+    run: (signal?: AbortSignal) => Promise<T>,
+    options?: PluginCallOptions,
+    signalAware = true,
+    verify?: (value: T) => void,
+    fenceOptions?: PluginBookAccessFenceOptions,
+  ): Promise<T> => {
+    lifecycle.assertActive(operation);
+    const fence = await objectAccess.beginCurrent(operation, fenceOptions);
+    try {
+      if (grantedBookAccess.mode === "current" && !signalAware) {
+        throw pluginObjectAccessDenied(`${operation} requires a cancellable host write`);
+      }
+      const result = await run(combinePluginSignals(callSignal(options), fence.signal));
+      verify?.(result);
+      await fence.assertUnchanged();
+      return result;
+    } catch (error) {
+      fence.dispose();
+      throw error;
+    }
+  };
   const referencePreviewOwner = {};
   lifecycle.signal.addEventListener("abort", () => lifecycle.trackCleanup(readerReferencePreview.release(referencePreviewOwner)), { once: true });
-  const resources = createResourceOwner(() => {
-    if (!permissions.has("library:read") && !permissions.has("library:write")) throw new AppError("memory/forbidden", "Book resources require library access");
-  });
+  const resources = createResourceOwner(
+    authorizeBook,
+    (ref, bookId) => {
+      if (bookId !== undefined) authorizeBook(bookId);
+      if (ref.source === "book" && bookId === undefined) {
+        throw pluginObjectAccessDenied("book resource");
+      }
+    },
+  );
   lifecycle.signal.addEventListener("abort", () => lifecycle.trackCleanup(resources.dispose()), { once: true });
   registerPluginFileDropOwner(lifecycle.signal, manifest.name, resources);
   const importTasks = createBookImportTasks(resources, selfOrigin, lifecycle.signal, work => lifecycle.trackCleanup(work));
@@ -262,6 +420,7 @@ export function buildPluginContext(
       },
     },
     capabilities: resolvePluginCapabilities(manifest),
+    grants: grantedMetadata,
     domains: {
       settings: {
         queries: {
@@ -331,6 +490,13 @@ export function buildPluginContext(
           trackAction(() =>
             registerSelectionActionContribution({
               ...action,
+              ...(objectAccess.restricted ? {
+                run: (input) => {
+                  assertBookScope(input.book.id);
+                  if (input.range) assertBookScope(input.range.bookId);
+                  return action.run(input);
+                },
+              } : {}),
               ...brand,
               key: contributionKey(manifest.id, action.id),
             }),
@@ -344,6 +510,12 @@ export function buildPluginContext(
             }
             return registerHeaderActionContribution({
               ...action,
+              ...(objectAccess.restricted ? {
+                view: (input) => {
+                  if (input.book) assertBookScope(input.book.id);
+                  return action.view(input);
+                },
+              } : {}),
               ...brand,
               presentation:
                 action.surface !== "shelf" ? "popup" : (action.presentation ?? "popup"),
@@ -358,6 +530,12 @@ export function buildPluginContext(
           }
           return registerContextActionContribution({
             ...action,
+            ...(objectAccess.restricted ? {
+              run: (input) => {
+                if (input.surface === "book") assertBookScope(input.book.id);
+                return action.run(input);
+              },
+            } : {}),
             ...brand,
             key: contributionKey(manifest.id, action.id),
           });
@@ -421,12 +599,13 @@ export function buildPluginContext(
             register: (tool) => {
               assertToolApproval(tool.approval, manifest.requires.contributions?.agentTools);
               return trackAction(() =>
-                registerToolContribution({
+            registerToolContribution({
                   ...tool,
                   ...brand,
                   key: contributionKey(manifest.id, tool.name),
                   resolveBookCards: domain.library ? (ids, signal) => lifecycle.read("agentTools.bookCards",
-                    active => resolvePluginBookCards(ids, domain.library!.queries.books.list, active), signal) : undefined,
+                    active => resolvePluginBookCards(ids, ctx.domains.library!.queries.books.list, active), signal) : undefined,
+                  ...(objectAccess.restricted ? { bookAccess: grantedBookAccess, assertBookAccess: assertBookScope } : {}),
                 }),
               );
             },
@@ -441,8 +620,29 @@ export function buildPluginContext(
                   ...provider,
                   ...brand,
                   key: contributionKey(manifest.id, provider.id),
-                  readingIntent,
+                  provide: objectAccess.restricted ? input => {
+                    if (input.scope.kind === "book") {
+                      assertBookScope(input.scope.bookId);
+                      return scopedRead(input.scope.bookId, "agent context provider", () => Promise.resolve(provider.provide(input)));
+                    }
+                    if (grantedBookAccess.mode !== "all") throw pluginObjectAccessDenied("agent context provider global scope");
+                    return provider.provide(input);
+                  } : provider.provide,
+                  readingIntent: readingIntent && objectAccess.restricted ? {
+                    ...readingIntent,
+                    prepare: scope => {
+                      if (scope.kind === "book") return scopedRead(scope.id, "reading intention.prepare", () => readingIntent.prepare(scope));
+                      else if (grantedBookAccess.mode !== "all") throw pluginObjectAccessDenied("reading intention global scope");
+                      return readingIntent.prepare(scope);
+                    },
+                    read: scope => {
+                      if (scope.kind === "book") return scopedRead(scope.id, "reading intention.read", () => readingIntent.read(scope));
+                      else if (grantedBookAccess.mode !== "all") throw pluginObjectAccessDenied("reading intention global scope");
+                      return readingIntent.read(scope);
+                    },
+                  } : readingIntent,
                   readingIntentLifetime: lifecycle.signal,
+                  ...(objectAccess.restricted ? { bookAccess: grantedBookAccess, assertBookAccess: assertBookScope } : {}),
                 }),
               );
             },
@@ -456,20 +656,38 @@ export function buildPluginContext(
                   ...provider,
                   ...brand,
                   key: contributionKey(manifest.id, provider.id),
+                  retrieve: objectAccess.restricted ? input => {
+                    if (input.scope.kind === "book") return scopedRead(input.scope.bookId, "agent retrieval provider", () => Promise.resolve(provider.retrieve(input)));
+                    throw pluginObjectAccessDenied("agent retrieval provider global scope");
+                  } : provider.retrieve,
+                  ...(objectAccess.restricted ? { bookAccess: grantedBookAccess, assertBookAccess: assertBookScope } : {}),
                 }),
               ),
           }
         : undefined,
       memoryCandidateProviders: canUseContribution("memoryCandidateProviders", permissions)
         ? {
-            register: (provider) =>
-              track(() =>
-                registerMemoryCandidateProviderContribution({
-                  ...provider,
-                  ...brand,
-                  key: contributionKey(manifest.id, provider.id),
-                }),
-              ),
+            register: (provider) => track(() => registerMemoryCandidateProviderContribution({
+              ...provider,
+              ...(objectAccess.restricted ? {
+                propose: async input => {
+                  if (input.scope.kind !== "book") throw pluginObjectAccessDenied("memory candidate provider global scope");
+                  const fence = await objectAccess.beginBook(input.scope.bookId, "memory candidate provider");
+                  try {
+                    const proposals = await provider.propose(input);
+                    await fence.assertUnchanged();
+                    if (!Array.isArray(proposals) || proposals.some(candidate => candidate.scope !== "book")) {
+                      throw pluginObjectAccessDenied("memory candidate provider result");
+                    }
+                    return proposals;
+                  } catch (error) { fence.dispose(); throw error; }
+                },
+                bookAccess: grantedBookAccess,
+                assertBookAccess: assertBookScope,
+              } : {}),
+              ...brand,
+              key: contributionKey(manifest.id, provider.id),
+            })),
           }
         : undefined,
       syncTransports: canUseContribution("syncTransports", permissions)
@@ -655,8 +873,8 @@ export function buildPluginContext(
         assets: createPluginAssets(manifest.id, lifecycle, resources),
         pick: options => { lifecycle.assertActive("services.resources.pick"); return resources.pick(options, lifecycle.signal); },
         ...(permissions.has("library:read") || permissions.has("library:write") ? {
-          openBook: (bookId: string) => { lifecycle.assertActive("services.resources.openBook"); return resources.openBook(bookId, lifecycle.signal); },
-          openCover: (bookId: string) => { lifecycle.assertActive("services.resources.openCover"); return resources.openCover(bookId, lifecycle.signal); },
+          openBook: (bookId: string) => scopedRead(bookId, "services.resources.openBook", signal => resources.openBook(bookId, signal)),
+          openCover: (bookId: string) => scopedRead(bookId, "services.resources.openCover", signal => resources.openCover(bookId, signal)),
         } : {}),
         create: options => { lifecycle.assertActive("services.resources.create"); return resources.create(options, lifecycle.signal); },
         stat: id => { lifecycle.assertActive("services.resources.stat"); return resources.stat(id, lifecycle.signal); },
@@ -676,6 +894,107 @@ export function buildPluginContext(
       },
     },
   };
+
+  if (objectAccess.restricted) {
+    const rawSettings = ctx.domains.settings;
+    const settingsTargetBook = (target: import("@read-aware/core").SettingsQueryTarget | import("@read-aware/core").SettingsTarget | undefined, operation: string): string | null => {
+      if (!target || target.kind === "global") return null;
+      if (target.kind !== "book") throw pluginObjectAccessDenied(operation);
+      objectAccess.assertBook(target.bookId, operation);
+      return target.bookId;
+    };
+    const sanitizeSettingsSnapshot = (snapshot: import("@read-aware/core").SettingsSnapshot, target: import("@read-aware/core").SettingsQueryTarget | undefined) => {
+      if (!target || target.kind === "global") return { ...snapshot, overrides: [] };
+      return {
+        ...snapshot,
+        overrides: snapshot.overrides.filter(override => {
+          objectAccess.assertReturnedBook(override.target.bookId, "settings.overrides");
+          return true;
+        }),
+      };
+    };
+    const sanitizeSettingsUpdate = (result: import("@read-aware/core").SettingsUpdateResult, target: import("@read-aware/core").SettingsQueryTarget) => ({
+      ...result,
+      settings: sanitizeSettingsSnapshot(result.settings, target),
+    });
+    ctx.domains.settings = {
+      ...rawSettings,
+      queries: {
+        ...rawSettings.queries,
+        snapshot: query => {
+          const bookId = settingsTargetBook(query?.target, "settings.queries.snapshot");
+          return bookId
+            ? scopedRead(bookId, "settings.queries.snapshot", () => rawSettings.queries.snapshot(query), undefined, value => sanitizeSettingsSnapshot(value, query?.target))
+            : lifecycle.read("settings.queries.snapshot", () => rawSettings.queries.snapshot(query)).then(value => sanitizeSettingsSnapshot(value, query?.target));
+        },
+        observe: (query, handler) => {
+          const bookId = settingsTargetBook(query?.target, "settings.queries.observe");
+          return track(() => ({ dispose: settingsDomain.queries.observe(query, event => {
+            try {
+              if (bookId) objectAccess.assertBook(bookId, "settings.queries.observe");
+              if (event.status === "ready") {
+                const snapshot = sanitizeSettingsSnapshot(event.snapshot, query?.target);
+                handler({ ...event, snapshot });
+              } else handler(event);
+            } catch (error) { log.debug("settings observation outside book grant", error); }
+          }) }));
+        },
+        options: query => {
+          const bookId = settingsTargetBook(query?.target, "settings.queries.options");
+          return bookId
+            ? scopedRead(bookId, "settings.queries.options", signal => settingsDomain.queries.options(query, signal))
+            : lifecycle.read("settings.queries.options", signal => settingsDomain.queries.options(query, signal));
+        },
+        read: (path, target) => {
+          const bookId = settingsTargetBook(target, "settings.queries.read");
+          return bookId
+            ? scopedRead(bookId, "settings.queries.read", () => rawSettings.queries.read(path, target), undefined, value => objectAccess.assertReturnedBook(value.target.kind === "book" ? value.target.bookId : null, "settings.queries.read"))
+            : lifecycle.read("settings.queries.read", () => rawSettings.queries.read(path, target));
+        },
+      },
+      commands: {
+        ...rawSettings.commands,
+        update: async changes => {
+          const bookIds = new Set<string>();
+          for (const change of changes) {
+            const bookId = settingsTargetBook(change.target, "settings.commands.update");
+            if (bookId) bookIds.add(bookId);
+          }
+          if (bookIds.size > 1) throw pluginObjectAccessDenied("settings.commands.update");
+          const bookId = [...bookIds][0];
+          return bookId
+            ? scopedCommand(bookId, "settings.commands.update", signal => settingsDomain.commands.update(changes, signal), undefined, true,
+              result => { sanitizeSettingsSnapshot(result.settings, { kind: "book", bookId }); })
+                .then(result => sanitizeSettingsUpdate(result, { kind: "book", bookId }))
+            : settingsDomain.commands.update(changes, lifecycle.signal)
+                .then(result => sanitizeSettingsUpdate(result, { kind: "global" }));
+        },
+        resetReading: async request => {
+          if (request.target.kind === "all-books") throw pluginObjectAccessDenied("settings.commands.resetReading");
+          const bookId = settingsTargetBook(request.target, "settings.commands.resetReading");
+          return bookId
+            ? scopedCommand(bookId, "settings.commands.resetReading", signal => settingsDomain.commands.resetReading(request, signal), undefined, true,
+              result => { sanitizeSettingsSnapshot(result.settings, { kind: "book", bookId }); })
+                .then(result => sanitizeSettingsUpdate(result, { kind: "book", bookId }))
+            : settingsDomain.commands.resetReading(request, lifecycle.signal)
+                .then(result => sanitizeSettingsUpdate(result, { kind: "global" }));
+        },
+      },
+        events: {
+        subscribe: (handler, options) => track(() => ({ dispose: settingsDomain.events.subscribe(event => {
+          if (options?.ignoreSelf && event.origin === selfOrigin) return;
+          const changes = event.changes.flatMap(change => {
+            try {
+              if (change.target?.kind === "book") { objectAccess.assertBook(change.target.bookId, "settings.events.subscribe"); }
+              else if (change.target?.kind === "all-books") return [];
+              return [change];
+            } catch { return []; }
+          });
+          if (changes.length) handler({ ...event, changes });
+        }) })),
+      },
+    };
+  }
 
   // The registry already applied domain permissions. This layer only adapts
   // host-only details such as tracked subscriptions and virtual-book bindings.
@@ -732,6 +1051,105 @@ export function buildPluginContext(
         observeContentState: (bookId, listener) => track(() => ({ dispose: library.events.observeContentState(bookId, listener) })),
       },
     };
+    if (objectAccess.restricted) {
+      const rawBooks = library.queries.books;
+      const verifyBook = (operation: string) => (value: { id?: string } | null) => {
+        if (value) objectAccess.assertReturnedBook(value.id, operation);
+      };
+      const verifyBookId = (operation: string) => (value: { bookId?: string } | null) => {
+        if (value) objectAccess.assertReturnedBook(value.bookId, operation);
+      };
+      const scopedBooks = {
+        list: async () => {
+          const fence = grantedBookAccess.mode === "book"
+            ? await objectAccess.beginBook(grantedBookAccess.bookId, "library.books.list")
+            : await objectAccess.beginCurrent("library.books.list");
+          try {
+            const books = await lifecycle.read("library.books.list", () => rawBooks.list(), fence.signal);
+            const result = objectAccess.filterBooks(books, latestCurrent);
+            await fence.assertUnchanged();
+            return result;
+          } catch (error) { fence.dispose(); throw error; }
+        },
+        listFormats: () => rawBooks.listFormats(),
+        inspectResource: denyPluginBookOperation("library.books.inspectResource"),
+        listDuplicates: denyPluginBookOperation("library.books.listDuplicates"),
+        previewMerge: denyPluginBookOperation("library.books.previewMerge"),
+        resolveId: denyPluginBookOperation("library.books.resolveId"),
+        listRemovalCleanup: denyPluginBookOperation("library.books.listRemovalCleanup"),
+        get: (bookId: string) => scopedRead(bookId, "library.books.get", () => rawBooks.get(bookId), undefined, verifyBook("library.books.get")),
+        getToc: (bookId: string) => scopedRead(bookId, "library.books.getToc", () => rawBooks.getToc(bookId)),
+        getTextState: (bookId: string) => scopedRead(bookId, "library.books.getTextState", () => rawBooks.getTextState(bookId), undefined, verifyBookId("library.books.getTextState")),
+        getEnrichment: (bookId: string) => scopedRead(bookId, "library.books.getEnrichment", () => rawBooks.getEnrichment(bookId), undefined, verifyBookId("library.books.getEnrichment")),
+        getContentState: (bookId: string, options?: PluginCallOptions) => scopedRead(bookId, "library.books.getContentState", signal => rawBooks.getContentState(bookId, signal), options, verifyBookId("library.books.getContentState")),
+        listTextTaskHistory: (bookId: string, query?: import("@read-aware/core").BookTextTaskHistoryQuery) => scopedRead(bookId, "library.books.listTextTaskHistory", () => rawBooks.listTextTaskHistory(bookId, query), undefined, page => {
+          for (const item of page.items) objectAccess.assertReturnedBook(item.snapshot.bookId, "library.books.listTextTaskHistory");
+        }),
+        getTextTask: (bookId: string, taskId: string) => scopedRead(bookId, "library.books.getTextTask", () => rawBooks.getTextTask(bookId, taskId), undefined, verifyBookId("library.books.getTextTask")),
+        listTextTasks: (bookId: string) => scopedRead(bookId, "library.books.listTextTasks", () => rawBooks.listTextTasks(bookId), undefined, tasks => {
+          for (const task of tasks) objectAccess.assertReturnedBook(task.bookId, "library.books.listTextTasks");
+        }),
+        getImportTask: denyPluginBookOperation("library.books.getImportTask"),
+        listImportTasks: denyPluginBookOperation("library.books.listImportTasks"),
+        getChapterText: (bookId: string, chapterIndex: number) => scopedRead(bookId, "library.books.getChapterText", () => rawBooks.getChapterText(bookId, chapterIndex)),
+        getNavigationToc: (bookId: string, options?: PluginCallOptions) => scopedRead(bookId, "library.books.getNavigationToc", signal => rawBooks.getNavigationToc(bookId, signal), options, verifyBookId("library.books.getNavigationToc")),
+        listNavigationTargets: (input: import("@read-aware/core").BookNavigationTargetsQuery, options?: PluginCallOptions) => scopedRead(input.bookId, "library.books.listNavigationTargets", signal => rawBooks.listNavigationTargets(input, signal), options, verifyBookId("library.books.listNavigationTargets")),
+        searchLocations: (input: import("@read-aware/core").BookLocationSearch, options?: PluginCallOptions) => scopedRead(input.bookId, "library.books.searchLocations", signal => rawBooks.searchLocations(input, signal), options, verifyBookId("library.books.searchLocations")),
+        readRange: (input: import("@read-aware/core").BookRangeQuery, options?: PluginCallOptions) => scopedRead(input.range.bookId, "library.books.readRange", signal => rawBooks.readRange(input, signal), options, value => objectAccess.assertReturnedBook(value.range.bookId, "library.books.readRange")),
+        listReferences: (input: import("@read-aware/core").BookReferencesQuery, options?: PluginCallOptions) => scopedRead(input.bookId, "library.books.listReferences", signal => rawBooks.listReferences(input, signal), options, verifyBookId("library.books.listReferences")),
+        listImages: (input: import("@read-aware/core").BookImagesQuery, options?: PluginCallOptions) => scopedRead(input.bookId, "library.books.listImages", signal => rawBooks.listImages(input, signal), options, verifyBookId("library.books.listImages")),
+        openImageResource: (input: import("@read-aware/core").BookImageQuery) => scopedRead(input.image.bookId, "library.books.openImageResource", signal => openBookImageResource(resources, input, signal), undefined, value => objectAccess.assertReturnedBook(value.image.image.bookId, "library.books.openImageResource")),
+        readReference: (input: import("@read-aware/core").BookReferenceQuery, options?: PluginCallOptions) => scopedRead(input.reference.bookId, "library.books.readReference", signal => rawBooks.readReference(input, signal), options, value => objectAccess.assertReturnedBook(value.reference.bookId, "library.books.readReference")),
+        searchText: (input: import("@read-aware/core").BookTextSearch, options?: PluginCallOptions) => {
+          if (!input?.bookId) throw pluginObjectAccessDenied("library.books.searchText");
+          return scopedRead(input.bookId, "library.books.searchText", signal => rawBooks.searchText(input, signal), options, hits => {
+            for (const hit of hits) objectAccess.assertReturnedBook(hit.bookId, "library.books.searchText");
+          });
+        },
+      } as typeof rawBooks;
+      ctx.domains.library.queries = {
+        books: scopedBooks,
+        collections: {
+          list: denyPluginBookOperation("library.collections.list"),
+          booksIn: denyPluginBookOperation("library.collections.booksIn"),
+        },
+      } as typeof ctx.domains.library.queries;
+      ctx.domains.library.events = {
+        subscribe: denyPluginBookOperation("library.events.subscribe"),
+        observeInvalidation: denyPluginBookOperation("library.events.observeInvalidation"),
+        observeImportTask: denyPluginBookOperation("library.events.observeImportTask"),
+        observeTextTask: (bookId, taskId, listener) => {
+          objectAccess.assertBook(bookId, "library.events.observeTextTask");
+          return track(() => ({ dispose: library.events.observeTextTask(bookId, taskId, snapshot => {
+            try {
+              objectAccess.assertBook(bookId, "library.events.observeTextTask");
+              objectAccess.assertReturnedBook(snapshot.bookId, "library.events.observeTextTask");
+              return listener(snapshot);
+            } catch (error) { log.debug("library text task outside book grant", error); }
+          }) }));
+        },
+        observeEnrichment: (bookId, listener) => {
+          objectAccess.assertBook(bookId, "library.events.observeEnrichment");
+          return track(() => ({ dispose: library.events.observeEnrichment(bookId, event => {
+            try {
+              objectAccess.assertBook(bookId, "library.events.observeEnrichment");
+              if (event.status === "ready") objectAccess.assertReturnedBook(event.snapshot.bookId, "library.events.observeEnrichment");
+              return listener(event);
+            } catch (error) { log.debug("library enrichment outside book grant", error); }
+          }) }));
+        },
+        observeContentState: (bookId, listener) => {
+          objectAccess.assertBook(bookId, "library.events.observeContentState");
+          return track(() => ({ dispose: library.events.observeContentState(bookId, event => {
+            try {
+              objectAccess.assertBook(bookId, "library.events.observeContentState");
+              if (event.status === "ready") objectAccess.assertReturnedBook(event.snapshot.bookId, "library.events.observeContentState");
+              return listener(event);
+            } catch (error) { log.debug("library content state outside book grant", error); }
+          }) }));
+        },
+      } as typeof ctx.domains.library.events;
+    }
     if (library.commands) {
       const commands = {
         books: {
@@ -806,7 +1224,58 @@ export function buildPluginContext(
         (operation) => lifecycle.assertActive(operation),
         "domains.library.commands",
       );
+      if (objectAccess.restricted) {
+        const rawBooks = library.commands.books;
+        const verifyTask = (operation: string) => (value: { bookId?: string } | null) => {
+          if (value) objectAccess.assertReturnedBook(value.bookId, operation);
+        };
+        ctx.domains.library.commands = {
+          books: {
+            prepareText: (bookId, options) => scopedCommand(bookId, "library.commands.books.prepareText", () => rawBooks.prepareText(bookId, options), undefined, false, verifyTask("library.commands.books.prepareText")),
+            retryEnrichment: (bookId) => scopedCommand(bookId, "library.commands.books.retryEnrichment", signal => rawBooks.retryEnrichment(bookId, signal), undefined, true, value => objectAccess.assertReturnedBook(value.snapshot.bookId, "library.commands.books.retryEnrichment")),
+            mergeDuplicates: denyPluginBookOperation("library.commands.books.mergeDuplicates"),
+            setTextTaskPriority: (bookId, taskId, priority) => scopedCommand(bookId, "library.commands.books.setTextTaskPriority", () => rawBooks.setTextTaskPriority(bookId, taskId, priority), undefined, false, verifyTask("library.commands.books.setTextTaskPriority")),
+            pauseTextTask: (bookId, taskId) => scopedCommand(bookId, "library.commands.books.pauseTextTask", () => rawBooks.pauseTextTask(bookId, taskId), undefined, false, verifyTask("library.commands.books.pauseTextTask")),
+            resumeTextTask: (bookId, taskId) => scopedCommand(bookId, "library.commands.books.resumeTextTask", () => rawBooks.resumeTextTask(bookId, taskId), undefined, false, verifyTask("library.commands.books.resumeTextTask")),
+            cancelTextTask: (bookId, taskId) => scopedCommand(bookId, "library.commands.books.cancelTextTask", () => rawBooks.cancelTextTask(bookId, taskId), undefined, false, verifyTask("library.commands.books.cancelTextTask")),
+            importBook: denyPluginBookOperation("library.commands.books.importBook"),
+            importResource: denyPluginBookOperation("library.commands.books.importResource"),
+            startImport: denyPluginBookOperation("library.commands.books.startImport"),
+            cancelImportTask: denyPluginBookOperation("library.commands.books.cancelImportTask"),
+            editMetadata: (bookId, patch) => scopedCommand(bookId, "library.commands.books.editMetadata", () => rawBooks.editMetadata(bookId, patch), undefined, false),
+            setStarred: (bookId, starred) => scopedCommand(bookId, "library.commands.books.setStarred", () => rawBooks.setStarred(bookId, starred), undefined, false),
+            remove: (bookId) => scopedCommand(bookId, "library.commands.books.remove", () => rawBooks.remove(bookId), undefined, false),
+            removeMany: denyPluginBookOperation("library.commands.books.removeMany"),
+            retryRemovalCleanup: denyPluginBookOperation("library.commands.books.retryRemovalCleanup"),
+            addVirtualBook: denyPluginBookOperation("library.commands.books.addVirtualBook"),
+            removeVirtualBook: denyPluginBookOperation("library.commands.books.removeVirtualBook"),
+            invalidateVirtualBook: denyPluginBookOperation("library.commands.books.invalidateVirtualBook"),
+          },
+          collections: {
+            create: denyPluginBookOperation("library.commands.collections.create"),
+            rename: denyPluginBookOperation("library.commands.collections.rename"),
+            remove: denyPluginBookOperation("library.commands.collections.remove"),
+            assignBooks: denyPluginBookOperation("library.commands.collections.assignBooks"),
+          },
+        } as typeof ctx.domains.library.commands;
+      }
     }
+  }
+
+  if (objectAccess.restricted) {
+    // Workspace and native command snapshots can disclose or select another
+    // book even when the library query tree is filtered. They have no
+    // single-book result contract, so keep them explicitly unavailable.
+    ctx.services.ui.commands = {
+      list: denyPluginBookOperation("services.ui.commands.list"),
+      observe: denyPluginBookOperation("services.ui.commands.observe"),
+      execute: denyPluginBookOperation("services.ui.commands.execute"),
+    };
+    ctx.services.ui.workspace = {
+      snapshot: denyPluginBookOperation("services.ui.workspace.snapshot"),
+      observe: denyPluginBookOperation("services.ui.workspace.observe"),
+      navigate: denyPluginBookOperation("services.ui.workspace.navigate"),
+    };
   }
 
   if (domain.reading) {
@@ -851,6 +1320,55 @@ export function buildPluginContext(
         },
       } : {}),
     };
+    if (objectAccess.restricted) {
+      const rawReader = ctx.services.ui.reader;
+      if (rawReader) {
+        const rawImage = rawReader.image;
+        ctx.services.ui.reader = {
+          image: rawImage ? {
+            snapshot: async () => {
+              const value = await scopedCurrentRead("services.ui.reader.image.snapshot", async () => rawImage.snapshot());
+              if (value) objectAccess.assertReturnedBook(value.bookId, "services.ui.reader.image.snapshot");
+              return value;
+            },
+            observe: handler => {
+              objectAccess.assertBook(latestCurrent.bookId ?? "", "services.ui.reader.image.observe");
+              return track(() => rawImage.observe(value => {
+                try { if (value) objectAccess.assertReturnedBook(value.bookId, "services.ui.reader.image.observe"); handler(value); }
+                catch (error) { log.debug("reader image outside book grant", error); }
+              }));
+            },
+            ...(rawImage.control ? { control: (request: import("@read-aware/core").ReaderImageRequest) => scopedCurrentCommand("services.ui.reader.image.control", signal => readerImage.control(request, signal), undefined, true, value => {
+              if (value.status === "updated") objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.image.control");
+            }) } : {}),
+            ...(rawImage.open ? { open: (query: import("@read-aware/core").BookImageQuery, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedRead(query.image.bookId, "services.ui.reader.image.open", signal => readerImageOpen.open(query, readBookImage, signal, guard), undefined, value => {
+              if (value.status === "opened") objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.image.open");
+            }) } : {}),
+          } : undefined,
+          snapshot: async () => {
+            const value = await scopedCurrentRead("services.ui.reader.snapshot", async () => rawReader.snapshot());
+            if (value) objectAccess.assertReturnedBook(value.bookId, "services.ui.reader.snapshot");
+            return value;
+          },
+          observe: handler => {
+            objectAccess.assertBook(latestCurrent.bookId ?? "", "services.ui.reader.observe");
+            return track(() => rawReader.observe(value => {
+              try { if (value) objectAccess.assertReturnedBook(value.bookId, "services.ui.reader.observe"); handler(value); }
+              catch (error) { log.debug("reader panels outside book grant", error); }
+            }));
+          },
+          ...(rawReader.setPanel ? { setPanel: (panel: import("@read-aware/core").ReaderPanel, open: boolean, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedCurrentCommand("services.ui.reader.setPanel", signal => readerPanels.setPanel(panel, open, signal, guard), undefined, true, value => objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.setPanel")) } : {}),
+          ...(rawReader.setWidth ? { setWidth: (panel: import("@read-aware/core").ResizableReaderPanel, width: number, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedCurrentCommand("services.ui.reader.setWidth", signal => readerPanels.setWidth(panel, width, signal, guard), undefined, true, value => objectAccess.assertReturnedBook(value.snapshot.bookId, "services.ui.reader.setWidth")) } : {}),
+          ...(rawReader.focus ? { focus: (target: import("@read-aware/core").ReaderFocusTarget, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedCurrentCommand("services.ui.reader.focus", signal => readerFocus.focus(target, signal, guard), undefined, true, value => objectAccess.assertReturnedBook(value.bookId, "services.ui.reader.focus")) } : {}),
+          ...(rawReader.previewReference && domain.library ? { previewReference: (query: import("@read-aware/core").BookReferenceQuery, guard?: import("@read-aware/core").ReadingSessionGuard) => scopedRead(query.reference.bookId, "services.ui.reader.previewReference", signal => readerReferencePreview.open(referencePreviewOwner, query,
+            (input, readSignal) => domain.library!.queries.books.readReference(input, readSignal), signal, guard), undefined, value => {
+              objectAccess.assertReturnedBook(value.preview.reference.bookId, "services.ui.reader.previewReference");
+              if (value.preview.location) objectAccess.assertReturnedBook(value.preview.location.bookId, "services.ui.reader.previewReference");
+            }) } : {}),
+          ...(rawReader.closeReferencePreview ? { closeReferencePreview: (id: string) => scopedCurrentCommand("services.ui.reader.closeReferencePreview", signal => readerReferencePreview.close(referencePreviewOwner, id, signal), undefined, true) } : {}),
+        };
+      }
+    }
     ctx.domains.reading = {
       queries: reading.queries,
       events: {
@@ -860,6 +1378,75 @@ export function buildPluginContext(
         observeTime: (query, handler) => track(() => ({ dispose: reading.events.observeTime(query, handler) })),
       },
     };
+    if (objectAccess.restricted) {
+      const rawQueries = reading.queries;
+      const verifySession = (session: import("@read-aware/core").ReadingSessionSnapshot): void => {
+        objectAccess.assertReturnedBook(session.bookId, "reading.queries.session");
+        if (session.location) objectAccess.assertReturnedBook(session.location.bookId, "reading.queries.session");
+        if (session.selection?.range) objectAccess.assertReturnedBook(session.selection.range.bookId, "reading.queries.session");
+      };
+      ctx.domains.reading.queries = {
+        emphasis: () => scopedCurrentRead("reading.queries.emphasis", () => rawQueries.emphasis(), undefined, emphasis => {
+          for (const item of emphasis) objectAccess.assertReturnedBook(item.bookId, "reading.queries.emphasis");
+        }),
+        session: () => scopedCurrentRead("reading.queries.session", () => rawQueries.session(), undefined, verifySession),
+        stats: {
+          time: (query?: import("@read-aware/core").ReadingTimeQuery) => {
+            if (!query?.bookId) throw pluginObjectAccessDenied("reading.queries.stats.time");
+            if (query.after && query.after.bookId !== query.bookId) throw pluginObjectAccessDenied("reading.queries.stats.time");
+            return scopedRead(query.bookId, "reading.queries.stats.time", () => rawQueries.stats.time(query), undefined, value => {
+              objectAccess.assertReturnedBook(value.bookId, "reading.queries.stats.time");
+              if (value.nextCursor) objectAccess.assertReturnedBook(value.nextCursor.bookId, "reading.queries.stats.time");
+              for (const item of value.pending) objectAccess.assertReturnedBook(item.bookId, "reading.queries.stats.time");
+            });
+          },
+          insights: (query?: import("@read-aware/core").ReadingInsightsQuery) => {
+            if (!query?.bookId) throw pluginObjectAccessDenied("reading.queries.stats.insights");
+            return scopedRead(query.bookId, "reading.queries.stats.insights", () => rawQueries.stats.insights(query), undefined, value => {
+              objectAccess.assertReturnedBook(value.bookId, "reading.queries.stats.insights");
+              if (value.achievements.mostReadBookId) objectAccess.assertReturnedBook(value.achievements.mostReadBookId, "reading.queries.stats.insights");
+            });
+          },
+          forBook: (bookId: string) => scopedRead(bookId, "reading.queries.stats.forBook", () => rawQueries.stats.forBook(bookId), undefined, value => {
+            if (value) objectAccess.assertReturnedBook(value.bookId, "reading.queries.stats.forBook");
+          }),
+          list: denyPluginBookOperation("reading.queries.stats.list"),
+          overview: denyPluginBookOperation("reading.queries.stats.overview"),
+        },
+      } as typeof ctx.domains.reading.queries;
+      ctx.domains.reading.events = {
+        subscribe: denyPluginBookOperation("reading.events.subscribe"),
+        observeSession: handler => {
+          objectAccess.assertBook(latestCurrent.bookId ?? "", "reading.events.observeSession");
+          return track(() => ({ dispose: reading.events.observeSession(snapshot => {
+            try { verifySession(snapshot); handler(snapshot); } catch (error) { log.debug?.("reading session outside book grant", error); }
+          }) }));
+        },
+        observeEmphasis: handler => {
+          objectAccess.assertBook(latestCurrent.bookId ?? "", "reading.events.observeEmphasis");
+          return track(() => ({ dispose: reading.events.observeEmphasis(snapshot => {
+            try {
+              for (const item of snapshot) objectAccess.assertReturnedBook(item.bookId, "reading.events.observeEmphasis");
+              handler(snapshot);
+            } catch (error) { log.debug?.("reading emphasis outside book grant", error); }
+          }) }));
+        },
+        observeTime: (query, handler) => {
+          if (!query?.bookId) throw pluginObjectAccessDenied("reading.events.observeTime");
+          objectAccess.assertBook(query.bookId, "reading.events.observeTime");
+          return track(() => ({ dispose: reading.events.observeTime(query, event => {
+            try {
+              objectAccess.assertBook(query.bookId!, "reading.events.observeTime");
+              if (event.status === "ready") {
+                objectAccess.assertReturnedBook(event.snapshot.bookId, "reading.events.observeTime");
+                if (event.snapshot.nextCursor) objectAccess.assertReturnedBook(event.snapshot.nextCursor.bookId, "reading.events.observeTime");
+              }
+              handler(event);
+            } catch (error) { log.debug?.("reading time outside book grant", error); }
+          }) }));
+        },
+      } as typeof ctx.domains.reading.events;
+    }
     if (reading.commands) {
       ctx.domains.reading.commands = guardMutationTree(
         {
@@ -884,6 +1471,45 @@ export function buildPluginContext(
         (operation) => lifecycle.assertActive(operation),
         "domains.reading.commands",
       );
+      if (objectAccess.restricted) {
+        const rawCommands = reading.commands;
+        const verifyNavigation = (operation: string) => (value: import("@read-aware/core").ReadingNavigationReceipt): void => {
+          objectAccess.assertReturnedBook(value.location.bookId, operation);
+        };
+        const verifyModeReceipt = (operation: string) => (value: import("@read-aware/core").ReadingModeReceipt): void => {
+          if (value.mode.position) objectAccess.assertReturnedBook(value.mode.position.location.bookId, operation);
+        };
+        ctx.domains.reading.commands = {
+          putEmphasis: (input, guard, options) => {
+            const bookId = input?.ranges?.[0]?.bookId;
+            if (!bookId || input.ranges.some(range => range.bookId !== bookId)) throw pluginObjectAccessDenied("reading.commands.putEmphasis");
+            return scopedCommand(bookId, "reading.commands.putEmphasis", signal => rawCommands.putEmphasis(input, signal, guard), options, true, value => objectAccess.assertReturnedBook(value.emphasis.bookId, "reading.commands.putEmphasis"));
+          },
+          removeEmphasis: denyPluginBookOperation("reading.commands.removeEmphasis"),
+          selectRange: (range, guard, options) => scopedCommand(range.bookId, "reading.commands.selectRange", signal => rawCommands.selectRange(range, signal, guard), options, true, value => {
+            if (value.selection?.range) objectAccess.assertReturnedBook(value.selection.range.bookId, "reading.commands.selectRange");
+          }),
+          clearSelection: (expectedId, guard, options) => scopedCurrentCommand("reading.commands.clearSelection", signal => rawCommands.clearSelection(expectedId, signal, guard), options, true, value => {
+            if (value.selection?.range) objectAccess.assertReturnedBook(value.selection.range.bookId, "reading.commands.clearSelection");
+          }),
+          setControls: (visible, guard, options) => scopedCurrentCommand("reading.commands.setControls", signal => rawCommands.setControls(visible, signal, guard), options),
+          setFinished: (bookId, finished) => scopedCommand(bookId, "reading.commands.setFinished", () => rawCommands.setFinished(bookId, finished), undefined, false),
+          openBook: (bookId, options) => scopedCommand(bookId, "reading.commands.openBook", signal => rawCommands.openBook(bookId, signal), options, true, verifyNavigation("reading.commands.openBook"), { allowSessionChange: true }),
+          goTo: (target, options) => {
+            if (target?.bookId) return scopedCommand(target.bookId, "reading.commands.goTo", signal => rawCommands.goTo(target, signal), options, true, verifyNavigation("reading.commands.goTo"));
+            return scopedCurrentCommand("reading.commands.goTo", signal => rawCommands.goTo(target, signal), options, true, verifyNavigation("reading.commands.goTo"));
+          },
+          back: (guard, options) => scopedCurrentCommand("reading.commands.back", signal => rawCommands.back(signal, guard), options, true, verifyNavigation("reading.commands.back")),
+          forward: (guard, options) => scopedCurrentCommand("reading.commands.forward", signal => rawCommands.forward(signal, guard), options, true, verifyNavigation("reading.commands.forward")),
+          step: (direction, guard, options) => scopedCurrentCommand("reading.commands.step", signal => rawCommands.step(direction, signal, guard), options, true, verifyNavigation("reading.commands.step")),
+          reload: (guard, options) => scopedCurrentCommand("reading.commands.reload", signal => rawCommands.reload(signal, guard), options, true, verifyNavigation("reading.commands.reload"), { allowSessionChange: true }),
+          close: (guard, options) => scopedCurrentCommand("reading.commands.close", signal => rawCommands.close(signal, guard), options, true, undefined, { allowClose: true }),
+          controlPlayback: (action, guard, options) => scopedCurrentCommand("reading.commands.controlPlayback", signal => rawCommands.controlPlayback(action, signal, guard), options),
+          configureMode: (input, guard, options) => scopedCurrentCommand("reading.commands.configureMode", signal => rawCommands.configureMode(input, signal, guard), options, true, verifyModeReceipt("reading.commands.configureMode")),
+          returnToMode: (guard, options) => scopedCurrentCommand("reading.commands.returnToMode", signal => rawCommands.returnToMode(signal, guard), options, true, verifyNavigation("reading.commands.returnToMode")),
+          stepMode: (direction, guard, options) => scopedCurrentCommand("reading.commands.stepMode", signal => rawCommands.stepMode(direction, signal, guard), options, true, verifyModeReceipt("reading.commands.stepMode")),
+        } as typeof ctx.domains.reading.commands;
+      }
     }
   }
 
@@ -895,6 +1521,56 @@ export function buildPluginContext(
         observe: (query, handler) => track(() => ({ dispose: annotations.events.observe(query, handler) })),
       },
     };
+    if (objectAccess.restricted) {
+      const rawQueries = annotations.queries;
+      const verifyAnnotation = (operation: string) => (value: import("@read-aware/core").AnnotationSnapshot | import("@read-aware/core").AnnotationItem | null) => {
+        if (value) objectAccess.assertReturnedBook("annotation" in value ? value.annotation.bookId : value.bookId, operation);
+      };
+      const verifyPage = (operation: string) => (page: import("@read-aware/core").AnnotationPage) => {
+        for (const item of page.items) objectAccess.assertReturnedBook(item.bookId, operation);
+      };
+      ctx.domains.annotations.queries = {
+        inspect: async annotationId => {
+          lifecycle.assertActive("annotations.queries.inspect");
+          const snapshot = await lifecycle.read("annotations.queries.inspect", () => rawQueries.inspect(annotationId));
+          verifyAnnotation("annotations.queries.inspect")(snapshot);
+          return snapshot;
+        },
+        get: async annotationId => {
+          lifecycle.assertActive("annotations.queries.get");
+          const item = await lifecycle.read("annotations.queries.get", () => rawQueries.get(annotationId));
+          verifyAnnotation("annotations.queries.get")(item);
+          return item;
+        },
+        page: async input => {
+          const bookId = input?.bookId;
+          if (!bookId) throw pluginObjectAccessDenied("annotations.queries.page");
+          return scopedRead(bookId, "annotations.queries.page", () => rawQueries.page(input), undefined, verifyPage("annotations.queries.page"));
+        },
+        list: async filter => {
+          const bookId = filter?.bookId;
+          if (!bookId) throw pluginObjectAccessDenied("annotations.queries.list");
+          return scopedRead(bookId, "annotations.queries.list", () => rawQueries.list(filter), undefined, items => {
+            for (const item of items) objectAccess.assertReturnedBook(item.bookId, "annotations.queries.list");
+          });
+        },
+      } as typeof ctx.domains.annotations.queries;
+      ctx.domains.annotations.events = {
+        subscribe: denyPluginBookOperation("annotations.events.subscribe"),
+        observe: (query, handler) => {
+          if (query.kind !== "page" || !query.query?.bookId) throw pluginObjectAccessDenied("annotations.events.observe");
+          const bookId = query.query.bookId;
+          objectAccess.assertBook(bookId, "annotations.events.observe");
+          return track(() => ({ dispose: annotations.events.observe(query, event => {
+            try {
+              objectAccess.assertBook(bookId, "annotations.events.observe");
+              if (event.status === "ready" && event.result.kind === "page") verifyPage("annotations.events.observe")(event.result.page);
+              handler(event);
+            } catch (error) { log.debug("annotation observation outside book grant", error); }
+          }) }));
+        },
+      } as typeof ctx.domains.annotations.events;
+    }
     if (annotations.commands) {
       ctx.domains.annotations.commands = guardMutationTree(
         {
@@ -911,6 +1587,38 @@ export function buildPluginContext(
         (operation) => lifecycle.assertActive(operation),
         "domains.annotations.commands",
       );
+      if (objectAccess.restricted) {
+        const rawCommands = annotations.commands;
+        ctx.domains.annotations.commands = {
+          applyChanges: async changes => {
+            lifecycle.assertActive("annotations.commands.applyChanges");
+            if (!Array.isArray(changes) || changes.length === 0) throw pluginObjectAccessDenied("annotations.commands.applyChanges");
+            const snapshots = await Promise.all(changes.map(change => annotations.queries.inspect(change.annotationId)));
+            const bookIds = new Set<string>();
+            for (const snapshot of snapshots) {
+              if (!snapshot) throw pluginObjectAccessDenied("annotations.commands.applyChanges");
+              objectAccess.assertReturnedBook(snapshot.annotation.bookId, "annotations.commands.applyChanges");
+              bookIds.add(snapshot.annotation.bookId);
+            }
+            if (bookIds.size !== 1) throw pluginObjectAccessDenied("annotations.commands.applyChanges");
+            const bookId = [...bookIds][0];
+            const fence = await objectAccess.beginBook(bookId, "annotations.commands.applyChanges");
+            try {
+              const result = await rawCommands.applyChanges(changes, combinePluginSignals(lifecycle.signal, fence.signal));
+              await fence.assertUnchanged();
+              return result;
+            } catch (error) { fence.dispose(); throw error; }
+          },
+          createHighlight: async input => {
+            if (input.range && input.range.bookId !== input.bookId) throw pluginObjectAccessDenied("annotations.commands.createHighlight");
+            return scopedCommand(input.bookId, "annotations.commands.createHighlight", signal => rawCommands.createHighlight(input, signal), undefined, true, value => objectAccess.assertReturnedBook(value.bookId, "annotations.commands.createHighlight"));
+          },
+          createNote: async input => {
+            if (input.range && input.range.bookId !== input.bookId) throw pluginObjectAccessDenied("annotations.commands.createNote");
+            return scopedCommand(input.bookId, "annotations.commands.createNote", signal => rawCommands.createNote(input, signal), undefined, true, value => objectAccess.assertReturnedBook(value.bookId, "annotations.commands.createNote"));
+          },
+        } as typeof ctx.domains.annotations.commands;
+      }
     }
   }
 
@@ -934,6 +1642,38 @@ export function buildPluginContext(
         clear: (target: import("@read-aware/core").ConversationTarget) => { lifecycle.assertActive("conversations.clear"); return domain.conversations!.commands!.clear(target, lifecycle.signal); },
       } } : {}),
     };
+  }
+
+  // Conversations combine book and global threads and have no single-book
+  // projection at this boundary. Restricted grants keep the surface visible
+  // but explicitly unavailable until each method has an object fence.
+  if (objectAccess.restricted && ctx.domains.conversations) {
+    const rawConversations = ctx.domains.conversations;
+    ctx.domains.conversations = {
+      queries: {
+        getInsights: denyPluginBookOperation("domains.conversations.queries.getInsights"),
+        turnRequests: denyPluginBookOperation("domains.conversations.queries.turnRequests"),
+        runtime: denyPluginBookOperation("domains.conversations.queries.runtime"),
+        getBookThread: denyPluginBookOperation("domains.conversations.queries.getBookThread"),
+        listThreads: denyPluginBookOperation("domains.conversations.queries.listThreads"),
+        getThread: denyPluginBookOperation("domains.conversations.queries.getThread"),
+      },
+      events: {
+        subscribe: denyPluginBookOperation("domains.conversations.events.subscribe"),
+        observeInvalidation: denyPluginBookOperation("domains.conversations.events.observeInvalidation"),
+        observeRuntime: denyPluginBookOperation("domains.conversations.events.observeRuntime"),
+      },
+      ...(rawConversations.commands ? {
+        commands: {
+          requestTurn: denyPluginBookOperation("domains.conversations.commands.requestTurn"),
+          cancelTurnRequest: denyPluginBookOperation("domains.conversations.commands.cancelTurnRequest"),
+          createThread: denyPluginBookOperation("domains.conversations.commands.createThread"),
+          selectThread: denyPluginBookOperation("domains.conversations.commands.selectThread"),
+          stop: denyPluginBookOperation("domains.conversations.commands.stop"),
+          clear: denyPluginBookOperation("domains.conversations.commands.clear"),
+        },
+      } : {}),
+    } as typeof ctx.domains.conversations;
   }
 
   if (domain.memory) {
@@ -981,6 +1721,47 @@ export function buildPluginContext(
       lifecycle.assertActive("domains.memory.commands.cancelGraphTask");
       return memory.commands!.cancelGraphTask(bookId, taskId);
     } } } : {}) };
+  }
+
+  // Memory recipes, graphs and profile projections may combine books or carry
+  // source text. They are unavailable for current/specified-book grants until
+  // a dedicated bounded projection exists; context.capture is covered here so
+  // it cannot become a side door around library/reading/annotations.
+  if (objectAccess.restricted && ctx.domains.memory) {
+    const rawMemory = ctx.domains.memory;
+    ctx.domains.memory = {
+      queries: {
+        context: {
+          history: denyPluginBookOperation("domains.memory.queries.context.history"),
+          read: denyPluginBookOperation("domains.memory.queries.context.read"),
+          export: denyPluginBookOperation("domains.memory.queries.context.export"),
+        },
+        profileContext: denyPluginBookOperation("domains.memory.queries.profileContext"),
+        entities: denyPluginBookOperation("domains.memory.queries.entities"),
+        profile: denyPluginBookOperation("domains.memory.queries.profile"),
+        inspect: denyPluginBookOperation("domains.memory.queries.inspect"),
+        classification: denyPluginBookOperation("domains.memory.queries.classification"),
+        getGraphTask: denyPluginBookOperation("domains.memory.queries.getGraphTask"),
+        listGraphTasks: denyPluginBookOperation("domains.memory.queries.listGraphTasks"),
+        search: denyPluginBookOperation("domains.memory.queries.search"),
+        page: denyPluginBookOperation("domains.memory.queries.page"),
+        bookGraph: denyPluginBookOperation("domains.memory.queries.bookGraph"),
+      },
+      ...(rawMemory.commands ? {
+        commands: {
+          decideEntity: denyPluginBookOperation("domains.memory.commands.decideEntity"),
+          context: { capture: denyPluginBookOperation("domains.memory.commands.context.capture") },
+          updateProfile: denyPluginBookOperation("domains.memory.commands.updateProfile"),
+          completeOnboarding: denyPluginBookOperation("domains.memory.commands.completeOnboarding"),
+          mutate: denyPluginBookOperation("domains.memory.commands.mutate"),
+          classify: denyPluginBookOperation("domains.memory.commands.classify"),
+          startGraphTask: denyPluginBookOperation("domains.memory.commands.startGraphTask"),
+          cancelGraphTask: denyPluginBookOperation("domains.memory.commands.cancelGraphTask"),
+          retryGraphTask: denyPluginBookOperation("domains.memory.commands.retryGraphTask"),
+        },
+      } : {}),
+      events: { observe: denyPluginBookOperation("domains.memory.events.observe") },
+    } as typeof ctx.domains.memory;
   }
 
   // ─── Services ─────────────────────────────────────────────────────────────

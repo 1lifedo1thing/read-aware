@@ -13,6 +13,7 @@ import { useToast } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import { isTauri } from "../../../platform/environment";
 import { createLogger } from "../../../platform/logger";
+import { libraryBooksAtom } from "../../library/state/library-store";
 import {
   fetchMarketplaceRegistry,
   prepareMarketplaceInstall,
@@ -35,9 +36,11 @@ export function PluginMarketplace({ refreshToken = 0 }: PluginMarketplaceProps) 
   const { t } = useTranslation("plugins");
   const { toast } = useToast();
   const installed = useAtomValue(installedPluginsAtom);
+  const libraryBooks = useAtomValue(libraryBooksAtom);
   const [state, setState] = useState<MarketplaceLoadState>({ status: "loading" });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const books = libraryBooks.map(({ id, title }) => ({ id, title }));
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
@@ -57,8 +60,9 @@ export function PluginMarketplace({ refreshToken = 0 }: PluginMarketplaceProps) 
     setBusyId(entry.id);
     try {
       const { manifest, complete } = await prepareMarketplaceInstall(entry);
-      if (!(await requestInstallConsent(manifest))) return;
-      const plugin = await complete();
+      const consent = await requestInstallConsent(manifest, undefined, books);
+      if (!consent.approved) return;
+      const plugin = await complete(consent.grant);
       toast({
         description: t("settings.installedToast", { name: plugin.manifest.name }),
         variant: "success",

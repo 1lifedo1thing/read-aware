@@ -11,14 +11,17 @@ import { Badge, Button, Caption, Tabs, Toggle, useToast, InlineError } from "@re
 import { useTranslation } from "../../../i18n";
 import { isTauri } from "../../../platform/environment";
 import { settingsSectionRequestAtom } from "../../../state/ui";
+import { libraryBooksAtom } from "../../library/state/library-store";
+import { PluginBookAccessDialog } from "../../plugins/components/PluginBookAccessDialog";
 import { PluginMarketplace } from "../../plugins/components/PluginMarketplace";
 import { PluginSearchInput } from "../../plugins/components/PluginSearchInput";
 import { matchesPluginQuery } from "../../plugins/lib/search";
-import { permissionNameKey, type PluginPermission } from "../../plugins/lib/plugin-types";
+import { permissionNameKey, type PluginBookAccess, type PluginPermission } from "../../plugins/lib/plugin-types";
 import {
   preparePluginInstall,
   preparePluginZipInstall,
   setPluginEnabled,
+  updatePluginBookAccess,
   uninstallPlugin,
 } from "../../plugins/runtime/plugin-host";
 import {
@@ -38,13 +41,16 @@ export function PluginsPanel() {
   const { t } = useTranslation("plugins");
   const { toast } = useToast();
   const installed = useAtomValue(installedPluginsAtom);
+  const libraryBooks = useAtomValue(libraryBooksAtom);
   const setSectionRequest = useSetAtom(settingsSectionRequestAtom);
   const [activeTab, setActiveTab] = useState(0);
   const [installedQuery, setInstalledQuery] = useState("");
   const [installing, setInstalling] = useState(false);
   const [confirmingUninstall, setConfirmingUninstall] = useState<string | null>(null);
+  const [editingBookAccessId, setEditingBookAccessId] = useState<string | null>(null);
   const [marketRefreshToken, setMarketRefreshToken] = useState(0);
   const desktop = isTauri();
+  const books = libraryBooks.map(({ id, title }) => ({ id, title }));
 
   /** A bad package is the one cause the user can act on; the rest is log-only. */
   function installFailureCopy(error: unknown): string {
@@ -60,11 +66,12 @@ export function PluginsPanel() {
       if (typeof picked === "string" && picked) {
         const candidate = await preparePluginInstall(picked);
         try {
-          if (!(await requestInstallConsent(candidate.manifest))) {
+          const consent = await requestInstallConsent(candidate.manifest, undefined, books);
+          if (!consent.approved) {
             await candidate.discard();
             return;
           }
-          const plugin = await candidate.complete();
+          const plugin = await candidate.complete(consent.grant);
           toast({
             description: t("settings.installedToast", { name: plugin.manifest.name }),
             variant: "success",
@@ -92,11 +99,12 @@ export function PluginsPanel() {
       if (typeof picked === "string" && picked) {
         const candidate = await preparePluginZipInstall(picked);
         try {
-          if (!(await requestInstallConsent(candidate.manifest))) {
+          const consent = await requestInstallConsent(candidate.manifest, undefined, books);
+          if (!consent.approved) {
             await candidate.discard();
             return;
           }
-          const plugin = await candidate.complete();
+          const plugin = await candidate.complete(consent.grant);
           toast({
             description: t("settings.installedToast", { name: plugin.manifest.name }),
             variant: "success",
@@ -128,6 +136,10 @@ export function PluginsPanel() {
     }
   }
 
+  async function handleBookAccessSubmit(id: string, grant: PluginBookAccess) {
+    await updatePluginBookAccess(id, grant);
+  }
+
   const filteredInstalled = installed.filter((plugin) =>
     matchesPluginQuery(
       installedQuery,
@@ -155,6 +167,8 @@ export function PluginsPanel() {
           filteredInstalled.map((plugin, index) => {
             const { manifest } = plugin;
             const permissions = manifest.permissions ?? [];
+            const bookAccess = plugin.bookAccess ?? { mode: "all" as const };
+            const bookAccessSource = plugin.bookAccessSource ?? "legacy-domain";
             return (
               <SettingsRow
                 key={manifest.id}
@@ -184,6 +198,23 @@ export function PluginsPanel() {
                         ))
                       )}
                     </span>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <Caption className="text-fg-subtle">
+                        {t("settings.bookAccess.summary", {
+                          scope: t(`settings.bookAccess.${bookAccess.mode}` as never),
+                        })}
+                      </Caption>
+                      {bookAccess.mode === "book" && (
+                        <Caption className="text-fg-subtle">
+                          {libraryBooks.find((book) => book.id === bookAccess.bookId)?.title ?? bookAccess.bookId}
+                        </Caption>
+                      )}
+                      {bookAccessSource === "legacy-domain" && (
+                        <Caption className="text-fg-subtle">
+                          {t("settings.bookAccess.legacy")}
+                        </Caption>
+                      )}
+                    </span>
                     {(manifest.schedules ?? []).map((schedule) => (
                       <Caption key={schedule.id} className="text-fg-subtle">
                         {t(schedule.mode === "deferred" ? "settings.deferredScheduleLine" : "settings.scheduleLine", {
@@ -211,6 +242,13 @@ export function PluginsPanel() {
                         {t("settings.configure")}
                       </Button>
                     )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingBookAccessId(manifest.id)}
+                    >
+                      {t("settings.bookAccess.change")}
+                    </Button>
                     {!plugin.builtin && (
                       <Button
                         size="sm"
@@ -283,6 +321,23 @@ export function PluginsPanel() {
           },
         ]}
       />
+      {(() => {
+        const editing = editingBookAccessId
+          ? installed.find((plugin) => plugin.manifest.id === editingBookAccessId)
+          : undefined;
+        if (!editing) return null;
+        return (
+          <PluginBookAccessDialog
+            open
+            pluginName={editing.manifest.name}
+            grant={editing.bookAccess ?? { mode: "all" }}
+            source={editing.bookAccessSource ?? "legacy-domain"}
+            books={books}
+            onClose={() => setEditingBookAccessId(null)}
+            onSubmit={(next) => handleBookAccessSubmit(editing.manifest.id, next)}
+          />
+        );
+      })()}
     </SettingsPage>
   );
 }
