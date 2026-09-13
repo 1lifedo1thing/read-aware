@@ -2010,7 +2010,39 @@ negotiation, mounted React sort/open/busy/empty-pager tests pass. Interactive,
 empty, busy and narrow Storybook fixtures are available. Real Worker/Tauri
 composition, large datasets, narrow-window rendering and keyboard/focus flows
 remain for concentrated E2E. Tree is added in views 1.6 and resource raster images
-in views 1.7 below; editor schemas remain open, so EXT06 is not complete.
+in views 1.7 below; the bounded editor is available in views 1.11. The stated
+real-runtime acceptance gaps remain open.
+
+### Plain Text Editor (Views 1.11)
+
+[代码] `PluginEditorView` works at the root or inside composed blocks. It
+requires `kind: editor`, an accessible `label`, initial `value`, nonempty opaque
+`revision`, integer `maxLength` in 1–100000 UTF-16 code units, and
+`onSave(value, revision)`. Optional `title`, `saveLabel`, `cancelLabel` and
+`onCancel()` use the existing text/callback contracts. Oversized initial values
+and invalid declarations reject. This adds no rich text, HTML, DOM or storage
+permission.
+
+The host owns the draft. Save is explicit; Control/Command+Enter submits and
+Escape cancels. Cancellation discards the local draft before navigation and
+never passes it to `onCancel`. Failures and field errors retain the draft.
+External revisions cannot silently overwrite dirty input: the host blocks save
+until an explicit Reload. A successful save only accepts the submitted snapshot;
+input typed while saving stays dirty. The matching refreshed value adopts its
+new revision whether it arrives before or after the save result, while a
+different external value still requires conflict resolution.
+
+Annotation Desk note detail is the first consumer. It keeps the inspected
+`snapshot.revision` as the actual conditional-write token and rejects a mismatched
+callback revision before calling `annotations.applyChanges`. The editor revision
+is not independent authority to write an annotation. Existing new-note forms
+remain forms. The generic callback bridge owns save/cancel callback lifetime.
+
+[验证] Schema/consumer/capability checks and five mounted editor interaction
+checks pass, including save-refresh ordering and newer unsaved input. Core,
+plugin types and Annotation Desk types/build pass. Compiled Annotation Desk
+includes the editor. Real Worker/Tauri save/conflict/cancel and keyboard/focus
+acceptance remain pending the concentrated batch.
 
 ### Hierarchical Trees (Views 1.6)
 
@@ -2055,8 +2087,8 @@ typeahead, literal text, busy, live removal and empty paging checks pass. Defaul
 busy, empty, narrow and interactive stories are provided. Real Worker/Tauri,
 screen readers, narrow-window layout and composition E2E remain concentrated
 acceptance work; tests do not establish those results. EXT06 remains partial
-for editor schemas and the stated verification gaps; resource raster images are
-added in views 1.7 below.
+for the stated verification gaps; a bounded editor is available in views 1.11,
+and resource raster images are added in views 1.7 below.
 
 ### Resource Image Views (Views 1.7)
 
@@ -6629,8 +6661,8 @@ query. Completed frames retain results across hide/restore without rereading.
 Late success/failure cannot overwrite cancellation or publish to a retired
 channel; an old subscription disposer cannot cancel its replacement.
 
-[代码] Jumper continuation preserves the host cursor/contentVersion and search
-options; result selection still waits for goTo before closing. Text Desk keeps
+[代码] Jumper exact search now uses the bounded helper described below; result
+selection still waits for goTo before closing. Text Desk library-wide search keeps
 the selected-book/shelf distinction, 40-hit limit and snippets; book-title reads
 begin only after a successful, uncancelled search, and late title reads are
 discarded if the frame closes. The title-list API has no per-call signal.
@@ -6640,7 +6672,35 @@ of the same input; other failures use the host error surface and stack Back.
 Publication failure logs and stops the view's pending work. All eight locales
 have search/cancelled labels. Plugin source composition tests and builds are
 basic evidence, not compiled Worker/Tauri UI or native parser cancellation.
-No generic durable TaskRef, cross-page progress or physical rollback is implied.
+No generic durable TaskRef or physical rollback is implied.
+
+### Bounded Exact Search Helper
+
+[代码] `searchAllBookLocations(reader, input, options?)`, exported by
+`@read-aware/plugin-types`, consumes `books.searchLocations` pages serially.
+Jumper and Text Desk exact passage search use it in their live progress views.
+It pins the content version, reports scanned/total sections and hit count per
+page, and returns a terminal status: `completed`, `scan-limit`, `result-limit`,
+`timed-out`, `cancelled`, or `stale`. Stale results contain no old locations.
+Invalid counters, nonadvancing/repeated cursors and malformed pages reject.
+
+Options can reduce the default maximums: 256 scanned sections (checked at page
+boundaries, so one page can exceed this threshold), 200 retained hits, 64 KiB
+of UTF-8 excerpts including per-hit overhead, and 30 seconds. Each page requests
+at most 50 hits. Excerpt limits omit a whole hit rather than truncating its
+location evidence. Deadline/cancellation also terminate waiting for an async
+progress callback or unresponsive reader; they do not prove native parsing has
+physically stopped. Host reader ownership still controls physical draining.
+
+The consumer title explicitly shows incomplete or stale terminal states even
+when partial hits exist. Closing/replacing the frame aborts its operation and
+suppresses late publication. Explicit retries create a fresh operation; no
+activation-independent persistence, generic TaskRef or automatic retry is added.
+
+[验证] Six helper checks, eleven Jumper checks and four Text Desk passage checks,
+related typechecks and plugin builds pass. Both tracked compiled consumers are
+updated. These are implementation checks; real Tauri/Worker progress, result
+navigation and cancellation remain pending concentrated acceptance.
 
 ## 14. Extension Procedure
 
