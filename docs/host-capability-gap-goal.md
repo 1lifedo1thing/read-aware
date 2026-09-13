@@ -25,15 +25,15 @@
 
 ## 当前交接
 
-五项实现已接通，验收尚未全部通过；goal 仍 active。用户明确要求删除 localOnly，旧 goal 文本中的隐私开关扩展不再执行。当前不再增加模型运行，剩余桌面验收继续沿用固定清单。
+五项实现已接通，验收尚未全部通过；goal 仍 active。用户明确要求删除 localOnly，旧 goal 文本中的隐私开关扩展不再执行。固定桌面清单已完成。模型仍有失败/partial，复测额度已用完；未满足全部验收条件，不标记 complete。
 
-| 项目 | 已完成与真实证据 | 尚未关闭的验收 |
+| 项目 | 已完成与真实证据 | 最终验收结论与边界 |
 | --- | --- | --- |
-| I01 删除 localOnly | `aec2c801` 删除设置/UI/公开路径和模型门禁；真实 Full2 Tauri 验证旧值忽略、保存清理、独立偏好保留及旧路径拒绝，探针 `28be2bb2` | 可见设置页面确认开关消失，桌面锁定待完成 |
-| I02 对象授权 | `df0bfed9` 接通 UI、持久授权、Worker/domain/resource、Annotation Desk 和备份事务。真实 Worker 全库/当前书/指定书读取、创建与 CAS 编辑通过，越权创建/编辑拒绝且目标正文和版本不变（`0fa6c353`）。真实 Annotation Desk 改授权后旧回调返回 plugin/unavailable，新 Worker 启动并读取原生 KV 的授权（`1d32a1e3`） | 编辑器画面交互、备份授权确认/取消及恢复授权事务。新 Worker 分别验证当前书 A/B，不冒充同一 Worker 切书或冷启动验收 |
-| I03 有界搜索 | `bd805a9d`、`ad31f5e1` 接通 helper 与编译消费者。真实 Full2 编译 Jumper/Text Desk 的进度、结果、取消/替换阶段已执行；预算单独补验通过：205 个真实 TXT 匹配均在 200 条停止并返回 result-limit，清理贡献为 0（探针 `07819361`） | Worker 发布视图不等于画面渲染；可见交互待解锁。初次预算用例只有 1 hit，原因是 TXT 段落拼接丢失词边界，修正测试文本后补验，没有放宽产品上限 |
+| I01 删除 localOnly | `aec2c801` 删除设置/UI/公开路径和模型门禁；真实 Full2 Tauri 验证旧值忽略、保存清理、独立偏好保留及旧路径拒绝，探针 `28be2bb2` | 可见 AI 隐私设置确认 localOnly 消失；AppleScript 激活后实际截图通过 |
+| I02 对象授权 | `df0bfed9` 接通 UI、持久授权、Worker/domain/resource、Annotation Desk 和备份事务。真实 Worker 全库/当前书/指定书读取、创建与 CAS 编辑通过，越权创建/编辑拒绝且目标正文和版本不变（`0fa6c353`）。真实 Annotation Desk 改授权后旧回调返回 plugin/unavailable，新 Worker 启动并读取原生 KV 的授权（`1d32a1e3`） | 编辑器可见交互与备份授权确认/取消、恢复事务均通过，详情见下方最终补验。新 Worker 分别验证当前书 A/B，不冒充同一 Worker 切书或冷启动验收 |
+| I03 有界搜索 | `bd805a9d`、`ad31f5e1` 接通 helper 与编译消费者。真实 Full2 编译 Jumper/Text Desk 的进度、结果、取消/替换阶段已执行；预算单独补验通过：205 个真实 TXT 匹配均在 200 条停止并返回 result-limit，清理贡献为 0（探针 `07819361`） | 两个消费者的普通搜索画面通过；Jumper 预算终态实际弹窗显示 Search stopped at its result limit，虚拟列表不冒充同时显示全部 200 条。初次预算夹具丢失词边界，修正文本后补验，没有放宽产品上限 |
 | I04 类型化提供者 | 复用既有 TTS 链。真实 Worker 合成 PCM→宿主播放开始/停止；Listening Desk 停用取消在途调用，迟到结果不重启播放；清理贡献为 0（`433c0596`）。无网络权限 Worker 的 network API 不暴露 | 该结果证明接线、API 暴露和生命周期；未执行 HTTP 请求，不宣称 HTTP 拒绝或远端语音质量/人工听感 |
-| I05 声明式编辑器 | `a87d4b9c` 接通宿主 editor 与 Annotation Desk CAS 消费者；保存中输入、新版本到达、外部冲突的定向交互与类型检查通过 | 真实 Annotation Desk Worker 的精确保存、取消不写入、旧版本保存返回冲突且不覆盖已通过（`0c655810`，`d5-editor-consumer.json`）；画面草稿、键盘与焦点仍因桌面锁定待完成 |
+| I05 声明式编辑器 | `a87d4b9c` 接通宿主 editor 与 Annotation Desk CAS 消费者；保存中输入、新版本到达、外部冲突的定向交互与类型检查通过 | 真实 Annotation Desk Worker 的精确保存、取消不写入、旧版本保存返回冲突且不覆盖已通过（`0c655810`，`d5-editor-consumer.json`）；画面草稿、键盘、焦点与冲突保留均已通过（`d5-visible-editor.json`） |
 
 原始运行工件位于忽略目录 `.eval/gap-closure/`：`d1-native.json`、`d2-worker-read.json`、`d2-worker-current.json`、`d2-worker-current-b.json`、`d2-grant-restart.json`、`d2-writes.json`、`d3-budget.json`、`d4-playback.json`、`d5-editor-consumer.json`。D3 初次运行在预算断言失败前已完成两个消费者的进度和取消阶段，但旧探针未保留其结构化 completed 结果；预算补验工件的 completed 为空，不据此伪造旧阶段记录。新探针保留逐项结果供后续失败定位。
 
@@ -52,9 +52,13 @@
 
 ### 固定剩余工作
 
-1. 桌面解锁后补 I01 可见设置、I03 可见搜索交互、I05 保存/取消/冲突/键盘焦点。
-2. 补 I02 备份授权弹窗的可见确认/取消交互；原生取消不写入与确认恢复事务、保留本机授权已通过。
-3. 汇总上述结果与已冻结的模型失败；所有约定验收未满足前不能标记 goal complete，不自动开启下一目标，不推送。
+1. 模型验收仍不满足：审判官场景授权纪律失败、六轮会话中途拒答、目录数量矛盾；另有两项表达/依据的人工保留结论。上述失败不改计通过。
+2. 本轮允许的模型复测次数已经用完；不追加运行，不自动新建 goal。已向用户请求决定是否接受带明确失败的本轮交付，或另定这些问题的修复与复测边界。未收到决定前保持未完成。
+3. 桌面不再是阻塞：五项固定验收已完成。最后的 D3 可见预算终态补验后，两项自有 Worker 贡献均为 0，临时书 `7d939b97-50f2-4445-a5a5-6f48e1465de1` 已删除；原有资料保留。不重复已过检查，不推送。
+
+### 历史补验记录
+
+以下记录保留当时失败及其后续修复；其中“待解锁”等旧状态已由最终补验替代。
 
 - 备份补验：Full2 创建自有最小插件并捕获新加密来源备份，卸载后原生审阅确认 source-only candidate；取消前后完整 KV（按键规范化比较）和插件列表不变，工件 `d2-backup-cancel.json`。自有插件残留键与两份临时归档已清理。此证据仅关闭原生审阅取消不写入，授权弹窗和确认恢复事务仍待验收；没有读取旧归档口令。
 
