@@ -1167,3 +1167,18 @@ About实际UI稳定版→测试版aria-pressed与general.updateChannel=beta一�
 不等于全部翻译质检；OS主题/语言变化、前台像素、packaged及其他平台仍待验。
 当前primary dev会话48756/port9224/PID6672，日志general-settings-restart.log；
 backup与release旧二进制边界保持。
+
+## 第四十五流程：默认标注颜色作用于新高亮和下划线
+
+真实Worker将annotations.defaultColor设为blue，导入自有FB2，实际阅读会话通过
+版本化range选择Deterministic acceptance并点击原生阅读工具栏Highlight：SQLite
+派生查询得到blue/highlight及正确CFI。global Agent改默认pink后，在同一次开书中
+选择另一段Red left并点击Underline，新记录pink/underline，原蓝色高亮保持。
+实际Foliate overlayer SVG同时包含fill=#60a5fa的矩形及stroke=#ec4899的下划线。
+关闭书再打开，两条持久记录和对应SVG颜色一致，没有因当前默认颜色而重绘旧标注。
+
+证据：[default-annotation-color-observations.json](./default-annotation-color-observations.json)。
+恢复原默认色yellow、设置Worker贡献0，删除精确自有书committed/files released、
+书库恢复原两书、会话idle。复用既有驱动，无产品代码改动、无重复门禁。本轮验证
+默认色对阅读器一键高亮/下划线的作用；显式颜色和公共API既定默认不变，物理拖选/
+前台像素、原生进程重启和packaged不在本条证明范围。

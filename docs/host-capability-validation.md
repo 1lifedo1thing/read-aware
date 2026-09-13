@@ -106,7 +106,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | CFG09 | 插件非敏感设置的动态路径 | F6 | 待验 |
 | CFG10 | 设置变化事件/外部写入刷新 | F6 | 本机真实 Worker 观察本地设置/目录变化、remote与restore来源注入、停止订阅通过；跨设备待验 |
 | CFG11 | 聊天/笔记内容字体：跟随阅读或独立字号/字体/行距 | F6 | Workspace Profiles独立Menlo/跟随Lora应用、真实聊天输入框样式与应用字体加载通过；消息正文/笔记及独立字号/行距待验，见第二十八流程 |
-| CFG12 | 新标注默认颜色 | F6 | 待验 |
+| CFG12 | 新标注默认颜色 | F6 | 真实Worker设blue→阅读器新高亮blue，Agent改pink→新下划线pink，旧标注保持；原生记录及实际SVG填充/描边、关书重开通过；前台像素/packaged待验，见第四十五流程 |
 | CFG13 | 软件更新通道 stable/beta | F6 | 实际UI stable→beta、Worker/Agent修改及原生进程重启保留通过；更新包选择/安装/签名待验，见第四十四流程 |
 | SET01 | general.startView | F6 | 修复设置无启动消费者；真实macOS debug进程重启自动恢复最后FB2第二章/同CFI，手动关书不重开，shelf重载保持书架；虚拟书/外部冷启动/缺源/packaged及其他平台待验，见第四十三流程 |
 | SET02 | general.language | F6 | 实际UI en→zh-Hans、Worker→ja、Agent→zh-Hans，页面/html语言同步且原生重启保持；其他语言/OS检测及完整翻译待验，见第四十四流程 |
@@ -161,7 +161,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET51 | appearance.contentTypography.fontFamily | F6 | Workspace Profiles Menlo输入框样式通过；release设置Lora下载/预览/笔记列表实际字体及重启通过；消息和其他字形待验，见第二十八/三十二流程 |
 | SET52 | appearance.contentTypography.fontSize | F6 | release实际UI medium→XL、预览/笔记列表呈现、原生持久与重启保留并恢复通过；其他字号/消息待验，见第三十二流程 |
 | SET53 | appearance.contentTypography.lineSpacing | F6 | release实际UI comfortable→relaxed、预览/笔记列表呈现、原生持久与重启保留并恢复通过；其他行距/消息待验，见第三十二流程 |
-| SET54 | annotations.defaultColor | F6 | 待验 |
+| SET54 | annotations.defaultColor | F6 | 真实Worker/Agent修改默认色，新高亮blue/新下划线pink，旧色保持及关书重开记录/SVG一致通过；原生进程重启/packaged待验，见第四十五流程 |
 | SET55 | general.updateChannel | F6 | 实际UI beta选择、Worker stable、Agent恢复及原生重启保留通过；更新安装链路待验，见第四十四流程 |
 | SET56 | shelf.layout | F6 | 本机真实Worker grid→list，命令checked/列表DOM/原生KV一致并恢复；其他入口待验，见第二十三流程 |
 | SET57 | shelf.group | F6 | 本机真实Worker none→author，作者分组DOM/原生KV一致并恢复；其他分组/入口待验，见第二十三流程 |

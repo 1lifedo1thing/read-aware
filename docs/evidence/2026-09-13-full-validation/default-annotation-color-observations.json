@@ -1,0 +1,230 @@
+{
+  "flow": 45,
+  "date": "2026-09-13",
+  "baseline": "eef5e569",
+  "boundary": "macOS debug Tauri real reading selection and toolbar DOM actions, native annotation persistence, actual Foliate overlayer SVG; no foreground pixels",
+  "seed": {
+    "annotationVersion": "0.7.0",
+    "bookId": "5ec36951-03df-4e76-b094-8437dbbde244",
+    "marker": "Composition 0e4a4e88",
+    "path": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+    "plugins": [
+      {
+        "enabled": true,
+        "id": "library-desk",
+        "version": "0.12.0"
+      },
+      {
+        "enabled": true,
+        "id": "text-desk",
+        "version": "0.22.0"
+      }
+    ]
+  },
+  "settingWorker": {
+    "changed": [
+      {
+        "path": "annotations.defaultColor",
+        "target": {
+          "kind": "global"
+        },
+        "value": "blue"
+      }
+    ],
+    "paths": [
+      "annotations.defaultColor"
+    ],
+    "status": "committed"
+  },
+  "firstRange": {
+    "bookId": "5ec36951-03df-4e76-b094-8437dbbde244",
+    "cfi": "epubcfi(/6/2!/4/2[first]/4,/1:0,/1:24)",
+    "contentVersion": "sha256:4cac21bae17cf3085688b2d6e02f100aee6866fd51c1984e8cc50f5c08eec4a6"
+  },
+  "first": {
+    "consistency": "live",
+    "items": [
+      {
+        "anchor": "epubcfi(/6/2!/4/2[first]/4,/1:0,/1:24)",
+        "bookId": "5ec36951-03df-4e76-b094-8437dbbde244",
+        "chapterHref": "0",
+        "color": "blue",
+        "createdAt": "2026-09-13T00:23:55.648Z",
+        "id": "a395a4b7-678a-4f18-b4f1-69a7636a4586",
+        "kind": "highlight",
+        "style": "highlight",
+        "text": "Deterministic acceptance",
+        "updatedAt": "2026-09-13T00:23:55.648Z"
+      }
+    ],
+    "nextCursor": null
+  },
+  "secondRange": {
+    "bookId": "5ec36951-03df-4e76-b094-8437dbbde244",
+    "cfi": "epubcfi(/6/2!/4/2[first]/8,/1:0,/1:8)",
+    "contentVersion": "sha256:4cac21bae17cf3085688b2d6e02f100aee6866fd51c1984e8cc50f5c08eec4a6"
+  },
+  "second": {
+    "consistency": "live",
+    "items": [
+      {
+        "anchor": "epubcfi(/6/2!/4/2[first]/8,/1:0,/1:8)",
+        "bookId": "5ec36951-03df-4e76-b094-8437dbbde244",
+        "chapterHref": "0",
+        "color": "pink",
+        "createdAt": "2026-09-13T00:24:09.848Z",
+        "id": "97d6c512-3210-4b4a-84be-23897a2e4070",
+        "kind": "highlight",
+        "style": "underline",
+        "text": "Red left",
+        "updatedAt": "2026-09-13T00:24:09.848Z"
+      },
+      {
+        "anchor": "epubcfi(/6/2!/4/2[first]/4,/1:0,/1:24)",
+        "bookId": "5ec36951-03df-4e76-b094-8437dbbde244",
+        "chapterHref": "0",
+        "color": "blue",
+        "createdAt": "2026-09-13T00:23:55.648Z",
+        "id": "a395a4b7-678a-4f18-b4f1-69a7636a4586",
+        "kind": "highlight",
+        "style": "highlight",
+        "text": "Deterministic acceptance",
+        "updatedAt": "2026-09-13T00:23:55.648Z"
+      }
+    ],
+    "nextCursor": null
+  },
+  "paint": [
+    {
+      "index": 0,
+      "svg": "<svg style=\"position: absolute; top: 0px; left: 837px; width: 837px; height: 100%; pointer-events: none; margin: 0px;\"><g fill=\"none\" stroke=\"#ec4899\" stroke-width=\"2.5\" stroke-linecap=\"round\" style=\"opacity: 0.9;\"><line x1=\"56.25\" y1=\"507.8\" x2=\"116.75\" y2=\"507.8\"></line></g><g fill=\"#60a5fa\" style=\"opacity: var(--overlayer-highlight-opacity, .3); mix-blend-mode: var(--overlayer-highlight-blend-mode, normal);\"><rect x=\"55.5\" y=\"213\" height=\"20\" width=\"205\"></rect></g></svg>"
+    }
+  ],
+  "reopened": {
+    "consistency": "live",
+    "items": [
+      {
+        "anchor": "epubcfi(/6/2!/4/2[first]/8,/1:0,/1:8)",
+        "bookId": "5ec36951-03df-4e76-b094-8437dbbde244",
+        "chapterHref": "0",
+        "color": "pink",
+        "createdAt": "2026-09-13T00:24:09.848Z",
+        "id": "97d6c512-3210-4b4a-84be-23897a2e4070",
+        "kind": "highlight",
+        "style": "underline",
+        "text": "Red left",
+        "updatedAt": "2026-09-13T00:24:09.848Z"
+      },
+      {
+        "anchor": "epubcfi(/6/2!/4/2[first]/4,/1:0,/1:24)",
+        "bookId": "5ec36951-03df-4e76-b094-8437dbbde244",
+        "chapterHref": "0",
+        "color": "blue",
+        "createdAt": "2026-09-13T00:23:55.648Z",
+        "id": "a395a4b7-678a-4f18-b4f1-69a7636a4586",
+        "kind": "highlight",
+        "style": "highlight",
+        "text": "Deterministic acceptance",
+        "updatedAt": "2026-09-13T00:23:55.648Z"
+      }
+    ],
+    "nextCursor": null
+  },
+  "reopenedPaint": [
+    {
+      "index": 0,
+      "svg": "<svg style=\"position: absolute; top: 0px; left: 837px; width: 837px; height: 100%; pointer-events: none; margin: 0px;\"><g fill=\"none\" stroke=\"#ec4899\" stroke-width=\"2.5\" stroke-linecap=\"round\" style=\"opacity: 0.9;\"><line x1=\"56.25\" y1=\"507.8\" x2=\"116.75\" y2=\"507.8\"></line></g><g fill=\"#60a5fa\" style=\"opacity: var(--overlayer-highlight-opacity, .3); mix-blend-mode: var(--overlayer-highlight-blend-mode, normal);\"><rect x=\"55.5\" y=\"213\" height=\"20\" width=\"205\"></rect></g></svg>"
+    }
+  ],
+  "cleanup": {
+    "remaining": [
+      {
+        "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "title": "Reading Paint Probe"
+      },
+      {
+        "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+        "title": "Reading Capability Probe"
+      }
+    ],
+    "removed": {
+      "bookIds": [
+        "5ec36951-03df-4e76-b094-8437dbbde244"
+      ],
+      "committed": true,
+      "files": {
+        "status": "released"
+      }
+    }
+  },
+  "settingsCleanup": {
+    "contributions": 0
+  },
+  "restored": {
+    "color": {
+      "path": "annotations.defaultColor",
+      "target": {
+        "kind": "global"
+      },
+      "value": "yellow"
+    },
+    "session": {
+      "bookId": null,
+      "change": {
+        "origin": "system",
+        "reason": "close"
+      },
+      "controls": null,
+      "history": {
+        "canGoBack": true,
+        "canGoForward": false
+      },
+      "location": null,
+      "mode": {
+        "availableModes": [],
+        "cfiRange": null,
+        "label": null,
+        "modeKey": null,
+        "position": null,
+        "progress": null,
+        "requestedActive": false,
+        "status": "unavailable",
+        "unavailableReason": "no-session",
+        "unitId": null,
+        "units": []
+      },
+      "pagination": null,
+      "playback": {
+        "backend": null,
+        "cfiRange": null,
+        "fallback": false,
+        "owner": null,
+        "status": "unavailable",
+        "unavailableReason": "no-session"
+      },
+      "readerDemand": {
+        "active": false,
+        "idleAt": null,
+        "lastActivityAt": null,
+        "reason": null
+      },
+      "revision": 62,
+      "selection": null,
+      "sessionId": null,
+      "sourceRevision": null,
+      "status": "idle",
+      "visibleText": "",
+      "visibleTextState": {
+        "reason": "not-ready",
+        "source": null,
+        "status": "unavailable",
+        "truncated": false
+      }
+    }
+  },
+  "limits": [
+    "Only one-click native reader highlight/underline defaults tested; explicit colors and API-defined defaults unchanged",
+    "No physical drag or foreground screenshot in current locked desktop session",
+    "Book close/reopen proven; no native process restart or packaged build this flow"
+  ]
+}
