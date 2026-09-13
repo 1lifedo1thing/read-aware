@@ -40,11 +40,20 @@ export const resourceAdapter: ResourceAdapter = {
   },
   async pick(options: ResourcePickOptions, signal) {
     desktop(); signal?.throwIfAborted();
+    // Native dialogs filter by final suffix. Keep compound filters exact when
+    // admitting the selected paths, before opening any resource leases.
+    const extensions = options.extensions?.map(extension => extension.toLowerCase());
+    const hasCompoundFilter = extensions?.some(extension => extension.includes("."));
+    const nativeExtensions = extensions && [...new Set(extensions.map(extension => extension.split(".").at(-1)!))];
     const selected = await open({ multiple: options.multiple ?? false, directory: false,
-      ...(options.extensions?.length ? { filters: [{ name: "Files", extensions: options.extensions }] } : {}) });
+      ...(nativeExtensions?.length ? { filters: [{ name: "Files", extensions: nativeExtensions }] } : {}) });
     signal?.throwIfAborted();
     const paths = selected === null ? [] : Array.isArray(selected) ? selected : [selected];
     if (paths.length > 16) throw new AppError("ui/invalid-target", "Choose at most 16 files");
+    if (hasCompoundFilter && paths.some(path => !extensions!.some(extension =>
+      fileNameFromPath(path).toLowerCase().endsWith(`.${extension}`)))) {
+      throw new AppError("ui/invalid-target", "Selected file does not match the requested extensions");
+    }
     const result: NativeResource[] = [];
     try {
       for (const path of paths) {

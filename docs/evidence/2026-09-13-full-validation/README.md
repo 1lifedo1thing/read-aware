@@ -1884,3 +1884,21 @@ web/desktop/Foliate严格类型通过。唯一尚未覆盖的声明后缀为fb2.
 新包未启动，旧PID86059及primary15611保持，不能把磁盘构建当运行版本。
 未改生产CSP/调试边界，使用独立输出名防覆盖原包。构建结果见
 [format-alias-observations.json](./format-alias-observations.json)。
+
+## 第六十九批：复合 FB2 ZIP 的入口修复与普通 ZIP 反例
+
+书架系统选择器增加ZIP候选以选择.fb2.zip，选择仍不代表文件可解析。原生
+外部打开识别完整、大小写无关的.fb2.zip文件名，普通ZIP及伪后缀不接收；
+未注册通用ZIP关联。插件资源选择将复合过滤器转为末级后缀，选后再按原始
+过滤列表核对文件名，匹配才创建资源lease；不改变仅简单后缀请求的选后行为。
+
+12项原生外部打开检查通过，新增真实临时文件Book.FB2.ZIP、ordinary.zip、
+Book.fb2.zip.bak和目录伪匹配回归。真实运行Tauri用普通ZIP字节走生产导入，
+返回book/unsupported-format，前后原两书ID一致，没有新增书目。前端实际
+BOOK_FILE_EXTENSIONS已包含zip/text/xhtml。9项sniff/10断言、21项资源所有权
+与输入检查/140断言、web/desktop/Foliate类型通过；这些不证明OS面板选择。
+
+未重跑不变的FB2 ZIP解析器或重复构建空等桌面的发布包。第68批新包含CBR与
+TEXT/XHTML但不含本批修复，实际packaged验收前须集中重建。系统面板选择、
+插件选后后缀匹配及Launch Services实际路径仍待验；详见
+[compound-format-entry-observations.json](./compound-format-entry-observations.json)。

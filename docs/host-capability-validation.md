@@ -30,8 +30,8 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | LIB03 | 收藏/取消收藏 | F1 | 本机编译Library Desk收藏/取消收藏、刷新Yes/No及重启保持通过；其他actor待验，见第二十四流程 |
 | LIB04 | 删除单本书 | F1 | 本机Library Desk单书复核前不删，明确删除后记录null/原文件不存在；其他actor/故障待验，见第二十四流程 |
 | LIB05 | 批量删除书籍 | F1 | 本机Agent真实批准UI拒绝保留/批准两书删除，Worker正常批删及恢复后旧清理pending保护通过；文件故障/崩溃待验，见第二十四流程 |
-| LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机FB2 user/Worker选择器、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML原生字节导入与源解析通过；压缩RAR5 CBR三页原生导入/源解析/定位通过（65），PRC/AZW/KF8/FBZ/TEXT/HTM/XHTML七别名原生字节导入/准备/真实阅读器正文通过（68）；修复TEXT/XHTML选择器和外部打开列表遗漏，实际OS选择/关联待验，fb2.zip复合后缀入口仍有缺口；RAR4/加密/分卷及其他actor待验；第38流程暂存残留已加设备本地意图，真实重载/进程重启回收、已提交书保持/重复导入/提交失败回收通过；release待验，见第二十一/三十九流程 |
-| LIB07 | 识别格式/DRM/损坏文件并报告 | F1 | 部分通过：合成加密MOBI入库后源打开明确book/unsupported-encryption，未冒充可读；截断RAR5仍能入库/列出两个目录项，损坏页定位reader/render-failed且实际目录点击显示安全错误（65），完好页可读。正文ready/textless不代表归档完整，未计导入完整性检查；其他损坏格式/物理画面待验 |
+| LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机FB2 user/Worker选择器、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML原生字节导入与源解析通过；压缩RAR5 CBR三页原生导入/源解析/定位通过（65），PRC/AZW/KF8/FBZ/TEXT/HTM/XHTML七别名原生字节导入/准备/真实阅读器正文通过（68）；修复TEXT/XHTML选择器和外部打开列表遗漏，实际OS选择/关联待验，第69批补复合fb2.zip选择候选/精确外部打开及插件选后后缀核对，12项原生检查通过，真实系统选择仍待验；RAR4/加密/分卷及其他actor待验；第38流程暂存残留已加设备本地意图，真实重载/进程重启回收、已提交书保持/重复导入/提交失败回收通过；release待验，见第二十一/三十九流程 |
+| LIB07 | 识别格式/DRM/损坏文件并报告 | F1 | 部分通过：合成加密MOBI入库后源打开明确book/unsupported-encryption，未冒充可读；截断RAR5仍能入库/列出两个目录项，损坏页定位reader/render-failed且实际目录点击显示安全错误（65），完好页可读。正文ready/textless不代表归档完整，未计导入完整性检查；普通ZIP真实原生字节导入返回book/unsupported-format且书目不变（69）；其他损坏格式/物理画面待验 |
 | LIB08 | 查询/读取书籍原文件与本地可用性 | F1 | 本机 Library Desk 原文件状态、原生导出字节一致及取消通过；其他格式/actor待验 |
 | LIB09 | 提取/显示封面与封面可用状态 | F1 | 本机 FB2 封面显示/解码、PNG原生保存及插件副本重读通过；补齐后FB2预览240×160及PDF书架320×480解码通过（63），修复详情刷新及预览名称滞后于改名；RAR5 CBR后台封面ready/local，损坏首图failed且保留unchecked（65）；其他格式/平台待验 |
 | LIB10 | 缺失封面/元数据后台补齐 | F1 | 部分通过（63）：真实Agent查询不启动、重试queued→解析失败failed且封面仍unchecked；编译Library Desk显示安全错误，恢复FB2源后实际Retry→观察completed，作者/封面补齐、用户书名保持，重复请求not-needed。真实PDF由书架reload自动补齐内嵌标题/作者/首屏封面，原生重读及开书保持。第65流程CBR自动封面补齐通过，修复补齐绕过统一解析器；损坏封面reader/render-failed，缺作者仍metadataPending。此前FB2错误为通用internal，未计格式专用分类；其他格式、none/源缺失、并发/队列及观察上限、原生重启/packaged和跨设备待验 |

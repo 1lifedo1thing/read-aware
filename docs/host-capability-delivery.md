@@ -13,16 +13,16 @@
 开发热更新与桌面操作错开，使用隔离 `com.readaware.app.capability-e2e`，不触碰正式资料。
 只重跑受影响步骤；类型/内存端口模型评测/真实 Worker/桌面及外部平台证据分开记录，不推送。
 
-本次交接（第68批）：PRC/AZW/KF8/FBZ/TEXT/HTM/XHTML七别名逐个原生导入、
-正文available及实际阅读器DOM通过，全部书/源/封面清零、原两书/会话hash保持。
-修复.text/.xhtml系统选择器、Rust外部打开白名单和关联配置遗漏；11项原生打开
-检查、web/desktop/Foliate类型通过。fb2.zip复合后缀的系统入口仍有缺口。
-新ReadAware Format Validation.app构建通过，含第65批CBR与本批入口修复，
-SHA5a2c7d73…，包内Info.plist有text/xhtml，尚未启动。旧release PID86059仍
-运行原ReadAware Packaged Validation.app；primary PID15611/9224保持，勿把新
-磁盘构建当成已运行。CUA最近仍locked，WebView hidden动画停0ms；未重试。
-下一步复合扩展名入口及未覆actor；桌面可控后先正常退出旧release，再运行同一
-隔离profile的新包，验系统选择/打开、旋转终态/画面/焦点。其他平台/跨设备待验。
+本次交接（第69批）：补fb2.zip复合后缀：书架选择器含ZIP候选但继续解析检查，
+原生外部打开只接完整.fb2.zip（大小写兼容），不关联普通ZIP；插件复合过滤器
+转末级后缀并在选后按原请求核对，匹配才开资源。真实ordinary.zip字节导入
+拒绝且原两书不变。12项原生、9项sniff/10断言、21项资源/140断言及类型通过；
+系统选择/插件原生面板/Launch Services仍待桌面验收，没有冒称实测过新选择链。
+无夹具/配置/Worker待清理；primary PID15611/9224，旧release PID86059保持。
+第68批Format Validation.app为5a2c7d73…，含TEXT/XHTML及CBR，但不含69，
+恢复发布包验收时再集中重建。CUA最近locked/WebView hidden；不重复轮询。
+下一步未覆actor/消费者；桌面可控后接续新包启动、系统选择/打开、旋转终态、
+画面/焦点。其他格式变体、平台和跨设备仍待验。
 
 当前进度：基础门禁/受影响类型检查及 Web 构建通过，本机原生465 pass/2 ignored；
 原始固定首轮模型共247次，198机器通过、34失败、15执行/评分错误（不计先前1条

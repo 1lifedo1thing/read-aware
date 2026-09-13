@@ -12,8 +12,8 @@ use std::sync::Mutex;
 use crate::error::CommandError;
 use tauri::{AppHandle, Emitter, Manager};
 
-/// Extensions the importer accepts. Keep in sync with `BOOK_FILE_EXTENSIONS`
-/// in `apps/web/src/features/library/lib/pick-book-files.ts`.
+/// Simple book suffixes registered with the OS. The file picker additionally
+/// admits ZIP candidates; external opening only admits the `.fb2.zip` suffix.
 const BOOK_EXTENSIONS: [&str; 16] = [
     "epub", "mobi", "prc", "azw3", "azw", "kf8", "fb2", "fbz", "cbz", "cbr", "txt", "html", "htm",
     "pdf", "text", "xhtml",
@@ -120,6 +120,11 @@ impl ExternalOpenQueue {
 }
 
 pub fn is_book_path(path: &Path) -> bool {
+    if path.file_name().and_then(|name| name.to_str()).is_some_and(|name| {
+        name.to_ascii_lowercase().ends_with(".fb2.zip")
+    }) {
+        return true;
+    }
     path.extension()
         .and_then(|ext| ext.to_str())
         .is_some_and(|ext| {
@@ -372,5 +377,18 @@ mod tests {
             collected,
             vec![dir.path().join("book.pdf").to_string_lossy().into_owned()]
         );
+    }
+
+    #[test]
+    fn collect_accepts_compound_fictionbook_suffix_without_claiming_other_zips() {
+        let dir = tempfile::tempdir().unwrap();
+        for name in ["Book.FB2.ZIP", "ordinary.zip", "Book.fb2.zip.bak"] {
+            std::fs::write(dir.path().join(name), b"fixture").unwrap();
+        }
+        let collected = collect_book_paths(
+            ["Book.FB2.ZIP", "ordinary.zip", "Book.fb2.zip.bak"], Some(dir.path()),
+        );
+        assert_eq!(collected, vec![dir.path().join("Book.FB2.ZIP").to_string_lossy().into_owned()]);
+        assert!(!is_book_path(Path::new("directory.fb2.zip/ordinary.zip")));
     }
 }

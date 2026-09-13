@@ -16,9 +16,9 @@ declare global {
 }
 
 /**
- * Extensions accepted by the importer. Single source of truth shared by the
- * native dialog filter and the web `<input accept>` fallback. Mirrors the
- * extensions recognized by `detectBookFormat` in `library-db`.
+ * Candidate suffixes shared by the native dialog and web input fallback.
+ * OS filters match the final suffix, so ZIP is needed to select `.fb2.zip`.
+ * Selection is not format validation: import still detects/parses the source.
  */
 export const BOOK_FILE_EXTENSIONS = [
   "epub",
@@ -29,6 +29,7 @@ export const BOOK_FILE_EXTENSIONS = [
   "kf8",
   "fb2",
   "fbz",
+  "zip",
   "cbz",
   "cbr",
   "txt",
