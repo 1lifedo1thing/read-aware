@@ -7,6 +7,10 @@
 
 ## 最近交付与接续入口
 
+本次 [Luna / max 并行回归试跑](./evidence/2026-09-13-luna-parallel-trial/report.md) 已收口，未创建 goal：597 个 JS/TS 文件首轮 2971 pass / 26 fail / 1 skip；Rust 470 pass / 3 fail / 2 ignored。11 个子代理分组中 10 个完成，1 个由主代理接管。类型检查通过；能力库存映射和远程市场兼容检查失败。未修产品源码，未新增桌面或真实模型证据。后续优先定位备份门禁、wipe 时钟及 Windows 卸载遗漏；不自动扩展阶段。
+
+以下保留前一轮验收交接：
+
 当前[有界16项验收](./host-capability-validation-bounded-goal.md)已完成证据收口：
 9通过、6外部阻塞、1失败，未增加范围。结论及最小后续见[最终报告](./evidence/2026-09-13-bounded-validation/final-report.md)。
 B16单轮修复后仍漏笔记标点；B08权限阻塞未动剪贴板。原资料/配置恢复，自有实例
