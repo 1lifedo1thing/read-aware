@@ -1975,3 +1975,20 @@ Test Book/Ada Writer/803字节，点击书架进入Chapter One/Nested text正文
 ReadAware Format Validation.app，退出0，原生1m12s，SHA256 603dfe1a…；
 包含第69/70修复。实际新包启动/验收另记，构建不等于运行。详见
 [desktop-picker-image-visible-observations.json](./desktop-picker-image-visible-observations.json)。
+
+## 第七十四流程：最新隔离发布包的四格式原生选择与实际阅读
+
+新包SHA256 603dfe1a…确认运行PID14154/Format Validation.app/tauri://localhost，
+生产CSP不变、无debug bridge。退出旧包后直接选择新路径，解决CUA对已退出旧包
+读AX会重启旧路径的问题。原一书四标注保留；不是给旧实例套新构建结论。
+
+系统Open列表精选四个自有文件：RAR5 CBR615字节、FB2 ZIP803字节、TEXT89字节、
+严格XML XHTML243字节。原生入库格式cbr/fb2/txt/html，实际开书全部呈现内容。
+CBR三页目录page1/page2/page10自然排序，截图绿/蓝/橙与夹具一致，定位第一/三页
+对应1/3与3/3。首次开书观察到2/3，首开位置需另行定位，未声明这一边界通过。
+TEXT中文/英文正文画面可读，XHTML标题/中文正文及FB2章节/图片/脚注入口均进入
+实际阅读器，不外推脚注交互或其他格式变体。
+
+书架实际Select books只选四本自有书，批准Remove 4 books后原生仅余原书，
+四书源/封面文件不存在、待清理0、原四标注保留。无产品改动；新包中其他修复
+不因本批自动算已验。见[packaged-format-native-observations.json](./packaged-format-native-observations.json)。
