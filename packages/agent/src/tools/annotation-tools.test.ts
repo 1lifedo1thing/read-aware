@@ -28,6 +28,14 @@ test("Agent creates an underline through the canonical highlight command", async
   expect(parsed(await tool("create_annotation").execute("create", { kind: "highlight", text: "Default" }))).toMatchObject({ style: "highlight" });
 });
 
+test("create_annotation preserves a dictated note body, including terminal punctuation", async () => {
+  const { deps, tool } = fixture();
+  const body = "核对作者的问题措辞。";
+  const result = parsed(await tool("create_annotation").execute("create", { kind: "note", body }));
+  expect(result).toMatchObject({ kind: "note", body, bookId });
+  expect(await deps.annotations.getAnnotation(result.id)).toMatchObject({ kind: "note", body });
+});
+
 test("exact annotation reads preserve book/type filters without scanning the list", async () => {
   const { deps, tool } = fixture();
   deps.annotations.listAnnotations = async () => { throw new Error("Unexpected full list"); };

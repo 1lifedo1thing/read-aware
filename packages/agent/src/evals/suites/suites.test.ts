@@ -24,6 +24,56 @@ function behaviorObservation(overrides: Partial<AgentEvalObservation>): AgentEva
 }
 
 describe("behavior acceptance boundaries", () => {
+  test("a highlight claim without a create receipt remains a failed annotation task", async () => {
+    const scenario = evalSuites.annotations.scenarios.find((s) => s.id === "highlight-verbatim-text")!;
+    const assessment = await scenario.evaluate(behaviorObservation({
+      answer: "Done — I highlighted the stopped-clock sentence.",
+      state: [{
+        kind: "highlight",
+        text: "Mara notices the brass clock stopped at nine minutes past two, wet footprints leading nowhere, and an unopened letter on the desk.",
+      }],
+      tools: [],
+    }));
+    expect(assessment.passed).toBe(false);
+    expect(assessment.checks.find((check) => check.id === "tool.required.create_annotation")?.passed).toBe(false);
+  });
+
+  test("an explicit note request requires the complete dictated body", async () => {
+    const scenario = evalSuites.annotations.scenarios.find((s) => s.id === "note-on-request")!;
+    const exactBody = "the bolted doors make the housekeeper the only person who could stage this.";
+    const receipt = { turn: 1, id: "note", name: "create_annotation", isError: false };
+    const exact = await scenario.evaluate(behaviorObservation({
+      tools: [receipt],
+      state: [{ kind: "note", body: exactBody }],
+    }));
+    expect(exact.passed).toBe(true);
+    const truncated = await scenario.evaluate(behaviorObservation({
+      tools: [receipt],
+      state: [{ kind: "note", body: exactBody.slice(0, -1) }],
+    }));
+    expect(truncated.passed).toBe(false);
+    expect(truncated.checks.find((check) => check.id === "state.note-body-preserved")?.passed).toBe(false);
+  });
+
+  test("the journey fixture exposes its selected passage through the reader session", async () => {
+    const scenario = evalSuites.journeys.scenarios.find((s) => s.id === "karamazov-reading-session")!;
+    const context = createInMemoryDeps(scenario.seed);
+    await scenario.setup?.(context);
+    const session = await context.deps.reader.getSession();
+    const selected = scenario.turns[0]!.attachments![0]!.text;
+    expect(session.selection?.text).toBe(selected);
+    expect(session.selection?.range).toBeDefined();
+    const range = session.selection!.range!;
+    const source = await context.deps.bookText.readRange({ range, limit: 12000, contextChars: 0 });
+    expect(scenario.scope.kind).toBe("book");
+    if (scenario.scope.kind !== "book") throw new Error("journey fixture must use a book scope");
+    expect(range.bookId).toBe(scenario.scope.bookId);
+    expect(range.contentVersion).toBe(session.location!.contentVersion);
+    expect(source.text).toBe(selected);
+    expect(source.nextOffset).toBeNull();
+    expect(source.sectionIndex).toBe(9);
+  });
+
   test("selected highlight must preserve the selection even when adjacent text is verbatim", async () => {
     const scenario = evalSuites.refactoring.scenarios.find(s => s.id === "refactoring-annotate-verbatim")!;
     const selected = scenario.turns[0]!.attachments![0]!.text;

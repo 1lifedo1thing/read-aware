@@ -5,7 +5,7 @@
  * 叠加不劣化——跨章重置不丢话题、标注穿插不打断对话、末轮回顾能把
  * 整个会话串起来。断言素材照旧全部从 fixture 文本实证。
  */
-import { assessmentFromChecks, combineAssessments } from "../../assertions";
+import { assessmentFromChecks, combineAssessments, evaluateAgentTrace } from "../../assertions";
 import { defineAgentEvalScenario, type AgentEvalScenario } from "../../agent-harness";
 import { realBook } from "../../book-fixtures";
 import type { AgentEvalObservation, EvalAssessment, EvalSuite } from "../../types";
@@ -14,6 +14,11 @@ import {
   fenceDisciplineAssessment,
   noFenceAssessment,
 } from "../realbook/real-book-helpers";
+import {
+  highlightVerbatimAssessment,
+  observeSelectionAnnotations,
+  selectFixtureRange,
+} from "../realbook/annotation-assessment";
 
 const kara = realBook("karamazov");
 const fowler = realBook("refactoring");
@@ -130,19 +135,37 @@ function memorySavedAssessment(observation: AgentEvalObservation, fragment: stri
 
 type SetupContext = Parameters<NonNullable<AgentEvalScenario["setup"]>>[0];
 
-function observeJourneyState({ stores }: SetupContext) {
+async function observeJourneyState({ stores, deps }: SetupContext) {
   return {
-    annotations: stores.annotations.map((annotation) => ({
-      kind: annotation.kind,
-      text:
-        annotation.kind === "highlight"
-          ? annotation.text
-          : annotation.kind === "note"
-            ? annotation.body
-            : "",
-    })),
+    annotations: await observeSelectionAnnotations(stores, deps),
     memories: stores.savedMemoryInputs.map((input) => ({ content: input.content })),
   };
+}
+
+function journeyAnnotations(observation: AgentEvalObservation): unknown[] {
+  const state = observation.state;
+  if (!state || typeof state !== "object" || Array.isArray(state)) return [];
+  const annotations = (state as { annotations?: unknown }).annotations;
+  return Array.isArray(annotations) ? annotations : [];
+}
+
+function journeyAnnotationWrites(observation: AgentEvalObservation): EvalAssessment {
+  const writes = observation.tools.filter(
+    (tool) => tool.turn === 3 && tool.name === "create_annotation" && !tool.isError,
+  );
+  return assessmentFromChecks([
+    {
+      id: "tool.journey-annotation-writes",
+      category: "tool",
+      passed: writes.length === 2,
+      message:
+        writes.length === 2
+          ? "the highlight and note each have a successful create_annotation receipt"
+          : "the journey did not produce exactly two successful annotation writes",
+      expected: 2,
+      actual: writes.length,
+    },
+  ]);
 }
 
 export const journeysEvalSuite: EvalSuite<AgentEvalScenario> = {
@@ -163,6 +186,16 @@ export const journeysEvalSuite: EvalSuite<AgentEvalScenario> = {
         chapterDigests: kara.digestsSeed(9),
       },
       seedSummary: { ...(kara.seedSummary(10) as object), journey: "6 turns" },
+      setup: async ({ deps }) => {
+        // The quoted attachment mirrors the UI payload, while the reader
+        // session must also expose the exact active range for annotation.
+        await selectFixtureRange({
+          deps,
+          bookId: kara.bookId,
+          chapterIndex: 9,
+          text: ALYOSHA_DEFENSE,
+        });
+      },
       turns: [
         {
           text: "这段话什么意思？为什么叙述者要这么写？",
@@ -194,6 +227,14 @@ export const journeysEvalSuite: EvalSuite<AgentEvalScenario> = {
       criteria: {
         journey:
           "selection Q → pronoun follow-up → verbatim highlight + note → cross-chapter continuation → explicit remember → recap covering the session's threads",
+        annotation: {
+          selectedText: ALYOSHA_DEFENSE,
+          chapterIndex: 9,
+          noteBody: "叙述者在为阿辽沙辩护。",
+        },
+      },
+      expectation: {
+        tools: { required: ["create_annotation"], noErrors: true },
       },
       observeState: observeJourneyState,
       rubric: [
@@ -202,15 +243,23 @@ export const journeysEvalSuite: EvalSuite<AgentEvalScenario> = {
       ],
       evaluate: (observation) =>
         combineAssessments(
+          evaluateAgentTrace(observation, {
+            tools: { required: ["create_annotation"], noErrors: true },
+          }),
+          journeyAnnotationWrites(observation),
           // T4 跨章后仍接得住 T1-2 的话题（阿辽沙），并接上新章内容（长老）
           turnCoverage(observation, 4, "answer.crossing-continuity", ["阿辽沙"], 1),
           turnCoverage(observation, 4, "answer.new-chapter-content", ["长老"], 1),
           // T6 回顾至少串起本会话的两条线
           turnCoverage(observation, 6, "answer.recap-threads", ["阿辽沙", "长老", "叙述"], 2),
-          annotationsAssessment(observation, {
-            highlightWithin: kara.epub().chapters[9]!.text,
-            requireNote: true,
-          }),
+          highlightVerbatimAssessment(
+            { state: journeyAnnotations(observation) },
+            kara.epub().chapters[9]!.text,
+            ALYOSHA_DEFENSE,
+            kara.bookId,
+            9,
+            "叙述者在为阿辽沙辩护。",
+          ),
           memorySavedAssessment(observation, "叙述"),
           fenceDisciplineAssessment(observation, 10),
           cjkAnswerAssessment(observation),
