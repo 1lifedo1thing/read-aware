@@ -3,6 +3,7 @@
  * 行为刻意与目标语义对齐：记忆初始低置信、强化 +证据+置信、
  * 检索按 pinned/importance/recency 排序。
  */
+import { prepareMemoryAnnotationSource } from "./annotation-source";
 import { annotationPageFixture } from "./annotation-pages";
 import { createWorkspaceFixture } from "./workspace-fixture";
 import { createAnnotationMutationFixture } from "./annotation-mutations";
@@ -365,6 +366,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
   const entityRegistry = createEntityRegistryFixture();
   const identityConsolidation = createIdentityConsolidationFixture(() => deps, entityRegistry);
   const contextBundles = createContextBundleFixture(() => deps);
+  const bookNavigation = createMemoryBookNavigation(stores.chapters);
   const deps: RuntimeDeps = {
     contextBundles,
     readingAiActions: {
@@ -574,14 +576,18 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
             (!filter?.kind || a.kind === filter.kind) &&
             (!filter?.query || annotationText(a).includes(filter.query)),
         ),
-      createHighlight: async ({ bookId, text, anchor, chapter, color, style }) => {
+      createHighlight: async ({ bookId, text, anchor, chapter, color, style, range }, signal) => {
+        const source = range === undefined ? undefined : await prepareMemoryAnnotationSource(
+          deps.bookText.readRange, { bookId, text, anchor, chapter, range }, signal);
+        signal?.throwIfAborted();
         const now = new Date().toISOString();
         const highlight: AnnotationItem = {
           kind: "highlight",
           id: `annotation-${++annotationCounter}`,
           bookId,
           text,
-          anchor,
+          anchor: source?.cfi ?? anchor,
+          ...(source ? { range: source } : {}),
           chapterHref: chapter,
           color: color ?? "yellow",
           style: style ?? "highlight",
@@ -592,7 +598,10 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
         annotationMutations.touch(highlight.id);
         return highlight;
       },
-      createNote: async ({ bookId, body, quotedText, anchor, chapter }) => {
+      createNote: async ({ bookId, body, quotedText, anchor, chapter, range }, signal) => {
+        const source = range === undefined ? undefined : await prepareMemoryAnnotationSource(
+          deps.bookText.readRange, { bookId, text: quotedText ?? "", anchor, chapter, range }, signal);
+        signal?.throwIfAborted();
         const now = new Date().toISOString();
         const note: AnnotationItem = {
           kind: "note",
@@ -600,7 +609,8 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
           bookId,
           body,
           quotedText,
-          anchor,
+          anchor: source?.cfi ?? anchor,
+          ...(source ? { range: source } : {}),
           chapterHref: chapter,
           createdAt: now,
           updatedAt: now,
@@ -613,7 +623,8 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
         stores.asks.push(input);
       },
     },
-    reader: createMemoryReader(books[0]?.id, stores.readerRequests),
+    reader: createMemoryReader(books[0]?.id, stores.readerRequests, async bookId =>
+      stores.chapters.has(bookId) ? (await bookNavigation.getNavigationToc(bookId)).contentVersion : "fixture"),
     interactions: {
       request: async (request) => {
         stores.interactions.push(request);
@@ -700,7 +711,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
       openImageResource: async () => { throw new AppError("library/content-unavailable", "Fixture has no book images"); },
       readReference: async () => { throw new AppError("library/content-unavailable", "Fixture has no book reference documents"); },
       preparation: createMemoryTextPreparation(stores.chapters),
-      ...createMemoryBookNavigation(stores.chapters),
+      ...bookNavigation,
       getTextState: async bookId => {
         const chapters = stores.chapters.get(bookId);
         return { bookId, contentVersion: "fixture", status: chapters ? "ready" : "unprepared",

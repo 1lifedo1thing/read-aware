@@ -15,7 +15,7 @@ import {
   leakAssessment,
   noFenceAssessment,
 } from "./real-book-helpers";
-import { assessmentFromChecks } from "../../assertions";
+import { highlightVerbatimAssessment, observeSelectionAnnotations } from "./annotation-assessment";
 import { SPOILER_POLICY } from "../../../context/spoiler-policy";
 
 interface GridBookConfig {
@@ -196,56 +196,8 @@ function typeDiscipline(
 
 type SetupContext = Parameters<NonNullable<AgentEvalScenario["setup"]>>[0];
 
-function observeAnnotations({ stores }: SetupContext) {
-  return stores.annotations.map((annotation) => ({
-    kind: annotation.kind,
-    text:
-      annotation.kind === "highlight"
-        ? annotation.text
-        : annotation.kind === "note"
-          ? annotation.body
-          : "",
-  }));
-}
-
-function highlightVerbatimAssessment(
-  observation: AgentEvalObservation,
-  chapterText: string,
-  selectedText: string,
-): EvalAssessment {
-  const state = Array.isArray(observation.state)
-    ? (observation.state as Array<{ kind: string; text: string }>)
-    : [];
-  const highlights = state.filter((entry) => entry.kind === "highlight");
-  const verbatim =
-    highlights.length > 0 &&
-    highlights.every((entry) => entry.text.length > 0 && chapterText.includes(entry.text));
-  const hasNote = state.some((entry) => entry.kind === "note" && entry.text.length > 0);
-  return assessmentFromChecks([
-    {
-      id: "state.highlight-selection-boundary",
-      category: "state",
-      passed: highlights.length === 1 && highlights[0]!.text === selectedText,
-      message: "highlight must match exactly the attached selection, without adjacent text",
-      expected: selectedText,
-      actual: highlights.map((entry) => entry.text),
-    },
-    {
-      id: "state.highlight-verbatim",
-      category: "state",
-      passed: verbatim,
-      message: verbatim
-        ? "highlight text is a verbatim span of the chapter"
-        : "highlight is missing or paraphrases the book text",
-      actual: highlights.map((entry) => entry.text),
-    },
-    {
-      id: "state.note-recorded",
-      category: "state",
-      passed: hasNote,
-      message: hasNote ? "a note was recorded" : "no note was recorded",
-    },
-  ]);
+function observeAnnotations({ stores, deps }: SetupContext) {
+  return observeSelectionAnnotations(stores, deps);
 }
 
 function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
@@ -334,14 +286,14 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
     );
   }
 
-  // ── 标注保真：高亮必须逐字，笔记必须落库。 ──
+  // ── 标注保真：高亮逐字，笔记正文保真，二者均附着已验证的同一选区。 ──
   {
     const sentence = book.pickSentence(config.annotationChapter);
     const chapterText = book.epub().chapters[config.annotationChapter]!.text;
     scenarios.push(
       defineAgentEvalScenario({
         id: `${config.slug}-annotate-verbatim`,
-        description: `Highlight + note flow on ${config.slug}: verbatim highlight text, note recorded.`,
+        description: `Highlight + note flow on ${config.slug}: verbatim highlight and note attached to the verified selected range.`,
         tags: [config.slug, "state", "book"],
         scope,
         seed: baseSeed(),
@@ -365,7 +317,7 @@ function scenariosFor(config: GridBookConfig): AgentEvalScenario[] {
               tools: { required: ["create_annotation"], noErrors: true },
               interactions: { forbiddenKinds: ["question", "permission"] },
             }),
-            highlightVerbatimAssessment(observation, chapterText, sentence),
+            highlightVerbatimAssessment(observation, chapterText, sentence, book.bookId, config.annotationChapter),
             typeDiscipline(book, observation, config.annotationChapter),
           ),
       }),

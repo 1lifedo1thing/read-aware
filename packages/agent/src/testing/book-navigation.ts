@@ -24,6 +24,14 @@ export function createMemoryBookNavigation(chapters: Map<string, ChapterSeed[]>)
       const source = entries[sectionIndex]?.text;
       if (!source || end > source.length || end <= start) throw new AppError("library/range-not-found", "Missing fixture range");
       const text = source.slice(start, end);
+      // Like Foliate's precise DOM CFI path: quote verifies, never relocates.
+      const compact = (value: string) => value.replace(/[\s\u00ad]/gu, "");
+      const quote = query.range.textQuote;
+      if (!text.trim() || quote && (compact(text) !== compact(quote.exact)
+        || !compact(source.slice(0, start)).endsWith(compact(quote.prefix ?? ""))
+        || !compact(source.slice(end)).startsWith(compact(quote.suffix ?? "")))) {
+        throw new AppError("library/range-not-found", "Fixture quote does not match its range");
+      }
       if (query.offset > text.length) throw new AppError("library/invalid-range", "Invalid fixture offset");
       const next = Math.min(text.length, query.offset + query.limit);
       signal?.throwIfAborted();

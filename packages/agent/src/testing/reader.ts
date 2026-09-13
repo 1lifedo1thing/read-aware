@@ -6,7 +6,8 @@ import { normalizeReadingEmphasisWrite, normalizeReadingEmphasisRef, type Readin
 export type ReaderRequest = { type: "open" | "goTo" | "back" | "forward" | "step" | "close" | "reload"; bookId?: string; anchor?: string; chapterHref?: string; direction?: string };
 
 /** Port fixture only; physical renderer behavior is tested in the host controller suite. */
-export function createMemoryReader(initialBookId: string | undefined, requests: ReaderRequest[]): ReaderPort {
+export function createMemoryReader(initialBookId: string | undefined, requests: ReaderRequest[],
+  contentVersion: (bookId: string) => Promise<string> = async () => "fixture"): ReaderPort {
   const playback: ReadingPlaybackSnapshot = { status: "unavailable", unavailableReason: "no-voice", backend: null, fallback: false, owner: null, cfiRange: null };
   const mode: ReadingModeSnapshot = { status: "unavailable", unavailableReason: "no-provider", requestedActive: false,
     modeKey: null, label: null, availableModes: [], unitId: null, units: [], progress: null, cfiRange: null, position: null };
@@ -22,6 +23,10 @@ export function createMemoryReader(initialBookId: string | undefined, requests: 
     for (const panel of Object.values(panels)) panel.visible = visible && panel.open;
   };
   let location: ReadingLocation | null = initialBookId ? { bookId: initialBookId, contentVersion: "fixture", fraction: 0 } : null;
+  const initialLocation = location;
+  const initialized = initialLocation ? contentVersion(initialLocation.bookId).then(version => {
+    if (location === initialLocation) location.contentVersion = version;
+  }) : Promise.resolve();
   const receipt = (): ReadingNavigationReceipt => {
     if (!location) throw new Error("No active fixture reader");
     revision++;
@@ -46,6 +51,7 @@ export function createMemoryReader(initialBookId: string | undefined, requests: 
     closeReferencePreview: async (_owner, id) => ({ status: "not-current", id }),
     listEmphasis: async () => structuredClone([...emphasis.values()]),
     putEmphasis: async (input, signal, guard) => {
+      await initialized;
       checkSelection(signal, guard); const value = normalizeReadingEmphasisWrite(input);
       if (value.ranges[0].bookId !== location!.bookId) throw new AppError("reader/out-of-scope", "Open the fixture book first");
       if (value.ranges[0].contentVersion !== location!.contentVersion) throw new AppError("reader/stale-location", "Fixture source changed");
@@ -60,6 +66,7 @@ export function createMemoryReader(initialBookId: string | undefined, requests: 
       return { status: "completed", id: ref.id, removed: emphasis.delete(ref.id) };
     },
     selectRange: async (input, signal, guard) => {
+      await initialized;
       const range = normalizeBookRangeQuery({ range: input }).range;
       checkSelection(signal, guard);
       if (range.bookId !== location!.bookId) throw new AppError("reader/out-of-scope", "Open the fixture book first");
@@ -87,7 +94,7 @@ export function createMemoryReader(initialBookId: string | undefined, requests: 
       panels[panel] = { open, visible: open && controls.visible }; revision++;
       return { status: "completed", panel, snapshot: { sessionId: "fixture", bookId: location.bookId, revision, controlsVisible: controls.visible, sizes: { ...sizes }, layout: "docked", panels: structuredClone(panels) } };
     },
-    getSession: async () => ({ revision, sessionId: location ? "fixture" : null, bookId: location?.bookId ?? null, status: location ? "ready" : "idle", location, visibleText: "", selection: structuredClone(selection), history: { canGoBack: false, canGoForward: false }, playback, mode, controls: location ? { ...controls } : null, pagination: null }),
+    getSession: async () => { await initialized; return ({ revision, sessionId: location ? "fixture" : null, bookId: location?.bookId ?? null, status: location ? "ready" : "idle", location, visibleText: "", selection: structuredClone(selection), history: { canGoBack: false, canGoForward: false }, playback, mode, controls: location ? { ...controls } : null, pagination: null }); },
     setControls: async visible => {
       if (!location) throw new Error("No active fixture reader");
       showControls(visible); revision++;
@@ -103,18 +110,18 @@ export function createMemoryReader(initialBookId: string | undefined, requests: 
       if (action === "start") throw new Error("Fixture has no audio backend");
       return { status: "completed", sessionId: "fixture", playback };
     },
-    openBook: async bookId => { requests.push({ type: "open", bookId }); if (location?.bookId !== bookId) emphasis.clear(); location = { bookId, contentVersion: "fixture", fraction: 0 }; return receipt(); },
+    openBook: async bookId => { requests.push({ type: "open", bookId }); if (location?.bookId !== bookId) emphasis.clear(); location = { bookId, contentVersion: await contentVersion(bookId), fraction: 0 }; return receipt(); },
     goTo: async target => {
       requests.push({ type: "goTo", bookId: target.bookId, anchor: target.cfi, chapterHref: target.href });
       const bookId = target.bookId ?? location?.bookId;
       if (!bookId) throw new Error("No active fixture reader");
-      location = { ...target, bookId, contentVersion: target.contentVersion ?? "fixture" }; return receipt();
+      location = { ...target, bookId, contentVersion: target.contentVersion ?? await contentVersion(bookId) }; return receipt();
     },
     step: async direction => { requests.push({ type: "step", direction }); return receipt(); },
     reload: async (signal, guard) => {
       checkSelection(signal, guard);
       requests.push({ type: "reload" });
-      location = { bookId: location!.bookId, contentVersion: "fixture", fraction: 0 };
+      location = { bookId: location!.bookId, contentVersion: await contentVersion(location!.bookId), fraction: 0 };
       emphasis.clear();
       return receipt();
     },
