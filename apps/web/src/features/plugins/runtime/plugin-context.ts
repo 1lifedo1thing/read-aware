@@ -7,6 +7,7 @@ import { assertToolApproval } from "../lib/plugin-tool-approval";
 import { resolvePluginBookCards } from "./plugin-book-cards";
 import { wrapReadingIntent } from "./plugin-reading-intents";
 import { pluginDurableKV } from "./plugin-durable-kv";
+import { scopePluginMemory } from "./plugin-scoped-memory";
 /**
  * Builds the `ctx` handed to a plugin's activate(). This is a POLICY shell:
  * the data surface itself is the shared domain layer (src/domain), built
@@ -1723,45 +1724,8 @@ export function buildPluginContext(
     } } } : {}) };
   }
 
-  // Memory recipes, graphs and profile projections may combine books or carry
-  // source text. They are unavailable for current/specified-book grants until
-  // a dedicated bounded projection exists; context.capture is covered here so
-  // it cannot become a side door around library/reading/annotations.
-  if (objectAccess.restricted && ctx.domains.memory) {
-    const rawMemory = ctx.domains.memory;
-    ctx.domains.memory = {
-      queries: {
-        context: {
-          history: denyPluginBookOperation("domains.memory.queries.context.history"),
-          read: denyPluginBookOperation("domains.memory.queries.context.read"),
-          export: denyPluginBookOperation("domains.memory.queries.context.export"),
-        },
-        profileContext: denyPluginBookOperation("domains.memory.queries.profileContext"),
-        entities: denyPluginBookOperation("domains.memory.queries.entities"),
-        profile: denyPluginBookOperation("domains.memory.queries.profile"),
-        inspect: denyPluginBookOperation("domains.memory.queries.inspect"),
-        classification: denyPluginBookOperation("domains.memory.queries.classification"),
-        getGraphTask: denyPluginBookOperation("domains.memory.queries.getGraphTask"),
-        listGraphTasks: denyPluginBookOperation("domains.memory.queries.listGraphTasks"),
-        search: denyPluginBookOperation("domains.memory.queries.search"),
-        page: denyPluginBookOperation("domains.memory.queries.page"),
-        bookGraph: denyPluginBookOperation("domains.memory.queries.bookGraph"),
-      },
-      ...(rawMemory.commands ? {
-        commands: {
-          decideEntity: denyPluginBookOperation("domains.memory.commands.decideEntity"),
-          context: { capture: denyPluginBookOperation("domains.memory.commands.context.capture") },
-          updateProfile: denyPluginBookOperation("domains.memory.commands.updateProfile"),
-          completeOnboarding: denyPluginBookOperation("domains.memory.commands.completeOnboarding"),
-          mutate: denyPluginBookOperation("domains.memory.commands.mutate"),
-          classify: denyPluginBookOperation("domains.memory.commands.classify"),
-          startGraphTask: denyPluginBookOperation("domains.memory.commands.startGraphTask"),
-          cancelGraphTask: denyPluginBookOperation("domains.memory.commands.cancelGraphTask"),
-          retryGraphTask: denyPluginBookOperation("domains.memory.commands.retryGraphTask"),
-        },
-      } : {}),
-      events: { observe: denyPluginBookOperation("domains.memory.events.observe") },
-    } as typeof ctx.domains.memory;
+  if (objectAccess.restricted && domain.memory) {
+    ctx.domains.memory = scopePluginMemory(domain.memory, objectAccess, lifecycle, resources, canUseHostService("llm", permissions));
   }
 
   // ─── Services ─────────────────────────────────────────────────────────────

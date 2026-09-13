@@ -23,6 +23,25 @@ test("fixed-book library lists remain available without opening the granted book
   }
 });
 
+test("the production plugin context exposes book-scoped memory with write grants kept separate", async () => {
+  const original = domain.createActorDomainView;
+  const spy = spyOn(domain, "createActorDomainView").mockImplementation((...args) => {
+    const view = original(...args);
+    if (view.memory) view.memory.queries.page = async query => ({
+      items: [], total: 0, offset: 0, nextOffset: null, revision: query.scopes.join(","),
+    });
+    return view;
+  });
+  const actor = buildPluginContext({ id: "fixed-memory-proof", name: "Fixed memory", version: "1.0.0",
+    schemaVersion: 1, requires: {}, permissions: ["memory:read"] }, "1.0.0", [], { mode: "book", bookId: "book-a" });
+  actor.lifecycle.promote();
+  try {
+    expect(actor.context.domains.memory!.commands).toBeUndefined();
+    expect((await actor.context.domains.memory!.queries.page({ scopes: ["book:book-a"] })).revision).toBe("book:book-a");
+    expect(() => actor.context.domains.memory!.queries.page({ scopes: ["book:book-b"] })).toThrow(expect.objectContaining({ code: "plugin/object-access-denied" }));
+  } finally { spy.mockRestore(); actor.lifecycle.stop(); await actor.lifecycle.drainCleanups(); }
+});
+
 test.each(([[], ["reading:read"], ["annotations:read"]] as PluginPermission[][]).map(permissions => ({ permissions })))(
   "restricted workspace cannot bypass object grants without library permission: %j", async ({ permissions }) => {
     const actor = buildPluginContext({ id: "object-surface-proof", name: "Object scope", version: "1.0.0",

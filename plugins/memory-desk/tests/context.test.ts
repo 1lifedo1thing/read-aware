@@ -11,7 +11,7 @@ function fixture() {
   let summary: string | undefined = "Original profile", version = revision, insights: string | null = "Stored conversation summary";
   let readFailure = false, writeFailure = false, count = 41;
   const calls: unknown[] = [], writes: unknown[] = [];
-  const ctx = { locale: "en", domains: {
+  const ctx = { locale: "en", grants: { book: { mode: "all" } }, domains: {
     memory: { queries: { profile: async (q: { offset?: number; limit?: number; expectedRevision?: string } = {}) => {
       calls.push(q);
       if (readFailure) throw Object.assign(Error("private storage failure"), { code: "db/error" });

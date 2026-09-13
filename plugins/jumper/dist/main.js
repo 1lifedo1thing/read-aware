@@ -118,7 +118,7 @@ var DOMAIN_CATALOG = {
   annotations: { version: "2.2.0", pluginAccess: ["read", "write"] },
   conversations: { version: "1.4.0", pluginAccess: ["read", "write"] },
   settings: { version: "1.10.0", pluginAccess: [] },
-  memory: { version: "2.7.0", pluginAccess: ["read", "write"] }
+  memory: { version: "2.8.0", pluginAccess: ["read", "write"] }
 };
 var DOMAIN_PERMISSIONS = Object.entries(DOMAIN_CATALOG).flatMap(([domain, definition]) => definition.pluginAccess.map((access) => `${domain}:${access}`));
 var FULL_DOMAIN_GRANTS = Object.freeze(Object.fromEntries(Object.keys(DOMAIN_CATALOG).map((id) => [id, "write"])));

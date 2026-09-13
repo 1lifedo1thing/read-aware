@@ -727,6 +727,8 @@ async function conversationSummary(ctx, target, title) {
 
 // src/views.ts
 async function memoryDesk(ctx) {
+  if (ctx.grants.book.mode !== "all")
+    return booksView(ctx);
   const t = strings(ctx.locale);
   return { kind: "list", title: t[0], items: [
     { id: "profile", title: contextWords(ctx.locale).profile, icon: "user", onSelect: async () => ({ view: await profileView(ctx) }) },

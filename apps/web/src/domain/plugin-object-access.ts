@@ -13,7 +13,7 @@ export type PluginBookAccessFence = {
   /** Aborted when a live current-book/session grant changes mid-operation. */
   readonly signal?: AbortSignal;
   /** Reject a result that settled after the current reader changed. */
-  assertUnchanged(): Promise<void>;
+  assertUnchanged(options?: { retain?: boolean }): Promise<void>;
   /** Release the current-reader observer when the underlying operation fails. */
   dispose(): void;
 };
@@ -104,7 +104,7 @@ export function createPluginBookAccessPolicy(
     };
     return {
       signal: controller.signal,
-      assertUnchanged: async () => {
+      assertUnchanged: async (checkOptions) => {
         try {
           const after = await readCurrent();
           currentSnapshot = after;
@@ -112,7 +112,7 @@ export function createPluginBookAccessPolicy(
             throw pluginObjectAccessDenied(`${operation} (current reader changed)`, after.bookId ?? undefined);
           }
           controller.signal.throwIfAborted();
-        } finally { release(); }
+        } finally { if (!checkOptions?.retain) release(); }
       },
       dispose: release,
     };

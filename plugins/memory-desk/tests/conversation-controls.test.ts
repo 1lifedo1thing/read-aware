@@ -15,7 +15,7 @@ function fixture() {
     send: () => { sends++; return true; }, draft: () => { drafts++; return true; }, retry: () => { retries++; return true; } });
   const writes: unknown[] = [], frames: PluginView[] = [];
   let handler: (state: typeof runtime) => unknown = () => {};
-  const ctx = { locale: "en", domains: { conversations: {
+  const ctx = { locale: "en", grants: { book: { mode: "all" } }, domains: { conversations: {
     queries: { runtime: async () => runtime, listThreads: async () => [{ id: target.id, title: "Thread" }],
       turnRequests: async () => requests.list("plugin:memory-desk") },
     commands: {

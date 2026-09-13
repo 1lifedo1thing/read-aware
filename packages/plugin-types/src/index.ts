@@ -1728,7 +1728,14 @@ export type PluginDomains = {
   reading?: PluginReadingDomain;
   annotations?: PluginAnnotationsDomain;
   conversations?: PluginConversationsDomain;
-  /** Memory 2.4. Graph generation additionally requires service:llm; handles belong to this activation. */
+  /** Memory 2.8 supports current/specified-book grants for book-scoped search,
+   * pages, inspect, mutations, classification, graphs/tasks and book context recipes.
+   * Restricted queries must name exactly one authorized book scope; global profile
+   * and identity APIs require an all-books grant. Current-book/session changes
+   * invalidate outstanding reads, observations and exported context resources,
+   * and cancel graph execution. Graph generation additionally requires service:llm;
+   * handles belong to this activation. Dispatched writes may have committed even
+   * if a later scope change prevents disclosure of their result; inspect before retry. */
   memory?: { queries: {
     /** Memory 2.4: the versioned context-bundle archive (`docs/context-bundles.md`). Every recipe also needs
      * read access to the domains it draws on: book_memory_context needs annotations and library, book scopes

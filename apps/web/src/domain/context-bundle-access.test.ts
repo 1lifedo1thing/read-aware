@@ -128,3 +128,27 @@ test("a caller cancelled after the seal releases the sealed handle instead of le
   await expect(early.access.export(selector, early.owner, earlyCaller.signal)).rejects.toMatchObject({ message: "early" });
   expect(early.calls).toEqual(["initialize", "context_bundle_source_revision"]); expect(early.released).toEqual([]);
 });
+
+test.each(["reading_intent_context", "conversation_insights_context"] as const)(
+  "exporting %s retains and releases the host's book authority", async kind => {
+    const f = fixture(), controller = new AbortController(); let releases = 0;
+    const objectAccess = { signal: controller.signal, isAllowed: () => !controller.signal.aborted, dispose: () => { releases++; } };
+    const bundle = await createContextBundle({ format: "readaware.context", schemaVersion: 1, recipeVersion: 1,
+      kind, scope: { kind: "book", id: "book-one" }, sourceRevision: "fixture", items: [], omissions: [] });
+    f.archive(bundle);
+    await f.access.export({ kind, scope: { kind: "book", id: "book-one" }, version: bundle.version }, f.owner, undefined, objectAccess);
+    const lease = f.lease()!;
+    expect(releases).toBe(0); expect(lease.isAllowed()).toBe(true);
+    controller.abort(new AppError("plugin/object-access-denied", "Reader changed"));
+    expect(lease.signal.aborted).toBe(true); expect(lease.isAllowed()).toBe(false);
+    lease.dispose(); lease.dispose(); expect(releases).toBe(1);
+  },
+);
+
+test("an export that fails before resource admission also releases its book authority", async () => {
+  const f = fixture(); let releases = 0;
+  const objectAccess = { signal: new AbortController().signal, isAllowed: () => true, dispose: () => { releases++; } };
+  await expect(f.access.export({ kind: "reading_intent_context", scope: { kind: "book", id: "a" }, version: `cb1:${"a".repeat(64)}` },
+    f.owner, undefined, objectAccess)).rejects.toMatchObject({ code: "fs/not-found" });
+  expect(releases).toBe(1);
+});

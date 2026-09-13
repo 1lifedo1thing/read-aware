@@ -12,7 +12,7 @@ export interface BookGraphTaskExecution {
   onChapterCommitted(chapter: number): void;
   onReport(report: DigestReport): void;
 }
-type Task = { state: BookGraphTaskSnapshot; controller: AbortController; pending?: Set<number>; detach(): void };
+type Task = { state: BookGraphTaskSnapshot; controller: AbortController; pending?: Set<number>; settled?: Promise<void>; detach(): void };
 const active = (task: Task) => ["queued", "running", "cancelling"].includes(task.state.status);
 const cancelled = () => new AppError("memory/cancelled", "Graph task cancelled");
 
@@ -59,6 +59,7 @@ export class BookGraphTaskOwner implements BookGraphTaskPort {
     const initial = structuredClone(task.state);
     // Register completion before execution can call back into host shutdown.
     const work = Promise.resolve().then(() => this.run(task, targets));
+    task.settled = work;
     this.executions.add(work);
     void work.then(() => this.executions.delete(work), () => this.executions.delete(work));
     return initial;
@@ -86,6 +87,10 @@ export class BookGraphTaskOwner implements BookGraphTaskPort {
     } finally { task.detach(); }
   }
   async get(bookId: string, taskId: string) { return structuredClone(this.lookup(bookId, taskId).state); }
+  /** Host cleanup follows physical execution, including cancellation after dispatch. */
+  whenSettled(bookId: string, taskId: string): Promise<void> {
+    return this.lookup(bookId, taskId).settled ?? Promise.resolve();
+  }
   async list(bookId: string) {
     this.assertLive(); validateClassificationBookId(bookId);
     return [...this.tasks.values()].filter(task => task.state.bookId === bookId).map(task => structuredClone(task.state));

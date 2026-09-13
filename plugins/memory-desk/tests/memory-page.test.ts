@@ -7,7 +7,7 @@ function fixture() {
   const rows: MemoryRecord[] = Array.from({ length: 105 }, (_, index) => ({ id: `m${index}`, scope: "user", kind: "fact",
     content: `Memory ${index}`, importance: 0.5, evidenceCount: 1, createdAt: "now", updatedAt: "now" }));
   const queries: MemoryPageQuery[] = [], commands = new Map<string, PluginCommand>();
-  const ctx = { locale: "en", domains: { reading: { commands: {} }, library: {}, conversations: {}, memory: { queries: {
+  const ctx = { locale: "en", grants: { book: { mode: "all" } }, domains: { reading: { commands: {} }, library: {}, conversations: {}, memory: { queries: {
     page: async (query: MemoryPageQuery) => {
       queries.push(structuredClone(query));
       if (query.expectedRevision !== undefined && query.expectedRevision !== revision) throw Object.assign(Error("changed"), { code: "memory/conflict" });

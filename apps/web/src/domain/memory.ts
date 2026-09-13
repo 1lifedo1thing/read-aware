@@ -18,6 +18,7 @@ import { decideEntity, queryEntities } from "./entity-registry";
 import { inspectProfileContext } from "./identity-consolidation";
 import { contextBundleAccess } from "./context-bundle-access";
 import type { ResourceOwner } from "../services/resource-owner";
+import type { ResourceAccess } from "../services/resource-access";
 import type { MemoryObservation, MemoryObservationQuery, MemoryObservationResult } from "@read-aware/core";
 
 const log = createLogger("memory-observation");
@@ -56,14 +57,18 @@ export function createMemoryDomain(origin: EventOrigin, lifetime?: AbortSignal, 
   };
   return { queries: { ...queries, profile, profileContext,
       entities: (query?: import("@read-aware/core").EntityQuery, signal?: AbortSignal) => queryEntities(query, entitySignal(signal)),
-      inspect: (id: string) => inspectMemory(id, lifetime), classification: (bookId: string) => inspectBookClassification(bookId, lifetime),
+      inspect: (id: string, signal?: AbortSignal) => inspectMemory(id, entitySignal(signal)), classification: (bookId: string, signal?: AbortSignal) => inspectBookClassification(bookId, entitySignal(signal)),
       listGraphTasks: (bookId: string) => tasks.list(bookId), getGraphTask: (bookId: string, taskId: string) => tasks.get(bookId, taskId),
       context: {
         history: (query: import("@read-aware/core").ContextBundleHistoryQuery, signal?: AbortSignal) => context.history(query, signal),
         read: (query: import("@read-aware/core").ContextBundleReadQuery, signal?: AbortSignal) => context.read(query, signal),
-        export: (query: import("@read-aware/core").ContextBundleReadQuery, owner: ResourceOwner, signal?: AbortSignal) => context.export(query, owner, signal),
+        export: (query: import("@read-aware/core").ContextBundleReadQuery, owner: ResourceOwner, signal?: AbortSignal, access?: ResourceAccess) => context.export(query, owner, signal, access),
       } },
-    commands: { mutate: (input: import("@read-aware/core").MemoryMutation) => mutateMemory(input, origin, lifetime),
+    commands: { mutate: (input: import("@read-aware/core").MemoryMutation, signal?: AbortSignal) => {
+      const work = mutateMemory(input, origin, entitySignal(signal));
+      trackCleanup?.(work.then(() => {}, () => {}));
+      return work;
+    },
       context: { capture: (selector: import("@read-aware/core").ContextBundleSelector, signal?: AbortSignal) => {
         const work = context.capture(selector, signal);
         // Publication dispatched to native drains to its real receipt even when the caller retires.
@@ -86,9 +91,22 @@ export function createMemoryDomain(origin: EventOrigin, lifetime?: AbortSignal, 
         trackCleanup?.(work.then(() => {}, () => {}));
         return work;
       },
-      classify: (input: import("@read-aware/core").BookClassificationChange) => changeBookClassification(input, origin, lifetime),
-      startGraphTask: (bookId: string, mode: "catch-up" | "rebuild", options?: import("@read-aware/core").BookGraphTaskOptions) => tasks.start(bookId, mode, options),
+      classify: (input: import("@read-aware/core").BookClassificationChange, signal?: AbortSignal) => {
+        const work = changeBookClassification(input, origin, entitySignal(signal));
+        trackCleanup?.(work.then(() => {}, () => {}));
+        return work;
+      },
+      startGraphTask: (bookId: string, mode: "catch-up" | "rebuild", options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.start(bookId, mode, options, entitySignal(access?.signal)), access),
       cancelGraphTask: (bookId: string, taskId: string) => tasks.cancel(bookId, taskId),
-      retryGraphTask: (bookId: string, taskId: string, options?: import("@read-aware/core").BookGraphTaskOptions) => tasks.retry(bookId, taskId, options) },
-    events: { observe: (input: MemoryObservationQuery, handler: (event: MemoryObservation) => unknown) => observer.observe(input, read, handler, lifetime) } };
+      retryGraphTask: (bookId: string, taskId: string, options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.retry(bookId, taskId, options, entitySignal(access?.signal)), access) },
+    events: { observe: (input: MemoryObservationQuery, handler: (event: MemoryObservation) => unknown,
+      authorizedRead?: (query: MemoryObservationQuery) => Promise<MemoryObservationResult>) => observer.observe(input, authorizedRead ?? read, handler, lifetime) } };
+
+  async function retainGraphTaskAccess(work: Promise<import("@read-aware/core").BookGraphTaskSnapshot>, access?: ResourceAccess) {
+    try {
+      const task = await work;
+      if (access) void tasks.whenSettled(task.bookId, task.taskId).then(() => access.dispose(), () => access.dispose());
+      return task;
+    } catch (error) { access?.dispose(); throw error; }
+  }
 }

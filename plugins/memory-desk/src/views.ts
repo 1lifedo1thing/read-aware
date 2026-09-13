@@ -9,6 +9,7 @@ import { conversationSummaries, conversationSummary } from "./conversation-summa
 import { contextWords } from "./context-strings";
 
 export async function memoryDesk(ctx: PluginContext): Promise<PluginListView> {
+  if (ctx.grants.book.mode !== "all") return booksView(ctx);
   const t = strings(ctx.locale);
   return { kind: "list", title: t[0], items: [
     { id: "profile", title: contextWords(ctx.locale).profile, icon: "user", onSelect: async () => ({ view: await profileView(ctx) }) },

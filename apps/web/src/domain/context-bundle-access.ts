@@ -8,7 +8,7 @@ import { contextBundles } from "./context-bundles";
 import { contextBundleHistory } from "./context-bundle-history";
 import { bookContextSources } from "./book-context-sources";
 import { exportContextBundle } from "./context-bundle-export";
-import type { ContextResourceAccess } from "../services/resource-access";
+import type { ContextResourceAccess, ResourceAccess } from "../services/resource-access";
 import type { ResourceOwner } from "../services/resource-owner";
 
 type Host = {
@@ -26,7 +26,7 @@ export type ContextBundleAccess = {
   capture(selector: ContextBundleSelector, signal?: AbortSignal): Promise<ContextBundleCaptureReceipt>;
   history(query: ContextBundleHistoryQuery, signal?: AbortSignal): Promise<ContextBundleHistoryPage>;
   read(query: ContextBundleReadQuery, signal?: AbortSignal): Promise<ContextBundle | null>;
-  export(query: ContextBundleReadQuery, owner: ResourceOwner, signal?: AbortSignal): Promise<ResourceRef>;
+  export(query: ContextBundleReadQuery, owner: ResourceOwner, signal?: AbortSignal, objectAccess?: ResourceAccess): Promise<ResourceRef>;
 };
 
 /** The public actor gate: recipe/scope selection, domain grants, current spoiler authority and a revocable export lease. */
@@ -64,32 +64,40 @@ export function createContextBundleAccess(host: Host, actor: ContextBundleActor)
       assertContextBundleGrants(actor.grants, query, "read");
       return readable(query, combine(caller));
     },
-    async export(input, owner, caller) {
-      const query = normalizeContextBundleReadQuery(input);
-      assertContextBundleGrants(actor.grants, query, "read");
-      const signal = combine(caller);
-      await host.initialize();
-      signal.throwIfAborted();
-      // The proof is captured before the archive read; native sealing rejects any source commit in between.
-      const sourceRevision = await host.invoke<string>("context_bundle_source_revision");
-      signal.throwIfAborted();
-      const bundle = await readable(query, signal);
-      if (bundle === null) throw new AppError("fs/not-found", "Context bundle version is not retained");
-      const revoke = new AbortController(), lifetime = actor.lifetime;
-      const retire = () => revoke.abort(lifetime?.reason ?? new AppError("ui/superseded", "Actor retired"));
-      const stopObserving = bundle.content.scope.kind === "book" && bundle.content.kind === "book_memory_context"
-        ? host.books.observePosition(bundle.content.scope.id, error => revoke.abort(error)) : () => {};
-      lifetime?.addEventListener("abort", retire, { once: true });
-      if (lifetime?.aborted) retire();
-      const access: ContextResourceAccess = { sourceRevision, signal: revoke.signal, isAllowed: () => !revoke.signal.aborted,
-        dispose: () => { lifetime?.removeEventListener("abort", retire); stopObserving(); } };
-      const ref = await host.exportBundle(owner, bundle, access, signal);
-      if (signal.aborted) {
-        // The consumer is gone; a handle nobody holds must not wait for its expiry.
-        await owner.release(ref.id).catch(host.report);
-        throw signal.reason;
-      }
-      return ref;
+    async export(input, owner, caller, objectAccess) {
+      let released = false;
+      let cleanup = () => objectAccess?.dispose();
+      const release = () => { if (!released) { released = true; cleanup(); } };
+      try {
+        const query = normalizeContextBundleReadQuery(input);
+        assertContextBundleGrants(actor.grants, query, "read");
+        const signal = combine(objectAccess ? AbortSignal.any([combine(caller), objectAccess.signal]) : caller);
+        if (objectAccess && !objectAccess.isAllowed()) throw new AppError("plugin/object-access-denied", "Context scope is no longer authorized");
+        await host.initialize();
+        signal.throwIfAborted();
+        // The proof is captured before the archive read; native sealing rejects any source commit in between.
+        const sourceRevision = await host.invoke<string>("context_bundle_source_revision");
+        signal.throwIfAborted();
+        const bundle = await readable(query, signal);
+        if (bundle === null) throw new AppError("fs/not-found", "Context bundle version is not retained");
+        const revoke = new AbortController(), lifetime = actor.lifetime;
+        const retire = () => revoke.abort(lifetime?.reason ?? new AppError("ui/superseded", "Actor retired"));
+        const stopObserving = bundle.content.scope.kind === "book" && bundle.content.kind === "book_memory_context"
+          ? host.books.observePosition(bundle.content.scope.id, error => revoke.abort(error)) : () => {};
+        lifetime?.addEventListener("abort", retire, { once: true });
+        if (lifetime?.aborted) retire();
+        cleanup = () => { lifetime?.removeEventListener("abort", retire); stopObserving(); objectAccess?.dispose(); };
+        const access: ContextResourceAccess = { sourceRevision,
+          signal: objectAccess ? AbortSignal.any([revoke.signal, objectAccess.signal]) : revoke.signal,
+          isAllowed: () => !revoke.signal.aborted && (!objectAccess || objectAccess.isAllowed()), dispose: release };
+        const ref = await host.exportBundle(owner, bundle, access, signal);
+        if (signal.aborted) {
+          // The consumer is gone; a handle nobody holds must not wait for its expiry.
+          await owner.release(ref.id).catch(host.report);
+          throw signal.reason;
+        }
+        return ref;
+      } catch (error) { release(); throw error; }
     },
   };
 }

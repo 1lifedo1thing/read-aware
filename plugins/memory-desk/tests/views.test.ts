@@ -4,10 +4,10 @@ import { graphSearch, graphView } from "../src/graph";
 import { booksView, memories, memoryDesk } from "../src/views";
 import { strings } from "../src/strings";
 
-function fixture() {
+function fixture(grant: PluginContext["grants"]["book"] = { mode: "all" }) {
   let graph: BookGraphResult = { graph: "chapter", chapterIndex: 0, chapterHref: "one.xhtml", summary: "Ada meets Ben", entities: [], relations: [] };
   const calls: unknown[] = [];
-  const ctx = { locale: "en", domains: {
+  const ctx = { locale: "en", grants: { book: grant }, domains: {
     library: { queries: { books: { list: async () => Array.from({ length: 41 }, (_, index) => ({ id: `b${index}`, title: `Book ${index}` })) } } },
     memory: { queries: { page: async (query: unknown) => { calls.push(query); return { items: [], total: 0, offset: 0, nextOffset: null, revision: `mpg1:${"a".repeat(64)}` }; }, bookGraph: async (id: string, query: unknown) => { calls.push({ id, query }); return graph; } } },
     reading: { commands: { goTo: async (target: unknown) => { calls.push(target); } } },
@@ -26,6 +26,15 @@ describe("Memory Desk public composition", () => {
     const last = await booksView(ctx, 99); expect(last.items).toHaveLength(1); expect(last.items[0]!.id).toBe("b40");
     expect(last.actions?.some(action => action.id === "previous")).toBe(true);
     expect(last.actions?.some(action => action.id === "next")).toBe(false);
+  });
+  test("a restricted installation opens the authorized books and their scoped memory query", async () => {
+    const { ctx, calls } = fixture({ mode: "book", bookId: "b" });
+    ctx.domains.library!.queries.books.list = async () => [{ id: "b", title: "Book" }] as never;
+    const home = await memoryDesk(ctx);
+    expect(home.items.map(item => item.id)).toEqual(["b"]);
+    const book = (await home.items[0]!.onSelect!())!.view as PluginListView;
+    await book.items.find(item => item.id === "memory")!.onSelect!();
+    expect(calls).toEqual([{ scopes: ["book:b"], query: undefined, limit: 20, offset: 0 }]);
   });
   test("form converts displayed chapter numbers, rejecting ambiguous modes", async () => {
     const { ctx, calls } = fixture(), form = graphSearch(ctx, "b");
