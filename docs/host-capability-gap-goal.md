@@ -35,3 +35,5 @@
 
 - 集中验收首轮：模型10场景机器7过/3败；人工逐条审阅已写入各run，另两项机器pass为人工partial（表达过长/依据不足），没有换算成全量通过。目录误拒、当前选区标注拒绝进入最后相关修复；未经授权confirmSpoiler尝试被宿主拒绝但模型纪律仍失败。新自由笔记题的实际正文、分号和句号保留通过。
 - 真实Full2：两本非空TXT经生产导入落盘；Worker全库/指定书，以及当前书A、当前书B的正向读取与跨书拒绝均通过（`22eb9439`、`8f242da4`）。同一Worker切书/撤权、真实写入、备份授权、搜索与editor交互仍pending，未把新启动Worker当撤权证明。
+
+- D4类型化提供者链：Full2真实Worker合成PCM→宿主朗读开始/停止通过；Listening Desk停用使在途调用返回plugin/cancelled，等待迟到合成后仍stopped，清理后commands/voices均为0。无service:network的真实Worker确认API不暴露（没有伪称实际HTTP请求拒绝）。工件`.eval/gap-closure/d4-playback.json`；这是类型化接线/权限暴露/生命周期证明，不是远端TTS质量或人工听感验收。
