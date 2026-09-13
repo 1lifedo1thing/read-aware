@@ -12,6 +12,6 @@
     "domains": { "annotations": "^2.2.0", "library": "^1.30.0", "reading": "^2.21.0" },
     "contributions": { "headerActions": "^1.0.0", "commands": "^1.0.0", "selectionActions": "^1.2.0" },
     "services": { "ui": "^1.2.0" },
-    "schemas": { "views": "^1.1.0" }
+    "schemas": { "views": "^1.11.0" }
   }
 }

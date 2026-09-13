@@ -265,16 +265,23 @@ async function detailView(ctx, id, refresh) {
   if (item.kind === "note") {
     if (item.quotedText)
       content.push({ kind: "quote", text: item.quotedText });
-    content.push({
-      kind: "form",
-      fields: [{ kind: "textarea", id: "body", label: tr(ctx.locale, "body"), value: item.body, rows: 8 }],
-      submitLabel: tr(ctx.locale, "save"),
-      onSubmit: async (values) => {
-        if (typeof values.body !== "string" || values.body.length > 1e5)
-          return { fieldErrors: { body: tr(ctx.locale, "bodyLimit") } };
-        return commit(ctx, [{ op: "updateNote", annotationId: id, expectedRevision: snapshot.revision, body: values.body }], "body", refresh);
-      }
-    });
+    const editor = {
+      kind: "editor",
+      label: tr(ctx.locale, "body"),
+      value: item.body,
+      revision: snapshot.revision,
+      maxLength: 1e5,
+      saveLabel: tr(ctx.locale, "save"),
+      onSave: async (value, revision) => {
+        if (revision !== snapshot.revision)
+          return { fieldErrors: { editor: tr(ctx.locale, "conflict") } };
+        if (value.length > 1e5)
+          return { fieldErrors: { editor: tr(ctx.locale, "bodyLimit") } };
+        return commit(ctx, [{ op: "updateNote", annotationId: id, expectedRevision: snapshot.revision, body: value }], "editor", refresh);
+      },
+      onCancel: refresh
+    };
+    content.push(editor);
   } else {
     content.push({ kind: "quote", text: item.text });
     if (item.kind === "highlight")

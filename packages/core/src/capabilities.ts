@@ -56,7 +56,7 @@ export type HostServicePermission = Exclude<
 
 /** Host-rendered declaration grammars, versioned apart from executable APIs. */
 export const DECLARATIVE_SCHEMA_CATALOG = {
-  views: { version: "1.10.0" },
+  views: { version: "1.11.0" },
   settings: { version: "1.0.0" },
   themes: { version: "1.0.0" },
 } as const;

@@ -602,6 +602,29 @@ export type PluginImageView = {
 };
 
 /**
+ * A bounded plain-text editor. The host owns the draft and its explicit
+ * save/cancel controls; `revision` is an opaque value the consumer must pass
+ * back to its conditional write. This is deliberately not rich text and does
+ * not expose React, HTML, DOM, or storage access to a plugin.
+ */
+export type PluginEditorView = {
+  kind: "editor";
+  title?: string;
+  label: PluginText;
+  value: string;
+  /** Non-empty opaque revision captured with `value`; never interpreted by the host. */
+  revision: string;
+  /** UTF-16 code-unit limit enforced by the host; at most 100,000. */
+  maxLength: number;
+  saveLabel?: PluginText;
+  cancelLabel?: PluginText;
+  /** Called only after an explicit save, with the captured revision. */
+  onSave: (value: string, revision: string) => PluginViewResult | Promise<PluginViewResult>;
+  /** Optional cancellation navigation. The host discards the draft first. */
+  onCancel?: () => PluginViewResult | Promise<PluginViewResult>;
+};
+
+/**
  * Shared field attributes. `agentHidden` keeps a declared setting out of the
  * reading agent's settings catalog (the Plugins panel still shows it); text
  * fields with `inputMode: "password"` are agent-hidden automatically — and
@@ -908,6 +931,7 @@ export type PluginBlock =
   | PluginTableView
   | PluginTreeView
   | PluginImageView
+  | PluginEditorView
   | PluginFormView;
 
 export type PluginColumnCell = {
@@ -932,6 +956,7 @@ export type PluginViewContent = (
   | PluginTableView
   | PluginTreeView
   | PluginImageView
+  | PluginEditorView
   | PluginFormView
   | PluginBlocksView
   | PluginDetailView) & {

@@ -1,4 +1,4 @@
-import type { PluginBlock, PluginView } from "@read-aware/plugin-types";
+import type { PluginBlock, PluginEditorView, PluginView } from "@read-aware/plugin-types";
 import { reviewView } from "./batch";
 import { colorForm, commit } from "./mutations";
 import { tr } from "./strings";
@@ -15,11 +15,25 @@ export async function detailView(ctx: DeskContext, id: string, refresh: Refresh)
   const content: PluginBlock[] = [];
   if (item.kind === "note") {
     if (item.quotedText) content.push({ kind: "quote", text: item.quotedText });
-    content.push({ kind: "form", fields: [{ kind: "textarea", id: "body", label: tr(ctx.locale, "body"), value: item.body, rows: 8 }],
-      submitLabel: tr(ctx.locale, "save"), onSubmit: async values => {
-        if (typeof values.body !== "string" || values.body.length > 100_000) return { fieldErrors: { body: tr(ctx.locale, "bodyLimit") } };
-        return commit(ctx, [{ op: "updateNote", annotationId: id, expectedRevision: snapshot.revision, body: values.body }], "body", refresh);
-      } });
+    const editor: PluginEditorView = {
+      kind: "editor",
+      label: tr(ctx.locale, "body"),
+      value: item.body,
+      revision: snapshot.revision,
+      maxLength: 100_000,
+      saveLabel: tr(ctx.locale, "save"),
+      onSave: async (value, revision) => {
+        // The inspected revision remains the business CAS token. A forged or
+        // mismatched view revision must fail before a write is attempted.
+        if (revision !== snapshot.revision) return { fieldErrors: { editor: tr(ctx.locale, "conflict") } };
+        if (value.length > 100_000) return { fieldErrors: { editor: tr(ctx.locale, "bodyLimit") } };
+        return commit(ctx, [{ op: "updateNote", annotationId: id, expectedRevision: snapshot.revision, body: value }], "editor", refresh);
+      },
+      // Cancellation only navigates away; the host discards its local draft
+      // before invoking this callback, and no annotation command is issued.
+      onCancel: refresh,
+    };
+    content.push(editor);
   } else {
     content.push({ kind: "quote", text: item.text });
     if (item.kind === "highlight") content.push(colorForm(ctx, [snapshot], refresh));

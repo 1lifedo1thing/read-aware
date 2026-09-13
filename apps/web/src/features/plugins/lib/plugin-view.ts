@@ -17,6 +17,7 @@ import type {
   PluginTreeView,
   PluginTreeNode,
   PluginImageView,
+  PluginEditorView,
   PluginMetadataItem,
   PluginText,
   PluginView,
@@ -36,6 +37,7 @@ const MAX_FORM_FIELDS = 40;
 const MAX_ACTIONS = 20;
 const MAX_DETAIL_CONTROLS = 8;
 const MAX_CONTROL_OPTIONS = 30;
+const MAX_EDITOR_LENGTH = 100_000;
 
 export class PluginViewError extends Error {}
 
@@ -345,6 +347,37 @@ function normalizeImageView(input: Record<string, unknown>, context: string): Pl
     title: string(input.title, `${context}.title`, true), caption: string(input.caption, `${context}.caption`, true) };
   bindPluginImageOwner(input, view);
   return view;
+}
+
+function normalizeEditorView(input: Record<string, unknown>, context: string): PluginEditorView {
+  if (typeof input.onSave !== "function") {
+    throw new PluginViewError(`${context}.onSave must be a function`);
+  }
+  if (input.onCancel != null && typeof input.onCancel !== "function") {
+    throw new PluginViewError(`${context}.onCancel must be a function`);
+  }
+  const value = string(input.value, `${context}.value`)!;
+  const revision = string(input.revision, `${context}.revision`)!;
+  if (!revision) throw new PluginViewError(`${context}.revision must be a non-empty opaque string`);
+  const maxLength = finiteNumber(input.maxLength, `${context}.maxLength`);
+  if (!Number.isSafeInteger(maxLength) || maxLength < 1 || maxLength > MAX_EDITOR_LENGTH) {
+    throw new PluginViewError(`${context}.maxLength must be a positive safe integer up to ${MAX_EDITOR_LENGTH}`);
+  }
+  if (value.length > maxLength) {
+    throw new PluginViewError(`${context}.value exceeds ${context}.maxLength`);
+  }
+  return {
+    kind: "editor",
+    title: string(input.title, `${context}.title`, true),
+    label: pluginText(input.label, `${context}.label`),
+    value,
+    revision,
+    maxLength,
+    saveLabel: pluginText(input.saveLabel, `${context}.saveLabel`, true),
+    cancelLabel: pluginText(input.cancelLabel, `${context}.cancelLabel`, true),
+    onSave: input.onSave as PluginEditorView["onSave"],
+    onCancel: input.onCancel as PluginEditorView["onCancel"],
+  };
 }
 
 /**
@@ -827,6 +860,7 @@ function normalizeBlock(input: unknown, context: string, depth: number): PluginB
   if (kind === "table") return normalizeTableView(value, context);
   if (kind === "tree") return normalizeTreeView(value, context);
   if (kind === "image") return normalizeImageView(value, context);
+  if (kind === "editor") return normalizeEditorView(value, context);
   if (kind === "form") return normalizeFormView(value, context);
   throw new PluginViewError(`${context}.kind "${kind}" is not supported`);
 }
@@ -888,6 +922,7 @@ function normalizeViewContent(input: unknown): PluginView {
   if (kind === "table") return normalizeTableView(value, "view");
   if (kind === "tree") return normalizeTreeView(value, "view");
   if (kind === "image") return normalizeImageView(value, "view");
+  if (kind === "editor") return normalizeEditorView(value, "view");
   if (kind === "form") return normalizeFormView(value, "view");
   if (kind === "blocks") {
     return {

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { AnnotationMutation, AnnotationPageQuery, AnnotationSnapshot, PluginAnnotation, PluginBook, PluginFormView,
+import type { AnnotationMutation, AnnotationPageQuery, AnnotationSnapshot, PluginAnnotation, PluginBook, PluginEditorView, PluginFormView,
   PluginListView, PluginView, PluginViewResult, ReadingTarget } from "@read-aware/plugin-types";
 import plugin from "../src/index";
 import { deskView } from "../src/views";
@@ -50,6 +50,12 @@ function form(view: PluginView, id: string): PluginFormView {
   const blocks = view.kind === "detail" ? view.content : view.kind === "blocks" ? view.blocks : [view];
   const found = blocks.find(block => block.kind === "form" && block.fields.some(field => field.id === id));
   if (found?.kind !== "form") throw new Error(`Expected form with ${id}`);
+  return found;
+}
+function editor(view: PluginView): PluginEditorView {
+  const blocks = view.kind === "detail" ? view.content : view.kind === "blocks" ? view.blocks : [view];
+  const found = blocks.find(block => block.kind === "editor");
+  if (found?.kind !== "editor") throw new Error("Expected plain-text editor");
   return found;
 }
 function action(view: PluginView, id: string) {
@@ -105,30 +111,43 @@ test("empty pages have filters/refresh but no invalid zero-item selection or exp
 
 test("note writes use the inspected revision and reset to a fresh list after completion", async () => {
   const f = fixture();
-  const edit = form(await detailView(f.ctx, "note", f.refresh), "body");
-  expect(await edit.onSubmit({ body: "Edited\nbody" })).toHaveProperty("navigation", "reset");
+  const edit = editor(await detailView(f.ctx, "note", f.refresh));
+  expect(await edit.onSave("Edited\nbody", edit.revision)).toHaveProperty("navigation", "reset");
   expect(f.writes).toEqual([[{ op: "updateNote", annotationId: "note", expectedRevision: "revision-note", body: "Edited\nbody" }]]);
   expect(f.refreshes).toBe(1);
 });
 
 test("stale note edits return field errors without replacing the draft or rebasing the revision", async () => {
   const f = fixture();
-  const edit = form(await detailView(f.ctx, "note", f.refresh), "body");
+  const edit = editor(await detailView(f.ctx, "note", f.refresh));
   f.ctx.domains.annotations.commands.applyChanges = async () => { throw Object.assign(new Error("private detail"), { code: "annotations/conflict" }); };
-  const result = await edit.onSubmit({ body: "Keep my draft" });
-  expect(result).toEqual({ fieldErrors: { body: tr("en", "conflict") } });
+  const result = await edit.onSave("Keep my draft", edit.revision);
+  expect(result).toEqual({ fieldErrors: { editor: tr("en", "conflict") } });
   expect(f.inspected).toEqual(["note"]);
   expect(f.refreshes).toBe(0);
-  expect(await edit.onSubmit({ body: "x".repeat(100_001) })).toHaveProperty("fieldErrors.body");
+  expect(await edit.onSave("x".repeat(100_001), edit.revision)).toHaveProperty("fieldErrors.editor");
+  expect(await edit.onSave("Keep my draft", "forged-view-revision")).toEqual({ fieldErrors: { editor: tr("en", "conflict") } });
+  expect(f.writes).toHaveLength(0);
   f.ctx.domains.annotations.commands.applyChanges = async () => { throw new Error("locked"); };
-  await expect(edit.onSubmit({ body: "Draft" })).rejects.toThrow("locked");
+  await expect(edit.onSave("Draft", edit.revision)).rejects.toThrow("locked");
+});
+
+test("cancelling note editing only refreshes the desk and never writes the draft", async () => {
+  const f = fixture();
+  const edit = editor(await detailView(f.ctx, "note", f.refresh));
+  expect(edit.onCancel).toBeDefined();
+  const result = await edit.onCancel!();
+  expect(result).toHaveProperty("navigation", "reset");
+  expect(result?.view?.kind).toBe("list");
+  expect(f.writes).toEqual([]);
+  expect(f.refreshes).toBe(1);
 });
 
 test("a reload failure after commit reports a successful write and offers only a reread", async () => {
   const f = fixture();
   const refresh = async () => { throw new Error("read locked"); };
-  const edit = form(await detailView(f.ctx, "note", refresh), "body");
-  const result = await edit.onSubmit({ body: "Saved once" });
+  const edit = editor(await detailView(f.ctx, "note", refresh));
+  const result = await edit.onSave("Saved once", edit.revision);
   expect(result).toHaveProperty("toast", "Changes saved");
   expect(result).toHaveProperty("navigation", "reset");
   await expect(action(resultView(result), "refresh").run()).rejects.toThrow("read locked");

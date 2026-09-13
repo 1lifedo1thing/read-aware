@@ -242,6 +242,32 @@ describe("normalizePluginView", () => {
     });
   });
 
+  test("normalizes bounded plain-text editors and preserves opaque callback revisions", async () => {
+    const onSave = async (_value: string, _revision: string) => ({ toast: "Saved" });
+    const onCancel = () => ({ close: true });
+    const view = normalizePluginView({
+      kind: "blocks",
+      blocks: [{ kind: "editor", label: "Note text", value: "Draft", revision: "opaque:r1", maxLength: 100_000, onSave, onCancel }],
+    });
+    if (view.kind !== "blocks" || view.blocks[0].kind !== "editor") throw new Error("unexpected editor view");
+    expect(view.blocks[0]).toMatchObject({ kind: "editor", value: "Draft", revision: "opaque:r1", maxLength: 100_000 });
+    expect(view.blocks[0].onSave).toBe(onSave);
+    expect(view.blocks[0].onCancel).toBe(onCancel);
+    expect(await view.blocks[0].onSave("Saved", view.blocks[0].revision)).toEqual({ toast: "Saved" });
+    expect(await view.blocks[0].onCancel!()).toEqual({ close: true });
+    for (const editor of [
+      { label: "Note", value: "", revision: "", maxLength: 1, onSave },
+      { label: "Note", value: "", revision: "r1", maxLength: 0, onSave },
+      { label: "Note", value: "", revision: "r1", maxLength: 100_001, onSave },
+      { label: "Note", value: "x", revision: "r1", maxLength: 1.5, onSave },
+      { label: "Note", value: "xx", revision: "r1", maxLength: 1, onSave },
+      { label: "Note", value: "", revision: "r1", maxLength: 1, onSave: "not a callback" },
+      { label: "Note", value: "", revision: "r1", maxLength: 1, onSave, onCancel: "not a callback" },
+    ]) {
+      expect(() => normalizePluginView({ kind: "editor", ...editor })).toThrow(PluginViewError);
+    }
+  });
+
   test("a dynamic select can declare its list to be the whole set", () => {
     const view = normalizePluginView({
       kind: "form",
