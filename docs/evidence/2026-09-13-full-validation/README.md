@@ -1480,3 +1480,35 @@ provider调用/权限交集、发布包、物理输入/像素和其他平台继�
 空泛“待验”，分别保留确切剩余边界。SYS18按当前desktop范围不适用；CON11是
 设计不开放而非安全测试通过，CON12及明确未实现部分也不计通过。此回填不增加
 桌面流程数量或测试通过次数，目的是消除过期队列造成的重复验收。
+
+## 第五十七流程：同源书预览、确认合并与旧 ID 解析
+
+在 ccc7cbff 的原隔离 debug Tauri，用既有 library-content 探针正常导入一份自有
+带封面 FB2，再经实际原生 blob 和 book.imported 事件建立两条同哈希独立记录。
+此夹具模拟合并所需状态，故意绕过本地重复导入入口；不冒充真实同步产生重复。
+三书各创建一条笔记并提交1000ms合成时长，第二条记录收藏并加入自有集合。
+
+编译 Library Desk 0.12.0 的 Duplicate books 显示一个3记录组，预览列出最早的
+keeper及两个完整重复ID。进入合并表单不勾确认就提交，显示Confirm this change
+first，三记录及revision保持。预览后修改一条重复书标题再勾确认提交，真实Worker
+返回ui/superseded，界面有安全错误提示；三记录保留，新预览revision不同。
+返回并Refresh后显示新标题，再明确勾选和提交，得到Records merged (2)及两条
+from→to映射。Retained book实际打开原keeper标题/作者和Favorite Yes详情。
+
+原生及领域重读：保留书标题/作者不被重复项覆盖，继承收藏和原来空缺的集合；
+三个笔记ID/正文保持且bookId归keeper；reading_time_totals仅keeper一行3000ms。
+两条book.merged事件origin均为plugin:library-desk，两个旧ID解析到keeper，旧
+book记录为null；新预览null、重复组为空。真实Agent read/preview/resolve工具
+得到同样结果，未运行Agent合并写入或其批准界面。
+
+三个bookfile均2809字节、sha256一致；本规则会在keeper存活时保留alias资产。
+尝试清理旧alias得到files:pending/library/cleanup-stale，不报已释放。最后先
+关闭插件视图，移除自有集合及keeper/两个alias；回执committed/files:released，
+三个source读取均null，三个ID解析均null，重复组为空；原两本隔离资料及原
+Library Desk/Text Desk启用状态保持。合成时长不是实际阅读时钟证据。
+
+证据：[duplicate-merge-observations.json](./duplicate-merge-observations.json)。
+仅扩展现有探针和完整清理，desktop类型通过；不重复产品单测/全量门禁。
+待验：Agent合并批准、聊天/记忆保留语义、摘要/进度、继承封面/缺keeper源复制、
+磁盘/事务失败、进程恢复、真实远端同步及其他格式/平台/发布包。本批挂载Tauri
+控件、真实编译Worker和原生持久证据不替代物理输入/像素。

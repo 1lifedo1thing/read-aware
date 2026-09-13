@@ -4,11 +4,15 @@ import { createLibraryDomain } from "../../src/domain/library";
 import { installedPluginsAtom, pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
 import { setPluginEnabled } from "../../src/features/plugins/runtime/plugin-host";
+import { getDesktopBlob, putDesktopBlob } from "../../src/platform/blob-store";
+import { commitDomainEvents } from "../../src/platform/domain-events";
+import { createAnnotationsDomain } from "../../src/domain/annotations";
 
 const plugins = ["library-desk", "text-desk"] as const;
 const enabled = new Map<string, boolean>();
 let bookId: string | undefined;
 let marker: string | undefined;
+const duplicateIds: string[] = [];
 
 async function isolated() {
   const path = await appDataDir();
@@ -59,6 +63,39 @@ export async function inspectLibraryContent() {
     collections: (await library.queries.collections.list()).filter(collection => marker && collection.name.startsWith(marker)) };
 }
 
+/** Model independently imported same-content records at the native event seam.
+ * This deliberately bypasses local import dedupe, not merge validation. */
+export async function prepareLibraryDuplicates() {
+  await isolated();
+  if (!bookId || !marker || duplicateIds.length) throw Error("Prepare one owned book first");
+  const library = createLibraryDomain("user");
+  const bytes = await getDesktopBlob(`bookfile:${bookId}`);
+  if (!bytes) throw Error("Owned source missing");
+  for (let index = 0; index < 2; index++) {
+    const id = crypto.randomUUID();
+    duplicateIds.push(id);
+    const blob = await putDesktopBlob(`bookfile:${id}`, bytes);
+    await commitDomainEvents({ type: "book.imported", origin: "user", payload: {
+      bookId: id, title: `${marker} duplicate ${index + 1}`, author: "Duplicate fixture",
+      format: "fb2", fileName: `${marker}.fb2`, fileSize: bytes.length,
+      sourceBlobKey: `bookfile:${id}`, sourceSha256: blob.sha256,
+    } });
+  }
+  const annotations = createAnnotationsDomain("user");
+  const notes = [];
+  for (const id of [bookId, ...duplicateIds]) {
+    notes.push(await annotations.commands.createNote({ bookId: id, body: `${marker} note ${id}` }));
+    await commitDomainEvents({ type: "book.timeRecorded", origin: "user", payload: {
+      bookId: id, ms: 1000, atEpochMs: Date.now(), localDay: "2026-09-13", localHour: 10,
+    } });
+  }
+  await library.commands.books.setStarred(duplicateIds[0]!, true);
+  const collection = await library.commands.collections.create(`${marker} merge shelf`);
+  await library.commands.collections.assignBooks([duplicateIds[0]!], collection.id);
+  return { keepId: bookId, duplicateIds: [...duplicateIds], notes, collection,
+    preview: await library.queries.books.previewMerge(bookId) };
+}
+
 export async function cleanupLibraryContent() {
   await isolated();
   for (const id of enabled.keys()) await setPluginEnabled(id, false);
@@ -66,9 +103,10 @@ export async function cleanupLibraryContent() {
   for (const collection of await library.queries.collections.list()) {
     if (marker && collection.name.startsWith(marker)) await library.commands.collections.remove(collection.id);
   }
-  const removed = bookId ? await library.commands.books.removeMany([bookId]) : null;
+  const removed = bookId ? await library.commands.books.removeMany([bookId, ...duplicateIds]) : null;
   if (removed?.files.status === "pending") throw Error("Owned fixture file cleanup is pending");
   bookId = undefined;
+  duplicateIds.length = 0;
   for (const [id, wasEnabled] of enabled) if (wasEnabled) await setPluginEnabled(id, true);
   enabled.clear(); marker = undefined;
   return { removed, remaining: (await library.queries.books.list()).map(book => ({ id: book.id, title: book.title })) };
