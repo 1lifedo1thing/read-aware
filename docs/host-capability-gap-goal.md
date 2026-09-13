@@ -30,12 +30,12 @@
 | 项目 | 已完成与真实证据 | 尚未关闭的验收 |
 | --- | --- | --- |
 | I01 删除 localOnly | `aec2c801` 删除设置/UI/公开路径和模型门禁；真实 Full2 Tauri 验证旧值忽略、保存清理、独立偏好保留及旧路径拒绝，探针 `28be2bb2` | 可见设置页面确认开关消失，桌面锁定待完成 |
-| I02 对象授权 | `df0bfed9` 接通 UI、持久授权、Worker/domain/resource、Annotation Desk 和备份事务。真实 Worker 全库/当前书/指定书读取、创建与 CAS 编辑通过，越权创建/编辑拒绝且目标正文和版本不变（`0fa6c353`）。真实 Annotation Desk 改授权后旧回调返回 plugin/unavailable，新 Worker 启动并读取原生 KV 的授权（`1d32a1e3`） | 实际编辑器交互、备份授权确认/取消及恢复授权事务。新 Worker 分别验证当前书 A/B，不冒充同一 Worker 切书或冷启动验收 |
+| I02 对象授权 | `df0bfed9` 接通 UI、持久授权、Worker/domain/resource、Annotation Desk 和备份事务。真实 Worker 全库/当前书/指定书读取、创建与 CAS 编辑通过，越权创建/编辑拒绝且目标正文和版本不变（`0fa6c353`）。真实 Annotation Desk 改授权后旧回调返回 plugin/unavailable，新 Worker 启动并读取原生 KV 的授权（`1d32a1e3`） | 编辑器画面交互、备份授权确认/取消及恢复授权事务。新 Worker 分别验证当前书 A/B，不冒充同一 Worker 切书或冷启动验收 |
 | I03 有界搜索 | `bd805a9d`、`ad31f5e1` 接通 helper 与编译消费者。真实 Full2 编译 Jumper/Text Desk 的进度、结果、取消/替换阶段已执行；预算单独补验通过：205 个真实 TXT 匹配均在 200 条停止并返回 result-limit，清理贡献为 0（探针 `07819361`） | Worker 发布视图不等于画面渲染；可见交互待解锁。初次预算用例只有 1 hit，原因是 TXT 段落拼接丢失词边界，修正测试文本后补验，没有放宽产品上限 |
 | I04 类型化提供者 | 复用既有 TTS 链。真实 Worker 合成 PCM→宿主播放开始/停止；Listening Desk 停用取消在途调用，迟到结果不重启播放；清理贡献为 0（`433c0596`）。无网络权限 Worker 的 network API 不暴露 | 该结果证明接线、API 暴露和生命周期；未执行 HTTP 请求，不宣称 HTTP 拒绝或远端语音质量/人工听感 |
-| I05 声明式编辑器 | `a87d4b9c` 接通宿主 editor 与 Annotation Desk CAS 消费者；保存中输入、新版本到达、外部冲突的定向交互与类型检查通过 | 真实 Annotation Desk 保存/取消/CAS 冲突、键盘与焦点验收，桌面锁定待完成 |
+| I05 声明式编辑器 | `a87d4b9c` 接通宿主 editor 与 Annotation Desk CAS 消费者；保存中输入、新版本到达、外部冲突的定向交互与类型检查通过 | 真实 Annotation Desk Worker 的精确保存、取消不写入、旧版本保存返回冲突且不覆盖已通过（`0c655810`，`d5-editor-consumer.json`）；画面草稿、键盘与焦点仍因桌面锁定待完成 |
 
-原始运行工件位于忽略目录 `.eval/gap-closure/`：`d1-native.json`、`d2-worker-read.json`、`d2-worker-current.json`、`d2-worker-current-b.json`、`d2-grant-restart.json`、`d2-writes.json`、`d3-budget.json`、`d4-playback.json`。D3 初次运行在预算断言失败前已完成两个消费者的进度和取消阶段，但旧探针未保留其结构化 completed 结果；预算补验工件的 completed 为空，不据此伪造旧阶段记录。新探针保留逐项结果供后续失败定位。
+原始运行工件位于忽略目录 `.eval/gap-closure/`：`d1-native.json`、`d2-worker-read.json`、`d2-worker-current.json`、`d2-worker-current-b.json`、`d2-grant-restart.json`、`d2-writes.json`、`d3-budget.json`、`d4-playback.json`、`d5-editor-consumer.json`。D3 初次运行在预算断言失败前已完成两个消费者的进度和取消阶段，但旧探针未保留其结构化 completed 结果；预算补验工件的 completed 为空，不据此伪造旧阶段记录。新探针保留逐项结果供后续失败定位。
 
 ### 模型阶段：达到运行上限，保留失败
 
