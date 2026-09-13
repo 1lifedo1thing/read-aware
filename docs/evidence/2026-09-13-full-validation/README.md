@@ -2031,3 +2031,16 @@ debug三本/packaged一本自有书及源/封面全部清理，待清理0；原�
 这里是历史回答质评，不把旧索引/输出过滤/阅读经历问题当成当前版本新复现，
 也不以提示词已改替代后续版本证据。详见
 [machine-pass-review-addendum.json](./machine-pass-review-addendum.json)。
+
+## 第七十六流程：编译 Library Desk 原生复合后缀过滤
+
+基线 `a9ac6196`，用户解锁后在 primary debug Tauri/Library Desk 0.12.0 完成。
+两个803字节同内容文件：`ordinary.zip` 经系统选择确认后显示目标无效，实际日志
+`ui/invalid-target`，未进入检查/导入；`Plugin76.FB2.ZIP` 经同入口识别FB2、
+Initialized/3节，确认后显示Imported；重新查询持久书目、803字节和Chapter One一致。
+关闭插件后清理本轮书，原两书保留，源/封面为null、清理意图为空；进程文件描述符
+无临时资源文件。选后严格后缀验证位于原生lease创建之前是源码依据，未收集逐lease轨迹。
+
+跨锁屏的旧请求已超时，排除不计。原生AX曾将实际可点击的蓝色Open报为disabled，
+不能据此判定格式过滤失败；本轮没有新增产品修复。发布包插件入口、其他后缀和外部
+关联仍独立待验。详见[原生插件复合过滤记录](./plugin-compound-picker-observations.json)。
