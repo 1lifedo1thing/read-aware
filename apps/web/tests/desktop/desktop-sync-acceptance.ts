@@ -20,12 +20,13 @@ async function isolated() {
   return path;
 }
 
-export async function connectSyncAcceptance(passphrase = "Synthetic acceptance only 20260913!") {
+export async function connectSyncAcceptance(passphrase = "Synthetic acceptance only 20260913!", basePath = "full-validation") {
   const path = await isolated();
+  if (!["full-validation", "restart-validation"].includes(basePath)) throw Error("Expected disposable mailbox path");
   const installed = getDefaultStore().get(installedPluginsAtom).find(p => p.manifest.id === "webdav-sync");
   if (!installed?.builtin) throw Error("Expected the real bundled WebDAV plugin");
   await writePluginSettingsValues("webdav-sync", {
-    serverUrl: "http://127.0.0.1:18891", username: "synthetic-reader", basePath: "full-validation",
+    serverUrl: "http://127.0.0.1:18891", username: "synthetic-reader", basePath,
   });
   await setPluginSecret("webdav-sync", "password", "synthetic-local-password");
   if (!installed.enabled) await setPluginEnabled("webdav-sync", true);
@@ -42,7 +43,7 @@ export async function connectSyncAcceptance(passphrase = "Synthetic acceptance o
 
 export async function seedSyncAcceptance(marker: string) {
   await isolated();
-  if (!/^Synthetic sync [AB] 20260913$/.test(marker)) throw Error("Expected synthetic marker");
+  if (!/^Synthetic sync [AB] 20260913(?: restart)?$/.test(marker)) throw Error("Expected synthetic marker");
   const source = `<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>science</genre><author><first-name>Synthetic</first-name><last-name>Fixture</last-name></author><book-title>${marker}</book-title><lang>en</lang></title-info><document-info><author><nickname>Acceptance</nickname></author><date>2026-09-13</date><id>${marker}</id><version>1.0</version></document-info></description><body><section><title><p>${marker}</p></title><p>Private marker plaintext only inside encrypted transport: ${marker}.</p></section></body></FictionBook>`;
   const book = await createLibraryDomain("user").commands.books.importBook({ fileName: `${marker}.fb2`, data: new TextEncoder().encode(source) });
   return { bookId: book.id, marker, sourceBytes: new TextEncoder().encode(source).length };
