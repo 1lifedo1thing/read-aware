@@ -1,6 +1,6 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import type { Id } from "@read-aware/core";
+import { AppError, type Id } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import type { ThreadScope } from "../thread-scope";
 import { threadScopeKey } from "../thread-scope";
@@ -104,20 +104,29 @@ export function buildShelfTools(scope: ThreadScope, deps: RuntimeDeps): AgentToo
       ) {
         throw new Error("pass at least one of title, author, starred, finished");
       }
+      const normalizedTitle = title?.trim();
+      if (title !== undefined && !normalizedTitle) {
+        throw new AppError("ui/invalid-target", "Book title must not be blank");
+      }
       const target = resolveBookId(scope, bookId);
       if (!(await deps.library.getBook(target))) throw new Error(`unknown book: ${target}`);
       if (title !== undefined || author !== undefined) {
-        await deps.library.editBookMetadata(target, { title, author });
+        await deps.library.editBookMetadata(target, { title: normalizedTitle, author: author?.trim() });
       }
       if (starred !== undefined) await deps.library.setBookStarred(target, starred);
       if (finished !== undefined) await deps.library.setBookFinished(target, finished);
+      const saved = await deps.library.getBook(target);
+      if (!saved) throw new AppError("reader/book-not-found", "Book was removed while updating");
       return textResult({
-        updated: true,
+        updated: (title === undefined || saved.title === normalizedTitle)
+          && (author === undefined || saved.author === author.trim())
+          && (starred === undefined || saved.starred === starred)
+          && (finished === undefined || (saved.status === "finished") === finished),
         bookId: target,
-        ...(title !== undefined ? { title } : {}),
-        ...(author !== undefined ? { author } : {}),
-        ...(starred !== undefined ? { starred } : {}),
-        ...(finished !== undefined ? { finished } : {}),
+        ...(title !== undefined ? { title: saved.title } : {}),
+        ...(author !== undefined ? { author: saved.author } : {}),
+        ...(starred !== undefined ? { starred: saved.starred } : {}),
+        ...(finished !== undefined ? { finished: saved.status === "finished" } : {}),
       });
     },
   };

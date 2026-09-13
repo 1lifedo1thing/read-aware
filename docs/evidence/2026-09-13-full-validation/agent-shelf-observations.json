@@ -1,0 +1,361 @@
+{
+  "flow": 70,
+  "date": "2026-09-13",
+  "baseline": "afe8051c",
+  "environment": "Actual isolated macOS Tauri 9224, production Agent buildShelfTools/buildThreadTools and buildRuntimeDeps/native domain writes; direct tool execution, not a model turn.",
+  "observations": {
+    "shelf70metadata": {
+      "after": {
+        "addedAt": "2026-09-13T04:53:00.345Z",
+        "author": "验收作者",
+        "collectionId": null,
+        "format": "txt",
+        "id": "96c90173-5280-44b3-a40c-d374310aa02c",
+        "progressPercent": 0,
+        "starred": true,
+        "status": "finished",
+        "title": "Agent shelf70 中文书名",
+        "updatedAt": "2026-09-13T04:53:15.668Z"
+      },
+      "before": {
+        "addedAt": "2026-09-13T04:53:00.345Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "format": "txt",
+        "id": "96c90173-5280-44b3-a40c-d374310aa02c",
+        "progressPercent": 0,
+        "starred": false,
+        "status": "unread",
+        "title": "Fixture",
+        "updatedAt": "2026-09-13T04:53:00.345Z"
+      },
+      "listed": [
+        {
+          "addedAt": "2026-09-13T04:53:00.345Z",
+          "author": "验收作者",
+          "collectionId": null,
+          "format": "txt",
+          "id": "96c90173-5280-44b3-a40c-d374310aa02c",
+          "progressPercent": 0,
+          "starred": true,
+          "status": "finished",
+          "title": "Agent shelf70 中文书名",
+          "updatedAt": "2026-09-13T04:53:15.668Z"
+        }
+      ],
+      "native": {
+        "author": "验收作者",
+        "collectionId": null,
+        "coverBlobKey": null,
+        "coverLocal": false,
+        "coverStatus": "none",
+        "coverUrl": null,
+        "coverVersion": null,
+        "createdAt": "2026-09-13T04:53:00.345Z",
+        "fileName": "fixture.txt",
+        "fileSize": 264,
+        "format": "txt",
+        "id": "96c90173-5280-44b3-a40c-d374310aa02c",
+        "lastOpenedAt": null,
+        "mimeType": "",
+        "narrativity": null,
+        "progress": null,
+        "progressPercent": 0,
+        "readingStatus": "finished",
+        "starred": true,
+        "title": "Agent shelf70 中文书名",
+        "updatedAt": "2026-09-13T04:53:15.668Z"
+      },
+      "updated": {
+        "author": "验收作者",
+        "bookId": "96c90173-5280-44b3-a40c-d374310aa02c",
+        "finished": true,
+        "starred": true,
+        "title": "Agent shelf70 中文书名",
+        "updated": true
+      }
+    },
+    "shelf70collectionCreate": {
+      "blank": {
+        "bookId": "96c90173-5280-44b3-a40c-d374310aa02c",
+        "title": "   ",
+        "updated": true
+      },
+      "book": {
+        "addedAt": "2026-09-13T04:53:00.345Z",
+        "author": "验收作者",
+        "collectionId": null,
+        "format": "txt",
+        "id": "96c90173-5280-44b3-a40c-d374310aa02c",
+        "progressPercent": 0,
+        "starred": false,
+        "status": "unread",
+        "title": "Agent shelf70 中文书名",
+        "updatedAt": "2026-09-13T04:53:32.703Z"
+      },
+      "bookScopeTools": [
+        "get_reading_stats",
+        "get_reading_time",
+        "get_reading_insights",
+        "update_book",
+        "delete_book"
+      ],
+      "created": {
+        "createdAt": "2026-09-13T04:53:32.739Z",
+        "id": "18000d4d-cef9-4081-ab99-598456e70415",
+        "name": "Agent shelf70 collection"
+      },
+      "resumed": {
+        "content": [
+          {
+            "text": "{\"updated\":true,\"bookId\":\"96c90173-5280-44b3-a40c-d374310aa02c\",\"starred\":false,\"finished\":false}",
+            "type": "text"
+          }
+        ]
+      }
+    },
+    "shelf70collectionOps": {
+      "after": [
+        {
+          "bookIds": [],
+          "createdAt": "2026-09-13T04:53:32.739Z",
+          "id": "18000d4d-cef9-4081-ab99-598456e70415",
+          "name": "Agent shelf70 新集合"
+        }
+      ],
+      "assign": {
+        "bookIds": [
+          "96c90173-5280-44b3-a40c-d374310aa02c"
+        ],
+        "collectionId": "18000d4d-cef9-4081-ab99-598456e70415",
+        "updated": true
+      },
+      "book": {
+        "addedAt": "2026-09-13T04:53:00.345Z",
+        "author": "验收作者",
+        "collectionId": "18000d4d-cef9-4081-ab99-598456e70415",
+        "format": "txt",
+        "id": "96c90173-5280-44b3-a40c-d374310aa02c",
+        "progressPercent": 0,
+        "starred": false,
+        "status": "unread",
+        "title": "Agent shelf70 中文书名",
+        "updatedAt": "2026-09-13T04:53:32.703Z"
+      },
+      "listed": [
+        {
+          "bookIds": [
+            "96c90173-5280-44b3-a40c-d374310aa02c"
+          ],
+          "createdAt": "2026-09-13T04:53:32.739Z",
+          "id": "18000d4d-cef9-4081-ab99-598456e70415",
+          "name": "Agent shelf70 新集合"
+        }
+      ],
+      "rename": {
+        "collectionId": "18000d4d-cef9-4081-ab99-598456e70415",
+        "name": "Agent shelf70 新集合",
+        "updated": true
+      },
+      "ungroup": {
+        "bookIds": [
+          "96c90173-5280-44b3-a40c-d374310aa02c"
+        ],
+        "collectionId": null,
+        "updated": true
+      }
+    },
+    "shelf70cleanupFirst": {
+      "cleaned": {
+        "remainingBookIds": [
+          "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+        ],
+        "remainingOwned": 0,
+        "removed": [
+          "96c90173-5280-44b3-a40c-d374310aa02c"
+        ]
+      },
+      "collectionBeforeCleanup": {
+        "createdAt": "2026-09-13T04:53:32.739Z",
+        "id": "18000d4d-cef9-4081-ab99-598456e70415",
+        "name": "Agent shelf70 新集合"
+      },
+      "state": {
+        "result": {
+          "content": [
+            {
+              "text": "{\"deleted\":false,\"reason\":\"User declined.\"}",
+              "type": "text"
+            }
+          ],
+          "details": {
+            "answer": {
+              "cancelled": true
+            },
+            "id": "global:__global__:shelf70-delete-collection",
+            "phase": "response",
+            "type": "user-interaction"
+          }
+        },
+        "status": "done"
+      }
+    },
+    "shelf70fixed": {
+      "accepted": {
+        "content": [
+          {
+            "text": "{\"updated\":true,\"bookId\":\"f7a32afc-e829-418c-bdd5-665dab72b40a\",\"title\":\"真实持久标题\",\"author\":\"新作者\",\"starred\":true,\"finished\":true}",
+            "type": "text"
+          }
+        ]
+      },
+      "after": {
+        "author": "新作者",
+        "collectionId": null,
+        "coverBlobKey": null,
+        "coverLocal": false,
+        "coverStatus": "none",
+        "coverUrl": null,
+        "coverVersion": null,
+        "createdAt": "2026-09-13T04:57:43.743Z",
+        "fileName": "fixture.txt",
+        "fileSize": 264,
+        "format": "txt",
+        "id": "f7a32afc-e829-418c-bdd5-665dab72b40a",
+        "lastOpenedAt": null,
+        "mimeType": "",
+        "narrativity": null,
+        "progress": null,
+        "progressPercent": 0,
+        "readingStatus": "finished",
+        "starred": true,
+        "title": "真实持久标题",
+        "updatedAt": "2026-09-13T04:57:57.612Z"
+      },
+      "afterBlank": {
+        "author": "Unknown author",
+        "collectionId": null,
+        "coverBlobKey": null,
+        "coverLocal": false,
+        "coverStatus": "none",
+        "coverUrl": null,
+        "coverVersion": null,
+        "createdAt": "2026-09-13T04:57:43.743Z",
+        "fileName": "fixture.txt",
+        "fileSize": 264,
+        "format": "txt",
+        "id": "f7a32afc-e829-418c-bdd5-665dab72b40a",
+        "lastOpenedAt": null,
+        "mimeType": "",
+        "narrativity": null,
+        "progress": null,
+        "progressPercent": 0,
+        "readingStatus": "unread",
+        "starred": false,
+        "title": "Fixture",
+        "updatedAt": "2026-09-13T04:57:43.743Z"
+      },
+      "afterResume": {
+        "author": "新作者",
+        "collectionId": null,
+        "coverBlobKey": null,
+        "coverLocal": false,
+        "coverStatus": "none",
+        "coverUrl": null,
+        "coverVersion": null,
+        "createdAt": "2026-09-13T04:57:43.743Z",
+        "fileName": "fixture.txt",
+        "fileSize": 264,
+        "format": "txt",
+        "id": "f7a32afc-e829-418c-bdd5-665dab72b40a",
+        "lastOpenedAt": null,
+        "mimeType": "",
+        "narrativity": null,
+        "progress": null,
+        "progressPercent": 0,
+        "readingStatus": "unread",
+        "starred": false,
+        "title": "真实持久标题",
+        "updatedAt": "2026-09-13T04:57:57.726Z"
+      },
+      "before": {
+        "author": "Unknown author",
+        "collectionId": null,
+        "coverBlobKey": null,
+        "coverLocal": false,
+        "coverStatus": "none",
+        "coverUrl": null,
+        "coverVersion": null,
+        "createdAt": "2026-09-13T04:57:43.743Z",
+        "fileName": "fixture.txt",
+        "fileSize": 264,
+        "format": "txt",
+        "id": "f7a32afc-e829-418c-bdd5-665dab72b40a",
+        "lastOpenedAt": null,
+        "mimeType": "",
+        "narrativity": null,
+        "progress": null,
+        "progressPercent": 0,
+        "readingStatus": "unread",
+        "starred": false,
+        "title": "Fixture",
+        "updatedAt": "2026-09-13T04:57:43.743Z"
+      },
+      "blank": {
+        "code": "ui/invalid-target",
+        "message": "Book title must not be blank"
+      },
+      "resumed": {
+        "content": [
+          {
+            "text": "{\"updated\":true,\"bookId\":\"f7a32afc-e829-418c-bdd5-665dab72b40a\",\"starred\":false,\"finished\":false}",
+            "type": "text"
+          }
+        ]
+      }
+    },
+    "shelf70cleanupFinal": {
+      "cleanup": {
+        "remainingBookIds": [
+          "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+        ],
+        "remainingOwned": 0,
+        "removed": [
+          "f7a32afc-e829-418c-bdd5-665dab72b40a"
+        ]
+      },
+      "originalConversation": {
+        "count": 2,
+        "hash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a"
+      },
+      "ownedCollection": [],
+      "removed": [
+        {
+          "book": null,
+          "cover": null,
+          "id": "96c90173-5280-44b3-a40c-d374310aa02c",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "f7a32afc-e829-418c-bdd5-665dab72b40a",
+          "source": null
+        }
+      ]
+    }
+  },
+  "fix": "Reject blank requested titles before any shelf write; normalize title/author; re-read saved book and return actual requested fields. updated is true only when observed values match normalized intent.",
+  "checks": {
+    "tests": "5 tests/19 assertions passed (shelf tools + current-book); ignored-host-write mismatch is unit evidence only.",
+    "types": "Agent and desktop types passed; initial test-only null/undefined mismatch was corrected before final pass."
+  },
+  "limits": [
+    "No autonomous model invocation or language quality evidence.",
+    "Collection create/rename/assign/dedupe/unassign read back through production tools; no native restart or cross-device persistence proof.",
+    "Direct delete_collection waited without onUpdate/chat-turn presentation. Cancelled via actual interaction port; collection remained, then explicit owned-fixture domain cleanup removed it. No approval UI or approved Agent deletion claim.",
+    "No rendering/focus, packaged, other actors or platform completeness claim."
+  ]
+}

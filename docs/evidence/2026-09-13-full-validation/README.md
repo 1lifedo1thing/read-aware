@@ -1902,3 +1902,24 @@ BOOK_FILE_EXTENSIONS已包含zip/text/xhtml。9项sniff/10断言、21项资源�
 TEXT/XHTML但不含本批修复，实际packaged验收前须集中重建。系统面板选择、
 插件选后后缀匹配及Launch Services实际路径仍待验；详见
 [compound-format-entry-observations.json](./compound-format-entry-observations.json)。
+
+## 第七十流程：Agent 书库管理与空白书名假成功修复
+
+在真实Tauri以生产buildShelfTools/buildThreadTools和buildRuntimeDeps执行，
+直接工具调用而非LLM推理。全局list_books/get_book_overview查询一致；改书名/
+中文作者、收藏及finished写入原生，再用书内默认bookId取消收藏/完成，这本
+零进度书回unread。集合创建/中文改名ID保持、重复书ID分配去重、成员查询及
+collectionId:null移出通过；只用一本成员，不外推多书批量原子性。
+
+发现update_book传空白title时回updated:true/title空白，原生仍旧书名。工具
+现先验证非空，避免同请求其他字段先写；标题/作者trim后写入并重读书目，只
+当请求字段与观察值相符才updated:true，回执字段取自真实值。Tauri新夹具
+复验：空白title+starred/finished被拒，原生全行/时间戳未变；有效带空格中文
+输入返回去空格值，与原生一致。5项/19断言和Agent/desktop类型通过；被宿主
+忽略写入时updated:false为单元证据，不冒称注入了真实数据库故障。
+
+直接delete_collection探针未传聊天onUpdate呈现，等待期间没有批准界面；
+通过实际交互端口cancelled后返回deleted:false且集合仍在，随后走自有fixture
+清理。这不证明Agent批准删除，也不证明产品UI有故障。两本自有书和源/封面
+均null、集合0，原两书及会话完整hash保持。无配置修改/模型调用，新发布包
+尚未包含本批。详见[agent-shelf-observations.json](./agent-shelf-observations.json)。
