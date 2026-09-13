@@ -36,8 +36,8 @@ var en = {
   input: "Input",
   reasoning: "Reasoning",
   connection: "Test AI connection",
-  backupExport: "Export library backup (v1)",
-  backupImport: "Import library backup (v1)",
+  backupExport: "Export backup",
+  backupImport: "Import backup",
   reportExport: "Export diagnostic report",
   reportSend: "Send diagnostic report",
   verify: "Verify local projections",
@@ -65,8 +65,8 @@ var en = {
   liveRows: "Rows only in live projections",
   replayRows: "Rows only in replayed projections",
   connectionReview: "The native Test connection button uses the current primary-model configuration. A test may incur provider charges. A response does not verify saved settings or every model feature.",
-  backupReview: "Library backup v1 includes books, local original files, collections, annotations and local KV settings. It is not a full backup of chats, memory, plugin documents, credentials or the event log. KV may contain personal data.",
-  importReview: "Import can overwrite records and may partially apply before failure. It cannot be undone by cancelling this wait. A restart can discard this session's result.",
+  backupReview: "Choose a complete encrypted archive or a legacy library backup in the host settings. The host explains each format's contents and handles the password and file selection. Backup data can include personal information.",
+  importReview: "Complete archives require a password, restore choices and confirmation, then an app reload. Legacy library imports merge records and can partially apply before failure. Cancelling this wait cannot undo committed changes; restarting can discard this session's result.",
   reportReview: "Diagnostic reports may contain personal data. The host provides the report preview and final export or send confirmation. A sent receipt does not mean a developer has reviewed it.",
   verifyReview: "Checks event-log projections on this device only. This does not repair data or verify backups and other devices."
 };
@@ -107,8 +107,8 @@ var zh = {
   input: "输入类型",
   reasoning: "推理支持",
   connection: "测试 AI 连接",
-  backupExport: "导出书库备份（v1）",
-  backupImport: "导入书库备份（v1）",
+  backupExport: "导出备份",
+  backupImport: "导入备份",
   reportExport: "导出诊断报告",
   reportSend: "发送诊断报告",
   verify: "校验本机投影",
@@ -136,8 +136,8 @@ var zh = {
   liveRows: "仅存在于当前投影的行数",
   replayRows: "仅存在于重放投影的行数",
   connectionReview: "原生连接测试使用当前主模型配置，可能产生提供者费用。收到回复不代表配置已保存或全部模型功能可用。",
-  backupReview: "书库备份 v1 包含书籍、本机原文件、收藏集、标注及本机 KV 设置，不是聊天、记忆、插件文档、凭据或事件日志的全量备份。KV 可能含个人数据。",
-  importReview: "导入可能覆盖记录，也可能在部分写入后失败。取消等待不能撤销导入；重启可能丢失本次会话的结果记录。",
+  backupReview: "在宿主设置中选择完整加密归档或旧版书库备份。宿主会说明各格式包含的内容，并处理密码与文件选择。备份可能包含个人资料。",
+  importReview: "完整归档需输入密码、选择恢复内容并确认，完成后重新载入应用。旧版书库导入会合并记录，可能在部分写入后失败。取消等待不能撤销已提交的修改；重启可能丢失本次会话的结果记录。",
   reportReview: "诊断报告可能含个人数据，由宿主提供报告预览与最终导出或发送确认。发送回执不代表开发者已处理。",
   verifyReview: "仅校验本设备的事件日志投影，不修复数据，也不验证备份或其他设备。"
 };

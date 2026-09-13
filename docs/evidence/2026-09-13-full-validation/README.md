@@ -1386,3 +1386,24 @@ Agent请求/Confirm后得到rebuilt-reload-required，正确标题及新收藏�
 真实SQLite/Worker/Tauri挂载UI，不计物理输入/像素；不完整日志、checkpoint/
 bootstrap/回填/genesis迁移、跨设备/平台和发布包仍待验。只有现有探针白名单和
 证据修改，desktop类型检查通过，无产品改动和重复全量门禁。
+
+## 第五十四流程：修复备份能力仍被声明为仅支持旧版
+
+第53流程实际Maintenance Desk菜单仍显示Import/Export library backup (v1)。
+追查Agent维护工具，request_backup及open_maintenance_settings描述同样宣称
+完整归档恢复尚不可用；与当前useBackupImport实际full/library分支、宿主选择器
+及第10流程完整恢复证据冲突。修正两项工具说明和插件英中文入口/复核说明，
+完整归档与旧版子集分别描述，保留宿主密码/文件/恢复选择/插件同意/最终确认和
+重载要求，未开放额外权限或改动备份实现。重新生成插件dist。
+
+真实primary隔离Tauri重新加载编译插件后菜单为Import backup/Export backup，
+复核页说明两种格式。插件Import请求导航到宿主Data & Sync，实际Import按钮
+打开Complete encrypted backup/Library backup (v1)及密码表单；取消后插件近期
+操作记录取消。Agent真实request_backup(export)同样需宿主Export按钮，再显示
+两种格式与密码确认表单；Cancel后工具返回action:export/status:cancelled。
+没有输入密码、选择文件、生成或应用新备份，不将此文案复验替代完整恢复测试。
+
+证据：[backup-capability-copy-observations.json](./backup-capability-copy-observations.json)。
+现有maintenance工具与插件21项检查/137断言、插件build和diff检查通过。
+设置/插件视图关闭，Maintenance Desk原启用状态/2贡献恢复；物理输入、像素和
+发布包内置插件更新未验。完整备份其他待验边界继续按原覆盖清单推进。
