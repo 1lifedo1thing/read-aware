@@ -1992,3 +1992,20 @@ TEXT中文/英文正文画面可读，XHTML标题/中文正文及FB2章节/图�
 书架实际Select books只选四本自有书，批准Remove 4 books后原生仅余原书，
 四书源/封面文件不存在、待清理0、原四标注保留。无产品改动；新包中其他修复
 不因本批自动算已验。见[packaged-format-native-observations.json](./packaged-format-native-observations.json)。
+
+## 第七十五流程：固定版式首次开书跳过第一页的修复
+
+第74批观察到的CBR首开2/3在debug全新书ID再次复现，未有保存位置，真实
+openBook回pages/page2.PNG/epubcfi(/6/4)。根因是初始/失效位置回退使用
+renderer.next()，滚动固定版式已初始化第一张，再next越过它。改用现有
+View.init()绝对选择首个linear section；有效保存目标/进度路径不变。
+
+真实debug新CBR首开page1/CFI6/2/index0，跳第三页关书重开仍page10/index2；
+普通EPUB首章Hello EPUB world正常。4项20断言（含虚拟文章位置迁移）及web/
+desktop/Foliate严格类型通过。最新隔离发布包重建退出0、原生1m07s，SHA256
+ d96ae300…，运行PID18338。CUA系统选择器导入后首次点击书架直接绿色首图，
+阅读工具栏1/3、33%，这次实际包也验证修复。临时列表视图已恢复原列视图。
+
+debug三本/packaged一本自有书及源/封面全部清理，待清理0；原两书和发布包
+原一书四标注保留。未扩大到所有固定版式变体。详见
+[first-page-restoration-observations.json](./first-page-restoration-observations.json)。

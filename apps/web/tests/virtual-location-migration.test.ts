@@ -22,7 +22,7 @@ test("actual DOM CFIs preserve selected annotation text and reading position acr
   // The restoration helper uses the same resolver rather than the old fraction.
   const calls: unknown[] = [];
   const view = { goTo: async (cfi: string) => { const result = resolveContentCFI(after, cfi); calls.push(result.index); return result; },
-    goToFraction: async (fraction: number) => { calls.push(["fraction", fraction]); }, renderer: { next: async () => { calls.push("start"); } } } as unknown as FoliateView;
+    goToFraction: async (fraction: number) => { calls.push(["fraction", fraction]); }, init: async () => { calls.push("start"); } } as unknown as FoliateView;
   await restoreReadingPosition(view, { virtual: true, reset: true, target: stored.cfi, fraction: 0.7 });
   expect(calls).toEqual([1]);
   await restoreReadingPosition(view, { virtual: true, reset: false, target: "epubcfi(/6/2)", fraction: 0.7 });
