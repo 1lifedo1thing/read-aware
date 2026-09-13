@@ -1792,3 +1792,32 @@ Library Desk等组合消费者按既有设计需另外安装，不因debug加载
 当前策略hash仍44cc54e0…，策略实现最后提交9f88895b，生产构建通过保护资源检查。
 复用仅限该历史边界，不算当前二进制重跑、完整沙箱或在途撤权/其他平台认证。
 详见[packaged-current-build-observations.json](./packaged-current-build-observations.json)。
+
+## 第六十五流程：真实压缩 CBR 导入、图片与损坏页错误
+
+用官方 RARLAB 临时 RAR7.23 工具生成615字节RAR5压缩夹具，含嵌套目录、
+大写PNG扩展名和1/2/10自然排序的三张64×96合成图；另取前307字节模拟截断。
+没有将ZIP改名冒充RAR，也未安装全局工具。
+
+真实Tauri首先暴露目录遍历栈溢出：libarchive文件节点含循环archive引用。改用
+公开getFilesArray并在枚举失败/无图片时关闭decoder。随后补齐CBR section的
+createDocument/loadImage，使正文准备得到3/3 ready/textless、公共图片发现和
+读取逐页返回223字节。后台补齐原先绕过CBR解析器，已统一到parseBookFile。
+
+最终正常样本在开书前已自动cover ready/local、job completed；作者缺失仍
+metadataPending，不声称填出了未知元数据。实际阅读器目录按page1/page2/page10
+排序，定位第1/3页返回对应href/CFI；三个图片解码尺寸与绿/蓝/橙像素均符合夹具。
+这是实际WebView图片解码和DOM证据，不是物理屏幕截图。
+
+截断样本能读两个目录项，正文状态仍为textless；图片字节读取不保证可解码。
+最初损坏页静默空白，现按需解码页面/封面并在失败时释放URL、返回稳定
+reader/render-failed。真实目录点击损坏页显示Unable to load this file，
+封面任务failed、unchecked；完好页仍可读。未增加全档预检，也不把session
+ready或目录目标位置当成每页已渲染。其他损坏格式与RAR变体仍待验。
+
+最终代码7项/26断言及web/desktop/Foliate严格类型通过，完整样本重新导入、
+封面/首末定位/三页解码复验通过。六个自有书和源/封面均清零，原两书保持，
+原会话两条完整序列hash不变。用户报告解锁后CUA仍明确返回Mac locked，已
+反馈且没有循环重试。第64批release不含本批修复，需重建后另验；原生选择器、
+物理焦点/画面、RAR4/加密/分卷、其他actor及跨平台证据不在本批内。
+详见[cbr-format-observations.json](./cbr-format-observations.json)。

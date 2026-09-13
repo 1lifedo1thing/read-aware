@@ -7,9 +7,9 @@ import { createLogger } from "../../../platform/logger";
 import {
   foliateAuthor,
   foliateTitle,
-  makeFoliateBook,
   type FoliateBook,
 } from "../../reader/lib/foliate-engine";
+import { parseBookFile } from "../../reader/lib/parse-book";
 import { parseFileName } from "./book-file-name";
 import { getBookRecord, openLocalBookFile } from "./library-db";
 import type { BookFormat, LibraryBook } from "./library-types";
@@ -125,7 +125,7 @@ async function runJob(request: EnrichmentRequest): Promise<EnrichmentOutcome> {
     // if the importing device found one, arrives through the hydrator.
     return { reason: "source-unavailable" };
   }
-  const parsed = await makeFoliateBook(file);
+  const parsed = await parseBookFile(file);
   try {
     return await applyParsedBook({ ...request, cover: needsCover, metadata: needsMetadata }, parsed);
   } finally {

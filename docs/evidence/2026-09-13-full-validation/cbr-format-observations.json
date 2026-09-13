@@ -1,0 +1,971 @@
+{
+  "flow": 65,
+  "date": "2026-09-13",
+  "baseline": "a4ec010e",
+  "profile": "com.readaware.app.capability-e2e",
+  "boundary": "macOS debug Tauri 9224; synthetic compressed RAR5, native import/source/cover and actual reader DOM/image decoding. No screenshot, physical focus, packaged, model or cross-platform proof.",
+  "fixtures": {
+    "source": "https://www.rarlab.com/download.htm",
+    "tool": "RAR 7.23 macOS ARM; temporary official distribution only",
+    "toolArchiveSha256": "68b393c000758d477fde43c955ff7542f12f76f3f5e87cdda923152fc791bd4d",
+    "valid": {
+      "bytes": 615,
+      "sha256": "320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a"
+    },
+    "truncated": {
+      "bytes": 307,
+      "sha256": "e01cc11bca085215bf41104c41670cbff2aa8b3f98714d7611d99a54efaf423d"
+    }
+  },
+  "fixes": [
+    "Use public getFilesArray instead of recursively traversing circular CompressedFile internals; close failed decoders.",
+    "Provide createDocument/loadImage sections for textless preparation and image consumers.",
+    "Use common parseBookFile for background enrichment.",
+    "Decode on-demand page/cover images before accepting them; surface reader/render-failed and release failed URLs."
+  ],
+  "observations": {
+    "cbr65import": {
+      "byteLength": 615,
+      "extraction": {
+        "message": "Maximum call stack size exceeded."
+      },
+      "fileName": "fixture.cbr",
+      "imported": {
+        "addedAt": "2026-09-13T04:14:10.143Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "fixture.cbr",
+        "fileSize": 615,
+        "format": "cbr",
+        "id": "4283b1af-62c6-4916-9e5a-1a3c9fc2cd69",
+        "starred": false,
+        "title": "Fixture",
+        "updatedAt": "2026-09-13T04:14:10.143Z"
+      },
+      "state": {
+        "bookId": "4283b1af-62c6-4916-9e5a-1a3c9fc2cd69",
+        "chapterCount": 0,
+        "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+        "progress": null,
+        "status": "unprepared",
+        "text": "unknown"
+      }
+    },
+    "cbr65tree": {
+      "shape": [
+        {
+          "children": [
+            {
+              "keys": [
+                "_name",
+                "_size",
+                "_path",
+                "_lastModified",
+                "_archiveRef"
+              ],
+              "kind": "R",
+              "name": "page10.png"
+            },
+            {
+              "keys": [
+                "_name",
+                "_size",
+                "_path",
+                "_lastModified",
+                "_archiveRef"
+              ],
+              "kind": "R",
+              "name": "page2.PNG"
+            },
+            {
+              "keys": [
+                "_name",
+                "_size",
+                "_path",
+                "_lastModified",
+                "_archiveRef"
+              ],
+              "kind": "R",
+              "name": "page1.png"
+            }
+          ],
+          "keys": [
+            "page10.png",
+            "page2.PNG",
+            "page1.png"
+          ],
+          "kind": "Object",
+          "name": "pages"
+        }
+      ]
+    },
+    "cbr65fixedImport": {
+      "byteLength": 615,
+      "extraction": {
+        "errorCode": "library/text-unsupported",
+        "message": "Book text extraction did not read every required section"
+      },
+      "fileName": "fixture.cbr",
+      "imported": {
+        "addedAt": "2026-09-13T04:17:01.025Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "fixture.cbr",
+        "fileSize": 615,
+        "format": "cbr",
+        "id": "f41cc70c-1ea2-4c4f-b876-db6b6b4f35f8",
+        "starred": false,
+        "title": "Fixture",
+        "updatedAt": "2026-09-13T04:17:01.025Z"
+      },
+      "state": {
+        "bookId": "f41cc70c-1ea2-4c4f-b876-db6b6b4f35f8",
+        "chapterCount": 0,
+        "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+        "errorCode": "library/text-unsupported",
+        "progress": {
+          "completed": 0,
+          "failed": 0,
+          "total": 3,
+          "unsupported": 3
+        },
+        "status": "unsupported",
+        "text": "unknown"
+      }
+    },
+    "cbr65coverFailure": {
+      "beforeOpenEnrichment": {
+        "bookId": "f41cc70c-1ea2-4c4f-b876-db6b6b4f35f8",
+        "cover": {
+          "local": false,
+          "status": "unchecked"
+        },
+        "job": {
+          "errorCode": "book/unsupported-format",
+          "finishedAt": 1789273021094,
+          "phase": "failed",
+          "reason": null,
+          "startedAt": 1789273021036
+        },
+        "metadataPending": true,
+        "sourceLocal": true,
+        "supported": true
+      }
+    },
+    "cbr65acceptedImport": {
+      "byteLength": 615,
+      "extraction": {
+        "chapterCount": 0,
+        "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+        "metadata": {
+          "author": "",
+          "title": "fixture.cbr"
+        },
+        "sectionCount": 3,
+        "textCharacters": 0,
+        "titles": []
+      },
+      "fileName": "fixture.cbr",
+      "imported": {
+        "addedAt": "2026-09-13T04:18:51.576Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "fixture.cbr",
+        "fileSize": 615,
+        "format": "cbr",
+        "id": "a0ff07e1-b6cc-4736-92a8-a1f3f0cff13f",
+        "starred": false,
+        "title": "Fixture",
+        "updatedAt": "2026-09-13T04:18:51.576Z"
+      },
+      "state": {
+        "bookId": "a0ff07e1-b6cc-4736-92a8-a1f3f0cff13f",
+        "chapterCount": 0,
+        "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+        "progress": {
+          "completed": 3,
+          "failed": 0,
+          "total": 3,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "textless"
+      }
+    },
+    "cbr65acceptedCover": {
+      "beforeOpenEnrichment": {
+        "bookId": "a0ff07e1-b6cc-4736-92a8-a1f3f0cff13f",
+        "cover": {
+          "local": true,
+          "status": "ready"
+        },
+        "job": {
+          "errorCode": null,
+          "finishedAt": 1789273131713,
+          "phase": "completed",
+          "reason": null,
+          "startedAt": 1789273131588
+        },
+        "metadataPending": true,
+        "sourceLocal": true,
+        "supported": true
+      }
+    },
+    "cbr65page1": {
+      "images": [
+        {
+          "images": [
+            {
+              "height": 96,
+              "loaded": true,
+              "pixel": [
+                40,
+                180,
+                70,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 0
+        },
+        {
+          "images": [
+            {
+              "height": 96,
+              "loaded": true,
+              "pixel": [
+                30,
+                100,
+                220,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 1
+        },
+        {
+          "images": [
+            {
+              "height": 96,
+              "loaded": true,
+              "pixel": [
+                240,
+                150,
+                30,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 2
+        }
+      ],
+      "session": {
+        "bookId": "a0ff07e1-b6cc-4736-92a8-a1f3f0cff13f",
+        "change": {
+          "origin": "system",
+          "reason": "reader-demand"
+        },
+        "controls": {
+          "visible": false
+        },
+        "history": {
+          "canGoBack": true,
+          "canGoForward": false
+        },
+        "location": {
+          "bookId": "a0ff07e1-b6cc-4736-92a8-a1f3f0cff13f",
+          "cfi": "epubcfi(/6/2)",
+          "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+          "fraction": 0.3333333333333333,
+          "href": "pages/page1.png"
+        },
+        "mode": {
+          "availableModes": [
+            {
+              "defaultUnitId": "sentence",
+              "key": "sentence-reader:guided-reading",
+              "label": "Sentence Reader: Read by sentence or paragraph",
+              "units": [
+                {
+                  "id": "sentence",
+                  "label": "By sentence"
+                },
+                {
+                  "id": "paragraph",
+                  "label": "By paragraph"
+                }
+              ]
+            }
+          ],
+          "cfiRange": null,
+          "label": "Sentence Reader: Read by sentence or paragraph",
+          "modeKey": "sentence-reader:guided-reading",
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "unavailable",
+          "unavailableReason": "unsupported-format",
+          "unitId": "paragraph",
+          "units": [
+            {
+              "id": "sentence",
+              "label": "By sentence"
+            },
+            {
+              "id": "paragraph",
+              "label": "By paragraph"
+            }
+          ]
+        },
+        "pagination": {
+          "flow": "scrolled",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 3,
+            "index": 0
+          }
+        },
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "mode-inactive"
+        },
+        "readerDemand": {
+          "active": false,
+          "idleAt": 1789273183098,
+          "lastActivityAt": 1789273181598,
+          "reason": "relocate"
+        },
+        "revision": 15,
+        "selection": null,
+        "sessionId": "65a62cef-47e1-46cf-a221-ce53137fb1f1",
+        "sourceRevision": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+        "status": "ready",
+        "visibleText": "",
+        "visibleTextState": {
+          "reason": "unsupported",
+          "source": null,
+          "status": "unavailable",
+          "truncated": false
+        }
+      },
+      "text": "Shelf\n\nContents\n\nNotes\nfixture.cbr\n1 / 3 · 33%\n\nReading appearance\n\nChat\n\nMore\n\npages/page1.png\n\npages/page2.PNG\n\npages/page10.png\nAsk about this book\nSelect a passage and choose Ask AI, or just start typing. This conversation sta"
+    },
+    "cbr65page10": {
+      "images": [
+        {
+          "images": [
+            {
+              "height": 96,
+              "loaded": true,
+              "pixel": [
+                240,
+                150,
+                30,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 2
+        },
+        {
+          "images": [
+            {
+              "height": 96,
+              "loaded": true,
+              "pixel": [
+                30,
+                100,
+                220,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 1
+        },
+        {
+          "images": [
+            {
+              "height": 96,
+              "loaded": true,
+              "pixel": [
+                40,
+                180,
+                70,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 0
+        }
+      ],
+      "session": {
+        "bookId": "a0ff07e1-b6cc-4736-92a8-a1f3f0cff13f",
+        "change": {
+          "origin": "system",
+          "reason": "reader-demand"
+        },
+        "controls": {
+          "visible": false
+        },
+        "history": {
+          "canGoBack": true,
+          "canGoForward": false
+        },
+        "location": {
+          "bookId": "a0ff07e1-b6cc-4736-92a8-a1f3f0cff13f",
+          "cfi": "epubcfi(/6/6)",
+          "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+          "fraction": 1,
+          "href": "pages/page10.png"
+        },
+        "mode": {
+          "availableModes": [
+            {
+              "defaultUnitId": "sentence",
+              "key": "sentence-reader:guided-reading",
+              "label": "Sentence Reader: Read by sentence or paragraph",
+              "units": [
+                {
+                  "id": "sentence",
+                  "label": "By sentence"
+                },
+                {
+                  "id": "paragraph",
+                  "label": "By paragraph"
+                }
+              ]
+            }
+          ],
+          "cfiRange": null,
+          "label": "Sentence Reader: Read by sentence or paragraph",
+          "modeKey": "sentence-reader:guided-reading",
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "unavailable",
+          "unavailableReason": "unsupported-format",
+          "unitId": "paragraph",
+          "units": [
+            {
+              "id": "sentence",
+              "label": "By sentence"
+            },
+            {
+              "id": "paragraph",
+              "label": "By paragraph"
+            }
+          ]
+        },
+        "pagination": {
+          "flow": "scrolled",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 3,
+            "index": 2
+          }
+        },
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "mode-inactive"
+        },
+        "readerDemand": {
+          "active": false,
+          "idleAt": 1789273214641,
+          "lastActivityAt": 1789273213141,
+          "reason": "relocate"
+        },
+        "revision": 19,
+        "selection": null,
+        "sessionId": "65a62cef-47e1-46cf-a221-ce53137fb1f1",
+        "sourceRevision": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+        "status": "ready",
+        "visibleText": "",
+        "visibleTextState": {
+          "reason": "unsupported",
+          "source": null,
+          "status": "unavailable",
+          "truncated": false
+        }
+      },
+      "text": "Shelf\n\nContents\n\nNotes\nfixture.cbr\n3 / 3 · 100%\n\nReading appearance\n\nChat\n\nMore\n\npages/page1.png\n\npages/page2.PNG\n\npages/page10.png\nAsk about this book\nSelect a passage and choose Ask AI, or just start typing. This conversation st"
+    },
+    "cbr65images": [
+      {
+        "bytes": 223,
+        "discovery": "available",
+        "height": 96,
+        "sectionIndex": 0,
+        "status": "ready",
+        "total": 1,
+        "width": 64
+      },
+      {
+        "bytes": 223,
+        "discovery": "available",
+        "height": 96,
+        "sectionIndex": 1,
+        "status": "ready",
+        "total": 1,
+        "width": 64
+      },
+      {
+        "bytes": 223,
+        "discovery": "available",
+        "height": 96,
+        "sectionIndex": 2,
+        "status": "ready",
+        "total": 1,
+        "width": 64
+      }
+    ],
+    "cbr65truncated": {
+      "byteLength": 307,
+      "extraction": {
+        "chapterCount": 0,
+        "contentVersion": "sha256:e01cc11bca085215bf41104c41670cbff2aa8b3f98714d7611d99a54efaf423d",
+        "metadata": {
+          "author": "",
+          "title": "truncated.cbr"
+        },
+        "sectionCount": 2,
+        "textCharacters": 0,
+        "titles": []
+      },
+      "fileName": "truncated.cbr",
+      "imported": {
+        "addedAt": "2026-09-13T04:20:55.042Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "truncated.cbr",
+        "fileSize": 307,
+        "format": "cbr",
+        "id": "86c16d66-57b1-4a45-9f45-045d0495ec6a",
+        "starred": false,
+        "title": "Truncated",
+        "updatedAt": "2026-09-13T04:20:55.042Z"
+      },
+      "state": {
+        "bookId": "86c16d66-57b1-4a45-9f45-045d0495ec6a",
+        "chapterCount": 0,
+        "contentVersion": "sha256:e01cc11bca085215bf41104c41670cbff2aa8b3f98714d7611d99a54efaf423d",
+        "progress": {
+          "completed": 2,
+          "failed": 0,
+          "total": 2,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "textless"
+      }
+    },
+    "cbr65truncatedRead": [
+      {
+        "errorCode": 11,
+        "message": "Cannot decode the data in the argument to createImageBitmap",
+        "sectionIndex": 0
+      },
+      {
+        "bytes": 223,
+        "height": 96,
+        "sectionIndex": 1,
+        "status": "ready",
+        "total": 1,
+        "width": 64
+      }
+    ],
+    "cbr65damagedFixedImport": {
+      "byteLength": 307,
+      "extraction": {
+        "chapterCount": 0,
+        "contentVersion": "sha256:e01cc11bca085215bf41104c41670cbff2aa8b3f98714d7611d99a54efaf423d",
+        "metadata": {
+          "author": "",
+          "title": "truncated.cbr"
+        },
+        "sectionCount": 2,
+        "textCharacters": 0,
+        "titles": []
+      },
+      "fileName": "truncated.cbr",
+      "imported": {
+        "addedAt": "2026-09-13T04:26:52.956Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "truncated.cbr",
+        "fileSize": 307,
+        "format": "cbr",
+        "id": "2aa3eb04-1eae-4d2d-b1f8-af303c2fd412",
+        "starred": false,
+        "title": "Truncated",
+        "updatedAt": "2026-09-13T04:26:52.956Z"
+      },
+      "state": {
+        "bookId": "2aa3eb04-1eae-4d2d-b1f8-af303c2fd412",
+        "chapterCount": 0,
+        "contentVersion": "sha256:e01cc11bca085215bf41104c41670cbff2aa8b3f98714d7611d99a54efaf423d",
+        "progress": {
+          "completed": 2,
+          "failed": 0,
+          "total": 2,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "textless"
+      }
+    },
+    "cbr65damagedFixedNavigate": {
+      "code": "reader/render-failed",
+      "message": "Comic page could not be decoded: pages/page2.PNG"
+    },
+    "cbr65damagedFixedUI": {
+      "cover": {
+        "bookId": "2aa3eb04-1eae-4d2d-b1f8-af303c2fd412",
+        "cover": {
+          "local": false,
+          "status": "unchecked"
+        },
+        "job": {
+          "errorCode": "reader/render-failed",
+          "finishedAt": 1789273620814,
+          "phase": "failed",
+          "reason": null,
+          "startedAt": 1789273620532
+        },
+        "metadataPending": true,
+        "sourceLocal": true,
+        "supported": true
+      },
+      "session": {
+        "bookId": "2aa3eb04-1eae-4d2d-b1f8-af303c2fd412",
+        "change": {
+          "origin": "system",
+          "reason": "reader-demand"
+        },
+        "controls": {
+          "visible": false
+        },
+        "history": {
+          "canGoBack": false,
+          "canGoForward": false
+        },
+        "location": {
+          "bookId": "2aa3eb04-1eae-4d2d-b1f8-af303c2fd412",
+          "cfi": "epubcfi(/6/2)",
+          "contentVersion": "sha256:e01cc11bca085215bf41104c41670cbff2aa8b3f98714d7611d99a54efaf423d",
+          "fraction": 0.5,
+          "href": "pages/page2.PNG"
+        },
+        "mode": {
+          "availableModes": [
+            {
+              "defaultUnitId": "sentence",
+              "key": "sentence-reader:guided-reading",
+              "label": "Sentence Reader: Read by sentence or paragraph",
+              "units": [
+                {
+                  "id": "sentence",
+                  "label": "By sentence"
+                },
+                {
+                  "id": "paragraph",
+                  "label": "By paragraph"
+                }
+              ]
+            }
+          ],
+          "cfiRange": null,
+          "label": "Sentence Reader: Read by sentence or paragraph",
+          "modeKey": "sentence-reader:guided-reading",
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "unavailable",
+          "unavailableReason": "unsupported-format",
+          "unitId": "paragraph",
+          "units": [
+            {
+              "id": "sentence",
+              "label": "By sentence"
+            },
+            {
+              "id": "paragraph",
+              "label": "By paragraph"
+            }
+          ]
+        },
+        "pagination": {
+          "flow": "scrolled",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 2,
+            "index": 0
+          }
+        },
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "mode-inactive"
+        },
+        "readerDemand": {
+          "active": false,
+          "idleAt": 1789273640321,
+          "lastActivityAt": 1789273638821,
+          "reason": "relocate"
+        },
+        "revision": 17,
+        "selection": null,
+        "sessionId": "0bb01efb-4b41-478c-9271-5b64792bfec8",
+        "sourceRevision": "sha256:e01cc11bca085215bf41104c41670cbff2aa8b3f98714d7611d99a54efaf423d",
+        "status": "ready",
+        "visibleText": "",
+        "visibleTextState": {
+          "reason": "unsupported",
+          "source": null,
+          "status": "unavailable",
+          "truncated": false
+        }
+      },
+      "text": "Unable to load this file.\n\nDismiss\nBack to library\n\nShelf\n\nContents\n\nNotes\nTruncated\n1 / 2 · 50%\n\nReading appearance\n\nChat\n\nMore\n\npages/page2.PNG\n\npages/page10.png\nAsk about this book\nSelect a passage and choose Ask AI, or just start typing. This conversation stays with the book.\n\n"
+    },
+    "cbr65finalValidImport": {
+      "byteLength": 615,
+      "extraction": {
+        "chapterCount": 0,
+        "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+        "metadata": {
+          "author": "",
+          "title": "fixture.cbr"
+        },
+        "sectionCount": 3,
+        "textCharacters": 0,
+        "titles": []
+      },
+      "fileName": "fixture.cbr",
+      "imported": {
+        "addedAt": "2026-09-13T04:27:40.642Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "fixture.cbr",
+        "fileSize": 615,
+        "format": "cbr",
+        "id": "8f34534c-c4e3-43dc-906b-d4cfadb866cd",
+        "starred": false,
+        "title": "Fixture",
+        "updatedAt": "2026-09-13T04:27:40.642Z"
+      },
+      "state": {
+        "bookId": "8f34534c-c4e3-43dc-906b-d4cfadb866cd",
+        "chapterCount": 0,
+        "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+        "progress": {
+          "completed": 3,
+          "failed": 0,
+          "total": 3,
+          "unsupported": 0
+        },
+        "status": "ready",
+        "text": "textless"
+      }
+    },
+    "cbr65finalValidCoverOpen": {
+      "cover": {
+        "bookId": "8f34534c-c4e3-43dc-906b-d4cfadb866cd",
+        "cover": {
+          "local": true,
+          "status": "ready"
+        },
+        "job": {
+          "errorCode": null,
+          "finishedAt": 1789273660730,
+          "phase": "completed",
+          "reason": null,
+          "startedAt": 1789273660650
+        },
+        "metadataPending": true,
+        "sourceLocal": true,
+        "supported": true
+      },
+      "opened": {
+        "location": {
+          "bookId": "8f34534c-c4e3-43dc-906b-d4cfadb866cd",
+          "cfi": "epubcfi(/6/4)",
+          "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+          "fraction": 0.6666666666666666,
+          "href": "pages/page2.PNG"
+        },
+        "sessionId": "644a00dd-d8f3-4d4c-bf64-5cd204e936aa",
+        "status": "completed"
+      }
+    },
+    "cbr65finalValidNavigation": {
+      "first": {
+        "location": {
+          "bookId": "8f34534c-c4e3-43dc-906b-d4cfadb866cd",
+          "cfi": "epubcfi(/6/2)",
+          "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+          "fraction": 0.3333333333333333,
+          "href": "pages/page1.png"
+        },
+        "sessionId": "644a00dd-d8f3-4d4c-bf64-5cd204e936aa",
+        "status": "completed"
+      },
+      "images": [
+        {
+          "images": [
+            {
+              "height": 96,
+              "pixel": [
+                240,
+                150,
+                30,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 2
+        },
+        {
+          "images": [
+            {
+              "height": 96,
+              "pixel": [
+                30,
+                100,
+                220,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 1
+        },
+        {
+          "images": [
+            {
+              "height": 96,
+              "pixel": [
+                40,
+                180,
+                70,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 0
+        }
+      ],
+      "last": {
+        "location": {
+          "bookId": "8f34534c-c4e3-43dc-906b-d4cfadb866cd",
+          "cfi": "epubcfi(/6/6)",
+          "contentVersion": "sha256:320a8998962065ac4d61adf0b0f16cf561fde3b8ad470dcd3c644da15e38900a",
+          "fraction": 1,
+          "href": "pages/page10.png"
+        },
+        "sessionId": "644a00dd-d8f3-4d4c-bf64-5cd204e936aa",
+        "status": "completed"
+      }
+    },
+    "cbr65cleanup": {
+      "remainingBookIds": [
+        "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+      ],
+      "remainingOwned": 0,
+      "removed": [
+        "a0ff07e1-b6cc-4736-92a8-a1f3f0cff13f",
+        "86c16d66-57b1-4a45-9f45-045d0495ec6a"
+      ]
+    },
+    "cbr65finalCleanup": {
+      "remainingBookIds": [
+        "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+      ],
+      "remainingOwned": 0,
+      "removed": [
+        "2aa3eb04-1eae-4d2d-b1f8-af303c2fd412",
+        "8f34534c-c4e3-43dc-906b-d4cfadb866cd"
+      ]
+    },
+    "cbr65nativeCleanup": {
+      "originalConversation": {
+        "count": 2,
+        "hash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a"
+      },
+      "removed": [
+        {
+          "book": null,
+          "cover": null,
+          "id": "4283b1af-62c6-4916-9e5a-1a3c9fc2cd69",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "f41cc70c-1ea2-4c4f-b876-db6b6b4f35f8",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "a0ff07e1-b6cc-4736-92a8-a1f3f0cff13f",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "86c16d66-57b1-4a45-9f45-045d0495ec6a",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "2aa3eb04-1eae-4d2d-b1f8-af303c2fd412",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "8f34534c-c4e3-43dc-906b-d4cfadb866cd",
+          "source": null
+        }
+      ]
+    }
+  },
+  "validation": {
+    "tests": "7 pass, 26 assertions; comic-archive + book-enrichment",
+    "types": "web, desktop and Foliate strict/no-any passed",
+    "desktopControl": "After user reports unlock, getApp('/tmp/ReadAware Capability Tests.app') still returns Mac is locked; no desktop interaction counted."
+  },
+  "limits": [
+    "Text ready/textless checks text availability, not archive integrity. The truncated archive still imports and enumerates two entries; its intact page remains readable.",
+    "Broken page navigation rejects; actual TOC UI shows Unable to load this file. Session can still report ready/current target; this is not proof of every page rendered.",
+    "Missing comic author remains metadataPending; no invented metadata.",
+    "Public readBookImage returns source bytes; separate pixel decoding detected corruption. No model or Worker image-consumer proof added.",
+    "RAR4/encrypted/multi-volume, aliases, packaged, native selectors, screenshots, focus and other platforms remain pending.",
+    "Release from flow64 does not include flow65 fixes."
+  ]
+}

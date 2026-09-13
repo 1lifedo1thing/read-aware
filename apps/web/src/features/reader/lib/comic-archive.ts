@@ -10,6 +10,7 @@
  * hundreds of megabytes and the reader only ever shows a spread.
  */
 import { Archive } from "libarchive.js";
+import { AppError } from "@read-aware/core";
 import { escapeHtml } from "./section-document";
 import type { FoliateBook } from './foliate-engine';
 
@@ -28,35 +29,12 @@ const IMAGE_EXTENSIONS = [
   ".avif",
 ];
 
-type ArchiveTree = { [name: string]: ArchiveTree };
-
 let initialized = false;
 
 function ensureInitialized() {
   if (initialized) return;
   Archive.init({ workerUrl: WORKER_URL });
   initialized = true;
-}
-
-/**
- * Flatten the archive's entry tree to full paths.
- *
- * libarchive.js reports entries as nested objects keyed by path segment, where
- * a leaf (a file) is an empty object — the `CompressedFile` instances its
- * types promise do not survive the worker boundary, so entries are read back
- * through `extractSingleFile` by path instead. Its flat `getFilesArray()`
- * returns nothing at all for entries at the archive root, which is exactly how
- * comics are packed.
- */
-function collectPaths(tree: ArchiveTree, prefix: string, paths: string[]) {
-  for (const [name, value] of Object.entries(tree)) {
-    const path = prefix ? `${prefix}/${name}` : name;
-    if (value && typeof value === "object" && Object.keys(value).length > 0) {
-      collectPaths(value, path, paths);
-    } else {
-      paths.push(path);
-    }
-  }
 }
 
 const pageHtml = (src: string) =>
@@ -66,8 +44,16 @@ const pageHtml = (src: string) =>
 export async function buildComicArchiveBook(file: File): Promise<FoliateBook> {
   ensureInitialized();
   const archive = await Archive.open(file);
-  const entries: string[] = [];
-  collectPaths((await archive.getFilesObject()) as ArchiveTree, "", entries);
+  let entries: string[];
+  try {
+    // CompressedFile leaves retain an archive back-reference. Let the public
+    // flattening API recognize them instead of traversing their internals.
+    const files: Array<{ path: string; file: { name: string } | string }> = await archive.getFilesArray();
+    entries = files.map(({ path, file }) => path + (typeof file === "string" ? file : file.name));
+  } catch (error) {
+    await archive.close();
+    throw error;
+  }
 
   const collator = new Intl.Collator([], { numeric: true });
   const pages = entries
@@ -77,14 +63,29 @@ export async function buildComicArchiveBook(file: File): Promise<FoliateBook> {
     })
     .sort(collator.compare);
 
-  if (pages.length === 0) throw new Error("No supported image files in archive");
+  if (pages.length === 0) {
+    await archive.close();
+    throw new Error("No supported image files in archive");
+  }
 
   const urls = new Map<number, string[]>();
+  const imageUrlFor = async (path: string) => {
+    const extracted = await archive.extractSingleFile(path);
+    const url = URL.createObjectURL(extracted);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      return { extracted, url };
+    } catch (cause) {
+      URL.revokeObjectURL(url);
+      throw new AppError("reader/render-failed", `Comic page could not be decoded: ${path}`, { cause });
+    }
+  };
   const load = async (index: number) => {
     const existing = urls.get(index);
     if (existing) return existing[1]!;
-    const extracted = await archive.extractSingleFile(pages[index]!);
-    const imageUrl = URL.createObjectURL(extracted);
+    const { url: imageUrl } = await imageUrlFor(pages[index]!);
     const pageUrl = URL.createObjectURL(new Blob([pageHtml(imageUrl)], { type: "text/html" }));
     urls.set(index, [imageUrl, pageUrl]);
     return pageUrl;
@@ -100,6 +101,14 @@ export async function buildComicArchiveBook(file: File): Promise<FoliateBook> {
     sections: pages.map((path, index) => ({
       id: path,
       load: () => load(index),
+      createDocument: () => {
+        const doc = document.implementation.createHTMLDocument();
+        const image = doc.createElement("img");
+        image.setAttribute("src", path);
+        doc.body.append(image);
+        return doc;
+      },
+      loadImage: () => archive.extractSingleFile(path),
       unload: () => unload(index),
       size: 1000,
     })),
@@ -107,10 +116,14 @@ export async function buildComicArchiveBook(file: File): Promise<FoliateBook> {
     resolveHref: (href: string) => ({ index: Math.max(0, pages.indexOf(href)) }),
     splitTOCHref: (href: string) => [href, null],
     getTOCFragment: (doc: Document) => doc.documentElement,
-    getCover: () => archive.extractSingleFile(pages[0]!),
-    destroy: () => {
+    getCover: async () => {
+      const { extracted, url } = await imageUrlFor(pages[0]!);
+      URL.revokeObjectURL(url);
+      return extracted;
+    },
+    destroy: async () => {
       for (const index of [...urls.keys()]) unload(index);
-      void archive.close();
+      await archive.close();
     },
   };
 }
