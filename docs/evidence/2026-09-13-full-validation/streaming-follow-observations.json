@@ -1,0 +1,172 @@
+{
+  "date": "2026-09-13",
+  "flow": 49,
+  "baseline": "bd88f0e1",
+  "platform": "macOS debug Tauri, visible focused native window, real chat UI and system wheel via CUA",
+  "profile": "com.readaware.app.capability-e2e",
+  "transport": "Existing reading-context loopback server extended with READAWARE_STREAMING_PROBE=1 and /next; each step sends 8 synthetic paragraphs; /release ends stream. Default privacy mode preserved.",
+  "failure": "followStreaming=true lags one batch: at 16 paragraphs of second turn scrollTop2235/clientHeight645/scrollHeight3744, bottom gap864. First turn with anchored mode correctly remained top0.",
+  "cause": "Scrolling on parent streaming props alone misses subsequent Markdown layout height; observed content growth requires a second scroll after actual layout.",
+  "fix": "Observe actual transcript content ResizeObserver while follow=true and streaming=true; scroll only while engaged. Preserve existing wheel up/down pause and reengagement; disconnect when not streaming/following.",
+  "observations": {
+    "streamAnchored8": {
+      "height": 645,
+      "scrollHeight": 1012,
+      "text": "STREAM_FOLLOW_PROBE anchored mode\n\nCopy message\nParagraph 1: This synthetic resp",
+      "top": 0
+    },
+    "streamAnchored16": {
+      "height": 645,
+      "last": "se following, inspect earlier text, and return to the newest passage.\n",
+      "scrollHeight": 1876,
+      "top": 0
+    },
+    "streamFollow8": {
+      "bottomGap": 648,
+      "height": 645,
+      "scrollHeight": 2880,
+      "top": 1587
+    },
+    "streamBeforeFix": {
+      "bottomGap": 872,
+      "height": 645,
+      "scrollHeight": 3752,
+      "snapshot": {
+        "goal": null,
+        "memories": [],
+        "turns": 4
+      },
+      "top": 2235
+    },
+    "streamFixed8": {
+      "bottomGap": 0,
+      "height": 645,
+      "scrollHeight": 1012,
+      "top": 367
+    },
+    "streamFixed16": {
+      "bottomGap": 0,
+      "height": 645,
+      "scrollHeight": 1876,
+      "top": 1231
+    },
+    "streamUserScrolled": {
+      "bottomGap": 750,
+      "height": 645,
+      "scrollHeight": 1876,
+      "top": 481
+    },
+    "streamPaused24": {
+      "bottomGap": 1614,
+      "height": 645,
+      "scrollHeight": 2740,
+      "top": 481
+    },
+    "streamReengaged24": {
+      "bottomGap": 0,
+      "height": 645,
+      "scrollHeight": 2740,
+      "top": 2095
+    },
+    "streamResumed32": {
+      "bottomGap": 0,
+      "height": 645,
+      "scrollHeight": 3604,
+      "top": 2959
+    },
+    "streamOff32": {
+      "bottomGap": 2959,
+      "height": 645,
+      "scrollHeight": 3604,
+      "top": 0
+    },
+    "streamOff40": {
+      "bottomGap": 3823,
+      "height": 645,
+      "scrollHeight": 4468,
+      "top": 0
+    },
+    "streamFinalSnapshot": {
+      "fixture": {
+        "result": {
+          "bookId": "cc4b1a9c-0b59-43a9-9573-d222f9b7b743",
+          "contributions": 12,
+          "pluginVersion": "0.5.0"
+        },
+        "status": "prepared-fixed"
+      },
+      "generating": false,
+      "snapshot": {
+        "goal": null,
+        "memories": [],
+        "turns": 2
+      }
+    },
+    "streamReopened": {
+      "bottomGap": 0,
+      "has40": true,
+      "height": 645,
+      "scrollHeight": 4476,
+      "top": 3831
+    },
+    "streamRestored": {
+      "backupPresent": false,
+      "bookCount": 2,
+      "buildMemory": true,
+      "followStreaming": false,
+      "localOnly": false,
+      "probeConfigStillActive": false
+    }
+  },
+  "wire": [
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": true,
+      "cancelled": false,
+      "paragraphs": 16
+    },
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": true,
+      "cancelled": false,
+      "paragraphs": 16
+    },
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": true,
+      "cancelled": false,
+      "paragraphs": 40
+    }
+  ],
+  "checks": {
+    "regression": "Delayed layout, user pause/reengagement, mode gating, observer cleanup passed in isolated hook test",
+    "webTypecheck": "passed including desktop test modules",
+    "native": "8/16 paragraphs bottomGap0; physical scroll up top481 unchanged on next 8; wheel back down plus next8 bottomGap0; switch off pins top0 and next8 leaves it0; stop/reopen retains 40 paragraphs and bottomGap0",
+    "build": "No packaged rebuild for this follow-streaming fix; packaged version remains prior flow47 build"
+  },
+  "cleanup": {
+    "backupPresent": false,
+    "bookCount": 2,
+    "buildMemory": true,
+    "followStreaming": false,
+    "localOnly": false,
+    "probeConfigStillActive": false,
+    "readingGoalsContributions": 12,
+    "inferenceWorkerContributions": 0,
+    "settingsWorkerContributions": 0,
+    "serverExit": 143,
+    "ownedBooksAndConversationsRemoved": true
+  },
+  "remaining": [
+    "Packaged/other platform acceptance of this fix",
+    "Other content forms such as images, tables, tools and transcript resize",
+    "Global chat surface and input interactions outside this book flow",
+    "Real model quality independent of this deterministic SSE fixture"
+  ]
+}

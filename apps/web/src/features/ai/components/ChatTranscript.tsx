@@ -41,7 +41,7 @@ export function ChatTranscript({
   onRetry,
 }: ChatTranscriptProps) {
   const { t } = useTranslation("ai");
-  const { containerRef, liveTurnRef, liveTurnId, liveTurnMinHeight } = useTranscriptAutoScroll({
+  const { containerRef, contentRef, liveTurnRef, liveTurnId, liveTurnMinHeight } = useTranscriptAutoScroll({
     messages,
     streamingParts,
     isStreaming,
@@ -123,7 +123,7 @@ export function ChatTranscript({
           max-w-2xl caps line length for readability on wide surfaces (the
           Context page); the ScrollArea stays full-width so the scrollbar sits
           at the surface edge. In the reader panel the cap is a no-op. */}
-      <div className="ra-chat-selectable mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-4">
+      <div ref={contentRef} className="ra-chat-selectable mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-4">
 
         {settledMessages.map((message) => (
           <ChatMessageItem key={message.id} message={message} onRetry={retryFor(message)} />

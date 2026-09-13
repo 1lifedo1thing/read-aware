@@ -1258,3 +1258,27 @@ inference Worker启动失败，清理后重试成功；设置探针内存恢复�
 失效影响，最后按已核对的原值恢复buildMemory=true并重新读取。临时配置及加密
 备份键已清除，原两书保留，自有书/活动记忆/摘要均无残留，Reading Goals仍有
 原12项贡献。本地服务正常停止143，desktop类型检查通过；不重复全量门禁。
+## 第四十九流程：真实聊天流式跟随、原生滚轮暂停与恢复
+
+复用reading-context本地端点，显式STREAMING_PROBE模式按/next每次发8段合成
+正文，/release结束；默认隐私场景行为保持。两次真实书内聊天UI发送构成修复前
+对照：关闭follow时16段scrollTop仍0，符合固定起点；开启follow后第二轮16段
+实际bottomGap864，画面停在上一批末尾，窗口focused=true，排除仅后台不滚动。
+
+根因对应滚动时点：父级streamingParts更新触发滚动后，Markdown内容布局继续
+增高，原逻辑没有观察该高度变化。为实际聊天内容增加ResizeObserver，仅在跟随
+开启且生成中、用户未上翻暂停时跟到新高度；保留已有开启/固定起点、滚轮暂停/
+回底恢复语义，关闭模式或停止生成即解除观察。新增定向回归和web/desktop类型通过。
+
+修复后真实UI再发同类问题：8段top367/height645/scrollHeight1012，16段top1231/
+scrollHeight1876，均bottomGap0；截图可见第16段。原生滚轮上翻至top481，再发
+8段，top仍481；向下滚回底部，再发8段至32段，top2959/scrollHeight3604，
+bottomGap0。真实Agent设置工具关闭跟随，固定起点top0；再发8段至40段仍top0。
+结束响应，真实本地会话2条消息；关书重开后40段正文保留，加载定位top3831/
+scrollHeight4476/height645，bottomGap0。不是仅观察scrollTo派发回执。
+
+证据：[streaming-follow-observations.json](./streaming-follow-observations.json)。
+全部自有书/历史已清理，原两书和Reading Goals12贡献保留，settings/inference
+Worker0，原buildMemory=true/followStreaming=false/localOnly=false恢复，临时
+模型配置和备份键清除，服务PID21096停止143。release尚未重建本修复；图片/
+表格/工具块、全局聊天、其他平台及真实模型质量仍有各自边界，不冒称全量通过。

@@ -20,6 +20,8 @@ interface TranscriptAutoScrollOptions {
 export interface TranscriptAutoScroll {
   /** Attach to the ScrollArea — the scrollable node itself. */
   containerRef: (node: HTMLDivElement | null) => void;
+  /** The transcript contents, whose layout can lag behind streamed props. */
+  contentRef: RefObject<HTMLDivElement | null>;
   /** Attach to the live-turn wrapper (last user message + in-flight reply). */
   liveTurnRef: RefObject<HTMLDivElement | null>;
   /** Id of the user message that opened the live turn, or null when settled. */
@@ -54,6 +56,7 @@ export function useTranscriptAutoScroll({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const detachScrollListenerRef = useRef<(() => void) | null>(null);
   const liveTurnRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const [liveTurn, setLiveTurn] = useState<{ id: string; minHeight: number } | null>(null);
   const liveTurnIdRef = useRef<string | null>(null);
   // Follow-mode engagement: cleared the moment the user scrolls up, restored
@@ -144,8 +147,24 @@ export function useTranscriptAutoScroll({
     container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }, [follow, isStreaming, streamingParts, messages]);
 
+  // Markdown can commit its new blocks after the streaming-props effect above.
+  // Follow the resulting layout as well, including images and font changes,
+  // while preserving the reader's scroll-up pause.
+  useEffect(() => {
+    if (!follow || !isStreaming || !contentRef.current) return;
+    const observer = new ResizeObserver(() => {
+      const container = containerRef.current;
+      if (container && engagedRef.current) {
+        container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+      }
+    });
+    observer.observe(contentRef.current);
+    return () => observer.disconnect();
+  }, [follow, isStreaming]);
+
   return {
     containerRef: attachContainer,
+    contentRef,
     liveTurnRef,
     liveTurnId: liveTurn?.id ?? null,
     liveTurnMinHeight: follow ? undefined : liveTurn?.minHeight,
