@@ -1512,3 +1512,28 @@ Library Desk/Text Desk启用状态保持。合成时长不是实际阅读时钟�
 待验：Agent合并批准、聊天/记忆保留语义、摘要/进度、继承封面/缺keeper源复制、
 磁盘/事务失败、进程恢复、真实远端同步及其他格式/平台/发布包。本批挂载Tauri
 控件、真实编译Worker和原生持久证据不替代物理输入/像素。
+
+## 第五十八流程：Agent 合并批准、等待取消与目标过期
+
+延续第57流程的实际同源夹具，在1f5fedfc上重新建立自有三书/三笔记/合成时长，
+复用批量删除验收已有的产品ChatInteractionPrompt挂载容器，增加受隔离profile及
+Composition前缀组限制的Agent合并入口。调用真实buildBookMergeTools/global scope
+和buildRuntimeDeps，不模拟interaction的用户答案，不调用LLM。
+
+首个批准界面完整显示keeper及两本重复书标题/ID，并解释不可撤销、聊天不拼接、
+文件不立即回收。实际点击Keep it，返回committed:false/decline，原revision及
+三记录保持，批准容器清理为0。再次请求时在等待期间修改重复书标题，批准页仍
+是原快照；点击Merge records后ui/superseded拒绝，三记录保留，不能把旧许可
+用于新目标。重新预览请求后取消等待得到AbortError，批准容器0，仍未合并。
+
+最后用新revision请求，实际批准界面显示修改后的完整标题；点击Merge records
+返回committed:true、totalRedirects2及两ID映射。原生仅新增两条book.merged，
+origin均agent；两个旧书记录null/解析keeper，三笔记正文保持并归keeper，收藏/
+集合正确、合成时长3000ms。此处是实际工具/UI/SQLite链，不是模型正确选择工具
+或语义判断的证据。通过既有清理移除三自有ID/集合，files:released，三个源和
+ID解析均null、批准容器0，原两书及插件启用状态保持。
+
+证据：[agent-merge-approval-observations.json](./agent-merge-approval-observations.json)。
+仅复用已有批准视图探针，desktop类型通过，未重复产品全量门禁。
+取消发生在等待批准阶段，不证明提交后取消的事务结果；该边界、磁盘/事务故障、
+进程重启、聊天/记忆/摘要/进度、真实同步和其他平台/发布包仍单列待验。

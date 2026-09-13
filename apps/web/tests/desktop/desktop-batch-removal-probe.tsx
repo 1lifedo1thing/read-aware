@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { errorCode } from "@read-aware/core";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
 import { buildDeleteBooksTool, buildListBookRemovalCleanupTool } from "../../../../packages/agent/src/tools/delete-books";
+import { buildBookMergeTools } from "../../../../packages/agent/src/tools/book-merge-tools";
 import { interactionFromToolDetails } from "../../../../packages/agent/src/tools/user-interaction";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { ChatInteractionPrompt } from "../../src/features/ai/components/ChatInteractionPrompt";
@@ -67,13 +68,27 @@ export async function runPluginBatchRemoval(action: "remove" | "retry" | "invali
 export async function beginAgentBatchRemoval(cleanupOnly = false, cleanupIds?: string[]) {
   await isolated(); if (pending) throw Error("Agent request already pending");
   if (cleanupIds && !cleanupOnly) throw Error("Explicit IDs are only for cleanup recovery");
+  const tool = buildDeleteBooksTool({ kind: "global", threadId: "capability-batch" }, buildRuntimeDeps());
+  return beginApproval((signal, update) => tool.execute(`batch-${++sequence}`, { bookIds: [...(cleanupIds ?? ids)], cleanupOnly }, signal, update));
+}
+export async function beginAgentDuplicateMerge(input: { bookId: string; expectedRevision: string }) {
+  await isolated(); if (pending) throw Error("Agent request already pending");
+  const deps = buildRuntimeDeps();
+  const preview = await deps.library.previewMerge(input.bookId);
+  if (!preview || ![preview.keep, ...preview.merged].every(book => book.title.startsWith("Composition "))) {
+    throw Error("Merge approval probe only accepts owned composition fixtures");
+  }
+  const tool = buildBookMergeTools({ kind: "global", threadId: "capability-merge" }, deps)
+    .find(tool => tool.name === "merge_duplicate_books")!;
+  return beginApproval((signal, update) => tool.execute(`merge-${++sequence}`, { ...input }, signal, update));
+}
+function beginApproval(run: (signal: AbortSignal, update: (value: { details?: unknown }) => void) => Promise<unknown>) {
   root?.unmount(); surface?.remove();
   surface = document.createElement("div"); surface.setAttribute("data-batch-approval-probe", "true");
   Object.assign(surface.style, { position: "fixed", inset: "10% 15%", zIndex: "9999", overflow: "auto", background: "var(--ra-main-surface-color)", padding: "24px" });
   document.body.append(surface); root = createRoot(surface);
   abort = new AbortController(); pending = true; agentResult = { pending: true };
-  const tool = buildDeleteBooksTool({ kind: "global", threadId: "capability-batch" }, buildRuntimeDeps());
-  void tool.execute(`batch-${++sequence}`, { bookIds: [...(cleanupIds ?? ids)], cleanupOnly }, abort.signal, update => {
+  void run(abort.signal, update => {
     const details = interactionFromToolDetails(update.details);
     if (details?.phase === "request") root!.render(<ChatInteractionPrompt part={{
       type: "interaction", id: details.request.id, request: details.request, state: "pending",
