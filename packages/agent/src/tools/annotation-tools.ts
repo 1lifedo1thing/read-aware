@@ -26,6 +26,29 @@ function annotationSubject(annotation: AnnotationItem): string {
   return annotation.text.slice(0, 80) || `${annotation.kind} ${annotation.id}`;
 }
 
+/**
+ * The host has already captured this exact range from the current reader.
+ * That source is usable for the requested annotation even when the turn's
+ * narrative fence blocks arbitrary future-range reads.  Matching the CFI,
+ * book and source version keeps the exemption tied to this active selection;
+ * source validation below still checks the supplied quote.
+ */
+async function isCurrentReaderSelection(
+  deps: RuntimeDeps,
+  bookId: string,
+  range: BookTextRange,
+): Promise<boolean> {
+  const session = await deps.reader.getSession();
+  const selected = session.selection?.range;
+  return session.status === "ready"
+    && session.bookId === bookId
+    && session.location?.bookId === bookId
+    && session.location.contentVersion === range.contentVersion
+    && selected?.bookId === range.bookId
+    && selected.contentVersion === range.contentVersion
+    && selected.cfi === range.cfi;
+}
+
 export function buildAnnotationTools(scope: ThreadScope, deps: RuntimeDeps, state?: AgentTurnState): AgentTool[] {
   const createAnnotation: AgentTool = {
     name: "create_annotation",
@@ -74,8 +97,13 @@ export function buildAnnotationTools(scope: ThreadScope, deps: RuntimeDeps, stat
         if (range.bookId !== target || anchor !== undefined || chapterHref !== undefined) {
           throw new AppError("annotations/invalid-input", "Range must identify the target book without separate anchor fields");
         }
+        const activeSelection = scope.kind === "book" && target === scope.bookId
+          && state?.spoilerFence && !state.spoilerGranted
+          ? await isCurrentReaderSelection(deps, target, range)
+          : false;
+        signal?.throwIfAborted();
         await deps.bookText.readRange({ range, limit: 2, contextChars: 0,
-          ...(scope.kind === "book" && target === scope.bookId && state?.spoilerFence && !state.spoilerGranted
+          ...(scope.kind === "book" && target === scope.bookId && state?.spoilerFence && !state.spoilerGranted && !activeSelection
             ? { throughChapterIndex: state.spoilerFence.throughChapterIndex } : {}),
         }, signal);
       }

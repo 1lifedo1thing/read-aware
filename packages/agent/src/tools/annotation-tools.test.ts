@@ -175,3 +175,38 @@ test("versioned creation preserves exact whitespace and passes the read fence an
   await expect(create.execute("abort", { kind: "highlight", range, text: "Quote" }, controller.signal)).rejects.toHaveProperty("name", "AbortError");
   expect(calls).toHaveLength(count);
 });
+
+test("only the current versioned reader selection bypasses the narrative read fence", async () => {
+  const fencedBookId = "fenced-book" as Id;
+  const { deps } = createInMemoryDeps({
+    books: [{ id: fencedBookId, title: "Fenced book", status: "reading", narrativity: "narrative" }],
+    chapters: { [fencedBookId]: [{ text: "safe" }, { text: "Quote" }] },
+  });
+  await deps.reader.openBook(fencedBookId);
+  const located = await deps.bookText.searchLocations({ bookId: fencedBookId, query: "Quote" });
+  const range = located.hits[0]!.range!;
+  await deps.reader.selectRange(range);
+  const { createAgentTurnState } = await import("./turn-state");
+  const state = createAgentTurnState();
+  state.spoilerFence = { throughChapterIndex: 0, readerChapterIndex: 1 };
+  const calls: unknown[] = [], readRange = deps.bookText.readRange;
+  deps.bookText.readRange = async (query, signal) => {
+    calls.push([query, signal]);
+    return readRange(query, signal);
+  };
+  const create = buildAnnotationTools({ kind: "book", bookId: fencedBookId }, deps, state)
+    .find(tool => tool.name === "create_annotation")!;
+  const result = parsed(await create.execute("current", {
+    kind: "highlight",
+    range,
+    text: "Quote",
+  }));
+  expect(result).toMatchObject({ kind: "highlight", text: "Quote", range });
+  const firstQuery = (calls[0] as [Record<string, unknown>, AbortSignal | undefined])[0];
+  expect(firstQuery).toEqual({ range, limit: 2, contextChars: 0 });
+  expect(calls.every(call => {
+    const query = (call as [Record<string, unknown>, AbortSignal | undefined])[0];
+    return !("throughChapterIndex" in query);
+  })).toBe(true);
+  expect(await deps.annotations.getAnnotation(result.id)).toMatchObject({ kind: "highlight", text: "Quote", bookId: fencedBookId, range });
+});

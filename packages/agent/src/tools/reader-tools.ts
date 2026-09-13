@@ -5,11 +5,29 @@ import type { ThreadScope } from "../thread-scope";
 import { resolveBookId } from "./current-book";
 import { textResult } from "./tool-result";
 import type { AgentTurnState } from "./turn-state";
-import { AppError, type ReadingLocation, type ReadingStep } from "@read-aware/core";
+import { AppError, type ReadingLocation, type ReadingSessionSnapshot, type ReadingStep } from "@read-aware/core";
 import { readingContextCall } from "../runtime/reading-context-policy";
 import { buildSelectionTools } from "./selection-tools";
 import { buildEmphasisTools } from "./emphasis-tools";
 import { buildReaderFocusTool } from "./reader-focus-tool";
+
+/**
+ * A selection is host-captured context.  Keep it available through the
+ * narrative fence only when its version is still the active reader source;
+ * arbitrary location text remains withheld.  The controller applies the same
+ * book/version check when it publishes a selection.
+ */
+function currentSourceSelection(snapshot: ReadingSessionSnapshot) {
+  const selection = snapshot.selection;
+  const range = selection?.range;
+  if (snapshot.status !== "ready" || !snapshot.bookId || !snapshot.location || !range
+    || snapshot.location.bookId !== snapshot.bookId
+    || range.bookId !== snapshot.bookId
+    || range.contentVersion !== snapshot.location.contentVersion) {
+    return null;
+  }
+  return selection;
+}
 
 export function buildReaderTools(scope: ThreadScope, deps: RuntimeDeps, state?: AgentTurnState): AgentTool[] {
   const openBook: AgentTool = {
@@ -98,7 +116,11 @@ export function buildReaderTools(scope: ThreadScope, deps: RuntimeDeps, state?: 
         const privateText = !call.permissions.selection || !call.permissions.surrounding;
         if (privateText || state?.spoilerFence && !state.spoilerPermissionGranted) {
           const safe = structuredClone(snapshot);
-          safe.visibleText = ""; safe.selection = null;
+          safe.visibleText = "";
+          // An explicit, version-matched reader selection is the user's
+          // current source context. Preserve its complete range for an
+          // annotation request while retaining the fence for arbitrary text.
+          safe.selection = privateText ? null : currentSourceSelection(snapshot);
           safe.visibleTextState = { status: "unavailable", source: null, truncated: false, reason: "withheld" };
           if (safe.location) delete safe.location.textQuote;
           if (safe.mode.position) delete safe.mode.position.location.textQuote;

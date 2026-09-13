@@ -75,6 +75,45 @@ test("session selection is versioned and withheld with privacy restrictions, spo
   expect(policy.listeners()).toBe(0);
 });
 
+test("a version-matched active selection remains available through the narrative fence", async () => {
+  const { deps } = fixture();
+  await deps.reader.openBook(bookId);
+  const original = await deps.reader.getSession();
+  if (!original.location) throw new Error("Expected an active fixture location");
+  const selection = {
+    id: "selected-current",
+    text: "needle",
+    textLength: 6,
+    range: {
+      bookId,
+      contentVersion: original.location.contentVersion,
+      cfi: "epubcfi(/6/2)",
+      textQuote: { exact: "needle" },
+    },
+  };
+  deps.reader.getSession = async () => ({
+    ...original,
+    location: { ...original.location!, cfi: selection.range.cfi },
+    selection,
+  });
+  const state = createAgentTurnState();
+  state.spoilerFence = { throughChapterIndex: 0, readerChapterIndex: 1 };
+  const policy = contextPolicyState({ selection: true, surrounding: true });
+  deps.readingContextPolicy = policy;
+  const sessionTool = buildReaderTools({ kind: "book", bookId }, deps, state)
+    .find(tool => tool.name === "get_reading_session")!;
+  const result = await sessionTool.execute("selection", {});
+  if (result.content[0]?.type !== "text") throw new Error("Expected text result");
+  const output = JSON.parse(result.content[0].text);
+  expect(output.visibleText).toBe("");
+  expect(output.selection).toEqual(selection);
+  expect(output.location.textQuote).toBeUndefined();
+  policy.set({ selection: false, surrounding: true });
+  const privateResult = await sessionTool.execute("selection-private", {});
+  if (privateResult.content[0]?.type !== "text") throw new Error("Expected text result");
+  expect(JSON.parse(privateResult.content[0].text).selection).toBeNull();
+});
+
 test("open_book only reports opened after the renderer completes, preserving its actual location", async () => {
   const { deps, tool } = fixture();
   let finish!: (receipt: ReadingNavigationReceipt) => void;
