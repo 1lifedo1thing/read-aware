@@ -1923,3 +1923,24 @@ collectionId:null移出通过；只用一本成员，不外推多书批量原子
 清理。这不证明Agent批准删除，也不证明产品UI有故障。两本自有书和源/封面
 均null、集合0，原两书及会话完整hash保持。无配置修改/模型调用，新发布包
 尚未包含本批。详见[agent-shelf-observations.json](./agent-shelf-observations.json)。
+
+## 第七十一流程：Agent 单书/集合删除的真实批准组件
+
+扩展既有desktop-batch-removal-probe，限隔离profile及Agent approval fixture
+前缀自有对象。复用其生产ChatInteractionPrompt挂载和onUpdate桥接；这次
+请求进入真实组件，不是直接向交互端口伪造批准，也不是完整Agent聊天轮次。
+
+自有TXT放入自有集合。全局delete_collection显示实际名称和“书留在书架、
+不再属于集合”的说明。点击Keep it后deleted:false，集合/成员归属/源保留；
+再次等候时AbortController取消，AbortError且数据保留；点击Delete collection
+后deleted:true，集合null、成员collectionId:null，原文件仍存在。
+
+随后全局delete_book显示实际书名及不可撤销说明；Keep it保留书/源。书内
+scope省略bookId时仍准确指向自有书，等待取消保留；再次点击Delete book后
+回执deleted:true，原生书目null、原文件不存在。所有批准界面均在settle后移除。
+只覆盖上述scope/结果组合，没有外推所有排列或文件清理故障。
+
+原两书ID、空集合及原会话完整hash保持，测试书/源/封面/集合和批准surface0；
+无需另做删除绕过产品结果。desktop类型通过，本批无产品修复/重复门禁。
+物理输入/焦点、模型决策、重启、packaged及跨设备待验；详见
+[agent-shelf-deletion-observations.json](./agent-shelf-deletion-observations.json)。

@@ -7,6 +7,7 @@ import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types"
 import { buildDeleteBooksTool, buildListBookRemovalCleanupTool } from "../../../../packages/agent/src/tools/delete-books";
 import { buildBookMergeTools } from "../../../../packages/agent/src/tools/book-merge-tools";
 import { buildConversationControlTools } from "../../../../packages/agent/src/tools/conversation-control-tools";
+import { buildShelfTools } from "../../../../packages/agent/src/tools/shelf-tools";
 import { interactionFromToolDetails } from "../../../../packages/agent/src/tools/user-interaction";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { ChatInteractionPrompt } from "../../src/features/ai/components/ChatInteractionPrompt";
@@ -92,6 +93,20 @@ export async function beginAgentBookConversationClear(bookId: string) {
   return beginApproval((signal, update) => tool.execute(`clear-${++sequence}`, {
     action: "clear", target: { kind: "book", id: bookId },
   }, signal, update));
+}
+export async function beginAgentShelfDeletion(input: { kind: "book"; id: string; scope: "book" | "global" } | { kind: "collection"; id: string }) {
+  await isolated(); if (pending) throw Error("Agent request already pending");
+  const deps = buildRuntimeDeps();
+  const name = input.kind === "book" ? (await deps.library.getBook(input.id))?.title
+    : (await deps.library.listCollections()).find(collection => collection.id === input.id)?.name;
+  if (!name?.startsWith("Agent approval fixture ")) throw Error("Only owned Agent approval fixtures may be deleted");
+  const scope = input.kind === "book" && input.scope === "book"
+    ? { kind: "book" as const, bookId: input.id }
+    : { kind: "global" as const, threadId: "capability-shelf-deletion" };
+  const tool = buildShelfTools(scope, deps).find(tool => tool.name === (input.kind === "book" ? "delete_book" : "delete_collection"))!;
+  const params = input.kind === "collection" ? { collectionId: input.id }
+    : input.scope === "book" ? {} : { bookId: input.id };
+  return beginApproval((signal, update) => tool.execute(`shelf-delete-${++sequence}`, params, signal, update));
 }
 function beginApproval(run: (signal: AbortSignal, update: (value: { details?: unknown }) => void) => Promise<unknown>) {
   root?.unmount(); surface?.remove();

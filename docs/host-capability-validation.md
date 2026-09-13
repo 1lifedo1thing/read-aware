@@ -28,7 +28,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | LIB01 | 枚举/查询书籍与书目元数据 | F1 | 本机编译Library Desk列举/读取实际书目、编辑后刷新及Worker重启重读通过；第70流程Agent list_books/get_book_overview读写后同一书目通过；其他查询/actor待验，见第二十四流程 |
 | LIB02 | 修改标题/作者 | F1 | 本机编译Library Desk空白标题拒绝、改书名/中文作者、原生重读及Worker重启保持通过；第70流程补Agent两scope路径，修复空白书名假成功：先拒绝且其他字段不写，输入trim后回执来自原生重读；其他actor/模型轮次待验 |
 | LIB03 | 收藏/取消收藏 | F1 | 本机编译Library Desk收藏/取消收藏、刷新Yes/No及重启保持通过；第70流程Agent收藏/取消及原生重读通过，其他actor/模型轮次待验 |
-| LIB04 | 删除单本书 | F1 | 本机Library Desk单书复核前不删，明确删除后记录null/原文件不存在；其他actor/故障待验，见第二十四流程 |
+| LIB04 | 删除单本书 | F1 | 本机Library Desk单书复核前不删，明确删除后记录null/原文件不存在；第71流程生产Agent单书工具+真实批准组件：全局拒绝、书内默认ID取消保留，书内批准后书/源清零；非完整模型轮次，故障/其他scope组合/packaged待验 |
 | LIB05 | 批量删除书籍 | F1 | 本机Agent真实批准UI拒绝保留/批准两书删除，Worker正常批删及恢复后旧清理pending保护通过；文件故障/崩溃待验，见第二十四流程 |
 | LIB06 | 导入已有支持格式的书籍字节 | F1 | 本机FB2 user/Worker选择器、EPUB/MOBI/AZW3/fb2.zip/CBZ/TXT/HTML原生字节导入与源解析通过；压缩RAR5 CBR三页原生导入/源解析/定位通过（65），PRC/AZW/KF8/FBZ/TEXT/HTM/XHTML七别名原生字节导入/准备/真实阅读器正文通过（68）；修复TEXT/XHTML选择器和外部打开列表遗漏，实际OS选择/关联待验，第69批补复合fb2.zip选择候选/精确外部打开及插件选后后缀核对，12项原生检查通过，真实系统选择仍待验；RAR4/加密/分卷及其他actor待验；第38流程暂存残留已加设备本地意图，真实重载/进程重启回收、已提交书保持/重复导入/提交失败回收通过；release待验，见第二十一/三十九流程 |
 | LIB07 | 识别格式/DRM/损坏文件并报告 | F1 | 部分通过：合成加密MOBI入库后源打开明确book/unsupported-encryption，未冒充可读；截断RAR5仍能入库/列出两个目录项，损坏页定位reader/render-failed且实际目录点击显示安全错误（65），完好页可读。正文ready/textless不代表归档完整，未计导入完整性检查；普通ZIP真实原生字节导入返回book/unsupported-format且书目不变（69）；其他损坏格式/物理画面待验 |
@@ -41,7 +41,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | LIB14 | 虚拟内容修订/离线缓存/当前书刷新 | F1 | 本机 RSS 离线重启缓存、新版本重开和文章重排位置恢复通过；标注/旧引用拒绝待验 |
 | LIB15 | 列出集合及其成员 | F1 | 本机Library Desk列集合/详情成员数、原生booksIn同ID通过；第70流程Agent集合和成员重读、去重后单成员/移出空集合通过；分页/其他actor待验，见第二十四流程 |
 | LIB16 | 创建/重命名集合 | F1 | 本机编译Library Desk创建/改名集合ID保持通过；第70流程Agent创建/中文改名并重读同ID通过；其他actor/模型轮次待验 |
-| LIB17 | 删除集合 | F1 | 本机编译Library Desk未确认不删、确认删集合且成员书保留/归属null通过；其他actor待验，见第二十四流程 |
+| LIB17 | 删除集合 | F1 | 本机编译Library Desk未确认不删、确认删集合且成员书保留/归属null通过；第71流程全局Agent+实际批准组件拒绝/等待取消保留，批准后集合null、成员归属null且书/源保留；模型轮次/故障/packaged待验 |
 | LIB18 | 批量分配/移出集合 | F1 | 本机Library Desk单成员确认移动及删除集合后解除归属通过；多成员批次由第23流程原生创建覆盖，第70流程Agent重复书ID去重分配及显式null移出通过；不同多书与插件批量移动仍待验，见第二十四流程 |
 | TXT01 | 读取抽取章节目录 | F2 | 本机FB2宿主及book/global Agent真实Tauri端口返回两章index/number/字数一致，抽取目录无href；插件直接查询/其他格式待验，见第三十七流程 |
 | TXT02 | 读取原书分层导航目录及 href | F2 | 本机FB2宿主及book Agent原书导航含两正文节和脚注节，ordinal/href/同源版本一致；嵌套目录/超大目录/其他格式待验，见第三十七流程 |
