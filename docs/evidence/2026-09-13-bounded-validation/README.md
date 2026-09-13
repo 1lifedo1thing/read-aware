@@ -4,17 +4,17 @@
 
 | 项目 | 负责人 | 状态 |
 | --- | --- | --- |
-| B01 | sync_acceptance / 9225 | 执行中 |
-| B02 | coverage_reconcile / 9224 | 执行中 |
-| B03 | coverage_reconcile / 9224 | 执行中 |
+| B01 | sync_acceptance / 9225 | [外部阻塞：缺语音端点](./b01/observations.json) |
+| B02 | coverage_reconcile / 9224 | [通过](./b02-navigation.json) |
+| B03 | coverage_reconcile / 9224 | [通过](./b03-plugin-settings.json) |
 | B04 | root | [通过](./b04.json) |
 | B05 | root | 待验 |
-| B06 | root | 待验 |
-| B07 | coverage_reconcile / 9224 | 执行中 |
+| B06 | root | [通过：发布包持久化+debug实际consumer](./b06-consumer.json) |
+| B07 | coverage_reconcile / 9224 | [通过](./b07-fixed-layout.json) |
 | B08 | root / 物理桌面 | 待验 |
-| B09 | sync_acceptance / 9225 | 执行中 |
-| B10 | sync_acceptance / 9225 | 执行中 |
-| B11 | coverage_reconcile / 9224 | 执行中 |
+| B09 | sync_acceptance / 9225 | [通过：复用原生证据](./b09/observations.json) |
+| B10 | sync_acceptance / 9225 | [外部阻塞：无模型配置，生成未验](./b10/observations.json) |
+| B11 | coverage_reconcile / 9224 | [通过](./b11-dictionary-export.json) |
 | B12 | root | [外部阻塞：检查通过，安装缺隔离版本](./b12.json) |
 | B13 | root | [外部阻塞：取消通过，缺测试账户](./b13.json) |
 | B14 | root | [外部阻塞：缺测试账户/账单资格](./b14.json) |
