@@ -1182,3 +1182,30 @@ backup与release旧二进制边界保持。
 书库恢复原两书、会话idle。复用既有驱动，无产品代码改动、无重复门禁。本轮验证
 默认色对阅读器一键高亮/下划线的作用；显式颜色和公共API既定默认不变，物理拖选/
 前台像素、原生进程重启和packaged不在本条证明范围。
+
+## 第四十六流程：选区/上下文外发开关和仅本地推理边界
+
+复用真实Tauri AgentRuntime/AgentThread、Worker和native HTTP，以及既有受控
+loopback端点19843。只导入带SELECTION_MARKER_947/VIEWPORT_MARKER_628的合成
+FB2，临时凭据为固定测试串；端点只记录标记是否出现和流取消状态，不保存原请求。
+响应是固定测试文本，验证的是请求与权限边界，不是实际模型语义质量或新增judge。
+
+四个真实book回合全部完成：两项开→选区/viewport都有；关闭选区、允许上下文→
+二者都无（viewport可能与选区重叠，整体不外发）；允许选区、关闭上下文→只有
+显式选区；两项关→都无。另保存合成本地历史附件，关闭选区发送后localSelected
+仍true，Agent recent/search/session工具读取均不含该标记，未删除用户本地历史。
+Worker与global Agent均通过实际设置路径切换偏好。
+
+第五个book请求在端点等待响应时关闭选区又立即重开，调用仍ai/context-changed，
+服务端cancelled=true；释放后不恢复交付。此时请求已经发出的字节不可能撤回。
+一个允许的插件调用先成功，证明配置与链路可用；开启localOnly后，插件普通/
+流式/结构化以及Agent ask/turn/connection六入口均ai/local-only，chat/completions
+记录保持6条，未因这些拒绝新增推理请求。再允许插件流式请求进入等待后开启
+localOnly，返回ai/local-only、deltas=[]，第7条服务端记录cancelled=true。
+
+证据：[ai-reading-privacy-observations.json](./ai-reading-privacy-observations.json)。
+先清理合成书/历史和Agent实例，再恢复原模型配置/凭据，最后恢复偏好。测试
+配置/凭据均不再活动、设备内备份键已删除、Worker贡献0、书库原两书保留。只读
+结果不输出真实密钥。停止确认为此脚本的PID9104，本地服务退出143。无代码改动，
+不重复全量门禁。buildMemory仅暂关以隔离维护任务，不据此关闭其语义验收；
+其他模型/平台、UI配置流程和发布包仍独立待验。

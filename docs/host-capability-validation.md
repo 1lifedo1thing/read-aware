@@ -131,9 +131,9 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET21 | ai.preferences.features.summarizeChapter | F6 | 实际Agent工具关闭/恢复开关，当前选区Summarize chapter入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
 | SET22 | ai.preferences.features.askConversation | F6 | 实际Agent工具关闭/恢复开关，当前选区Ask AI入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
 | SET23 | ai.preferences.buildMemory | F6 | 待验 |
-| SET24 | ai.preferences.sendHighlightedText | F6 | 待验 |
-| SET25 | ai.preferences.sendSurroundingContext | F6 | 待验 |
-| SET26 | ai.preferences.localOnly | F6 | 待验 |
+| SET24 | ai.preferences.sendHighlightedText | F6 | 真实Tauri Agent请求四种偏好组合按选区权限过滤标记，本地历史保留而Agent历史/会话读取去除；等待请求收紧后ai/context-changed并取消，见第四十六流程；受控响应不计模型质量 |
+| SET25 | ai.preferences.sendSurroundingContext | F6 | 真实Tauri Agent关闭上下文后不发送viewport，仍可发送被允许的显式选区；两项全关均去除，Worker/Agent设置通过；受控端点/其他平台边界见第四十六流程 |
+| SET26 | ai.preferences.localOnly | F6 | 真实Worker普通/流式/结构化、Agent ask/turn/connection六入口开启localOnly均ai/local-only且无新增推理请求；活动插件流取消/deltas空通过；受控端点非模型质量，见第四十六流程 |
 | SET27 | ai.preferences.followStreaming | F6 | 待验 |
 | SET28 | ai.connection.configured | F6 | 待验 |
 | SET29 | ai.connection.credentialConfigured | F6 | 待验 |
