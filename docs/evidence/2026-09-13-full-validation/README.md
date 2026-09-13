@@ -1729,3 +1729,37 @@ Cancel按钮Inter14px保持界面样式。
 逐项恢复，Worker贡献0，原两书和原会话完整序列哈希保持。web/desktop类型及
 Foliate源检查通过。无新框架或重复全量门禁；像素/物理焦点、进程重启、发布包、
 插件内容及其他平台仍单列。详见[global-note-typography-observations.json](./global-note-typography-observations.json)。
+
+## 第六十三流程：补齐失败重试、PDF自动补齐与详情刷新
+
+真实 Tauri 原生事件/文件构造自有未补齐 FB2，不绕过生产解析器。Agent只读查询
+保持idle，明确重试先返回queued；解析故障后failed/internal，封面仍unchecked，
+没有把提取失败记录为none。编译Library Desk详情显示Metadata pending / Failed、
+安全通用错误及Retry enrichment。这不证明格式专用错误分类。
+
+通过自有fixture恢复有效FB2源，先把书名改成用户选择值，再点击插件Retry。
+真实队列完成后，详情观察自动显示Completed、本地封面可用；原生书名保留用户
+值，缺失作者补为Fixture Author，metadataPending=false。Agent再次重试返回
+not-needed，没有强制重做封面。封面预览实际解码240×160，受控源修复不计独立
+用户替换原文件入口，也未调用模型或网络服务。
+
+发现Library Desk详情Refresh仍捕获最初book对象，改名后详情/封面预览标题
+保持旧值。bookAssets现在在每次进入/刷新时重新按ID读取书目，已删除则返回
+不可用且无资源动作/订阅。重建并重启真实插件后，保持详情打开、从宿主改名、
+点击Refresh，详情及预览alt均更新为新书名；删除自有书再Refresh无陈旧操作。
+12项资源检查/51断言（含编译入口）、插件类型通过。
+
+另以真实PDF字节和未完成书目模拟中断导入，发普通library-changed触发已挂载
+书架reload→自动catch-up，未直接调用重试或队列。最终内嵌书名/作者自动持久化，
+封面ready/local、metadataPending=false、job completed，书架320×480图片加载。
+随后打开该PDF，实际阅读页和原生重读保留内嵌书名。首次工具观察超时后从同一
+运行实例确认已打开，没有因此重启。没有验证原生进程重启或跨设备恢复。
+
+两次准备修正单列：一次待完成HMR使探针失去局部所有权，清理自有两书后重建
+夹具；首次PDF夹具的手写占位标题大小写不等于parseFileName输出，只触发封面
+补齐，未计元数据通过。改为复用真实文件名规范化，再跑新的独占PDF后才计成功。
+
+所有九个本轮自有书ID及源/封面blob最终均null，原两书和原会话完整序列哈希
+保持，阅读器关闭，两个插件原启用状态恢复。仅复用library-content探针，最终
+desktop类型与diff检查通过。其他格式、none/源缺失、并发合并/队列及观察上限、
+物理输入/像素、发布包和跨设备仍待验。详见[book-enrichment-observations.json](./book-enrichment-observations.json)。

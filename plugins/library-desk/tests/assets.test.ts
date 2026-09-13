@@ -21,7 +21,7 @@ function fixture() {
     release: async (id: string) => { calls.push(["release", id]); },
   };
   const queries = {
-    list: async () => [book], getEnrichment: async () => snapshot,
+    list: async () => [book], get: async (): Promise<typeof book | null> => book, getEnrichment: async () => snapshot,
     listFormats: async () => [{ format: "epub", extensions: ["epub"], mimeTypes: ["application/epub+zip"] }],
     inspectResource: async (id: string) => { calls.push(["inspect", id]); return {
       status: "parsed", coverage: "initialization", formatHint: "epub", sectionCount: 2, errorCode: null,
@@ -43,6 +43,20 @@ function fixture() {
   };
 }
 const action = (view: PluginViewContent, id: string) => (view as PluginDetailView).actions!.find(item => item.id === id)!;
+
+test("refresh resolves current metadata and retires actions when the selected book was removed", async () => {
+  const f = fixture(), root = await bookAssets(f.ctx, f.book);
+  f.queries.get = async () => ({ ...f.book, title: "Renamed after opening" });
+  const refreshed = (await action(root, "refresh").run())!.view!;
+  expect(refreshed.title).toBe("Renamed after opening");
+  const preview = (await action(refreshed, "cover").run())!.view! as PluginView & PluginDetailView;
+  expect(preview.content[0]).toMatchObject({ kind: "image", alt: "Renamed after opening" });
+  await preview.onClose!({ reason: "closed" });
+  f.queries.get = async () => null;
+  const removed = (await action(refreshed, "refresh").run())!.view! as PluginView & PluginDetailView;
+  expect(removed.actions).toBeUndefined();
+  expect(removed.live).toBeUndefined();
+});
 
 test("cover preview uses an owned reference; save cancellation is not success; copy settles before success; close releases", async () => {
   const f = fixture(), root = await bookAssets(f.ctx, f.book);

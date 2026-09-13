@@ -3,9 +3,11 @@ import { coverKey, saveCover } from "./saved-covers";
 import { assetStrings } from "./assets-strings";
 import { externalStrings } from "./external-strings";
 
-export async function bookAssets(ctx: PluginContext, book: PluginBook): Promise<PluginView> {
+export async function bookAssets(ctx: PluginContext, selected: PluginBook): Promise<PluginView> {
   const library = ctx.domains.library!, resources = ctx.services.resources, t = assetStrings(ctx.locale);
   const external = externalStrings(ctx.locale);
+  const book = await library.queries.books.get(selected.id);
+  if (!book) return { kind: "detail", title: selected.title, content: [{ kind: "text", text: t.unavailable }] };
   let snapshot = await library.queries.books.getEnrichment(book.id), failure: string | undefined;
   const unavailable = (): PluginViewResult => ({ toast: t.unavailable });
   const saveOriginal = async (): Promise<PluginViewResult> => {

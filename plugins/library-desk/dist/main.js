@@ -355,9 +355,12 @@ function externalStrings(locale) {
 }
 
 // src/book-assets.ts
-async function bookAssets(ctx, book) {
+async function bookAssets(ctx, selected) {
   const library = ctx.domains.library, resources = ctx.services.resources, t = assetStrings(ctx.locale);
   const external = externalStrings(ctx.locale);
+  const book = await library.queries.books.get(selected.id);
+  if (!book)
+    return { kind: "detail", title: selected.title, content: [{ kind: "text", text: t.unavailable }] };
   let snapshot = await library.queries.books.getEnrichment(book.id), failure;
   const unavailable = () => ({ toast: t.unavailable });
   const saveOriginal = async () => {

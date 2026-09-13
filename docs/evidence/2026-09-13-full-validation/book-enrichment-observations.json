@@ -1,0 +1,535 @@
+{
+  "flow": 63,
+  "date": "2026-09-13",
+  "baseline": "f7e81057",
+  "profile": "com.readaware.app.capability-e2e",
+  "boundary": "macOS debug Tauri 9224, native persisted source/cover/book records, production Agent enrichment tools and compiled Library Desk 0.12.0 Worker. Synthetic local FB2/PDF fixtures, no model/network call, physical input/pixels, native restart, packaged or cross-device proof.",
+  "manualFixture": {
+    "agent": {
+      "content": [
+        {
+          "text": "{\"bookId\":\"3fe6a72b-989e-4b08-9953-648d58f2400b\",\"cover\":{\"status\":\"unchecked\",\"local\":false},\"metadataPending\":true,\"supported\":true,\"sourceLocal\":true,\"job\":{\"phase\":\"idle\",\"startedAt\":null,\"finishedAt\":null,\"errorCode\":null,\"reason\":null}}",
+          "type": "text"
+        }
+      ]
+    },
+    "fixture": {
+      "embeddedTitle": "Composition a8c4933b",
+      "enrichmentId": "3fe6a72b-989e-4b08-9953-648d58f2400b",
+      "sourceBookId": "bd14240a-bfec-4021-beeb-7bc3436bc7b5"
+    },
+    "source": {
+      "bookId": "bd14240a-bfec-4021-beeb-7bc3436bc7b5",
+      "marker": "Composition a8c4933b",
+      "path": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+      "plugins": [
+        {
+          "enabled": true,
+          "id": "library-desk",
+          "version": "0.12.0"
+        },
+        {
+          "enabled": true,
+          "id": "text-desk",
+          "version": "0.22.0"
+        }
+      ]
+    }
+  },
+  "readDoesNotStart": {
+    "bookId": "3fe6a72b-989e-4b08-9953-648d58f2400b",
+    "cover": {
+      "status": "unchecked",
+      "local": false
+    },
+    "metadataPending": true,
+    "supported": true,
+    "sourceLocal": true,
+    "job": {
+      "phase": "idle",
+      "startedAt": null,
+      "finishedAt": null,
+      "errorCode": null,
+      "reason": null
+    }
+  },
+  "accepted": {
+    "status": "queued",
+    "snapshot": {
+      "bookId": "3fe6a72b-989e-4b08-9953-648d58f2400b",
+      "cover": {
+        "status": "unchecked",
+        "local": false
+      },
+      "metadataPending": true,
+      "supported": true,
+      "sourceLocal": true,
+      "job": {
+        "phase": "queued",
+        "startedAt": null,
+        "finishedAt": null,
+        "errorCode": null,
+        "reason": null
+      }
+    }
+  },
+  "failed": {
+    "bookId": "3fe6a72b-989e-4b08-9953-648d58f2400b",
+    "cover": {
+      "status": "unchecked",
+      "local": false
+    },
+    "metadataPending": true,
+    "supported": true,
+    "sourceLocal": true,
+    "job": {
+      "phase": "failed",
+      "startedAt": 1789271506091,
+      "finishedAt": 1789271506097,
+      "errorCode": "internal",
+      "reason": null
+    }
+  },
+  "failureUI": {
+    "buttons": [
+      {
+        "label": "Info about Reading Capability Probe",
+        "text": ""
+      },
+      {
+        "label": "Remove Reading Capability Probe",
+        "text": ""
+      },
+      {
+        "label": null,
+        "text": ""
+      },
+      {
+        "label": "Back",
+        "text": ""
+      },
+      {
+        "label": null,
+        "text": "Refresh"
+      },
+      {
+        "label": null,
+        "text": "Export original file"
+      },
+      {
+        "label": null,
+        "text": "Open in another app"
+      },
+      {
+        "label": null,
+        "text": "Retry enrichment"
+      },
+      {
+        "label": null,
+        "text": "Close"
+      }
+    ],
+    "text": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nComposition a8c4933b\nFixture Author\n\n\n\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nlibrary-desk\n\nEnrichment source probe\nCover\nNot checked\nOriginal file\nAvailable locally\nMetadata and cover\nMetadata pending / Failed\nSomething went wrong. Details are in the app log.\nRefresh\nExport original file\nOpen in another app\nRetry enrichment\nClose"
+  },
+  "restored": {
+    "beforeRetry": {
+      "content": [
+        {
+          "text": "{\"bookId\":\"3fe6a72b-989e-4b08-9953-648d58f2400b\",\"cover\":{\"status\":\"unchecked\",\"local\":false},\"metadataPending\":true,\"supported\":true,\"sourceLocal\":true,\"job\":{\"phase\":\"failed\",\"startedAt\":1789271506091,\"finishedAt\":1789271506097,\"errorCode\":\"internal\",\"reason\":null}}",
+          "type": "text"
+        }
+      ]
+    },
+    "restored": {
+      "enrichmentId": "3fe6a72b-989e-4b08-9953-648d58f2400b",
+      "restored": true
+    }
+  },
+  "completed": {
+    "snapshot": {
+      "bookId": "3fe6a72b-989e-4b08-9953-648d58f2400b",
+      "cover": {
+        "status": "ready",
+        "local": true
+      },
+      "metadataPending": false,
+      "supported": true,
+      "sourceLocal": true,
+      "job": {
+        "phase": "completed",
+        "startedAt": 1789271579482,
+        "finishedAt": 1789271579533,
+        "errorCode": null,
+        "reason": null
+      }
+    },
+    "book": {
+      "author": "Fixture Author",
+      "coverBlobKey": "cover:3fe6a72b-989e-4b08-9953-648d58f2400b",
+      "coverLocal": true,
+      "coverStatus": "ready",
+      "id": "3fe6a72b-989e-4b08-9953-648d58f2400b",
+      "title": "Enrichment user chosen title"
+    },
+    "ui": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nEnrichment user chosen title\nFixture Author\n\n\n\n\n\nComposition a8c4933b\nFixture Author\n\n\n\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nlibrary-desk\n\nEnrichment source probe\nCover\nAvailable locally\nOriginal file\nAvailable locally\nMetadata and cover\nMetadata complete / Completed\nRefresh\nPreview cover\nExport original file\nOpen in another app\nClose"
+  },
+  "noForcedRetry": {
+    "status": "not-needed",
+    "snapshot": {
+      "bookId": "3fe6a72b-989e-4b08-9953-648d58f2400b",
+      "cover": {
+        "status": "ready",
+        "local": true
+      },
+      "metadataPending": false,
+      "supported": true,
+      "sourceLocal": true,
+      "job": {
+        "phase": "completed",
+        "startedAt": 1789271579482,
+        "finishedAt": 1789271579533,
+        "errorCode": null,
+        "reason": null
+      }
+    }
+  },
+  "cover": {
+    "images": [
+      {
+        "alt": "Enrichment user chosen title cover",
+        "height": 160,
+        "loaded": true,
+        "width": 240
+      },
+      {
+        "alt": "Enrichment source probe",
+        "height": 160,
+        "loaded": true,
+        "width": 240
+      }
+    ],
+    "text": "Settings\n\nMore\n\n\nEnrichment user chosen title\nFixture Author\n\n\n\n\n\nComposition a8c4933b\nFixture Author\n\n\n\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nlibrary-desk\n\nEnrichment source probe\n\nOpen in another app\nKeep a private copy\nSave cover\nCopy cover\nClose"
+  },
+  "refreshBug": {
+    "afterRefresh": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nEnrichment user chosen title\nFixture Author\n\n\n\n\n\nComposition a8c4933b\nFixture Author\n\n\n\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nlibrary-desk\n\nEnrichment source probe\nCover\nAvailable locally\nOriginal file\nAvailable locally\nMetadata and cover\nMetadata complete / Completed\nRefresh\nPreview cover\nExport original file\nOpen in another app\nClose",
+    "previewClicked": true
+  },
+  "refreshFixFixture": {
+    "bookId": "e1a51f07-a136-45e5-a263-7e1819e358ab",
+    "marker": "Composition 44c8d92b",
+    "path": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+    "plugins": [
+      {
+        "enabled": true,
+        "id": "library-desk",
+        "version": "0.12.0"
+      },
+      {
+        "enabled": true,
+        "id": "text-desk",
+        "version": "0.22.0"
+      }
+    ]
+  },
+  "fixedRefresh": {
+    "afterRefresh": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nEnrichment refresh verified title\nFixture Author\n\n\n\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nlibrary-desk\n\nEnrichment refresh verified title\nCover\nAvailable locally\nOriginal file\nAvailable locally\nMetadata and cover\nMetadata complete / Idle\nRefresh\nPreview cover\nExport original file\nOpen in another app\nClose"
+  },
+  "fixedPreview": {
+    "images": [
+      {
+        "alt": "Enrichment refresh verified title",
+        "height": 160,
+        "loaded": true,
+        "width": 240
+      }
+    ]
+  },
+  "removedUI": {
+    "buttons": [
+      {
+        "label": "Remove Reading Capability Probe",
+        "text": ""
+      },
+      {
+        "label": null,
+        "text": ""
+      },
+      {
+        "label": "Back",
+        "text": ""
+      },
+      {
+        "label": null,
+        "text": "Close"
+      }
+    ],
+    "text": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nlibrary-desk\n\nEnrichment refresh verified title\nNot available locally\nClose"
+  },
+  "automaticPdf": {
+    "fixture": {
+      "fixture": {
+        "enrichmentId": "e029fd73-2296-4c6f-b7b1-99442311d22c"
+      },
+      "source": {
+        "bookId": "0401289e-5d72-4de1-94b9-8a8d0bd6c3b5",
+        "marker": "Composition 82ea3ade",
+        "path": "/Users/ahpx/Library/Application Support/com.readaware.app.capability-e2e",
+        "plugins": [
+          {
+            "enabled": true,
+            "id": "library-desk",
+            "version": "0.12.0"
+          },
+          {
+            "enabled": true,
+            "id": "text-desk",
+            "version": "0.22.0"
+          }
+        ]
+      }
+    },
+    "result": {
+      "snapshot": {
+        "bookId": "e029fd73-2296-4c6f-b7b1-99442311d22c",
+        "cover": {
+          "status": "ready",
+          "local": true
+        },
+        "metadataPending": false,
+        "supported": true,
+        "sourceLocal": true,
+        "job": {
+          "phase": "completed",
+          "startedAt": 1789271918439,
+          "finishedAt": 1789271918940,
+          "errorCode": null,
+          "reason": null
+        }
+      },
+      "book": {
+        "author": "Enrichment PDF author",
+        "coverLocal": true,
+        "coverStatus": "ready",
+        "title": "Enrichment embedded PDF title"
+      },
+      "images": [
+        {
+          "alt": "Enrichment embedded PDF title cover",
+          "height": 480,
+          "loaded": true,
+          "width": 320
+        }
+      ]
+    },
+    "openAfterEnrichment": {
+      "book": {
+        "author": "Enrichment PDF author",
+        "coverStatus": "ready",
+        "title": "Enrichment embedded PDF title"
+      },
+      "reader": true,
+      "text": "Shelf\n\nContents\n\nNotes\nEnrichment embedded PDF title\n1 / 1 · 100%\n\nReading appearance\n\nChat\n\nMore\nThis file does not expose a navigable table of contents.\nAsk about this book\nSelect a passage and choose Ask AI, or just start typing. This conversation stays with the book.\n\n"
+    },
+    "cleanup": {
+      "remaining": [
+        {
+          "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "title": "Reading Paint Probe"
+        },
+        {
+          "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+          "title": "Reading Capability Probe"
+        }
+      ],
+      "removed": {
+        "bookIds": [
+          "0401289e-5d72-4de1-94b9-8a8d0bd6c3b5",
+          "e029fd73-2296-4c6f-b7b1-99442311d22c"
+        ],
+        "committed": true,
+        "files": {
+          "status": "released"
+        }
+      }
+    }
+  },
+  "cleanup": {
+    "manual": {
+      "remaining": [
+        {
+          "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "title": "Reading Paint Probe"
+        },
+        {
+          "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+          "title": "Reading Capability Probe"
+        }
+      ],
+      "removed": {
+        "bookIds": [
+          "bd14240a-bfec-4021-beeb-7bc3436bc7b5",
+          "3fe6a72b-989e-4b08-9953-648d58f2400b"
+        ],
+        "committed": true,
+        "files": {
+          "status": "released"
+        }
+      }
+    },
+    "fix": {
+      "remaining": [
+        {
+          "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+          "title": "Reading Paint Probe"
+        },
+        {
+          "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+          "title": "Reading Capability Probe"
+        }
+      ],
+      "removed": {
+        "bookIds": [
+          "e1a51f07-a136-45e5-a263-7e1819e358ab"
+        ],
+        "committed": true,
+        "files": {
+          "status": "released"
+        }
+      }
+    },
+    "verified": {
+      "dialogText": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n",
+      "fixtures": [
+        {
+          "book": null,
+          "cover": null,
+          "id": "8d075d60-bf78-48d9-ba6c-860701ade715",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "cd09bc21-7ace-43e1-97e6-444d94495206",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "bd14240a-bfec-4021-beeb-7bc3436bc7b5",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "3fe6a72b-989e-4b08-9953-648d58f2400b",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "e1a51f07-a136-45e5-a263-7e1819e358ab",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "c1fb0b4d-0fa4-4c10-a948-804e239838bc",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "2c8dd50e-7b40-4341-9372-06e1035ba2ed",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "0401289e-5d72-4de1-94b9-8a8d0bd6c3b5",
+          "source": null
+        },
+        {
+          "book": null,
+          "cover": null,
+          "id": "e029fd73-2296-4c6f-b7b1-99442311d22c",
+          "source": null
+        }
+      ],
+      "original": {
+        "hash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+        "messages": 2
+      },
+      "readerMounted": false
+    }
+  },
+  "discardedSetup": [
+    {
+      "reason": "Initial helper was imported during pending Vite HMR and lost ownership state before its second call; removed both owned records/files and restarted only the test fixture after typecheck settled.",
+      "ids": [
+        "8d075d60-bf78-48d9-ba6c-860701ade715",
+        "cd09bc21-7ace-43e1-97e6-444d94495206"
+      ]
+    },
+    {
+      "reason": "First automatic PDF placeholder title differed in case from parseFileName output, so automatic metadata condition was false. It proved cover extraction only and is excluded from metadata success; corrected fixture now uses real filename parser.",
+      "observed": {
+        "agent": {
+          "content": [
+            {
+              "text": "{\"bookId\":\"2c8dd50e-7b40-4341-9372-06e1035ba2ed\",\"cover\":{\"status\":\"ready\",\"local\":true},\"metadataPending\":true,\"supported\":true,\"sourceLocal\":true,\"job\":{\"phase\":\"completed\",\"startedAt\":1789271852991,\"finishedAt\":1789271853511,\"errorCode\":null,\"reason\":null}}",
+              "type": "text"
+            }
+          ]
+        },
+        "book": {
+          "author": "",
+          "coverLocal": true,
+          "coverStatus": "ready",
+          "title": "Enrichment unfinished PDF"
+        },
+        "images": [
+          {
+            "alt": "Enrichment unfinished PDF cover",
+            "height": 480,
+            "loaded": true,
+            "width": 320
+          }
+        ],
+        "text": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nEnrichment unfinished PDF\n\n\n\n\n\nComposition 09f8b490\nFixture Author\n\n\n\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n"
+      },
+      "cleanup": {
+        "remaining": [
+          {
+            "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+            "title": "Reading Paint Probe"
+          },
+          {
+            "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+            "title": "Reading Capability Probe"
+          }
+        ],
+        "removed": {
+          "bookIds": [
+            "c1fb0b4d-0fa4-4c10-a948-804e239838bc",
+            "2c8dd50e-7b40-4341-9372-06e1035ba2ed"
+          ],
+          "committed": true,
+          "files": {
+            "status": "released"
+          }
+        }
+      }
+    }
+  ],
+  "checks": [
+    "Library Desk rebuilt; assets.test.ts 12 passed / 51 assertions including compiled entry and renamed/removed book refresh.",
+    "Library Desk typecheck passed; apps/web typecheck:desktop passed after final probe change.",
+    "git diff --check passed."
+  ],
+  "remaining": [
+    "Other enrichment formats/cover-none/source-unavailable boundaries, queue coalescence/limits, observer limits and concurrent custom edits remain separately unverified.",
+    "Failure was generic internal with safe UI text; no claim of format-specific error classification.",
+    "Native event/blob fixture repair is not a user-facing replace-source workflow.",
+    "Opening accepted PDF exceeded first tool observation timeout; next observation confirmed actual reader and persisted title, without restarting it."
+  ]
+}

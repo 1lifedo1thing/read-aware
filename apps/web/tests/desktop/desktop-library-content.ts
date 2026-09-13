@@ -7,12 +7,19 @@ import { setPluginEnabled } from "../../src/features/plugins/runtime/plugin-host
 import { getDesktopBlob, putDesktopBlob } from "../../src/platform/blob-store";
 import { commitDomainEvents } from "../../src/platform/domain-events";
 import { createAnnotationsDomain } from "../../src/domain/annotations";
+import { buildEnrichmentTools } from "../../../../packages/agent/src/tools/enrichment-tools";
+import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
+import { PDFDocument, StandardFonts } from "pdf-lib";
+import { emitAppEvent } from "../../src/platform/app-events";
+import { parseFileName } from "../../src/features/library/lib/book-file-name";
 
 const plugins = ["library-desk", "text-desk"] as const;
 const enabled = new Map<string, boolean>();
 let bookId: string | undefined;
 let marker: string | undefined;
 const duplicateIds: string[] = [];
+let enrichmentId: string | undefined;
+let enrichmentSource: Uint8Array | undefined;
 
 async function isolated() {
   const path = await appDataDir();
@@ -96,6 +103,61 @@ export async function prepareLibraryDuplicates() {
     preview: await library.queries.books.previewMerge(bookId) };
 }
 
+/** An interrupted local source at the native event seam, not an import parser mock. */
+export async function prepareEnrichmentFixture() {
+  await isolated();
+  if (!bookId || !marker || enrichmentId) throw Error("Prepare one owned source first");
+  const source = await getDesktopBlob(`bookfile:${bookId}`);
+  if (!source) throw Error("Owned source missing");
+  enrichmentSource = source;
+  enrichmentId = crypto.randomUUID();
+  const broken = new TextEncoder().encode("<invalid>Interrupted enrichment fixture</invalid>");
+  const blob = await putDesktopBlob(`bookfile:${enrichmentId}`, broken);
+  await commitDomainEvents({ type: "book.imported", origin: "user", payload: {
+    bookId: enrichmentId, title: "Enrichment source probe", author: "", format: "fb2",
+    fileName: "Enrichment source probe.fb2", fileSize: broken.length,
+    sourceBlobKey: `bookfile:${enrichmentId}`, sourceSha256: blob.sha256,
+  } });
+  return { enrichmentId, sourceBookId: bookId, embeddedTitle: marker };
+}
+
+export async function restoreEnrichmentFixtureSource() {
+  await isolated();
+  if (!enrichmentId || !enrichmentSource) throw Error("No owned enrichment fixture");
+  const library = createLibraryDomain("user");
+  await library.commands.books.editMetadata(enrichmentId, { title: "Enrichment user chosen title" });
+  await putDesktopBlob(`bookfile:${enrichmentId}`, enrichmentSource);
+  return { enrichmentId, restored: true };
+}
+
+export async function agentEnrichmentFixture(retry = false) {
+  await isolated();
+  if (!enrichmentId) throw Error("No owned enrichment fixture");
+  const tool = buildEnrichmentTools({ kind: "book", bookId: enrichmentId }, buildRuntimeDeps())
+    .find(tool => tool.name === (retry ? "retry_book_enrichment" : "get_book_enrichment"))!;
+  return tool.execute("enrichment-fixture", {});
+}
+
+export async function prepareAutomaticPdfEnrichment() {
+  await isolated();
+  if (!bookId || !marker || enrichmentId) throw Error("Prepare one owned source first");
+  const pdf = await PDFDocument.create();
+  pdf.setTitle("Enrichment embedded PDF title"); pdf.setAuthor("Enrichment PDF author");
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  pdf.addPage([400, 600]).drawText("Automatic enrichment PDF fixture", { font, x: 30, y: 500, size: 16 });
+  const bytes = await pdf.save(); enrichmentId = crypto.randomUUID();
+  const blob = await putDesktopBlob(`bookfile:${enrichmentId}`, bytes);
+  const fileName = "Enrichment unfinished PDF.pdf";
+  await commitDomainEvents({ type: "book.imported", origin: "user", payload: {
+    bookId: enrichmentId, ...parseFileName(fileName), format: "pdf",
+    fileName, fileSize: bytes.length,
+    sourceBlobKey: `bookfile:${enrichmentId}`, sourceSha256: blob.sha256,
+  } });
+  // Use the ordinary shelf reload/catch-up path; do not enqueue directly.
+  emitAppEvent("library-changed", {});
+  return { enrichmentId };
+}
+
 export async function cleanupLibraryContent() {
   await isolated();
   for (const id of enabled.keys()) await setPluginEnabled(id, false);
@@ -103,10 +165,12 @@ export async function cleanupLibraryContent() {
   for (const collection of await library.queries.collections.list()) {
     if (marker && collection.name.startsWith(marker)) await library.commands.collections.remove(collection.id);
   }
-  const removed = bookId ? await library.commands.books.removeMany([bookId, ...duplicateIds]) : null;
+  const removed = bookId ? await library.commands.books.removeMany([bookId, ...duplicateIds, ...(enrichmentId ? [enrichmentId] : [])]) : null;
   if (removed?.files.status === "pending") throw Error("Owned fixture file cleanup is pending");
   bookId = undefined;
   duplicateIds.length = 0;
+  enrichmentId = undefined;
+  enrichmentSource = undefined;
   for (const [id, wasEnabled] of enabled) if (wasEnabled) await setPluginEnabled(id, true);
   enabled.clear(); marker = undefined;
   return { removed, remaining: (await library.queries.books.list()).map(book => ({ id: book.id, title: book.title })) };
