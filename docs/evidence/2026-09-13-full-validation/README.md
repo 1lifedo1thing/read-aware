@@ -2155,3 +2155,52 @@ Library Desk检查TXT/1节→确认导入→原文件关联打开通过，无需
 临时导出路径已移除，不提交日志或记录全文。本流程没有上传报告或发送消息，
 发送回执/真实崩溃、插件或Agent诊断入口、轮转/截断与失败路径、其他平台仍待验。
 详见[诊断导出记录](./diagnostics-export-observations.json)。
+
+
+## 第八十一项：已有证据对账
+
+[八行对账](./coverage-reconciliation-81.md)复用已有取消、自动上下文、插件工具、
+上下文贡献及安装同意证据，明确缺少的调用边界；这不是新增桌面验收流程。
+
+## 第八十三流程：隔离双实例 WebDAV 加密同步
+
+两个独立macOS debug Tauri资料目录，实际内置WebDAV 0.3.0 Worker→原生HTTP→
+SQLite，经本机WebDAV服务完成双向事件和Blob收敛。错误口令拒绝；503期间仍能
+本地导入，积压2事件/1Blob，服务恢复后清空。两端各自懒取对方664字节FB2，解密
+内容一致；再次同步零推拉，原生事件ID集合与书目投影一致、无重复。
+
+服务对象仅含加密事件信封及Blob，自有明文marker未出现。实际Data & Sync界面
+完成连接/口令输入、立即同步、确认断开；断开后本地两书保留。独立实例、MCP会话
+和服务均停止，合成资料保留审计，原资料未触碰。desktop probe类型检查通过。
+物理跨设备、生产服务、Agent/Maintenance批准、发布包CSP、重启与换代失败回滚
+仍未由本流程证明。见[流程记录](./sync-loopback-observations.json)、
+[原生存储](./sync-native-storage-observations.json)、[密文传输](./sync-ciphertext-transport-observations.json)。
+
+## 第八十四流程：标注评测范围校验修复及定向真实模型复验
+
+修复fixture精确CFI不验textQuote、标注丢range及场景只检查kind/text的假通过缺口；
+现在核对完整原文、书/章/范围和精确笔记正文。另修阅读会话fixture固定版本与正文
+哈希版本不一致。47项定向测试、Agent类型通过；旧suite正向夹具曾11过1失败，
+补真实范围造数后12过0失败，新断言与相邻文本反例保留。
+
+固定两题各一次、额外自由问题一次，仅Berger在已证实fixture版本错误修复后重跑
+一次；没有重复采样直到通过。修复后Berger最终两标注完整附着、正文正确，独立
+审阅4分，但两次错误工具调用使机器仍失败。Lebon最终范围正确，笔记漏句号且回答
+带英语过程说明，3分/有保留，机器失败。自由问题缩短选区、漏掉末尾句号却声称
+完成，3分/有保留。主代理复核上述三份完整回答、工具调用与结果状态，同意区分
+最终结果与过程错误；初次Berger保留为受fixture影响的诊断，不能当纯产品失败。
+
+这是修复后内存端口真实模型观察，未证明Tauri绘制或重启持久性。原固定首轮
+247/198/34/15统计不变，原输出与评分保留。见[修复与复验](./annotation-range-validation.json)。
+
+## 第八十五流程：真实聊天自动问题留痕与批准删除
+
+primary9224实际读者选区→Ask AI→ChatPanel/AgentThread，两轮分别验证选区和
+无选区游标锚；原生ask的书ID、问题、章节和CFI一致，关书重开不变。复用首条
+ask，实际聊天Keep it返回deleted:false并保留；Delete annotation返回deleted:true、
+annotationKind:ask，原生目标消失且Notes一致。删除请求自身新增ask属轮末留痕。
+
+自有书、四次ask及八条消息已清理，源和正文storage_uri=null，清理意图为空。
+原两书完整字段、原会话hash、配置、buildMemory与15插件启用状态保持；自有服务
+退出。desktop类型及证据检查通过。回答和工具选择来自受控Responses服务，
+不计真实模型自主语义、发布包或物理焦点验收。见[聊天问题留痕记录](./annotation-ask-chat-observations.json)。
