@@ -1700,3 +1700,32 @@ ChatInteractionPrompt 显示目标 book ID，说明清空聊天及缓存摘要�
 哈希与基线一致。没有改模型配置、凭据或启动服务。仅扩展现有批准探针，项目
 desktop 类型检查通过，无产品修复。存储故障、生成中书内清空、进程重启、
 发布包及跨设备保持待验。详见[book-conversation-clear-observations.json](./book-conversation-clear-observations.json)。
+
+## 第六十二流程：全局聊天与笔记编辑器内容排版
+
+复用隔离 Tauri、settings Worker 和生产 Agent settings 工具，在实际 Threads
+菜单选择自有两条合成消息。独立 Menlo/x-large/relaxed 时，全局用户消息、助手
+段落和输入框均为17px/32.3px；设置全局阅读 Lora/large/compact 并开启跟随后，
+三处均为15.6464px/22.687281px。导航保持 Inter，不把合成消息算作模型回答。
+
+打开自有 FB2，通过真实章节 DOM Range 选中 SELECTION_MARKER_947，触发已
+安装的选区处理并点击 Add a note。发现实际笔记编辑器引用为 Menlo17px，输入区
+仍是 Inter16px/24px，未消费内容排版设置。先取消、清理书/全局会话/Worker并
+恢复设置，再给 NoteEditor 的 TextArea style 接入现有三个内容 CSS 变量。
+没有改变共享输入组件或给标签/按钮套阅读字体。
+
+热更新后新建自有书重跑：输入区与引用均为 Menlo17px/32.3px；开启跟随后均为
+Lora15.6464px/22.687281px。实际输入 Unicode 合成笔记并点击 Save，原生重读
+得到正确引用、CFI和内容。通过实际 foliate-view.showAnnotation 定位该持久CFI，
+既有笔记编辑器重新打开，内容和排版保持；这是引擎入口，不冒称物理点中标记。
+关闭跟随并设置x-small/compact，两处均为Menlo12px/17.4px；标签Inter13px、
+Cancel按钮Inter14px保持界面样式。
+
+准备阶段直接导入无HMR版本的global-thread模块只改变持久选择，未更新已挂载
+原子；随后从实际Threads选择自有行才采集有效全局消息证据。Agent阅读设置首次
+缺显式global target而失败，补齐目标后成功；不把这两次探针用法问题当产品缺陷。
+
+两次自有书/源/聊天、一条笔记和自有全局会话清零；7项设置和选中__global__
+逐项恢复，Worker贡献0，原两书和原会话完整序列哈希保持。web/desktop类型及
+Foliate源检查通过。无新框架或重复全量门禁；像素/物理焦点、进程重启、发布包、
+插件内容及其他平台仍单列。详见[global-note-typography-observations.json](./global-note-typography-observations.json)。

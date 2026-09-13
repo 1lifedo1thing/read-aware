@@ -1,0 +1,650 @@
+{
+  "flow": 62,
+  "date": "2026-09-13",
+  "baseline": "e7cc433b",
+  "profile": "com.readaware.app.capability-e2e",
+  "boundary": "Real macOS debug Tauri, settings Worker and production Agent settings tool; mounted global chat and NoteEditor, native note save/re-read. DOM selection/input and engine showAnnotation reopen, no physical focus/pixels, model generation, process restart or packaged proof.",
+  "baselineState": [
+    {
+      "path": "appearance.contentTypography.followReader",
+      "target": {
+        "kind": "global"
+      },
+      "value": true
+    },
+    {
+      "path": "appearance.contentTypography.fontFamily",
+      "target": {
+        "kind": "global"
+      },
+      "value": null
+    },
+    {
+      "path": "appearance.contentTypography.fontSize",
+      "target": {
+        "kind": "global"
+      },
+      "value": "medium"
+    },
+    {
+      "path": "appearance.contentTypography.lineSpacing",
+      "target": {
+        "kind": "global"
+      },
+      "value": "comfortable"
+    },
+    {
+      "path": "reading.fontFamily",
+      "reading": {
+        "defaultValue": "curated:inter",
+        "override": "absent",
+        "source": "global"
+      },
+      "target": {
+        "kind": "global"
+      },
+      "value": "curated:inter"
+    },
+    {
+      "path": "reading.fontSize",
+      "reading": {
+        "defaultValue": "medium",
+        "override": "absent",
+        "source": "global"
+      },
+      "target": {
+        "kind": "global"
+      },
+      "value": "medium"
+    },
+    {
+      "path": "reading.lineSpacing",
+      "reading": {
+        "defaultValue": "comfortable",
+        "override": "absent",
+        "source": "global"
+      },
+      "target": {
+        "kind": "global"
+      },
+      "value": "comfortable"
+    }
+  ],
+  "globalThread": {
+    "id": "thread-2842af8c-1f85-46ba-917e-decce7b4952a",
+    "originalActiveRaw": "\"__global__\""
+  },
+  "globalDetached": {
+    "chrome": {
+      "font": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "line": "20px",
+      "size": "14px",
+      "text": "Library"
+    },
+    "composer": {
+      "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+      "line": "32.299999px",
+      "size": "17px",
+      "text": ""
+    },
+    "messages": [
+      {
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "line": "32.299999px",
+        "size": "17px",
+        "text": "GLOBAL_TYPOGRAPHY_PROBE question 中文 ✓"
+      },
+      {
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "line": "32.299999px",
+        "size": "17px",
+        "text": "GLOBAL_TYPOGRAPHY_PROBE answer with bold text."
+      },
+      {
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "line": "32.299999px",
+        "size": "17px",
+        "text": ""
+      }
+    ]
+  },
+  "globalFollow": {
+    "chrome": {
+      "font": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+      "line": "20px",
+      "size": "14px",
+      "text": "Library"
+    },
+    "composer": {
+      "font": "Lora, ui-serif, Georgia, serif",
+      "line": "22.687281px",
+      "size": "15.6464px",
+      "text": ""
+    },
+    "messages": [
+      {
+        "font": "Lora, ui-serif, Georgia, serif",
+        "line": "22.687281px",
+        "size": "15.6464px",
+        "text": "GLOBAL_TYPOGRAPHY_PROBE question 中文 ✓"
+      },
+      {
+        "font": "Lora, ui-serif, Georgia, serif",
+        "line": "22.687281px",
+        "size": "15.6464px",
+        "text": "GLOBAL_TYPOGRAPHY_PROBE answer with bold text."
+      },
+      {
+        "font": "Lora, ui-serif, Georgia, serif",
+        "line": "22.687281px",
+        "size": "15.6464px",
+        "text": ""
+      }
+    ]
+  },
+  "beforeFixBook": {
+    "bookId": "6de7a040-e5c1-40af-91a2-f6a42d226be0"
+  },
+  "noteBeforeFix": {
+    "buttons": [
+      {
+        "label": "Start reading by sentence or paragraph",
+        "text": ""
+      },
+      {
+        "label": "Reading appearance",
+        "text": ""
+      },
+      {
+        "label": "Chat",
+        "text": ""
+      },
+      {
+        "label": "More",
+        "text": ""
+      },
+      {
+        "label": null,
+        "text": "Privacy sample"
+      },
+      {
+        "label": "Send",
+        "text": ""
+      }
+    ],
+    "quote": [
+      {
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "line": "32.299999px",
+        "size": "17px",
+        "tag": "P",
+        "text": "“SELECTION_MARKER_947”"
+      }
+    ],
+    "textareas": [
+      {
+        "aria": null,
+        "font": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "label": "Your note",
+        "line": "24px",
+        "placeholder": "What are your thoughts on this passage?",
+        "size": "16px",
+        "tag": "TEXTAREA",
+        "text": "",
+        "value": ""
+      },
+      {
+        "aria": "Message",
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "line": "32.299999px",
+        "placeholder": "Ask about this book…",
+        "size": "17px",
+        "tag": "TEXTAREA",
+        "text": "",
+        "value": ""
+      }
+    ]
+  },
+  "preEditCleanup": {
+    "book": {
+      "cleaned": true
+    },
+    "restoredSelection": true,
+    "worker": {
+      "contributions": 0
+    }
+  },
+  "fixPrepare": {
+    "book": {
+      "bookId": "2480ae41-aebd-42dc-a516-a42677f221da"
+    },
+    "settings": {
+      "changed": [
+        {
+          "path": "appearance.contentTypography.followReader",
+          "target": {
+            "kind": "global"
+          },
+          "value": false
+        },
+        {
+          "path": "appearance.contentTypography.fontFamily",
+          "target": {
+            "kind": "global"
+          },
+          "value": "system:Menlo"
+        },
+        {
+          "path": "appearance.contentTypography.fontSize",
+          "target": {
+            "kind": "global"
+          },
+          "value": "x-large"
+        },
+        {
+          "path": "appearance.contentTypography.lineSpacing",
+          "target": {
+            "kind": "global"
+          },
+          "value": "relaxed"
+        }
+      ],
+      "paths": [
+        "appearance.contentTypography.followReader",
+        "appearance.contentTypography.fontFamily",
+        "appearance.contentTypography.fontSize",
+        "appearance.contentTypography.lineSpacing",
+        "reading.fontFamily",
+        "reading.fontSize",
+        "reading.lineSpacing"
+      ],
+      "status": "committed"
+    }
+  },
+  "noteDetached": {
+    "buttons": [
+      {
+        "label": "Start reading by sentence or paragraph",
+        "text": ""
+      },
+      {
+        "label": "Reading appearance",
+        "text": ""
+      },
+      {
+        "label": "Chat",
+        "text": ""
+      },
+      {
+        "label": "More",
+        "text": ""
+      },
+      {
+        "label": null,
+        "text": "Privacy sample"
+      },
+      {
+        "label": "Send",
+        "text": ""
+      }
+    ],
+    "quote": [
+      {
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "line": "32.299999px",
+        "size": "17px",
+        "tag": "P",
+        "text": "“SELECTION_MARKER_947”"
+      }
+    ],
+    "textareas": [
+      {
+        "aria": null,
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "label": "Your note",
+        "line": "32.299999px",
+        "placeholder": "What are your thoughts on this passage?",
+        "size": "17px",
+        "tag": "TEXTAREA",
+        "text": "",
+        "value": ""
+      },
+      {
+        "aria": "Message",
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "line": "32.299999px",
+        "placeholder": "Ask about this book…",
+        "size": "17px",
+        "tag": "TEXTAREA",
+        "text": "",
+        "value": ""
+      }
+    ]
+  },
+  "noteFollow": {
+    "buttons": [
+      {
+        "label": "Start reading by sentence or paragraph",
+        "text": ""
+      },
+      {
+        "label": "Reading appearance",
+        "text": ""
+      },
+      {
+        "label": "Chat",
+        "text": ""
+      },
+      {
+        "label": "More",
+        "text": ""
+      },
+      {
+        "label": null,
+        "text": "Privacy sample"
+      },
+      {
+        "label": "Send",
+        "text": ""
+      }
+    ],
+    "quote": [
+      {
+        "font": "Lora, ui-serif, Georgia, serif",
+        "line": "22.687281px",
+        "size": "15.6464px",
+        "tag": "P",
+        "text": "“SELECTION_MARKER_947”"
+      }
+    ],
+    "textareas": [
+      {
+        "aria": null,
+        "font": "Lora, ui-serif, Georgia, serif",
+        "label": "Your note",
+        "line": "22.687281px",
+        "placeholder": "What are your thoughts on this passage?",
+        "size": "15.6464px",
+        "tag": "TEXTAREA",
+        "text": "NOTE_TYPOGRAPHY_PROBE 中文 ✓",
+        "value": "NOTE_TYPOGRAPHY_PROBE 中文 ✓"
+      },
+      {
+        "aria": "Message",
+        "font": "Lora, ui-serif, Georgia, serif",
+        "line": "22.687281px",
+        "placeholder": "Ask about this book…",
+        "size": "15.6464px",
+        "tag": "TEXTAREA",
+        "text": "",
+        "value": ""
+      }
+    ]
+  },
+  "savedNote": {
+    "notes": [
+      {
+        "bookId": "2480ae41-aebd-42dc-a516-a42677f221da",
+        "cfiRange": "epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)",
+        "chapterHref": "0",
+        "content": "NOTE_TYPOGRAPHY_PROBE 中文 ✓",
+        "createdAt": "2026-09-13T03:46:17.641Z",
+        "id": "f58d966f-ac6b-4fd1-acb2-bc338d3c02e1",
+        "revision": "ann1:108f62ac2fd2a5b719d975295e3081c730b0ccb942b1e3d1e5747ead32a47409",
+        "text": "SELECTION_MARKER_947",
+        "type": "note",
+        "updatedAt": "2026-09-13T03:46:17.641Z"
+      }
+    ],
+    "editorOpen": false
+  },
+  "reopenMethod": "Production foliate-view.showAnnotation({value: persisted cfiRange}) opens actual existing-note editor.",
+  "noteReopened": {
+    "buttons": [
+      {
+        "label": "Start reading by sentence or paragraph",
+        "text": ""
+      },
+      {
+        "label": "Reading appearance",
+        "text": ""
+      },
+      {
+        "label": "Chat",
+        "text": ""
+      },
+      {
+        "label": "More",
+        "text": ""
+      },
+      {
+        "label": null,
+        "text": "Privacy sample"
+      },
+      {
+        "label": "Send",
+        "text": ""
+      }
+    ],
+    "quote": [
+      {
+        "font": "Lora, ui-serif, Georgia, serif",
+        "line": "22.687281px",
+        "size": "15.6464px",
+        "tag": "P",
+        "text": "“SELECTION_MARKER_947”"
+      }
+    ],
+    "textareas": [
+      {
+        "aria": null,
+        "font": "Lora, ui-serif, Georgia, serif",
+        "label": "Your note",
+        "line": "22.687281px",
+        "placeholder": "What are your thoughts on this passage?",
+        "size": "15.6464px",
+        "tag": "TEXTAREA",
+        "text": "NOTE_TYPOGRAPHY_PROBE 中文 ✓",
+        "value": "NOTE_TYPOGRAPHY_PROBE 中文 ✓"
+      },
+      {
+        "aria": "Message",
+        "font": "Lora, ui-serif, Georgia, serif",
+        "line": "22.687281px",
+        "placeholder": "Ask about this book…",
+        "size": "15.6464px",
+        "tag": "TEXTAREA",
+        "text": "",
+        "value": ""
+      }
+    ]
+  },
+  "noteSmall": {
+    "buttons": [
+      {
+        "label": "Start reading by sentence or paragraph",
+        "text": ""
+      },
+      {
+        "label": "Reading appearance",
+        "text": ""
+      },
+      {
+        "label": "Chat",
+        "text": ""
+      },
+      {
+        "label": "More",
+        "text": ""
+      },
+      {
+        "label": null,
+        "text": "Privacy sample"
+      },
+      {
+        "label": "Send",
+        "text": ""
+      }
+    ],
+    "quote": [
+      {
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "line": "17.4px",
+        "size": "12px",
+        "tag": "P",
+        "text": "“SELECTION_MARKER_947”"
+      }
+    ],
+    "textareas": [
+      {
+        "aria": null,
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "label": "Your note",
+        "line": "17.4px",
+        "placeholder": "What are your thoughts on this passage?",
+        "size": "12px",
+        "tag": "TEXTAREA",
+        "text": "NOTE_TYPOGRAPHY_PROBE 中文 ✓",
+        "value": "NOTE_TYPOGRAPHY_PROBE 中文 ✓"
+      },
+      {
+        "aria": "Message",
+        "font": "Menlo, ui-sans-serif, system-ui, sans-serif",
+        "line": "17.4px",
+        "placeholder": "Ask about this book…",
+        "size": "12px",
+        "tag": "TEXTAREA",
+        "text": "",
+        "value": ""
+      }
+    ]
+  },
+  "cleanup": {
+    "book": {
+      "cleaned": true
+    },
+    "chrome": {
+      "cancel": {
+        "font": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "line": "20px",
+        "size": "14px"
+      },
+      "label": {
+        "font": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+        "line": "19.5px",
+        "size": "13px"
+      }
+    },
+    "worker": {
+      "contributions": 0
+    }
+  },
+  "verifiedCleanup": {
+    "active": "\"__global__\"",
+    "books": [
+      {
+        "blob": null,
+        "book": null,
+        "id": "6de7a040-e5c1-40af-91a2-f6a42d226be0",
+        "messages": 0
+      },
+      {
+        "blob": null,
+        "book": null,
+        "id": "2480ae41-aebd-42dc-a516-a42677f221da",
+        "messages": 0
+      }
+    ],
+    "globalMessages": 0,
+    "note": null,
+    "original": {
+      "hash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+      "messages": 2
+    },
+    "originalBooks": [
+      {
+        "exists": true,
+        "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+      },
+      {
+        "exists": true,
+        "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3"
+      }
+    ],
+    "settings": [
+      {
+        "path": "appearance.contentTypography.followReader",
+        "target": {
+          "kind": "global"
+        },
+        "value": true
+      },
+      {
+        "path": "appearance.contentTypography.fontFamily",
+        "target": {
+          "kind": "global"
+        },
+        "value": null
+      },
+      {
+        "path": "appearance.contentTypography.fontSize",
+        "target": {
+          "kind": "global"
+        },
+        "value": "medium"
+      },
+      {
+        "path": "appearance.contentTypography.lineSpacing",
+        "target": {
+          "kind": "global"
+        },
+        "value": "comfortable"
+      },
+      {
+        "path": "reading.fontFamily",
+        "reading": {
+          "defaultValue": "curated:inter",
+          "override": "absent",
+          "source": "global"
+        },
+        "target": {
+          "kind": "global"
+        },
+        "value": "curated:inter"
+      },
+      {
+        "path": "reading.fontSize",
+        "reading": {
+          "defaultValue": "medium",
+          "override": "absent",
+          "source": "global"
+        },
+        "target": {
+          "kind": "global"
+        },
+        "value": "medium"
+      },
+      {
+        "path": "reading.lineSpacing",
+        "reading": {
+          "defaultValue": "comfortable",
+          "override": "absent",
+          "source": "global"
+        },
+        "target": {
+          "kind": "global"
+        },
+        "value": "comfortable"
+      }
+    ]
+  },
+  "setupCorrections": [
+    "Direct unversioned global-thread import persisted selection but did not update mounted HMR atom. Selected owned row through actual Threads UI before accepted observations; final selection restored through served module URL.",
+    "Agent reading setting changes need explicit global target. First request failed with no accepted change; corrected request completed."
+  ],
+  "fix": "NoteEditor passes the existing content font family, size and line-height CSS variables through TextArea style to the textarea. Label and button keep interface typography.",
+  "checks": [
+    "apps/web bun run typecheck passed (Foliate source check, web and desktop TypeScript)",
+    "No new test framework or unrelated full suite."
+  ]
+}

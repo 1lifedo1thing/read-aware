@@ -69,6 +69,11 @@ export function NoteEditor({
 
           <TextArea
             label={t("note.bodyLabel")}
+            style={{
+              fontFamily: "var(--ra-content-font-family)",
+              fontSize: "var(--ra-content-font-size)",
+              lineHeight: "var(--ra-content-line-height)",
+            }}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={t("note.placeholder")}
