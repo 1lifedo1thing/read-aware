@@ -59,7 +59,9 @@
       "form": {
         "required": "Complete this field.",
         "invalid": "Check this value.",
-        "choose": "Choose an option"
+        "choose": "Choose an option",
+        "checked": "Checked",
+        "unchecked": "Not checked"
       },
       "customAnswer": "Something else",
       "customAnswerLabel": "Your answer",

@@ -5,6 +5,7 @@ import { useId, useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "../../../i18n";
 import { respondToUserInteraction } from "../agent/ports/user-interaction-port";
 import { ChatInteractionForm } from "./ChatInteractionForm";
+import { formatInteractionFormSummary } from "../lib/interaction-form-summary";
 import type {
   ChatInteractionAnswer,
   ChatInteractionPart,
@@ -134,7 +135,9 @@ function SettledInteraction({
       : part.request.kind === "permission"
         ? t("chat.interaction.permission.approved")
         : part.request.kind === "form" && part.answer?.values
-          ? part.request.fields.map(field => `${field.label}: ${part.answer!.values![field.id] === null ? "-" : String(part.answer!.values![field.id])}`).join("\n")
+          ? formatInteractionFormSummary(part.request.fields, part.answer.values, {
+            checked: t("chat.interaction.form.checked"), unchecked: t("chat.interaction.form.unchecked"),
+          })
           : part.answer?.text || t("chat.interaction.answered");
   const status = cancelled
     ? t("chat.interaction.skipped")

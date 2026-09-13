@@ -59,7 +59,9 @@
       "form": {
         "required": "请填写此项。",
         "invalid": "请检查此值。",
-        "choose": "请选择"
+        "choose": "请选择",
+        "checked": "已勾选",
+        "unchecked": "未勾选"
       },
       "customAnswer": "其他答案",
       "customAnswerLabel": "你的答案",

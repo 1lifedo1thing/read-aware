@@ -59,7 +59,9 @@
       "form": {
         "required": "Füllen Sie dieses Feld aus.",
         "invalid": "Prüfen Sie diesen Wert.",
-        "choose": "Option auswählen"
+        "choose": "Option auswählen",
+        "checked": "Ausgewählt",
+        "unchecked": "Nicht ausgewählt"
       },
       "customAnswer": "Etwas anderes",
       "customAnswerLabel": "Deine Antwort",

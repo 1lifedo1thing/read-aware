@@ -59,7 +59,9 @@
       "form": {
         "required": "Заполните это поле.",
         "invalid": "Проверьте значение.",
-        "choose": "Выберите вариант"
+        "choose": "Выберите вариант",
+        "checked": "Отмечено",
+        "unchecked": "Не отмечено"
       },
       "customAnswer": "Другой ответ",
       "customAnswerLabel": "Ваш ответ",

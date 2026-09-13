@@ -59,7 +59,9 @@
       "form": {
         "required": "Completa este campo.",
         "invalid": "Revisa este valor.",
-        "choose": "Elige una opción"
+        "choose": "Elige una opción",
+        "checked": "Marcado",
+        "unchecked": "Sin marcar"
       },
       "customAnswer": "Otra respuesta",
       "customAnswerLabel": "Tu respuesta",

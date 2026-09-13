@@ -2064,3 +2064,23 @@ CUA已目视书卡/缩略图修复/目标正文；后段WebView报hidden且截�
 按钮。五本自有书、源/封面、测试会话和唯一dictionary缓存13kiewb清理，原两书及
 原会话hash不变；AI配置/凭据/buildMemory恢复，19843服务退出130。未调用真实
 远端模型，不计语义质量；发布包与其他平台待验。详见[Agent卡片记录](./agent-card-observations.json)。
+
+## 第七十八流程：真实聊天提问与结构化表单
+
+基线`c9c80da6`。全局聊天经受控SSE发起两次ask_user和两次ask_user_form，实际
+宿主交互端口暂停、原生CUA选择/输入/提交和下一次HTTP请求共同核对：选择brief、
+中文自定义回答、text/textarea/number/select/checkbox五字段表单及Skip通过。
+必填空值和days=11超过max10均留在表单报错；合法提交为中文名称、note:null、
+days:5、pace:fast、remind:false。初始选项/false没有自动提交或充当批准。
+
+实际发现已提交摘要显示内部选项id和raw boolean，抽出小型格式化函数，选择值
+映射回请求标签，复选框八语言显示勾选状态；模型及原生存储仍保留原类型和值。
+原生AX复验“节奏: 快速 / 提醒: Not checked”，页面重载前后消息逐项相同，
+取消请求的迟到回答返回false且未重启旧回合。web/Foliate/desktop类型通过。
+
+第一次回合的Enter/Send时序使后一个点击实际成为Stop，原生已记cancelled，
+仅完整第二回合作为正向证据。下拉列表AX合并选项，最终用Tauri WebView点击
+已观测option，不计物理键盘选择；后段hidden/空白截图不计完整像素焦点。
+book scope/其他取值边界、发布包、其他平台和真实模型选择行为仍待验。
+测试会话已清除，原两书和原会话hash保持；AI配置/凭据/buildMemory恢复、
+19843服务退出130。详见[提问与表单记录](./agent-interaction-form-observations.json)。

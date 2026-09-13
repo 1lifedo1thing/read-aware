@@ -59,7 +59,9 @@
       "form": {
         "required": "Remplissez ce champ.",
         "invalid": "Vérifiez cette valeur.",
-        "choose": "Choisissez une option"
+        "choose": "Choisissez une option",
+        "checked": "Coché",
+        "unchecked": "Non coché"
       },
       "customAnswer": "Autre réponse",
       "customAnswerLabel": "Votre réponse",
