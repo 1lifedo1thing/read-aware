@@ -1,4 +1,5 @@
 import type { DomainActor } from "../platform/domain-actor";
+import type { DomainActorOwners } from "./actor-owners";
 import { AppError, FULL_DOMAIN_GRANTS, type DomainGrants } from "@read-aware/core";
 import { createBookMemoryPort } from "../features/ai/agent/ports/book-memory-port";
 import { createMemoryPort } from "../features/ai/agent/ports/memory-port";
@@ -30,13 +31,13 @@ const observer = new MemoryObserver({
 
 /** Memory reads do not import books, construct digests, or grant raw projection writes.
  * Context bundles also check the recipe's other source domains against the actor's grants. */
-export function createMemoryDomain(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants: DomainGrants = FULL_DOMAIN_GRANTS) {
+export function createMemoryDomain(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants: DomainGrants = FULL_DOMAIN_GRANTS, owners: DomainActorOwners = {}) {
   const entitySignal = (signal?: AbortSignal) => lifetime && signal ? AbortSignal.any([lifetime, signal]) : lifetime ?? signal;
   const context = contextBundleAccess({ origin, grants, lifetime });
   const memory = createMemoryPort(), bookMemory = createBookMemoryPort();
   const profile = (query?: import("@read-aware/core").UserProfileQuery) => createProfilePort().readProfile(query, lifetime);
   const profileContext = (query?: import("@read-aware/core").ProfileInspectionQuery, signal?: AbortSignal) => inspectProfileContext(query, entitySignal(signal));
-  const tasks = createBookGraphTasks(lifetime, trackCleanup);
+  const tasks = owners.graphTasks ??= createBookGraphTasks(lifetime, trackCleanup);
   const queries = createMemoryQueries({ search: memory.searchMemories, page: memory.pageMemories, graph: async bookId => {
     const digests = await bookMemory.listDigests(bookId);
     const chapters = await getPersistedBookText(bookId);
@@ -97,9 +98,9 @@ export function createMemoryDomain(origin: DomainActor, lifetime?: AbortSignal, 
         trackCleanup?.(work.then(() => {}, () => {}));
         return work;
       },
-      startGraphTask: (bookId: string, mode: "catch-up" | "rebuild", options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.start(bookId, mode, options, entitySignal(access?.signal)), access),
+      startGraphTask: (bookId: string, mode: "catch-up" | "rebuild", options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.start(bookId, mode, options, entitySignal(access?.signal), origin), access),
       cancelGraphTask: (bookId: string, taskId: string) => tasks.cancel(bookId, taskId),
-      retryGraphTask: (bookId: string, taskId: string, options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.retry(bookId, taskId, options, entitySignal(access?.signal)), access) },
+      retryGraphTask: (bookId: string, taskId: string, options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.retry(bookId, taskId, options, entitySignal(access?.signal), origin), access) },
     events: { observe: (input: MemoryObservationQuery, handler: (event: MemoryObservation) => unknown,
       authorizedRead?: (query: MemoryObservationQuery) => Promise<MemoryObservationResult>) => observer.observe(input, authorizedRead ?? read, handler, lifetime) } };
 

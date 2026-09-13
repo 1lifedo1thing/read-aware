@@ -1,3 +1,4 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { getBookContentState } from "./book-content-state";
 import { getVirtualTextSource } from "../features/library/lib/virtual-text-source";
 import { runDomainWrite } from "../platform/domain-write-gate";
@@ -32,14 +33,14 @@ export async function inspectBookDigest(bookId: string, chapterIndex: number, si
   if (snapshot.contentVersion && snapshot.contentVersion !== contentVersion) throw new AppError("memory/conflict", "Digest source changed during inspection");
   assertLive(signal); return { ...snapshot, contentVersion };
 }
-export async function saveBookDigest(bookId: string, digest: ChapterDigest, expectedRevision: string, signal?: AbortSignal): Promise<void> {
+export async function saveBookDigest(bookId: string, digest: ChapterDigest, expectedRevision: string, signal?: AbortSignal, origin: DomainActor = "agent"): Promise<void> {
   validateTarget(bookId, digest.chapterIndex);
   if (typeof expectedRevision !== "string" || !/^bdg1:[a-f0-9]{64}$/.test(expectedRevision)) throw new AppError("memory/invalid-input", "Missing digest revision");
   const copy = structuredClone(digest);
   const checkSource = async () => {
     if (!copy.contentVersion || await getDigestContentVersion(bookId, signal) !== copy.contentVersion) throw new AppError("memory/conflict", "Digest source changed before commit");
   };
-  const draft: DomainEventDraft = { type: "book.chapterDigested", origin: "agent", payload: { ...copy, bookId, flavor: copy.flavor ?? "narrative" } };
+  const draft: DomainEventDraft = { type: "book.chapterDigested", origin, payload: { ...copy, bookId, flavor: copy.flavor ?? "narrative" } };
   return runDomainWrite(async () => {
     assertLive(signal);
     // Admission must precede the source recheck. During backup capture a

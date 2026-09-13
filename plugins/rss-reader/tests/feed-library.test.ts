@@ -23,10 +23,13 @@ function fixture() {
   const revision = (name: string, id: string) => table(name).has(id) ? `${writes.get(`${name}:${id}`) ?? 0}:${JSON.stringify(table(name).get(id))}` : null;
   const state = { xml: xml(item("one")), fetches: 0, notifications: 0, offline: false, failIndex: false, failNotify: false, failedUrls: new Set<string>(),
     bookId: "book-1", adds: 0, removes: 0, removalTargets: [] as (string | undefined)[], failFeedDelete: false, removeHold: undefined as Promise<void> | undefined, failRemove: false, failCleanup: false, failRead: false, sourceRevision: "new", readingRevision: "old", readingBook: "book-1", events: [] as string[], hold: undefined as Promise<void> | undefined };
+  let removed: ((event: import("@read-aware/plugin-types").PluginDomainEvent<"book.removed">) => Promise<void>) | undefined;
   let provider: ((key: string) => Promise<PluginBookContent>) | undefined;
   let scheduled: (() => void | Promise<void>) | undefined;
   const ctx = {
     locale: "en",
+    lifecycle: { phase: "active" },
+    withEvent: () => ({ ...ctx }),
     services: {
       storage: { get: () => null,
         applyDocuments: async (changes: PluginDocumentChange[]) => {
@@ -78,7 +81,7 @@ function fixture() {
           },
         } },
         queries: { books: { getContentState: async () => ({ sourceRevision: state.sourceRevision }) } },
-        events: { subscribe: () => ({ dispose() {} }) },
+        events: { subscribe: (_event: string, handler: typeof removed) => { removed = handler; return { dispose() {} }; } },
       },
       reading: {
         queries: { session: async () => ({ bookId: state.readingBook, status: "ready", sessionId: "session", sourceRevision: state.readingRevision,
@@ -96,7 +99,7 @@ function fixture() {
       headerActions: { register: () => ({ dispose() {} }) }, commands: { register: () => ({ dispose() {} }) }, agentTools: { register: (tool: PluginToolDefinition) => { tools.push(tool); return { dispose() {} }; } },
     },
   } as unknown as RssPluginContext;
-  return { ctx, state, table, tools, uriHandlers, provider: () => provider!, scheduled: () => scheduled!() };
+  return { ctx, state, table, tools, uriHandlers, removed: (event: Parameters<NonNullable<typeof removed>>[0]) => removed!(event), provider: () => provider!, scheduled: () => scheduled!() };
 }
 
 test("registered schedule rejects partial/all feed failures instead of reporting success", async () => {
@@ -269,7 +272,7 @@ test("explicit article open reloads an outdated current source before versioned 
 test("first use after reactivation reclaims paged orphans and keeps every published snapshot", async () => {
   const f = fixture(); const feed = await subscribe(f.ctx, url);
   for (let index = 0; index < 205; index++) f.table("feed-content").set(`orphan-${index}`, { version: 1, url: `${url}/${index}`, content: {} });
-  await plugin.activate({ ...f.ctx });
+  await plugin.activate({ ...f.ctx, lifecycle: { phase: "active" } });
   expect(f.table("feed-content").size).toBe(206); // Staging must not write.
   f.state.offline = true;
   expect((await f.provider()(url)).sections[0]!.html).toBe("one");
@@ -425,4 +428,26 @@ test("RSS URI consumer only prefills a draft; invalid or extra inputs never subs
   expect(f.state.fetches).toBe(0);expect(f.state.adds).toBe(0);
   for(const parameters of [[],[{key:"url",value:"file:///private"}],[{key:"url",value:url},{key:"url",value:url}]])
     expect(()=>handler.open({parameters})).toThrow();
+});
+
+
+test("removed-book reaction uses its bound context and shares serialization with a concurrent user refresh", async () => {
+  const f = fixture(); await plugin.activate(f.ctx); await subscribe(f.ctx, url);
+  let release!: () => void;
+  f.state.hold = new Promise<void>(resolve => { release = resolve; });
+  const refresh = refreshFeed(f.ctx, url);
+  await Bun.sleep(0);
+  const reaction = { id: "host-event", status: "ready" as const };
+  let bindings = 0, reactionWrites = 0;
+  f.ctx.withEvent = event => {
+    expect(event.reaction).toBe(reaction); bindings++;
+    return { ...f.ctx, services: { ...f.ctx.services, storage: { ...f.ctx.services.storage,
+      applyDocuments: changes => { reactionWrites++; return f.ctx.services.storage.applyDocuments(changes); },
+    } } };
+  };
+  const removal = f.removed({ type: "book.removed", payload: { bookId: "book-1" }, createdAt: "now", origin: "user", reaction });
+  await Bun.sleep(0);
+  expect(bindings).toBe(1); expect(reactionWrites).toBe(0);
+  release(); await refresh; await removal;
+  expect(reactionWrites).toBeGreaterThan(0); expect(await getFeed(f.ctx, url)).toBeNull();
 });

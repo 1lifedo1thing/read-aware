@@ -1,4 +1,5 @@
 import { actorOrigin, type DomainActor } from "../platform/domain-actor";
+import type { DomainActorOwners } from "./actor-owners";
 /**
  * Library domain - books, source content, metadata, and collections.
  *
@@ -169,8 +170,8 @@ export type LibraryDomain = {
 
 const agentTextTasks = createBookTextTaskOwner(undefined, "agent");
 
-export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void): LibraryDomain {
-  const textTasks = actorOrigin(origin) === "agent" ? agentTextTasks : createBookTextTaskOwner(lifetime, origin, trackCleanup);
+export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, owners: DomainActorOwners = {}): LibraryDomain {
+  const textTasks = owners.textTasks ??= actorOrigin(origin) === "agent" ? agentTextTasks : createBookTextTaskOwner(lifetime, origin, trackCleanup);
   const queries: LibraryQueries = {
     books: {
       getNavigationToc: getBookNavigationToc,

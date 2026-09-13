@@ -1,3 +1,4 @@
+import type { DomainActor } from "../../../../platform/domain-actor";
 /**
  * BookMemoryPort over SQLite（chapter_digests 投影）。写路径事件先行：
  * saveDigest 提交 book.chapterDigested，apply.rs 在同一事务里物化投影行——
@@ -14,7 +15,7 @@ import { decodeChapterDigestRows } from "./chapter-digest-row";
 
 const queue = new BookDigestQueue();
 
-export function createBookMemoryPort(): BookMemoryPort {
+export function createBookMemoryPort(origin: DomainActor = "agent"): BookMemoryPort {
   return {
     runExclusive: (bookId, work, signal) => queue.run(bookId, work, signal),
     listDigests: async (bookId) => {
@@ -27,6 +28,6 @@ export function createBookMemoryPort(): BookMemoryPort {
       return decodeChapterDigestRows(rows, bookId).filter(digest => digest.contentVersion === contentVersion);
     },
     inspectDigest: inspectBookDigest,
-    saveDigest: saveBookDigest,
+    saveDigest: (bookId, digest, expectedRevision, signal) => saveBookDigest(bookId, digest, expectedRevision, signal, origin),
   };
 }

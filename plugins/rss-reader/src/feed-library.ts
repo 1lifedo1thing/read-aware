@@ -3,19 +3,19 @@ import { cachedContent, prepareContent } from "./content-cache";
 import { discardUnreferencedContent, getFeed, loadFeeds, markFeedRemoval, pendingFeedRemovals, reclaimFeedContent, removeFeed, upsertFeed } from "./storage";
 import { PROVIDER_ID, type FeedSubscription, type RssPluginContext } from "./types";
 
-const recoveries = new WeakMap<RssPluginContext, Promise<unknown>>();
-const queues = new WeakMap<RssPluginContext, Map<string, Promise<unknown>>>();
+const recoveries = new WeakMap<RssPluginContext["lifecycle"], Promise<unknown>>();
+const queues = new WeakMap<RssPluginContext["lifecycle"], Map<string, Promise<unknown>>>();
 function serial<T>(ctx: RssPluginContext, url: string, work: () => Promise<T>): Promise<T> {
-  let queue = queues.get(ctx);
+  let queue = queues.get(ctx.lifecycle);
   if (!queue) {
-    queue = new Map(); queues.set(ctx, queue);
+    queue = new Map(); queues.set(ctx.lifecycle, queue);
     // activate() is staging and cannot mutate storage. First actual work runs
     // after promotion; a failed recovery must not disable offline reading.
     const recovery = recoverFeedRemovals(ctx).catch(error => { console.warn("RSS removal recovery deferred", error); })
       .then(() => reclaimFeedContent(ctx)).catch(error => { console.warn("RSS cache recovery deferred", error); });
-    recoveries.set(ctx, recovery);
+    recoveries.set(ctx.lifecycle, recovery);
   }
-  const next = (queue.get(url) ?? recoveries.get(ctx)!).catch(() => { /* A failed operation must not block later explicit retries. */ }).then(work);
+  const next = (queue.get(url) ?? recoveries.get(ctx.lifecycle)!).catch(() => { /* A failed operation must not block later explicit retries. */ }).then(work);
   queue.set(url, next);
   const cleanup = () => { if (queue.get(url) === next) queue.delete(url); };
   void next.then(cleanup, cleanup);

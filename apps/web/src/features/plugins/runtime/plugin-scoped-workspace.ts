@@ -15,7 +15,7 @@ const log = createLogger("scoped-workspace");
  * an actor-local concurrency token cross the plugin boundary. */
 export function scopePluginWorkspace(host: WorkspaceService, hostCommands: ReturnType<typeof actorHostCommands>,
   policy: PluginBookAccessPolicy, lifecycle: PluginLifecycleController, reader: Reader,
-  canNavigate: boolean, canCloseReader: boolean): Pick<Ui, "workspace" | "commands"> {
+  canNavigate: boolean, canCloseReader: boolean, state: { revision: number; nativeRevision?: number; scopeKey?: string } = { revision: 0 }): Pick<Ui, "workspace" | "commands"> {
   const denied = (operation: string): never => { throw pluginObjectAccessDenied(`workspace.${operation}`); };
   const bookId = () => policy.grant.mode === "book" ? policy.grant.bookId : reader.current().bookId;
   const project = (view: WorkspaceView): WorkspaceView => {
@@ -24,18 +24,17 @@ export function scopePluginWorkspace(host: WorkspaceService, hostCommands: Retur
       collectionId: null, search: { ...view.search, query: "" },
       selection: { active: view.selection.active, bookIds: view.selection.bookIds.filter(value => value === id) } };
   };
-  let revision = 0, nativeRevision: number | undefined, scopeKey: string | undefined;
   const stamp = (snapshot: WorkspaceSnapshot): WorkspaceSnapshot => {
     const key = JSON.stringify([bookId(), policy.grant.mode === "current" ? reader.current().sessionId : null]);
-    if (nativeRevision !== snapshot.revision || scopeKey !== key) { revision++; nativeRevision = snapshot.revision; scopeKey = key; }
-    return { ...snapshot, revision };
+    if (state.nativeRevision !== snapshot.revision || state.scopeKey !== key) { state.revision++; state.nativeRevision = snapshot.revision; state.scopeKey = key; }
+    return { ...snapshot, revision: state.revision };
   };
   const capture = (query?: WorkspaceQuery) => stamp(host.snapshot(query, project));
   const expectedNative = (expected?: number) => {
     capture({ limit: 1 });
     if (expected !== undefined && (!Number.isSafeInteger(expected) || expected < 0)) throw new AppError("ui/invalid-target", "Invalid workspace revision");
-    if (expected !== undefined && expected !== revision) throw new AppError("ui/superseded", "Workspace changed since discovery");
-    return nativeRevision!;
+    if (expected !== undefined && expected !== state.revision) throw new AppError("ui/superseded", "Workspace changed since discovery");
+    return state.nativeRevision!;
   };
   const normalizeTarget = (input: WorkspaceTarget) => {
     const target = normalizeWorkspaceTarget(input);
@@ -92,9 +91,9 @@ export function scopePluginWorkspace(host: WorkspaceService, hostCommands: Retur
     signal.throwIfAborted();
     let actorRevision: number | null = null;
     if (snapshot.workspaceRevision !== null) {
-      const state = capture({ limit: 1 });
-      if (nativeRevision !== snapshot.workspaceRevision) throw new AppError("ui/superseded", "Workspace changed during command discovery");
-      actorRevision = state.revision;
+      const snapshotState = capture({ limit: 1 });
+      if (state.nativeRevision !== snapshot.workspaceRevision) throw new AppError("ui/superseded", "Workspace changed during command discovery");
+      actorRevision = snapshotState.revision;
     }
     return { ...snapshot, workspaceRevision: actorRevision, commands: snapshot.commands.map(command => {
       let outside = command.id === "open-collection" || command.id === "open-book" && bookId() === null;

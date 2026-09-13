@@ -236,9 +236,13 @@ export class AgentRuntime {
   /** Public task execution uses the same queue and protected write lifetime as automatic upkeep. */
   async runBookGraphTask(input: import("../memory/book-graph-tasks").BookGraphTaskExecution & {
     resolveBoundary(): Promise<number | undefined>;
+    /** Host-bound write port preserves the initiating task actor; never supplied by a model. */
+    bookMemory?: RuntimeDeps["bookMemory"];
+    classifyBookIfUnclassified?: RuntimeDeps["library"]["classifyBookIfUnclassified"];
   }): Promise<DigestReport> {
     return runMemoryBuild(this.options.deps, operation => digestBookTick({
-      deps: operation.protect(this.options.deps), complete: operation.complete(this.completeFns.fast), model: this.resolveModel("fast"),
+      deps: operation.protect({ ...this.options.deps, bookMemory: input.bookMemory ?? this.options.deps.bookMemory,
+        library: { ...this.options.deps.library, classifyBookIfUnclassified: input.classifyBookIfUnclassified ?? this.options.deps.library.classifyBookIfUnclassified } }), complete: operation.complete(this.completeFns.fast), model: this.resolveModel("fast"),
       bookId: input.bookId, rebuild: input.rebuild, targets: input.targets, maxChapters: input.maxChapters, concurrency: 2, signal: operation.signal,
       onStarted: input.onStarted, onPlan: input.onPlan, onChapterAttempted: input.onChapterAttempted, onChapterCommitted: input.onChapterCommitted, onReport: input.onReport,
       resolveBoundary: operation.guard(input.resolveBoundary),

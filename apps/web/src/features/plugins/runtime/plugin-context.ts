@@ -1,4 +1,7 @@
-import { copyEventCause } from "../../../platform/domain-actor";
+import type { DomainActorOwners } from "../../../domain/actor-owners";
+import { PluginEventReactions } from "./plugin-event-reactions";
+import { attachPluginEventReactions, bindPluginEventContext } from "./plugin-event-context";
+import { copyEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { inferenceHistoryStorage } from "./plugin-inference-history-storage";
 import { resourceModelImage } from "../../../services/model-image";
 import { createPluginStoragePolicy } from "./plugin-storage-policy";
@@ -162,6 +165,8 @@ export const pluginStoragePrefix = (pluginId: string) => `read-aware-plugin.${pl
 export type PluginContextRuntime = {
   context: PluginContext;
   lifecycle: PluginLifecycleController;
+  reactions: PluginEventReactions;
+  contextForActor(actor: DomainActor): PluginContext;
 };
 
 function guardMutationTree<T extends object>(
@@ -359,11 +364,26 @@ export function buildPluginContext(
     lifecycle.assertActive("views.image");
     return resources.imagePreview(id, signal);
   });
+  const activationLifecycle = { get phase() { return lifecycle.phase; } };
+  const owners: DomainActorOwners = {};
+  const documents = createPluginDocuments(manifest.id, lifecycle);
+  const logging = createPluginLogging(manifest.id, manifest.version, lifecycle);
+  const scopedWorkspaceState = { revision: 0 };
+  const scopedConversationState = { revision: 0 };
+  let network: PluginContext["services"]["network"], llm: PluginContext["services"]["llm"];
+  const reactions = new PluginEventReactions(selfOrigin, lifecycle.signal);
+  lifecycle.signal.addEventListener("abort", () => lifecycle.trackCleanup(reactions.drain()), { once: true });
+  const contexts = new WeakMap<object, PluginContext>();
+  const contextForActor = (operationActor: DomainActor): PluginContext => {
+    if (typeof operationActor === "object") {
+      const cached = contexts.get(operationActor); if (cached) return cached;
+    }
   const domain = createActorDomainView(
-    selfOrigin,
+    operationActor,
     domainGrantsFromPermissions(manifest.permissions ?? []),
     lifecycle.signal,
     work => lifecycle.trackCleanup(work),
+    owners,
   );
   const ownSettingsPaths = (manifest.settings ?? [])
     .filter(
@@ -378,7 +398,7 @@ export function buildPluginContext(
     read: [...(requestedSettings.read ?? []), ...ownSettingsPaths],
     write: [...(requestedSettings.write ?? []), ...ownSettingsPaths],
   };
-  const settingsDomain = createSettingsDomain(selfOrigin, settingsAccess, permissions.has("service:network"));
+  const settingsDomain = createSettingsDomain(operationActor, settingsAccess, permissions.has("service:network"));
   const storagePrefix = pluginStoragePrefix(manifest.id);
   const track = (factory: () => PluginDisposable): PluginDisposable =>
     lifecycle.stage(factory);
@@ -412,17 +432,14 @@ export function buildPluginContext(
     }) as never;
 
   const ctx: PluginContext = {
+    withEvent: event => bindPluginEventContext(event, reactions, contextForActor),
     manifest,
     appVersion,
     // Live read — the worker mirrors this via the sync channel instead.
     get locale() {
       return currentAppLocale();
     },
-    lifecycle: {
-      get phase() {
-        return lifecycle.phase;
-      },
-    },
+    lifecycle: activationLifecycle,
     capabilities: resolvePluginCapabilities(manifest),
     grants: grantedMetadata,
     domains: {
@@ -742,11 +759,11 @@ export function buildPluginContext(
         set: (key, value) => {
           if (typeof key !== "string" || key === "schedule-state" || key === "schedule-runs") throw new AppError("plugin/invalid-input", "Schedule receipts are host-owned");
           return lifecycle.storageWrite("services.storage.set", () =>
-            localKV.setItemAsync(storagePrefix + key, JSON.stringify(value ?? null), selfOrigin));
+            localKV.setItemAsync(storagePrefix + key, JSON.stringify(value ?? null), operationActor));
         },
         remove: (key) => {
           if (typeof key !== "string" || key === "schedule-state" || key === "schedule-runs") throw new AppError("plugin/invalid-input", "Schedule receipts are host-owned");
-          return lifecycle.storageWrite("services.storage.remove", () => localKV.removeItemAsync(storagePrefix + key, selfOrigin));
+          return lifecycle.storageWrite("services.storage.remove", () => localKV.removeItemAsync(storagePrefix + key, operationActor));
         },
         flush: async () => {
           await lifecycle.drainStorageWrites();
@@ -765,7 +782,7 @@ export function buildPluginContext(
               }
             }),
           })),
-        ...createPluginDocuments(manifest.id, lifecycle),
+        ...documents,
       },
       secrets: {
         get: (key) => {
@@ -848,7 +865,7 @@ export function buildPluginContext(
         },
         observe: (query, handler) => track(() => ({ dispose: pluginDirectory.observe(query, handler) })),
       },
-      logging: createPluginLogging(manifest.id, manifest.version, lifecycle),
+      logging,
       ...(canUseHostService("diagnostics", permissions) ? { diagnostics: {
         requestProjectionRepair: options => lifecycle.read("services.diagnostics.requestProjectionRepair",
           signal => hostDiagnostics.requestProjectionRepair(signal), pluginOperationSignal(lifecycle.signal, options)),
@@ -994,7 +1011,7 @@ export function buildPluginContext(
               return [change];
             } catch { return []; }
           });
-          if (changes.length) handler(copyEventCause(event, { ...event, changes }));
+          if (changes.length) return handler(copyEventCause(event, { ...event, changes }));
         }) })),
       },
     };
@@ -1028,7 +1045,7 @@ export function buildPluginContext(
       const scoped = scopePluginWorkspace(workspace, commands, objectAccess, lifecycle, {
         current: () => latestCurrent,
         observe: handler => readingRuntime.observe(() => handler()),
-      }, !!library.commands, !!domain.reading?.commands);
+      }, !!library.commands, !!domain.reading?.commands, scopedWorkspaceState);
       ctx.services.ui.commands = scoped.commands;
       ctx.services.ui.workspace = scoped.workspace;
     }
@@ -1174,8 +1191,8 @@ export function buildPluginContext(
           cancelTextTask: library.commands.books.cancelTextTask,
           importBook: (input: { fileName: string; data: ArrayBuffer | Uint8Array }, options?: PluginCallOptions) =>
             library.commands!.books.importBook(input, callSignal(options)),
-          importResource: (id: string, options?: PluginCallOptions) => importResourceBook(resources, id, selfOrigin, callSignal(options)),
-          startImport: (input: import("@read-aware/core").BookImportRequest, options?: PluginCallOptions) => importTasks.start(input, callSignal(options)),
+          importResource: (id: string, options?: PluginCallOptions) => importResourceBook(resources, id, operationActor, callSignal(options)),
+          startImport: (input: import("@read-aware/core").BookImportRequest, options?: PluginCallOptions) => importTasks.start(input, callSignal(options), operationActor),
           cancelImportTask: async (id: string) => importTasks.cancel(id),
           editMetadata: library.commands.books.editMetadata,
           setStarred: library.commands.books.setStarred,
@@ -1645,7 +1662,7 @@ export function buildPluginContext(
     ctx.domains.conversations = scopePluginConversations(domain.conversations, objectAccess, lifecycle, {
       current: () => latestCurrent,
       observe: handler => readingRuntime.observe(() => handler()),
-    }, selfOrigin);
+    }, selfOrigin, scopedConversationState);
   }
 
   if (domain.memory) {
@@ -1719,11 +1736,11 @@ export function buildPluginContext(
   }
 
   if (canUseHostService("network", permissions)) {
-    ctx.services.network = createPluginNetworkService(manifest.networkAccess, lifecycle, corsFreeFetch, selfOrigin);
+    ctx.services.network = network ??= createPluginNetworkService(manifest.networkAccess, lifecycle, corsFreeFetch, selfOrigin);
   }
 
   if (canUseHostService("llm", permissions)) {
-    ctx.services.llm = createPluginLlm(manifest.id, lifecycle, getAgentRuntime, undefined, (id, signal) => resourceModelImage(resources, id, signal), inferenceHistoryStorage(manifest.id));
+    ctx.services.llm = llm ??= createPluginLlm(manifest.id, lifecycle, getAgentRuntime, undefined, (id, signal) => resourceModelImage(resources, id, signal), inferenceHistoryStorage(manifest.id));
   }
 
   if (canUseHostService("clipboard", permissions)) {
@@ -1746,5 +1763,9 @@ export function buildPluginContext(
     };
   }
 
-  return { context: ctx, lifecycle };
+  attachPluginEventReactions(ctx, reactions);
+  if (typeof operationActor === "object") contexts.set(operationActor, ctx);
+  return ctx;
+  };
+  return { context: contextForActor(selfOrigin), lifecycle, reactions, contextForActor };
 }

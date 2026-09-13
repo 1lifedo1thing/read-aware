@@ -1,4 +1,5 @@
 import type { DomainActor } from "../platform/domain-actor";
+import type { DomainActorOwners } from "./actor-owners";
 /** Single runtime registry for every active product domain. */
 import type {
   DomainGrants,
@@ -25,17 +26,17 @@ type DomainSurface = {
 
 type DomainDefinition<TSurface extends DomainSurface = DomainSurface> = {
   events: readonly string[];
-  create(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants?: DomainGrants): TSurface;
+  create(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants?: DomainGrants, owners?: DomainActorOwners): TSurface;
 };
 
 export const DOMAIN_REGISTRY = {
   library: {
     events: LIBRARY_EVENTS,
-    create: createLibraryDomain,
+    create: (origin: DomainActor, lifetime?: AbortSignal, cleanup?: (work: Promise<void>) => void, _grants?: DomainGrants, owners?: DomainActorOwners) => createLibraryDomain(origin, lifetime, cleanup, owners),
   },
   reading: {
     events: READING_EVENTS,
-    create: createReadingDomain,
+    create: (origin: DomainActor, lifetime?: AbortSignal, cleanup?: (work: Promise<void>) => void, _grants?: DomainGrants, owners?: DomainActorOwners) => createReadingDomain(origin, lifetime, cleanup, owners),
   },
   annotations: {
     events: ANNOTATION_EVENTS,
@@ -67,11 +68,11 @@ export type ActorDomainView = Partial<{
 }>;
 
 /** Without explicit grants a caller is the host itself and acts with every domain. */
-export function createDomainApi(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants?: DomainGrants): DomainApi {
+export function createDomainApi(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, grants?: DomainGrants, owners?: DomainActorOwners): DomainApi {
   return Object.fromEntries(
     Object.entries(DOMAIN_REGISTRY).map(([id, definition]) => [
       id,
-      (definition as DomainDefinition).create(origin, lifetime, trackCleanup, grants),
+      (definition as DomainDefinition).create(origin, lifetime, trackCleanup, grants, owners),
     ]),
   ) as DomainApi;
 }
@@ -87,8 +88,9 @@ export function createActorDomainView(
   grants: DomainGrants,
   lifetime?: AbortSignal,
   trackCleanup?: (work: Promise<void>) => void,
+  owners?: DomainActorOwners,
 ): ActorDomainView {
-  const domains = createDomainApi(origin, lifetime, trackCleanup, grants);
+  const domains = createDomainApi(origin, lifetime, trackCleanup, grants, owners);
   const view: ActorDomainView = {};
   const mutableView = view as Record<string, unknown>;
   for (const id of Object.keys(DOMAIN_REGISTRY) as DomainId[]) {

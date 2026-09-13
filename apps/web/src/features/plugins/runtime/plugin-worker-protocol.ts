@@ -1,3 +1,4 @@
+import type { PluginReactionToken } from "@read-aware/plugin-types";
 import { AppError } from "@read-aware/core";
 import type { PluginCallbackWire } from "./plugin-callback-wire";
 import { assertPluginWireBudget, PLUGIN_WIRE_LIMITS } from "./plugin-wire-budget";
@@ -9,7 +10,7 @@ export type WorkerMessage =
   | { t: "ready"; protocolVersion: typeof PLUGIN_PROTOCOL_VERSION; hasMigration: boolean }
   | { t: "failed"; error: string }
   | { t: "dispose"; handle: string }
-  | { t: "call"; id: number; method: string; args: PluginCallbackWire }
+  | { t: "call"; id: number; method: string; args: PluginCallbackWire; reaction?: PluginReactionToken }
   | { t: "cancel"; id: number }
   | { t: "result"; id: number; ok: true; value: PluginCallbackWire }
   | { t: "result"; id: number; ok: false; error: string; code?: string }
@@ -49,8 +50,11 @@ export function parsePluginWorkerMessage(value: unknown, account?: (usage: { byt
     case "failed": valid = keys(value, ["t", "error"]) && string(value.error, 4096); break;
     case "dispose": valid = keys(value, ["t", "handle"]) && string(value.handle, 128) && value.handle.length > 0; break;
     case "cancel": case "healthy": valid = keys(value, ["t", "id"]) && validPluginCallId(value.id); break;
-    case "call": valid = keys(value, ["t", "id", "method", "args"]) && validPluginCallId(value.id)
-      && string(value.method, 256) && value.method.length > 0 && wire(value.args) && Array.isArray(value.args.data); break;
+    case "call": valid = keys(value, ["t", "id", "method", "args", "reaction"]) && validPluginCallId(value.id)
+      && string(value.method, 256) && value.method.length > 0 && wire(value.args) && Array.isArray(value.args.data)
+      && (value.reaction === undefined || record(value.reaction) && keys(value.reaction, ["id", "status"])
+        && string(value.reaction.id, 64) && value.reaction.id.length > 0
+        && (value.reaction.status === "ready" || value.reaction.status === "cycle")); break;
     case "result": valid = validPluginCallId(value.id) && (value.ok === true
       ? keys(value, ["t", "id", "ok", "value"]) && wire(value.value)
       : value.ok === false && keys(value, ["t", "id", "ok", "error", "code"]) && failure(value)); break;

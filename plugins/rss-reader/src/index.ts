@@ -31,9 +31,11 @@ const plugin: PluginModule = {
       presentation: "page",
       view: () => rssPageView(ctx),
     });
-    ctx.domains.library.events.subscribe("book.removed", async ({ payload: { bookId } }) => {
+    ctx.domains.library.events.subscribe("book.removed", async event => {
       try {
-        const feed = await forgetRemovedBook(ctx, bookId);
+        const reaction = ctx.withEvent(event);
+        assertPluginCapabilities(reaction);
+        const feed = await forgetRemovedBook(reaction, event.payload.bookId);
         if (!feed) return;
         ctx.services.ui.showToast(tr(ctx.locale, "unsubscribedFrom", { title: feed.title }));
       } catch (error) { console.warn("RSS removed-book cleanup failed", error); }

@@ -59,3 +59,13 @@ test("sender preflight failures release staged callbacks and total retained hand
   registry.release(second.callbacks.map(entry => entry.handle));
   registry.clear(); expect(registry.size).toBe(0);
 });
+
+
+test("reaction envelopes carry only a bounded opaque host lease, never an actor or a causal path", () => {
+  const args = new PluginCallbackRegistry().encode([]);
+  const call = { t: "call", id: 1, method: "services.storage.getDurable", args };
+  expect(parsePluginWorkerMessage({ ...call, reaction: { id: "opaque", status: "ready" } })).toMatchObject({ reaction: { id: "opaque" } });
+  for (const reaction of [null, {}, { id: "", status: "ready" }, { id: "x".repeat(65), status: "ready" },
+    { id: "opaque", status: "ready", actor: "user" }, { id: "opaque", status: "ready", steps: [] },
+    { id: "opaque", status: "forged" }]) expect(() => parsePluginWorkerMessage({ ...call, reaction })).toThrow();
+});

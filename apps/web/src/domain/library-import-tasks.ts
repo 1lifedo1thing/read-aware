@@ -18,7 +18,7 @@ export function createBookImportTasks(resources: ResourceOwner, origin: DomainAc
   const owner = new BookImportTaskOwner(error => log.warn("Import task failed", error), signal);
   if (!signal.aborted && trackCleanup) signal.addEventListener("abort", () => trackCleanup(owner.drain()), { once: true });
   return {
-    async start(input: BookImportRequest, callerSignal?: AbortSignal) {
+    async start(input: BookImportRequest, callerSignal?: AbortSignal, actor: DomainActor = origin) {
       callerSignal?.throwIfAborted(); signal.throwIfAborted();
       if (!input || typeof input !== "object" || Array.isArray(input)) throw new AppError("ui/invalid-target", "Invalid import request");
       if (input.kind === "resource") {
@@ -26,7 +26,7 @@ export function createBookImportTasks(resources: ResourceOwner, origin: DomainAc
         const id = input.resourceId, ref = await resources.stat(id, callerSignal);
         if (ref.state !== "ready" || ref.source === "context") throw new AppError("ui/invalid-target", "Import requires a sealed book resource");
         callerSignal?.throwIfAborted(); signal.throwIfAborted();
-        return owner.start(ref.name, (taskSignal, progress) => importResourceBook(resources, id, origin, taskSignal, progress));
+        return owner.start(ref.name, (taskSignal, progress) => importResourceBook(resources, id, actor, taskSignal, progress));
       }
       if (input.kind !== "file" || Object.keys(input).some(key => !["kind", "fileName", "data"].includes(key))
         || !(input.data instanceof ArrayBuffer || input.data instanceof Uint8Array)
@@ -36,7 +36,7 @@ export function createBookImportTasks(resources: ResourceOwner, origin: DomainAc
       const file = new File([input.data], name);
       return owner.start(name, async (taskSignal, progress) => {
         const knownBooks = await listLibraryBooks();
-        const outcome = await importBook({ kind: "file", file }, { t: i18n.getFixedT(null, "shelf"), knownBooks, origin, signal: taskSignal, onProgress: progress });
+        const outcome = await importBook({ kind: "file", file }, { t: i18n.getFixedT(null, "shelf"), knownBooks, origin: actor, signal: taskSignal, onProgress: progress });
         emitAppEvent("library-changed", {});
         return { status: outcome.status, book: toBookSummary(outcome.book) };
       });

@@ -18,7 +18,7 @@ const log = createLogger("scoped-conversations");
  * or retires it; accepting it is still exclusively a host UI action. */
 export function scopePluginConversations(domain: NonNullable<ActorDomainView["conversations"]>,
   policy: PluginBookAccessPolicy, lifecycle: PluginLifecycleController, reader: Reader,
-  origin: EventOrigin): PluginConversationsDomain {
+  origin: EventOrigin, state: { revision: number; projectedKey?: string } = { revision: 0 }): PluginConversationsDomain {
   const denied = (operation: string): never => { throw pluginObjectAccessDenied(`conversations.${operation}`); };
   const book = () => policy.grant.mode === "book" ? policy.grant.bookId : reader.current().bookId;
   const requireBook = () => book() ?? denied("current book");
@@ -45,12 +45,11 @@ export function scopePluginConversations(domain: NonNullable<ActorDomainView["co
     finally { if (mode !== "proposal") fence.dispose(); }
   }
 
-  let projectedKey: string | undefined, revision = 0;
   const project = (snapshot: Pick<ConversationRuntimeSnapshot, "sessions">): PluginConversationRuntimeSnapshot => {
     const bookId = book(), sessions = snapshot.sessions.filter(session => session.kind === "book" && session.id === bookId);
     const key = JSON.stringify([bookId, policy.grant.mode === "current" ? reader.current().sessionId : null, sessions]);
-    if (key !== projectedKey) { projectedKey = key; revision++; }
-    return { revision, selectedGlobalThreadId: null, sessions: structuredClone(sessions) };
+    if (key !== state.projectedKey) { state.projectedKey = key; state.revision++; }
+    return { revision: state.revision, selectedGlobalThreadId: null, sessions: structuredClone(sessions) };
   };
   const queries: PluginConversationsDomain["queries"] = {
     listThreads: () => denied("listThreads"), getThread: () => denied("getThread"),

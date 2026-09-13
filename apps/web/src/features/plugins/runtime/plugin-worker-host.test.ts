@@ -10,6 +10,9 @@ import { describeContext, startPluginWorker } from "./plugin-worker-host";
 import { PluginCallbackRegistry, pluginCallbackOwner, retainPluginCallbacks } from "./plugin-callback-wire";
 import { openPluginViewChannel } from "../lib/plugin-view-channels";
 import { PluginLifecycleController } from "./plugin-lifecycle";
+import { actorCause, type DomainActor } from "../../../platform/domain-actor";
+import { broadcastDomainEventDrafts } from "../../../platform/domain-events";
+import type { PluginReactionToken } from "@read-aware/plugin-types";
 import * as runtimeModule from "../../ai/agent/agent-runtime";
 import type { AgentRuntime, OneShotInput } from "@read-aware/agent";
 import type { PluginPermission } from "@read-aware/core";
@@ -238,6 +241,48 @@ async function hostFixture(permissions: PluginPermission[] = [], promote = true,
     },
   };
 }
+
+test("host event RPC retains cause, denies foreign/expired leases and rejects a repeated subscription before another effect", async () => {
+  const actors: DomainActor[] = [];
+  const step = spyOn(readingRuntime, "step").mockImplementation(async (_direction, _signal, _guard, actor) => {
+    actors.push(actor!);
+    return { status: "applied", sessionId: "s", location: { bookId: "b", contentVersion: "v", cfi: "one" } } as never;
+  });
+  const first = await hostFixture(["library:read", "reading:write"]), foreign = await hostFixture(["reading:write"]);
+  const { worker } = first;
+  const call = async (target: typeof worker, id: number, reaction: PluginReactionToken, method = "domains.reading.commands.step") => {
+    await target.deliver({ t: "call", id, method, args: target.callbacks.encode(["next"]), reaction });
+    return target.sent.find(message => message.t === "result" && message.id === id)!;
+  };
+  const complete = async (id: number) => {
+    await worker.deliver({ t: "result", id, ok: true, value: worker.callbacks.encode(null) });
+    await Bun.sleep(0);
+  };
+  try {
+    await worker.deliver({ t: "call", id: 800, method: "domains.library.events.subscribe", args: worker.callbacks.encode(["book.starred", () => {}]) });
+    broadcastDomainEventDrafts([{ type: "book.starred", origin: "user", payload: { bookId: "b", starred: true } }]);
+    const delivery = worker.sent.findLast(message => message.t === "invoke")!;
+    const event = (delivery.args as { reaction: PluginReactionToken }[])[0]!;
+    expect(Object.keys(event.reaction).sort()).toEqual(["id", "status"]);
+    expect(await call(foreign.worker, 801, event.reaction)).toMatchObject({ ok: false, code: "plugin/invalid-cause" });
+    expect(await call(worker, 802, event.reaction, "domains.library.commands.books.remove")).toMatchObject({ ok: false, code: "plugin/unavailable" });
+    expect(await call(worker, 803, event.reaction)).toMatchObject({ ok: true });
+    expect(actors).toHaveLength(1); expect(actorCause(actors[0])?.steps).toHaveLength(1);
+    broadcastDomainEventDrafts([{ type: "book.starred", origin: actors[0], payload: { bookId: "b", starred: false } }]);
+    const repeated = worker.sent.findLast(message => message.t === "invoke")!;
+    const cycle = (repeated.args as { reaction: PluginReactionToken }[])[0]!.reaction;
+    expect(cycle.status).toBe("cycle");
+    expect(await call(worker, 804, cycle)).toMatchObject({ ok: false, code: "plugin/event-cycle" });
+    expect(actors).toHaveLength(1);
+    await complete(repeated.id!); await complete(delivery.id!);
+    expect(await call(worker, 805, event.reaction)).toMatchObject({ ok: false, code: "plugin/invalid-cause" });
+    broadcastDomainEventDrafts([{ type: "book.starred", origin: "user", payload: { bookId: "b", starred: true } }]);
+    const independent = worker.sent.findLast(message => message.t === "invoke")!;
+    expect(await call(worker, 806, (independent.args as { reaction: PluginReactionToken }[])[0]!.reaction)).toMatchObject({ ok: true });
+    expect(actorCause(actors[1])!.root).not.toBe(actorCause(actors[0])!.root);
+    await complete(independent.id!);
+  } finally { await foreign.close(); await first.close(); step.mockRestore(); }
+});
 
 describe("plugin worker capability bridge", () => {
   test("import task RPC exposes progress, actor isolation, cancellation and the eventual receipt", async () => {

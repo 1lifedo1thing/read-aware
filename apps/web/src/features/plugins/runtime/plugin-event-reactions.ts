@@ -1,8 +1,8 @@
 import { AppError, errorCode, type EventOrigin } from "@read-aware/core";
 import { eventCause, reactionActor, type DomainActor } from "../../../platform/domain-actor";
 
-/** Opaque delivery lease. It grants no operation or object access by itself. */
-export type PluginReactionToken = Readonly<{ id: string; status: "ready" | "cycle" }>;
+import type { PluginReactionToken } from "@read-aware/plugin-types";
+export type { PluginReactionToken } from "@read-aware/plugin-types";
 type Entry = { token: PluginReactionToken; actor?: DomainActor };
 
 /** One owner per plugin activation. No mutable ambient actor is used: each
@@ -40,22 +40,31 @@ export class PluginEventReactions {
 
   /** The dispatcher still checks the original manifest permission, book grant,
    * lifetime and native write preconditions. A token never supplies those. */
-  execute<T>(input: PluginReactionToken, run: (actor: DomainActor, signal: AbortSignal) => Promise<T>): Promise<T> {
+  actor(input: PluginReactionToken): DomainActor {
     this.lifetime.throwIfAborted();
     const entry = input && typeof input.id === "string" ? this.entries.get(input.id) : undefined;
     if (!entry || Object.keys(input).some(key => key !== "id" && key !== "status") || input.status !== entry.token.status) {
       throw new AppError("plugin/invalid-cause", "Event reaction expired or belongs to another activation");
     }
     if (!entry.actor) throw new AppError("plugin/event-cycle", "Event reaction would repeat a causal step");
+    return entry.actor;
+  }
+
+  /** Preserve synchronous registration/collection returns for in-realm callers. */
+  invoke<T>(input: PluginReactionToken, run: (actor: DomainActor, signal: AbortSignal) => T): T {
+    const actor = this.actor(input);
     if (this.work.size >= 32) throw new AppError("plugin/busy", "Too many active reaction operations");
-    // Start now, before another delivery can finish or create an independent
-    // reaction. Once accepted, work can outlive the delivery but retains its cause.
-    let pending: Promise<T>;
-    try { pending = Promise.resolve(run(entry.actor, this.lifetime)); }
-    catch (error) { pending = Promise.reject(error); }
-    this.work.add(pending);
-    void pending.then(() => this.work.delete(pending), () => this.work.delete(pending));
-    return pending;
+    const result = run(actor, this.lifetime);
+    if (result && typeof (result as unknown as PromiseLike<unknown>).then === "function") {
+      const pending = Promise.resolve(result);
+      this.work.add(pending);
+      void pending.then(() => this.work.delete(pending), () => this.work.delete(pending));
+    }
+    return result;
+  }
+
+  execute<T>(input: PluginReactionToken, run: (actor: DomainActor, signal: AbortSignal) => Promise<T>): Promise<T> {
+    return this.invoke(input, run);
   }
 
   async drain(): Promise<void> { while (this.work.size) await Promise.allSettled([...this.work]); }

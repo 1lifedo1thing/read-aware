@@ -305,6 +305,28 @@ feature, menu, or route is not a domain merely because it has a name.
 There is no `shelf` domain. Library ownership and active reading behavior are
 separate. Do not restore `shelf` as an alias.
 
+Plugins 1.2 adds `ctx.withEvent(event)` for automatic reactions to local domain
+and settings `events.subscribe` callbacks. The delivered event carries an opaque
+host lease, not the causal path. Use the returned context for operations caused
+by that event, including after `await`; return/await the callback's work. The
+host rejects repeated subscription steps with `plugin/event-cycle`, and expired,
+foreign or forged leases with `plugin/invalid-cause`. A lease cannot grant any
+permission. Contexts share their activation's resources, task ownership, storage
+observation quotas and inference/network budgets. Their `lifecycle` object keeps
+the same identity within an activation, so plugin-owned queues can share it as
+their owner key. Already accepted work retains
+its actor after callback completion; subsequent calls using the expired binding
+fail. Independent user actions use the original activation context. Keeping the
+root context for an automatic reaction discards causality, so first-party event
+writers must use the binding. `ignoreSelf` remains a delivery filter.
+
+Current coverage is local domain/settings subscriptions, their subsequent
+semantic writes, import tasks and graph digest/classification writes. Snapshot
+observers, merged/reloaded observations and all derived publication paths are
+still being connected under C04; this is not complete cross-plugin loop coverage
+or a durable/replayable event log. RSS 0.21 uses the binding for removed-book
+cleanup. Real desktop combination acceptance remains pending.
+
 Conversations 1.1 adds `queries.runtime()` and `events.observeRuntime(handler)`
 (initial snapshot plus changes), with mounted session identities, loading,
 streaming and message counts. `conversations:write` exposes `createThread`,

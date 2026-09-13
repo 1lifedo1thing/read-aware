@@ -10,6 +10,24 @@ const empty: DigestReport = { status: "complete", eligible: 0, attempted: 0, dig
 const next = () => new Promise(resolve => setTimeout(resolve, 0));
 function deferred() { let resolve!: () => void; const promise = new Promise<void>(r => { resolve = r; }); return { promise, resolve }; }
 
+test("shared task ownership retains distinct host contexts after dispatch and uses the retry caller's context", async () => {
+  const gate = deferred(), first = {}, second = {}, retry = {};
+  const received: unknown[] = [];
+  const owner = new BookGraphTaskOwner<object>(async (_input, context) => {
+    await gate.promise; received.push(context);
+    return { ...empty, status: "partial", remaining: 1 };
+  }, () => {});
+  const a = await owner.start("a", "catch-up", undefined, undefined, first);
+  const b = await owner.start("b", "catch-up", undefined, undefined, second);
+  expect(Object.keys(a)).not.toContain("context");
+  gate.resolve(); await owner.drain();
+  expect(received[0]).toBe(first); expect(received[1]).toBe(second);
+  await owner.retry("a", a.taskId, undefined, undefined, retry); await owner.drain();
+  expect(received[2]).toBe(retry);
+  expect((await owner.get("b", b.taskId)).taskId).toBe(b.taskId);
+  owner.dispose();
+});
+
 test("retirement drains every execution after handles disappear, including a failed cancelled source", async () => {
   const first = deferred(), second = deferred(), lifetime = new AbortController();
   const signals: AbortSignal[] = [];

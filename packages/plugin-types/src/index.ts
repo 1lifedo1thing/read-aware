@@ -1312,12 +1312,18 @@ export type PluginToolBookCards = {
  * software-actor origin and display timestamp. Persistence internals (HLC,
  * event ids) are not part of the plugin surface.
  */
+/** Host-issued causal lease. Opaque: it conveys no permission or object grant.
+ * Retained only until the asynchronous subscription callback settles. */
+export type PluginReactionToken = Readonly<{ id: string; status: "ready" | "cycle" }>;
+export type PluginReactionEvent = { readonly reaction?: PluginReactionToken };
+
 export type PluginDomainEvent<K extends DomainEventType = DomainEventType> = {
   [T in DomainEventType]: {
     type: T;
     payload: Extract<DomainEvent, { type: T }>["payload"];
     createdAt: string;
     origin: EventOrigin;
+    readonly reaction?: PluginReactionToken;
   };
 }[K];
 
@@ -1725,7 +1731,7 @@ export type PluginSettingsDomain = {
   };
   events: {
     subscribe(
-      handler: (event: SettingsChangedEvent) => void,
+      handler: (event: SettingsChangedEvent & PluginReactionEvent) => void,
       options?: { ignoreSelf?: boolean },
     ): PluginDisposable;
   };
@@ -2499,9 +2505,17 @@ export type PluginHostServices = {
 
 /** The actor-scoped capability view handed to `activate()`. */
 export type PluginContext = {
+  /** Plugins 1.2: bind automatic follow-up calls to a delivered domain/settings
+   * event. Use this context for every resulting operation, including after
+   * await. Existing permissions, object grants, resources and task owners remain
+   * unchanged. New calls after the callback settles are rejected; accepted work
+   * retains its cause. A cycle token rejects operations with plugin/event-cycle.
+   * Independent user actions use the original activation context. */
+  withEvent(event: PluginReactionEvent): PluginContext;
   readonly manifest: Readonly<PluginManifest>;
   readonly appVersion: string;
   readonly locale: string;
+  /** Stable identity shared by event-bound contexts from this activation. */
   readonly lifecycle: { readonly phase: PluginLifecyclePhase };
   /** Only capabilities visible to this plugin actor, with host-side versions. */
   readonly capabilities: Readonly<PluginCapabilityView>;

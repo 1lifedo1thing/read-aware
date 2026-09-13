@@ -29,6 +29,7 @@ import type {
   PluginActionRegistration,
   PluginActionStateReceipt,
   PluginContext,
+  PluginReactionToken,
   PluginManifest,
   PluginMigrationContext,
   PluginModule,
@@ -113,12 +114,12 @@ const callbacks = new PluginCallbackRegistry();
  */
 type CallResult = Promise<unknown> & PluginActionRegistration;
 
-function callHost(method: string, args: unknown[], signal?: AbortSignal): CallResult {
+function callHost(method: string, args: unknown[], signal?: AbortSignal, reaction?: PluginReactionToken): CallResult {
   const prepared = preparePluginCall(method, args);
   args = prepared.args;
   signal ??= prepared.signal;
   const receipt = pendingCalls.call(id => {
-    callbacks.send(args, wire => post({ t: "call", id, method, args: wire }));
+    callbacks.send(args, wire => post({ t: "call", id, method, args: wire, ...(reaction ? { reaction } : {}) }));
   }, { signal, cancel: id => post({ t: "cancel", id }), drainCancellation: pluginCallDrainsCancellation(method) });
   let disposed = false;
   const dispose = () => {
@@ -136,7 +137,7 @@ function callHost(method: string, args: unknown[], signal?: AbortSignal): CallRe
     const response = await receipt as { disposable?: string };
     if (disposed) return { status: "inactive" };
     if (!response.disposable) throw codedError("Call did not create a registration", "plugin/unavailable");
-    return await callHost("$registration.updateState", [response.disposable, state]) as PluginActionStateReceipt;
+    return await callHost("$registration.updateState", [response.disposable, state], undefined, reaction) as PluginActionStateReceipt;
   };
   const promise = receipt.then(value => {
     const response = value as { value: unknown; disposable?: string };
@@ -162,14 +163,14 @@ function callHost(method: string, args: unknown[], signal?: AbortSignal): CallRe
  * hand-listed, so the sandbox always exposes exactly what the host granted —
  * including nested namespaces like `books.write`.
  */
-function remoteNamespace(path: string, shape: ContextShape): Record<string, unknown> {
+function remoteNamespace(path: string, shape: ContextShape, reaction?: PluginReactionToken): Record<string, unknown> {
   const api: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(shape)) {
     const method = path ? `${path}.${key}` : key;
     api[key] =
       entry === "fn"
-        ? (...args: unknown[]) => callHost(method, args)
-        : remoteNamespace(method, entry);
+        ? (...args: unknown[]) => callHost(method, args, undefined, reaction)
+        : remoteNamespace(method, entry, reaction);
   }
   return api;
 }
@@ -179,6 +180,7 @@ function remoteNamespace(path: string, shape: ContextShape): Record<string, unkn
 const storageSnapshot = new PluginStorageMirror();
 let appLocale = "";
 let lifecyclePhase: PluginContext["lifecycle"]["phase"] = "activating";
+const activationLifecycle = Object.freeze({ get phase() { return lifecyclePhase; } });
 
 function assertLocalStorageWrite(): void {
   if (lifecyclePhase !== "active" && lifecyclePhase !== "migrating") {
@@ -207,12 +209,18 @@ function buildContext(
   capabilities: PluginContext["capabilities"],
   grants: PluginContext["grants"],
   shape: ContextShape,
+  reaction?: PluginReactionToken,
 ): PluginContext {
   const { __collection: collectionShape = {}, ...namespaces } = shape;
 
   // Everything the host granted, proxied verbatim.
-  const ctx = remoteNamespace("", namespaces as ContextShape) as Record<string, unknown>;
+  const ctx = remoteNamespace("", namespaces as ContextShape, reaction) as Record<string, unknown>;
 
+  const call = (method: string, args: unknown[], signal?: AbortSignal) => callHost(method, args, signal, reaction);
+  ctx.withEvent = (event: import("@read-aware/plugin-types").PluginReactionEvent) => {
+    if (!event?.reaction) throw codedError("Event has no reaction lease", "plugin/invalid-cause");
+    return buildContext(manifest, appVersion, capabilities, grants, shape, Object.freeze({ ...event.reaction }));
+  };
   ctx.manifest = manifest;
   ctx.appVersion = appVersion;
   ctx.capabilities = capabilities;
@@ -229,18 +237,14 @@ function buildContext(
   });
   // Mirrored locally (boot + sync patches) so the read stays synchronous.
   Object.defineProperty(ctx, "locale", { get: () => appLocale, enumerable: true });
-  ctx.lifecycle = {};
-  Object.defineProperty(ctx.lifecycle, "phase", {
-    get: () => lifecyclePhase,
-    enumerable: true,
-  });
+  ctx.lifecycle = activationLifecycle;
 
   // Storage: reads answer from the snapshot the host shipped at boot, so the
   // plugin-facing API stays synchronous. Writes update it locally and tell the
   // host, mirroring how `localKV` behaves on the other side.
   const services = ctx.services as Record<string, unknown>;
   services.storage = {
-    policy: () => callHost("services.storage.policy", []),
+    policy: () => call("services.storage.policy", []),
     get<T = unknown>(key: string): T | null {
       const raw = storageSnapshot.get(key);
       if (raw === undefined) return null;
@@ -254,34 +258,35 @@ function buildContext(
       assertLocalStorageWrite();
       const raw = JSON.stringify(value ?? null);
       const id = storageSnapshot.begin(key, raw);
-      const call = callHost("services.storage.set", [key, value]);
-      void call.then(() => storageSnapshot.settle(id), () => storageSnapshot.settle(id));
-      return call as Promise<void>;
+      const pending = call("services.storage.set", [key, value]);
+      void pending.then(() => storageSnapshot.settle(id), () => storageSnapshot.settle(id));
+      return pending as Promise<void>;
     },
     remove(key: string): Promise<void> {
       assertLocalStorageWrite();
       const id = storageSnapshot.begin(key, null);
-      const call = callHost("services.storage.remove", [key]);
-      void call.then(() => storageSnapshot.settle(id), () => storageSnapshot.settle(id));
-      return call as Promise<void>;
+      const pending = call("services.storage.remove", [key]);
+      void pending.then(() => storageSnapshot.settle(id), () => storageSnapshot.settle(id));
+      return pending as Promise<void>;
     },
-    getDurable: <T = unknown>(key: string) => callHost("services.storage.getDurable", [key]) as Promise<T | null>,
-    flush: () => callHost("services.storage.flush", []),
+    getDurable: <T = unknown>(key: string) => call("services.storage.getDurable", [key]) as Promise<T | null>,
+    flush: () => call("services.storage.flush", []),
     applyDocuments: (changes: import("@read-aware/plugin-types").PluginDocumentChange[]) => {
       assertLocalStorageWrite();
-      return callHost("services.storage.applyDocuments", [changes]);
+      return call("services.storage.applyDocuments", [changes]);
     },
     // Host-side writes (settings page, agent) arrive as a `sync` patch and
     // then as this notification — in that order, so the mirror the handler
     // reads from is already fresh. The plugin's own writes do not echo.
     onChange: (handler: () => void) =>
-      callHost("services.storage.onChange", [handler]),
+      call("services.storage.onChange", [handler]),
     observeDocuments: (query: import("@read-aware/plugin-types").PluginDocumentObservationQuery, handler: (event: import("@read-aware/plugin-types").PluginDocumentObservation) => unknown) =>
-      callHost("services.storage.observeDocuments", [query, handler]),
+      call("services.storage.observeDocuments", [query, handler]),
     collection: (name: string) =>
       remoteNamespace(
         `services.storage.collection(${name})`,
         collectionShape as ContextShape,
+        reaction,
       ),
   };
 
@@ -306,7 +311,7 @@ function buildContext(
       const acceptedOptions = options === undefined ? undefined : structuredClone(options);
       const request = await flattenPluginRequest(input, init);
       try {
-        const result = await callHost(`services.network.${operation}`, [request.url, request.init, acceptedOptions], request.signal);
+        const result = await call(`services.network.${operation}`, [request.url, request.init, acceptedOptions], request.signal);
         return operation === "fetch" ? restorePluginResponse(result as PluginNetworkResponse) : result;
       } catch (error) {
         throw request.signal.aborted ? pluginNetworkAbort(request.signal.reason) : pluginNetworkError(error);
@@ -319,7 +324,7 @@ function buildContext(
     if (!llm || typeof llm[operation] !== "function") continue;
     llm[operation] = (input: Parameters<NonNullable<PluginContext["services"]["llm"]>["ask"]>[0]) => {
       const { signal, ...payload } = input;
-      return callHost(`services.llm.${operation}`, [payload], signal);
+      return call(`services.llm.${operation}`, [payload], signal);
     };
   }
 

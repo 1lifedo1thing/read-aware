@@ -1,3 +1,6 @@
+import { classifyBookIfUnclassified } from "./book-classification";
+import type { DomainActor } from "../platform/domain-actor";
+import { createBookMemoryPort } from "../features/ai/agent/ports/book-memory-port";
 import { BookGraphTaskOwner } from "@read-aware/agent";
 import { AppError } from "@read-aware/core";
 import { getBookRecord } from "../features/library/lib/library-db";
@@ -16,13 +19,15 @@ async function resolveBoundary(bookId: string): Promise<number | undefined> {
 }
 
 export function createBookGraphTasks(lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void) {
-  const owner = new BookGraphTaskOwner(async input => {
+  const owner = new BookGraphTaskOwner<DomainActor>(async (input, actor) => {
     // Lazy runtime access avoids constructing a second Agent or a registry import cycle.
     const { getAgentRuntime } = await import("../features/ai/agent/agent-runtime");
     input.signal.throwIfAborted();
     const runtime = getAgentRuntime();
     if (!runtime) throw new AppError("ai/not-configured", "Graph tasks require a configured model");
-    return runtime.runBookGraphTask({ ...input, resolveBoundary: () => resolveBoundary(input.bookId) });
+    return runtime.runBookGraphTask({ ...input, bookMemory: createBookMemoryPort(actor),
+      classifyBookIfUnclassified: (bookId, flavor, signal) => classifyBookIfUnclassified(bookId, flavor, signal, actor),
+      resolveBoundary: () => resolveBoundary(input.bookId) });
   }, (message, error) => log.warn(message, error), lifetime);
   // The owner's abort listener runs first, cancelling admission and execution.
   // Its task receipt may already have left the RPC bridge, so drain it here.

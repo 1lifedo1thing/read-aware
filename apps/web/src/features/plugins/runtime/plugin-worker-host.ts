@@ -535,7 +535,7 @@ export function startPluginWorker(
             if (callAdmissionClosed || quiescing && !message.method.startsWith("services.storage.")) {
               throw new AppError("plugin/cancelled", "Plugin runtime is stopping");
             }
-            const method = message.method === "$registration.updateState"
+            const resolve = (target: PluginContext) => message.method === "$registration.updateState"
               ? (...params: unknown[]) => {
                 runtime.lifecycle.assertActive("contribution.updateState");
                 const [handle, state] = params;
@@ -545,7 +545,15 @@ export function startPluginWorker(
                 if (!registration.updateState) throw new AppError("plugin/unavailable", "Registration has no action state");
                 return registration.updateState(state as Parameters<PluginActionRegistration["updateState"]>[0]);
               }
-              : resolveMethod(ctx, message.method);
+              : message.method === "withEvent" ? null : resolveMethod(target, message.method);
+            const method = message.reaction
+              ? (...args: unknown[]) => runtime.reactions.execute(message.reaction!, async actor => {
+                if (options.restoreStorage) throw new AppError("plugin/invalid-cause", "Migration cannot react to events");
+                const bound = resolve(runtime.contextForActor(actor));
+                if (!bound) throw new AppError("plugin/unavailable", `"${message.method}" is not granted to plugin "${manifest.id}"`);
+                return bound(...args);
+              })
+              : resolve(ctx);
             if (!method) throw new AppError("plugin/unavailable", `"${message.method}" is not granted to plugin "${manifest.id}"`);
             const callbackLease = callbackBudget.acquire(message.args);
             releaseArguments = () => { callbackLease.dispose(); releaseCallbacks(message.args); };

@@ -53,6 +53,26 @@ test("real Worker preserves and snapshots explicit safe retry options across req
   expect(resultData(await s.next(message => message.t === "result" && message.id === 900))).toMatchObject({ ok: true, value: { toast: "retried" } });
 });
 
+test("real Worker event context keeps its opaque lease across await, nested namespaces and storage overrides", async () => {
+  const s = sandbox("event-reaction", "event-reaction-probe.ts", {
+    shape: { domains: { library: { events: { subscribe: "fn" } }, reading: { commands: { step: "fn" } } },
+      services: {}, contributions: {}, __collection: { get: "fn" } },
+  });
+  const registration = await s.next(message => message.method === "domains.library.events.subscribe");
+  const handle = (data(registration.args!) as [string, () => string])[1]();
+  s.worker.postMessage({ t: "result", id: registration.id, ok: true, value: null, disposable: "reaction-subscription" });
+  await s.next(message => message.t === "ready");
+  s.worker.postMessage({ t: "sync", patch: { phase: "active" } });
+  const reaction = { id: "issued-by-host", status: "ready" };
+  s.worker.postMessage({ t: "invoke", id: 935, handle, args: [{ type: "book.starred", origin: "user", payload: { bookId: "b", starred: true }, reaction }] });
+  for (const method of ["domains.reading.commands.step", "services.storage.set", "services.storage.collection(reactions).get", "services.storage.getDurable"]) {
+    const call = await s.next(message => message.method === method);
+    expect((call as unknown as { reaction?: unknown }).reaction).toEqual(method === "services.storage.getDurable" ? undefined : reaction);
+    s.worker.postMessage({ t: "result", id: call.id, ok: true, value: null });
+  }
+  expect(await s.next(message => message.t === "result" && message.id === 935)).toMatchObject({ ok: true });
+});
+
 test.each([undefined, 0, 2, "1"])("real Worker rejects incompatible boot version %s before loading plugin code", async protocolVersion => {
   const s = sandbox("must-not-activate", "wire-probe.ts", { protocolVersion });
   expect(await s.next(message => message.t === "failed")).toMatchObject({ error: "Host protocol or transport version rejected" });

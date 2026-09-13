@@ -103,7 +103,7 @@ test.each(["book_memory_context", "reading_intent_context", "conversation_insigh
 
 test("graph execution remains tied to the original current-book session after its handle is returned", async () => {
   const gate = deferred(), entered = deferred(); let executionSignal: AbortSignal | undefined;
-  const owner = new BookGraphTaskOwner(async input => { executionSignal = input.signal; entered.resolve(); await gate.promise;
+  const owner = new BookGraphTaskOwner<import("../../../platform/domain-actor").DomainActor>(async input => { executionSignal = input.signal; entered.resolve(); await gate.promise;
     return { status: "complete", eligible: 0, attempted: 0, digested: 0, remaining: 0, emptyChapters: [], failures: [] };
   }, () => {});
   const spy = spyOn(taskModule, "createBookGraphTasks").mockReturnValue(owner);

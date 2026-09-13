@@ -7,7 +7,7 @@
 
 ## 最近交付与接续入口
 
-当前目标：[九类缺失能力补全](./host-capability-completion-goal.md)，基线 `4657c3d0`。接线阶段：C01 memory2.8按书记忆/图谱/归档（`1b1aafe9`）、C02 conversations1.5本书会话（`985a5a61`）、C03 ui1.15受限工作区/宿主命令（`150cac8c`）已接，Memory Desk0.15/Library Desk0.13消费，针对性检查与capability门禁通过；新路径真实Tauri/Worker/Agent组合待集中验收。C04实施中：不可变宿主因果actor已贯穿领域写/广播，投递令牌owner及防环/独立并发/异步续作的内部检查已接；尚未连接Worker、公开API、派生任务全路径或第一方消费者，不能计接通。下一步优先完成这条因果调用链，具体断点见目标文档。C05–C09全部保持范围且未实施；下列原active goal均为历史任务。
+当前目标：[九类缺失能力补全](./host-capability-completion-goal.md)，基线 `4657c3d0`。接线阶段：C01 memory2.8按书记忆/图谱/归档（`1b1aafe9`）、C02 conversations1.5本书会话（`985a5a61`）、C03 ui1.15受限工作区/宿主命令（`150cac8c`）已接，Memory Desk0.15/Library Desk0.13消费，针对性检查与capability门禁通过；新路径真实Tauri/Worker/Agent组合待集中验收。C04实施中：plugins1.2 ctx.withEvent已接本地域/设置订阅、Worker调用令牌和领域/服务actor上下文；同一步重复/过期/跨激活拒绝，原权限与激活资源/任务/配额保持。导入及图谱摘要/自动分类派生写已传递actor，RSS0.21删除回调消费；快照/合并重读观察、阅读器生命周期及私有文档变更等派生因果仍未接，不能计整项完成。下一步优先接这些断点，完整check:capabilities通过；随后生命周期身份/RSS串行修复的受影响检查和类型通过，两个公共settings上下文A→B→A防环与独立根通过。具体证据见目标文档。C05–C09全部保持范围且未实施；下列原active goal均为历史任务。
 
 历史目标：[有界实现补齐与集中验收](./host-capability-gap-goal.md)，基线 `f312d24a`。五项实现已接通，localOnly 按用户要求删除。真实 Full2 已验证对象授权读取/创建/CAS/越权拒绝和插件授权重启、类型化播放取消与清理、搜索 200 条预算终态；编辑器 Worker 保存/取消/冲突和备份原生取消/授权恢复事务已通过；可见交互、授权弹窗与键盘焦点已补验。窗口无变化重复写入导致备份误拒已由 `5450ba03` 修复并在重建 Full2 实例通过真实授权恢复。冻结模型首轮 7/10，仅复测 3 项后机器合并 9/10；人工仍有失败/partial，已达到运行上限，不追加采样。剩余具体条件及证据边界见目标文档；实现完成不冒充验收通过，goal 仍 active，不推送。
 

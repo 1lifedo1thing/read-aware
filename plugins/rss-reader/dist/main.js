@@ -3863,18 +3863,18 @@ async function pendingFeedRemovals(ctx) {
 var recoveries = new WeakMap;
 var queues = new WeakMap;
 function serial(ctx, url, work) {
-  let queue = queues.get(ctx);
+  let queue = queues.get(ctx.lifecycle);
   if (!queue) {
     queue = new Map;
-    queues.set(ctx, queue);
+    queues.set(ctx.lifecycle, queue);
     const recovery = recoverFeedRemovals(ctx).catch((error) => {
       console.warn("RSS removal recovery deferred", error);
     }).then(() => reclaimFeedContent(ctx)).catch((error) => {
       console.warn("RSS cache recovery deferred", error);
     });
-    recoveries.set(ctx, recovery);
+    recoveries.set(ctx.lifecycle, recovery);
   }
-  const next = (queue.get(url) ?? recoveries.get(ctx)).catch(() => {}).then(work);
+  const next = (queue.get(url) ?? recoveries.get(ctx.lifecycle)).catch(() => {}).then(work);
   queue.set(url, next);
   const cleanup = () => {
     if (queue.get(url) === next)
@@ -5182,9 +5182,11 @@ var plugin = {
       presentation: "page",
       view: () => rssPageView(ctx)
     });
-    ctx.domains.library.events.subscribe("book.removed", async ({ payload: { bookId } }) => {
+    ctx.domains.library.events.subscribe("book.removed", async (event) => {
       try {
-        const feed = await forgetRemovedBook(ctx, bookId);
+        const reaction = ctx.withEvent(event);
+        assertPluginCapabilities(reaction);
+        const feed = await forgetRemovedBook(reaction, event.payload.bookId);
         if (!feed)
           return;
         ctx.services.ui.showToast(tr(ctx.locale, "unsubscribedFrom", { title: feed.title }));

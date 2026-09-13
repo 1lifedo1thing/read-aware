@@ -31,10 +31,10 @@ export function changeBookClassification(input: BookClassificationChange, origin
   return commit({ type: "book.narrativityClassified", origin, payload: { bookId: change.bookId, narrativity: change.narrativity } }, change.expectedRevision, signal);
 }
 /** Internal pipeline operation; plugins and model tools must use conditional user changes. */
-export async function classifyBookIfUnclassified(bookId: string, narrativity: DigestFlavor, signal?: AbortSignal): Promise<DigestFlavor> {
+export async function classifyBookIfUnclassified(bookId: string, narrativity: DigestFlavor, signal?: AbortSignal, origin: DomainActor = "agent"): Promise<DigestFlavor> {
   validateClassificationBookId(bookId);
   if (narrativity !== "narrative" && narrativity !== "expository") throw new AppError("memory/invalid-input", "Invalid classification");
-  const result = await commit({ type: "book.narrativityClassified", origin: "agent", payload: { bookId, narrativity, onlyIfUnclassified: true } }, undefined, signal);
+  const result = await commit({ type: "book.narrativityClassified", origin, payload: { bookId, narrativity, onlyIfUnclassified: true } }, undefined, signal);
   if (!result.snapshot.narrativity) throw new AppError("db/error", "Classification commit returned no verdict");
   return result.snapshot.narrativity;
 }

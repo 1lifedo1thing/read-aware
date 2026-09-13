@@ -1,4 +1,4 @@
-import { stampEventCause, actorOrigin, type DomainActor } from "../../platform/domain-actor";
+import { copyEventCause, stampEventCause, actorOrigin, type DomainActor } from "../../platform/domain-actor";
 import type {
   SettingCatalogEntry,
   SettingChange,
@@ -65,7 +65,7 @@ import {
 const log = createLogger("settings-domain");
 const dynamicOptions = new DynamicOptionsCache(error => log.warn("Dynamic setting options failed", error));
 onAppEvent("plugin-storage-changed", ({ pluginId }) => dynamicOptions.invalidate(pluginId));
-const listeners = new Set<(event: SettingsChangedEvent) => void>();
+const listeners = new Set<(event: SettingsChangedEvent) => unknown>();
 
 const FULL_ACCESS: SettingsAccessPolicy = {
   discover: ["*"],
@@ -209,7 +209,10 @@ async function commitResult(origin: DomainActor, before: SettingsDraft, result: 
     }, origin);
     for (const listener of [...listeners]) {
       try {
-        listener(event);
+        const result = listener(event);
+        if (result && typeof (result as PromiseLike<unknown>).then === "function") {
+          void Promise.resolve(result).catch(error => log.error("Settings event callback failed", error));
+        }
       } catch (error) {
         log.error(`settings event handler from "${origin}" failed`, error);
       }
@@ -364,7 +367,7 @@ export function createSettingsDomain(
           const changes = event.changes.filter((change) =>
             canAccess(policy, "read", change.path),
           );
-          if (changes.length > 0) handler({ ...event, changes });
+          if (changes.length > 0) return handler(copyEventCause(event, { ...event, changes }));
         };
         listeners.add(filtered);
         return () => listeners.delete(filtered);
