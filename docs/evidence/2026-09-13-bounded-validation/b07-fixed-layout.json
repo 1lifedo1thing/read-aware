@@ -1,0 +1,527 @@
+{
+  "date": "2026-09-13",
+  "environment": {
+    "app": "/tmp/ReadAware Capability Tests.app",
+    "pid": 15611,
+    "bridge": 9224,
+    "frontend": "http://localhost:5184",
+    "boundary": "macOS debug Tauri, actual native data and production host ports; no other instance or physical desktop operated by this agent."
+  },
+  "baseline": {
+    "bookIds": [
+      "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+      "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+    ],
+    "originalConversationHash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "originalMessageCount": 2,
+    "config": null,
+    "selected": "__global__",
+    "buildMemory": true,
+    "enabledPlugins": 15
+  },
+  "productChanges": [],
+  "repairs": 0,
+  "verification": "Observed runtime actions, receipts and source/native re-reads; no unchanged unit suite rerun.",
+  "item": "B07",
+  "capability": "SET17",
+  "classification": "通过",
+  "fixture": {
+    "path": ".eval/validation-20260913-formats/fixture.cbz",
+    "bytes": 658,
+    "bookId": "3305e937-ec91-4792-bbee-345bfa52632f",
+    "pages": [
+      "page2.png (first, blue 30/100/220)",
+      "page10.png (second, orange 240/150/30)"
+    ]
+  },
+  "observations": {
+    "after": {
+      "pages": [
+        {
+          "images": [
+            {
+              "complete": true,
+              "height": 96,
+              "pixel": [
+                30,
+                100,
+                220,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 0
+        },
+        {
+          "images": [
+            {
+              "complete": true,
+              "height": 96,
+              "pixel": [
+                240,
+                150,
+                30,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 1
+        }
+      ],
+      "renderer": {
+        "attributes": [
+          [
+            "exportparts",
+            "head,foot,filter"
+          ],
+          [
+            "flow",
+            "paginated"
+          ],
+          [
+            "max-column-count",
+            "1"
+          ],
+          [
+            "gap",
+            "7%"
+          ],
+          [
+            "max-inline-size",
+            "720px"
+          ],
+          [
+            "animated",
+            ""
+          ]
+        ],
+        "index": 0,
+        "scrolled": false,
+        "tag": "FOLIATE-FXL"
+      },
+      "session": {
+        "bookId": "3305e937-ec91-4792-bbee-345bfa52632f",
+        "change": {
+          "origin": "system",
+          "reason": "reader-demand"
+        },
+        "controls": {
+          "visible": false
+        },
+        "history": {
+          "canGoBack": false,
+          "canGoForward": false
+        },
+        "location": {
+          "bookId": "3305e937-ec91-4792-bbee-345bfa52632f",
+          "cfi": "epubcfi(/6/2)",
+          "contentVersion": "sha256:e2c2f0f32785262a1e730aaa06b398a5321f62e5dcb7df9ee9a90b9eb7e2b884",
+          "fraction": 0.5,
+          "href": "page2.png"
+        },
+        "mode": {
+          "availableModes": [
+            {
+              "defaultUnitId": "sentence",
+              "key": "sentence-reader:guided-reading",
+              "label": "Sentence Reader: Read by sentence or paragraph",
+              "units": [
+                {
+                  "id": "sentence",
+                  "label": "By sentence"
+                },
+                {
+                  "id": "paragraph",
+                  "label": "By paragraph"
+                }
+              ]
+            }
+          ],
+          "cfiRange": null,
+          "label": "Sentence Reader: Read by sentence or paragraph",
+          "modeKey": "sentence-reader:guided-reading",
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "unavailable",
+          "unavailableReason": "unsupported-format",
+          "unitId": "paragraph",
+          "units": [
+            {
+              "id": "sentence",
+              "label": "By sentence"
+            },
+            {
+              "id": "paragraph",
+              "label": "By paragraph"
+            }
+          ]
+        },
+        "pagination": {
+          "flow": "paginated",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 2,
+            "index": 0
+          }
+        },
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "mode-inactive"
+        },
+        "readerDemand": {
+          "active": false,
+          "idleAt": 1789286236391,
+          "lastActivityAt": 1789286234891,
+          "reason": "relocate"
+        },
+        "revision": 22,
+        "selection": null,
+        "sessionId": "9def0d6d-217c-4322-b241-ec8276f8c046",
+        "sourceRevision": "sha256:e2c2f0f32785262a1e730aaa06b398a5321f62e5dcb7df9ee9a90b9eb7e2b884",
+        "status": "ready",
+        "visibleText": "",
+        "visibleTextState": {
+          "reason": "unsupported",
+          "source": null,
+          "status": "unavailable",
+          "truncated": false
+        }
+      }
+    },
+    "before": {
+      "pages": [
+        {
+          "images": [
+            {
+              "complete": true,
+              "height": 96,
+              "pixel": [
+                30,
+                100,
+                220,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 0
+        },
+        {
+          "images": [
+            {
+              "complete": true,
+              "height": 96,
+              "pixel": [
+                240,
+                150,
+                30,
+                255
+              ],
+              "width": 64
+            }
+          ],
+          "index": 1
+        }
+      ],
+      "renderer": {
+        "attributes": [
+          [
+            "exportparts",
+            "head,foot,filter"
+          ],
+          [
+            "flow",
+            "scrolled"
+          ],
+          [
+            "max-column-count",
+            "1"
+          ],
+          [
+            "gap",
+            "7%"
+          ],
+          [
+            "max-inline-size",
+            "720px"
+          ],
+          [
+            "animated",
+            ""
+          ]
+        ],
+        "index": 0,
+        "scrolled": true,
+        "tag": "FOLIATE-FXL"
+      },
+      "session": {
+        "bookId": "3305e937-ec91-4792-bbee-345bfa52632f",
+        "change": {
+          "origin": "system",
+          "reason": "reader-demand"
+        },
+        "controls": {
+          "visible": false
+        },
+        "history": {
+          "canGoBack": false,
+          "canGoForward": false
+        },
+        "location": {
+          "bookId": "3305e937-ec91-4792-bbee-345bfa52632f",
+          "cfi": "epubcfi(/6/2)",
+          "contentVersion": "sha256:e2c2f0f32785262a1e730aaa06b398a5321f62e5dcb7df9ee9a90b9eb7e2b884",
+          "fraction": 0.5,
+          "href": "page2.png"
+        },
+        "mode": {
+          "availableModes": [
+            {
+              "defaultUnitId": "sentence",
+              "key": "sentence-reader:guided-reading",
+              "label": "Sentence Reader: Read by sentence or paragraph",
+              "units": [
+                {
+                  "id": "sentence",
+                  "label": "By sentence"
+                },
+                {
+                  "id": "paragraph",
+                  "label": "By paragraph"
+                }
+              ]
+            }
+          ],
+          "cfiRange": null,
+          "label": "Sentence Reader: Read by sentence or paragraph",
+          "modeKey": "sentence-reader:guided-reading",
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "unavailable",
+          "unavailableReason": "unsupported-format",
+          "unitId": "paragraph",
+          "units": [
+            {
+              "id": "sentence",
+              "label": "By sentence"
+            },
+            {
+              "id": "paragraph",
+              "label": "By paragraph"
+            }
+          ]
+        },
+        "pagination": {
+          "flow": "scrolled",
+          "layout": "fixed",
+          "screen": null,
+          "section": {
+            "count": 2,
+            "index": 0
+          }
+        },
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "mode-inactive"
+        },
+        "readerDemand": {
+          "active": false,
+          "idleAt": 1789286205391,
+          "lastActivityAt": 1789286203891,
+          "reason": "relocate"
+        },
+        "revision": 11,
+        "selection": null,
+        "sessionId": "9def0d6d-217c-4322-b241-ec8276f8c046",
+        "sourceRevision": "sha256:e2c2f0f32785262a1e730aaa06b398a5321f62e5dcb7df9ee9a90b9eb7e2b884",
+        "status": "ready",
+        "visibleText": "",
+        "visibleTextState": {
+          "reason": "unsupported",
+          "source": null,
+          "status": "unavailable",
+          "truncated": false
+        }
+      }
+    },
+    "original": {
+      "path": "reading.fixedLayoutReadingMode",
+      "reading": {
+        "defaultValue": "scroll",
+        "override": "absent",
+        "source": "global"
+      },
+      "target": {
+        "bookId": "3305e937-ec91-4792-bbee-345bfa52632f",
+        "kind": "book"
+      },
+      "value": "scroll"
+    },
+    "readback": {
+      "path": "reading.fixedLayoutReadingMode",
+      "reading": {
+        "defaultValue": "scroll",
+        "override": "active",
+        "source": "book"
+      },
+      "target": {
+        "bookId": "3305e937-ec91-4792-bbee-345bfa52632f",
+        "kind": "book"
+      },
+      "value": "paginated-single"
+    },
+    "restored": {
+      "pages": [],
+      "renderer": {
+        "attributes": [
+          [
+            "exportparts",
+            "head,foot,filter"
+          ],
+          [
+            "flow",
+            "scrolled"
+          ],
+          [
+            "max-column-count",
+            "1"
+          ],
+          [
+            "gap",
+            "7%"
+          ],
+          [
+            "max-inline-size",
+            "720px"
+          ],
+          [
+            "animated",
+            ""
+          ]
+        ],
+        "index": 0,
+        "scrolled": true,
+        "tag": "FOLIATE-FXL"
+      },
+      "session": {
+        "bookId": "3305e937-ec91-4792-bbee-345bfa52632f",
+        "change": {
+          "origin": "system",
+          "reason": "reader-demand"
+        },
+        "controls": {
+          "visible": false
+        },
+        "history": {
+          "canGoBack": false,
+          "canGoForward": false
+        },
+        "location": {
+          "bookId": "3305e937-ec91-4792-bbee-345bfa52632f",
+          "cfi": "epubcfi(/6/2)",
+          "contentVersion": "sha256:e2c2f0f32785262a1e730aaa06b398a5321f62e5dcb7df9ee9a90b9eb7e2b884",
+          "fraction": 0.5,
+          "href": "page2.png"
+        },
+        "mode": {
+          "availableModes": [],
+          "cfiRange": null,
+          "label": null,
+          "modeKey": null,
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "unavailable",
+          "unavailableReason": "no-session",
+          "unitId": null,
+          "units": []
+        },
+        "pagination": null,
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "no-session"
+        },
+        "readerDemand": {
+          "active": true,
+          "idleAt": 1789286264158,
+          "lastActivityAt": 1789286262658,
+          "reason": "relocate"
+        },
+        "revision": 28,
+        "selection": null,
+        "sessionId": "9def0d6d-217c-4322-b241-ec8276f8c046",
+        "sourceRevision": null,
+        "status": "loading",
+        "visibleText": "",
+        "visibleTextState": {
+          "reason": "not-ready",
+          "source": null,
+          "status": "unavailable",
+          "truncated": false
+        }
+      }
+    },
+    "restoredSetting": {
+      "path": "reading.fixedLayoutReadingMode",
+      "reading": {
+        "defaultValue": "scroll",
+        "override": "absent",
+        "source": "global"
+      },
+      "target": {
+        "bookId": "3305e937-ec91-4792-bbee-345bfa52632f",
+        "kind": "book"
+      },
+      "value": "scroll"
+    }
+  },
+  "acceptance": "Own imported fixed-layout CBZ changed scroll→paginated-single through the settings domain. Actual FOLIATE-FXL renderer scrolled/flow and session.pagination changed accordingly. Current source/index/CFI stayed identical; both source images decoded at64×96 with expected pixels. Original scroll/global inheritance restored.",
+  "diagnostics": [
+    "Initial import RPC timed out as WebView reloaded; native book row already existed. Resumed the same owned book without duplicate import.",
+    "A cleanup request used invalid action inherit-global and was rejected before writes. Correct existing action inherit restored absence of the own-book override.",
+    "Post-restore reader snapshot was transitional (pagination null); restored setting was reread as scroll/global/override absent, then own book closed and removed."
+  ],
+  "limits": [
+    "One fixed-layout CBZ and one mode transition; no all-format/spread combinations, packaged build, screenshot or physical focus claim.",
+    "Image pixels came from real decoded reader document images, not a screenshot of composed display."
+  ],
+  "cleanup": {
+    "booksRemaining": 0,
+    "liveBlobStorageUris": 0,
+    "importCleanup": 0,
+    "removalCleanup": 0
+  },
+  "finalBaselineRecheck": {
+    "originalHash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "originalMessages": 2,
+    "pluginsSame": true,
+    "config": null,
+    "selected": "\"__global__\"",
+    "memory": {
+      "path": "ai.preferences.buildMemory",
+      "target": {
+        "kind": "global"
+      },
+      "value": true
+    },
+    "enabledRawSame": true,
+    "ttsNativeRawSame": true
+  }
+}

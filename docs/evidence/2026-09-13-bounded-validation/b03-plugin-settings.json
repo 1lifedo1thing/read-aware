@@ -1,0 +1,346 @@
+{
+  "date": "2026-09-13",
+  "environment": {
+    "app": "/tmp/ReadAware Capability Tests.app",
+    "pid": 15611,
+    "bridge": 9224,
+    "frontend": "http://localhost:5184",
+    "boundary": "macOS debug Tauri, actual native data and production host ports; no other instance or physical desktop operated by this agent."
+  },
+  "baseline": {
+    "bookIds": [
+      "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+      "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+    ],
+    "originalConversationHash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "originalMessageCount": 2,
+    "config": null,
+    "selected": "__global__",
+    "buildMemory": true,
+    "enabledPlugins": 15
+  },
+  "productChanges": [],
+  "repairs": 0,
+  "verification": "Observed runtime actions, receipts and source/native re-reads; no unchanged unit suite rerun.",
+  "item": "B03",
+  "capability": "CFG09",
+  "classification": "通过",
+  "observations": {
+    "catalog": [
+      {
+        "kind": "enum",
+        "label": "TTS Voices — Provider",
+        "options": [
+          {
+            "label": "ElevenLabs",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "elevenlabs"
+          },
+          {
+            "label": "Fish Audio",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "fishaudio"
+          },
+          {
+            "label": "OpenAI",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "openai"
+          },
+          {
+            "label": "Custom / local (OpenAI-compatible)",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "custom"
+          }
+        ],
+        "path": "plugins.tts.vendor",
+        "section": "plugins",
+        "supportedTargets": [
+          "global"
+        ],
+        "value": "custom",
+        "writable": true
+      },
+      {
+        "description": "Voices from your ElevenLabs account — save the API key first, or type a voice id.",
+        "dynamicOptions": true,
+        "kind": "string",
+        "label": "TTS Voices — Voice",
+        "nullable": true,
+        "path": "plugins.tts.elevenlabsVoice",
+        "section": "plugins",
+        "supportedTargets": [
+          "global"
+        ],
+        "value": null,
+        "writable": true
+      },
+      {
+        "description": "Optional. E.g. eleven_multilingual_v2 (default), eleven_turbo_v2_5.",
+        "kind": "string",
+        "label": "TTS Voices — Model",
+        "nullable": true,
+        "path": "plugins.tts.elevenlabsModel",
+        "section": "plugins",
+        "supportedTargets": [
+          "global"
+        ],
+        "value": null,
+        "writable": true
+      },
+      {
+        "description": "Your Fish Audio voice models — save the API key first, or type a reference id.",
+        "dynamicOptions": true,
+        "kind": "string",
+        "label": "TTS Voices — Voice",
+        "nullable": true,
+        "path": "plugins.tts.fishaudioVoice",
+        "section": "plugins",
+        "supportedTargets": [
+          "global"
+        ],
+        "value": null,
+        "writable": true
+      },
+      {
+        "description": "Optional. E.g. speech-02.",
+        "kind": "string",
+        "label": "TTS Voices — Model",
+        "nullable": true,
+        "path": "plugins.tts.fishaudioModel",
+        "section": "plugins",
+        "supportedTargets": [
+          "global"
+        ],
+        "value": null,
+        "writable": true
+      },
+      {
+        "kind": "enum",
+        "label": "TTS Voices — Voice",
+        "options": [
+          {
+            "label": "Alloy",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "alloy"
+          },
+          {
+            "label": "Ash",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "ash"
+          },
+          {
+            "label": "Ballad",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "ballad"
+          },
+          {
+            "label": "Coral",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "coral"
+          },
+          {
+            "label": "Echo",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "echo"
+          },
+          {
+            "label": "Fable",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "fable"
+          },
+          {
+            "label": "Nova",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "nova"
+          },
+          {
+            "label": "Onyx",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "onyx"
+          },
+          {
+            "label": "Sage",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "sage"
+          },
+          {
+            "label": "Shimmer",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "shimmer"
+          },
+          {
+            "label": "Verse",
+            "pluginName": "TTS Voices",
+            "source": "plugin",
+            "value": "verse"
+          }
+        ],
+        "path": "plugins.tts.openaiVoice",
+        "section": "plugins",
+        "supportedTargets": [
+          "global"
+        ],
+        "value": "alloy",
+        "writable": true
+      },
+      {
+        "description": "Optional. E.g. tts-1 (default), tts-1-hd, gpt-4o-mini-tts.",
+        "kind": "string",
+        "label": "TTS Voices — Model",
+        "nullable": true,
+        "path": "plugins.tts.openaiModel",
+        "section": "plugins",
+        "supportedTargets": [
+          "global"
+        ],
+        "value": null,
+        "writable": true
+      },
+      {
+        "description": "An OpenAI-compatible speech URL, e.g. http://127.0.0.1:8880/v1/audio/speech.",
+        "kind": "string",
+        "label": "TTS Voices — Custom endpoint",
+        "path": "plugins.tts.customEndpoint",
+        "section": "plugins",
+        "supportedTargets": [
+          "global"
+        ],
+        "value": "http://127.0.0.1:8880/v1/audio/speech",
+        "writable": true
+      },
+      {
+        "description": "Voices the endpoint lists at …/audio/voices or …/voices; type the name yourself if the server doesn't list any.",
+        "dynamicOptions": true,
+        "kind": "string",
+        "label": "TTS Voices — Voice",
+        "nullable": true,
+        "path": "plugins.tts.customVoice",
+        "section": "plugins",
+        "supportedTargets": [
+          "global"
+        ],
+        "value": null,
+        "writable": true
+      },
+      {
+        "description": "Optional. E.g. kokoro.",
+        "kind": "string",
+        "label": "TTS Voices — Model",
+        "nullable": true,
+        "path": "plugins.tts.customModel",
+        "section": "plugins",
+        "supportedTargets": [
+          "global"
+        ],
+        "value": null,
+        "writable": true
+      }
+    ],
+    "disabledCatalog": [],
+    "final": {
+      "catalog": [
+        "plugins.tts.vendor",
+        "plugins.tts.elevenlabsVoice",
+        "plugins.tts.elevenlabsModel",
+        "plugins.tts.fishaudioVoice",
+        "plugins.tts.fishaudioModel",
+        "plugins.tts.openaiVoice",
+        "plugins.tts.openaiModel",
+        "plugins.tts.customEndpoint",
+        "plugins.tts.customVoice",
+        "plugins.tts.customModel"
+      ],
+      "nativeRawSame": true,
+      "readback": {
+        "path": "plugins.tts.vendor",
+        "target": {
+          "kind": "global"
+        },
+        "value": "custom"
+      }
+    },
+    "granted": {
+      "path": "plugins.tts.vendor",
+      "target": {
+        "kind": "global"
+      },
+      "value": "openai"
+    },
+    "original": {
+      "path": "plugins.tts.vendor",
+      "target": {
+        "kind": "global"
+      },
+      "value": "custom"
+    },
+    "readback": {
+      "path": "plugins.tts.vendor",
+      "target": {
+        "kind": "global"
+      },
+      "value": "openai"
+    },
+    "restored": {
+      "path": "plugins.tts.vendor",
+      "target": {
+        "kind": "global"
+      },
+      "value": "custom"
+    },
+    "secretRead": {
+      "message": "unknown setting: plugins.tts.openai-api-key"
+    },
+    "ungranted": {
+      "code": "settings/forbidden",
+      "message": "settings read is not permitted: plugins.tts.vendor"
+    },
+    "write": {
+      "changed": [
+        {
+          "path": "plugins.tts.vendor",
+          "target": {
+            "kind": "global"
+          },
+          "value": "openai"
+        }
+      ],
+      "updated": true
+    }
+  },
+  "acceptance": "Installed TTS exposes ten non-sensitive dynamic settings. Production Agent update_settings changes vendor custom→openai; authorized read sees openai and an ungranted plugin actor is denied. Secret path is absent/unknown. Disable removes all TTS settings; re-enable restores the catalog. Original vendor and exact native settings JSON restored.",
+  "actorBoundary": "Installed compiled plugin manifest contributes the catalog; Agent tool and host domain policy used for reads/writes. Granted/ungranted plugin actors were explicit domain-port calls, not new Worker RPC tests.",
+  "limits": [
+    "No external voice query/synthesis, secret value access, or claim that changing settings executes plugin work.",
+    "No new verification of every field type, dynamic option provider or other-plugin Worker grant transport."
+  ],
+  "finalBaselineRecheck": {
+    "originalHash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "originalMessages": 2,
+    "pluginsSame": true,
+    "config": null,
+    "selected": "\"__global__\"",
+    "memory": {
+      "path": "ai.preferences.buildMemory",
+      "target": {
+        "kind": "global"
+      },
+      "value": true
+    },
+    "enabledRawSame": true,
+    "ttsNativeRawSame": true
+  }
+}

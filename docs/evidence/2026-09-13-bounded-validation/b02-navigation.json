@@ -1,0 +1,278 @@
+{
+  "date": "2026-09-13",
+  "environment": {
+    "app": "/tmp/ReadAware Capability Tests.app",
+    "pid": 15611,
+    "bridge": 9224,
+    "frontend": "http://localhost:5184",
+    "boundary": "macOS debug Tauri, actual native data and production host ports; no other instance or physical desktop operated by this agent."
+  },
+  "baseline": {
+    "bookIds": [
+      "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+      "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+    ],
+    "originalConversationHash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "originalMessageCount": 2,
+    "config": null,
+    "selected": "__global__",
+    "buildMemory": true,
+    "enabledPlugins": 15
+  },
+  "productChanges": [],
+  "repairs": 0,
+  "verification": "Observed runtime actions, receipts and source/native re-reads; no unchanged unit suite rerun.",
+  "item": "B02",
+  "capability": "READ20",
+  "classification": "通过",
+  "observations": {
+    "bookIds": [
+      "4165e7dc-991b-47f7-a605-f4470c9f80b7",
+      "d86273bc-2c52-45e3-9b4f-877bc620e258"
+    ],
+    "final": {
+      "bookId": "d86273bc-2c52-45e3-9b4f-877bc620e258",
+      "change": {
+        "origin": "agent",
+        "reason": "navigate"
+      },
+      "controls": {
+        "visible": false
+      },
+      "history": {
+        "canGoBack": false,
+        "canGoForward": false
+      },
+      "location": {
+        "bookId": "d86273bc-2c52-45e3-9b4f-877bc620e258",
+        "cfi": "epubcfi(/6/2!/4/2[one],/1:0,/4/1:48)",
+        "contentVersion": "sha256:89691ebb12943924c8de74d99f6e49705ebf42996b925f3a3d19999e099dd6fb",
+        "fraction": 0.498876404494382,
+        "href": "0"
+      },
+      "mode": {
+        "availableModes": [
+          {
+            "defaultUnitId": "sentence",
+            "key": "sentence-reader:guided-reading",
+            "label": "Sentence Reader: Read by sentence or paragraph",
+            "units": [
+              {
+                "id": "sentence",
+                "label": "By sentence"
+              },
+              {
+                "id": "paragraph",
+                "label": "By paragraph"
+              }
+            ]
+          }
+        ],
+        "cfiRange": null,
+        "label": "Sentence Reader: Read by sentence or paragraph",
+        "modeKey": "sentence-reader:guided-reading",
+        "position": null,
+        "progress": null,
+        "requestedActive": false,
+        "status": "inactive",
+        "unavailableReason": null,
+        "unitId": "paragraph",
+        "units": [
+          {
+            "id": "sentence",
+            "label": "By sentence"
+          },
+          {
+            "id": "paragraph",
+            "label": "By paragraph"
+          }
+        ]
+      },
+      "pagination": {
+        "flow": "paginated",
+        "layout": "reflowable",
+        "screen": {
+          "count": 1,
+          "index": 0
+        },
+        "section": {
+          "count": 2,
+          "index": 0
+        }
+      },
+      "playback": {
+        "backend": null,
+        "cfiRange": null,
+        "fallback": false,
+        "owner": null,
+        "status": "unavailable",
+        "unavailableReason": "mode-inactive"
+      },
+      "readerDemand": {
+        "active": true,
+        "idleAt": 1789286135529,
+        "lastActivityAt": 1789286134029,
+        "reason": "relocate"
+      },
+      "revision": 12,
+      "selection": null,
+      "sessionId": "11dd56dc-72ce-44e0-b029-f02da60c368e",
+      "sourceRevision": "sha256:89691ebb12943924c8de74d99f6e49705ebf42996b925f3a3d19999e099dd6fb",
+      "status": "ready",
+      "visibleText": "B02 B firstOwned concurrent navigation fixture B02 B first.",
+      "visibleTextState": {
+        "source": "range",
+        "status": "available",
+        "truncated": false
+      }
+    },
+    "later": {
+      "bookId": "d86273bc-2c52-45e3-9b4f-877bc620e258",
+      "change": {
+        "origin": "system",
+        "reason": "reader-demand"
+      },
+      "controls": {
+        "visible": false
+      },
+      "history": {
+        "canGoBack": false,
+        "canGoForward": false
+      },
+      "location": {
+        "bookId": "d86273bc-2c52-45e3-9b4f-877bc620e258",
+        "cfi": "epubcfi(/6/2!/4/2[one],/1:0,/4/1:48)",
+        "contentVersion": "sha256:89691ebb12943924c8de74d99f6e49705ebf42996b925f3a3d19999e099dd6fb",
+        "fraction": 0.498876404494382,
+        "href": "0"
+      },
+      "mode": {
+        "availableModes": [
+          {
+            "defaultUnitId": "sentence",
+            "key": "sentence-reader:guided-reading",
+            "label": "Sentence Reader: Read by sentence or paragraph",
+            "units": [
+              {
+                "id": "sentence",
+                "label": "By sentence"
+              },
+              {
+                "id": "paragraph",
+                "label": "By paragraph"
+              }
+            ]
+          }
+        ],
+        "cfiRange": null,
+        "label": "Sentence Reader: Read by sentence or paragraph",
+        "modeKey": "sentence-reader:guided-reading",
+        "position": null,
+        "progress": null,
+        "requestedActive": false,
+        "status": "inactive",
+        "unavailableReason": null,
+        "unitId": "paragraph",
+        "units": [
+          {
+            "id": "sentence",
+            "label": "By sentence"
+          },
+          {
+            "id": "paragraph",
+            "label": "By paragraph"
+          }
+        ]
+      },
+      "pagination": {
+        "flow": "paginated",
+        "layout": "reflowable",
+        "screen": {
+          "count": 1,
+          "index": 0
+        },
+        "section": {
+          "count": 2,
+          "index": 0
+        }
+      },
+      "playback": {
+        "backend": null,
+        "cfiRange": null,
+        "fallback": false,
+        "owner": null,
+        "status": "unavailable",
+        "unavailableReason": "mode-inactive"
+      },
+      "readerDemand": {
+        "active": false,
+        "idleAt": 1789286135572,
+        "lastActivityAt": 1789286134072,
+        "reason": "relocate"
+      },
+      "revision": 19,
+      "selection": null,
+      "sessionId": "11dd56dc-72ce-44e0-b029-f02da60c368e",
+      "sourceRevision": "sha256:89691ebb12943924c8de74d99f6e49705ebf42996b925f3a3d19999e099dd6fb",
+      "status": "ready",
+      "visibleText": "B02 B firstOwned concurrent navigation fixture B02 B first.",
+      "visibleTextState": {
+        "source": "range",
+        "status": "available",
+        "truncated": false
+      }
+    },
+    "results": [
+      {
+        "code": "reader/superseded",
+        "message": "A newer reading intent replaced this navigation",
+        "status": "rejected"
+      },
+      {
+        "receipt": {
+          "location": {
+            "bookId": "d86273bc-2c52-45e3-9b4f-877bc620e258",
+            "cfi": "epubcfi(/6/2!/4/2[one],/1:0,/4/1:48)",
+            "contentVersion": "sha256:89691ebb12943924c8de74d99f6e49705ebf42996b925f3a3d19999e099dd6fb",
+            "fraction": 0.498876404494382,
+            "href": "0"
+          },
+          "sessionId": "11dd56dc-72ce-44e0-b029-f02da60c368e",
+          "status": "completed"
+        },
+        "status": "fulfilled"
+      }
+    ]
+  },
+  "acceptance": "Two synthetic FB2 openBook calls were dispatched concurrently. The older A request rejected reader/superseded; B completed. B receipt location/session equals final ready reader and later observation, and visible text identifies B.",
+  "limits": [
+    "One two-book replacement pair, not all sources/formats/interleavings or a claim of engine-level physical abort.",
+    "No autonomous model or physical focus claim."
+  ],
+  "cleanup": {
+    "ownedBookIds": [
+      "4165e7dc-991b-47f7-a605-f4470c9f80b7",
+      "d86273bc-2c52-45e3-9b4f-877bc620e258"
+    ],
+    "booksRemaining": 0,
+    "liveBlobStorageUris": 0,
+    "importCleanup": 0,
+    "removalCleanup": 0
+  },
+  "finalBaselineRecheck": {
+    "originalHash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "originalMessages": 2,
+    "pluginsSame": true,
+    "config": null,
+    "selected": "\"__global__\"",
+    "memory": {
+      "path": "ai.preferences.buildMemory",
+      "target": {
+        "kind": "global"
+      },
+      "value": true
+    },
+    "enabledRawSame": true,
+    "ttsNativeRawSame": true
+  }
+}
