@@ -698,6 +698,79 @@ describe("AgentThread", () => {
     expect(turns.get("global:empty-response")?.map((turn) => turn.content)).toEqual(["q1-retry", "recovered"]);
   });
 
+  test("a query tool result does not turn an empty follow-up into a successful answer", async () => {
+    const { faux, model } = makeFaux();
+    faux.setResponses([
+      fauxAssistantMessage([fauxToolCall("get_annotations", {})], { stopReason: "toolUse" }),
+      fauxAssistantMessage(""),
+    ]);
+    const { deps, turns } = makeDeps();
+    const thread = makeThread(deps, model);
+
+    await expect(collect(thread.sendTurn({ text: "我有哪些标注？" }))).rejects.toMatchObject({
+      code: "ai/provider",
+      retryable: true,
+    });
+    expect(turns.get("book:b1")).toBeUndefined();
+  });
+
+  test("a structured reference remains a visible delivery when prose is empty", async () => {
+    const { faux, model } = makeFaux();
+    faux.setResponses([
+      fauxAssistantMessage([fauxToolCall("present_books", { bookIds: ["b1"] })], { stopReason: "toolUse" }),
+      fauxAssistantMessage(""),
+    ]);
+    const { deps } = createInMemoryDeps({ books: BOOKS });
+    const thread = new AgentThread({
+      scope: { kind: "global", threadId: "empty-reference" },
+      deps,
+      resolveModel: () => model,
+      getApiKey: () => "test-key",
+      completeFn: noopComplete,
+      streamFn: streamSimple,
+    });
+
+    const chunks = await collect(thread.sendTurn({ text: "展示这本书" }));
+
+    expect(chunks).toContainEqual(expect.objectContaining({
+      type: "reference",
+      reference: expect.objectContaining({ kind: "books" }),
+    }));
+    expect(chunks.filter((chunk) => chunk.type === "text" && chunk.text.length > 0)).toHaveLength(0);
+  });
+
+  test("a completed structured interaction remains a visible delivery when prose is empty", async () => {
+    const { faux, model } = makeFaux();
+    faux.setResponses([
+      fauxAssistantMessage([fauxToolCall("ask_user", {
+        question: "继续吗？",
+        options: [
+          { id: "yes", label: "继续" },
+          { id: "no", label: "停止" },
+        ],
+      })], { stopReason: "toolUse" }),
+      fauxAssistantMessage(""),
+    ]);
+    const { deps } = createInMemoryDeps({ books: BOOKS });
+    const thread = new AgentThread({
+      scope: { kind: "global", threadId: "empty-interaction" },
+      deps,
+      resolveModel: () => model,
+      getApiKey: () => "test-key",
+      completeFn: noopComplete,
+      streamFn: streamSimple,
+    });
+
+    const chunks = await collect(thread.sendTurn({ text: "帮我选择下一步" }));
+
+    expect(chunks).toContainEqual(expect.objectContaining({
+      type: "interaction",
+      phase: "response",
+      answer: { optionId: "yes", text: "继续" },
+    }));
+    expect(chunks.filter((chunk) => chunk.type === "text" && chunk.text.length > 0)).toHaveLength(0);
+  });
+
   test("reset discards the in-memory session and rebuilds from the persisted transcript", async () => {
     const { faux, model } = makeFaux();
     const contexts: Context[] = [];

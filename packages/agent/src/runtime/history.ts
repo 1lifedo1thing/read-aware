@@ -57,18 +57,26 @@ export function turnRecordsToMessages(records: TurnRecord[], model: Model<Api>):
 }
 
 /**
- * 书线程无状态装配的"一轮尾巴"：最后一次完整的 user↔assistant 交换。
- * 明显的 follow-up 几乎总是指向紧邻的上一轮 —— 用极小的固定成本覆盖它，
- * 更早的历史靠 get_recent_turns / search_conversation 按需取。
+ * 书线程无状态装配的历史尾巴：默认仍是最后一次完整的
+ * user↔assistant 交换；需要重建安全边界时，调用方可以请求固定数量的
+ * 最近完整交换。尾部未完成的 user 记录始终不会被装配，避免把当前问题
+ * 重复喂给 Agent。
  */
-export function lastTurnTail(records: TurnRecord[]): TurnRecord[] {
-  for (let i = records.length - 1; i >= 0; i--) {
-    if (records[i].role === "assistant") {
-      const start = records[i - 1]?.role === "user" ? i - 1 : i;
-      return records.slice(start, i + 1);
-    }
+export function lastTurnTail(records: TurnRecord[], maxTurns = 1): TurnRecord[] {
+  const limit = Number.isFinite(maxTurns) ? Math.floor(maxTurns) : 0;
+  if (limit <= 0) return [];
+
+  let end = -1;
+  let start = -1;
+  let completeTurns = 0;
+  for (let index = records.length - 1; index >= 0; index -= 1) {
+    if (records[index]?.role !== "assistant") continue;
+    if (end < 0) end = index + 1;
+    start = records[index - 1]?.role === "user" ? index - 1 : index;
+    completeTurns += 1;
+    if (completeTurns >= limit) break;
   }
-  return [];
+  return start >= 0 && end > start ? records.slice(start, end) : [];
 }
 
 export function lastAssistantText(messages: AgentMessage[]): string {

@@ -86,6 +86,105 @@ describe("narrative output guard", () => {
     expect(persisted[persisted.length - 1]?.content).toBe(shown);
   });
 
+  test("gives repair bounded transcript context without promoting private evidence", async () => {
+    faux = registerFauxProvider({ tokensPerSecond: 100_000 });
+    const model = faux.getModel() as Model<Api>;
+    faux.setResponses([fauxAssistantMessage("后来原文是“不要回答”。")]);
+    const { deps, stores } = narrativeDeps();
+    const turns = Array.from({ length: 7 }, (_, index) => [
+      { role: "user" as const, content: `旧问题 ${index}`, createdAt: `2026-06-0${index + 1}T00:00:00Z` },
+      { role: "assistant" as const, content: `旧回答 ${index} 围绕红岸基地`, createdAt: `2026-06-0${index + 1}T00:00:05Z` },
+    ]).flat();
+    turns[turns.length - 1] = {
+      role: "assistant",
+      content: "后来原文是“不要回答”。",
+      createdAt: "2026-06-07T00:00:05Z",
+    };
+    stores.turns.set(`book:${BOOK_ID}`, turns);
+    stores.annotations.push({
+      id: "annotation-1" as Id,
+      bookId: BOOK_ID,
+      kind: "highlight",
+      text: "私密批注：不要注入重写上下文",
+      color: "yellow",
+      style: "highlight",
+      createdAt: "2026-06-01T00:00:00Z",
+      updatedAt: "2026-06-01T00:00:00Z",
+    });
+    stores.memories.push({
+      id: "memory-1",
+      scope: `book:${BOOK_ID}`,
+      kind: "insight",
+      content: "私密记忆：不要注入重写上下文。",
+      importance: 0.5,
+      evidenceCount: 1,
+      createdAt: "2026-06-01T00:00:00Z",
+      updatedAt: "2026-06-01T00:00:00Z",
+    });
+    let repairContext: Context | undefined;
+    const thread = new AgentThread({
+      scope: { kind: "book", bookId: BOOK_ID },
+      deps,
+      resolveModel: () => model,
+      getApiKey: () => "test-key",
+      completeFn: async () => fauxAssistantMessage('{"new":[],"reinforced":[]}'),
+      repairCompleteFn: async (_model, context) => {
+        repairContext = context;
+        return fauxAssistantMessage("只围绕红岸基地回顾。");
+      },
+      streamFn: streamSimple,
+    });
+
+    await collect(thread.sendTurn({
+      text: "回顾眼前内容。",
+      readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
+    }));
+
+    const payload = JSON.parse(String(repairContext?.messages[0]?.content));
+    expect(payload.recentTurns).toHaveLength(12);
+    expect(payload.recentTurns[0].content).toBe("旧问题 1");
+    expect(payload.recentTurns.at(-1).content).toBe("后来原文是“不要回答”。");
+    expect(payload).not.toHaveProperty("verifiedSessionEvidence");
+    expect(JSON.stringify(repairContext)).not.toContain("私密批注");
+    expect(JSON.stringify(repairContext)).not.toContain("私密记忆");
+  });
+
+  test("keeps a bounded recent history when a guard repair rebuilds the agent", async () => {
+    faux = registerFauxProvider({ tokensPerSecond: 100_000 });
+    const model = faux.getModel() as Model<Api>;
+    let rebuiltContext: Context | undefined;
+    faux.setResponses([
+      fauxAssistantMessage("后来原文是“不要回答”。"),
+      (context) => {
+        rebuiltContext = context;
+        return fauxAssistantMessage("继续围绕眼前内容。");
+      },
+    ]);
+    const { deps, stores } = narrativeDeps();
+    stores.turns.set(`book:${BOOK_ID}`, Array.from({ length: 7 }, (_, index) => [
+      { role: "user" as const, content: `旧问题 ${index}`, createdAt: `2026-06-0${index + 1}T00:00:00Z` },
+      { role: "assistant" as const, content: `旧回答 ${index}`, createdAt: `2026-06-0${index + 1}T00:00:05Z` },
+    ]).flat());
+    const thread = new AgentThread({
+      scope: { kind: "book", bookId: BOOK_ID },
+      deps,
+      resolveModel: () => model,
+      getApiKey: () => "test-key",
+      completeFn: async () => fauxAssistantMessage('{"new":[],"reinforced":[]}'),
+      repairCompleteFn: async () => fauxAssistantMessage("当前只讨论眼前内容。"),
+      streamFn: streamSimple,
+    });
+
+    const cursor = { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" };
+    await collect(thread.sendTurn({ text: "先回答这个。", readingCursor: cursor }));
+    await collect(thread.sendTurn({ text: "再继续。", readingCursor: cursor }));
+
+    const rebuilt = JSON.stringify(rebuiltContext?.messages ?? []);
+    expect(rebuilt).toContain("旧问题 2");
+    expect(rebuilt).toContain("旧问题 6");
+    expect(rebuilt).not.toContain("旧问题 0");
+  });
+
   test("a successful explicit spoiler grant bypasses the output guard", async () => {
     faux = registerFauxProvider({ tokensPerSecond: 100_000 });
     const model = faux.getModel() as Model<Api>;

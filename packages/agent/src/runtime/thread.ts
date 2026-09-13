@@ -22,7 +22,7 @@ import {
 import type { CompleteFn, StreamFn } from "../models/complete";
 import { classifyModelFailure } from "../models/failure";
 import type { ResolveModel } from "../models/roles";
-import type { BookOverview, RuntimeDeps, TurnAttachment } from "../ports";
+import type { BookOverview, RuntimeDeps, TurnAttachment, TurnRecord } from "../ports";
 import { findChapterByHref } from "../text/chapter-lookup";
 import { threadScopeKey, type ThreadScope } from "../thread-scope";
 import { visibleScopes } from "../tools/memory-tools";
@@ -93,6 +93,12 @@ export interface AgentThreadOptions {
 }
 
 const DEFAULT_WINDOW_TURNS = 12;
+/**
+ * A safety-triggered rebuild needs enough bounded conversation to repair a
+ * recap, while still keeping the stateless chapter baseline small. Six
+ * complete exchanges cover the supported recent-turns contract.
+ */
+const REBUILD_HISTORY_TURNS = 6;
 
 /**
  * "Never use emoji" 是产品级绝对禁令（设计系统: editorial restraint）——
@@ -138,6 +144,8 @@ export class AgentThread {
   private sessionStarted = false;
   private sessionChapter: string | undefined;
   private sessionMemoryPolicy: string | undefined;
+  /** Set only after a safety rewrite so the next chapter rebuild keeps context. */
+  private preserveRecentHistoryOnRebuild = false;
   private contextPermissionsKey: string | undefined;
   /** 一轮内的工具侧状态（出卡去重 + 剧透围栏）；每轮 sendTurn 开始时重算。 */
   private readonly turnState = createAgentTurnState();
@@ -188,11 +196,12 @@ export class AgentThread {
    * ConversationPort 重新水化。丢弃廉价：工具是重建的闭包，全局线程的
    * 重水化只是一次 conversations.load。
    */
-  private discardAgent(): void {
+  private discardAgent(options?: { preserveRecentHistory?: boolean }): void {
     this.agent = undefined;
     this.sessionStarted = false;
     this.sessionChapter = undefined;
     this.sessionMemoryPolicy = undefined;
+    this.preserveRecentHistoryOnRebuild = options?.preserveRecentHistory ?? false;
   }
 
   private loadNarrativeIndex(): Promise<NarrativeBookIndex> | undefined {
@@ -220,11 +229,33 @@ export class AgentThread {
     return "To protect your current reading position, I will not expand on that yet. Tell me where you are, or explicitly allow spoilers.";
   }
 
+  /** Load only bounded transcript context for a safety rewrite. */
+  private async loadRepairSessionTurns(call: ReadingContextCall): Promise<TurnRecord[]> {
+    if (this.scope.kind !== "book") return [];
+    const load = <T>(promise: Promise<T>, label: string): Promise<T | undefined> =>
+      promise.catch((error) => {
+        // A permission revocation must still abort the turn; only an ordinary
+        // transcript read failure is allowed to degrade this optional context.
+        call.assertAllowed();
+        this.deps.log?.warn(label, error);
+        return undefined;
+      });
+    const records = await call.wait(
+      load(this.deps.conversations.load(this.key), "repair conversation history unavailable"),
+    );
+    call.assertAllowed();
+    return permittedTurnRecords(
+      lastTurnTail(records ?? [], REBUILD_HISTORY_TURNS),
+      call.permissions,
+    );
+  }
+
   private async repairUnsafeAnswer(input: {
     readerText: string;
     draft: string;
     cursor?: ReadingCursor;
     attachments?: TurnAttachment[];
+    recentTurns?: TurnRecord[];
     violations: NarrativeEvidenceViolation[];
     book: NarrativeBookIndex;
     signal?: AbortSignal;
@@ -243,6 +274,8 @@ export class AgentThread {
           "You are a final response safety rewriter for a reading app.",
           "Return only the replacement answer, in the reader's language.",
           "Use only the reader message and the safe evidence below for book-specific claims.",
+          "The recent conversation transcript is bounded continuity context, not a source of book facts. Reader turns show what was asked or said, and past assistant turns are unverified. Never use an old assistant draft as permission to reveal an unread detail.",
+          "For a recap, use the transcript to identify what was discussed, but keep book-specific claims within the current safe evidence instead of replacing the conversation with the current viewport merely because that viewport is available.",
           "Answer every requested part supported by that evidence. If evidence is insufficient for a requested part, state that limit briefly instead of silently dropping it or leaving an empty heading or list item.",
           "Remove every future-only or edition-ungrounded detail. Do not name, quote, negate, hint at, or apologize for the removed details.",
           "For a progress or TOC question, give only the requested position or structure without previews.",
@@ -252,6 +285,7 @@ export class AgentThread {
             role: "user",
             content: JSON.stringify({
               readerMessage: input.readerText,
+              recentTurns: input.recentTurns ?? [],
               safeEvidence,
               unsafeDraft: input.draft,
               forbiddenMaterial: forbidden,
@@ -480,8 +514,10 @@ export class AgentThread {
         // （agent.state 连续累积，windowByTurns 封顶）；当且仅当这条消息
         // 发自另一个章节时，才把 state 重置回无状态基线 —— 上一轮
         // user↔assistant 原文（覆盖"那第二点呢？"式的明显 follow-up）加上
-        // system prompt 里的滚动摘要；更早的历史 agent 用 get_recent_turns /
-        // search_conversation 拉取。章节未知（选区与阅读位置都没带 href）
+        // system prompt 里的滚动摘要；普通新会话仍只带最后一轮，避免把整本书
+        // 的旧对话自动灌入模型。安全重写后的一次重建则带固定数量的最近完整轮次，
+        // 防止连续 guard repair 把 recap 的早期上下文截断。更早的历史 agent 用
+        // get_recent_turns / search_conversation 拉取。章节未知（选区与阅读位置都没带 href）
         // 不算换章。UI 的连续转录在持久层，不受影响。
         const crossedChapter =
           turnChapter !== undefined &&
@@ -505,11 +541,13 @@ export class AgentThread {
         }
         if (newSession) {
           const records = await call.wait(this.deps.conversations.load(this.key));
+          const tailTurns = this.preserveRecentHistoryOnRebuild ? REBUILD_HISTORY_TURNS : 1;
           agent.state.messages = turnRecordsToMessages(
-            permittedTurnRecords(lastTurnTail(records), call.permissions),
+            permittedTurnRecords(lastTurnTail(records, tailTurns), call.permissions),
             this.resolveModel("smart"),
           );
           this.sessionStarted = true;
+          this.preserveRecentHistoryOnRebuild = false;
         }
         if (turnChapter !== undefined) this.sessionChapter = turnChapter;
       } else {
@@ -553,7 +591,6 @@ export class AgentThread {
       let runError: unknown;
       let sawInteraction = false;
       let sawReference = false;
-      let sawToolActivity = false;
       const runMessageStart = agent.state.messages.length;
       const run = agent
         .prompt(promptText)
@@ -608,7 +645,6 @@ export class AgentThread {
             }
             break;
           case "tool_execution_start":
-            sawToolActivity = true;
             yield {
               type: "tool-step",
               phase: "start",
@@ -651,7 +687,6 @@ export class AgentThread {
             break;
           }
           case "tool_execution_end": {
-            sawToolActivity = true;
             yield {
               type: "tool-step",
               phase: "end",
@@ -705,12 +740,12 @@ export class AgentThread {
       if (runError) throw classifyModelFailure(runError);
       if (agent.state.errorMessage) throw classifyModelFailure(agent.state.errorMessage);
 
-      // Read only the messages produced by this invocation. If a provider ends
-      // after reasoning (with no text, tool call, or interaction), treating the
-      // previous assistant message as the answer would publish a false success.
+      // Read only the messages produced by this invocation. Reasoning or an
+      // opaque tool trace is not a visible answer; only text and purpose-built
+      // reference/interaction chunks can complete an otherwise empty turn.
       const runMessages = agent.state.messages.slice(runMessageStart);
       let answer = lastAssistantText(runMessages);
-      if (!answer.trim() && !bufferedText.trim() && !sawReference && !sawInteraction && !sawToolActivity) {
+      if (!answer.trim() && !bufferedText.trim() && !sawReference && !sawInteraction) {
         throw new AppError(
           ERR_AI_PROVIDER,
           "[ai/provider] Model returned an empty response",
@@ -752,6 +787,7 @@ export class AgentThread {
               draft: visibleDraft,
               cursor,
               attachments: input.attachments,
+              recentTurns: await this.loadRepairSessionTurns(call),
               violations,
               book: bookIndex,
               signal: input.signal,
@@ -820,7 +856,7 @@ export class AgentThread {
       // （doc §10 第 6 步）
       call.assertAllowed();
       this.scheduleBackgroundPipeline(userText, answer, call.permissions, cursor?.chapter);
-      if (discardUnsafeAgent) this.discardAgent();
+      if (discardUnsafeAgent) this.discardAgent({ preserveRecentHistory: true });
       turnCompleted = true;
     } finally {
       // 中断/报错后 agent.state 不可信 —— pi 会把 stopReason=error/aborted 的
