@@ -9,6 +9,8 @@ import { evalSuites, evalSuiteGroups, suiteIdsOfGroup } from "./index";
 import type { AgentEvalScenario } from "../agent-harness";
 import type { AgentEvalObservation, EvalSuite } from "../types";
 import { invalidTags } from "../tags";
+import { createInMemoryDeps } from "../../testing/fixtures";
+import { toJsonValue } from "../json";
 import { realBook, type RealBookSlug } from "../book-fixtures";
 import { buildSystemPrompt } from "../../context/system-prompt";
 import { SPOILER_POLICY_RULES } from "../../context/spoiler-policy";
@@ -27,12 +29,25 @@ describe("behavior acceptance boundaries", () => {
     const selected = scenario.turns[0]!.attachments![0]!.text;
     const visible = scenario.turns[0]!.readingCursor!.visibleText!;
     expect(visible).not.toBe(selected);
-    const observation = (text: string) => behaviorObservation({
-      tools: [{ turn: 1, id: "highlight", name: "create_annotation", args: { kind: "highlight", text }, isError: false }],
-      state: [{ kind: "highlight", text }, { kind: "note", text: "这里值得回头再读。" }],
-    });
-    expect((await scenario.evaluate(observation(selected))).passed).toBe(true);
-    const wider = await scenario.evaluate(observation(visible));
+    const observation = async (text: string) => {
+      const context = createInMemoryDeps(scenario.seed);
+      await scenario.setup?.(context);
+      const bookId = realBook("refactoring").bookId;
+      const chapterIndex = scenario.turns[0]!.readingCursor!.chapterIndex!;
+      const chapter = context.stores.chapters.get(bookId)![chapterIndex]!;
+      const start = chapter.text.indexOf(text);
+      expect(start).toBeGreaterThanOrEqual(0);
+      const { contentVersion } = await context.deps.bookText.getNavigationToc(bookId);
+      const range = { bookId, contentVersion, cfi: `epubcfi(fixture:${chapterIndex}:${start}:${start + text.length})` };
+      await context.deps.annotations.createHighlight({ bookId, text, range });
+      await context.deps.annotations.createNote({ bookId, quotedText: text, body: "这里值得回头再读。", range });
+      return behaviorObservation({
+        tools: [{ turn: 1, id: "highlight", name: "create_annotation", args: { kind: "highlight", text }, isError: false }],
+        state: toJsonValue(await scenario.observeState!(context)),
+      });
+    };
+    expect((await scenario.evaluate(await observation(selected))).passed).toBe(true);
+    const wider = await scenario.evaluate(await observation(visible));
     expect(wider.checks.find(check => check.id === "state.highlight-selection-boundary")?.passed).toBe(false);
   });
 

@@ -10,7 +10,13 @@
     "command": "bun test packages/agent/src/testing/annotation-source.test.ts packages/agent/src/tools/navigation-tools.test.ts packages/agent/src/tools/annotation-tools.test.ts packages/agent/src/tools/reader-tools.test.ts",
     "passed": 47,
     "failed": 0,
-    "typecheck": "bun run --cwd packages/agent typecheck: passed"
+    "typecheck": "bun run --cwd packages/agent typecheck: passed",
+    "existingSuiteCorrection": {
+      "command": "bun test packages/agent/src/evals/suites/suites.test.ts",
+      "before": "11 passed / 1 failed: existing positive sample contained only kind/text and no source attachment proof.",
+      "change": "Positive and adjacent-text samples now write real seeded fixture source ranges through annotation ports and collect state through the scenario observer. New attachment checks unchanged; adjacent-text rejection preserved.",
+      "after": "12 passed / 0 failed, 138 assertions. No model calls."
+    }
   },
   "livePlan": {
     "provider": "openrouter",
