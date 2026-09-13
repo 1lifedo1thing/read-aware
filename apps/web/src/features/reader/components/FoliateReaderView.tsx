@@ -925,6 +925,7 @@ export function FoliateReaderView({
 
   const textUnitNavigator = useTextUnitNavigator({
     configurationRevision: modeRequest?.revision,
+    configurationOrigin: modeRequest?.origin,
     onPersistence: modeController?.persistPosition,
     active: textUnitModeEngineActive,
     suspended: textUnitModeSuspended,
@@ -943,14 +944,15 @@ export function FoliateReaderView({
       status: textUnitNavigator.status, errorCode: textUnitNavigator.errorCode,
       progress: textUnitNavigator.progress, cfiRange: textUnitNavigator.current?.cfiRange ?? null,
       position: textUnitNavigator.position,
-    });
+    }, textUnitNavigator.origin);
   }, [modeController, textUnitMode, activeUnitId, textUnitNavigator.configurationRevision,
     textUnitNavigator.status, textUnitNavigator.errorCode, textUnitNavigator.progress, textUnitNavigator.current,
-    textUnitNavigator.position?.location.cfi, textUnitNavigator.position?.location.contentVersion]);
+    textUnitNavigator.position?.location.cfi, textUnitNavigator.position?.location.contentVersion, textUnitNavigator.origin]);
   const readAloud = useReadAloud({
     bookId: selectedBook?.id ?? null,
     enabled: textUnitModeEngineActive,
     current: textUnitNavigator.current,
+    origin: modeRequest && modeRequest.revision !== textUnitNavigator.configurationRevision ? modeRequest.origin : textUnitNavigator.origin,
     peekNext: textUnitNavigator.peekNext,
   });
   // The engine's mount-once effect and the stable key handler reach the
@@ -1913,7 +1915,7 @@ export function FoliateReaderView({
         releaseBook ??= retainBook(parsedBook);
         if (cancelled) { await releaseBook(); return; }
         if (selectedBook && sessionId) cleanups.push(registerActiveBookContent(selectedBook.id, parsedBook, contentVersion, contentProvider, invalidation, initialBook.virtual?.key));
-        if (selectedBook) textUnitNavigatorRef.current.handleContentVersion(selectedBook.id, contentVersion);
+        if (selectedBook) textUnitNavigatorRef.current.handleContentVersion(selectedBook.id, contentVersion, openingActor);
         await view.open(parsedBook);
         if (cancelled) return;
 
@@ -2057,7 +2059,7 @@ export function FoliateReaderView({
             docsWithListenersRef.current.add(doc);
             attachDocListeners(doc, index);
           }
-          textUnitNavigatorRef.current.handleSectionLoad(doc, index);
+          textUnitNavigatorRef.current.handleSectionLoad(doc, index, readingRenderActor((event as CustomEvent<object>).detail));
         };
 
         const onCreateOverlay = () => {

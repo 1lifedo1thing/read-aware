@@ -15,6 +15,7 @@ import {
   pluginSettingsKey,
 } from "../../plugins/lib/plugin-settings";
 import type { PluginFormValues } from "@read-aware/plugin-types";
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 
 const log = createLogger("reading-mode-state");
 function observedWrite(write: Promise<void>): Promise<void> {
@@ -52,7 +53,7 @@ const INACTIVE_STATE: PersistedTextUnitModeState = {
   contentVersion: null,
 };
 
-const stateKey = (bookId: string) => `read-aware-navigator-state:${bookId}`;
+export const textUnitModeStateKey = (bookId: string) => `read-aware-navigator-state:${bookId}`;
 
 function validUnitId(value: unknown): string | null {
   return typeof value === "string" && UNIT_ID_PATTERN.test(value) ? value : null;
@@ -100,7 +101,7 @@ export function normalizeTextUnitModeState(value: unknown): PersistedTextUnitMod
 
 export function readTextUnitModeState(bookId: string): PersistedTextUnitModeState {
   try {
-    const raw = localKV.getItem(stateKey(bookId));
+    const raw = localKV.getItem(textUnitModeStateKey(bookId));
     return raw ? normalizeTextUnitModeState(JSON.parse(raw)) : INACTIVE_STATE;
   } catch {
     return INACTIVE_STATE;
@@ -121,12 +122,14 @@ export function isTextUnitModeStateCompatible(
 export function writeTextUnitModeState(
   bookId: string,
   state: PersistedTextUnitModeState,
+  origin: DomainActor = "system",
 ): Promise<void> {
+  origin = causalActor(origin);
   try {
     if (!state.active && !state.resting && !state.modeKey) {
-      return observedWrite(localKV.removeItemAsync(stateKey(bookId)));
+      return observedWrite(localKV.removeItemAsync(textUnitModeStateKey(bookId), origin));
     }
-    return observedWrite(localKV.setItemAsync(stateKey(bookId), JSON.stringify(state)));
+    return observedWrite(localKV.setItemAsync(textUnitModeStateKey(bookId), JSON.stringify(state), origin));
   } catch (error) {
     return observedWrite(Promise.reject(error));
   }
@@ -134,7 +137,7 @@ export function writeTextUnitModeState(
 
 /** One configuration intent cannot leave the book and provider preference disagreeing. */
 function configurationEntries(bookId: string, state: PersistedTextUnitModeState, persistUnit: boolean, entries = new Map<string, string | null>()): Map<string, string | null> {
-  entries.set(stateKey(bookId), JSON.stringify(state));
+  entries.set(textUnitModeStateKey(bookId), JSON.stringify(state));
   if (persistUnit && state.modeKey && state.unitId) {
     const pluginId = pluginIdOfModeKey(state.modeKey);
     const current = modeSettingsWithLegacy(state.modeKey);
@@ -154,7 +157,8 @@ export class ReadingModeConfigurationWrites {
 
   constructor(private readonly confirmed: (revision: number) => boolean) {}
 
-  async write(revision: number, bookId: string, state: PersistedTextUnitModeState, persistUnit: boolean): Promise<void> {
+  async write(revision: number, bookId: string, state: PersistedTextUnitModeState, persistUnit: boolean, origin: DomainActor = "system"): Promise<void> {
+    origin = causalActor(origin);
     const old = this.previous;
     const entries = new Map<string, string | null>();
     if (old && !this.confirmed(old.revision) && old.valid && localKV.getItem(old.key) === old.written) entries.set(old.key, old.before);
@@ -180,7 +184,7 @@ export class ReadingModeConfigurationWrites {
     }
     this.previous = next; // Publish before dispatch: a queued successor can run at the native receipt microtask.
     try {
-      await observedWrite(setLocalKVBatch(entries));
+      await observedWrite(setLocalKVBatch(entries, origin));
       old?.dispose();
     } catch (error) {
       next?.dispose(); if (this.previous === next) this.previous = old; throw error;
@@ -278,7 +282,9 @@ export function readTextUnitModeSettings(modeKey: string | null): TextUnitModeSe
 export function updateTextUnitModeSettings(
   modeKey: string,
   patch: Partial<TextUnitModeSettings>,
+  origin: DomainActor = "user",
 ): Promise<void> {
+  origin = causalActor(origin);
   return observedWrite(afterLocalKVWrites(() => {
     const { values: merged, consumeLegacy } = modeSettingsWithLegacy(modeKey);
     for (const [id, value] of Object.entries(patch)) {
@@ -287,7 +293,7 @@ export function updateTextUnitModeSettings(
     }
     const entries = new Map<string, string | null>([[pluginSettingsKey(pluginIdOfModeKey(modeKey)), JSON.stringify(merged)]]);
     if (consumeLegacy) entries.set(LEGACY_BEHAVIOR_PREFS_KEY, null);
-    return setLocalKVBatch(entries);
+    return setLocalKVBatch(entries, origin);
   }));
 }
 

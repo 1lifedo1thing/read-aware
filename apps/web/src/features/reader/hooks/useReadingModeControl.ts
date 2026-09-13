@@ -1,23 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useAtomValue } from "jotai";
 import { useLocale } from "../../../i18n";
-import { textUnitModeSettingsAtom } from "../../../state/ui";
 import { readingRuntime } from "../../../domain/reading-runtime";
-import { afterLocalKVWrites } from "../../../platform/local-store";
+import { afterLocalKVWrites, onLocalKVCommit } from "../../../platform/local-store";
+import { actorFromEvent, causalActor, eventCause } from "../../../platform/domain-actor";
+import { pluginSettingsKey } from "../../plugins/lib/plugin-settings";
 import { readerModesAtom, setActiveReaderMode, releaseActiveReaderMode } from "../../plugins/state/plugin-store";
 import { resolvePluginText } from "../../plugins/lib/plugin-i18n";
 import { ReadingModeController } from "../lib/reading-mode-controller";
-import { readTextUnitModeState, readTextUnitModeSettings, ReadingModeConfigurationWrites, isTextUnitModeStateCompatible } from "../lib/text-unit-mode-state";
+import { readTextUnitModeState, readTextUnitModeSettings, ReadingModeConfigurationWrites, isTextUnitModeStateCompatible, textUnitModeStateKey } from "../lib/text-unit-mode-state";
 
 /** One mode owner for native controls and both external actors. */
 export function useReadingModeControl(bookId: string, supported: boolean) {
   const modes = useAtomValue(readerModesAtom);
-  const settings = useAtomValue(textUnitModeSettingsAtom);
   const locale = useLocale();
   const controller = useMemo(() => {
     const saved = readTextUnitModeState(bookId);
+    const session = readingRuntime.snapshot();
+    const origin = session.bookId === bookId && session.sessionId ? readingRuntime.openingActor(session.sessionId) : "system";
     const controller = new ReadingModeController(saved.active, saved.modeKey ? readTextUnitModeSettings(saved.modeKey).unitId ?? saved.unitId : saved.unitId,
-      35_000, saved.modeKey, key => readTextUnitModeSettings(key).unitId);
+      35_000, saved.modeKey, key => readTextUnitModeSettings(key).unitId, origin);
     controller.requireDurability();
     return controller;
   }, [bookId]);
@@ -39,7 +41,7 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
       return configurationWrites.write(requested.revision, bookId, {
         ...saved, active: requested.active, modeKey: key, unitId,
         resting: requested.active && key && unitId && isTextUnitModeStateCompatible(saved, key, unitId, saved.contentVersion) ? saved.resting : null,
-      }, controller.snapshot().units.some(unit => unit.id === unitId));
+      }, controller.snapshot().units.some(unit => unit.id === unitId), requested.origin);
     }));
   }, [bookId, controller, configurationWrites]);
   const retire = useCallback(() => {
@@ -47,7 +49,7 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
     if (controller.retire()) persistRequest();
   }, [controller, persistRequest]);
   useEffect(() => {
-    controller.environment(descriptors, supported);
+    controller.environment(descriptors, supported, controller.generation() === 0 ? controller.requested().origin : "system");
   }, [controller, descriptors, supported]);
   useEffect(() => {
     const publish = () => setActiveReaderMode(controller, controller.requested().modeKey);
@@ -56,14 +58,22 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
     return () => { off(); releaseActiveReaderMode(controller); };
   }, [controller]);
 
-  const previousPreference = useRef({ key: mode?.key, unitId: settings.unitId });
-  useEffect(() => {
-    // Selecting a provider already resolves its preference in the controller.
-    // An old preference must not override an explicit unit in that same intent.
-    const changed = previousPreference.current.key === mode?.key && previousPreference.current.unitId !== settings.unitId;
-    previousPreference.current = { key: mode?.key, unitId: settings.unitId };
-    if (changed) void controller.reconcilePreference(() => readTextUnitModeSettings(mode?.key ?? null).unitId);
-  }, [controller, mode, settings.unitId]);
+  useEffect(() => onLocalKVCommit(commit => {
+    const key = controller.requested().modeKey;
+    if (!key || commit.entries.some(entry => entry.key === textUnitModeStateKey(bookId))) return;
+    // Configuration already commits the book and provider together. Only a
+    // separate durable preference edit is a new intent; optimistic mirrors
+    // and failed-write rollback must never manufacture one.
+    const entry = commit.entries.find(entry => entry.key === pluginSettingsKey(key.slice(0, key.indexOf(":"))));
+    if (!entry) return;
+    let unitId: string | null = null;
+    try {
+      const value: unknown = entry.value ? JSON.parse(entry.value) : null;
+      if (value && typeof value === "object" && "unitId" in value && typeof value.unitId === "string") unitId = value.unitId;
+    } catch { /* Invalid stored values provide no unit preference. */ }
+    const origin = eventCause(commit) ? actorFromEvent(commit, commit.actor ?? "system") : causalActor("system");
+    void controller.reconcilePreference(() => unitId, origin);
+  }), [bookId, controller]);
   useEffect(() => {
     let persisted: ReturnType<ReadingModeController["requested"]> | undefined;
     const persist = () => {
@@ -87,8 +97,8 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
       release?.(); release = undefined;
       if (id) release = readingRuntime.bindMode(id, { snapshot: controller.snapshot, observe: controller.observe, generation: controller.generation,
         waitForPosition: (position, signal) => controller.waitForPosition(position, signal),
-        step: (direction, signal) => controller.step(direction, signal),
-        configure: (input, signal) => controller.configure(input, signal), retire });
+        step: (direction, signal, origin) => controller.step(direction, signal, origin),
+        configure: (input, signal, origin) => controller.configure(input, signal, origin), retire });
     });
     return () => { unobserve(); release?.(); retire(); void afterLocalKVWrites(() => configurationWrites.release()); };
   }, [bookId, controller, retire, configurationWrites]);

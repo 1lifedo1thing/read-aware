@@ -11,6 +11,8 @@ import { stepTextUnit, type TextUnitStepIndex } from "../lib/text-unit-stepper";
 import { waitForReadingPaint } from "../lib/reading-engine-adapter";
 import { resolveTextUnitPosition } from "../lib/text-unit-position";
 import { readingRuntime } from "../../../domain/reading-runtime";
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
+import { readingRenderContext } from "../lib/reading-render-context";
 import type { RegisteredReaderMode } from "../../plugins/lib/plugin-types";
 import {
   setVolumeKeyCapture,
@@ -44,13 +46,14 @@ export type TextUnitTarget = {
 export type TextUnitProgress = { ordinal: number; total: number };
 
 export type TextUnitNavigator = {
+  origin: DomainActor;
   status: "inactive" | "building" | "ready" | "empty" | "error";
   errorCode?: string;
   configurationRevision: number;
   current: TextUnitTarget | null;
   position: ReadingModePosition | null;
   waitForPosition(position: ReadingModePosition, signal: AbortSignal): Promise<ModeFeedback>;
-  stepNative(direction: -1 | 1, signal: AbortSignal): Promise<ModeStepResult>;
+  stepNative(direction: -1 | 1, signal: AbortSignal, origin?: DomainActor): Promise<ModeStepResult>;
   /** Where the wash rests within the loaded section, or null while it rests
    *  elsewhere (another section, mode off, unit-less section). */
   progress: TextUnitProgress | null;
@@ -64,8 +67,8 @@ export type TextUnitNavigator = {
   /** Whether the navigator has a resting unit to return to. */
   canReturn: boolean;
   /** Engine bridges — invoke from the reader's `load` / `relocate` handlers. */
-  handleSectionLoad: (doc: Document, index: number) => void;
-  handleContentVersion: (bookId: string, contentVersion: string) => void;
+  handleSectionLoad: (doc: Document, index: number, origin?: DomainActor) => void;
+  handleContentVersion: (bookId: string, contentVersion: string, origin?: DomainActor) => void;
   handleRelocate: (detail: FoliateRelocateDetail) => void;
   /** Invoke from the reader's `create-overlay` handler: the engine rebuilds a
    *  section's overlayer from scratch on re-layout (style injection, resize,
@@ -76,6 +79,7 @@ export type TextUnitNavigator = {
 
 type UseTextUnitNavigatorOptions = {
   configurationRevision?: number;
+  configurationOrigin?: DomainActor;
   onPersistence?: (revision: number, modeKey: string | null, unitId: string | null, write: () => Promise<void>, position: ReadingModePosition | null) => void;
   active: boolean;
   /** Temporarily unavailable because its plugin is disabled. The engine-side
@@ -122,6 +126,7 @@ const SCROLL_COMFORT_BOTTOM_MAX_PX = 240;
  */
 export function useTextUnitNavigator({
   configurationRevision = 0,
+  configurationOrigin = "system",
   onPersistence,
   active,
   suspended = false,
@@ -139,6 +144,7 @@ export function useTextUnitNavigator({
   const toastRef = useRef(toast);
   toastRef.current = toast;
   const [status, setStatus] = useState<TextUnitNavigator["status"]>("inactive");
+  const [feedbackOrigin, setFeedbackOrigin] = useState(() => causalActor(configurationOrigin));
   const [buildErrorCode, setBuildErrorCode] = useState<string>();
   const [preparedRevision, setPreparedRevision] = useState(-1);
   const configurationRef = useRef(configurationRevision);
@@ -152,7 +158,8 @@ export function useTextUnitNavigator({
 
   // Current + progress travel together: both describe where the wash rests
   // in the loaded section, so every "nowhere" transition clears the pair.
-  const clearUnit = useCallback(() => {
+  const clearUnit = useCallback((origin: DomainActor) => {
+    setFeedbackOrigin(causalActor(origin));
     setCurrent(null);
     setProgress(null);
     positionErrorRef.current = undefined;
@@ -171,7 +178,7 @@ export function useTextUnitNavigator({
   const layoutReadyRef = useRef(false);
   // Unit to land on once the relocate that follows a section load fires
   // (layout is settled there; at `load` time the overlayer doesn't exist yet).
-  const pendingAnchorRef = useRef<{ index: number; scroll: boolean } | null>(null);
+  const pendingAnchorRef = useRef<{ index: number; scroll: boolean; origin: DomainActor } | null>(null);
   // Where the navigator rests, by section + ordinal — remembered across
   // section unloads so flipping away and back restores the wash in place.
   // Persisted per book, so it also survives closing and reopening the book.
@@ -217,7 +224,7 @@ export function useTextUnitNavigator({
     layoutReadyRef.current = false;
     appliedCfiRef.current = null;
     pendingAnchorRef.current = null;
-    clearUnit();
+    clearUnit(configurationOrigin);
     // Do not restore or overwrite a saved position before the loader provides
     // the actual content identity (file hash or virtual-content version).
     setResting(null);
@@ -229,7 +236,7 @@ export function useTextUnitNavigator({
     positionWaiter.notify();
   }, [buildSession, positionWaiter]);
 
-  const persistState = useCallback(() => {
+  const persistState = useCallback((origin: DomainActor) => {
     const id = bookIdRef.current;
     const currentModeKey = modeKeyRef.current;
     // A disabled/unavailable plugin must not overwrite its retained state with
@@ -242,7 +249,7 @@ export function useTextUnitNavigator({
       unitId: unitIdRef.current,
       contentVersion: contentVersionRef.current,
     };
-    const write = () => writeTextUnitModeState(id, state);
+    const write = () => writeTextUnitModeState(id, state, origin);
     const position = state.resting?.cfiRange ? {
       modeKey: state.modeKey, unitId: state.unitId,
       location: { bookId: id, contentVersion: state.contentVersion, cfi: state.resting.cfiRange },
@@ -251,8 +258,9 @@ export function useTextUnitNavigator({
     else void write();
   }, []);
 
-  const handleContentVersion = useCallback((id: string, version: string) => {
+  const handleContentVersion = useCallback((id: string, version: string, origin: DomainActor = "system") => {
     if (id !== bookIdRef.current || !version) return;
+    origin = causalActor(origin);
     buildSession.invalidate();
     sectionRef.current = null;
     unitsRef.current = null;
@@ -262,13 +270,13 @@ export function useTextUnitNavigator({
     layoutReadyRef.current = false;
     pendingAnchorRef.current = null;
     contentVersionRef.current = version;
-    clearUnit();
+    clearUnit(origin);
     setStatus(activeRef.current ? "building" : "inactive");
     const saved = readTextUnitModeState(id);
     const key = modeKeyRef.current;
     setResting(persistedActiveRef.current && key && isTextUnitModeStateCompatible(saved, key, unitIdRef.current, version) ? saved.resting : null);
     // An exit while the file was loading could not yet persist its preference.
-    persistState();
+    persistState(origin);
   }, [buildSession, clearUnit, setResting, persistState]);
 
   const waitForPosition = useCallback((position: ReadingModePosition, signal: AbortSignal): Promise<ModeFeedback> =>
@@ -287,7 +295,7 @@ export function useTextUnitNavigator({
         position: { ...position, location: { ...position.location, cfi: appliedCfiRef.current } } };
     }, signal), [positionWaiter, viewRef]);
 
-  const restoredIndex = useCallback((units: Range[], doc: Document, sectionIndex: number): number => {
+  const restoredIndex = useCallback((units: Range[], doc: Document, sectionIndex: number, origin: DomainActor): number => {
     const resting = restingRef.current;
     const view = viewRef.current;
     if (!view || !resting || resting.sectionIndex !== sectionIndex) return -1;
@@ -295,7 +303,7 @@ export function useTextUnitNavigator({
     catch (error) {
       log.warn("discarding invalid reading mode position", error);
       setResting(null);
-      persistState();
+      persistState(origin);
       return anchorTextUnitIndex(units, visibleRangeRef.current);
     }
   }, [viewRef, setResting, persistState]);
@@ -347,11 +355,13 @@ export function useTextUnitNavigator({
 
   /** Rest on unit `index`: move the wash and (optionally) bring it into view. */
   const applyIndex = useCallback(
-    (index: number, { scroll = true }: { scroll?: boolean } = {}) => {
+    (index: number, { scroll = true, origin = "user" }: { scroll?: boolean; origin?: DomainActor } = {}) => {
       const view = viewRef.current;
       const section = sectionRef.current;
       const range = unitsRef.current?.[index];
       if (!view || !section || !range) return;
+      origin = causalActor(origin);
+      setFeedbackOrigin(origin);
       clearWash();
       currentIndexRef.current = index;
       let cfi: string | null = null;
@@ -361,7 +371,7 @@ export function useTextUnitNavigator({
         cfi = null;
       }
       setResting({ sectionIndex: section.index, ordinal: index, cfiRange: cfi });
-      persistState();
+      persistState(origin);
       if (cfi) {
         appliedCfiRef.current = cfi;
         applyNavigatorHighlight(view, cfi, veilColorRef.current);
@@ -371,7 +381,7 @@ export function useTextUnitNavigator({
       positionWaiter.notify();
       if (scroll && !rangeComfortablyVisible(range)) {
         try {
-          void view.renderer?.scrollToAnchor?.(range);
+          void view.renderer?.scrollToAnchor?.(range, false, readingRenderContext(origin));
         } catch {
           // Geometry races during section teardown — the wash still applied.
         }
@@ -382,7 +392,7 @@ export function useTextUnitNavigator({
 
   // The build lease covers both the Worker result and the caller's deferred
   // anchoring, including mode retirement and same-index document replacement.
-  const buildUnits = useCallback(async () => {
+  const buildUnits = useCallback(async (origin: DomainActor) => {
     const section = sectionRef.current;
     if (!section) return null;
     const segmenter = segmentTextRef.current;
@@ -391,7 +401,7 @@ export function useTextUnitNavigator({
     unitsRef.current = null;
     currentIndexRef.current = -1;
     clearWash();
-    clearUnit();
+    clearUnit(origin);
     setStatus("building");
     setPreparedRevision(revision);
     setBuildErrorCode(undefined);
@@ -399,6 +409,7 @@ export function useTextUnitNavigator({
     const isCurrent = () => Boolean(result?.isCurrent() && activeRef.current && sectionRef.current === section
       && unitIdRef.current === unit && segmentTextRef.current === segmenter && configurationRef.current === revision);
     if (!result || !isCurrent()) return null;
+    setFeedbackOrigin(origin);
     if (result.status === "failed") {
       const code = errorCode(result.error) ?? "reader/segmentation-failed";
       log.warn("reading mode segmentation failed", result.error);
@@ -415,7 +426,9 @@ export function useTextUnitNavigator({
     return { units: result.value, isCurrent };
   }, [buildSession, clearUnit, clearWash, positionWaiter]);
 
-  const stepNative = useCallback(async (direction: -1 | 1, signal: AbortSignal): Promise<ModeStepResult> => {
+  const stepNative = useCallback(async (direction: -1 | 1, signal: AbortSignal, origin: DomainActor = "user"): Promise<ModeStepResult> => {
+    origin = causalActor(origin);
+    const context = readingRenderContext(origin);
     const view = viewRef.current;
     const id = bookIdRef.current;
     const version = contentVersionRef.current;
@@ -463,7 +476,7 @@ export function useTextUnitNavigator({
       },
       navigate: async target => {
         check();
-        const resolved = await view.goTo(typeof target === "number" ? target : target.location.cfi);
+        const resolved = await view.goTo(typeof target === "number" ? target : target.location.cfi, context);
         check();
         if (!resolved) throw new AppError("reader/target-not-found", "Reader could not resolve the unit target");
         await waitForReadingPaint(view);
@@ -474,7 +487,7 @@ export function useTextUnitNavigator({
         check();
         const section = sectionRef.current!;
         const ordinal = resolveTextUnitPosition(view, target.location.cfi, section.doc, section.index, unitsRef.current!);
-        applyIndex(ordinal, { scroll: false });
+        applyIndex(ordinal, { scroll: false, origin });
         await waitForPosition(target, signal);
       },
     }, direction, signal);
@@ -492,7 +505,7 @@ export function useTextUnitNavigator({
     const id = bookIdRef.current;
     let work: Promise<unknown>;
     if (id && session.bookId === id && session.status === "ready") {
-      work = readingRuntime.stepMode(direction === 1 ? "next" : "previous", undefined, { bookId: id, sessionId: session.sessionId! });
+      work = readingRuntime.stepMode(direction === 1 ? "next" : "previous", undefined, { bookId: id, sessionId: session.sessionId! }, "user");
     } else {
       // Component stories have no application session, but retain the same native traversal.
       unmanagedStepRef.current?.abort(positionUnavailable());
@@ -507,7 +520,8 @@ export function useTextUnitNavigator({
   }, [stepNative]);
 
   const handleSectionLoad = useCallback(
-    async (doc: Document, index: number) => {
+    async (doc: Document, index: number, origin: DomainActor = "system") => {
+      origin = causalActor(origin);
       // The previous section's overlay died with it — nothing to remove.
       appliedCfiRef.current = null;
       sectionRef.current = { doc, index };
@@ -517,16 +531,16 @@ export function useTextUnitNavigator({
       visibleRangeRef.current = null;
       layoutReadyRef.current = false;
       pendingAnchorRef.current = null;
-      clearUnit();
+      clearUnit(origin);
       if (!activeRef.current) {
         buildSession.invalidate();
         return;
       }
-      const result = await buildUnits();
+      const result = await buildUnits(origin);
       if (!result?.isCurrent() || sectionRef.current !== section) return;
       const { units } = result;
       if (!units.length) {
-        clearUnit();
+        clearUnit(origin);
         return;
       }
       // Landing position is only settled at the relocate that follows the
@@ -537,16 +551,16 @@ export function useTextUnitNavigator({
       const resting = restingRef.current;
       pendingAnchorRef.current =
         resting?.sectionIndex === index
-              ? { index: restoredIndex(units, doc, index), scroll: false }
+              ? { index: restoredIndex(units, doc, index, origin), scroll: false, origin }
               : !resting
-                ? { index: anchorTextUnitIndex(units, visibleRangeRef.current), scroll: false }
+                ? { index: anchorTextUnitIndex(units, visibleRangeRef.current), scroll: false, origin }
                 : null;
-      if (pendingAnchorRef.current == null) clearUnit();
+      if (pendingAnchorRef.current == null) clearUnit(origin);
       // Worker segmentation can finish after relocate, not only before it.
       const pending = pendingAnchorRef.current;
       if (layoutReadyRef.current && pending) {
         pendingAnchorRef.current = null;
-        applyIndex(pending.index, { scroll: pending.scroll });
+        applyIndex(pending.index, { scroll: pending.scroll, origin: pending.origin });
       }
     },
     [applyIndex, buildSession, buildUnits, clearUnit, restoredIndex],
@@ -566,7 +580,7 @@ export function useTextUnitNavigator({
       const pendingAnchor = pendingAnchorRef.current;
       if (pendingAnchor != null) {
         pendingAnchorRef.current = null;
-        applyIndex(pendingAnchor.index, { scroll: pendingAnchor.scroll });
+        applyIndex(pendingAnchor.index, { scroll: pendingAnchor.scroll, origin: pendingAnchor.origin });
       }
       positionWaiter.notify();
     },
@@ -583,6 +597,8 @@ export function useTextUnitNavigator({
   useEffect(() => {
     buildSession.invalidate();
     setBuildErrorCode(undefined);
+    const origin = causalActor(configurationOrigin);
+    setFeedbackOrigin(origin);
     const wasPersistedActive = persistedActiveRef.current;
     activeRef.current = active;
     persistedActiveRef.current = active || suspended;
@@ -608,10 +624,10 @@ export function useTextUnitNavigator({
           setResting(persisted.resting);
         }
       }
-      persistState();
+      persistState(origin);
       if (!sectionRef.current) { setStatus("building"); return; }
       void (async () => {
-        const result = await buildUnits();
+        const result = await buildUnits(origin);
         if (!result?.isCurrent()) return;
         const { units } = result;
         const section = sectionRef.current;
@@ -619,10 +635,10 @@ export function useTextUnitNavigator({
         const resting = restingRef.current;
         const index =
           resting?.sectionIndex === section.index
-            ? restoredIndex(units, section.doc, section.index)
+            ? restoredIndex(units, section.doc, section.index, origin)
             : anchorTextUnitIndex(units, reanchor ?? visibleRangeRef.current);
-        if (index >= 0) applyIndex(index, { scroll: false });
-        else clearUnit();
+        if (index >= 0) applyIndex(index, { scroll: false, origin });
+        else clearUnit(origin);
       })();
       return;
     }
@@ -632,10 +648,10 @@ export function useTextUnitNavigator({
     unitsRef.current = null;
     currentIndexRef.current = -1;
     if (!suspended) setResting(null);
-    persistState();
+    persistState(origin);
     pendingAnchorRef.current = null;
-    clearUnit();
-  }, [active, suspended, configurationRevision, applyIndex, buildSession, buildUnits, clearWash, persistState, setResting, restoredIndex]);
+    clearUnit(origin);
+  }, [active, suspended, configurationRevision, configurationOrigin, applyIndex, buildSession, buildUnits, clearWash, persistState, setResting, restoredIndex]);
 
   // Mode or unit switch: re-segment the loaded section under the new plugin
   // policy. Contribution identity matters even when two plugins reuse the same
@@ -657,6 +673,7 @@ export function useTextUnitNavigator({
     // Plugin unavailability must not reinterpret or overwrite retained state.
     // Activation above adopts the new unit before rebuilding the index.
     if (suspended && !active) return;
+    const origin = causalActor(configurationOrigin);
     buildSession.invalidate();
     modeKeyRef.current = modeKey;
     unitIdRef.current = unitId;
@@ -667,19 +684,19 @@ export function useTextUnitNavigator({
     unitsRef.current = null;
     currentIndexRef.current = -1;
     setResting(null);
-    persistState();
+    persistState(origin);
     if (!activeRef.current || !sectionRef.current) {
-      if (activeRef.current) clearUnit();
+      if (activeRef.current) clearUnit(origin);
       return;
     }
     void (async () => {
-      const result = await buildUnits();
+      const result = await buildUnits(origin);
       if (!result?.isCurrent()) return;
       const index = anchorTextUnitIndex(result.units, previousRange ?? visibleRangeRef.current);
-      if (index >= 0) applyIndex(index, { scroll: false });
-      else clearUnit();
+      if (index >= 0) applyIndex(index, { scroll: false, origin });
+      else clearUnit(origin);
     })();
-  }, [active, suspended, modeKey, unitId, segmentText, applyIndex, buildSession, buildUnits, persistState, setResting]);
+  }, [active, suspended, modeKey, unitId, segmentText, configurationOrigin, applyIndex, buildSession, buildUnits, persistState, setResting]);
 
   // Android: while the mode is on, the volume keys step units (volume
   // down = forward). The shell captures them only for the mode's duration and
@@ -732,7 +749,7 @@ export function useTextUnitNavigator({
     if (!view || !resting || !id || !version) return;
     const session = readingRuntime.snapshot();
     if (session.bookId === id && session.status === "ready" && resting.cfiRange) {
-      void readingRuntime.returnToMode(undefined, { bookId: id, sessionId: session.sessionId! }).catch(error => {
+      void readingRuntime.returnToMode(undefined, { bookId: id, sessionId: session.sessionId! }, "user").catch(error => {
         log.warn("return to reading mode position failed", error);
         toastRef.current({ description: describeError(error).body, variant: "destructive" });
       });
@@ -741,7 +758,8 @@ export function useTextUnitNavigator({
     const section = sectionRef.current;
     const units = unitsRef.current;
     if (section && units?.length && resting.sectionIndex === section.index) {
-      applyIndex(restoredIndex(units, section.doc, section.index));
+      const origin = causalActor("user");
+      applyIndex(restoredIndex(units, section.doc, section.index, origin), { origin });
       return;
     }
     if (resting.cfiRange) {
@@ -763,6 +781,7 @@ export function useTextUnitNavigator({
   }, []);
 
   return {
+    origin: feedbackOrigin,
     status,
     errorCode: buildErrorCode,
     configurationRevision: preparedRevision,

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { AppError } from "@read-aware/core";
 import { ReadingModeController, type ModeFeedback } from "./reading-mode-controller";
+import { eventCause, reactionActor, stampEventCause } from "../../../platform/domain-actor";
 
 const descriptor = { key: "sentences:mode", label: "Sentences", defaultUnitId: "sentence",
   units: [{ id: "sentence", label: "Sentence" }, { id: "paragraph", label: "Paragraph" }] };
@@ -12,6 +13,20 @@ function fixture(deadline = 1000) {
   feedback({ status: "inactive", progress: null, cfiRange: null });
   return { controller, feedback };
 }
+
+test("only the latest durable preference can change mode after configuration writes settle", async () => {
+  const { controller } = fixture(); controller.requireDurability();
+  const old = reactionActor("plugin:settings", "old", eventCause(stampEventCause({}))!);
+  const latest = reactionActor("plugin:settings", "latest", eventCause(stampEventCause({}))!);
+  const write = Promise.withResolvers<void>();
+  controller.trackConfiguration(controller.generation(), write.promise);
+  const first = controller.reconcilePreference(() => "paragraph", old);
+  const second = controller.reconcilePreference(() => "paragraph", latest);
+  expect(controller.requested().unitId).toBe("sentence");
+  write.resolve(); await Promise.all([first, second]);
+  expect(controller.requested().unitId).toBe("paragraph");
+  expect(controller.requested().origin).toBe(latest);
+});
 
 test("index feedback does not acknowledge configuration before its exact writes commit", async () => {
   const { controller, feedback } = fixture(); controller.requireDurability();

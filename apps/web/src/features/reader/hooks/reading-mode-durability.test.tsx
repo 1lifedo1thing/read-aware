@@ -5,8 +5,9 @@ import { createRoot, type Root } from "react-dom/client";
 import { useReadingModeControl } from "./useReadingModeControl";
 import { registerReaderModeContribution } from "../../plugins/state/plugin-store";
 import { sentenceReaderCopy, sentenceReaderUnits } from "../../../../../../plugins/sentence-reader/src/copy";
-import { flushLocalKV, localKV } from "../../../platform/local-store";
+import { flushLocalKV, localKV, onLocalKVCommit, type KVCommit } from "../../../platform/local-store";
 import { readTextUnitModeSettings } from "../lib/text-unit-mode-state";
+import { actorCause, eventCause, reactionActor, stampEventCause } from "../../../platform/domain-actor";
 
 const bookId = "mode-durability-test";
 const bookKey = `read-aware-navigator-state:${bookId}`;
@@ -79,20 +80,30 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
   });
 
   test("real mode hook waits for an atomic book/preference receipt after index feedback", async () => {
+    const actor = reactionActor("plugin:mode-client", "on-change", eventCause(stampEventCause({}))!);
+    const commits: KVCommit[] = [];
+    const stop = onLocalKVCommit(commit => { if (commit.entries.some(entry => entry.key === bookKey)) commits.push(commit); });
+    try {
     let completed = false;
     let result!: Promise<unknown>;
     await act(async () => {
-      result = state.controller.configure({ active: true, unitId: "paragraph" }).then(value => { completed = true; return value; });
+      result = state.controller.configure({ active: true, unitId: "paragraph" }, undefined, actor).then(value => { completed = true; return value; });
       await tick();
     });
     expect(pending).toHaveLength(1);
     expect(pending[0].entries.map(([key]) => key).sort()).toEqual([bookKey, settingsKey].sort());
     expect(state.snapshot.status).toBe("ready");
+    expect(state.request.origin).toBe(actor);
+    expect(eventCause(state.snapshot)).toBe(actorCause(actor));
     expect(completed).toBe(false);
     expect(JSON.parse(disk.get(bookKey)!).active).toBe(false);
     await act(async () => { pending.shift()!.commit(); await result; });
     expect(JSON.parse(disk.get(bookKey)!)).toMatchObject({ active: true, unitId: "paragraph" });
     expect(JSON.parse(disk.get(settingsKey)!)).toEqual({ unitId: "paragraph", tapToAdvance: false });
+    expect(eventCause(commits.at(-1)!)).toBe(actorCause(actor));
+    expect(commits.at(-1)?.actor).toBe("plugin:mode-client");
+    expect(disk.get(bookKey)).not.toContain("on-change");
+    } finally { stop(); }
   });
 
   test("a failed optimistic preference is not a new intent; actor gets original error and old mode", async () => {
@@ -115,6 +126,30 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     expect(JSON.parse(disk.get(bookKey)!).active).toBe(false);
     expect(JSON.parse(disk.get(settingsKey)!).unitId).toBe("sentence");
     await act(async () => { pending.shift()!.commit(); await tick(); });
+  });
+
+  test("external unit edits change the mode only after commit and retain the external cause", async () => {
+    const actor = reactionActor("plugin:preferences", "set-unit", eventCause(stampEventCause({}))!);
+    let request!: Promise<unknown>;
+    await act(async () => {
+      request = localKV.setItemAsync(settingsKey, JSON.stringify({ unitId: "paragraph" }), actor).catch(error => error);
+      await tick();
+    });
+    expect(state.request.unitId).toBe("sentence");
+    await act(async () => {
+      pending.shift()!.reject({ code: "db/locked", message: "external preference failed" });
+      expect(await request).toMatchObject({ code: "db/locked" }); await tick();
+    });
+    expect(state.request.unitId).toBe("sentence");
+    hold = false;
+    await act(async () => {
+      await localKV.setItemAsync(settingsKey, JSON.stringify({ unitId: "paragraph" }), actor);
+      await tick(); await flushLocalKV();
+    });
+    expect(state.request.unitId).toBe("paragraph");
+    expect(actorCause(state.request.origin)).toBe(actorCause(actor));
+    expect(eventCause(state.snapshot)).toBe(actorCause(actor));
+    expect(JSON.parse(disk.get(bookKey)!)).toMatchObject({ unitId: "paragraph" });
   });
 
   test("legacy consumption shares the actor receipt and survives failed source deletion", async () => {
@@ -209,6 +244,6 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
     });
     const output = await new Response(child.stderr).text();
     expect(await child.exited, output).toBe(0);
-    expect(output).toContain("6 pass");
+    expect(output).toContain("7 pass");
   }, 30_000);
 }

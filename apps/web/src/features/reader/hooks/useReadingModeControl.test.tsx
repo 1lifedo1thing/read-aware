@@ -7,6 +7,7 @@ import { registerReaderModeContribution } from "../../plugins/state/plugin-store
 import { readTextUnitModeState, writeTextUnitModeState, readTextUnitModeSettings, updateTextUnitModeSettings } from "../lib/text-unit-mode-state";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { sentenceReaderCopy, sentenceReaderUnits } from "../../../../../../plugins/sentence-reader/src/copy";
+import { actorCause, eventCause, reactionActor, stampEventCause } from "../../../platform/domain-actor";
 
 test("provider replacement and external preferences converge without replaying an obsolete render", async () => {
   const dom = new JSDOM("<!doctype html><div id='root'></div>", { url: "http://localhost" });
@@ -65,8 +66,11 @@ test("provider replacement and external preferences converge without replaying a
     });
     await act(async () => { state.setUnit("paragraph"); });
     expect(readTextUnitModeSettings("mode-owner-b:reader").unitId).toBe("paragraph");
-    await act(async () => { updateTextUnitModeSettings("mode-owner-b:reader", { unitId: "sentence" }); });
+    const preferenceActor = reactionActor("plugin:preference-client", "update-unit", eventCause(stampEventCause({}))!);
+    await act(async () => { await updateTextUnitModeSettings("mode-owner-b:reader", { unitId: "sentence" }, preferenceActor); });
     expect(state.request.unitId).toBe("sentence");
+    expect(actorCause(state.request.origin)).toBe(actorCause(preferenceActor));
+    expect(eventCause(readingRuntime.snapshot())).toBe(actorCause(preferenceActor));
     const abort = new AbortController();
     let work!: Promise<unknown>;
     await act(async () => { work = state.controller.configure({ active: true, unitId: "paragraph" }, abort.signal).catch(error => error); });

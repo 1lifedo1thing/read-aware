@@ -6,6 +6,8 @@ import { ToastProvider } from "@read-aware/ui";
 import { useTextUnitNavigator, type TextUnitNavigator } from "./useTextUnitNavigator";
 import type { FoliateRelocateDetail, FoliateView } from "../lib/foliate-engine";
 import { readTextUnitModeState, writeTextUnitModeState } from "../lib/text-unit-mode-state";
+import { actorCause, actorOrigin, eventCause, reactionActor, stampEventCause } from "../../../platform/domain-actor";
+import { onLocalKVCommit, type KVCommit } from "../../../platform/local-store";
 
 test("navigator handles both event orders, same-index replacements, provider failure and retirement", async () => {
   const dom = new JSDOM("<!doctype html><div id='root'></div>", { url: "http://localhost" });
@@ -18,6 +20,10 @@ test("navigator handles both event orders, same-index replacements, provider fai
   const saved = new Map(Object.keys(globals).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
   const root = createRoot(dom.window.document.getElementById("root")!);
+  const actor = reactionActor("plugin:mode-test", "select-mode", eventCause(stampEventCause({}))!);
+  const navigationActor = reactionActor("plugin:mode-test", "navigate-mode", eventCause(stampEventCause({}))!);
+  const commits: KVCommit[] = [];
+  const stopCommits = onLocalKVCommit(commit => { if (commit.entries.some(entry => entry.key === "read-aware-navigator-state:unit-build-test")) commits.push(commit); });
   const painted: string[] = [];
   let crosses = 0;
   const pending: { text: string; resolve(value: { start: number; end: number }[]): void; reject(error: unknown): void }[] = [];
@@ -35,6 +41,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
   } as unknown as FoliateView;
   const options: Parameters<typeof useTextUnitNavigator>[0] = {
     active: true, bookId: "unit-build-test", modeKey: "test-mode:reader", unitId: "sentence", segmentText: segmenter,
+    configurationOrigin: actor,
     viewRef: { current: view }, readerRootRef: { current: null }, veilColor: "white",
   };
   let state!: TextUnitNavigator;
@@ -55,17 +62,20 @@ test("navigator handles both event orders, same-index replacements, provider fai
     await act(async () => { render(); });
     await act(async () => { state.handleContentVersion("unit-build-test", "v1"); });
     const first = doc("First.");
-    await act(async () => { state.handleSectionLoad(first, 0); relocate(first); });
+    await act(async () => { state.handleSectionLoad(first, 0, navigationActor); relocate(first); });
     expect(state.status).toBe("building");
     await act(async () => { finish(0); });
     expect(state.current?.text).toBe("First.");
+    expect(state.origin).toBe(navigationActor);
+    expect(eventCause(commits.at(-1)!)).toBe(actorCause(navigationActor));
 
     const second = doc("Second.");
-    await act(async () => { state.handleSectionLoad(second, 0); });
+    await act(async () => { state.handleSectionLoad(second, 0, navigationActor); });
     await act(async () => { finish(1); });
     expect(state.current).toBeNull();
     await act(async () => { relocate(second); });
     expect(state.current?.text).toBe("Second.");
+    expect(state.origin).toBe(navigationActor);
 
     const obsolete = doc("Obsolete.");
     const replacement = doc("Replacement.");
@@ -82,6 +92,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
     await act(async () => { pending[4]!.reject(new Error("provider unavailable")); });
     expect(state.status).toBe("error");
     expect(state.errorCode).toBe("reader/segmentation-failed");
+    expect(state.origin).toBe(actor);
     expect(state.current).toBeNull();
     await act(async () => { state.next(); });
     expect(crosses).toBe(0);
@@ -99,6 +110,15 @@ test("navigator handles both event orders, same-index replacements, provider fai
     await act(async () => { finish(6); finish(7); });
     await act(async () => { state.next(); });
     expect(state.current?.text).toBe("Second unit.");
+    expect(actorOrigin(state.origin)).toBe("user");
+    expect(actorCause(state.origin)?.root).not.toBe(actorCause(actor)?.root);
+    await act(async () => { await state.stepNative(-1, new AbortController().signal, actor); });
+    expect(state.current?.text).toBe("First unit.");
+    expect(state.origin).toBe(actor);
+    expect(eventCause(commits.at(-1)!)).toBe(actorCause(actor));
+    await act(async () => { state.next(); });
+    expect(state.current?.text).toBe("Second unit.");
+    expect(actorOrigin(state.origin)).toBe("user");
     await act(async () => { render(false, "paragraph", true); });
     expect(state.current).toBeNull();
     expect(state.canReturn).toBe(true);
@@ -150,6 +170,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
     expect(state.position).toBeNull();
     expect(readTextUnitModeState("pending-version-test").active).toBe(false);
   } finally {
+    stopCommits();
     await act(async () => { root.unmount(); });
     dom.window.close();
     for (const [key, descriptor] of saved) {

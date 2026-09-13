@@ -1,9 +1,10 @@
 import { AppError, errorCode, type ReadingModeConfiguration, type ReadingModeSnapshot, type ReadingModePosition, type ReadingModeStepOutcome, type ReadingModeDescriptor } from "@read-aware/core";
 import { ReadingModeWrites } from "./reading-mode-writes";
 import { ReadingModePositionWrites } from "./reading-mode-position-writes";
+import { causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 
 export type ModeDescriptor = ReadingModeDescriptor & { implementation?: object };
-export type ModeRequest = { revision: number; active: boolean; unitId: string | null; modeKey: string | null };
+export type ModeRequest = { revision: number; active: boolean; unitId: string | null; modeKey: string | null; origin: DomainActor };
 export type ModeFeedback = { status: "inactive" | "building" | "ready" | "empty" | "error"; errorCode?: string;
   progress: { ordinal: number; total: number } | null; cfiRange: string | null; position?: ReadingModePosition | null };
 export type ModeStepResult = { outcome: ReadingModeStepOutcome; feedback: ModeFeedback };
@@ -16,7 +17,10 @@ export class ReadingModeController {
   private supported = true;
   private request: ModeRequest;
   private result: ReadingModeSnapshot;
-  private listeners = new Set<() => void>();
+  private listeners = new Set<(origin?: DomainActor) => void>();
+  private resultOrigin: DomainActor;
+  private publication = 0;
+  private preferenceRevision = 0;
   private pending: Pending | undefined;
   private confirmedRevision = -1;
   private readonly writes = new ReadingModeWrites((revision, error) => this.persistenceFailed(revision, error));
@@ -26,20 +30,21 @@ export class ReadingModeController {
   private persistenceTracked = false;
   private settlingRevision: number | undefined;
   private positionWaiter: ((position: ReadingModePosition, signal: AbortSignal) => Promise<ModeFeedback>) | undefined;
-  private stepper: ((direction: -1 | 1, signal: AbortSignal) => Promise<ModeStepResult>) | undefined;
+  private stepper: ((direction: -1 | 1, signal: AbortSignal, origin?: DomainActor) => Promise<ModeStepResult>) | undefined;
 
   constructor(active = false, unitId: string | null = null, private readonly deadlineMs = 35_000,
-    modeKey: string | null = null, private readonly preferredUnit: (key: string) => string | null = () => null) {
-    this.request = { revision: 0, active, unitId, modeKey };
-    this.result = { status: "unavailable", unavailableReason: "no-provider", requestedActive: active,
-      modeKey, label: null, availableModes: [], unitId, units: [], progress: null, cfiRange: null, position: null };
+    modeKey: string | null = null, private readonly preferredUnit: (key: string) => string | null = () => null, origin: DomainActor = "system") {
+    this.resultOrigin = causalActor(origin);
+    this.request = { revision: 0, active, unitId, modeKey, origin: this.resultOrigin };
+    this.result = stampEventCause({ status: "unavailable", unavailableReason: "no-provider", requestedActive: active,
+      modeKey, label: null, availableModes: [], unitId, units: [], progress: null, cfiRange: null, position: null }, this.resultOrigin);
   }
 
   requested = (): ModeRequest => this.request;
   generation = (): number => this.request.revision;
   configurationConfirmed = (revision: number): boolean => this.confirmedRevision === revision;
   snapshot = (): ReadingModeSnapshot => this.result;
-  observe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
+  observe = (listener: (origin?: DomainActor) => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
 
   requireDurability(): void { this.persistenceTracked = true; }
   trackPersistence = (revision: number, write: Promise<void>): void => { this.writes.track(revision, write); };
@@ -62,14 +67,15 @@ export class ReadingModeController {
     if (this.confirmedRevision !== revision) this.trackPersistence(revision, receipt);
   };
 
-  async reconcilePreference(readUnit: () => string | null): Promise<void> {
+  async reconcilePreference(readUnit: () => string | null, origin: DomainActor = "system"): Promise<void> {
     const revision = this.request.revision;
+    const preference = ++this.preferenceRevision;
     try { await this.writes.wait(revision); }
     catch { return; } // The write owner reports failure; rollback is not a new user intent.
-    if (revision !== this.request.revision) return;
+    if (revision !== this.request.revision || preference !== this.preferenceRevision) return;
     const unitId = readUnit();
     if (unitId && this.descriptor?.units.some(unit => unit.id === unitId) && this.request.unitId !== unitId) {
-      this.choose(this.request.active, unitId);
+      this.choose(this.request.active, unitId, origin);
     }
   }
 
@@ -85,13 +91,13 @@ export class ReadingModeController {
     return () => { if (this.stepper === stepper) { this.stepper = undefined; this.emit(); } };
   }
 
-  async step(direction: -1 | 1, signal: AbortSignal): Promise<ReadingModeStepOutcome> {
+  async step(direction: -1 | 1, signal: AbortSignal, origin: DomainActor = "system"): Promise<ReadingModeStepOutcome> {
     if (signal.aborted) throw signal.reason;
     const stepper = this.stepper;
     if (!stepper || !this.request.active) throw new AppError("reader/unavailable", "Reading mode stepper is not attached");
     const revision = this.request.revision;
     const retry = this.positionWrites.retryable();
-    const result = await stepper(direction, signal);
+    const result = await stepper(direction, signal, causalActor(origin));
     const current = () => stepper === this.stepper && revision === this.request.revision;
     await this.waitForFeedback(result.feedback, signal, current);
     if (this.persistenceTracked) await this.positionWrites.wait(revision, result.feedback.position ?? null, signal, retry);
@@ -141,7 +147,7 @@ export class ReadingModeController {
     });
   }
 
-  environment(descriptors: ModeDescriptor | ModeDescriptor[] | null, supported: boolean): void {
+  environment(descriptors: ModeDescriptor | ModeDescriptor[] | null, supported: boolean, origin: DomainActor = "system"): void {
     const modes = descriptors === null ? [] : Array.isArray(descriptors) ? descriptors : [descriptors];
     const oldDescriptor = this.descriptor;
     if (JSON.stringify(this.modes) === JSON.stringify(modes) && this.supported === supported
@@ -152,7 +158,7 @@ export class ReadingModeController {
     // Registering an unrelated provider is discovery, not a new reading intent.
     if (this.request.modeKey && JSON.stringify(oldDescriptor) === JSON.stringify(this.descriptor)
       && oldDescriptor?.implementation === this.descriptor?.implementation && wasSupported === supported) {
-      this.result = { ...this.result, availableModes: this.availableModes() }; this.emit(); return;
+      this.result = { ...this.result, availableModes: this.availableModes() }; this.emit(origin); return;
     }
     const before = this.pending?.before ?? this.rollback ?? this.request;
     this.supersede();
@@ -162,18 +168,18 @@ export class ReadingModeController {
     const unitId = preferred && descriptor?.units.some(unit => unit.id === preferred) ? preferred
       : descriptor?.units.some(unit => unit.id === before.unitId)
       ? before.unitId : descriptor ? this.defaultUnit(descriptor) : before.unitId;
-    this.change(before.active, unitId, modeKey);
+    this.change(before.active, unitId, modeKey, undefined, origin);
   }
 
   /** Native UI and changes to the mode's declared settings supersede in-flight actor commands. */
-  choose(active: boolean, unitId = this.request.unitId): void {
+  choose(active: boolean, unitId = this.request.unitId, origin: DomainActor = "user"): void {
     this.validate({ active, ...(unitId && this.descriptor ? { unitId } : {}) });
     const before = this.pending?.before ?? this.rollback ?? this.request;
     this.supersede();
-    this.change(active, unitId, this.request.modeKey, before);
+    this.change(active, unitId, this.request.modeKey, before, origin);
   }
 
-  async configure(input: ReadingModeConfiguration, signal?: AbortSignal): Promise<ReadingModeSnapshot> {
+  async configure(input: ReadingModeConfiguration, signal?: AbortSignal, origin: DomainActor = "system"): Promise<ReadingModeSnapshot> {
     if (signal?.aborted) throw signal.reason;
     this.validate(input);
     const modeKey = input.selectModeKey ?? this.request.modeKey;
@@ -214,17 +220,18 @@ export class ReadingModeController {
       signal?.addEventListener("abort", abort, { once: true });
       this.pending = { revision, before, resolve, reject, cleanup: () => { clearTimeout(timer); signal?.removeEventListener("abort", abort); } };
     });
-    this.change(input.active, unitId, modeKey, before);
+    this.change(input.active, unitId, modeKey, before, origin);
     return work;
   }
 
-  feedback(revision: number, modeKey: string | null, unitId: string | null, feedback: ModeFeedback): void {
+  feedback(revision: number, modeKey: string | null, unitId: string | null, feedback: ModeFeedback, origin: DomainActor = this.request.origin): void {
     if (revision !== this.request.revision || modeKey !== this.descriptor?.key || unitId !== this.request.unitId) return;
     if (!this.supported || !this.descriptor) return;
     if (this.request.active && feedback.status === "inactive" || !this.request.active && feedback.status !== "inactive") return;
     const status = feedback.status === "building" ? "preparing" : feedback.status;
     this.result = { ...this.result, status, errorCode: feedback.errorCode,
       progress: feedback.progress, cfiRange: feedback.cfiRange, position: feedback.position ?? null };
+    this.resultOrigin = causalActor(origin);
     if (["inactive", "ready", "empty", "error"].includes(status)) {
       this.finish(revision);
     }
@@ -274,6 +281,7 @@ export class ReadingModeController {
 
   private finish(revision: number): void {
     if (this.settlingRevision === revision) return;
+    const origin = this.resultOrigin;
     const settle = (failure?: { error: unknown }) => {
       if (this.settlingRevision === revision) this.settlingRevision = undefined;
       if (this.request.revision !== revision) return;
@@ -288,7 +296,7 @@ export class ReadingModeController {
       if (failure) pending?.reject(failure.error);
       else if (this.result.status === "error") pending?.reject(new AppError(this.result.errorCode ?? "reader/segmentation-failed", "Reading mode failed"));
       else pending?.resolve(structuredClone(this.result));
-      if (failure) this.emit();
+      if (failure) this.emit(origin);
     };
     if (!this.persistenceTracked) { settle(); return; }
     this.settlingRevision = revision;
@@ -304,8 +312,9 @@ export class ReadingModeController {
     return this.modes.map(({ key, label, units, defaultUnitId }) => ({ key, label, units: units.map(unit => ({ ...unit })), defaultUnitId }));
   }
 
-  private change(active: boolean, unitId: string | null, modeKey = this.request.modeKey, rollback?: ModeRequest): void {
-    this.request = { revision: this.request.revision + 1, active, unitId, modeKey };
+  private change(active: boolean, unitId: string | null, modeKey = this.request.modeKey, rollback?: ModeRequest, origin: DomainActor = this.request.origin): void {
+    this.resultOrigin = causalActor(origin);
+    this.request = { revision: this.request.revision + 1, active, unitId, modeKey, origin: this.resultOrigin };
     this.rollback = rollback;
     this.configurationWrite = Promise.resolve();
     this.writes.start(this.request.revision);
@@ -320,5 +329,13 @@ export class ReadingModeController {
     this.emit();
   }
 
-  private emit(): void { for (const listener of [...this.listeners]) listener(); }
+  private emit(origin: DomainActor = this.resultOrigin): void {
+    this.resultOrigin = causalActor(origin);
+    stampEventCause(this.result, this.resultOrigin);
+    const publication = ++this.publication;
+    for (const listener of [...this.listeners]) {
+      if (this.publication !== publication) break;
+      listener(this.resultOrigin);
+    }
+  }
 }

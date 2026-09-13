@@ -23,10 +23,10 @@ export type ReadingControlsAdapter = {
 export type ReadingModeAdapter = {
   generation(): number;
   snapshot(): ReadingModeSnapshot;
-  observe(listener: () => void): () => void;
-  configure(input: ReadingModeConfiguration, signal?: AbortSignal): Promise<ReadingModeSnapshot>;
+  observe(listener: (origin?: DomainActor) => void): () => void;
+  configure(input: ReadingModeConfiguration, signal?: AbortSignal, origin?: DomainActor): Promise<ReadingModeSnapshot>;
   waitForPosition(position: NonNullable<ReadingModeSnapshot["position"]>, signal: AbortSignal): Promise<void>;
-  step(direction: -1 | 1, signal: AbortSignal): Promise<ReadingModeStepOutcome>;
+  step(direction: -1 | 1, signal: AbortSignal, origin?: DomainActor): Promise<ReadingModeStepOutcome>;
   retire(): void;
 };
 export const unavailableMode = (): ReadingModeSnapshot => ({ status: "unavailable", unavailableReason: "no-session",
@@ -307,10 +307,10 @@ export class ReadingSessionController {
     this.detachMode();
     const binding = { id, adapter, dispose: () => {} };
     this.modeAdapter = binding;
-    binding.dispose = adapter.observe(() => {
-      if (this.modeAdapter === binding && this.session?.id === id) this.publish({ mode: adapter.snapshot() });
+    binding.dispose = adapter.observe(origin => {
+      if (this.modeAdapter === binding && this.session?.id === id) this.publish({ mode: adapter.snapshot() }, { origin: origin ?? "system", reason: "mode" });
     });
-    this.publish({ mode: adapter.snapshot() });
+    this.publish({ mode: adapter.snapshot() }, { origin: this.session.origin, reason: "mode" });
     return () => {
       if (this.modeAdapter !== binding) return;
       this.detachMode();
@@ -323,10 +323,12 @@ export class ReadingSessionController {
     this.checkGuard(guard);
     const binding = this.modeAdapter;
     if (!binding || this.session?.id !== binding.id || this.state.status !== "ready") throw new AppError("reader/unavailable", "Reading mode is not attached to a ready reader");
-    const mode = await binding.adapter.configure(input, signal);
+    origin = causalActor(origin);
+    const before = this.state.revision;
+    const mode = await binding.adapter.configure(input, signal, origin);
     signal?.throwIfAborted(); this.checkGuard(guard);
     if (this.modeAdapter !== binding) throw new AppError("reader/superseded", "Reading mode session was replaced");
-    this.publishCommand({ origin, reason: "mode" });
+    this.publishCommand({ origin, reason: "mode" }, before);
     return { status: "completed", sessionId: binding.id, mode: structuredClone(mode) };
   }
 
@@ -343,6 +345,7 @@ export class ReadingSessionController {
     const binding = this.modeAdapter;
     const bookId = this.session?.bookId;
     if (!binding || !bookId || !this.state.mode.requestedActive || this.state.status !== "ready") throw new AppError("reader/unavailable", "Reading mode is not active in a ready reader");
+    origin = causalActor(origin);
     const generation = binding.adapter.generation();
     const abort = new AbortController();
     const cancel = () => abort.abort(signal?.reason);
@@ -353,7 +356,7 @@ export class ReadingSessionController {
     let outcome: ReadingModeStepOutcome | undefined;
     try {
       const receipt = await this.run({ bookId }, abort.signal, { guard, moveMode: async signal => {
-        outcome = await binding.adapter.step(direction === "next" ? 1 : -1, signal);
+        outcome = await binding.adapter.step(direction === "next" ? 1 : -1, signal, origin);
       }, change: { origin, reason: "mode-step" } });
       if (!outcome) throw new AppError("reader/unavailable", "Reading mode returned no step outcome");
       return { status: "completed", sessionId: receipt.sessionId, outcome, mode: structuredClone(binding.adapter.snapshot()) };

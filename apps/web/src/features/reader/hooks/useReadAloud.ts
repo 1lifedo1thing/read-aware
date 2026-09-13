@@ -15,11 +15,12 @@ import type { DomainActor } from "../../../platform/domain-actor";
 const log = createLogger("read-aloud");
 
 /** Bind the real voice backend and current navigator to the shared reading domain. */
-export function useReadAloud({ bookId, enabled, current, peekNext }: {
+export function useReadAloud({ bookId, enabled, current, peekNext, origin = "system" }: {
   bookId: string | null;
   enabled: boolean;
   current: TextUnitTarget | null;
   peekNext: () => string | null;
+  origin?: DomainActor;
 }) {
   const { toast } = useToast();
   const [systemVoiceRevision, setSystemVoiceRevision] = useState(0);
@@ -51,8 +52,8 @@ export function useReadAloud({ bookId, enabled, current, peekNext }: {
   }, [bookId]);
 
   useEffect(() => {
-    controller.update({ enabled, unit: current, voice, next, peekNext });
-  }, [controller, enabled, current, voice, next, peekNext, systemVoiceRevision]);
+    controller.update({ enabled, unit: current, voice, next, peekNext }, origin);
+  }, [controller, enabled, current, voice, next, peekNext, systemVoiceRevision, origin]);
 
   useEffect(() => {
     let sessionId: string | null = null;

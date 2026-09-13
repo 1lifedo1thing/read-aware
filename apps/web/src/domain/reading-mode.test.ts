@@ -2,6 +2,43 @@ import { expect, test } from "bun:test";
 import { ReadingSessionController } from "./reading-session-controller";
 import { ReadingModeController } from "../features/reader/lib/reading-mode-controller";
 import { AppError } from "@read-aware/core";
+import { actorCause, actorOrigin, eventCause, reactionActor, stampEventCause } from "../platform/domain-actor";
+
+test("mode configuration and stepping keep their causal actor; a late receipt cannot relabel a user takeover", async () => {
+  const { runtime, controller, ready } = fixture();
+  const actor = reactionActor("plugin:mode-client", "react", eventCause(stampEventCause({}))!);
+  try {
+    const configured = runtime.configureMode({ active: true }, undefined, undefined, actor);
+    expect(eventCause(runtime.snapshot())).toBe(actorCause(actor));
+    ready(); await configured;
+    expect(eventCause(runtime.snapshot())).toBe(actorCause(actor));
+    controller.bindStepper(async (_direction, _signal, origin) => {
+      expect(origin).toBe(actor);
+      const feedback = { status: "ready" as const, progress: { ordinal: 2, total: 3 }, cfiRange: "next" };
+      await Promise.resolve();
+      controller.feedback(controller.generation(), "test:mode", "sentence", feedback, origin);
+      return { outcome: "moved", feedback };
+    });
+    await runtime.stepMode("next", undefined, undefined, actor);
+    expect(eventCause(runtime.snapshot())).toBe(actorCause(actor));
+    controller.choose(false);
+    controller.feedback(controller.generation(), "test:mode", "sentence", { status: "inactive", cfiRange: null, progress: null });
+    let takeover = true;
+    const stop = controller.observe(() => {
+      if (!takeover || controller.snapshot().status !== "ready") return;
+      takeover = false;
+      controller.choose(false);
+      controller.feedback(controller.generation(), "test:mode", "sentence", { status: "inactive", cfiRange: null, progress: null });
+    });
+    try {
+      const pending = runtime.configureMode({ active: true }, undefined, undefined, actor);
+      ready(); await pending;
+      expect(runtime.snapshot().mode.status).toBe("inactive");
+      expect(actorOrigin(runtime.snapshot().change!.origin)).toBe("user");
+      expect(eventCause(runtime.snapshot())?.root).not.toBe(actorCause(actor)?.root);
+    } finally { stop(); }
+  } finally { runtime.closed(); }
+});
 
 function fixture() {
   const runtime = new ReadingSessionController();
