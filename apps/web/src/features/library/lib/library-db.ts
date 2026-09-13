@@ -434,11 +434,11 @@ export async function listLibraryRemovalCleanup(query?: BookRemovalCleanupQuery)
   return invoke("library_list_removal_cleanup", input);
 }
 
-export async function markLibraryBookOpened(bookId: string) {
+export async function markLibraryBookOpened(bookId: string, origin?: DomainActor) {
   const existingBook = await getBookRecord(bookId);
   if (!existingBook) return null;
 
-  await commitDomainEvents({ type: "book.opened", payload: { bookId } });
+  await commitDomainEvents({ type: "book.opened", origin, payload: { bookId } });
   return getBookRecord(bookId);
 }
 

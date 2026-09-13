@@ -43,7 +43,9 @@ test("UI toggles share the same committed snapshot; repeated values still wait f
   const pending = f.runtime.setControls(true).then(value => { settled = true; return value; });
   await Promise.resolve(); expect(settled).toBe(false);
   f.commit(); await pending;
-  expect(f.runtime.snapshot().revision).toBe(revision);
+  // The explicit command has its own causal identity, even at the same value.
+  expect(f.runtime.snapshot().revision).toBe(revision + 1);
+  expect(f.runtime.snapshot().change).toEqual({ origin: "system", reason: "controls" });
   f.controls.setFromUI(current => !current); f.commit();
   expect(f.runtime.snapshot().controls).toEqual({ visible: false });
 });

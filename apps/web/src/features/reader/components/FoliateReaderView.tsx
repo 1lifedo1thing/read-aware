@@ -10,6 +10,7 @@ import { appShortcutForEvent, isAppSurfaceShortcut } from "../../settings/lib/sh
 import type { LibraryBook, ReaderProgress } from "../../library/lib/library-types";
 import { emitAppEvent } from "../../../platform/app-events";
 import { createLogger } from "../../../platform/logger";
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { resolveReaderModeUnit } from "../../plugins/lib/reader-mode";
 import {
   getNormalizedSelectionText,
@@ -674,7 +675,8 @@ export function FoliateReaderView({
     }
   }, []);
 
-  const clearSelection = useCallback(() => {
+  const clearSelection = useCallback((source: DomainActor = "user") => {
+    const origin = causalActor(source);
     cancelPendingShellOpen();
     clearNativeSelection();
     selectionRef.current = null;
@@ -685,7 +687,7 @@ export function FoliateReaderView({
     }
     setSelection(null);
     const identity = selectionContentRef.current;
-    if (identity) readingRuntime.selectionChanged(identity.sessionId, null);
+    if (identity) readingRuntime.selectionChanged(identity.sessionId, null, origin);
   }, [cancelPendingShellOpen, clearNativeSelection]);
 
   const {
@@ -722,8 +724,9 @@ export function FoliateReaderView({
   const captureSelectionFromDoc = useCallback((
     doc: Document,
     index: number,
-    { suppressContentClick = false }: { suppressContentClick?: boolean } = {},
+    { suppressContentClick = false, origin: source = "user" }: { suppressContentClick?: boolean; origin?: DomainActor } = {},
   ) => {
+    const origin = causalActor(source);
     const view = viewRef.current;
     // Check ownership before even clearing an invalid selection: an unloaded
     // iframe's late event must not dismiss the replacement reader's selection.
@@ -733,19 +736,19 @@ export function FoliateReaderView({
     const selectionInDoc = win?.getSelection?.() ?? doc.getSelection?.() ?? null;
     const frameElement = win?.frameElement;
     if (!readerRoot || !(frameElement instanceof HTMLElement) || !selectionInDoc) {
-      clearSelection();
+      clearSelection(origin);
       return false;
     }
 
     const text = getNormalizedSelectionText(selectionInDoc);
     if (!text || selectionInDoc.rangeCount === 0) {
-      clearSelection();
+      clearSelection(origin);
       return false;
     }
 
     const range = selectionInDoc.getRangeAt(0);
     if (range.collapsed) {
-      clearSelection();
+      clearSelection(origin);
       return false;
     }
 
@@ -761,7 +764,7 @@ export function FoliateReaderView({
       .filter((rect): rect is SelectionOverlayRect => rect != null);
 
     if (rects.length === 0) {
-      clearSelection();
+      clearSelection(origin);
       return false;
     }
 
@@ -788,7 +791,7 @@ export function FoliateReaderView({
     setActiveAnnotation(null);
     selectionRef.current = nextSelection;
     setSelection(nextSelection);
-    if (identity) readingRuntime.selectionChanged(identity.sessionId, captured);
+    if (identity) readingRuntime.selectionChanged(identity.sessionId, captured, origin);
     if (suppressContentClick) armContentClickSuppression();
     // iOS：原生选中菜单会和 app 的选择菜单叠成双份（#10）。捕获完成后立刻
     // 清掉原生选区——菜单没了依附；高亮由 ReaderSelectionHighlight 自绘补回。
@@ -2160,7 +2163,7 @@ export function FoliateReaderView({
           const identity = { view, sessionId, bookId: selectedBook.id, contentVersion };
           selectionContentRef.current = identity;
           cleanups.push(readingRuntime.bindSelection(sessionId, createReadingSelectionAdapter(view,
-            () => selectionRef.current, captureSelectionFromDoc, clearSelection, selectionRender)));
+            () => selectionRef.current, (doc, index, origin) => captureSelectionFromDoc(doc, index, { origin }), clearSelection, selectionRender)));
           cleanups.push(readingEmphasis.bind(sessionId, selectedBook.id, contentVersion, emphasis));
           cleanups.push(() => {
             if (selectionContentRef.current !== identity) return;

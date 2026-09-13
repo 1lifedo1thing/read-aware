@@ -10,6 +10,7 @@ import { ReadAloudController } from "../lib/read-aloud-controller";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { createLogger } from "../../../platform/logger";
 import type { TextUnitTarget } from "./useTextUnitNavigator";
+import type { DomainActor } from "../../../platform/domain-actor";
 
 const log = createLogger("read-aloud");
 
@@ -43,9 +44,9 @@ export function useReadAloud({ bookId, enabled, current, peekNext }: {
     report: error => log.warn("read aloud degraded or failed", error),
   }));
   const snapshot = useSyncExternalStore(controller.observe, controller.snapshot);
-  const next = useCallback(async (signal: AbortSignal) => {
+  const next = useCallback(async (signal: AbortSignal, origin: DomainActor) => {
     const session = readingRuntime.snapshot();
-    const result = await readingRuntime.stepMode("next", signal, { bookId: bookId ?? undefined, sessionId: session.sessionId ?? undefined });
+    const result = await readingRuntime.stepMode("next", signal, { bookId: bookId ?? undefined, sessionId: session.sessionId ?? undefined }, origin);
     return result.outcome;
   }, [bookId]);
 

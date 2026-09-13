@@ -5,9 +5,10 @@ import { loadContentNavigation, type FoliateView } from "./foliate-engine";
 import type { SelectionRenderBarrier } from "./selection-render-barrier";
 import type { ReaderSelectionState } from "./selection-overlay";
 import { renderedBookRange } from "./rendered-book-range";
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 
 export function createReadingSelectionAdapter(view: FoliateView, current: () => ReaderSelectionState | null,
-  capture: (doc: Document, index: number) => boolean, clear: () => void, render: SelectionRenderBarrier): ReadingSelectionAdapter {
+  capture: (doc: Document, index: number, origin: DomainActor) => boolean, clear: (origin: DomainActor) => void, render: SelectionRenderBarrier): ReadingSelectionAdapter {
   let retired = false;
   const check = (expectedId: string | null, signal?: AbortSignal) => {
     signal?.throwIfAborted();
@@ -15,7 +16,8 @@ export function createReadingSelectionAdapter(view: FoliateView, current: () => 
   };
   return {
     validate: async (range, signal) => { await readBookRange({ range, limit: 2, contextChars: 0 }, signal); },
-    select: async (target: BookTextRange, expectedId, signal) => {
+    select: async (target: BookTextRange, expectedId, signal, source = "system") => {
+      const origin = causalActor(source);
       const { resolveTextQuote } = await loadContentNavigation();
       check(expectedId, signal);
       const resolved = renderedBookRange(view, target, resolveTextQuote);
@@ -25,15 +27,16 @@ export function createReadingSelectionAdapter(view: FoliateView, current: () => 
       if (!selection) throw new AppError("reader/unavailable", "Document selection is unavailable");
       check(expectedId, signal);
       selection.removeAllRanges(); selection.addRange(anchor);
-      if (!capture(doc, index)) throw new AppError("reader/target-not-found", "Selection has no visible overlay");
+      if (!capture(doc, index, origin)) throw new AppError("reader/target-not-found", "Selection has no visible overlay");
       const state = current();
       if (!state?.captured?.range) throw new AppError("reader/target-not-found", "Selection did not produce a source range");
       await render.wait(state, signal);
       check(state.captured.id, signal);
       return structuredClone(state.captured);
     },
-    clear: async (expectedId, signal) => {
-      check(expectedId, signal); clear(); await render.wait(null, signal); check(null, signal);
+    clear: async (expectedId, signal, source = "system") => {
+      const origin = causalActor(source);
+      check(expectedId, signal); clear(origin); await render.wait(null, signal); check(null, signal);
     },
     retire: () => { retired = true; render.retire(); },
   };

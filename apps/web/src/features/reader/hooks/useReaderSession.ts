@@ -135,7 +135,8 @@ export function useReaderSession({
   }, [applyOptimisticProgress, noteProgress, trace]);
 
   const openReader = useCallback((book: LibraryBook, navigationIntent?: number, options?: { resetPosition: true }) => {
-    const sessionId = readingRuntime.begin(book.id, navigationIntent);
+    const sessionId = readingRuntime.begin(book.id, navigationIntent, "user");
+    const openingActor = readingRuntime.openingActor(sessionId);
     const nextTrace = readingTraces.begin(sessionId, book.id);
     traceRef.current = nextTrace;
     setTrace(nextTrace);
@@ -145,7 +146,7 @@ export function useReaderSession({
     readerLoadRequestIdRef.current = requestId;
 
     setSelectedBook(book);
-    setShellVisible(false);
+    setShellVisible(false, openingActor);
     resetReaderState();
     setIsReaderLoading(true);
 
@@ -184,7 +185,7 @@ export function useReaderSession({
         setIsReaderLoading(false);
         }
 
-        void markLibraryBookOpened(book.id)
+        void markLibraryBookOpened(book.id, openingActor)
           .then((nextBook) => {
             if (!nextBook) return;
 

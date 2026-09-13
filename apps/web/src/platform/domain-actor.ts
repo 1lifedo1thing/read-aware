@@ -37,6 +37,27 @@ export function actorCause(actor?: DomainActor): EventCause | undefined {
   return actor.cause;
 }
 
+/** Capture one explicit host operation once, including a new user/system root.
+ * Later lifecycle feedback must reuse this actor rather than minting new roots. */
+export function causalActor(origin: DomainActor): DomainActor {
+  if (typeof origin !== "string") {
+    if (!origin || !actorCause(origin)) throw new AppError("plugin/invalid-cause", "Operation has no host provenance");
+    return origin;
+  }
+  const actor = Object.freeze({ origin, cause: issue(crypto.randomUUID(), []) });
+  actors.add(actor);
+  return actor;
+}
+
+/** Host-only continuation from an already stamped observation or render state. */
+export function actorFromEvent(source: object, origin: EventOrigin = "system"): DomainActor {
+  const cause = eventCause(source);
+  if (!cause) throw new AppError("plugin/invalid-cause", "Event has no host provenance");
+  const actor = Object.freeze({ origin, cause });
+  actors.add(actor);
+  return actor;
+}
+
 /** Called at the effect boundary, before the event is offered to consumers. */
 export function stampEventCause<T extends object>(event: T, actor?: DomainActor): T {
   causes.set(event, actorCause(actor) ?? issue(crypto.randomUUID(), []));

@@ -39,7 +39,7 @@ test("opening tokens, readiness, closing and replacement retain honest origins a
   runtime.bindShell({ open: (bookId, intent) => { id = runtime.begin(bookId, intent); runtime.attach(id, engine(), at("start", bookId)); }, close: () => runtime.closed() });
   await runtime.navigate({ bookId: "book" }, undefined, "agent");
   expect(seen.find(value => value.status === "loading")!.change).toEqual({ origin: "agent", reason: "open" });
-  expect(seen.find(value => value.status === "ready")!.change).toEqual({ origin: "system", reason: "ready" });
+  expect(seen.find(value => value.status === "ready")!.change).toEqual({ origin: "agent", reason: "ready" });
   await runtime.close(undefined, undefined, "plugin:closer");
   expect(runtime.snapshot().change).toEqual({ origin: "plugin:closer", reason: "close" });
   const next = runtime.begin("other"); const before = runtime.snapshot();

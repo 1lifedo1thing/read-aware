@@ -1,5 +1,5 @@
-import { actorOrigin, copyEventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
-import { AppError, errorCode, type EventOrigin, type ReadingModeConfiguration, type ReadingModeSnapshot, type ReadingModeReceipt, type ReadingPlaybackSnapshot, type ReadingPlaybackReceipt, type ReadingLocation, type ReadingNavigationReceipt, type ReadingSessionSnapshot, type ReadingSessionGuard, type ReadingTarget } from "@read-aware/core";
+import { actorCause, actorOrigin, causalActor, copyEventCause, eventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
+import { AppError, errorCode, type ReadingModeConfiguration, type ReadingModeSnapshot, type ReadingModeReceipt, type ReadingPlaybackSnapshot, type ReadingPlaybackReceipt, type ReadingLocation, type ReadingNavigationReceipt, type ReadingSessionSnapshot, type ReadingSessionGuard, type ReadingTarget } from "@read-aware/core";
 import type { ReadingModeStepOutcome, ReadingModeStepReceipt, ReadingStep, ReadingPaginationSnapshot } from "@read-aware/core";
 import type { ReadingSessionChange as PublicReadingSessionChange, ReadingDemandSnapshot, ReadingControlsSnapshot, ReadingControlsReceipt, ReadingVisibleTextState } from "@read-aware/core";
 import { normalizeBookRangeQuery, type BookTextRange, type ReadingSelectionSnapshot, type ReadingSelectionReceipt } from "@read-aware/core";
@@ -8,15 +8,15 @@ type ReadingSessionChange = Omit<PublicReadingSessionChange, "origin"> & { origi
 
 export type ReadingSelectionAdapter = {
   validate(range: BookTextRange, signal: AbortSignal): Promise<void>;
-  select(range: BookTextRange, expectedId: string | null, signal: AbortSignal): Promise<ReadingSelectionSnapshot>;
-  clear(expectedId: string, signal?: AbortSignal): Promise<void>;
+  select(range: BookTextRange, expectedId: string | null, signal: AbortSignal, origin?: DomainActor): Promise<ReadingSelectionSnapshot>;
+  clear(expectedId: string, signal?: AbortSignal, origin?: DomainActor): Promise<void>;
   retire(): void;
 };
 
 export type ReadingControlsAdapter = {
   snapshot(): ReadingControlsSnapshot;
-  observe(listener: () => void): () => void;
-  setVisible(visible: boolean, signal?: AbortSignal): Promise<ReadingControlsSnapshot>;
+  observe(listener: (origin?: DomainActor) => void): () => void;
+  setVisible(visible: boolean, signal?: AbortSignal, origin?: DomainActor): Promise<ReadingControlsSnapshot>;
   retire(): void;
 };
 
@@ -34,9 +34,9 @@ export const unavailableMode = (): ReadingModeSnapshot => ({ status: "unavailabl
 
 export type ReadingPlaybackAdapter = {
   snapshot(): ReadingPlaybackSnapshot;
-  observe(listener: () => void): () => void;
-  start(owner: EventOrigin, signal?: AbortSignal): Promise<void>;
-  stop(): void;
+  observe(listener: (origin?: DomainActor) => void): () => void;
+  start(owner: DomainActor, signal?: AbortSignal): Promise<void>;
+  stop(reason?: unknown, origin?: DomainActor): void;
 };
 export const unavailablePlayback = (): ReadingPlaybackSnapshot => ({
   status: "unavailable", unavailableReason: "no-session", backend: null, fallback: false, owner: null, cfiRange: null,
@@ -49,7 +49,7 @@ export type ReadingEngineAdapter = {
   pagination?(): ReadingPaginationSnapshot | null;
 };
 const paginationOf = (engine?: ReadingEngineAdapter): ReadingPaginationSnapshot | null => structuredClone(engine?.pagination?.() ?? null);
-type Session = { id: string; bookId: string; engine?: ReadingEngineAdapter; error?: unknown };
+type Session = { id: string; bookId: string; origin: DomainActor; engine?: ReadingEngineAdapter; error?: unknown };
 const noVisibleText = (): { visibleText: string; visibleTextState: ReadingVisibleTextState } => ({
   visibleText: "", visibleTextState: { status: "unavailable", source: null, truncated: false, reason: "not-ready" },
 });
@@ -76,7 +76,7 @@ export class ReadingSessionController {
 
   get hasPendingOpening(): boolean { return this.openingIntent === this.intent; }
   private readonly engineTails = new WeakMap<ReadingEngineAdapter, Promise<unknown>>();
-  private state: ReadingSessionSnapshot = {
+  private state: ReadingSessionSnapshot = stampEventCause({
     change: { origin: "system", reason: "initial" },
     readerDemand: { active: false, lastActivityAt: null, idleAt: null, reason: null },
     revision: 0, sessionId: null, bookId: null, status: "idle", location: null, visibleText: "",
@@ -85,7 +85,7 @@ export class ReadingSessionController {
     playback: unavailablePlayback(),
     mode: unavailableMode(),
     controls: null, selection: null, pagination: null, sourceRevision: null,
-  };
+  });
 
   constructor(private readonly report: (error: unknown) => void = () => {}, private readonly deadlineMs = 30_000, private readonly readerCooldownMs = 1500) {}
 
@@ -94,15 +94,15 @@ export class ReadingSessionController {
   get readerDemandDelay(): number { return Math.max(0, (this.state.readerDemand?.idleAt ?? 0) - Date.now()); }
 
   /** Only the current renderer may announce demand; it grants no actor write authority. */
-  readerDemandActivity(sessionId: string, reason: NonNullable<ReadingDemandSnapshot["reason"]>): void {
+  readerDemandActivity(sessionId: string, reason: NonNullable<ReadingDemandSnapshot["reason"]>, source: DomainActor = "system"): void {
     if (this.session?.id !== sessionId || this.state.status === "idle" || this.state.status === "error") return;
-    const now = Date.now(), idleAt = now + this.readerCooldownMs;
+    const now = Date.now(), idleAt = now + this.readerCooldownMs, origin = causalActor(source);
     clearTimeout(this.demandTimer);
-    this.publish({ readerDemand: { active: true, lastActivityAt: now, idleAt, reason } });
+    this.publish({ readerDemand: { active: true, lastActivityAt: now, idleAt, reason } }, { origin, reason: "reader-demand" });
     this.demandTimer = setTimeout(() => {
       this.demandTimer = undefined;
       if (this.session?.id === sessionId && this.state.readerDemand?.idleAt === idleAt) {
-        this.publish({ readerDemand: { ...this.state.readerDemand, active: false } });
+        this.publish({ readerDemand: { ...this.state.readerDemand, active: false } }, { origin, reason: "reader-demand" });
       }
     }, this.readerCooldownMs);
     if (typeof this.demandTimer === "object" && "unref" in this.demandTimer) this.demandTimer.unref();
@@ -123,15 +123,22 @@ export class ReadingSessionController {
     if (intent !== undefined && intent !== this.intent) throw new AppError("reader/superseded", "Book opening was replaced");
     if (intent === undefined) this.intent++;
     else if (this.intentActor?.intent === intent) origin = this.intentActor.origin;
+    origin = causalActor(origin);
     this.detachPlayback();
     this.detachMode();
     this.detachControls();
     this.detachSelection();
     const id = crypto.randomUUID();
     this.userOpening = intent === undefined ? { id, before: this.state.location } : undefined;
-    this.session = { id, bookId };
+    this.session = { id, bookId, origin };
     this.publish({ sessionId: id, bookId, status: "loading", location: null, ...noVisibleText(), selection: null, errorCode: undefined, playback: unavailablePlayback(), mode: unavailableMode(), controls: null, pagination: null }, { origin, reason: "open" });
     return id;
+  }
+
+  /** The immutable opening request, for effects belonging to this load only. */
+  openingActor(id: string): DomainActor {
+    if (this.session?.id !== id) throw new AppError("reader/superseded", "Reading session was replaced");
+    return this.session.origin;
   }
 
   attach(id: string, engine: ReadingEngineAdapter, location: ReadingLocation): () => void {
@@ -142,11 +149,12 @@ export class ReadingSessionController {
       this.recordJump(this.userOpening.before, location);
       this.userOpening = undefined;
     }
-    this.publish({ status: "ready", location, ...noVisibleText(), errorCode: undefined, pagination: paginationOf(engine), sourceRevision: engine.sourceRevision ?? null });
+    const origin = this.session.origin;
+    this.publish({ status: "ready", location, ...noVisibleText(), errorCode: undefined, pagination: paginationOf(engine), sourceRevision: engine.sourceRevision ?? null }, { origin, reason: "ready" });
     return () => {
       if (this.session?.id !== id || this.session.engine !== engine) return;
       this.session.engine = undefined;
-      this.publish({ status: "loading", ...noVisibleText(), selection: null, pagination: null });
+      this.publish({ status: "loading", ...noVisibleText(), selection: null, pagination: null }, { origin, reason: "detach" });
     };
   }
 
@@ -159,19 +167,19 @@ export class ReadingSessionController {
   }
 
   /** Host-only feedback from the attached reader. Stale renderers cannot publish. */
-  selectionChanged(id: string, selection: ReadingSelectionSnapshot | null): void {
+  selectionChanged(id: string, selection: ReadingSelectionSnapshot | null, origin: DomainActor = "user"): void {
     if (this.session?.id !== id || this.state.status !== "ready") return;
     if (selection?.range && (selection.range.bookId !== this.session.bookId
       || selection.range.contentVersion !== this.state.location?.contentVersion)) return;
     if (!selection && !this.state.selection) return;
-    this.publish({ selection: selection ? structuredClone(selection) : null });
+    this.publish({ selection: selection ? structuredClone(selection) : null }, { origin, reason: "selection" });
   }
 
   bindSelection(id: string, adapter: ReadingSelectionAdapter): () => void {
     if (this.session?.id !== id) return () => {};
     this.detachSelection();
     const binding = { id, adapter }; this.selectionAdapter = binding;
-    this.publish({ selection: null });
+    this.publish({ selection: null }, { origin: this.session.origin, reason: "selection" });
     return () => {
       if (this.selectionAdapter !== binding) return;
       this.detachSelection(); this.publish({ selection: null });
@@ -189,6 +197,7 @@ export class ReadingSessionController {
     const binding = this.selectionAdapter;
     if (!binding || this.state.status !== "ready" || this.session?.id !== binding.id) throw new AppError("reader/unavailable", "Selection requires a ready reader");
     if (range.bookId !== this.session.bookId) throw new AppError("reader/out-of-scope", "Open the target book before selecting a passage");
+    origin = causalActor(origin);
     const initial = this.state.selection?.id ?? null;
     let phase: "preparing" | "navigating" | "applying" = "preparing";
     const abort = new AbortController(), cancel = () => abort.abort(signal?.reason);
@@ -206,7 +215,7 @@ export class ReadingSessionController {
         signal.throwIfAborted();
         if (this.selectionAdapter !== binding) throw new AppError("reader/superseded", "Selection adapter changed");
         phase = "applying";
-        selected = await binding.adapter.select(range, this.state.selection?.id ?? null, signal);
+        selected = await binding.adapter.select(range, this.state.selection?.id ?? null, signal, origin);
         if (this.state.selection?.id !== selected.id) throw new AppError("reader/superseded", "A newer selection replaced the applied range");
       }, prepare: async signal => {
         await binding.adapter.validate(range, signal);
@@ -223,10 +232,12 @@ export class ReadingSessionController {
     const binding = this.selectionAdapter;
     if (!binding || this.state.status !== "ready" || this.session?.id !== binding.id) throw new AppError("reader/unavailable", "Selection requires a ready reader");
     if (this.state.selection?.id !== expectedId) throw new AppError("reader/superseded", "Selection changed before clearing");
-    await binding.adapter.clear(expectedId, signal);
+    origin = causalActor(origin);
+    const before = this.state.revision;
+    await binding.adapter.clear(expectedId, signal, origin);
     signal?.throwIfAborted(); this.checkGuard(guard);
     if (this.selectionAdapter !== binding || this.state.selection) throw new AppError("reader/superseded", "Selection changed while clearing");
-    this.publishCommand({ origin, reason: "selection" });
+    this.publishCommand({ origin, reason: "selection" }, before);
     return { status: "completed", sessionId: binding.id, selection: null };
   }
 
@@ -237,7 +248,7 @@ export class ReadingSessionController {
     this.detachMode();
     this.detachControls();
     this.detachSelection();
-    this.publish({ status: "error", ...noVisibleText(), selection: null, errorCode: errorCode(error) ?? "reader/load-failed", playback: unavailablePlayback(), mode: unavailableMode(), controls: null, pagination: null });
+    this.publish({ status: "error", ...noVisibleText(), selection: null, errorCode: errorCode(error) ?? "reader/load-failed", playback: unavailablePlayback(), mode: unavailableMode(), controls: null, pagination: null }, { origin: this.session.origin, reason: "error" });
   }
 
   closed(): void {
@@ -259,10 +270,10 @@ export class ReadingSessionController {
     this.detachControls();
     const binding = { id, adapter, dispose: () => {} };
     this.controlsAdapter = binding;
-    binding.dispose = adapter.observe(() => {
-      if (this.controlsAdapter === binding && this.session?.id === id) this.publish({ controls: adapter.snapshot() });
+    binding.dispose = adapter.observe(origin => {
+      if (this.controlsAdapter === binding && this.session?.id === id) this.publish({ controls: adapter.snapshot() }, { origin: origin ?? "system", reason: "controls" });
     });
-    this.publish({ controls: adapter.snapshot() });
+    this.publish({ controls: adapter.snapshot() }, { origin: this.session.origin, reason: "controls" });
     return () => {
       if (this.controlsAdapter !== binding) return;
       this.detachControls(); this.publish({ controls: null });
@@ -275,11 +286,13 @@ export class ReadingSessionController {
     if (typeof visible !== "boolean") throw new AppError("reader/invalid-target", "Controls visibility must be boolean");
     const binding = this.controlsAdapter;
     if (!binding || this.session?.id !== binding.id || this.state.status !== "ready") throw new AppError("reader/unavailable", "Controls require a ready reader");
-    const controls = await binding.adapter.setVisible(visible, signal);
+    origin = causalActor(origin);
+    const before = this.state.revision;
+    const controls = await binding.adapter.setVisible(visible, signal, origin);
     if (signal?.aborted) throw signal.reason;
     this.checkGuard(guard);
     if (this.controlsAdapter !== binding) throw new AppError("reader/superseded", "Reader controls session was replaced");
-    this.publishCommand({ origin, reason: "controls" });
+    this.publishCommand({ origin, reason: "controls" }, before);
     return { status: "completed", sessionId: binding.id, controls };
   }
 
@@ -374,10 +387,10 @@ export class ReadingSessionController {
     this.detachPlayback();
     const binding = { id, adapter, dispose: () => {} };
     this.playbackAdapter = binding;
-    binding.dispose = adapter.observe(() => {
-      if (this.playbackAdapter === binding && this.session?.id === id) this.publish({ playback: adapter.snapshot() });
+    binding.dispose = adapter.observe(origin => {
+      if (this.playbackAdapter === binding && this.session?.id === id) this.publish({ playback: adapter.snapshot() }, { origin: origin ?? "system", reason: "playback" });
     });
-    this.publish({ playback: adapter.snapshot() });
+    this.publish({ playback: adapter.snapshot() }, { origin: this.session.origin, reason: "playback" });
     return () => {
       if (this.playbackAdapter !== binding) return;
       this.detachPlayback();
@@ -391,12 +404,14 @@ export class ReadingSessionController {
     if (action !== "start" && action !== "stop") throw new AppError("reader/invalid-target", "Invalid playback action");
     const binding = this.playbackAdapter;
     if (!binding || this.session?.id !== binding.id || this.state.status !== "ready") throw new AppError("reader/unavailable", "Read aloud is not attached to a ready reader");
-    if (action === "start") await binding.adapter.start(actorOrigin(owner), signal);
-    else binding.adapter.stop();
+    owner = causalActor(owner);
+    const before = this.state.revision;
+    if (action === "start") await binding.adapter.start(owner, signal);
+    else binding.adapter.stop(undefined, owner);
     signal?.throwIfAborted(); this.checkGuard(guard);
     if (this.playbackAdapter !== binding) throw new AppError("reader/superseded", "Playback session was replaced");
     const playback = structuredClone(binding.adapter.snapshot());
-    this.publishCommand({ origin: owner, reason: "playback" });
+    this.publishCommand({ origin: owner, reason: "playback" }, before);
     return { status: "completed", sessionId: binding.id, playback };
   }
 
@@ -412,6 +427,7 @@ export class ReadingSessionController {
     try { this.checkGuard(guard); } catch (error) { return Promise.reject(error); }
     if (!this.session && !this.hasPendingOpening) return Promise.resolve();
     if (this.session && !this.shell) return Promise.reject(new AppError("reader/unavailable", "Reader shell is not mounted"));
+    origin = causalActor(origin);
     const session = this.session;
     const intent = ++this.intent;
     const closingActor = session ? { session, intent, origin } : undefined;
@@ -504,6 +520,7 @@ export class ReadingSessionController {
       this.checkGuard(guard);
       if (guard?.bookId && guard.bookId !== target.bookId) throw new AppError("reader/out-of-scope", "History target is outside this book scope");
     } catch (error) { return Promise.reject(error); }
+    change.origin = causalActor(change.origin);
     const intent = ++this.intent;
     this.intentActor = { intent, origin: change.origin };
     for (const notify of [...this.changes]) notify();
@@ -636,8 +653,11 @@ export class ReadingSessionController {
 
   /** Acknowledgement metadata must not replay a captured UI value: observers can
    * already have committed a newer value while the original receipt settled. */
-  private publishCommand(change: ReadingSessionChange): void {
-    if (this.state.change?.origin !== actorOrigin(change.origin) || this.state.change.reason !== change.reason) this.publish({}, change);
+  private publishCommand(change: ReadingSessionChange, before?: number): void {
+    // These adapters publish the committed state with its source. A later
+    // receipt must not relabel a newer reaction's state with the old cause.
+    if (before !== undefined && this.state.revision !== before) return;
+    if (eventCause(this.state) !== actorCause(change.origin) || this.state.change?.origin !== actorOrigin(change.origin) || this.state.change.reason !== change.reason) this.publish({}, change);
   }
 
   private publish(patch: Partial<ReadingSessionSnapshot>, change?: ReadingSessionChange): void {
@@ -652,7 +672,11 @@ export class ReadingSessionController {
     }
     this.state = stampEventCause({ ...this.state, ...patch, change: { origin: change ? actorOrigin(change.origin) : "system", reason: change?.reason ?? reason }, revision: this.state.revision + 1,
       history: { canGoBack: this.cursor > 0, canGoForward: this.cursor >= 0 && this.cursor < this.history.length - 1 } }, change?.origin);
-    for (const listener of [...this.listeners]) this.deliver(listener);
+    const published = this.state;
+    for (const listener of [...this.listeners]) {
+      if (this.state !== published) break;
+      this.deliver(listener);
+    }
     for (const notify of [...this.changes]) notify();
   }
 }
