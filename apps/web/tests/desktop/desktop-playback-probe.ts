@@ -9,12 +9,18 @@ import { buildReaderTools } from "../../../../packages/agent/src/tools/reader-to
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 
 const id = "capability-playback-probe";
+const ISOLATED_PROFILE_SUFFIXES = [
+  "/com.readaware.app.capability-e2e",
+  "/com.readaware.app.validation-full2-e2e",
+] as const;
 let worker: SandboxedPlugin | undefined;
 let disposables: PluginDisposable[] = [];
 let restoreTts = false;
 async function isolated() {
-  const path = await appDataDir();
-  if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw new Error("Use isolated capability-e2e data");
+  const path = (await appDataDir()).replace(/[/\\]$/, "");
+  if (!ISOLATED_PROFILE_SUFFIXES.some(suffix => path.endsWith(suffix))) {
+    throw new Error("Use the isolated capability-e2e or validation-full2-e2e profile");
+  }
   return path;
 }
 
@@ -39,6 +45,18 @@ export async function playbackCommand(pluginId: string, commandId: string) {
   if (!command) throw new Error("Playback command not registered");
   await command.run();
   return readingRuntime.snapshot();
+}
+
+/** Runs inside the real Worker and reports the intentional lack of network authority. */
+export async function probeMissingNetworkPermission() {
+  await isolated();
+  const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === id && command.id === "network-denied");
+  if (!command) throw new Error("Network permission probe command not registered");
+  const result = await command.run();
+  if (typeof result?.toast !== "string" || JSON.parse(result.toast).networkExposed !== false) {
+    throw new Error("Worker unexpectedly exposed network capability");
+  }
+  return { networkExposed: false, boundary: "Worker API exposure; no HTTP request attempted" };
 }
 
 export async function agentPlayback(action: "start" | "stop") {

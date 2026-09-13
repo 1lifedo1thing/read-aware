@@ -13,8 +13,10 @@ import { buildNavigationTools } from "../../../../packages/agent/src/tools/navig
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 
 async function assertIsolated(): Promise<string> {
-  const path = await appDataDir();
-  if (!path.replace(/[/\\]$/, "").endsWith("/com.readaware.app.capability-e2e")) throw new Error("Reading probes require isolated capability-e2e data");
+  const path = (await appDataDir()).replace(/[/\\]$/, "");
+  if (!/\/com\.readaware\.app\.(capability-e2e|validation-full2-e2e)$/.test(path)) {
+    throw new Error("Reading probes require isolated capability-e2e or validation-full2-e2e data");
+  }
   return path;
 }
 

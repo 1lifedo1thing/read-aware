@@ -26,5 +26,13 @@ export default {
       },
     });
     for (const next of ["tone", "reject", "delay"]) ctx.contributions.commands.register({ id: next, title: `Probe: ${next}`, run: () => { mode = next; } });
+    ctx.contributions.commands.register({
+      id: "network-denied",
+      title: "Probe: network permission denied",
+      run: async () => {
+        if (ctx.services.network) throw new Error("Network permission unexpectedly granted");
+        return { toast: JSON.stringify({ networkExposed: false }) };
+      },
+    });
   },
 } satisfies PluginModule;
