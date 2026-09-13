@@ -1197,6 +1197,14 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building ReadAware desktop application");
     app.run(|_app_handle, _event| {
+        // Preview expiry tasks retain AppHandles, so managed state may outlive
+        // the event loop. Clean up at actual exit, after coordinated flushing.
+        if matches!(&_event, tauri::RunEvent::Exit) {
+            if let Err(error) = resources::external::shutdown(_app_handle) {
+                log::warn!("External resource exit cleanup failed: {error}");
+            }
+        }
+
         #[cfg(desktop)]
         window_state::on_app_event(_app_handle, &_event);
 

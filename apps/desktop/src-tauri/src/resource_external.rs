@@ -21,6 +21,7 @@ struct Preview {
 #[derive(Default)]
 struct PreviewState {
     initialized: bool,
+    shutting_down: bool,
     entries: HashMap<String, Preview>,
 }
 #[derive(Default)]
@@ -28,6 +29,11 @@ pub struct ExternalPreviews(Mutex<PreviewState>);
 pub fn initialize(app: &tauri::AppHandle) -> Result<(), CommandError> {
     let root = app.path().app_cache_dir()?.join("resource-previews");
     app.state::<ExternalPreviews>().0.lock()?.initialize(&root)
+}
+
+pub fn shutdown(app: &tauri::AppHandle) -> Result<(), CommandError> {
+    app.state::<ExternalPreviews>().0.lock()?.shutdown();
+    Ok(())
 }
 
 fn remove(preview: &Preview) -> bool {
@@ -41,6 +47,11 @@ fn remove(preview: &Preview) -> bool {
     }
 }
 impl PreviewState {
+    fn shutdown(&mut self) {
+        self.shutting_down = true;
+        self.entries.retain(|_, entry| !remove(entry));
+    }
+
     fn prune(&mut self) {
         self.entries
             .retain(|_, entry| entry.created.elapsed() < LIFETIME || !remove(entry));
@@ -71,9 +82,7 @@ impl PreviewState {
 }
 impl Drop for PreviewState {
     fn drop(&mut self) {
-        for preview in self.entries.values() {
-            remove(preview);
-        }
+        self.shutdown();
     }
 }
 fn filename(value: &str) -> Result<(), CommandError> {
@@ -107,6 +116,12 @@ fn handoff(
     name: &str,
     open: impl FnOnce(&Path) -> Result<(), CommandError>,
 ) -> Result<String, CommandError> {
+    if state.shutting_down {
+        return Err(CommandError::new(
+            "ui/unavailable",
+            "Application is exiting",
+        ));
+    }
     filename(name)?;
     state.initialize(root)?;
     state.prune();
@@ -200,6 +215,41 @@ pub async fn resource_open_associated(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn shutdown_removes_live_copies_and_rejects_queued_handoffs() {
+        let source_dir = tempfile::tempdir().unwrap();
+        let cache = tempfile::tempdir().unwrap();
+        let original = source_dir.path().join("original.txt");
+        std::fs::write(&original, "source").unwrap();
+        let mut state = PreviewState::default();
+        let mut copied = PathBuf::new();
+        handoff(
+            &mut state,
+            cache.path(),
+            File::open(&original).unwrap(),
+            "copy.txt",
+            |path| {
+                copied = path.to_owned();
+                Ok(())
+            },
+        )
+        .unwrap();
+        state.shutdown();
+        state.shutdown();
+        assert!(!copied.exists());
+        assert_eq!(std::fs::read(&original).unwrap(), b"source");
+        assert!(state.entries.is_empty());
+        assert!(handoff(
+            &mut state,
+            cache.path(),
+            File::open(&original).unwrap(),
+            "late.txt",
+            |_| { panic!("An exiting app must not dispatch another preview") }
+        )
+        .is_err());
+        assert_eq!(std::fs::read_dir(cache.path()).unwrap().count(), 0);
+    }
+
     #[test]
     fn associated_handoff_copies_only_supported_resources_and_cleans_expired_leases() {
         let source_dir = tempfile::tempdir().unwrap();

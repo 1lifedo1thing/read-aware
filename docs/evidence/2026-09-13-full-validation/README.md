@@ -2118,3 +2118,27 @@ range，场景state仅保留kind/text。现有机器通过因此不能证明真�
 当成当前桌面新复现。两条评分/四维/评语已写入原run私有human-reviews.json，
 旧评分和原输出hash保持；累计首轮机器通过抽查21条，固定247/198/34/15不变。
 详见[标注机器通过抽查](./annotation-machine-pass-review.json)。
+
+## 第八十流程：发布包外部关联打开与退出副本清理
+
+真实Agent工具首次调用暴露原生dialog.message权限缺失，确认框根本没有出现；
+加入最小dialog:allow-ask后重建发布包。编译Library Desk 0.12.0经原生ZIP选择和
+安装同意页启用，从自有TXT书详情打开外部应用：Cancel不生成副本，Open实际
+进入系统关联TextEdit，中英文全文、68字节和源SHA256一致。插件释放资源lease、
+删除库内源文件后独立预览副本仍保留，符合不反写原书的语义。
+
+正常退出却留下副本，进一步确认仅依赖PreviewState::drop不可靠：一小时清理
+任务持有AppHandle。改为RunEvent::Exit显式清理，退出后排队handoff不再生成副本。
+三项原生定向检查通过，发布包重新构建（SHA256 5afa96a2d2b349a169f8e9fd667f0a13ecc463c80b92b9bfa77cc423eb73723a）。
+首次启动清掉旧轮残留；随后重新实际打开TextEdit，关闭测试文档、正常退出
+PID30795，在再次启动前核实preview-CkX3h4副本不存在、预览目录为空。
+
+复验的原生选择器一度无法推进，未计为通过。恢复主窗口键盘目标后，从/tmp
+选择相同内容文件；Open的AX状态虽显示禁用，原生Return实际交付成功。
+Library Desk检查TXT/1节→确认导入→原文件关联打开通过，无需用户代操作。
+重新启动后删除自有书769bc625-331c-4e78-be53-8f7e778c7587，源blob storage_uri=null，
+导入/删除清理意图均0；卸载临时插件，原一书四标注、六内置插件保持。
+
+这是macOS发布包/真实编译Worker/系统确认框/TextEdit的证据，未启用release MCP，
+未放宽CSP。完整像素焦点、小时TTL、强杀、关联失败、其他格式/平台、URL和深链接
+仍独立待验；初始Agent失败不拼接成新的成功模型轮次。详见[外部关联记录](./external-resource-observations.json)。
