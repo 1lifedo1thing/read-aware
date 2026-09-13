@@ -1,0 +1,14 @@
+{
+  "status": "外部阻塞",
+  "boundary": "macOS packaged native update check",
+  "observations": [
+    "Actual Check for updates clicked",
+    "Checking… disabled state observed",
+    "Settled Up to date and enabled Check for updates"
+  ],
+  "limits": [
+    "Update check main path passed",
+    "No available isolated newer release to verify download/install; no arbitrary downgrade or production replacement attempted"
+  ],
+  "cleanup": "No install or channel change"
+}

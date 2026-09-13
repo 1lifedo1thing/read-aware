@@ -1,0 +1,13 @@
+{
+  "status": "通过",
+  "boundary": "macOS packaged Settings UI→Finder",
+  "observations": [
+    "Settings displayed /Users/ahpx/Library/Application Support/com.readaware.app.validation-packaged-e2e",
+    "Reveal opened Application Support with that exact directory selected",
+    "Closed only new Finder window; original Playground remains"
+  ],
+  "limits": [
+    "Actor openSettings entry not newly exercised"
+  ],
+  "cleanup": "No data modified; created Finder window closed"
+}
