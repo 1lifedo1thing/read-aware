@@ -1844,3 +1844,21 @@ READ12原表遗漏已存在的FB2证据，现复用2026-09-11 Text Desk0.11.1的
 自有书/源/封面已清零，原两书与原会话两条完整hash保持。无代码改动，不重跑
 第65批已通过的门禁。大图自动适配、物理焦点/Escape/手势、packaged及其他
 平台仍待验。详见[cbr-image-controls-observations.json](./cbr-image-controls-observations.json)。
+
+## 第六十七流程：极端长宽比图片初始适配与动画证据边界
+
+本地生成5000×400红图和400×5000蓝图，作为702字节CBZ通过原生导入，
+两节ready/textless。实际打开书后用生产图片读取/打开服务呈现两个灯箱，
+均完成真实图像解码。900×750查看区域内，宽图初始rect900×72、长图60×750，
+位置均完全包含在查看区域；支持这两个比例的初始适配，不外推所有尺寸。
+
+旋转回执updated且rotation90，宽图inline scale为0.833333，但其rect仍是
+初始900×72。这次明确检查WebView动画：document.visibilityState=hidden，
+实际120ms CSS动画playState running、currentTime0；等待1.2秒后仍未完成、
+computed transform保持identity。没有强制结束动画或禁用transition制造通过。
+因此旋转最终几何/绘制仍待前台验收，之前第66批所记的是状态/inline变换，
+不能解释成旋转动画终态或物理画面已验证。
+
+本批无产品代码修改，不重跑已有门禁。自有书/源/封面均null、灯箱和dialog0，
+原两书保留。物理手势/焦点/Escape、发布包与其他平台仍待验；详见
+[large-image-fit-observations.json](./large-image-fit-observations.json)。

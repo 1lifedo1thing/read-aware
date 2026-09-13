@@ -1,0 +1,272 @@
+{
+  "flow": 67,
+  "date": "2026-09-13",
+  "baseline": "5d678fef",
+  "environment": "Same isolated macOS debug Tauri 9224; WebView visibility hidden. No CUA retry, screenshot, settings change or synthetic animation completion.",
+  "fixture": {
+    "file": "fixture.cbz",
+    "bytes": 702,
+    "sha256": "f9c135e51516e4fb62eefa2500a1efc74e322595625d283d72c4ea5f5410e00a",
+    "pages": [
+      {
+        "path": "01-wide.png",
+        "width": 5000,
+        "height": 400,
+        "rgb": [
+          190,
+          50,
+          50
+        ]
+      },
+      {
+        "path": "02-tall.png",
+        "width": 400,
+        "height": 5000,
+        "rgb": [
+          50,
+          50,
+          190
+        ]
+      }
+    ],
+    "creation": "Locally generated RGB PNG IHDR/IDAT/IEND, zlib rows with filter 0; Python zipfile ZIP_DEFLATED. No network or user book."
+  },
+  "import": {
+    "byteLength": 702,
+    "extraction": {
+      "chapterCount": 0,
+      "contentVersion": "sha256:f9c135e51516e4fb62eefa2500a1efc74e322595625d283d72c4ea5f5410e00a",
+      "metadata": {
+        "title": "fixture.cbz"
+      },
+      "sectionCount": 2,
+      "textCharacters": 0,
+      "titles": []
+    },
+    "fileName": "fixture.cbz",
+    "imported": {
+      "addedAt": "2026-09-13T04:37:44.229Z",
+      "author": "Unknown author",
+      "collectionId": null,
+      "fileName": "fixture.cbz",
+      "fileSize": 702,
+      "format": "cbz",
+      "id": "dbdb07f6-7109-4291-b732-d72050d0b024",
+      "starred": false,
+      "title": "Fixture",
+      "updatedAt": "2026-09-13T04:37:44.229Z"
+    },
+    "state": {
+      "bookId": "dbdb07f6-7109-4291-b732-d72050d0b024",
+      "chapterCount": 0,
+      "contentVersion": "sha256:f9c135e51516e4fb62eefa2500a1efc74e322595625d283d72c4ea5f5410e00a",
+      "progress": {
+        "completed": 2,
+        "failed": 0,
+        "total": 2,
+        "unsupported": 0
+      },
+      "status": "ready",
+      "text": "textless"
+    }
+  },
+  "wideInitial": {
+    "contained": true,
+    "image": {
+      "natural": [
+        5000,
+        400
+      ],
+      "rect": {
+        "bottom": 411,
+        "height": 72,
+        "left": 0,
+        "right": 900,
+        "top": 339,
+        "width": 900,
+        "x": 0,
+        "y": 339
+      },
+      "transform": "translate(0px) rotate(0deg) scale(1)"
+    },
+    "snapshot": {
+      "bookId": "dbdb07f6-7109-4291-b732-d72050d0b024",
+      "id": "f20f6027-47e3-4b38-8431-76b51159c40a",
+      "panX": 0,
+      "panY": 0,
+      "revision": 18,
+      "rotation": 0,
+      "scale": 1,
+      "sessionId": "99b76656-aff5-4d7a-8846-9a420cb43ad5"
+    },
+    "stage": {
+      "bottom": 750,
+      "height": 750,
+      "left": 0,
+      "right": 900,
+      "top": 0,
+      "width": 900,
+      "x": 0,
+      "y": 0
+    },
+    "viewport": {
+      "h": 750,
+      "w": 900
+    }
+  },
+  "tallInitial": {
+    "contained": true,
+    "image": {
+      "natural": [
+        400,
+        5000
+      ],
+      "rect": {
+        "bottom": 750,
+        "height": 750,
+        "left": 420,
+        "right": 480,
+        "top": 0,
+        "width": 60,
+        "x": 420,
+        "y": 0
+      },
+      "transform": "translate(0px) rotate(0deg) scale(1)"
+    },
+    "snapshot": {
+      "bookId": "dbdb07f6-7109-4291-b732-d72050d0b024",
+      "id": "871dcab5-21e5-4d4a-a258-6afc390da213",
+      "panX": 0,
+      "panY": 0,
+      "revision": 23,
+      "rotation": 0,
+      "scale": 1,
+      "sessionId": "99b76656-aff5-4d7a-8846-9a420cb43ad5"
+    },
+    "stage": {
+      "bottom": 750,
+      "height": 750,
+      "left": 0,
+      "right": 900,
+      "top": 0,
+      "width": 900,
+      "x": 0,
+      "y": 0
+    },
+    "viewport": {
+      "h": 750,
+      "w": 900
+    }
+  },
+  "wideRotationSubmission": {
+    "contained": true,
+    "image": {
+      "natural": [
+        5000,
+        400
+      ],
+      "rect": {
+        "bottom": 411,
+        "height": 72,
+        "left": 0,
+        "right": 900,
+        "top": 339,
+        "width": 900,
+        "x": 0,
+        "y": 339
+      },
+      "transform": "translate(0px) rotate(90deg) scale(0.833333)"
+    },
+    "snapshot": {
+      "bookId": "dbdb07f6-7109-4291-b732-d72050d0b024",
+      "id": "f20f6027-47e3-4b38-8431-76b51159c40a",
+      "panX": 0,
+      "panY": 0,
+      "revision": 19,
+      "rotation": 90,
+      "scale": 1,
+      "sessionId": "99b76656-aff5-4d7a-8846-9a420cb43ad5"
+    },
+    "stage": {
+      "bottom": 750,
+      "height": 750,
+      "left": 0,
+      "right": 900,
+      "top": 0,
+      "width": 900,
+      "x": 0,
+      "y": 0
+    },
+    "viewport": {
+      "h": 750,
+      "w": 900
+    }
+  },
+  "tallRotationSubmission": {
+    "animations": [
+      {
+        "currentTime": 0,
+        "playState": "running"
+      }
+    ],
+    "computed": "matrix(1, 0, 0, 1, 0, 0)",
+    "receipt": {
+      "snapshot": {
+        "bookId": "dbdb07f6-7109-4291-b732-d72050d0b024",
+        "id": "871dcab5-21e5-4d4a-a258-6afc390da213",
+        "panX": 0,
+        "panY": 0,
+        "revision": 24,
+        "rotation": 90,
+        "scale": 1,
+        "sessionId": "99b76656-aff5-4d7a-8846-9a420cb43ad5"
+      },
+      "status": "updated"
+    },
+    "visibility": "hidden"
+  },
+  "animationBoundary": {
+    "animations": [
+      {
+        "currentTime": 0,
+        "playState": "running"
+      }
+    ],
+    "computed": "matrix(1, 0, 0, 1, 0, 0)",
+    "finished": false,
+    "inline": "translate(0px) rotate(90deg) scale(1)",
+    "rect": {
+      "bottom": 750,
+      "height": 750,
+      "left": 420,
+      "right": 480,
+      "top": 0,
+      "width": 60,
+      "x": 420,
+      "y": 0
+    },
+    "visibility": "hidden"
+  },
+  "cleanup": {
+    "book": null,
+    "cleanup": {
+      "remainingBookIds": [
+        "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+      ],
+      "remainingOwned": 0,
+      "removed": [
+        "dbdb07f6-7109-4291-b732-d72050d0b024"
+      ]
+    },
+    "cover": null,
+    "dialogs": 0,
+    "image": null,
+    "source": null
+  },
+  "verdict": {
+    "passed": "Initial native WebView image decode and fit for two extreme aspect ratios; 900x72 and 60x750 within 900x750 stage.",
+    "pending": "Rotation completed layout/painting: animation currentTime remains 0, computed transform stays identity after 1.2 seconds while hidden. Inline transform and semantic rotation=90 are not final-layout evidence.",
+    "notTested": "Physical screenshot/gestures/focus/Escape, packaged, other sizes/platforms; manual book-page zoom."
+  }
+}
