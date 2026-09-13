@@ -16,6 +16,7 @@ import { LibraryWorkspace } from "./features/library/components/LibraryWorkspace
 import { useDropBookImport } from "./features/library/hooks/useDropBookImport";
 import { useExternalBookOpens } from "./features/library/hooks/useExternalBookOpens";
 import { useLibraryController } from "./features/library/hooks/useLibraryController";
+import { useStartupBook } from "./features/library/hooks/useStartupBook";
 import { BOOK_FILE_ACCEPT } from "./features/library/lib/pick-book-files";
 import type { LibraryBook } from "./features/library/lib/library-types";
 import { AppHeader } from "./features/navigation/components/AppHeader";
@@ -51,6 +52,7 @@ import { PluginPageHost } from "./features/plugins/components/PluginPageHost";
 import { PluginToastBridge } from "./features/plugins/components/PluginToastBridge";
 import { usePluginCommandItems } from "./features/plugins/hooks/usePluginCommandItems";
 import { initializePlugins } from "./features/plugins/runtime/plugin-host";
+import { pluginsReadyAtom } from "./features/plugins/state/plugin-store";
 import { checkPluginUpdates } from "./features/plugins/runtime/plugin-updates";
 import { useReadingRuntimeShell } from "./features/reader/hooks/useReadingRuntimeShell";
 import { useWorkspaceShell } from "./hooks/useWorkspaceShell";
@@ -103,6 +105,7 @@ function App() {
   const [searchModalOpen, setSearchModalOpen] = useAtom(commandSearchOpenAtom);
   const [settingsOpen, setSettingsOpen] = useAtom(settingsOpenAtom);
   const generalSettings = useAtomValue(generalSettingsAtom);
+  const pluginsReady = useAtomValue(pluginsReadyAtom);
   const softwareUpdate = useSoftwareUpdate();
   // Latch: mount the (lazy) settings dialog on first open and keep it mounted,
   // preserving the always-mounted dialog's state/exit-animation behavior while
@@ -235,6 +238,10 @@ function App() {
   );
   useReadingRuntimeShell(handleOpenBook, closeBook);
   const workspaceToken = useWorkspaceShell(!!reader.selectedBook, library.books, library.collections, library.libraryReady);
+  useStartupBook({ startView: generalSettings.startView, ready: library.libraryReady && pluginsReady,
+    idle: !reader.selectedBook && activeTopNav === "shelf" && !activeCollectionId
+      && !settingsOpen && !searchModalOpen && !shelfSelecting,
+    books: library.books, openBook: handleOpenBook, reportError: library.reportError });
   useEffect(() => {
     if (shelfHandoff === "idle") setHeldShelfBooks(null);
   }, [shelfHandoff]);

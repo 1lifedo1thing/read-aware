@@ -108,7 +108,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | CFG11 | 聊天/笔记内容字体：跟随阅读或独立字号/字体/行距 | F6 | Workspace Profiles独立Menlo/跟随Lora应用、真实聊天输入框样式与应用字体加载通过；消息正文/笔记及独立字号/行距待验，见第二十八流程 |
 | CFG12 | 新标注默认颜色 | F6 | 待验 |
 | CFG13 | 软件更新通道 stable/beta | F6 | 待验 |
-| SET01 | general.startView | F6 | 待验 |
+| SET01 | general.startView | F6 | 修复设置无启动消费者；真实macOS debug进程重启自动恢复最后FB2第二章/同CFI，手动关书不重开，shelf重载保持书架；虚拟书/外部冷启动/缺源/packaged及其他平台待验，见第四十三流程 |
 | SET02 | general.language | F6 | 待验 |
 | SET03 | general.crashPrompt | F6 | 待验 |
 | SET04 | general.launchAtStartup | F6 | 待验 |

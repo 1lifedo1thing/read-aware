@@ -1106,3 +1106,32 @@ b9819046…变为2d5cc607…；旧游标（不另传旧版本）、显式旧版�
 失败。原验收两书/导入意图0保持。本轮是请求之间经托管blob写入换源；读取中途
 换源、用户文件替换工作流、绕过blob登记的外部改写、其他格式/packaged/平台仍
 独立待验，不把本轮扩写成这些边界的证明。
+
+## 第四十三流程：修复启动页设置未消费，真实进程恢复上次阅读
+
+实际General设置点击Resume last book并持久为resume，导入两章FB2、读到第二章
+后关闭阅读并重载。修复前仍是书架、session idle/bookId null；源码只有设置的
+声明/保存，没有启动消费者。不是设置未落盘，而是保存后没有执行链路。
+
+新增useStartupBook，等书库和插件ready后，以lastOpenedAt选择最近实际读过的书，
+沿用原开书及位置恢复。只消费启动时偏好一次，忽略仅导入/改元数据的更新时间；
+没有读过的书则留书架。等待期间用户点击/按键、进入别的页面或开书后取消自动
+跳转；开书失败交给现有错误呈现。StrictMode重复effect不重复打开，修改设置不
+会在当前会话立即触发恢复，手动关书也不会弹回。
+
+真实debug导入新的两章FB2，导航第二章保存CFI，设置resume。正常关闭原生PID
+93467并确认其父进程92059及Vite92196均退出，重新启动PID3650。未执行任何开书
+命令，新进程自动session ready、同bookId、href=1、CFI与关闭前完全一致，正文为
+Second chapterThe restored passage is in the second chapter.；SQLite progress_json
+同CFI/href/100%。随后手动关书保持idle，改shelf重载后仍是书架/无阅读会话。
+
+证据：[startup-resume-observations.json](./startup-resume-observations.json)。
+修复前后两本精确自有书均files released，原两书保留；设置恢复shelf/en/system。
+定向启动hook及原表面切换检查2项、19断言通过，web/desktop类型通过。期间HMR后
+一次手动开书停在loading，先明确关闭该请求，再执行计划中的干净启动，后续手动
+开书和正常进程重启成功；不把HMR停滞算已修产品缺陷。
+
+本轮未证明前台绘制、虚拟来源、外部文件冷启动竞争、缺源恢复、packaged或其他
+平台。原生新进程dev会话64521，日志/tmp/readaware-validation-20260913-startup-restart.log；
+backup仍旧原生二进制，release尚未包含第38/39及本轮修复。语言、主题、动效和
+更新提示尚待下一轮实际流程，不能以读取原设置值计作通过。
