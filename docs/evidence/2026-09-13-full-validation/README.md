@@ -1944,3 +1944,16 @@ scope省略bookId时仍准确指向自有书，等待取消保留；再次点击
 无需另做删除绕过产品结果。desktop类型通过，本批无产品修复/重复门禁。
 物理输入/焦点、模型决策、重启、packaged及跨设备待验；详见
 [agent-shelf-deletion-observations.json](./agent-shelf-deletion-observations.json)。
+
+## 第七十二流程：删除提交后的原生文件故障与插件恢复
+
+仅自有测试书源文件设置macOS uchg（原flags0，故障flags2），未改SQLite或
+共享文件。生产Agent批准组件删除后书目null，源仍在，工具报fs/permission；
+list_book_removal_cleanup保留精确书ID/标题。用户解锁后CUA实际操作编译
+Library Desk 0.12.0，待清理列表选该书并重试，画面明确显示Local files still
+need cleanup，意图/源保留。恢复flags0前后SHA256相同；同一界面再重试显示
+File cleanup complete，源/封面null、待清理为空，关闭后返回原两书书架。
+
+原两书、空集合、原会话完整hash保持，无临时标记/文件残留，无产品改动。
+本批实际故障和插件恢复通过，不外推完整模型轮次、进程重启或发布包。
+详见[book-removal-cleanup-fault-observations.json](./book-removal-cleanup-fault-observations.json)。
