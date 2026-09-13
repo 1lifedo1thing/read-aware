@@ -1,0 +1,115 @@
+{
+  "date": "2026-09-13",
+  "scenario": "B06",
+  "classification": "passed",
+  "acceptedSubBoundary": "Automatic update setting is consumed by the running production App effect and software updater controller.",
+  "environment": {
+    "app": "com.readaware.app.sync-acceptance-20260913",
+    "bridge": 9225,
+    "mode": "macOS Tauri debug; Vite frontend on 5184",
+    "nativeVersion": "0.5.4"
+  },
+  "procedure": [
+    "Import the canonical runtime module URL resolved from the running App's useSoftwareUpdate hook.",
+    "Wrap the existing controller.checkForUpdates only to record invocation/stack and observe settlement; call original.apply(this,args), return the same Promise, preserve result and rejection.",
+    "Set general.autoUpdate false through the settings domain; observe zero calls across a separate follow-up tool invocation.",
+    "Set true through the settings domain; observe the actual React App effect invoke the real controller once and settle up-to-date.",
+    "Restore original preference true and remove both observer wrappers; stop only own native process and MCP session."
+  ],
+  "observations": {
+    "before": {
+      "availableVersion": null,
+      "channel": "stable",
+      "checkedChannel": "stable",
+      "currentVersion": "0.5.4",
+      "errorStage": null,
+      "phase": "up-to-date",
+      "progress": null,
+      "supported": true
+    },
+    "calls": [
+      {
+        "at": 1789286577988,
+        "before": {
+          "availableVersion": null,
+          "channel": "stable",
+          "checkedChannel": "stable",
+          "currentVersion": "0.5.4",
+          "errorStage": null,
+          "phase": "up-to-date",
+          "progress": null,
+          "supported": true
+        },
+        "result": {
+          "availableVersion": null,
+          "channel": "stable",
+          "checkedChannel": "stable",
+          "currentVersion": "0.5.4",
+          "errorStage": null,
+          "phase": "up-to-date",
+          "progress": null,
+          "supported": true
+        },
+        "stack": "@http://localhost:5184/:32:229\n@http://localhost:5184/src/features/update/hooks/useSoftwareUpdate.ts:11:42\n@http://localhost:5184/src/App.tsx:215:72\nreact_stack_bottom_frame@http://localhost:5184/node_modules/.vite/deps/react-dom_client.js:18567:26\nrunWithFiberInDEV@http://localhost:5184/node_modules/.vite/deps/react-dom_client.js:999:23\ncommitHookEffectListMount@http://localhost:5184/node_modules/.vite/deps/react-dom_client.js:9411:180\ncommitHookPassiveMountEffects@http://localhost:5184/node_modules/.vite/deps/react-dom_client.js:9465:85\ncommitPassiveMountOnFiber@http://localhost:5184/node_modules/.vite/deps/react-dom_client.js:11040:58\nrecursivelyTraversePassiveMountEffects@http://localhost:5184/node_modules/.vite/deps/react-dom_client.js:11010:38",
+        "stackTruncatedAfterRelevantAppFrames": true
+      }
+    ],
+    "cleanup": {
+      "controllerWrapperRemoved": true,
+      "ipcWrapperRemoved": true,
+      "settingRestored": true
+    },
+    "nativeCalls": [],
+    "off": {
+      "controllerCalls": 0,
+      "nativeCalls": 0,
+      "observedAt": 1789286577957,
+      "state": {
+        "availableVersion": null,
+        "channel": "stable",
+        "checkedChannel": "stable",
+        "currentVersion": "0.5.4",
+        "errorStage": null,
+        "phase": "up-to-date",
+        "progress": null,
+        "supported": true
+      },
+      "value": false
+    },
+    "on": {
+      "state": {
+        "availableVersion": null,
+        "channel": "stable",
+        "checkedChannel": "stable",
+        "currentVersion": "0.5.4",
+        "errorStage": null,
+        "phase": "up-to-date",
+        "progress": null,
+        "supported": true
+      },
+      "value": true
+    },
+    "original": true,
+    "profile": "/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913",
+    "runtimeUrl": "/src/features/update/lib/software-update-runtime.ts?t=1789265817381"
+  },
+  "assertions": {
+    "offDoesNotCallController": true,
+    "onCallsControllerOnce": true,
+    "callerIsAppEffect": true,
+    "realResultPreserved": true,
+    "restorationVerified": true
+  },
+  "limitations": [
+    "This adds debug runtime consumer evidence. The parent's separate packaged release UI/SQLite off-reopen-restore evidence proves its distinct boundary.",
+    "The auxiliary window.__TAURI_INTERNALS__.invoke observer captured zero desktop_update_check calls; no native IPC or network outcome claim is inferred from that observer.",
+    "No update download, installation, restart, network-success or release-consumer call-stack claim.",
+    "Off means changing this setting does not dispatch a new automatic check; cancellation of a prior in-flight check is outside this scenario."
+  ],
+  "cleanup": {
+    "nativePid45233Stopped": true,
+    "bridge9225Stopped": true,
+    "sourceChanges": false,
+    "frontendHmrChanges": false
+  }
+}
