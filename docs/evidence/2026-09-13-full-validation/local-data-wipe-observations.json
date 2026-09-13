@@ -1,0 +1,215 @@
+{
+  "flow": 55,
+  "date": "2026-09-13",
+  "profile": "com.readaware.app.validation-repair-e2e",
+  "baseline": "bc4cb32e plus local wipe fix",
+  "boundary": "macOS debug Tauri, actual mounted UI through Tauri bridge; CUA still reported locked after user unlock. No physical input or pixel acceptance.",
+  "observations": {
+    "wipeSeed": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"bookId\":\"9c572c6a-a719-4de2-a957-8f5c8c63ccbf\",\"memory\":{\"content\":[{\"text\":\"{\\\"id\\\":\\\"333dae91-9e8a-4889-81dd-183ce3ee631e\\\",\\\"scope\\\":\\\"book:9c572c6a-a719-4de2-a957-8f5c8c63ccbf\\\",\\\"kind\\\":\\\"fact\\\",\\\"content\\\":\\\"Local wipe synthetic memory\\\",\\\"importance\\\":0.5,\\\"evidenceCount\\\":1,\\\"pinned\\\":false,\\\"status\\\":\\\"active\\\",\\\"createdAt\\\":\\\"2026-09-13T01:58:28.328Z\\\",\\\"updatedAt\\\":\\\"2026-09-13T01:58:28.328Z\\\"}\",\"type\":\"text\"}]},\"messageCount\":1,\"noteId\":\"bc138eb3-3292-424f-b9f9-63dfcf02ab76\",\"path\":\"/Users/ahpx/Library/Application Support/com.readaware.app.validation-repair-e2e\",\"secretPresent\":true}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeAgentReveal": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"confirmationInputPresent\":false,\"result\":{\"content\":[{\"text\":\"{\\\"status\\\":\\\"opened\\\",\\\"surface\\\":\\\"delete-data\\\"}\",\"type\":\"text\"}]}}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeEmptyConfirmation": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"buttons\":[{\"disabled\":false,\"text\":\"Capture\"},{\"disabled\":false,\"text\":\"Delete all data\"},{\"disabled\":false,\"text\":\"\"},{\"disabled\":false,\"text\":\"Cancel\"},{\"disabled\":true,\"text\":\"Delete all data\"}],\"inputs\":[{\"id\":\"\",\"placeholder\":\"\",\"type\":\"file\",\"value\":\"\"},{\"id\":\"_r_u_\",\"placeholder\":\"DELETE\",\"type\":\"text\",\"value\":\"\"}],\"text\":\"ion's stored summary. Each capture publishes an immutable version to your synced event log; saving writes a JSON file you choose.\\n\\nRecipe\\n\\nReader profile\\nScope\\n\\nThis reader\\nCapture now\\nReads the current sources and publishes a new version only when the content changed.\\nCapture\\nVersions\\nNewest first. Saving writes the exact published artifact.\\nNo versions yet.\\nDanger zone\\nDelete all data\\nErase everything on this device — books, annotations, reading history, settings, and sync credentials. A synced account's copy on other devices is not touched.\\nDelete all data\\n\\nDelete all data?\\nThis erases every book, annotation, memory, conversation, and setting on this device, and cannot be undone. Data already synced to other devices stays on those devices.\\n\\nType DELETE to confirm\\n\\nCancel\\nDelete all data\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeInvalidConfirmation": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"bookPreserved\":true,\"disabled\":true}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeCancelled": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"book\":true,\"dialogPresent\":false,\"legacyPresent\":true,\"secretPresent\":true}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeConfirmed": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"confirmedInIsolatedProfile\":true}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeAfterReload": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"book\":null,\"databases\":[\"read-aware-fonts\"],\"flags\":[{\"key\":\"read-aware-migrated-v1\",\"value\":\"1\"},{\"key\":\"read-aware-migrated-memories-v1\",\"value\":\"1\"}],\"legacy\":null,\"memories\":[],\"messages\":0,\"note\":null,\"pluginKV\":null,\"secretPresent\":false,\"text\":\"Library\\n/\\nAgent\\n\\nSearch\\n\\nImport\\n\\nShelf management\\n\\nReading stats\\n\\nSettings\\n\\nMore\\nImport your first book\\nImport\\n\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeFreshWrite": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"bookId\":\"703aa201-cd6a-47f3-9025-f6d6bded1439\",\"cleanup\":{\"bookIds\":[\"703aa201-cd6a-47f3-9025-f6d6bded1439\"],\"files\":{\"status\":\"released\"}},\"finalReport\":{\"checkedAt\":\"2026-09-13T02:01:35.457Z\",\"consistent\":true,\"driftedTables\":0,\"eventsReplayed\":3,\"onlyLiveRows\":0,\"onlyReplayedRows\":0,\"scope\":\"event-projections\"},\"remaining\":null,\"report\":{\"checkedAt\":\"2026-09-13T02:01:35.430Z\",\"consistent\":true,\"driftedTables\":0,\"eventsReplayed\":2,\"onlyLiveRows\":0,\"onlyReplayedRows\":0,\"scope\":\"event-projections\"},\"title\":\"Post Wipe Write Probe\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeFailureSeed": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"bookId\":\"b5ab7dfd-0308-4d14-99ec-3e918ee50a45\",\"buttons\":[\"This reader\",\"Capture\",\"Delete all data\"],\"opened\":{\"content\":[{\"text\":\"{\\\"status\\\":\\\"opened\\\",\\\"surface\\\":\\\"delete-data\\\"}\",\"type\":\"text\"}]}}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipePartialFailure": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"book\":null,\"confirmationStillOpen\":true,\"text\":\"ile\\nScope\\n\\nThis reader\\nCapture now\\nReads the current sources and publishes a new version only when the content changed.\\nCapture\\nVersions\\nNewest first. Saving writes the exact published artifact.\\nNo versions yet.\\nDanger zone\\nDelete all data\\nErase everything on this device — books, annotations, reading history, settings, and sync credentials. A synced account's copy on other devices is not touched.\\nDelete all data\\n\\nDelete all data?\\nThis erases every book, annotation, memory, conversation, and setting on this device, and cannot be undone. Data already synced to other devices stays on those devices.\\n\\nType DELETE to confirm\\n\\nCancel\\nDelete all data\",\"write\":{\"accepted\":true}}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeFailureLogs": {
+      "content": [
+        {
+          "type": "text",
+          "text": "[ 2026-09-13T02:00:25.566Z ] [ LOG ] [MCP][BRIDGE][INFO] Ready\n[ 2026-09-13T02:00:25.582Z ] [ INFO ] [boot] start\n[ 2026-09-13T02:00:25.585Z ] [ INFO ] [boot] plugin updates recovered\n[ 2026-09-13T02:00:25.601Z ] [ INFO ] [boot] local store hydrated\n[ 2026-09-13T02:00:25.605Z ] [ INFO ] [boot] app identity hydrated\n[ 2026-09-13T02:00:25.609Z ] [ INFO ] [boot] roaming preferences hydrated\n[ 2026-09-13T02:00:25.618Z ] [ INFO ] [boot] i18n ready\n[ 2026-09-13T02:00:25.980Z ] [ INFO ] [boot] mounted\n[ 2026-09-13T02:00:26.188Z ] [ INFO ] [boot] shutdown coordination installed\n[ 2026-09-13T02:01:35.411Z ] [ INFO ] [library] imported fb2 703aa201-cd6a-47f3-9025-f6d6bded1439: 13 ms total (native staging 7 ms, cover none)\n[ 2026-09-13T02:03:24.665Z ] [ INFO ] [library] imported fb2 b5ab7dfd-0308-4d14-99ec-3e918ee50a45: 50 ms total (native staging 10 ms, cover none)\n[ 2026-09-13T02:04:17.254Z ] [ ERROR ] [data-sync] delete all data failed {\"code\":\"internal\",\"retryable\":false,\"name\":\"IpcError\",\"command\":\"wipe_all_data\"}"
+        }
+      ]
+    },
+    "wipeFixedSeed": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"bookId\":\"408cc3f9-9fb5-434f-919f-4a12cbaf89bf\",\"path\":\"/Users/ahpx/Library/Application Support/com.readaware.app.validation-repair-e2e\",\"reveal\":{\"content\":[{\"text\":\"{\\\"status\\\":\\\"opened\\\",\\\"surface\\\":\\\"delete-data\\\"}\",\"type\":\"text\"}]}}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeFixedPartial": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"buttons\":[{\"disabled\":false,\"text\":\"Capture\"},{\"disabled\":true,\"text\":\"Delete all data\"},{\"disabled\":false,\"text\":\"\"},{\"disabled\":false,\"text\":\"Reload restored library\"}],\"legacy\":null,\"state\":null,\"text\":\"\\nVersioned, reproducible context artifacts for external agents: the reader profile, declared reading intentions, one book's memory behind the current spoiler boundary, or one conversation's stored summary. Each capture publishes an immutable version to your synced event log; saving writes a JSON file you choose.\\n\\nRecipe\\n\\nReader profile\\nScope\\n\\nThis reader\\nCapture now\\nReads the current sources and publishes a new version only when the content changed.\\nCapture\\nVersions\\nNewest first. Saving writes the exact published artifact.\\nNo versions yet.\\nDanger zone\\nDelete all data\\nErase everything on this device — books, annotations, reading history, settings, and sync credentials. A synced account's copy on other devices is not touched.\\nDelete all data\\n\\nDelete all data?\\nLocal records were deleted, but some files could not be removed. Reload to finish cleanup before continuing.\\nReload restored library\",\"write\":\"backup/busy\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeFixedBootDenied": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"legacy\":null,\"text\":\"ReadAware\\nCould not start\\nAn error stopped ReadAware before it could open. The details below are also written to the log file. Restarting the app may help; if it doesn't, please report this from a device that can reach us.\\nIpcError: wipe_all_data: Local records cleared; cleanup remains pending: removing blobs: Permission denied (os error 13)\\nnormalizeIpcFailure@http://localhost:5184/src/platform/ipc.ts:18:26\\ninvoke@http://localhost:5184/src/platform/ipc.ts:33:30\\nCopy details\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeFixedRecovered": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"before\":[],\"bookId\":\"e0244ec6-71b9-4453-a12f-58500e7ed4f5\",\"legacy\":null,\"write\":\"accepted\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeFixedRollback": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"books\":[{\"addedAt\":\"2026-09-13T02:24:59.852Z\",\"author\":\"Validation Fixture\",\"collectionId\":null,\"fileName\":\"wipe-fixed-normal.fb2\",\"fileSize\":442,\"format\":\"fb2\",\"id\":\"e0244ec6-71b9-4453-a12f-58500e7ed4f5\",\"starred\":false,\"title\":\"Wipe Fixed Normal Probe\",\"updatedAt\":\"2026-09-13T02:24:59.852Z\"}],\"text\":\"rites a JSON file you choose.\\n\\nRecipe\\n\\nReader profile\\nScope\\n\\nThis reader\\nCapture now\\nReads the current sources and publishes a new version only when the content changed.\\nCapture\\nVersions\\nNewest first. Saving writes the exact published artifact.\\nNo versions yet.\\nDanger zone\\nDelete all data\\nErase everything on this device — books, annotations, reading history, settings, and sync credentials. A synced account's copy on other devices is not touched.\\nDelete all data\\n\\nDelete all data?\\nThis erases every book, annotation, memory, conversation, and setting on this device, and cannot be undone. Data already synced to other devices stays on those devices.\\n\\nType DELETE to confirm\\n\\nCancel\\nDelete all data\",\"write\":\"accepted\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "wipeFixedNormal": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"books\":[],\"text\":\"Library\\n/\\nAgent\\n\\nSearch\\n\\nImport\\n\\nShelf management\\n\\nReading stats\\n\\nSettings\\n\\nMore\\nImport your first book\\nImport\\n\"}\n\n[Executed in window: main]"
+        }
+      ]
+    }
+  },
+  "notes": [
+    "wipeFixedPartial.state used an extension-qualified Vite probe import and returned a separate module instance; persistent mounted recovery UI plus rejected write and native DB are the state evidence.",
+    "After denied-recovery boot, closing the window did not terminate the native process; owned PID 47277 was terminated with SIGTERM before recovery launch.",
+    "Final normal wipe auto-reloaded; owned test app then closed and dev supervisor exited 0."
+  ],
+  "nativeSnapshots": {
+    "partial": {
+      "books": 0,
+      "events": 0,
+      "flags": [
+        [
+          "read-aware-migrated-v1",
+          "1"
+        ],
+        [
+          "read-aware-migrated-memories-v1",
+          "1"
+        ],
+        [
+          "read-aware-wipe-pending",
+          "1"
+        ],
+        [
+          "read-aware-wipe-webview-pending",
+          "1"
+        ]
+      ],
+      "staleWrite": 0,
+      "blobs": 1,
+      "key": true
+    },
+    "recovered": {
+      "books": 0,
+      "events": 0,
+      "flags": [
+        [
+          "read-aware-migrated-v1",
+          "1"
+        ],
+        [
+          "read-aware-migrated-memories-v1",
+          "1"
+        ]
+      ],
+      "blobs": 0,
+      "key": false
+    },
+    "rollback": {
+      "books": 1,
+      "pending": [],
+      "blobs": 1
+    },
+    "normal": {
+      "books": 0,
+      "events": 0,
+      "flags": [
+        [
+          "read-aware-migrated-v1",
+          "1"
+        ],
+        [
+          "read-aware-migrated-memories-v1",
+          "1"
+        ]
+      ],
+      "blobs": 0,
+      "key": false,
+      "fixtureTriggers": []
+    }
+  }
+}

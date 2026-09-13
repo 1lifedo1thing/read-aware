@@ -67,6 +67,7 @@
     "backupInvalidArchive": "Ce fichier n’est pas une sauvegarde ReadAware complète et prise en charge.",
     "backupUnlockFailed": "Impossible de déverrouiller la sauvegarde. Vérifiez le mot de passe et l’intégrité du fichier.",
     "backupPasswordPolicy": "Le mot de passe de sauvegarde doit contenir au moins 12 caractères et ne pas dépasser 1024 octets UTF-8.",
+    "dataWipeIncomplete": "Les données locales ont été supprimées, mais certains fichiers subsistent. Rechargez l’application pour terminer le nettoyage avant de continuer.",
     "backupRecoveryRequired": "Le rétablissement des fichiers a échoué. Redémarrez ReadAware pour terminer la récupération avant de continuer.",
     "backupIncomplete": "Certains fichiers nécessaires à une sauvegarde complète sont manquants ou non pris en charge. Restaurez les fichiers manquants avant de réessayer.",
     "backupBusy": "Une autre opération de sauvegarde est en cours. Réessayez une fois terminée.",

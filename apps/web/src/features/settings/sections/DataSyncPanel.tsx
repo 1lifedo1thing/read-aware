@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { Button, Dialog, TextField, useToast } from "@read-aware/ui";
+import { useState, useSyncExternalStore } from "react";
+import { Button, Dialog, InlineError, TextField, useToast } from "@read-aware/ui";
+import { ERR_DATA_WIPE_INCOMPLETE, errorCode } from "@read-aware/core";
 import { createLogger } from "../../../platform/logger";
 import { useTranslation } from "../../../i18n";
 import { SettingsGroup } from "../components/SettingsGroup";
 import { SettingsPage } from "../components/SettingsPage";
 import { SettingsRow } from "../components/SettingsRow";
-import { deleteAllData } from "../lib/delete-all-data";
+import { deleteAllData, getDataWipeState, subscribeDataWipe } from "../lib/delete-all-data";
+import { describeError } from "../../../i18n/describe-error";
 import { useBackupActions } from "../hooks/useBackupActions";
 import { SyncAccountGroup } from "./SyncAccountGroup";
 import { useMaintenanceSurface } from "../hooks/useMaintenanceSurface";
@@ -31,26 +33,27 @@ export function DataSyncPanel() {
   const { toast } = useToast();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const { busy, requested, run, exportDialog, importDialog } = useBackupActions(deleteOpen || deleting);
+  const wipe = useSyncExternalStore(subscribeDataWipe, getDataWipeState);
+  const deleting = wipe?.phase === "working";
+  const reloadRequired = wipe?.phase === "reload-required";
+  const { busy, requested, run, exportDialog, importDialog } = useBackupActions(deleteOpen || wipe !== null);
 
   const deleteArmed = deleteConfirmText.trim() === DELETE_CONFIRM_PHRASE;
 
   const closeDeleteDialog = () => {
-    if (deleting) return;
+    if (wipe) return;
     setDeleteOpen(false);
     setDeleteConfirmText("");
   };
 
   const confirmDelete = async () => {
-    if (!deleteArmed || deleting) return;
-    setDeleting(true);
+    if (!deleteArmed || wipe) return;
     try {
       await deleteAllData();
       window.location.reload();
     } catch (error) {
       log.error("delete all data failed", error);
-      setDeleting(false);
+      if (errorCode(error) === ERR_DATA_WIPE_INCOMPLETE) return; // Persistent recovery controls below.
       toast({
         variant: "destructive",
         title: t("dataSync.noticeError"),
@@ -100,7 +103,7 @@ export function DataSyncPanel() {
           title={t("dataSync.deleteAll.title")}
           description={t("dataSync.deleteAll.description")}
           control={
-            <Button ref={deleteControlRef} variant="danger" size="sm" disabled={busy || requested !== null} onClick={() => setDeleteOpen(true)}>
+            <Button ref={deleteControlRef} variant="danger" size="sm" disabled={busy || requested !== null || wipe !== null} onClick={() => setDeleteOpen(true)}>
               {t("dataSync.deleteAll.button")}
             </Button>
           }
@@ -108,11 +111,15 @@ export function DataSyncPanel() {
       </SettingsGroup>
 
       <Dialog
-        open={deleteOpen}
+        open={deleteOpen || wipe !== null}
         onClose={closeDeleteDialog}
         title={t("dataSync.deleteAll.dialogTitle")}
       >
         <div className="space-y-4">
+          {reloadRequired ? <>
+            {wipe.error && <InlineError>{describeError(wipe.error).body}</InlineError>}
+            <Button onClick={() => window.location.reload()}>{t("about.diagnostics.repair.reload")}</Button>
+          </> : <>
           <p>{t("dataSync.deleteAll.dialogBody")}</p>
           <TextField
             label={t("dataSync.deleteAll.confirmLabel", { phrase: DELETE_CONFIRM_PHRASE })}
@@ -135,6 +142,7 @@ export function DataSyncPanel() {
               {deleting ? t("dataSync.deleteAll.deleting") : t("dataSync.deleteAll.button")}
             </Button>
           </div>
+          </>}
         </div>
       </Dialog>
     </SettingsPage>

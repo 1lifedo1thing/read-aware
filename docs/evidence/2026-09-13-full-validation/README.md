@@ -1407,3 +1407,42 @@ bootstrap/回填/genesis迁移、跨设备/平台和发布包仍待验。只有�
 现有maintenance工具与插件21项检查/137断言、插件build和diff检查通过。
 设置/插件视图关闭，Maintenance Desk原启用状态/2贡献恢复；物理输入、像素和
 发布包内置插件更新未验。完整备份其他待验边界继续按原覆盖清单推进。
+
+## 第五十五流程：本地清空确认、事务回滚与文件清理恢复
+
+专用 `com.readaware.app.validation-repair-e2e`，只使用自有合成数据。
+Agent `open_maintenance_settings(delete-data)` 只揭示宿主入口；空输入和小写
+`delete` 不执行，取消保留书、凭据及旧 WebView 数据。输入 DELETE 后，正常
+清空一本 FB2、笔记、记忆、消息、插件 KV、合成密钥及旧 WebView 存储，重载
+空书架；原生 device ID 改变，重新导入/写入和清理可用。此正常前测尚未包含修复。
+
+在唯一自有 FB2 的 blobs 目录撤掉写权限，实际宿主确认后 SQLite 已清空而文件
+删除失败。发现原实现报 internal、旧页面 KV 写入仍成功、两个防导入标记都丢失。
+这会允许清空后的旧状态再次写入，且下一启动可能导入旧 WebView 数据。
+
+修复：原生清空事务同时保存防导入、原生待清理和 WebView 待清理标记；提交后
+错误返回 data/wipe-incomplete。前端复用同步、插件、阅读和领域写入屏障，已提交
+则持续保留直到重载，显示持久恢复提示。启动在旧数据导入/资料加载前完成待清理
+步骤；仅剩 WebView 标记时不重复清空原生数据库。读取原生快照失败也禁止旧数据
+导入。清理确认写失败保持恢复状态；WebView 存储沿用防导入标记保护的尽力清理。
+
+最新原生 debug 中重放同一权限故障，确认 books/events 为0、四标记存在、残留
+blob1和密钥仍在，旧页实际 KV 写入被 backup/busy 拒绝、SQLite未出现该键；
+宿主显示清理未完成和重载按钮。带故障点击重载，boot 返回 data/wipe-incomplete，
+应用未加载资料。恢复目录权限后关闭窗口；启动失败页关闭后进程仍在，因此对
+自有 PID47277 发送 SIGTERM，再启动新进程。启动自动完成清理，books/events/
+blobs为0、密钥不存在，仅剩两个防导入标记；正常 KV 写入和新 FB2 导入成功。
+
+随后对新书安装自有 BEFORE DELETE 触发器，真实清空事务失败回滚，书/文件保留，
+无待清理标记，正常写入恢复。删除触发器后从实际确认界面重试清空，无故障路径
+自动重载为空书架，最终 books/events/blobs/key/临时触发器均清零。专用原生
+窗口正常关闭，dev54724退出0。原主验收实例和正式资料未清空。
+
+证据：[local-data-wipe-observations.json](./local-data-wipe-observations.json)。
+9项前端检查覆盖排空/屏障/回滚/提交后失败/确认写失败/启动恢复顺序，4项原生
+检查覆盖实际事务与文件故障；web/desktop类型及diff检查通过。一次探针导入使用
+不同Vite模块URL导致读到独立state=null，不以该值作为产品状态证据；实际UI、
+领域写入拒绝及SQLite快照互相核对。修正重载按钮复用的错误“恢复书库”措辞为
+现有“Reload app”，无变更模板的像素验收。用户报告解锁后CUA仍返回锁定，本批
+只有真实挂载Tauri交互与原生持久证据，物理输入/画面、发布包、远端同步、其他
+平台及物理断电不计通过；原primary/backup/release二进制尚未包含本修复。

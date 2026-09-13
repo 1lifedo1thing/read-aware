@@ -84,6 +84,7 @@ type CopyEntry = {
 const AI_SETTINGS: ErrorAction = "open-ai-settings";
 
 const CODE_COPY: Record<string, CopyEntry> = {
+  "data/wipe-incomplete": { key: "dataWipeIncomplete", retryable: false },
   "backup/invalid-archive": { key: "backupInvalidArchive", retryable: false },
   "backup/unlock-failed": { key: "backupUnlockFailed", retryable: false },
   "backup/password-policy": { key: "backupPasswordPolicy", retryable: false },

@@ -1101,16 +1101,24 @@ pub(crate) fn wipe_all_data_inner(conn: &mut Connection, data_dir: &Path) -> Res
             .map_err(|e| format!("wiping {table}: {e}"))?;
     }
     ensure_local_device(&tx)?;
+    // Commit anti-import flags with the deletion itself. A crash or filesystem
+    // failure must never let the next WebView resurrect legacy user data.
+    for key in ["read-aware-migrated-v1", "read-aware-migrated-memories-v1", "read-aware-wipe-pending", "read-aware-wipe-webview-pending"] {
+        tx.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES(?1,'1',strftime('%Y-%m-%dT%H:%M:%fZ','now'))", [key])?;
+    }
     tx.commit()?;
-    conn.execute_batch("VACUUM;")?;
-
-    let blobs_dir = data_dir.join("blobs");
-    if blobs_dir.exists() {
-        std::fs::remove_dir_all(&blobs_dir).map_err(|e| format!("removing blobs: {e}"))?;
-    }
-    let key_file = data_dir.join("secret.key");
-    if key_file.exists() {
-        std::fs::remove_file(&key_file).map_err(|e| format!("removing secret key: {e}"))?;
-    }
-    Ok(())
+    let finish = || -> Result<(), CommandError> {
+        conn.execute_batch("VACUUM;")?;
+        let blobs_dir = data_dir.join("blobs");
+        if blobs_dir.exists() {
+            std::fs::remove_dir_all(&blobs_dir).map_err(|e| CommandError::context("removing blobs", e))?;
+        }
+        let key_file = data_dir.join("secret.key");
+        if key_file.exists() {
+            std::fs::remove_file(&key_file).map_err(|e| CommandError::context("removing secret key", e))?;
+        }
+        conn.execute("DELETE FROM app_kv WHERE key='read-aware-wipe-pending'", [])?;
+        Ok(())
+    };
+    finish().map_err(|error| CommandError::context_coded("data/wipe-incomplete", "Local records cleared; cleanup remains pending", error))
 }

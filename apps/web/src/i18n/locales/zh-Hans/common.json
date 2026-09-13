@@ -67,6 +67,7 @@
     "backupInvalidArchive": "此文件不是受支持的完整 ReadAware 备份。",
     "backupUnlockFailed": "无法解锁备份，请检查密码和文件完整性。",
     "backupPasswordPolicy": "备份密码至少需要 12 个字符，且不能超过 1024 个 UTF-8 字节。",
+    "dataWipeIncomplete": "本地记录已删除，但部分文件尚未清理。请重新载入完成清理后再继续使用。",
     "backupRecoveryRequired": "恢复未能完成文件回滚。请重启 ReadAware 完成恢复后再继续使用。",
     "backupIncomplete": "完整备份所需的部分文件缺失或不受支持，请先恢复缺失文件再重试。",
     "backupBusy": "另一项备份操作正在进行，请在完成后重试。",

@@ -1,71 +1,49 @@
-/**
- * The danger-zone action: delete EVERYTHING on this device — the event log,
- * every projection (books, annotations, memories, chat), blobs, settings,
- * and the sealed secrets with their key. The relay copy of a synced account
- * is deliberately untouched: this wipes A DEVICE, not the account; the
- * caller's copy explains that distinction to the user.
- *
- * Ordering matters:
- *  1. best-effort relay logout while the session secret still exists;
- *  2. the Rust wipe (tables + blobs + secret key, one command);
- *  3. re-arm the one-time import flags — they died with app_kv, and without
- *     them the next boot would "helpfully" re-import the legacy webview data
- *     the user just asked us to destroy;
- *  4. clear the webview's own storage (that same legacy data);
- * then the caller reloads, and boot runs as a fresh install.
- */
+import { AppError, ERR_DATA_WIPE_INCOMPLETE, errorCode } from "@read-aware/core";
 import { invoke } from "../../../platform/ipc";
-import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { isTauri } from "../../../platform/environment";
-import { createLogger } from "../../../platform/logger";
-import { syncRelayClient } from "../../../platform/sync/sync-scheduler";
+import { syncRelayClient, withSyncBackup } from "../../../platform/sync/sync-scheduler";
+import { withPluginDataBackup } from "../../../platform/plugin-data-access";
+import { clearWebviewStorage } from "../../../platform/clear-webview-storage";
+import { withBackupCapture } from "./backup-capture";
 
-const log = createLogger("delete-all-data");
+type WipeState = null | { phase: "working" } | { phase: "reload-required"; error?: unknown };
+let state: WipeState = null;
+const listeners = new Set<() => void>();
+export const getDataWipeState = () => state;
+export const subscribeDataWipe = (listener: () => void) => {
+  listeners.add(listener); return () => { listeners.delete(listener); };
+};
+function publish(next: WipeState) { state = next; for (const listener of listeners) listener(); }
 
-const ONE_TIME_IMPORT_FLAGS = ["read-aware-migrated-v1", "read-aware-migrated-memories-v1"];
-
+/** Wipe this device, not the relay account. Drain existing writes and retain
+ * their barriers once native records have been cleared, including partial file
+ * cleanup failure. The native transaction owns anti-import/recovery markers;
+ * boot completes a pending wipe before it hydrates any old WebView data. */
 export async function deleteAllData(): Promise<void> {
-  if (!isTauri()) {
-    throw new Error("Deleting all data is desktop-only — the browser build has no store.");
-  }
+  if (!isTauri()) throw new AppError("ui/unavailable", "Deleting all data requires desktop");
+  if (state) throw new AppError("backup/busy", "Local data deletion is already active");
+  publish({ phase: "working" });
+  try { await syncRelayClient().logout(); }
+  catch { /* Offline or never connected: local deletion must still proceed. */ }
 
-  try {
-    await syncRelayClient().logout();
-  } catch {
-    // Offline or never connected — the local wipe must proceed regardless.
-  }
-
-  // Relay logout is preparation, outside the local write receipt. Never hold
-  // a transaction across a transport callback that can itself request backup.
-  return runDomainWrite(async () => {
-    await invoke("wipe_all_data");
-
-    for (const flag of ONE_TIME_IMPORT_FLAGS) {
-      await invoke("set_kv", { key: flag, value: "1" });
-    }
-
-    try {
-      localStorage.clear();
-      const databases = await indexedDB.databases();
-      await Promise.allSettled(
-        databases
-          .map((db) => db.name)
-          .filter((name): name is string => Boolean(name))
-          .map(
-            (name) =>
-              new Promise<void>((resolve, reject) => {
-                const request = indexedDB.deleteDatabase(name);
-                request.onsuccess = () => resolve();
-                request.onerror = () => reject(request.error);
-                // Another tab/handle keeping it open must not hang the wipe.
-                request.onblocked = () => resolve();
-              }),
-          ),
-      );
-    } catch (error) {
-      // Legacy webview storage is best-effort: the import flags above already
-      // prevent it from ever being read back into SQLite.
-      log.warn("webview storage cleanup incomplete", error);
-    }
+  return new Promise((resolve, reject) => {
+    void withSyncBackup(() => withPluginDataBackup("import", () => withBackupCapture(async () => {
+      let failure: unknown;
+      try { await invoke("wipe_all_data"); }
+      catch (error) {
+        if (errorCode(error) !== ERR_DATA_WIPE_INCOMPLETE) throw error;
+        failure = error;
+      }
+      await clearWebviewStorage();
+      if (!failure) {
+        try { await invoke("delete_kv", { key: "read-aware-wipe-webview-pending" }); }
+        catch (error) { failure = new AppError(ERR_DATA_WIPE_INCOMPLETE, "WebView cleanup acknowledgement failed", { cause: error }); }
+      }
+      publish({ phase: "reload-required", ...(failure ? { error: failure } : {}) });
+      if (failure) reject(failure); else resolve();
+      // SQLite and JS mirrors now differ. Even a cancelled/unmounted settings
+      // page must not release sync, plugin, reading or domain write admission.
+      return new Promise<never>(() => {});
+    }))).catch(error => { publish(null); reject(error); });
   });
 }

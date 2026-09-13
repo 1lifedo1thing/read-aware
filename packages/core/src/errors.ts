@@ -27,6 +27,8 @@ export const ERR_FS_NO_SPACE = "fs/no-space";
 export const ERR_DB_LOCKED = "db/locked";
 export const ERR_DB_ERROR = "db/error";
 export const ERR_SECRETS_UNAVAILABLE = "secrets/unavailable";
+/** Local records were cleared, but file cleanup must finish before normal use. */
+export const ERR_DATA_WIPE_INCOMPLETE = "data/wipe-incomplete";
 /** Native full-backup preparation; never substitute a partial archive. */
 export const ERR_BACKUP_INCOMPLETE = "backup/incomplete";
 export const ERR_BACKUP_BUSY = "backup/busy";

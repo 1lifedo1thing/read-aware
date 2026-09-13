@@ -2061,7 +2061,7 @@ fn wipe_all_data_leaves_a_fresh_usable_store() {
 
     for table in ["domain_events", "books", "annotations", "annotations_fts",
                   "event_sync_state", "blob_objects", "blob_sync_state",
-                  "sync_cursors", "app_kv"] {
+                  "sync_cursors"] {
         assert_eq!(
             scalar::<i64>(&conn, &format!("SELECT COUNT(*) FROM {table}")),
             0,
@@ -2069,6 +2069,8 @@ fn wipe_all_data_leaves_a_fresh_usable_store() {
         );
     }
     assert!(!dir.path().join("blobs").exists(), "blob files must be gone");
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv"), 3);
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key IN ('read-aware-migrated-v1','read-aware-migrated-memories-v1') AND value_json='1'"), 2);
     // The schema itself survives — this is a wipe, not an uninstall.
     assert!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM schema_migrations") > 0);
     // And the store is immediately usable: a fresh device identity exists and
@@ -2077,6 +2079,43 @@ fn wipe_all_data_leaves_a_fresh_usable_store() {
     assert_ne!(new_device, old_device, "the wiped install is a NEW device");
     commit_events_inner(&mut conn, &[imported("e2", 2_000, "b2", "基地")]).unwrap();
     assert_eq!(scalar::<String>(&conn, "SELECT title FROM books WHERE id='b2'"), "基地");
+}
+
+#[test]
+fn wipe_all_data_file_failure_keeps_durable_recovery_and_anti_import_flags() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut conn = migrated_conn();
+    commit_events_inner(&mut conn, &[imported("wipe-file", 1_000, "wipe-book", "Synthetic")]).unwrap();
+    put_blob_inner(&conn, dir.path(), "bookfile:wipe-book", None, b"original").unwrap();
+    // A directory at the key-file path deterministically prevents remove_file,
+    // including when the test runner has permission to bypass chmod restrictions.
+    std::fs::create_dir(dir.path().join("secret.key")).unwrap();
+    let error = wipe_all_data_inner(&mut conn, dir.path()).unwrap_err();
+    assert_eq!(error.code, "data/wipe-incomplete");
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 0);
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 0);
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key IN ('read-aware-migrated-v1','read-aware-migrated-memories-v1','read-aware-wipe-pending','read-aware-wipe-webview-pending') AND value_json='1'"), 4);
+    std::fs::remove_dir(dir.path().join("secret.key")).unwrap();
+    wipe_all_data_inner(&mut conn, dir.path()).unwrap();
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv"), 3);
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"), 0);
+}
+
+#[test]
+fn wipe_all_data_transaction_failure_preserves_records_files_and_identity() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut conn = migrated_conn();
+    commit_events_inner(&mut conn, &[imported("wipe-rollback", 1_000, "wipe-book", "Keep")]).unwrap();
+    put_blob_inner(&conn, dir.path(), "bookfile:wipe-book", None, b"keep").unwrap();
+    let identity = ensure_local_device(&conn).unwrap();
+    conn.execute_batch("CREATE TRIGGER reject_wipe BEFORE DELETE ON books BEGIN SELECT RAISE(ABORT,'synthetic wipe rollback'); END").unwrap();
+    let error = wipe_all_data_inner(&mut conn, dir.path()).unwrap_err();
+    assert_ne!(error.code, "data/wipe-incomplete");
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 1);
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 1);
+    assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM app_kv WHERE key='read-aware-wipe-pending'"), 0);
+    assert_eq!(ensure_local_device(&conn).unwrap(), identity);
+    assert!(dir.path().join("blobs").exists());
 }
 
 #[test]

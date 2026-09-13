@@ -35,6 +35,7 @@ import { createLogger } from "./logger";
 import { hydrateSecrets } from "./secret-store";
 import { initializeUserProfile, LEGACY_PROFILE_KEY } from "../domain/user-profile";
 import { KVWriteQueue, type KVWriteOrigin, type KVCommit, type KVFailureOwner } from "./kv-write-queue";
+import { clearWebviewStorage } from "./clear-webview-storage";
 export type { KVCommit } from "./kv-write-queue";
 
 const log = createLogger("local-store");
@@ -245,8 +246,23 @@ export async function hydrateLocalStore(): Promise<void> {
   try {
     snapshot = await loadKvSnapshot();
   } catch (err) {
-    log.error("hydrate failed; starting from empty config", err);
-    snapshot = new Map();
+    hydrated = false;
+    log.error("hydrate failed; refusing legacy imports without native state", err);
+    throw err;
+  }
+
+  // A previous wipe committed its database transaction but did not finish
+  // removing files. Recover before legacy imports, secrets, plugins or UI boot.
+  if (snapshot.get("read-aware-wipe-pending") || snapshot.get("read-aware-wipe-webview-pending")) {
+    try {
+      if (snapshot.get("read-aware-wipe-pending")) await invoke("wipe_all_data");
+      await clearWebviewStorage();
+      await invoke("delete_kv", { key: "read-aware-wipe-webview-pending" });
+      snapshot = await loadKvSnapshot();
+    } catch (error) {
+      hydrated = false;
+      throw error;
+    }
   }
 
   // First launch after SQLite lands: sweep the old in-webview data into SQLite.
