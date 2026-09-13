@@ -9,7 +9,7 @@ import { MAX_GRAPH_NAMES, normalizeBookGraphQuery, queryBookGraph, type BookGrap
 import { chapterMemoryPolicy } from "../memory/book-memory-policy";
 import type { RuntimeDeps } from "../ports";
 import type { ThreadScope } from "../thread-scope";
-import { assertSpoilerPermission, confirmSpoilerSchema, spoilerGranted } from "./book-text-tools";
+import { assertSpoilerPermission, withSpoilerArgument, spoilerGranted } from "./book-text-tools";
 import { resolveBookId } from "./current-book";
 import { textResult } from "./tool-result";
 import type { AgentTurnState } from "./turn-state";
@@ -19,12 +19,11 @@ export function buildGraphTools(scope: ThreadScope, deps: RuntimeDeps, turnState
     name: "query_book_graph",
     label: "Query book graph",
     description: "Query this edition's distilled chapter memory: characters or concepts, aliases, relationships and zero-based provenance chapter indices. In replies use chapter titles or get_toc's matching chapterNumber, not these raw indices. FIRST STOP for identity/relationship questions. This graph is a summary, not source text; verify quotations with read_chapter/search_book_text at the provenance chapter. Pass names for profiles, chapterIndex for one chapter, or neither for an overview. bookId defaults to the current book. Missing or withheld digests are not proof that an entity does not occur in the book.",
-    parameters: Type.Object({
+    parameters: Type.Object(withSpoilerArgument(scope, {
       names: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 256 }), { minItems: 1, maxItems: MAX_GRAPH_NAMES })),
       chapterIndex: Type.Optional(Type.Integer({ minimum: 0 })),
       bookId: Type.Optional(Type.String()),
-      confirmSpoiler: confirmSpoilerSchema,
-    }),
+    }, turnState)),
     execute: async (_id, params) => {
       const raw = params as BookGraphQuery & { bookId?: string; confirmSpoiler?: unknown };
       const query = normalizeBookGraphQuery({

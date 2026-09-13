@@ -3,7 +3,7 @@ import { Type } from "@earendil-works/pi-ai";
 import { normalizeBookRangeQuery, normalizeBookNavigationTargetsQuery, type BookRangeQuery, type BookNavigationTargetsQuery } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import type { ThreadScope } from "../thread-scope";
-import { assertSpoilerPermission, confirmSpoilerSchema, spoilerGranted } from "./book-text-tools";
+import { assertSpoilerPermission, withSpoilerArgument, spoilerGranted } from "./book-text-tools";
 import { resolveBookId } from "./current-book";
 import { textResult } from "./tool-result";
 import type { AgentTurnState } from "./turn-state";
@@ -32,11 +32,11 @@ export function buildNavigationTools(scope: ThreadScope, deps: RuntimeDeps, stat
   }, {
     name: "find_book_locations", label: "Find book locations",
     description: "Find exact text matches and return versioned locations suitable for open_book. Unlike search_book_text this does not use token fallback. Pagination is bounded by matches and scanned sections; follow nextCursor to continue, including when a batch has no hits. Narrative searches stay behind the reading fence unless the reader explicitly grants spoilers.",
-    parameters: Type.Object({
+    parameters: Type.Object(withSpoilerArgument(scope, {
       bookId: Type.Optional(Type.String()), query: Type.String({ minLength: 1, maxLength: 500 }),
       matchCase: Type.Optional(Type.Boolean()), wholeWords: Type.Optional(Type.Boolean()),
-      cursor: Type.Optional(Type.String()), contentVersion: Type.Optional(Type.String()), confirmSpoiler: confirmSpoilerSchema,
-    }),
+      cursor: Type.Optional(Type.String()), contentVersion: Type.Optional(Type.String()),
+    }, state)),
     execute: async (_id, params, signal) => {
       const raw = params as { bookId?: string; query: string; matchCase?: boolean; wholeWords?: boolean; cursor?: string; contentVersion?: string; confirmSpoiler?: unknown };
       const bookId = resolveBookId(scope, raw.bookId);
@@ -53,11 +53,11 @@ export function buildNavigationTools(scope: ThreadScope, deps: RuntimeDeps, stat
   }, {
     name: "read_book_range", label: "Read a book range",
     description: "Read a versioned range returned by find_book_locations, without opening or moving the reader. Do not invent or rewrite its bookId, contentVersion or CFI. Returns bounded text, same-section context and nextOffset for continuation. A stale/missing range requires a fresh search. The current narrative book's original reading fence still applies, even to a known range.",
-    parameters: Type.Object({
+    parameters: Type.Object(withSpoilerArgument(scope, {
       range: bookRangeSchema,
       offset: Type.Optional(Type.Integer({ minimum: 0 })), limit: Type.Optional(Type.Integer({ minimum: 2, maximum: 12000 })),
-      contextChars: Type.Optional(Type.Integer({ minimum: 0, maximum: 2000 })), confirmSpoiler: confirmSpoilerSchema,
-    }, { additionalProperties: false }),
+      contextChars: Type.Optional(Type.Integer({ minimum: 0, maximum: 2000 })),
+    }, state), { additionalProperties: false }),
     execute: async (_id, params, signal) => {
       const { confirmSpoiler: rawGrant, ...input } = params as BookRangeQuery & { confirmSpoiler?: unknown };
       const query = normalizeBookRangeQuery(input);
