@@ -112,4 +112,30 @@ describe("narrative evidence boundary", () => {
     });
     expect(violations.filter((item) => item.kind === "future-name")).toEqual([]);
   });
+
+  test("does not treat a pronoun-copula phrase as a future character name", () => {
+    const repeated = "你是说，你是问，你是答；你是说，你是问，你是答；你是说，你是问，你是答。";
+    const edition = book(["眼前的讨论。", repeated]);
+    const violations = inspectNarrativeEvidence({
+      answer: "如果你是想问某一章，可以告诉我章节号。",
+      readerText: "帮我读一下第 999 章，讲讲它的内容。",
+      book: edition,
+    });
+    expect(violations.filter((item) => item.kind === "future-name")).toEqual([]);
+  });
+
+  test("still rejects a recurring future character name", () => {
+    const repeated = Array.from(
+      { length: 5 },
+      () => "智子说，智子问，智子答，智子走。",
+    ).join("");
+    const edition = book(["眼前的讨论。", repeated], "第一章");
+    const violations = inspectNarrativeEvidence({
+      answer: "后来智子说了秘密。",
+      readerText: "解释这一段",
+      cursor: { chapterIndex: 0, visibleText: "眼前的讨论。" },
+      book: edition,
+    });
+    expect(violations).toContainEqual({ kind: "future-name", phrase: "智子" });
+  });
 });
