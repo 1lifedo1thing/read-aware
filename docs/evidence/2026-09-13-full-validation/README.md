@@ -1310,3 +1310,27 @@ custom切OpenAI时密码为空且Test禁用，没有带过去自定义合成凭�
 证据：[ai-configuration-observations.json](./ai-configuration-observations.json)。
 只修改现有测试探针/服务，desktop类型检查通过，无产品改动/重复全量门禁。
 其他provider真实认证/远端目录、Responses、原生重启和发布包保留各自待验边界。
+
+## 第五十一流程：聊天正文与笔记列表独立/跟随排版
+
+用户报告解锁后，CUA立即仍返回Mac is locked，已反馈并继续真实Tauri挂载DOM
+验证；本批不计物理输入或像素证据。复用已有settings/memory探针，创建独占
+FB2，通过conversation-store保存两条合成消息，通过annotations命令创建一条
+无锚点笔记。不是模型生成结果，不涉及远端请求或凭据。
+
+真实Worker将内容改为独立Menlo/XL/relaxed：用户消息、助手段落和输入框均
+computed 17px/32.3px；笔记列表14.569px/27.681px，符合已有缩放样式。
+Agent设置全局阅读Lora/large/compact并开启跟随，消息变为15.6464px/22.687px，
+笔记13.409px/19.443px，Lora400/700字体状态loaded。修改本书为Menlo/xxx-large/
+relaxed后，内容仍保持全局Lora样式，符合公开描述的全局跟随；本批未捕获阅读
+iframe样式，不将该设置回执作为阅读正文绘制证据。关闭跟随后原独立值恢复。
+
+再经Agent设x-small/compact，消息12px/17.4px，笔记10.284px/14.912px；关书
+重开后消息、字号行距和原两条持久消息保持。导航按钮仍为Inter16px/24px。
+点击无锚点笔记没有打开编辑器，本批只验证笔记列表，不计编辑器通过。
+
+证据：[content-typography-observations.json](./content-typography-observations.json)。
+清理后自有book/note均null、消息0，7项设置恢复原值、本书覆盖恢复，settings
+Worker贡献0，Reading Goals原12贡献保留。只有证据文档改动；JSON解析和diff
+检查通过，无需重跑未变化产品代码的测试。全局聊天/插件内容、其他字形、原生
+进程重启、发布包和平台保留各自未验边界。
