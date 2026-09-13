@@ -1446,3 +1446,37 @@ blobs为0、密钥不存在，仅剩两个防导入标记；正常 KV 写入和�
 现有“Reload app”，无变更模板的像素验收。用户报告解锁后CUA仍返回锁定，本批
 只有真实挂载Tauri交互与原生持久证据，物理输入/画面、发布包、远端同步、其他
 平台及物理断电不计通过；原primary/backup/release二进制尚未包含本修复。
+
+## 第五十六流程：插件目录分页、搜索与注册态实时变化
+
+在 e824c678 的 primary 隔离 debug Tauri 使用编译 Maintenance Desk 0.4.0。
+Installed plugins 显示总计15（视图虚拟渲染当前12项），Registered contributions
+总计79，第一页 Previous禁用/Next可用，第二页相反；实际下一页从后续 commands
+及content/fonts/header条目开始。搜索 editorial-themes 返回字体和两个主题3项。
+只证明已渲染窗口与页控件，不把12个可见行当作完整40行截图证明。
+
+真实 Agent list_installed_plugins 每页7项得到7/7/1共15个不重复对象；
+list_plugin_contributions同样分页，共79个不重复对象，按nextOffset到null停止。
+安装字段仅id/name/version/builtin/enabled/activationFailed；贡献仅point/pluginId/
+key，不返回回调、配置、路径或凭据，不据注册身份推断健康或授予调用权。
+
+停用 Editorial Themes 后安装目录仍含该项、enabled=false/activationFailed=false，
+贡献为空；已打开的编译插件贡献视图实时79→76。恢复启用后实时76→79，Agent
+重读enabled=true/activationFailed=false且字体/两主题3项恢复。Manage plugins
+实际打开宿主安装管理页；本批没有安装/卸载其他插件或验证安装同意。
+
+操作中第一次直接导入无HMR时间戳的plugin-host.ts创建了另一个模块实例，其
+active map不同于已挂载宿主：配置停用而贡献未注销，再启用报激活失败。这段是
+错误测试操作，不记产品缺陷或生命周期通过。读取Vite实际转换后的现有maintenance
+探针，找到带版本的宿主模块URL，再通过同一挂载实例停用/恢复和实时观察复验。
+同类验证应经已有探针或实际UI，避免裸导入有进程状态的HMR模块。最终安装15项、
+全部activationFailures=[]、贡献79、Maintenance Desk2，原两书与启用状态保持。
+
+证据：[plugin-directory-observations.json](./plugin-directory-observations.json)。
+没有产品或探针改动，未重复类型/全量测试。目录安装变化/预算上限/完整筛选、
+provider调用/权限交集、发布包、物理输入/像素和其他平台继续待验。
+
+本批另回填覆盖清单27行：已有字体/菜单/安装回滚/聊天/权限/取消等证据不再写
+空泛“待验”，分别保留确切剩余边界。SYS18按当前desktop范围不适用；CON11是
+设计不开放而非安全测试通过，CON12及明确未实现部分也不计通过。此回填不增加
+桌面流程数量或测试通过次数，目的是消除过期队列造成的重复验收。

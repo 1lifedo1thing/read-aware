@@ -1,0 +1,99 @@
+{
+  "flow": 56,
+  "baseline": "e824c678",
+  "date": "2026-09-13",
+  "profile": "com.readaware.app.capability-e2e",
+  "consumer": "Compiled Maintenance Desk 0.4.0 Worker and actual Agent host IO tools",
+  "observations": {
+    "directoryInitial": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"buttons\":[{\"a\":null,\"t\":\"\\nFB2\\nReading Capability Probe\\nReadAware Tests\\n\"},{\"a\":\"Star Reading Capability Probe\",\"t\":\"\"},{\"a\":\"Info about Reading Capability Probe\",\"t\":\"\"},{\"a\":\"Remove Reading Capability Probe\",\"t\":\"\"},{\"a\":null,\"t\":\"\"},{\"a\":\"Back\",\"t\":\"\"},{\"a\":\"Refresh\",\"t\":\"\"},{\"a\":\"Search directory\",\"t\":\"\"},{\"a\":\"Manage plugins\",\"t\":\"\"},{\"a\":\"Registered contributions\",\"t\":\"\"},{\"a\":null,\"t\":\"Annotation Desk\\nannotation-desk · 0.7.0\\n\"},{\"a\":null,\"t\":\"Dictionary\\ndictionary · 1.4.0\\n\"},{\"a\":null,\"t\":\"Editorial Themes\\neditorial-themes · 1.0.0\\n\"},{\"a\":null,\"t\":\"Jumper\\njumper · 0.8.0\\n\"},{\"a\":null,\"t\":\"Library Desk\\nlibrary-desk · 0.12.0\\n\"},{\"a\":null,\"t\":\"Listening Desk\\nlistening-desk · 0.10.0\\n\"},{\"a\":null,\"t\":\"Maintenance Desk\\nmaintenance-desk · 0.4.0\\n\"},{\"a\":null,\"t\":\"Memory Desk\\nmemory-desk · 0.13.0\\n\"},{\"a\":null,\"t\":\"Reading Goals\\nreading-goals · 0.5.0\\n\"},{\"a\":null,\"t\":\"RSS Reader\\nrss-reader · 0.20.0\\n\"},{\"a\":null,\"t\":\"Sentence Reader\\nsentence-reader · 1.1.0\\n\"},{\"a\":null,\"t\":\"Text Desk\\ntext-desk · 0.22.0\\n\"},{\"a\":\"Previous page\",\"t\":\"\"},{\"a\":\"Next page\",\"t\":\"\"},{\"a\":null,\"t\":\"Close\"}],\"text\":\"Library\\n/\\nAgent\\n\\nSearch\\n\\nImport\\n\\nShelf management\\n\\nReading stats\\n\\nSettings\\n\\nMore\\n\\n\\nReading Paint Probe\\nUnknown author\\n\\n\\n\\n25%\\n\\n\\nFB2\\nReading Capability Probe\\nReadAware Tests\\nReading Capability Probe\\nReadAware Tests\\n\\n\\n\\n6%\\n\\nMaintenance Desk\\n\\nInstalled plugins (15)\\n\\nRefresh\\n\\nSearch directory\\n\\nManage plugins\\n\\nRegistered contributions\\n\\nAnnotation Desk\\nannotation-desk · 0.7.0\\n\\nDictionary\\ndictionary · 1.4.0\\n\\nEditorial Themes\\neditorial-themes · 1.0.0\\n\\nJumper\\njumper · 0.8.0\\n\\nLibrary Desk\\nlibrary-desk · 0.12.0\\n\\nListening Desk\\nlistening-desk · 0.10.0\\n\\nMaintenance Desk\\nmaintenance-desk · 0.4.0\\n\\nMemory Desk\\nmemory-desk · 0.13.0\\n\\nReading Goals\\nreading-goals · 0.5.0\\n\\nRSS Reader\\nrss-reader · 0.20.0\\n\\nSentence Reader\\nsentence-reader · 1.1.0\\n\\nText Desk\\ntext-desk · 0.22.0\\n\\nPrevious page\\nPage 1\\n\\nNext page\\nClose\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "directoryAgentFirst": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"contributions\":{\"content\":[{\"text\":\"{\\\"contributions\\\":[{\\\"point\\\":\\\"agentContextProviders\\\",\\\"pluginId\\\":\\\"reading-goals\\\",\\\"key\\\":\\\"reading-goals:reading-goal\\\"},{\\\"point\\\":\\\"agentRetrievalProviders\\\",\\\"pluginId\\\":\\\"dictionary\\\",\\\"key\\\":\\\"dictionary:saved-vocabulary\\\"}],\\\"total\\\":79,\\\"offset\\\":0,\\\"nextOffset\\\":2}\",\"type\":\"text\"}]},\"list\":{\"content\":[{\"text\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"annotation-desk\\\",\\\"name\\\":\\\"Annotation Desk\\\",\\\"version\\\":\\\"0.7.0\\\",\\\"builtin\\\":true,\\\"enabled\\\":true,\\\"activationFailed\\\":false},{\\\"id\\\":\\\"dictionary\\\",\\\"name\\\":\\\"Dictionary\\\",\\\"version\\\":\\\"1.4.0\\\",\\\"builtin\\\":true,\\\"enabled\\\":true,\\\"activationFailed\\\":false}],\\\"total\\\":15,\\\"offset\\\":0,\\\"nextOffset\\\":2}\",\"type\":\"text\"}]}}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "directoryAgentPagination": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"list_installed_plugins\":{\"count\":15,\"editorial\":[{\"activationFailed\":false,\"builtin\":true,\"enabled\":true,\"id\":\"editorial-themes\",\"name\":\"Editorial Themes\",\"version\":\"1.0.0\"}],\"fields\":[\"id\",\"name\",\"version\",\"builtin\",\"enabled\",\"activationFailed\"],\"pages\":[{\"count\":7,\"nextOffset\":7,\"offset\":0,\"total\":15},{\"count\":7,\"nextOffset\":14,\"offset\":7,\"total\":15},{\"count\":1,\"nextOffset\":null,\"offset\":14,\"total\":15}],\"unique\":15},\"list_plugin_contributions\":{\"count\":79,\"editorial\":[{\"key\":\"editorial-themes:eb-garamond\",\"pluginId\":\"editorial-themes\",\"point\":\"fonts\"},{\"key\":\"editorial-themes:gutenberg\",\"pluginId\":\"editorial-themes\",\"point\":\"themes\"},{\"key\":\"editorial-themes:nocturne\",\"pluginId\":\"editorial-themes\",\"point\":\"themes\"}],\"fields\":[\"point\",\"pluginId\",\"key\"],\"pages\":[{\"count\":7,\"nextOffset\":7,\"offset\":0,\"total\":79},{\"count\":7,\"nextOffset\":14,\"offset\":7,\"total\":79},{\"count\":7,\"nextOffset\":21,\"offset\":14,\"total\":79},{\"count\":7,\"nextOffset\":28,\"offset\":21,\"total\":79},{\"count\":7,\"nextOffset\":35,\"offset\":28,\"total\":79},{\"count\":7,\"nextOffset\":42,\"offset\":35,\"total\":79},{\"count\":7,\"nextOffset\":49,\"offset\":42,\"total\":79},{\"count\":7,\"nextOffset\":56,\"offset\":49,\"total\":79},{\"count\":7,\"nextOffset\":63,\"offset\":56,\"total\":79},{\"count\":7,\"nextOffset\":70,\"offset\":63,\"total\":79},{\"count\":7,\"nextOffset\":77,\"offset\":70,\"total\":79},{\"count\":2,\"nextOffset\":null,\"offset\":77,\"total\":79}],\"unique\":79}}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "directoryPluginSecondPage": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"paging\":[{\"a\":\"Previous page\",\"disabled\":false},{\"a\":\"Next page\",\"disabled\":true}],\"text\":\"Library\\n/\\nAgent\\n\\nSearch\\n\\nImport\\n\\nShelf management\\n\\nReading stats\\n\\nSettings\\n\\nMore\\n\\n\\nReading Paint Probe\\nUnknown author\\n\\n\\n\\n25%\\n\\n\\nFB2\\nReading Capability Probe\\nReadAware Tests\\nReading Capability Probe\\nReadAware Tests\\n\\n\\n\\n6%\\n\\nMaintenance Desk\\n\\nRegistered contributions (79)\\n\\nRefresh\\n\\nSearch directory\\n\\nManage plugins\\nreading-goals:open\\nreading-goals · commands\\nreading-goals:time\\nreading-goals · commands\\nrss-reader:subscribe\\nrss-reader · commands\\ntext-desk:image-controls\\ntext-desk · commands\\ntext-desk:inference-history\\ntext-desk · commands\\ntext-desk:open\\ntext-desk · commands\\nworkspace-profiles:open\\nworkspace-profiles · commands\\nrss-reader:feed\\nrss-reader · contentProviders\\neditorial-themes:eb-garamond\\neditorial-themes · fonts\\nannotation-desk:reader\\nannotation-desk · headerActions\\nannotation-desk:shelf\\nannotation-desk · headerActions\\ndictionary:vocabulary\\ndictionary · headerActions\\n\\nPrevious page\\nPage 2\\n\\nNext page\\nClose\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "directoryPluginFiltered": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Library\n/\nAgent\n\nSearch\n\nImport\n\nShelf management\n\nReading stats\n\nSettings\n\nMore\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n\nMaintenance Desk\n\nRegistered contributions (3)\n\nRefresh\n\nSearch directory\n\nManage plugins\neditorial-themes:eb-garamond\neditorial-themes · fonts\neditorial-themes:gutenberg\neditorial-themes · themes\neditorial-themes:nocturne\neditorial-themes · themes\n\nPrevious page\nPage 1\n\nNext page\nClose\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "directoryDisabled": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"contributions\":{\"content\":[{\"text\":\"{\\\"contributions\\\":[{\\\"point\\\":\\\"fonts\\\",\\\"pluginId\\\":\\\"editorial-themes\\\",\\\"key\\\":\\\"editorial-themes:eb-garamond\\\"},{\\\"point\\\":\\\"themes\\\",\\\"pluginId\\\":\\\"editorial-themes\\\",\\\"key\\\":\\\"editorial-themes:gutenberg\\\"},{\\\"point\\\":\\\"themes\\\",\\\"pluginId\\\":\\\"editorial-themes\\\",\\\"key\\\":\\\"editorial-themes:nocturne\\\"}],\\\"total\\\":3,\\\"offset\\\":0,\\\"nextOffset\\\":null}\",\"type\":\"text\"}]},\"installed\":{\"content\":[{\"text\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"editorial-themes\\\",\\\"name\\\":\\\"Editorial Themes\\\",\\\"version\\\":\\\"1.0.0\\\",\\\"builtin\\\":true,\\\"enabled\\\":false,\\\"activationFailed\\\":false}],\\\"total\\\":1,\\\"offset\\\":0,\\\"nextOffset\\\":null}\",\"type\":\"text\"}]},\"text\":\"Library\\n/\\nAgent\\n\\nSearch\\n\\nImport\\n\\nShelf management\\n\\nReading stats\\n\\nSettings\\n\\nMore\\n\\n\\nReading Paint Probe\\nUnknown author\\n\\n\\n\\n25%\\n\\n\\nFB2\\nReading Capability Probe\\nReadAware Tests\\nReading Capability Probe\\nReadAware Tests\\n\\n\\n\\n6%\\n\\nMaintenance Desk\\n\\nRegistered contributions (3)\\n\\nRefresh\\n\\nSearch directory\\n\\nManage plugins\\neditorial-themes:eb-garamond\\neditorial-themes · fonts\\neditorial-themes:gutenberg\\neditorial-themes · themes\\neditorial-themes:nocturne\\neditorial-themes · themes\\n\\nPrevious page\\nPage 1\\n\\nNext page\\nClose\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "directoryRestored": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"contributions\":{\"content\":[{\"text\":\"{\\\"contributions\\\":[{\\\"point\\\":\\\"fonts\\\",\\\"pluginId\\\":\\\"editorial-themes\\\",\\\"key\\\":\\\"editorial-themes:eb-garamond\\\"},{\\\"point\\\":\\\"themes\\\",\\\"pluginId\\\":\\\"editorial-themes\\\",\\\"key\\\":\\\"editorial-themes:gutenberg\\\"},{\\\"point\\\":\\\"themes\\\",\\\"pluginId\\\":\\\"editorial-themes\\\",\\\"key\\\":\\\"editorial-themes:nocturne\\\"}],\\\"total\\\":3,\\\"offset\\\":0,\\\"nextOffset\\\":null}\",\"type\":\"text\"}]},\"installed\":{\"content\":[{\"text\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"editorial-themes\\\",\\\"name\\\":\\\"Editorial Themes\\\",\\\"version\\\":\\\"1.0.0\\\",\\\"builtin\\\":true,\\\"enabled\\\":true,\\\"activationFailed\\\":true}],\\\"total\\\":1,\\\"offset\\\":0,\\\"nextOffset\\\":null}\",\"type\":\"text\"}]},\"text\":\"Library\\n/\\nAgent\\n\\nSearch\\n\\nImport\\n\\nShelf management\\n\\nReading stats\\n\\nSettings\\n\\nMore\\n\\n\\nReading Paint Probe\\nUnknown author\\n\\n\\n\\n25%\\n\\n\\nFB2\\nReading Capability Probe\\nReadAware Tests\\nReading Capability Probe\\nReadAware Tests\\n\\n\\n\\n6%\\n\\nMaintenance Desk\\n\\nRegistered contributions (3)\\n\\nRefresh\\n\\nSearch directory\\n\\nManage plugins\\neditorial-themes:eb-garamond\\neditorial-themes · fonts\\neditorial-themes:gutenberg\\neditorial-themes · themes\\neditorial-themes:nocturne\\neditorial-themes · themes\\n\\nPrevious page\\nPage 1\\n\\nNext page\\nClose\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "directoryCanonicalDisabled": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"contributions\":{\"content\":[{\"text\":\"{\\\"contributions\\\":[],\\\"total\\\":0,\\\"offset\\\":0,\\\"nextOffset\\\":null}\",\"type\":\"text\"}]},\"installed\":{\"content\":[{\"text\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"editorial-themes\\\",\\\"name\\\":\\\"Editorial Themes\\\",\\\"version\\\":\\\"1.0.0\\\",\\\"builtin\\\":true,\\\"enabled\\\":false,\\\"activationFailed\\\":false}],\\\"total\\\":1,\\\"offset\\\":0,\\\"nextOffset\\\":null}\",\"type\":\"text\"}]},\"text\":\"Library\\n/\\nAgent\\n\\nSearch\\n\\nImport\\n\\nShelf management\\n\\nReading stats\\n\\nSettings\\n\\nMore\\n\\n\\nReading Paint Probe\\nUnknown author\\n\\n\\n\\n25%\\n\\n\\nFB2\\nReading Capability Probe\\nReadAware Tests\\nReading Capability Probe\\nReadAware Tests\\n\\n\\n\\n6%\\n\\nMaintenance Desk\\n\\nRegistered contributions (76)\\n\\nRefresh\\n\\nSearch directory\\n\\nManage plugins\\nreading-goals:reading-goal\\nreading-goals · agentContextProviders\\ndictionary:saved-vocabulary\\ndictionary · agentRetrievalProviders\\ndictionary:delete_saved_word\\ndictionary · agentTools\\ndictionary:export_vocabulary\\ndictionary · agentTools\\ndictionary:get_vocabulary\\ndictionary · agentTools\\ndictionary:lookup_word\\ndictionary · agentTools\\ndictionary:save_word\\ndictionary · agentTools\\njumper:inspect_bookmark_location\\njumper · agentTools\\njumper:list_bookmarks\\njumper · agentTools\\njumper:manage_bookmark\\njumper · agentTools\\njumper:save_bookmark\\njumper · agentTools\\nlibrary-desk:list_saved_covers\\nlibrary-desk · agentTools\\n\\nPrevious page\\nPage 1\\n\\nNext page\\nClose\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "directoryCanonicalRestored": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"contributions\":{\"content\":[{\"text\":\"{\\\"contributions\\\":[{\\\"point\\\":\\\"fonts\\\",\\\"pluginId\\\":\\\"editorial-themes\\\",\\\"key\\\":\\\"editorial-themes:eb-garamond\\\"},{\\\"point\\\":\\\"themes\\\",\\\"pluginId\\\":\\\"editorial-themes\\\",\\\"key\\\":\\\"editorial-themes:gutenberg\\\"},{\\\"point\\\":\\\"themes\\\",\\\"pluginId\\\":\\\"editorial-themes\\\",\\\"key\\\":\\\"editorial-themes:nocturne\\\"}],\\\"total\\\":3,\\\"offset\\\":0,\\\"nextOffset\\\":null}\",\"type\":\"text\"}]},\"installed\":{\"content\":[{\"text\":\"{\\\"plugins\\\":[{\\\"id\\\":\\\"editorial-themes\\\",\\\"name\\\":\\\"Editorial Themes\\\",\\\"version\\\":\\\"1.0.0\\\",\\\"builtin\\\":true,\\\"enabled\\\":true,\\\"activationFailed\\\":false}],\\\"total\\\":1,\\\"offset\\\":0,\\\"nextOffset\\\":null}\",\"type\":\"text\"}]},\"text\":\"Library\\n/\\nAgent\\n\\nSearch\\n\\nImport\\n\\nShelf management\\n\\nReading stats\\n\\nSettings\\n\\nMore\\n\\n\\nReading Paint Probe\\nUnknown author\\n\\n\\n\\n25%\\n\\n\\nFB2\\nReading Capability Probe\\nReadAware Tests\\nReading Capability Probe\\nReadAware Tests\\n\\n\\n\\n6%\\n\\nMaintenance Desk\\n\\nRegistered contributions (79)\\n\\nRefresh\\n\\nSearch directory\\n\\nManage plugins\\nreading-goals:reading-goal\\nreading-goals · agentContextProviders\\ndictionary:saved-vocabulary\\ndictionary · agentRetrievalProviders\\ndictionary:delete_saved_word\\ndictionary · agentTools\\ndictionary:export_vocabulary\\ndictionary · agentTools\\ndictionary:get_vocabulary\\ndictionary · agentTools\\ndictionary:lookup_word\\ndictionary · agentTools\\ndictionary:save_word\\ndictionary · agentTools\\njumper:inspect_bookmark_location\\njumper · agentTools\\njumper:list_bookmarks\\njumper · agentTools\\njumper:manage_bookmark\\njumper · agentTools\\njumper:save_bookmark\\njumper · agentTools\\nlibrary-desk:list_saved_covers\\nlibrary-desk · agentTools\\n\\nPrevious page\\nPage 1\\n\\nNext page\\nClose\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "directoryLiveRemoved": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"text\":\"Library\\n/\\nAgent\\n\\nSearch\\n\\nImport\\n\\nShelf management\\n\\nReading stats\\n\\nSettings\\n\\nMore\\n\\n\\nReading Paint Probe\\nUnknown author\\n\\n\\n\\n25%\\n\\n\\nFB2\\nReading Capability Probe\\nReadAware Tests\\nReading Capability Probe\\nReadAware Tests\\n\\n\\n\\n6%\\n\\nMaintenance Desk\\n\\nRegistered contributions (76)\\n\\nRefresh\\n\\nSearch directory\\n\\nManage plugins\\nreading-goals:reading-goal\\nreading-goals · agentContextProviders\\ndictionary:saved-vocabulary\\ndictionary · agentRetrievalProviders\\ndictionary:delete_saved_word\\ndictionary · agentTools\\ndictionary:export_vocabulary\\ndictionary · agentTools\\ndictionary:get_vocabulary\\ndictionary · agentTools\\ndictionary:lookup_word\\ndictionary · agentTools\\ndictionary:save_word\\ndictionary · agentTools\\njumper:inspect_bookmark_location\\njumper · agentTools\\njumper:list_bookmarks\\njumper · agentTools\\njumper:manage_bookmark\\njumper · agentTools\\njumper:save_bookmark\\njumper · agentTools\\nlibrary-desk:list_saved_covers\\nlibrary-desk · agentTools\\n\\nPrevious page\\nPage 1\\n\\nNext page\\nClose\"}\n\n[Executed in window: main]"
+        }
+      ]
+    },
+    "directoryCleanup": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"activationFailures\":[],\"books\":[{\"id\":\"8ced004f-efe3-408f-80a8-a0ebffec84d3\",\"title\":\"Reading Paint Probe\"},{\"id\":\"07ef226e-1ebc-47b6-8dc9-d09109448d22\",\"title\":\"Reading Capability Probe\"}],\"contributions\":79,\"editorial\":{\"activationFailed\":false,\"builtin\":true,\"enabled\":true,\"id\":\"editorial-themes\",\"name\":\"Editorial Themes\",\"version\":\"1.0.0\"},\"installed\":15,\"maintenanceContributions\":2,\"text\":\"Library\\n/\\nAgent\\n\\nSearch\\n\\nImport\\n\\nShelf management\\n\\nReading stats\\n\\nSettings\\n\\nMore\\n\\n\\nReading Paint Probe\\nUnknown author\\n\\n\\n\\n25%\\n\\n\\nFB2\\nReading Capability Probe\\nReadAware Tests\\nReading Capability Probe\\nReadAware Tests\\n\\n\\n\\n6%\\n\"}\n\n[Executed in window: main]"
+        }
+      ]
+    }
+  },
+  "invalidProbe": "Initial extension-qualified plugin-host import omitted Vite HMR timestamp and created a separate active map: enabled metadata changed without stopping the mounted instance; re-enable failed. This is discarded as lifecycle evidence. Read transformed maintenance helper import to locate the actual mounted URL, then disabled/restored through that host. Final registered contributions and activation health recovered.",
+  "boundary": "Actual macOS debug Tauri mounted UI and Worker/native ports, no current physical input/pixel acceptance; original 2 books and enabled states preserved."
+}
