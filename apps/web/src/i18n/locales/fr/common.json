@@ -75,6 +75,7 @@
     "backupCancelled": "La préparation de la sauvegarde a été annulée.",
     "pluginRecoveryRequired": "La mise à jour du plugin n’a pas pu être restaurée en toute sécurité. Ses données sont temporairement indisponibles.",
     "pluginDataBusy": "Ce plugin est en cours de mise à jour. Réessayez d’enregistrer une fois la mise à jour terminée.",
+    "pluginObjectAccessDenied": "Ce livre est hors du périmètre autorisé du plugin. Vérifiez ses droits d’accès aux livres dans les paramètres des plugins.",
     "pluginSettingsStale": "Ce plugin a changé. Fermez puis rouvrez ses paramètres avant d’enregistrer.",
     "settingsUnavailable": "Impossible de lire les paramètres. Réessayez.",
     "workspaceInvalid": "La destination ou la sélection est invalide.",

@@ -75,6 +75,7 @@
     "backupCancelled": "Se canceló la preparación de la copia de seguridad.",
     "pluginRecoveryRequired": "No se pudo restaurar la actualización del complemento de forma segura. Sus datos no están disponibles temporalmente.",
     "pluginDataBusy": "Este complemento se está actualizando. Intenta guardar de nuevo cuando termine.",
+    "pluginObjectAccessDenied": "Este libro está fuera del acceso autorizado del plugin. Revisa su acceso a libros en la configuración de plugins.",
     "pluginSettingsStale": "Este complemento ha cambiado. Cierra y vuelve a abrir sus ajustes antes de guardar.",
     "settingsUnavailable": "No se pudieron leer los ajustes. Inténtalo de nuevo.",
     "workspaceInvalid": "El destino o la selección no es válido.",

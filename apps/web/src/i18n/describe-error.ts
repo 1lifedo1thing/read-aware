@@ -135,6 +135,7 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "library/book-not-found": { key: "bookNotFound", retryable: false },
   "plugin/recovery-required": { key: "pluginRecoveryRequired", retryable: false },
   "plugin/data-busy": { key: "pluginDataBusy", retryable: true },
+  "plugin/object-access-denied": { key: "pluginObjectAccessDenied", retryable: false },
   "plugin/settings-stale": { key: "pluginSettingsStale", retryable: false },
   "plugin/action-disabled": { key: "pluginActionDisabled", retryable: false },
   [ERR_PLUGIN_INVALID_ARGUMENT]: { key: "pluginInvalidArgument", retryable: false },

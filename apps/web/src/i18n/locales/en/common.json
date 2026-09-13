@@ -75,6 +75,7 @@
     "backupCancelled": "Backup preparation was cancelled.",
     "pluginRecoveryRequired": "The plugin update could not be restored safely. Its data is temporarily unavailable.",
     "pluginDataBusy": "This plugin is being updated. Try saving again when the update finishes.",
+    "pluginObjectAccessDenied": "This book is outside the plugin’s access. Review its book access in plugin settings.",
     "pluginSettingsStale": "This plugin has changed. Close and reopen its settings before saving.",
     "settingsUnavailable": "Settings could not be read. Try again.",
     "workspaceInvalid": "The navigation target or selection is invalid.",

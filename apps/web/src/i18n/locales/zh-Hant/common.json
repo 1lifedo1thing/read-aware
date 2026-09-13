@@ -75,6 +75,7 @@
     "backupCancelled": "已取消備份準備。",
     "pluginRecoveryRequired": "外掛更新未能安全復原，其資料暫時無法使用。",
     "pluginDataBusy": "外掛正在更新，請在更新完成後重試儲存。",
+    "pluginObjectAccessDenied": "這本書不在外掛的授權範圍內。請在外掛設定中查看書籍存取權限。",
     "pluginSettingsStale": "外掛已發生變更，請關閉並重新開啟設定後再儲存。",
     "settingsUnavailable": "無法讀取設定，請重試。",
     "workspaceInvalid": "導覽目標或選取範圍無效。",
