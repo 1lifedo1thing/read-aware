@@ -68,12 +68,8 @@ test.each(([[], ["reading:read"], ["annotations:read"]] as PluginPermission[][])
     actor.lifecycle.promote();
     try {
       expect(actor.context.domains.library).toBeUndefined();
-      const { workspace, commands } = actor.context.services.ui;
-      if (!workspace || !commands) throw new Error("Expected guarded host surfaces");
-      const calls: Array<() => Promise<unknown>> = [() => workspace.snapshot(), () => commands.list()];
-      for (const invoke of calls) {
-        await expect(Promise.resolve().then(invoke)).rejects.toMatchObject({ code: "plugin/object-access-denied" });
-      }
+      expect(actor.context.services.ui.workspace).toBeUndefined();
+      expect(actor.context.services.ui.commands).toBeUndefined();
     } finally {
       actor.lifecycle.stop();
       await actor.lifecycle.drainCleanups();

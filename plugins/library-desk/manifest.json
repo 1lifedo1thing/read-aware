@@ -1,7 +1,7 @@
 {
   "id": "library-desk",
   "name": "Library Desk",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "schemaVersion": 1,
   "description": "Organize books and collections, review duplicate merges, import books, export local assets, and manage removal batches.",
   "author": "ReadAware",
@@ -11,7 +11,7 @@
   "requires": {
     "domains": { "library": "^1.11.0", "reading": "^2.0.0" },
     "contributions": { "headerActions": "^1.0.0", "commands": "^1.0.0", "agentTools": "^1.2.0" },
-    "services": { "ui": "^1.6.0", "resources": "^1.5.0", "clipboard": "^1.1.0" },
+    "services": { "ui": "^1.15.0", "resources": "^1.5.0", "clipboard": "^1.1.0" },
     "schemas": { "views": "^1.10.0" }
   }
 }

@@ -9,6 +9,7 @@ type Adapter = {
 };
 type Binding = { adapter: Adapter; view: WorkspaceView; token: number; acknowledgements: Map<string, number> };
 type Pending = { binding: Binding; token: number; target: WorkspaceTarget; ready: boolean; controller: AbortController;
+  project?: (view: WorkspaceView) => WorkspaceView;
   resolve(receipt: WorkspaceReceipt): void; reject(error: unknown): void; cleanup(): void };
 
 function matches(view: WorkspaceView, target: WorkspaceTarget): boolean {
@@ -32,10 +33,11 @@ export class WorkspaceService {
 
   constructor(private readonly report: (error: unknown) => void, private readonly deadlineMs = 10_000) {}
 
-  snapshot(query?: WorkspaceQuery): WorkspaceSnapshot {
+  snapshot(query?: WorkspaceQuery, project?: (view: WorkspaceView) => WorkspaceView): WorkspaceSnapshot {
     const accepted = normalizeWorkspaceQuery(query);
     if (!this.binding) throw new AppError("ui/unavailable", "Workspace is not attached");
-    const { selection, ...view } = this.binding.view;
+    // Apply actor disclosure before counting, sorting or paging selections.
+    const { selection, ...view } = project ? project(structuredClone(this.binding.view)) : this.binding.view;
     const ids = [...new Set(selection.bookIds)].sort();
     const after = accepted.selectionAfter;
     const remaining = after === undefined ? ids : ids.filter(id => id > after);
@@ -44,7 +46,8 @@ export class WorkspaceService {
       total: ids.length, bookIds: page, nextCursor: remaining.length > page.length ? page.at(-1)! : null } };
   }
 
-  observe(query: WorkspaceQuery, handler: (value: WorkspaceSnapshot | null) => unknown): () => void {
+  observe(query: WorkspaceQuery, handler: (value: WorkspaceSnapshot | null) => unknown,
+    project?: (view: WorkspaceView) => WorkspaceView): () => void {
     const accepted = normalizeWorkspaceQuery(query);
     if (this.observers.size >= 64) throw new AppError("ui/observer-limit", "Too many workspace observers");
     let disposed = false, running = false, dirty = false;
@@ -56,7 +59,7 @@ export class WorkspaceService {
       try {
         do {
           dirty = false;
-          try { await handler(this.binding ? this.snapshot(accepted) : null); } catch (error) { this.report(error); }
+          try { await handler(this.binding ? this.snapshot(accepted, project) : null); } catch (error) { this.report(error); }
         } while (dirty && !disposed);
       } finally { running = false; }
     };
@@ -90,7 +93,8 @@ export class WorkspaceService {
     this.binding?.acknowledgements.set(surface, token); this.complete();
   }
 
-  navigate(input: WorkspaceTarget, expectedRevision?: number, signal?: AbortSignal, allowReaderClose = false): Promise<WorkspaceReceipt> {
+  navigate(input: WorkspaceTarget, expectedRevision?: number, signal?: AbortSignal, allowReaderClose = false,
+    project?: (view: WorkspaceView) => WorkspaceView): Promise<WorkspaceReceipt> {
     let target: WorkspaceTarget;
     try {
       signal?.throwIfAborted(); target = normalizeWorkspaceTarget(input);
@@ -105,7 +109,7 @@ export class WorkspaceService {
       const controller = new AbortController();
       const abort = () => { if (this.pending?.controller === controller) this.cancel(signal?.reason ?? new AppError("ui/timeout", "Workspace did not commit")); };
       const timer = setTimeout(abort, this.deadlineMs);
-      const pending: Pending = { binding, token: ++this.token, target, controller, ready: false, resolve, reject,
+      const pending: Pending = { binding, token: ++this.token, target, controller, ready: false, project, resolve, reject,
         cleanup: () => { clearTimeout(timer); signal?.removeEventListener("abort", abort); } };
       this.pending = pending; signal?.addEventListener("abort", abort, { once: true });
       void (async () => {
@@ -125,7 +129,7 @@ export class WorkspaceService {
     const pending = this.pending, binding = this.binding;
     if (!pending?.ready || binding !== pending.binding || binding.token !== pending.token
       || binding.acknowledgements.get(pending.target.surface) !== pending.token || !matches(binding.view, pending.target)) return;
-    const receipt: WorkspaceReceipt = { status: "completed", snapshot: this.snapshot() };
+    const receipt: WorkspaceReceipt = { status: "completed", snapshot: this.snapshot(undefined, pending.project) };
     this.pending = undefined; pending.cleanup(); pending.resolve(receipt);
   }
   private cancel(error: unknown): void {

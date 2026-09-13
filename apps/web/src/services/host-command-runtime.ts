@@ -1,4 +1,4 @@
-import type { EventOrigin, HostCommandId, HostCommandObservation } from "@read-aware/core";
+import type { EventOrigin, HostCommandId, HostCommandObservation, HostCommandSnapshot } from "@read-aware/core";
 import { createSettingsDomain, type SettingsDomain } from "../domain/settings/domain";
 import { i18n } from "../i18n/instance";
 import { createHostCommands } from "./host-commands";
@@ -22,12 +22,15 @@ export function hostCommandTitle(id: HostCommandId): string {
 export function actorHostCommands(settings: SettingsDomain, canReadWorkspace: boolean, canNavigate: boolean, canCloseReader: boolean) {
   const commands = createHostCommands({ workspace, settings, canReadWorkspace, canNavigate, canCloseReader, title: hostCommandTitle,
     openBook: (bookId, signal) => readingRuntime.navigate({ bookId }, signal) });
-  return { ...commands, observe: (handler: (state: HostCommandObservation) => unknown) => observers.observe(commands.list, invalidate => {
+  return { ...commands, observe: (handler: (state: HostCommandObservation) => unknown,
+    read: (signal: AbortSignal) => Promise<HostCommandSnapshot> = commands.list,
+    observeExtra?: (invalidate: () => void) => () => void) => observers.observe(read, invalidate => {
     const releases: (() => void)[] = [];
     const release = () => { for (const dispose of releases.splice(0).reverse()) dispose(); };
     try {
       if (canReadWorkspace) releases.push(workspace.observe({ limit: 1 }, invalidate));
       releases.push(settings.queries.observe({ section: "shelf" }, invalidate));
+      if (observeExtra) releases.push(observeExtra(invalidate));
       i18n.on("languageChanged", invalidate);
       releases.push(() => { i18n.off("languageChanged", invalidate); });
       return release;

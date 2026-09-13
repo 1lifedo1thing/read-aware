@@ -10,6 +10,11 @@ export type WorkspaceTarget =
 export type WorkspaceQuery = { selectionAfter?: string; limit?: number };
 export type WorkspaceSnapshot = {
   revision: number;
+  /** Present on a book-authorized projection. Collection identity and command
+   * search text are withheld, not evidence that the underlying UI is empty.
+   * Selection counts/cursors cover only this book. The revision remains a
+   * conservative concurrency token and can change for hidden UI changes. */
+  scope?: { bookId: string | null; withheld: ("collectionId" | "search.query")[] };
   surface: "shelf" | "agent" | "stats" | "plugin" | "reader";
   collectionId: string | null;
   settings: { open: boolean; section: WorkspaceSettingsSection | null };

@@ -2279,7 +2279,11 @@ export type PluginHostServices = {
       /** Library write plus each command's setting grant; opening/leaving a reader needs reading:write. */
       execute?(request: import("@read-aware/core").HostCommandRequest): Promise<import("@read-aware/core").HostCommandReceipt>;
     };
-    /** Library read grant: current workspace, not arbitrary UI/DOM state. */
+    /** UI 1.15: library read grants expose a workspace projection. Book-restricted
+     * projections filter selection before pagination/counting, explicitly mark
+     * withheld collection/search fields, and retain an actor-local concurrency
+     * token. Collection-wide navigation requires all-books access; supplied
+     * selections/open-book commands must name only the authorized book. */
     workspace?: {
       snapshot(query?: import("@read-aware/core").WorkspaceQuery): Promise<import("@read-aware/core").WorkspaceSnapshot>;
       observe(query: import("@read-aware/core").WorkspaceQuery, handler: (snapshot: import("@read-aware/core").WorkspaceSnapshot | null) => unknown): PluginDisposable;

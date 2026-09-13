@@ -21,7 +21,7 @@ export type HostCommandDescriptor = {
   /** Ambient permission/workspace readiness; supplied resource IDs are validated during execute. */
   enabled: boolean;
   checked?: boolean;
-  unavailableReason?: "permission" | "workspace" | "reader-control";
+  unavailableReason?: "permission" | "workspace" | "reader-control" | "object-scope";
   settingsPath?: string;
   /** Parameters are semantic resource IDs, never rendered menu IDs or labels. */
   parameters: { type: "object"; properties: Record<string, { type: "string"; minLength: number; maxLength: number }>; required?: string[]; additionalProperties: false };

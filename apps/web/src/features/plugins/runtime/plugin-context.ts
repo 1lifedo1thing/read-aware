@@ -9,6 +9,7 @@ import { wrapReadingIntent } from "./plugin-reading-intents";
 import { pluginDurableKV } from "./plugin-durable-kv";
 import { scopePluginMemory } from "./plugin-scoped-memory";
 import { scopePluginConversations } from "./plugin-scoped-conversations";
+import { scopePluginWorkspace } from "./plugin-scoped-workspace";
 /**
  * Builds the `ctx` handed to a plugin's activate(). This is a POLICY shell:
  * the data surface itself is the shared domain layer (src/domain), built
@@ -1022,6 +1023,14 @@ export function buildPluginContext(
         return workspace.navigate(target, expectedRevision, lifecycle.signal, !!domain.reading?.commands);
       } } : {}),
     };
+    if (objectAccess.restricted) {
+      const scoped = scopePluginWorkspace(workspace, commands, objectAccess, lifecycle, {
+        current: () => latestCurrent,
+        observe: handler => readingRuntime.observe(() => handler()),
+      }, !!library.commands, !!domain.reading?.commands);
+      ctx.services.ui.commands = scoped.commands;
+      ctx.services.ui.workspace = scoped.workspace;
+    }
     ctx.domains.library = {
       queries: {
         ...library.queries,
@@ -1264,21 +1273,6 @@ export function buildPluginContext(
     }
   }
 
-  if (objectAccess.restricted) {
-    // Workspace and native command snapshots can disclose or select another
-    // book even when the library query tree is filtered. They have no
-    // single-book result contract, so keep them explicitly unavailable.
-    ctx.services.ui.commands = {
-      list: denyPluginBookOperation("services.ui.commands.list"),
-      observe: denyPluginBookOperation("services.ui.commands.observe"),
-      execute: denyPluginBookOperation("services.ui.commands.execute"),
-    };
-    ctx.services.ui.workspace = {
-      snapshot: denyPluginBookOperation("services.ui.workspace.snapshot"),
-      observe: denyPluginBookOperation("services.ui.workspace.observe"),
-      navigate: denyPluginBookOperation("services.ui.workspace.navigate"),
-    };
-  }
 
   if (domain.reading) {
     const reading = domain.reading;

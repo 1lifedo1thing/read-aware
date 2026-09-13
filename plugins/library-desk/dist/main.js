@@ -29,14 +29,14 @@ function cleanupStrings(locale) {
 
 // src/commands.ts
 var translations2 = {
-  en: ["Host commands", "Refresh", "Selected", "Permission required", "Workspace unavailable", "Reader control required", "Setting saved; navigation did not complete"],
-  "zh-Hans": ["宿主命令", "刷新", "已选中", "需要授权", "工作区不可用", "需要阅读控制权限", "设置已保存，界面切换未完成"],
-  "zh-Hant": ["宿主命令", "重新整理", "已選取", "需要授權", "工作區無法使用", "需要閱讀控制權限", "設定已儲存，介面切換未完成"],
-  ja: ["ホストコマンド", "更新", "選択済み", "権限が必要", "ワークスペースを利用できません", "読書の操作権限が必要", "設定は保存されましたが、画面の移動は完了しませんでした"],
-  de: ["Host-Befehle", "Aktualisieren", "Ausgewählt", "Berechtigung erforderlich", "Arbeitsbereich nicht verfügbar", "Lesesteuerung erforderlich", "Einstellung gespeichert; Ansicht nicht gewechselt"],
-  fr: ["Commandes hôte", "Actualiser", "Sélectionné", "Autorisation requise", "Espace indisponible", "Contrôle de lecture requis", "Paramètre enregistré ; navigation non terminée"],
-  es: ["Comandos del anfitrión", "Actualizar", "Seleccionado", "Permiso necesario", "Espacio no disponible", "Control de lectura necesario", "Ajuste guardado; navegación incompleta"],
-  ru: ["Команды приложения", "Обновить", "Выбрано", "Требуется разрешение", "Рабочая область недоступна", "Требуется управление чтением", "Настройка сохранена; переход не завершён"]
+  en: ["Host commands", "Refresh", "Selected", "Permission required", "Workspace unavailable", "Reader control required", "Setting saved; navigation did not complete", "Outside this book grant"],
+  "zh-Hans": ["宿主命令", "刷新", "已选中", "需要授权", "工作区不可用", "需要阅读控制权限", "设置已保存，界面切换未完成", "超出本书授权范围"],
+  "zh-Hant": ["宿主命令", "重新整理", "已選取", "需要授權", "工作區無法使用", "需要閱讀控制權限", "設定已儲存，介面切換未完成", "超出本書授權範圍"],
+  ja: ["ホストコマンド", "更新", "選択済み", "権限が必要", "ワークスペースを利用できません", "読書の操作権限が必要", "設定は保存されましたが、画面の移動は完了しませんでした", "この本の権限の範囲外"],
+  de: ["Host-Befehle", "Aktualisieren", "Ausgewählt", "Berechtigung erforderlich", "Arbeitsbereich nicht verfügbar", "Lesesteuerung erforderlich", "Einstellung gespeichert; Ansicht nicht gewechselt", "Außerhalb der Buchberechtigung"],
+  fr: ["Commandes hôte", "Actualiser", "Sélectionné", "Autorisation requise", "Espace indisponible", "Contrôle de lecture requis", "Paramètre enregistré ; navigation non terminée", "Hors du périmètre de ce livre"],
+  es: ["Comandos del anfitrión", "Actualizar", "Seleccionado", "Permiso necesario", "Espacio no disponible", "Control de lectura necesario", "Ajuste guardado; navegación incompleta", "Fuera del permiso de este libro"],
+  ru: ["Команды приложения", "Обновить", "Выбрано", "Требуется разрешение", "Рабочая область недоступна", "Требуется управление чтением", "Настройка сохранена; переход не завершён", "За пределами доступа к этой книге"]
 };
 var commandStrings = (locale) => translations2[locale] ?? translations2[locale.split("-")[0]] ?? translations2.en;
 async function commandsView(ctx) {
@@ -83,7 +83,7 @@ async function commandsView(ctx) {
         id: command.id,
         title: command.title,
         keywords: [command.id],
-        subtitle: command.unavailableReason === "permission" ? t[3] : command.unavailableReason === "workspace" ? t[4] : command.unavailableReason === "reader-control" ? t[5] : undefined,
+        subtitle: command.unavailableReason === "permission" ? t[3] : command.unavailableReason === "workspace" ? t[4] : command.unavailableReason === "reader-control" ? t[5] : command.unavailableReason === "object-scope" ? t[7] : undefined,
         accessories: command.checked ? [{ kind: "icon", icon: "check", label: t[2] }] : [],
         ...!failure && command.enabled && api.execute ? { onSelect: () => choose(command, current.workspaceRevision) } : {}
       })),
@@ -127,7 +127,11 @@ var translations3 = {
 var workspaceStrings = (locale) => translations3[locale] ?? translations3[locale.split("-")[0]] ?? translations3.en;
 async function workspaceView(ctx, selected) {
   const api = ctx.services.ui.workspace, library = ctx.domains.library, t = workspaceStrings(ctx.locale);
-  const collections = await library.queries.collections.list();
+  const restricted = ctx.grants.book.mode !== "all";
+  if (restricted && selected?.some((book) => book.collectionId !== null)) {
+    throw Object.assign(Error("Collection navigation requires all-books access"), { code: "plugin/object-access-denied" });
+  }
+  const collections = restricted ? [] : await library.queries.collections.list();
   let state = await api.snapshot({ limit: 1 }), channel, revision = 0;
   const open = async (target) => {
     await api.navigate(target);

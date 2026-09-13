@@ -15,7 +15,11 @@ export const workspaceStrings = (locale: string) => translations[locale] ?? tran
 
 export async function workspaceView(ctx: PluginContext, selected?: PluginBook[]): Promise<PluginView> {
   const api = ctx.services.ui.workspace!, library = ctx.domains.library!, t = workspaceStrings(ctx.locale);
-  const collections = await library.queries.collections.list();
+  const restricted = ctx.grants.book.mode !== "all";
+  if (restricted && selected?.some(book => book.collectionId !== null)) {
+    throw Object.assign(Error("Collection navigation requires all-books access"), { code: "plugin/object-access-denied" });
+  }
+  const collections = restricted ? [] : await library.queries.collections.list();
   let state = await api.snapshot({ limit: 1 }), channel: PluginViewChannel | undefined, revision = 0;
   const open = async (target: WorkspaceTarget) => { await api.navigate!(target); return { close: true }; };
   const groups = [null, ...collections.map(c => c.id)].map(collectionId => ({ collectionId,

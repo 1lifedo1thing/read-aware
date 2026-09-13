@@ -20,7 +20,7 @@ test("command view uses host titles, checked and unavailable states, guarding ac
   expect(view.items[1].onSelect).toBeUndefined(); expect(view.items[1].subtitle).toBe("Reader control required");
   expect(await view.items[0].onSelect!()).toEqual({ close: true });
   expect(f.calls).toEqual([{ id: "layout-list", expectedWorkspaceRevision: 7 }]);
-  for (const locale of ["en", "zh-Hans", "zh-Hant", "ja", "de", "fr", "es", "ru"]) expect(commandStrings(locale)).toHaveLength(7);
+  for (const locale of ["en", "zh-Hans", "zh-Hant", "ja", "de", "fr", "es", "ru"]) expect(commandStrings(locale)).toHaveLength(8);
 });
 test("partial commit stays open with localized host error and refresh, never automatically repeats the write", async () => {
   const f = fixture(); f.receipt = { commandId: "layout-list", status: "partial", completed: ["settings"], errorCode: "ui/superseded" };

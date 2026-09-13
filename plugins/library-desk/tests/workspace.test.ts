@@ -2,11 +2,11 @@ import { expect, test } from "bun:test";
 import type { PluginContext, PluginFormView, PluginListView, WorkspaceSnapshot } from "@read-aware/plugin-types";
 import { workspaceView } from "../src/workspace";
 
-function fixture() {
+function fixture(grant: PluginContext["grants"]["book"] = { mode: "all" }) {
   const calls: unknown[] = []; let observe!: (state: WorkspaceSnapshot | null) => unknown, disposed = false;
   const state: WorkspaceSnapshot = { revision: 1, surface: "shelf", collectionId: null, settings: { open: false, section: null },
     search: { open: false, query: "book" }, selection: { active: true, total: 3, bookIds: ["a"], nextCursor: "a" } };
-  const ctx = { locale: "en", domains: { library: { queries: { collections: { list: async () => [{ id: "c", name: "Collection" }] } } } }, services: { ui: {
+  const ctx = { locale: "en", grants: { book: grant }, domains: { library: { queries: { collections: { list: async () => [{ id: "c", name: "Collection" }] } } } }, services: { ui: {
     publishView: async (_channel: unknown, update: unknown) => { calls.push(update); },
     workspace: { snapshot: async () => state, navigate: async (target: unknown) => { calls.push(target); return { status: "completed", snapshot: state }; },
       observe: (_query: unknown, handler: typeof observe) => { observe = handler; return { dispose() { disposed = true; } }; } },
@@ -36,4 +36,14 @@ test("failed navigation keeps the view open and preserves the error", async () =
   f.ctx.services.ui.workspace!.navigate = async () => { throw error; };
   const view = await workspaceView(f.ctx) as PluginListView;
   await expect(Promise.resolve().then(() => view.items[0].onSelect!())).rejects.toBe(error);
+});
+
+test("book-scoped workspace avoids global collection reads and offers authorized root navigation", async () => {
+  const f = fixture({ mode: "book", bookId: "a" });
+  f.ctx.domains.library!.queries.collections.list = async () => { throw Error("Global collections unavailable"); };
+  const view = await workspaceView(f.ctx) as PluginListView;
+  expect(view.items).toHaveLength(1); await view.items[0]!.onSelect!();
+  expect(f.calls).toEqual([{ surface: "shelf", collectionId: null }]);
+  const base = { format: "epub" as const, starred: false, addedAt: "t", updatedAt: "t" };
+  await expect(workspaceView(f.ctx, [{ ...base, id: "a", title: "A", collectionId: "c" }])).rejects.toMatchObject({ code: "plugin/object-access-denied" });
 });
