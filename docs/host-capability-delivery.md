@@ -7,17 +7,11 @@
 
 ## 最近交付与接续入口
 
-当前goal为[有界16项验收](./host-capability-validation-bounded-goal.md)，替代旧全量无限展开条件。
-状态与证据唯一入口：[本轮清单](./evidence/2026-09-13-bounded-validation/README.md)。
-主代理root独占发布包CUA，coverage9224负责B02/B03/B07/B11，sync9225负责
-B01/B09/B10，annotation负责B16。每项最多一次修复和一次复验，终局失败也算
-验收结论，不冒称产品通过。第88最新目标隔离已交付，历史目标消息不要求抹去。
-本次接续：B04/B15通过，B12检查通过但无隔离升级版本；B13取消通过、B14未登录
-资格，均缺测试账户记外部阻塞。B16唯一复验仍漏笔记句号，最终失败，已停止。
-B05/B06仅完成开关UI/SQLite持久重读并恢复，实际consumer仍待观察。
-B11主代理已完成原生Save到/tmp/readaware-bounded-b11.csv，由coverage复核/清理。
-release原一书四标注、启动off/文件接收on/autoUpdate on保持，原Finder窗口保持。
-不新增项目、不重跑旧全量门禁、不推送；剩余按本轮清单继续，最终做243行证据索引审计。
+当前[有界16项验收](./host-capability-validation-bounded-goal.md)已完成证据收口：
+9通过、6外部阻塞、1失败，未增加范围。结论及最小后续见[最终报告](./evidence/2026-09-13-bounded-validation/final-report.md)。
+B16单轮修复后仍漏笔记标点；B08权限阻塞未动剪贴板。原资料/配置恢复，自有实例
+服务停止；原9224/release保留。索引38/39错配和第88缺项已修正，不把旧partial
+算通过。不推送，不自动启动新目标。下列为旧全量验收历史，不能据此恢复旧任务。
 
 当前进度：基础门禁/受影响类型检查及 Web 构建通过，本机原生465 pass/2 ignored；
 原始固定首轮模型共247次，198机器通过、34失败、15执行/评分错误（不计先前1条

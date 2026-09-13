@@ -1,0 +1,16 @@
+{
+  "243UniqueRows": true,
+  "16FinalClassifications": true,
+  "currentLinksResolved": 235,
+  "releaseBaselineAndCleanupVerified": true,
+  "startupPlistAndTemporaryCSVAbsent": true,
+  "classificationCounts": {
+    "通过": 9,
+    "外部阻塞": 6,
+    "已复现失败": 1,
+    "未实现": 0,
+    "不适用": 0
+  },
+  "scope": "Frozen16 complete as acceptance conclusions, not all product capabilities passed",
+  "runtimePorts": "9225/9226/18891/19849/19843 inspected with lsof: no listeners; original9224/release retained"
+}

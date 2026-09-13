@@ -1,0 +1,20 @@
+{
+  "classification": "通过",
+  "boundary": "macOS release native Finder Open With→指定ReadAware Format Validation→Tauri文件交付",
+  "observations": [
+    "关闭File associations，Finder Open With指定验收app发送既有68字节合成TXT；界面无导入且SQLite仍原一书",
+    "开启后同一Finder动作实际导入29574c98-56d7-40f0-a497-6c2f05e3265b，原生SQLite两书，阅读器显示中英文完整合成TXT",
+    "这是macOS文件接收门控，不是删除系统关联注册"
+  ],
+  "cleanup": {
+    "testBookRemoved": true,
+    "originalBookCount": 1,
+    "originalAnnotationCount": 4,
+    "fileAssociationsRestored": true,
+    "finderRestored": "Playground",
+    "originalFixtureKept": ".eval/validation-20260913-external80/readaware-external80.txt"
+  },
+  "limits": [
+    "单一已有TXT主路径，不扩展格式/平台"
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "status": "执行中",
+  "status": "已收口",
   "observed": [
     "发布包原fileAssociations/autoUpdate均true",
     "实际UI两项关闭，SQLite app_kv重读均false",
@@ -7,9 +7,10 @@
     "恢复两项on，SQLite重读均true，startup保持false",
     "原一书四标注保持"
   ],
-  "remaining": {
-    "B05": "需要实际macOS外部文件交付关闭/开启行为，不能仅凭开关持久化算通过",
-    "B06": "需要完成自动检查实际采用开关的观察；源码App.tsx221为开关effect，仅代码不替代运行证据"
-  },
-  "cleanup": "当前开关已恢复，不留临时偏好"
+  "remaining": {},
+  "cleanup": "当前开关已恢复，不留临时偏好",
+  "finalEvidence": [
+    "b05.json",
+    "b06-consumer.json"
+  ]
 }

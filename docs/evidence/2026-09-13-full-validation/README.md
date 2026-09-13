@@ -2250,3 +2250,11 @@ adapter拒绝plugin/unavailable。恢复后下一回合目录6/检索3，旧adap
 及原始启用映射保持，备份删除、19843停止。一次多操作cleanup提前返回后经原生
 复核发现残留，已用独立await操作清零。没有新产品修改或扩大测试。详见
 [词典检索与目录记录](./dictionary-retrieval-capabilities-observations.json)。
+
+
+## 第八十八流程：编译阅读目标的双书上下文隔离
+
+五次真实ChatPanel请求验证A/B目标隔离、来源、修改后最新贡献、停用移除及切回B
+无串书。旧历史消息可保留同书旧目标，最新消息注入更新目标；未将历史清除纳入
+通过条件。配置、插件状态与原空会话恢复，自有实例/服务停止。受控回答不证明
+真实模型语义。见[阅读目标上下文记录](./reading-goals-context-observations.json)。
