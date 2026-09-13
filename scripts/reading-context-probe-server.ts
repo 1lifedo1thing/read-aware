@@ -1,6 +1,7 @@
 /** Loopback-only request evidence for isolated reading privacy and streaming UI probes. */
 const followProbe = process.env.READAWARE_STREAMING_PROBE === "1";
-const records: Array<{ selected: boolean; viewport: boolean; grounding: boolean; held: boolean; cancelled: boolean; paragraphs?: number }> = [];
+const configProbe = process.env.READAWARE_CONFIG_PROBE === "1";
+const records: Array<{ selected: boolean; viewport: boolean; grounding: boolean; held: boolean; cancelled: boolean; paragraphs?: number; model?: unknown; maxOutputTokens?: unknown; reasoningEffort?: unknown }> = [];
 const releases = new Set<() => void>();
 const advances = new Set<() => void>();
 const encoder = new TextEncoder();
@@ -18,10 +19,11 @@ Bun.serve({
       return new Response("ok");
     }
     if (path !== "/v1/chat/completions") return new Response("Not found", { status: 404 });
-    const body = await request.json() as { messages: unknown[] };
+    const body = await request.json() as { messages: unknown[]; model?: unknown; max_tokens?: unknown; max_completion_tokens?: unknown; reasoning_effort?: unknown };
     const input = JSON.stringify(body.messages);
     const record = { selected: input.includes("SELECTION_MARKER_947"), viewport: input.includes("VIEWPORT_MARKER_628"),
-      grounding: input.includes("<grounding_context>"), held: hold || followProbe, cancelled: false, ...(followProbe ? { paragraphs: 0 } : {}) };
+      grounding: input.includes("<grounding_context>"), held: hold || followProbe, cancelled: false, ...(followProbe ? { paragraphs: 0 } : {}),
+      ...(configProbe ? { model: body.model, maxOutputTokens: body.max_completion_tokens ?? body.max_tokens, reasoningEffort: body.reasoning_effort } : {}) };
     records.push(record);
     let heartbeat: ReturnType<typeof setInterval> | undefined;
     let release!: () => void;

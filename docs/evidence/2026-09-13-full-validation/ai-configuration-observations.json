@@ -1,0 +1,342 @@
+{
+  "date": "2026-09-13",
+  "flow": 50,
+  "baseline": "12b89388",
+  "profile": "com.readaware.app.capability-e2e",
+  "platform": "macOS debug Tauri",
+  "boundary": "Actual mounted React settings form, native configuration/secret storage and native HTTP to controlled loopback. Desktop locked during this flow; DOM interaction is not physical input or pixel proof.",
+  "modelBoundary": "Canned controlled reply; proves connection/routing parameters, not remote provider or model quality",
+  "cleared": {
+    "fields": [
+      {
+        "path": "ai.connection.configured",
+        "value": false,
+        "writable": false
+      },
+      {
+        "path": "ai.connection.credentialConfigured",
+        "value": false,
+        "writable": false
+      }
+    ],
+    "testDisabled": true
+  },
+  "savedAndTested": {
+    "fields": [
+      {
+        "path": "ai.connection.configured",
+        "value": true,
+        "writable": false
+      },
+      {
+        "path": "ai.connection.credentialConfigured",
+        "value": true,
+        "writable": false
+      },
+      {
+        "path": "ai.connection.provider",
+        "value": "custom",
+        "writable": false
+      },
+      {
+        "path": "ai.connection.primaryModel",
+        "value": "config-primary",
+        "writable": true
+      },
+      {
+        "path": "ai.connection.fastModel",
+        "value": null,
+        "writable": true
+      },
+      {
+        "path": "ai.connection.thinkingLevel",
+        "value": "medium",
+        "writable": true
+      },
+      {
+        "path": "ai.connection.custom.endpointConfigured",
+        "value": true,
+        "writable": false
+      },
+      {
+        "path": "ai.connection.custom.api",
+        "value": "openai-completions",
+        "writable": true
+      },
+      {
+        "path": "ai.connection.custom.supportsThinking",
+        "value": false,
+        "writable": true
+      },
+      {
+        "path": "ai.connection.custom.maxOutputTokens",
+        "value": null,
+        "writable": true
+      }
+    ],
+    "passwordMasked": true,
+    "statuses": [
+      "Test successful! Response: \"Controlled reading privacy answer.\""
+    ]
+  },
+  "validation": {
+    "negativeOutputCap": {
+      "input": -1,
+      "ariaInvalid": true,
+      "error": "Enter a positive whole number.",
+      "persistedCap": null,
+      "testDisabled": true
+    },
+    "separateFastModel": {
+      "emptyDisabled": true,
+      "equalToPrimaryDisabled": true,
+      "distinctConfigFastEnabled": true
+    }
+  },
+  "advanced": [
+    {
+      "path": "ai.connection.configured",
+      "value": true,
+      "writable": false
+    },
+    {
+      "path": "ai.connection.credentialConfigured",
+      "value": true,
+      "writable": false
+    },
+    {
+      "path": "ai.connection.provider",
+      "value": "custom",
+      "writable": false
+    },
+    {
+      "path": "ai.connection.primaryModel",
+      "value": "config-primary",
+      "writable": true
+    },
+    {
+      "path": "ai.connection.fastModel",
+      "value": "config-fast",
+      "writable": true
+    },
+    {
+      "path": "ai.connection.thinkingLevel",
+      "value": "high",
+      "writable": true
+    },
+    {
+      "path": "ai.connection.fastThinkingLevel",
+      "value": "low",
+      "writable": true
+    },
+    {
+      "path": "ai.connection.custom.endpointConfigured",
+      "value": true,
+      "writable": false
+    },
+    {
+      "path": "ai.connection.custom.api",
+      "value": "openai-completions",
+      "writable": true
+    },
+    {
+      "path": "ai.connection.custom.supportsThinking",
+      "value": true,
+      "writable": true
+    },
+    {
+      "path": "ai.connection.custom.maxOutputTokens",
+      "value": 2048,
+      "writable": true
+    }
+  ],
+  "tierCalls": {
+    "fast": "Controlled reading privacy answer.",
+    "smart": "Controlled reading privacy answer.",
+    "status": "completed"
+  },
+  "staleTest": {
+    "model": "config-primary-updated",
+    "statuses": [],
+    "testing": false
+  },
+  "updatedTest": {
+    "statuses": [
+      "Test successful! Response: \"Controlled reading privacy answer.\""
+    ]
+  },
+  "formatPersistence": {
+    "api": "openai-responses",
+    "fastModel": "config-fast",
+    "fastThinkingLevel": "low",
+    "maxOutputTokens": 2048,
+    "model": "config-primary-updated",
+    "provider": "custom",
+    "supportsThinking": true,
+    "thinkingLevel": "high"
+  },
+  "shared": {
+    "call": {
+      "status": "completed-shared",
+      "text": "Controlled reading privacy answer."
+    },
+    "fastModel": "config-primary-updated",
+    "fastThinkingLevel": "high",
+    "model": "config-primary-updated",
+    "supportsThinking": false,
+    "thinkingLevel": "high"
+  },
+  "providerSwitch": {
+    "openai": {
+      "credentialEmpty": true,
+      "credentialIsSyntheticCustom": false,
+      "testDisabled": true
+    },
+    "backToCustom": {
+      "credentialIsSyntheticCustom": true,
+      "inputs": [
+        {
+          "id": "",
+          "type": "file",
+          "value": ""
+        },
+        {
+          "id": "_r_2c_",
+          "type": "url",
+          "value": "http://127.0.0.1:19843/v1"
+        },
+        {
+          "id": "_r_2e_",
+          "type": "text",
+          "value": "config-primary-updated"
+        },
+        {
+          "id": "_r_2g_",
+          "type": "number",
+          "value": "2048"
+        }
+      ],
+      "testDisabled": false
+    }
+  },
+  "finalClear": {
+    "fields": [
+      {
+        "path": "ai.connection.configured",
+        "value": false
+      },
+      {
+        "path": "ai.connection.credentialConfigured",
+        "value": false
+      }
+    ],
+    "runtimeAvailable": false,
+    "testDisabled": true
+  },
+  "wire": [
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "model": "config-primary"
+    },
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "model": "config-primary",
+      "maxOutputTokens": 2048
+    },
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "model": "config-primary",
+      "maxOutputTokens": 2048,
+      "reasoningEffort": "high"
+    },
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "model": "config-fast",
+      "maxOutputTokens": 2048,
+      "reasoningEffort": "low"
+    },
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": true,
+      "cancelled": false,
+      "model": "config-primary",
+      "maxOutputTokens": 2048
+    },
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "model": "config-primary-updated",
+      "maxOutputTokens": 2048
+    },
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "model": "config-primary-updated",
+      "maxOutputTokens": 2048
+    },
+    {
+      "selected": false,
+      "viewport": false,
+      "grounding": false,
+      "held": false,
+      "cancelled": false,
+      "model": "config-primary-updated",
+      "maxOutputTokens": 2048
+    }
+  ],
+  "interpretation": {
+    "tiers": "Smart config-primary/high and Fast config-fast/low each maxOutputTokens2048 in native requests",
+    "shared": "Disabling separate Fast uses config-primary-updated; disabling supportsThinking omits reasoningEffort",
+    "stale": "An in-flight old configuration test may finish at the transport; editing form clears result and old completion does not certify edited config. Fresh test of updated model succeeds.",
+    "format": "Responses selection survives settings close/reopen; no Responses request executed",
+    "catalog": "When configuration is absent, only configured/credentialConfigured descriptors remain; querying provider then yields unknown setting, consistent with dynamic catalog"
+  },
+  "cleanup": {
+    "buildMemory": true,
+    "configRestored": true,
+    "credentialSlotsCompared": 15,
+    "credentialsRestored": true,
+    "localOnly": false,
+    "backupPresent": false,
+    "bookCount": 2,
+    "serverExit": 143,
+    "inferenceWorkerContributions": 0,
+    "settingsWorkerContributions": 0
+  },
+  "harness": "Optional encrypted snapshot/restore of all15 provider/legacy credential slots; drain queued secret writes around snapshot/restoration. Config probe records only model/output-cap/reasoning metadata, never credentials or message contents.",
+  "checks": {
+    "desktopTypecheck": "passed",
+    "productSourceChanged": false
+  },
+  "remaining": [
+    "Native foreground/pixel/physical form actions while unlocked",
+    "Responses protocol inference, real remote providers and live credential acceptance",
+    "Provider catalog paging/refresh and remaining actor permissions",
+    "Across native process restart and packaged acceptance",
+    "Other model limits and global quality requirements"
+  ]
+}

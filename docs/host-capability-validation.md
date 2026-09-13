@@ -101,7 +101,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | CFG04 | 阅读对齐 reading.textAlign | F6 | Worker三目标与实际设置UI Justified、预览computed justify、原生重读通过；FB2实际正文justify↔start通过；其他格式待验，见第二十五流程 |
 | CFG05 | 固定版式颜色 reading.fixedLayoutColor | F6 | Worker theme/original三目标与重置、原生读写通过；PDF实际颜色与UI入口待验，见第二十五流程 |
 | CFG06 | 更新内容弹窗 general.whatsNewDialog | F6 | 真实UI/Worker/Agent开关及启动合成版本变更：关闭消费提示、重开不补弹、新提示加载日志/关闭及原生重启不重弹通过；实际升级/packaged待验，见第四十四流程 |
-| CFG07 | AI 提供商/端点/密钥配置 | F6 | 待验 |
+| CFG07 | AI 提供商/端点/密钥配置 | F6 | 本机实际Tauri表单清除/自定义配置/原生连接测试、custom↔OpenAI凭据隔离及返回恢复通过；原15凭据槽/配置全量恢复核对；锁屏DOM非物理输入，远端provider/Responses/进程重启待验，见第五十流程 |
 | CFG08 | 模型目录刷新、连接测试与模型能力 | F6 | 本机原生刷新目录、视觉能力发现与Qwen实际调用通过；GPT模型被账户上游规则阻止；连接测试UI待验 |
 | CFG09 | 插件非敏感设置的动态路径 | F6 | 待验 |
 | CFG10 | 设置变化事件/外部写入刷新 | F6 | 本机真实 Worker 观察本地设置/目录变化、remote与restore来源注入、停止订阅通过；跨设备待验 |
@@ -135,8 +135,8 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET25 | ai.preferences.sendSurroundingContext | F6 | 真实Tauri Agent关闭上下文后不发送viewport，仍可发送被允许的显式选区；两项全关均去除，Worker/Agent设置通过；受控端点/其他平台边界见第四十六流程 |
 | SET26 | ai.preferences.localOnly | F6 | 真实Worker普通/流式/结构化、Agent ask/turn/connection六入口开启localOnly均ai/local-only且无新增推理请求；活动插件流取消/deltas空通过；受控端点非模型质量，见第四十六流程 |
 | SET27 | ai.preferences.followStreaming | F6 | 发现真实聊天跟随落后一批文本，已观察实际内容高度补齐；本机8/16段底部gap0、原生上滚暂停/回底恢复、关闭固定起点、新段不抢滚、结束关书重开40段保留通过；回归/类型通过，发布包及其他内容/平台待验，见第四十九流程 |
-| SET28 | ai.connection.configured | F6 | 待验 |
-| SET29 | ai.connection.credentialConfigured | F6 | 待验 |
+| SET28 | ai.connection.configured | F6 | 本机清除后false、完整表单配置后true、最终清除后false且runtime不可用，实际只读目录同步通过；其他provider/重启待验，见第五十流程 |
+| SET29 | ai.connection.credentialConfigured | F6 | 本机自定义合成凭据配置后true、清除后false，只读目录与原生槽恢复通过；真实凭据/其他provider待验，见第五十流程 |
 | SET30 | menus.primaryNav.visible | F6 | Worker主导航重排为Agent→统计→书架，实际DOM一致；编辑器/窄窗待验，见第二十九流程 |
 | SET31 | menus.primaryNav.overflow | F6 | Worker反向排序及原生KV通过；隐藏目的地实际发现待验，见第二十九流程 |
 | SET32 | menus.shelfHeader.visible | F6 | Worker页头Settings→Workspace Profiles→Search，实际DOM一致；编辑器待验，见第二十九流程 |
@@ -145,15 +145,15 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET35 | menus.readerHeader.overflow | F6 | Worker外观/分句阅读移入溢出并重排，外观入口实际可打开；其他动作待验，见第二十九流程 |
 | SET36 | menus.selection.visible | F6 | 真实FB2 DOM Range触发选区，Underline→Copy及More顺序一致；release物理拖选默认工具栏/高亮笔记通过；自定义物理拖选/窄窗待验，见第二十九/三十二流程 |
 | SET37 | menus.selection.overflow | F6 | 真实选区溢出前七项按Worker配置排序；完整动作执行待验，见第二十九流程 |
-| SET38 | ai.connection.provider | F6 | 待验 |
-| SET39 | ai.connection.primaryModel | F6 | 待验 |
-| SET40 | ai.connection.fastModel | F6 | 待验 |
-| SET41 | ai.connection.thinkingLevel | F6 | 待验 |
-| SET42 | ai.connection.fastThinkingLevel | F6 | 待验 |
-| SET43 | ai.connection.custom.endpointConfigured | F6 | 待验 |
-| SET44 | ai.connection.custom.api | F6 | 待验 |
-| SET45 | ai.connection.custom.supportsThinking | F6 | 待验 |
-| SET46 | ai.connection.custom.maxOutputTokens | F6 | 待验 |
+| SET38 | ai.connection.provider | F6 | 本机只读目录custom、实际表单custom→OpenAI凭据为空→custom恢复原模型/凭据通过；其他provider及推理待验，见第五十流程 |
+| SET39 | ai.connection.primaryModel | F6 | 实际表单config-primary及更新保存、连接测试和smart原生请求使用对应model通过；远端目录/其他actor待验，见第五十流程 |
+| SET40 | ai.connection.fastModel | F6 | 实际独立Fast空白/与主模型相同禁用测试；config-fast独立请求、关闭独立后随主模型请求通过；目录/其他actor待验，见第五十流程 |
+| SET41 | ai.connection.thinkingLevel | F6 | 实际表单Smart high保存且原生smart请求reasoningEffort=high；仅受控custom，其他模型/actor待验，见第五十流程 |
+| SET42 | ai.connection.fastThinkingLevel | F6 | 实际独立Fast low保存且fast请求reasoningEffort=low；关闭独立后随Smart high，其他模型/actor待验，见第五十流程 |
+| SET43 | ai.connection.custom.endpointConfigured | F6 | 实际自定义端点填入后只读endpointConfigured=true、原生loopback连接测试成功；清除后描述符不再提供，其他端点/平台待验，见第五十流程 |
+| SET44 | ai.connection.custom.api | F6 | 实际UI Completions连接测试/推理通过；切Responses关闭重开保存、切回Completions通过；Responses真实调用待验，见第五十流程 |
+| SET45 | ai.connection.custom.supportsThinking | F6 | 实际UI开启后smart/fast发送对应reasoningEffort；关闭后请求不再带reasoningEffort通过；远端支持语义待验，见第五十流程 |
+| SET46 | ai.connection.custom.maxOutputTokens | F6 | 实际UI负数aria-invalid且阻止测试/未落盘；2048保存且smart/fast实际原生请求上限2048通过；其他上限/actor待验，见第五十流程 |
 | SET47 | reading.textAlign | F6 | Worker目标覆盖与实际设置UI Justified、预览及FB2正文computed justify、原生KV通过；其他格式待验，见第二十五流程 |
 | SET48 | reading.fixedLayoutColor | F6 | Worker theme/original目标覆盖及重置通过；PDF实际颜色与UI入口待验，见第二十五流程 |
 | SET49 | general.whatsNewDialog | F6 | 实际开关/Worker/Agent修改、合成版本变更的显示/静默消费/关闭及原生重启通过；实际升级/packaged待验，见第四十四流程 |

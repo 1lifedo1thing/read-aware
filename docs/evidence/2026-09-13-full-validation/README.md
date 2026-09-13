@@ -1282,3 +1282,31 @@ scrollHeight4476/height645，bottomGap0。不是仅观察scrollTo派发回执。
 Worker0，原buildMemory=true/followStreaming=false/localOnly=false恢复，临时
 模型配置和备份键清除，服务PID21096停止143。release尚未重建本修复；图片/
 表格/工具块、全局聊天、其他平台及真实模型质量仍有各自边界，不冒称全量通过。
+## 第五十流程：AI 配置表单、模型分层请求与在途测试过期
+
+当前macOS再次锁屏，本批操作真实Tauri挂载的React表单及原生HTTP，不计物理
+输入/像素证明。现有inference探针增加可选全凭据槽原生加密备份，供实际Clear
+配置操作使用；端点仅记录model/output cap/reasoning参数，不记录密钥或消息。
+
+Clear后configured/credentialConfigured均false、Test禁用，其他配置字段退出
+动态目录。填自定义loopback端点/合成凭据/config-primary后两状态true，原生
+Test Connection显示固定响应成功。负数输出上限aria-invalid并显示正整数错误，
+Test禁用且负数未落盘；独立Fast空白或等于主模型时Test禁用，config-fast合法。
+保存Smart high/Fast low及上限2048，真正smart/fast请求分别携带对应model和
+reasoningEffort，上限都是2048。不是仅验证配置JSON。
+
+令连接测试在端点等待，再编辑模型为config-primary-updated；旧请求释放后
+没有为新配置显示成功，重新Test才成功。旧请求未在传输层取消，本项是过期
+结果不误认证，不计取消请求。Responses选择关闭/重开设置页保留，再切回
+Completions；Responses本身没有请求，因此协议调用仍待验。关闭独立Fast后
+fast请求实际跟主模型，关闭thinking支持后请求不再带reasoningEffort。
+
+custom切OpenAI时密码为空且Test禁用，没有带过去自定义合成凭据；切回custom
+恢复原端点、主模型、上限和凭据。最终Clear后runtime不可用，两配置状态false。
+关闭设置页并排空写队列，恢复原配置和15个provider/legacy凭据槽，逐项比对
+全部相同；仅输出比较布尔值，原值未暴露。两测试Worker贡献0、原两书保留，
+偏好buildMemory=true/localOnly=false恢复，备份键删除，服务PID25430停止143。
+
+证据：[ai-configuration-observations.json](./ai-configuration-observations.json)。
+只修改现有测试探针/服务，desktop类型检查通过，无产品改动/重复全量门禁。
+其他provider真实认证/远端目录、Responses、原生重启和发布包保留各自待验边界。
