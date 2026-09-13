@@ -1,0 +1,638 @@
+{
+  "checkedAt": "2026-09-13T07:15:10.542Z",
+  "flow": 83,
+  "baseline": "b3b2097a / fixed 243-row validation scope; running checkout includes subsequent verified fixes",
+  "scope": "Two new isolated macOS debug Tauri profiles, actual bundled WebDAV 0.3.0 Workers, native HTTP, SQLite and Argon2id/XChaCha20-Poly1305 over a disposable loopback WebDAV protocol fixture",
+  "ports": {
+    "a": 9225,
+    "b": 9226,
+    "webdav": 18891,
+    "vite": 5184
+  },
+  "boundary": {
+    "covered": [
+      "host connection persistence",
+      "wrong passphrase rejection",
+      "new profile event bootstrap",
+      "bidirectional native event convergence",
+      "encrypted blob upload and lazy fetch",
+      "503 failure retains local import and outbox",
+      "recovery drains backlog",
+      "repeated sync no push or pull",
+      "actual Data & Sync WebDAV reconnect/passphrase UI",
+      "actual Sync now UI",
+      "actual disconnect confirmation UI"
+    ],
+    "notCovered": [
+      "physical separate devices",
+      "production WebDAV implementation or credentials",
+      "production relay OAuth",
+      "Agent approval and Maintenance Desk sync requestFlow actors",
+      "packaged CSP",
+      "process-restart resume",
+      "generation failure rollback"
+    ]
+  },
+  "steps": {
+    "aSeed": {
+      "cycle": {
+        "counts": {
+          "blobs": 0,
+          "events": 0,
+          "unverifiedBlobs": 0,
+          "unverifiedEvents": 0
+        },
+        "outcome": {
+          "backfillRemaining": 0,
+          "backfilled": 0,
+          "blobs": 1,
+          "bootstrapped": false,
+          "pulled": 0,
+          "pushed": 2,
+          "verified": 0
+        },
+        "profile": {
+          "encryptionKeyRef": "sync.master-key",
+          "lastPullAt": "2026-09-13T07:04:49.818Z",
+          "lastPushAt": "2026-09-13T07:04:49.852Z",
+          "remoteAccountId": "transport:webdav-sync:webdav:synthetic-reader@127.0.0.1:18891/full-validation",
+          "syncEnabled": true
+        },
+        "status": {
+          "accountConnected": true,
+          "backend": "transport",
+          "backfillRemaining": 0,
+          "cycleTotals": null,
+          "lastCycle": {
+            "backfilled": 0,
+            "blobs": 1,
+            "pulled": 0,
+            "pushed": 2
+          },
+          "lastErrorCode": null,
+          "lastSyncAt": 1789283089927,
+          "progress": null,
+          "state": "idle",
+          "transportRef": "plugin:webdav-sync:webdav"
+        }
+      },
+      "inspection": {
+        "books": [
+          {
+            "id": "376345a4-903a-4dc2-b357-0c94ff13879a",
+            "title": "Synthetic sync A 20260913"
+          }
+        ],
+        "counts": {
+          "blobs": 0,
+          "events": 0,
+          "unverifiedBlobs": 0,
+          "unverifiedEvents": 0
+        },
+        "deviceId": "5a2ce71d-fc50-4dcd-8bfc-46361b89578e",
+        "path": "/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913",
+        "profile": {
+          "encryptionKeyRef": "sync.master-key",
+          "lastPullAt": "2026-09-13T07:04:49.818Z",
+          "lastPushAt": "2026-09-13T07:04:49.852Z",
+          "remoteAccountId": "transport:webdav-sync:webdav:synthetic-reader@127.0.0.1:18891/full-validation",
+          "syncEnabled": true
+        },
+        "status": {
+          "accountConnected": true,
+          "backend": "transport",
+          "backfillRemaining": 0,
+          "cycleTotals": null,
+          "lastCycle": {
+            "backfilled": 0,
+            "blobs": 1,
+            "pulled": 0,
+            "pushed": 2
+          },
+          "lastErrorCode": null,
+          "lastSyncAt": 1789283089927,
+          "progress": null,
+          "state": "idle",
+          "transportRef": "plugin:webdav-sync:webdav"
+        }
+      },
+      "seed": {
+        "bookId": "376345a4-903a-4dc2-b357-0c94ff13879a",
+        "marker": "Synthetic sync A 20260913",
+        "sourceBytes": 664
+      }
+    },
+    "bWrong": {
+      "message": "the passphrase does not match this account's key check",
+      "name": "WrongPassphraseError",
+      "state": "rejected"
+    },
+    "bBootstrap": {
+      "state": "complete",
+      "value": {
+        "connection": {
+          "deviceId": "f5a37e2c-b32e-4449-b1e8-be90f82491a3",
+          "endpointId": "synthetic-reader@127.0.0.1:18891/full-validation",
+          "path": "/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913-b",
+          "pluginVersion": "0.3.0"
+        },
+        "cycle": {
+          "counts": {
+            "blobs": 0,
+            "events": 0,
+            "unverifiedBlobs": 0,
+            "unverifiedEvents": 4
+          },
+          "outcome": null,
+          "profile": {
+            "encryptionKeyRef": "sync.master-key",
+            "lastPullAt": null,
+            "lastPushAt": null,
+            "remoteAccountId": "transport:webdav-sync:webdav:synthetic-reader@127.0.0.1:18891/full-validation",
+            "syncEnabled": true
+          },
+          "status": {
+            "accountConnected": true,
+            "backend": "transport",
+            "backfillRemaining": 0,
+            "cycleTotals": null,
+            "lastCycle": null,
+            "lastErrorCode": null,
+            "lastSyncAt": null,
+            "progress": null,
+            "state": "idle",
+            "transportRef": "plugin:webdav-sync:webdav"
+          }
+        },
+        "inspection": {
+          "books": [],
+          "counts": {
+            "blobs": 0,
+            "events": 4,
+            "unverifiedBlobs": 0,
+            "unverifiedEvents": 0
+          },
+          "deviceId": "f5a37e2c-b32e-4449-b1e8-be90f82491a3",
+          "path": "/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913-b",
+          "profile": {
+            "encryptionKeyRef": "sync.master-key",
+            "lastPullAt": null,
+            "lastPushAt": null,
+            "remoteAccountId": "transport:webdav-sync:webdav:synthetic-reader@127.0.0.1:18891/full-validation",
+            "syncEnabled": true
+          },
+          "status": {
+            "accountConnected": true,
+            "backend": "transport",
+            "backfillRemaining": 0,
+            "cycleTotals": {
+              "blobs": 0,
+              "events": 0,
+              "unverifiedBlobs": 0,
+              "unverifiedEvents": 4
+            },
+            "lastCycle": null,
+            "lastErrorCode": null,
+            "lastSyncAt": null,
+            "progress": {
+              "backfillCursor": 0,
+              "backfillFrontier": 0,
+              "backfilled": 0,
+              "blobDirection": null,
+              "blobKey": null,
+              "blobPartsDone": 0,
+              "blobPartsTotal": 0,
+              "blobsDone": 0,
+              "blobsTotal": 0,
+              "phase": "verify",
+              "pulled": 0,
+              "pushed": 0,
+              "verified": 0
+            },
+            "state": "syncing",
+            "transportRef": "plugin:webdav-sync:webdav"
+          }
+        }
+      }
+    },
+    "bFault": {
+      "state": "complete",
+      "value": {
+        "cycle": {
+          "code": "sync/server",
+          "error": "webdav: PROPFIND http://127.0.0.1:18891/full-validation/events/ answered 503"
+        },
+        "inspection": {
+          "books": [
+            {
+              "id": "577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+              "sourceBlobKey": "bookfile:577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+              "title": "Synthetic sync B 20260913"
+            },
+            {
+              "id": "376345a4-903a-4dc2-b357-0c94ff13879a",
+              "sourceBlobKey": "bookfile:376345a4-903a-4dc2-b357-0c94ff13879a",
+              "title": "Synthetic sync A 20260913"
+            }
+          ],
+          "counts": {
+            "blobs": 1,
+            "events": 2,
+            "unverifiedBlobs": 0,
+            "unverifiedEvents": 0
+          },
+          "deviceId": "f5a37e2c-b32e-4449-b1e8-be90f82491a3",
+          "path": "/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913-b",
+          "profile": {
+            "encryptionKeyRef": "sync.master-key",
+            "lastPullAt": "2026-09-13T07:11:09.873Z",
+            "lastPushAt": "2026-09-13T07:11:10.025Z",
+            "remoteAccountId": "transport:webdav-sync:webdav:synthetic-reader@127.0.0.1:18891/full-validation",
+            "syncEnabled": true
+          },
+          "status": {
+            "accountConnected": true,
+            "backend": "transport",
+            "backfillRemaining": 0,
+            "cycleTotals": null,
+            "lastCycle": {
+              "backfilled": 0,
+              "blobs": 0,
+              "pulled": 5,
+              "pushed": 4
+            },
+            "lastErrorCode": "sync/server",
+            "lastSyncAt": 1789283470058,
+            "progress": null,
+            "state": "error",
+            "transportRef": "plugin:webdav-sync:webdav"
+          }
+        },
+        "seed": {
+          "bookId": "577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+          "marker": "Synthetic sync B 20260913",
+          "sourceBytes": 664
+        }
+      }
+    },
+    "bRecovery": {
+      "state": "complete",
+      "value": {
+        "cycle": {
+          "counts": {
+            "blobs": 0,
+            "events": 0,
+            "unverifiedBlobs": 0,
+            "unverifiedEvents": 0
+          },
+          "outcome": {
+            "backfillRemaining": 0,
+            "backfilled": 0,
+            "blobs": 1,
+            "bootstrapped": false,
+            "pulled": 0,
+            "pushed": 2,
+            "verified": 0
+          },
+          "profile": {
+            "encryptionKeyRef": "sync.master-key",
+            "lastPullAt": "2026-09-13T07:11:39.496Z",
+            "lastPushAt": "2026-09-13T07:11:39.506Z",
+            "remoteAccountId": "transport:webdav-sync:webdav:synthetic-reader@127.0.0.1:18891/full-validation",
+            "syncEnabled": true
+          },
+          "status": {
+            "accountConnected": true,
+            "backend": "transport",
+            "backfillRemaining": 0,
+            "cycleTotals": null,
+            "lastCycle": {
+              "backfilled": 0,
+              "blobs": 1,
+              "pulled": 0,
+              "pushed": 2
+            },
+            "lastErrorCode": null,
+            "lastSyncAt": 1789283499525,
+            "progress": null,
+            "state": "idle",
+            "transportRef": "plugin:webdav-sync:webdav"
+          }
+        },
+        "inspection": {
+          "books": [
+            {
+              "id": "577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+              "sourceBlobKey": "bookfile:577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+              "title": "Synthetic sync B 20260913"
+            },
+            {
+              "id": "376345a4-903a-4dc2-b357-0c94ff13879a",
+              "sourceBlobKey": "bookfile:376345a4-903a-4dc2-b357-0c94ff13879a",
+              "title": "Synthetic sync A 20260913"
+            }
+          ],
+          "counts": {
+            "blobs": 0,
+            "events": 0,
+            "unverifiedBlobs": 0,
+            "unverifiedEvents": 0
+          },
+          "deviceId": "f5a37e2c-b32e-4449-b1e8-be90f82491a3",
+          "path": "/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913-b",
+          "profile": {
+            "encryptionKeyRef": "sync.master-key",
+            "lastPullAt": "2026-09-13T07:11:39.496Z",
+            "lastPushAt": "2026-09-13T07:11:39.506Z",
+            "remoteAccountId": "transport:webdav-sync:webdav:synthetic-reader@127.0.0.1:18891/full-validation",
+            "syncEnabled": true
+          },
+          "status": {
+            "accountConnected": true,
+            "backend": "transport",
+            "backfillRemaining": 0,
+            "cycleTotals": null,
+            "lastCycle": {
+              "backfilled": 0,
+              "blobs": 1,
+              "pulled": 0,
+              "pushed": 2
+            },
+            "lastErrorCode": null,
+            "lastSyncAt": 1789283499525,
+            "progress": null,
+            "state": "idle",
+            "transportRef": "plugin:webdav-sync:webdav"
+          }
+        }
+      }
+    },
+    "bBlob": {
+      "byteSize": 664,
+      "result": {
+        "outcome": "fetched"
+      },
+      "text": "<?xml version=\"1.0\" encoding=\"utf-8\"?><FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><description><title-info><genre>science</genre><author><first-name>Synthetic</first-name><last-name>Fixture</last-name></author><book-title>Synthetic sync A 20260913</book-title><lang>en</lang></title-info><document-info><author><nickname>Acceptance</nickname></author><date>2026-09-13</date><id>Synthetic sync A 20260913</id><version>1.0</version></document-info></description><body><section><title><p>Synthetic sync A 20260913</p></title><p>Private marker plaintext only inside encrypted transport: Synthetic sync A 20260913.</p></section></body></FictionBook>"
+    },
+    "aConverge": {
+      "cycle": {
+        "counts": {
+          "blobs": 0,
+          "events": 0,
+          "unverifiedBlobs": 0,
+          "unverifiedEvents": 0
+        },
+        "outcome": {
+          "backfillRemaining": 0,
+          "backfilled": 0,
+          "blobs": 0,
+          "bootstrapped": false,
+          "pulled": 6,
+          "pushed": 0,
+          "verified": 0
+        },
+        "profile": {
+          "encryptionKeyRef": "sync.master-key",
+          "lastPullAt": "2026-09-13T07:11:49.930Z",
+          "lastPushAt": "2026-09-13T07:04:49.852Z",
+          "remoteAccountId": "transport:webdav-sync:webdav:synthetic-reader@127.0.0.1:18891/full-validation",
+          "syncEnabled": true
+        },
+        "status": {
+          "accountConnected": true,
+          "backend": "transport",
+          "backfillRemaining": 0,
+          "cycleTotals": null,
+          "lastCycle": {
+            "backfilled": 0,
+            "blobs": 0,
+            "pulled": 6,
+            "pushed": 0
+          },
+          "lastErrorCode": null,
+          "lastSyncAt": 1789283509957,
+          "progress": null,
+          "state": "idle",
+          "transportRef": "plugin:webdav-sync:webdav"
+        }
+      },
+      "inspection": {
+        "books": [
+          {
+            "id": "577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+            "sourceBlobKey": "bookfile:577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+            "title": "Synthetic sync B 20260913"
+          },
+          {
+            "id": "376345a4-903a-4dc2-b357-0c94ff13879a",
+            "sourceBlobKey": "bookfile:376345a4-903a-4dc2-b357-0c94ff13879a",
+            "title": "Synthetic sync A 20260913"
+          }
+        ],
+        "counts": {
+          "blobs": 0,
+          "events": 0,
+          "unverifiedBlobs": 0,
+          "unverifiedEvents": 0
+        },
+        "deviceId": "5a2ce71d-fc50-4dcd-8bfc-46361b89578e",
+        "path": "/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913",
+        "profile": {
+          "encryptionKeyRef": "sync.master-key",
+          "lastPullAt": "2026-09-13T07:11:49.930Z",
+          "lastPushAt": "2026-09-13T07:04:49.852Z",
+          "remoteAccountId": "transport:webdav-sync:webdav:synthetic-reader@127.0.0.1:18891/full-validation",
+          "syncEnabled": true
+        },
+        "status": {
+          "accountConnected": true,
+          "backend": "transport",
+          "backfillRemaining": 0,
+          "cycleTotals": null,
+          "lastCycle": {
+            "backfilled": 0,
+            "blobs": 0,
+            "pulled": 6,
+            "pushed": 0
+          },
+          "lastErrorCode": null,
+          "lastSyncAt": 1789283509957,
+          "progress": null,
+          "state": "idle",
+          "transportRef": "plugin:webdav-sync:webdav"
+        }
+      }
+    },
+    "aBlobRepeat": {
+      "blob": {
+        "byteSize": 664,
+        "result": {
+          "outcome": "fetched"
+        },
+        "text": "<?xml version=\"1.0\" encoding=\"utf-8\"?><FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><description><title-info><genre>science</genre><author><first-name>Synthetic</first-name><last-name>Fixture</last-name></author><book-title>Synthetic sync B 20260913</book-title><lang>en</lang></title-info><document-info><author><nickname>Acceptance</nickname></author><date>2026-09-13</date><id>Synthetic sync B 20260913</id><version>1.0</version></document-info></description><body><section><title><p>Synthetic sync B 20260913</p></title><p>Private marker plaintext only inside encrypted transport: Synthetic sync B 20260913.</p></section></body></FictionBook>"
+      },
+      "repeat": {
+        "counts": {
+          "blobs": 0,
+          "events": 0,
+          "unverifiedBlobs": 0,
+          "unverifiedEvents": 0
+        },
+        "outcome": {
+          "backfillRemaining": 0,
+          "backfilled": 0,
+          "blobs": 0,
+          "bootstrapped": false,
+          "pulled": 0,
+          "pushed": 0,
+          "verified": 0
+        },
+        "profile": {
+          "encryptionKeyRef": "sync.master-key",
+          "lastPullAt": "2026-09-13T07:12:03.605Z",
+          "lastPushAt": "2026-09-13T07:04:49.852Z",
+          "remoteAccountId": "transport:webdav-sync:webdav:synthetic-reader@127.0.0.1:18891/full-validation",
+          "syncEnabled": true
+        },
+        "status": {
+          "accountConnected": true,
+          "backend": "transport",
+          "backfillRemaining": 0,
+          "cycleTotals": null,
+          "lastCycle": {
+            "backfilled": 0,
+            "blobs": 0,
+            "pulled": 0,
+            "pushed": 0
+          },
+          "lastErrorCode": null,
+          "lastSyncAt": 1789283523622,
+          "progress": null,
+          "state": "idle",
+          "transportRef": "plugin:webdav-sync:webdav"
+        }
+      }
+    },
+    "bDisconnectObserved": {
+      "afterDisconnect": {
+        "error": "sync: no master key — connect an account first"
+      },
+      "inspection": {
+        "books": [
+          {
+            "id": "577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+            "sourceBlobKey": "bookfile:577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+            "title": "Synthetic sync B 20260913"
+          },
+          {
+            "id": "376345a4-903a-4dc2-b357-0c94ff13879a",
+            "sourceBlobKey": "bookfile:376345a4-903a-4dc2-b357-0c94ff13879a",
+            "title": "Synthetic sync A 20260913"
+          }
+        ],
+        "counts": {
+          "blobs": 0,
+          "events": 0,
+          "unverifiedBlobs": 0,
+          "unverifiedEvents": 0
+        },
+        "deviceId": "f5a37e2c-b32e-4449-b1e8-be90f82491a3",
+        "path": "/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913-b",
+        "profile": {
+          "encryptionKeyRef": null,
+          "lastPullAt": "2026-09-13T07:12:03.883Z",
+          "lastPushAt": "2026-09-13T07:11:39.506Z",
+          "remoteAccountId": null,
+          "syncEnabled": false
+        },
+        "status": {
+          "accountConnected": false,
+          "backend": null,
+          "backfillRemaining": 0,
+          "cycleTotals": null,
+          "lastCycle": null,
+          "lastErrorCode": null,
+          "lastSyncAt": null,
+          "progress": null,
+          "state": "error",
+          "transportRef": null
+        }
+      }
+    },
+    "uiConnected": {
+      "dialogs": [
+        "_r_p_"
+      ],
+      "text": "Settings\n\nGeneral\n\nReading\n\nAI\n\nPlugins\n\nTheme\n\nCustomize\n\nShortcuts\n\nData & Sync\n\nAbout\n\nRSS Reader\n\nSentence Reader\n\nTTS Voices\n\nWebDAV Sync\n\nData & Sync\nReadAware is local-first: your data lives on this device. Sync is an encrypted relay, not a source of truth.\nSync\nSync backend\nWebDAV · via the webdav-sync plugin\nDisconnect\nStatus\nLast synced 3:13:55 PM\nSync now\nEnd-to-end encryption\nOn — protected by your passphrase.\nStorage\nData location\n/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913-b\nReveal\nBackup & export\nChoose a complete encrypted backup or a library backup.\n\nExport a backup\nBooks, annotations, conversations, memory, settings, plugins and credentials, saved with password encryption.\nExport\nRestore a backup\nOpen an encrypted full backup, compare it with this library, and choose what to restore. Your current device identity and account session stay on this device.\nImport\nContext bundles\nVersioned, reproducible context artifacts for external agents: the reader profile, declared reading intentions, one book's memory behind the current spoiler boundary, or one conversation's stored summary. Each capture publishes an immutable version to your synced event log; saving writes a JSON file you choose.\n\nRecipe\n\nReader profile\nScope\n\nThis reader\nCapture now\nReads the current sources and publishes a new version only when the content changed.\nCapture\nVersions\nNewest first. Saving writes the exact published artifact.\nNo versions yet.\nDanger zone\nDelete all data\nErase everything on this device — books, annotations, reading history, settings, and sync credentials. A synced account's copy on other devices is not touched.\nDelete all data\n"
+    },
+    "uiDisconnectPrompt": "Disconnect sync?\nThis device keeps all its data and stops syncing. Reconnect anytime with the same passphrase.\n\nCancel\nDisconnect\n\n[Executed in window: main]",
+    "uiDisconnected": {
+      "inspection": {
+        "books": [
+          {
+            "id": "577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+            "sourceBlobKey": "bookfile:577b9004-6eba-4dbc-98c6-09e50a31a2ef",
+            "title": "Synthetic sync B 20260913"
+          },
+          {
+            "id": "376345a4-903a-4dc2-b357-0c94ff13879a",
+            "sourceBlobKey": "bookfile:376345a4-903a-4dc2-b357-0c94ff13879a",
+            "title": "Synthetic sync A 20260913"
+          }
+        ],
+        "counts": {
+          "blobs": 0,
+          "events": 0,
+          "unverifiedBlobs": 0,
+          "unverifiedEvents": 0
+        },
+        "deviceId": "f5a37e2c-b32e-4449-b1e8-be90f82491a3",
+        "path": "/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913-b",
+        "profile": {
+          "encryptionKeyRef": null,
+          "lastPullAt": "2026-09-13T07:14:25.476Z",
+          "lastPushAt": "2026-09-13T07:11:39.506Z",
+          "remoteAccountId": null,
+          "syncEnabled": false
+        },
+        "status": {
+          "accountConnected": false,
+          "backend": null,
+          "backfillRemaining": 0,
+          "cycleTotals": null,
+          "lastCycle": null,
+          "lastErrorCode": null,
+          "lastSyncAt": null,
+          "progress": null,
+          "state": "disabled",
+          "transportRef": null
+        }
+      },
+      "text": "Settings\n\nGeneral\n\nReading\n\nAI\n\nPlugins\n\nTheme\n\nCustomize\n\nShortcuts\n\nData & Sync\n\nAbout\n\nRSS Reader\n\nSentence Reader\n\nTTS Voices\n\nWebDAV Sync\n\nData & Sync\nReadAware is local-first: your data lives on this device. Sync is an encrypted relay, not a source of truth.\nSync\nAccount\nConnect an account to sync your encrypted event log across devices.\nConnect account\nWebDAV\nSync through your own server — provided by the webdav-sync plugin.\nConnect\nStorage\nData location\n/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913-b\nReveal\nBackup & export\nChoose a complete encrypted backup or a library backup.\n\nExport a backup\nBooks, annotations, conversations, memory, settings, plugins and credentials, saved with password encryption.\nExport\nRestore a backup\nOpen an encrypted full backup, compare it with this library, and choose what to restore. Your current device identity and account session stay on this device.\nImport\nContext bundles\nVersioned, reproducible context artifacts for external agents: the reader profile, declared reading intentions, one book's memory behind the current spoiler boundary, or one conversation's stored summary. Each capture publishes an immutable version to your synced event log; saving writes a JSON file you choose.\n\nRecipe\n\nReader profile\nScope\n\nThis reader\nCapture now\nReads the current sources and publishes a new version only when the content changed.\nCapture\nVersions\nNewest first. Saving writes the exact published artifact.\nNo versions yet.\nDanger zone\nDelete all data\nErase everything on this device — books, annotations, reading history, settings, and sync credentials. A synced account's copy on other devices is not touched.\nDelete all data\n"
+    }
+  },
+  "notes": [
+    "An early MCP script timed out during a probe source HMR reload; no result was counted. Rerunning as a background observed task produced the recorded outcome.",
+    "B immediate syncNow after connection returned null because the scheduler already owned a cycle; it was not counted as completed. Later native books/counts and cycle outcomes establish completion.",
+    "Direct internal syncNow after disconnect rejects missing master key; production Data & Sync removes Sync now and shows Connect. Final UI disconnect reports disabled.",
+    "Only synthetic credentials were written in the two disposable profiles. Existing 9223/9224/release profiles were never used."
+  ],
+  "cleanup": {
+    "bothProfilesDisconnected": true,
+    "ownedMcpSessionsStopped": [
+      9225,
+      9226
+    ],
+    "ownedNativeProcessesTerminated": [
+      34160,
+      35348
+    ],
+    "loopbackServerStopped": 34423,
+    "isolatedSyntheticDataRetainedForAudit": true,
+    "existingProfilesUntouched": true
+  },
+  "validation": {
+    "desktopProbeTypecheck": "bun run typecheck:desktop passed",
+    "diffCheck": "passed"
+  }
+}
