@@ -2,8 +2,8 @@
  * One reference part = one stack of cards, rendered where the assistant called
  * its present/lookup tool. Vertical list — it fits the narrow reader panel and
  * the capped Context transcript alike. Long stacks collapse to the first three
- * behind a quiet expander. Book stacks hydrate covers/progress from one shared
- * shelf load; until then (and in Storybook / browser dev, where there is no
+ * behind a quiet expander. Book stacks hydrate covers/progress from the shared
+ * shelf projection; until then (and in Storybook / browser dev, where there is no
  * shelf) cards render their persisted snapshots.
  */
 import { useState, type ReactNode } from "react";

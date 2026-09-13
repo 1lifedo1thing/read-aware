@@ -1,0 +1,148 @@
+{
+  "flow": 77,
+  "baseline": "09c19d5e",
+  "environment": "macOS debug Tauri PID15611 port9224; compiled Dictionary 1.4.0; controlled loopback OpenAI completions stream",
+  "boundary": "Real mounted chat -> AgentThread tools -> native ports / compiled Dictionary Worker -> reference chunks -> native message persistence -> rendered cards. Scripted provider responses are protocol fixtures, not live model semantic evidence.",
+  "books": [
+    "ccf06985-1bb0-424f-9a25-86b9b12b41a2",
+    "49a71f47-4eaf-4325-bd93-14341724e3e8",
+    "1cc2e972-e24a-4839-add8-517edc24d6e8",
+    "2a97fe58-9e96-496f-b2da-de645836d212",
+    "1a692b77-a3b5-4831-8889-4ec260cb2ad7"
+  ],
+  "threadId": "thread-08782209-b3f0-46fe-b9a4-03eba8b8940d",
+  "toolSequence": [
+    "present_books: five valid, duplicate first id, missing-card77",
+    "plugin_dictionary_lookup_word: serendipity77; real Worker structured LLM service",
+    "present_books: repeat first id",
+    "assistant text completion"
+  ],
+  "observations": {
+    "firstBookReferences": 5,
+    "unknownSkipped": [
+      "missing-card77"
+    ],
+    "repeatedBookSkipped": "ccf06985-1bb0-424f-9a25-86b9b12b41a2",
+    "wordReferences": 1,
+    "wordFields": [
+      "pronunciation",
+      "two senses",
+      "example",
+      "contextualMeaning",
+      "etymology"
+    ],
+    "collapsedCount": 3,
+    "expandedCount": 5,
+    "nativeCardClick": {
+      "bookId": "1a692b77-a3b5-4831-8889-4ec260cb2ad7",
+      "sessionStatus": "ready",
+      "visibleText": "Card chapter 5Card validation synthetic body 5."
+    },
+    "persistedMessages": 2,
+    "persistedPartsEqualAfterFullReload": true,
+    "removedCards": [
+      "ccf06985-1bb0-424f-9a25-86b9b12b41a2",
+      "49a71f47-4eaf-4325-bd93-14341724e3e8"
+    ],
+    "afterMountedDeletion": [
+      "Open Card validation 77 book 3",
+      "Open Card validation 77 book 4",
+      "Open Card validation 77 book 5"
+    ],
+    "removedCardCopy": "No longer on the shelf"
+  },
+  "fixes": [
+    {
+      "file": "apps/web/src/features/ai/components/references/BookReferenceCard.tsx",
+      "before": "44px thumbnail used full-size placeholder, causing title and author glyphs to overlap vertically.",
+      "after": "Reuse existing compact placeholder with book format. Actual native screenshot inspected."
+    },
+    {
+      "file": "apps/web/src/features/ai/hooks/useReferenceBooks.ts",
+      "before": "One-shot shelf load left a deleted book clickable in the same mounted transcript (confirmed for first fixture).",
+      "after": "Read the app controller shared shelf projection. Delete second fixture while mounted immediately replaced its button with missing-book snapshot; remaining cards and progress retained."
+    }
+  ],
+  "checks": [
+    "web typecheck including strict Foliate and desktop tsconfig passed",
+    "React skill review: existing shelf subscription reused; no new listeners or fetching effect; stable useMemo dependencies; missing books render noninteractive snapshots"
+  ],
+  "cleanup": {
+    "cache": null,
+    "originalConversationHash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "ownedMessages": [],
+    "pending": {
+      "items": [],
+      "nextCursor": null
+    },
+    "remaining": [
+      {
+        "addedAt": "2026-09-08T14:23:58.647Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "reading-paint-probe.pdf",
+        "fileSize": 3289,
+        "format": "pdf",
+        "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "lastOpenedAt": "2026-09-12T22:18:31.987Z",
+        "starred": false,
+        "title": "Reading Paint Probe",
+        "updatedAt": "2026-09-12T22:18:31.987Z"
+      },
+      {
+        "addedAt": "2026-09-08T14:21:21.622Z",
+        "author": "ReadAware Tests",
+        "collectionId": null,
+        "fileName": "reading-capability-probe.fb2",
+        "fileSize": 22220,
+        "format": "fb2",
+        "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+        "lastOpenedAt": "2026-09-12T21:58:05.361Z",
+        "narrativity": "narrative",
+        "starred": false,
+        "title": "Reading Capability Probe",
+        "updatedAt": "2026-09-12T21:58:05.361Z"
+      }
+    ],
+    "restored": {
+      "buildMemoryRestored": true,
+      "configRestored": true,
+      "credentialRestored": true
+    },
+    "restoredMessageCount": 2,
+    "selectedThread": "__global__",
+    "sourceInfo": [
+      {
+        "cover": null,
+        "id": "ccf06985-1bb0-424f-9a25-86b9b12b41a2",
+        "source": null
+      },
+      {
+        "cover": null,
+        "id": "49a71f47-4eaf-4325-bd93-14341724e3e8",
+        "source": null
+      },
+      {
+        "cover": null,
+        "id": "1cc2e972-e24a-4839-add8-517edc24d6e8",
+        "source": null
+      },
+      {
+        "cover": null,
+        "id": "2a97fe58-9e96-496f-b2da-de645836d212",
+        "source": null
+      },
+      {
+        "cover": null,
+        "id": "1a692b77-a3b5-4831-8889-4ec260cb2ad7",
+        "source": null
+      }
+    ]
+  },
+  "limitations": [
+    "Changing the Hook implementation during HMR caused a Hook-order boundary error; remount and full reload recovered persisted cards, without another provider request. This dev transition is excluded from shipping behavior.",
+    "CUA visibly verified expanded books, compact cover repair and book-five reader body. Later screenshots were stale/blank with document.visibilityState hidden despite visible/focused native window; full word-card layout pixels are still pending. AX and native persistence verified complete word entry.",
+    "Dictionary word card is a self-contained entry, not a navigation button. No new action was added.",
+    "Packaged build and other platforms not rerun for these UI changes."
+  ]
+}

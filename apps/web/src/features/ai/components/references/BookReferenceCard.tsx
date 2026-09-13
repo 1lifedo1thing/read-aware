@@ -32,7 +32,7 @@ export function BookReferenceCard({
         {book?.coverUrl ? (
           <img src={book.coverUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <BookCoverPlaceholder title={title} author={author} />
+          <BookCoverPlaceholder title={title} author={author} format={book?.format} compact />
         )}
       </div>
       <div className="min-w-0 flex-1">

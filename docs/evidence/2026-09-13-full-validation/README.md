@@ -2044,3 +2044,23 @@ Initialized/3节，确认后显示Imported；重新查询持久书目、803字�
 跨锁屏的旧请求已超时，排除不计。原生AX曾将实际可点击的蓝色Open报为disabled，
 不能据此判定格式过滤失败；本轮没有新增产品修复。发布包插件入口、其他后缀和外部
 关联仍独立待验。详见[原生插件复合过滤记录](./plugin-compound-picker-observations.json)。
+
+## 第七十七流程：真实 Agent 书卡、词典卡和书架变化
+
+基线`09c19d5e`。隔离Tauri实际聊天输入，经受控loopback SSE发起present_books、
+编译Dictionary 1.4.0的lookup_word、再次present_books和结束文本。五个有效书ID
+只生成五张卡，重复/未知ID正常ack；Dictionary实际Worker调用结构化LLM服务，
+完整词条进入word reference和原生partsJson。3张折叠→CUA展开5张→点击第五张
+进入正确真实正文；页面完整重载后两条消息和卡片parts逐项相同，无新增provider请求。
+
+实际发现并修复两处：44像素缩略图错误使用大封面文字，改用现有compact样式并
+在原生画面复核；卡片仅首次读书架，删除后仍可点击，改用App控制器已有共享
+书架projection。第二本在同一挂载会话删除后立即失去按钮并显示No longer on
+the shelf，剩余卡片/阅读进度正常。web含Foliate/desktop类型通过。
+
+Hook替换的HMR产生一次顺序不一致错误，重挂载/完整重载后恢复，不计shipping缺陷。
+CUA已目视书卡/缩略图修复/目标正文；后段WebView报hidden且截图空白，完整词卡
+像素边界未计通过，完整字段以AX/原生持久记录为证。词典卡是完整条目，不新增导航
+按钮。五本自有书、源/封面、测试会话和唯一dictionary缓存13kiewb清理，原两书及
+原会话hash不变；AI配置/凭据/buildMemory恢复，19843服务退出130。未调用真实
+远端模型，不计语义质量；发布包与其他平台待验。详见[Agent卡片记录](./agent-card-observations.json)。
