@@ -1,0 +1,784 @@
+{
+  "flow": 44,
+  "date": "2026-09-13",
+  "baseline": "62e9d22e",
+  "boundary": "macOS debug Tauri; real UI DOM actions/computed styles, actual Worker and Agent RuntimeDeps, native SQLite and native process restart; no foreground pixels or model turn",
+  "original": {
+    "notices": {
+      "crash": null,
+      "whatsNew": "{\"lastSeenVersion\":\"0.5.4\"}"
+    },
+    "original": [
+      {
+        "path": "general.language",
+        "target": {
+          "kind": "global"
+        },
+        "value": "en"
+      },
+      {
+        "path": "appearance.theme",
+        "target": {
+          "kind": "global"
+        },
+        "value": "system"
+      },
+      {
+        "path": "appearance.motion",
+        "target": {
+          "kind": "global"
+        },
+        "value": "system"
+      },
+      {
+        "path": "general.whatsNewDialog",
+        "target": {
+          "kind": "global"
+        },
+        "value": true
+      },
+      {
+        "path": "general.crashPrompt",
+        "target": {
+          "kind": "global"
+        },
+        "value": true
+      }
+    ]
+  },
+  "channelOriginal": {
+    "path": "general.updateChannel",
+    "target": {
+      "kind": "global"
+    },
+    "value": "stable"
+  },
+  "darkMotion": {
+    "html": {
+      "animation": "none",
+      "background": "rgb(22, 19, 17)",
+      "colorScheme": "dark",
+      "motion": "reduced",
+      "theme": "dark"
+    },
+    "motion": {
+      "path": "appearance.motion",
+      "target": {
+        "kind": "global"
+      },
+      "value": "reduced"
+    },
+    "theme": {
+      "path": "appearance.theme",
+      "target": {
+        "kind": "global"
+      },
+      "value": "dark"
+    }
+  },
+  "chinese": {
+    "lang": "zh-Hans",
+    "language": {
+      "path": "general.language",
+      "target": {
+        "kind": "global"
+      },
+      "value": "zh-Hans"
+    },
+    "switches": [
+      {
+        "aria": "开机启动",
+        "checked": "false"
+      },
+      {
+        "aria": "文件关联",
+        "checked": "true"
+      },
+      {
+        "aria": "自动检查更新",
+        "checked": "true"
+      },
+      {
+        "aria": "更新后显示“新内容”提示",
+        "checked": "true"
+      },
+      {
+        "aria": "崩溃后询问是否发送报告",
+        "checked": "true"
+      }
+    ],
+    "text": "设置\n\n通用\n\n阅读\n\nAI\n\n插件\n\n主题\n\n自定义\n\n快捷键\n\n数据与同步\n\n关于\n\nRSS Reader\n\nSentence Reader\n\nTTS Voices\n\nWebDAV Sync\n\n通用\n全局行为——启动时打开的内容、语言以及桌面集成。\n启动时\n起始视图\n书架\n继续上次阅读\n桌面集成\n保存在此处，由桌面应用生效。在浏览器预览中无效。\n\n开机启动\n登录时自动打开 ReadAware。\n\n文件关联\n接受 macOS 转交的书籍文件。关闭此项不会移除 macOS 中 ReadAware 的文件关联。\n\n自动检查更新\n发现新版本时，在主界面安静地显示提示。\n\n更新后显示“新内容”提示\n应用更新后，弹一次小弹窗提示去哪里查看更新内容。\n\n语言与隐私\n语言\n\n简体中文\n崩溃后询问是否发送报告\n如果 ReadAware 崩溃，下次启动时会提议发送诊断报告。未经你确认，什么都不会发送。\n\n"
+  },
+  "worker": {
+    "result": {
+      "changed": [
+        {
+          "path": "general.language",
+          "target": {
+            "kind": "global"
+          },
+          "value": "ja"
+        },
+        {
+          "path": "appearance.theme",
+          "target": {
+            "kind": "global"
+          },
+          "value": "light"
+        },
+        {
+          "path": "appearance.motion",
+          "target": {
+            "kind": "global"
+          },
+          "value": "system"
+        },
+        {
+          "path": "general.whatsNewDialog",
+          "target": {
+            "kind": "global"
+          },
+          "value": false
+        },
+        {
+          "path": "general.crashPrompt",
+          "target": {
+            "kind": "global"
+          },
+          "value": false
+        }
+      ],
+      "paths": [
+        "general.language",
+        "general.crashPrompt",
+        "general.whatsNewDialog",
+        "appearance.theme",
+        "appearance.motion"
+      ],
+      "status": "committed"
+    },
+    "snapshot": {
+      "appearance": {
+        "motion": "system",
+        "theme": "light"
+      },
+      "events": [
+        {
+          "changes": [
+            {
+              "path": "general.language",
+              "target": {
+                "kind": "global"
+              },
+              "value": "zh-Hans"
+            }
+          ],
+          "origin": "user",
+          "type": "settings.changed"
+        },
+        {
+          "changes": [
+            {
+              "path": "general.language",
+              "target": {
+                "kind": "global"
+              },
+              "value": "ja"
+            },
+            {
+              "path": "appearance.theme",
+              "target": {
+                "kind": "global"
+              },
+              "value": "light"
+            },
+            {
+              "path": "appearance.motion",
+              "target": {
+                "kind": "global"
+              },
+              "value": "system"
+            },
+            {
+              "path": "general.whatsNewDialog",
+              "target": {
+                "kind": "global"
+              },
+              "value": false
+            },
+            {
+              "path": "general.crashPrompt",
+              "target": {
+                "kind": "global"
+              },
+              "value": false
+            }
+          ],
+          "origin": "plugin:capability-settings-probe",
+          "type": "settings.changed"
+        }
+      ],
+      "general": {
+        "autoUpdate": true,
+        "crashPrompt": false,
+        "fileAssociations": true,
+        "language": "ja",
+        "launchAtStartup": false,
+        "startView": "shelf",
+        "whatsNewDialog": false
+      }
+    }
+  },
+  "japanese": {
+    "background": "rgb(245, 245, 244)",
+    "lang": "ja",
+    "motion": null,
+    "switches": [
+      {
+        "aria": "起動時に自動で開く",
+        "checked": "false"
+      },
+      {
+        "aria": "ファイルの関連付け",
+        "checked": "true"
+      },
+      {
+        "aria": "アップデートを自動確認",
+        "checked": "true"
+      },
+      {
+        "aria": "アップデート後にお知らせを表示",
+        "checked": "false"
+      },
+      {
+        "aria": "クラッシュ後にレポート送信を確認する",
+        "checked": "false"
+      }
+    ],
+    "text": "設定\n\n一般\n\n読書\n\nAI\n\nプラグイン\n\nテーマ\n\nカスタマイズ\n\nショートカット\n\nデータと同期\n\nアプリについて\n\nRSS Reader\n\nSentence Reader\n\nTTS Voices\n\nWebDAV Sync\n\n一般\nアプリ全体の動作 — 起動時に開く画面、言語、デスクトップ連携。\n起動時\n開始画面\nライブラリの本棚\n前回の本を再開\nデスクトップ連携\nここに保存され、デスクトップアプリで適用されます。ブラウザのプレビューでは効果がありません。\n\n起動時に自動で開く\nサインイン時にReadAwareを自動的に開きます。\n\nファイルの関連付け\nmacOS から渡された書籍ファイルを受け入れます。オフにしても macOS の ReadAware のファイル関連付けは削除されません。\n\nアップデートを自動確認\n新しいバージョンがあるとき、メイン画面に控えめな通知を表示します。\n\nアップデート後にお知らせを表示\nアップデートのあと、変更内容への案内を一度だけダイアログで表示します。\n\n言語とプライバシー\n言語\n\n日本語\nクラッシュ後にレポート送信を確認する\nReadAware がクラッシュした場合、次回起動時に診断レポートの送信を提案します。確認なしに送信されることはありません。\n\n",
+    "theme": "light"
+  },
+  "agent": {
+    "changed": [
+      {
+        "path": "general.language",
+        "target": {
+          "kind": "global"
+        },
+        "value": "zh-Hans"
+      },
+      {
+        "path": "appearance.theme",
+        "target": {
+          "kind": "global"
+        },
+        "value": "dark"
+      },
+      {
+        "path": "appearance.motion",
+        "target": {
+          "kind": "global"
+        },
+        "value": "reduced"
+      }
+    ],
+    "snapshot": {
+      "appearance": {
+        "motion": "reduced",
+        "theme": "dark"
+      },
+      "events": [
+        {
+          "changes": [
+            {
+              "path": "general.language",
+              "target": {
+                "kind": "global"
+              },
+              "value": "zh-Hans"
+            }
+          ],
+          "origin": "user",
+          "type": "settings.changed"
+        },
+        {
+          "changes": [
+            {
+              "path": "general.language",
+              "target": {
+                "kind": "global"
+              },
+              "value": "ja"
+            },
+            {
+              "path": "appearance.theme",
+              "target": {
+                "kind": "global"
+              },
+              "value": "light"
+            },
+            {
+              "path": "appearance.motion",
+              "target": {
+                "kind": "global"
+              },
+              "value": "system"
+            },
+            {
+              "path": "general.whatsNewDialog",
+              "target": {
+                "kind": "global"
+              },
+              "value": false
+            },
+            {
+              "path": "general.crashPrompt",
+              "target": {
+                "kind": "global"
+              },
+              "value": false
+            }
+          ],
+          "origin": "plugin:capability-settings-probe",
+          "type": "settings.changed"
+        },
+        {
+          "changes": [
+            {
+              "path": "general.language",
+              "target": {
+                "kind": "global"
+              },
+              "value": "zh-Hans"
+            },
+            {
+              "path": "appearance.theme",
+              "target": {
+                "kind": "global"
+              },
+              "value": "dark"
+            },
+            {
+              "path": "appearance.motion",
+              "target": {
+                "kind": "global"
+              },
+              "value": "reduced"
+            }
+          ],
+          "origin": "agent",
+          "type": "settings.changed"
+        }
+      ],
+      "general": {
+        "autoUpdate": true,
+        "crashPrompt": false,
+        "fileAssociations": true,
+        "language": "zh-Hans",
+        "launchAtStartup": false,
+        "startView": "shelf",
+        "whatsNewDialog": false
+      }
+    },
+    "status": "committed"
+  },
+  "disabledBoot": {
+    "dialogs": 0,
+    "notices": {
+      "crash": null,
+      "whatsNew": "{\"lastSeenVersion\":\"0.5.4\",\"notice\":{\"version\":\"0.5.4\",\"shownAt\":1789258615411,\"dismissed\":true}}"
+    },
+    "render": {
+      "background": "rgb(22, 19, 17)",
+      "lang": "zh-Hans",
+      "motion": "reduced",
+      "text": "书架\n/\n智能助理\n\n搜索\n\n导入\n\n书架管理\n\n阅读统计\n\n设置\n\n更多\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n",
+      "theme": "dark"
+    },
+    "settings": [
+      {
+        "path": "general.language",
+        "target": {
+          "kind": "global"
+        },
+        "value": "zh-Hans"
+      },
+      {
+        "path": "appearance.theme",
+        "target": {
+          "kind": "global"
+        },
+        "value": "dark"
+      },
+      {
+        "path": "appearance.motion",
+        "target": {
+          "kind": "global"
+        },
+        "value": "reduced"
+      },
+      {
+        "path": "general.whatsNewDialog",
+        "target": {
+          "kind": "global"
+        },
+        "value": false
+      },
+      {
+        "path": "general.crashPrompt",
+        "target": {
+          "kind": "global"
+        },
+        "value": false
+      }
+    ]
+  },
+  "reenabledQuiet": {
+    "crash": null,
+    "dialogs": 0,
+    "text": "书架\n/\n智能助理\n\n搜索\n\n导入\n\n书架管理\n\n阅读统计\n\n设置\n\n更多\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n",
+    "whatsNew": "{\"lastSeenVersion\":\"0.5.4\",\"notice\":{\"version\":\"0.5.4\",\"shownAt\":1789258615411,\"dismissed\":true}}"
+  },
+  "enabledPrompts": {
+    "dialogCount": 1,
+    "releaseHeading": "ReadAware 已更新到 v0.5.4Lake Baikal",
+    "releaseNotesLoaded": true,
+    "crashPrompt": true,
+    "buttons": [
+      {
+        "aria": null,
+        "text": "查看并发送"
+      },
+      {
+        "aria": "关闭",
+        "text": ""
+      },
+      {
+        "aria": null,
+        "text": ""
+      },
+      {
+        "aria": null,
+        "text": "查看更新日志"
+      },
+      {
+        "aria": null,
+        "text": "知道了"
+      }
+    ],
+    "notices": {
+      "whatsNew": "{\"lastSeenVersion\":\"0.5.4\",\"notice\":{\"version\":\"0.5.4\",\"shownAt\":1789258678988,\"dismissed\":false}}",
+      "crash": null
+    }
+  },
+  "diagnosticsEntry": {
+    "buttons": [
+      {
+        "aria": null,
+        "text": "通用"
+      },
+      {
+        "aria": null,
+        "text": "阅读"
+      },
+      {
+        "aria": null,
+        "text": "AI"
+      },
+      {
+        "aria": null,
+        "text": "插件"
+      },
+      {
+        "aria": null,
+        "text": "主题"
+      },
+      {
+        "aria": null,
+        "text": "自定义"
+      },
+      {
+        "aria": null,
+        "text": "快捷键"
+      },
+      {
+        "aria": null,
+        "text": "数据与同步"
+      },
+      {
+        "aria": null,
+        "text": "关于"
+      },
+      {
+        "aria": null,
+        "text": "RSS Reader"
+      },
+      {
+        "aria": null,
+        "text": "Sentence Reader"
+      },
+      {
+        "aria": null,
+        "text": "TTS Voices"
+      },
+      {
+        "aria": null,
+        "text": "WebDAV Sync"
+      },
+      {
+        "aria": "关闭设置",
+        "text": ""
+      },
+      {
+        "aria": null,
+        "text": "检查更新"
+      },
+      {
+        "aria": null,
+        "text": "稳定版"
+      },
+      {
+        "aria": null,
+        "text": "测试版"
+      },
+      {
+        "aria": null,
+        "text": "导出"
+      },
+      {
+        "aria": null,
+        "text": "发送报告…"
+      },
+      {
+        "aria": null,
+        "text": "在文件夹中显示"
+      },
+      {
+        "aria": null,
+        "text": "检查差异"
+      }
+    ],
+    "crash": null,
+    "headings": [
+      "设置",
+      "关于",
+      "ReadAware",
+      "阅读引擎",
+      "诊断",
+      "修复本机投影",
+      "帮助"
+    ],
+    "notice": "{\"lastSeenVersion\":\"0.5.4\",\"notice\":{\"version\":\"0.5.4\",\"shownAt\":1789258678988,\"dismissed\":true}}"
+  },
+  "beta": {
+    "buttons": [
+      {
+        "pressed": "false",
+        "text": "稳定版"
+      },
+      {
+        "pressed": "true",
+        "text": "测试版"
+      }
+    ],
+    "channel": {
+      "path": "general.updateChannel",
+      "target": {
+        "kind": "global"
+      },
+      "value": "beta"
+    }
+  },
+  "nativeRestart": {
+    "oldPid": 3650,
+    "oldParent": 3496,
+    "oldProcessAndPortGone": true,
+    "newPid": 6672,
+    "devSession": 48756,
+    "dialogs": 0,
+    "notices": {
+      "crash": null,
+      "whatsNew": "{\"lastSeenVersion\":\"0.5.4\",\"notice\":{\"version\":\"0.5.4\",\"shownAt\":1789258678988,\"dismissed\":true}}"
+    },
+    "render": {
+      "background": "rgb(22, 19, 17)",
+      "lang": "zh-Hans",
+      "motion": "reduced",
+      "text": "书架\n/\n智能助理\n\n搜索\n\n导入\n\n书架管理\n\n阅读统计\n\n设置\n\n更多\n\n\nReading Paint Probe\nUnknown author\n\n\n\n25%\n\n\nFB2\nReading Capability Probe\nReadAware Tests\nReading Capability Probe\nReadAware Tests\n\n\n\n6%\n",
+      "theme": "dark"
+    },
+    "settings": [
+      {
+        "path": "general.language",
+        "target": {
+          "kind": "global"
+        },
+        "value": "zh-Hans"
+      },
+      {
+        "path": "appearance.theme",
+        "target": {
+          "kind": "global"
+        },
+        "value": "dark"
+      },
+      {
+        "path": "appearance.motion",
+        "target": {
+          "kind": "global"
+        },
+        "value": "reduced"
+      },
+      {
+        "path": "general.whatsNewDialog",
+        "target": {
+          "kind": "global"
+        },
+        "value": true
+      },
+      {
+        "path": "general.crashPrompt",
+        "target": {
+          "kind": "global"
+        },
+        "value": true
+      },
+      {
+        "path": "general.updateChannel",
+        "target": {
+          "kind": "global"
+        },
+        "value": "beta"
+      }
+    ]
+  },
+  "channelWorker": {
+    "cleanup": {
+      "contributions": 0
+    },
+    "stable": {
+      "result": {
+        "changed": [
+          {
+            "path": "general.updateChannel",
+            "target": {
+              "kind": "global"
+            },
+            "value": "stable"
+          }
+        ],
+        "paths": [
+          "general.updateChannel"
+        ],
+        "status": "committed"
+      },
+      "snapshot": {
+        "appearance": {
+          "motion": "reduced",
+          "theme": "dark"
+        },
+        "events": [
+          {
+            "changes": [
+              {
+                "path": "general.updateChannel",
+                "target": {
+                  "kind": "global"
+                },
+                "value": "stable"
+              }
+            ],
+            "origin": "plugin:capability-settings-probe",
+            "type": "settings.changed"
+          }
+        ],
+        "general": {
+          "autoUpdate": true,
+          "crashPrompt": true,
+          "fileAssociations": true,
+          "language": "zh-Hans",
+          "launchAtStartup": false,
+          "startView": "shelf",
+          "whatsNewDialog": true
+        }
+      }
+    }
+  },
+  "cleanup": {
+    "notices": {
+      "crash": null,
+      "whatsNew": "{\"lastSeenVersion\":\"0.5.4\"}"
+    },
+    "restored": {
+      "changed": [
+        {
+          "path": "general.language",
+          "target": {
+            "kind": "global"
+          },
+          "value": "en"
+        },
+        {
+          "path": "appearance.theme",
+          "target": {
+            "kind": "global"
+          },
+          "value": "system"
+        },
+        {
+          "path": "appearance.motion",
+          "target": {
+            "kind": "global"
+          },
+          "value": "system"
+        },
+        {
+          "path": "general.updateChannel",
+          "target": {
+            "kind": "global"
+          },
+          "value": "stable"
+        }
+      ],
+      "snapshot": {
+        "appearance": {
+          "motion": "system",
+          "theme": "system"
+        },
+        "events": [
+          {
+            "changes": [
+              {
+                "path": "general.updateChannel",
+                "target": {
+                  "kind": "global"
+                },
+                "value": "stable"
+              }
+            ],
+            "origin": "plugin:capability-settings-probe",
+            "type": "settings.changed"
+          }
+        ],
+        "general": {
+          "autoUpdate": true,
+          "crashPrompt": true,
+          "fileAssociations": true,
+          "language": "en",
+          "launchAtStartup": false,
+          "startView": "shelf",
+          "whatsNewDialog": true
+        }
+      },
+      "status": "committed"
+    }
+  },
+  "limits": [
+    "Synthetic prior-version and render-crash markers exercise real startup hooks; no actual application update or crash recovery induced",
+    "Update changelog loaded from the real configured feed; release-note claims not independently validated in this flow",
+    "Diagnostics action opened Settings/About only; no report prepared, exported or sent",
+    "Beta/stable selection and persistence proven, not updater package selection/install/signature behavior",
+    "Observed en, zh-Hans and ja switching; no full translation-content audit, system language change or OS theme change",
+    "No source changes or repeated full gate; initial two synchronous DOM clicks coalesced stale appearance values, so theme and motion observed after separate events"
+  ]
+}

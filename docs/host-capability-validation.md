@@ -100,22 +100,22 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | CFG03 | 清除覆盖/恢复默认/查询值来源 | F6 | Worker三目标defaults、单书/全书inherit、值来源及非法global inherit拒绝；Agent当前书重置/继承通过，实际外观UI无独立重置按钮；双scope另一端及进程重启待验，见第二十五流程 |
 | CFG04 | 阅读对齐 reading.textAlign | F6 | Worker三目标与实际设置UI Justified、预览computed justify、原生重读通过；FB2实际正文justify↔start通过；其他格式待验，见第二十五流程 |
 | CFG05 | 固定版式颜色 reading.fixedLayoutColor | F6 | Worker theme/original三目标与重置、原生读写通过；PDF实际颜色与UI入口待验，见第二十五流程 |
-| CFG06 | 更新内容弹窗 general.whatsNewDialog | F6 | 待验 |
+| CFG06 | 更新内容弹窗 general.whatsNewDialog | F6 | 真实UI/Worker/Agent开关及启动合成版本变更：关闭消费提示、重开不补弹、新提示加载日志/关闭及原生重启不重弹通过；实际升级/packaged待验，见第四十四流程 |
 | CFG07 | AI 提供商/端点/密钥配置 | F6 | 待验 |
 | CFG08 | 模型目录刷新、连接测试与模型能力 | F6 | 本机原生刷新目录、视觉能力发现与Qwen实际调用通过；GPT模型被账户上游规则阻止；连接测试UI待验 |
 | CFG09 | 插件非敏感设置的动态路径 | F6 | 待验 |
 | CFG10 | 设置变化事件/外部写入刷新 | F6 | 本机真实 Worker 观察本地设置/目录变化、remote与restore来源注入、停止订阅通过；跨设备待验 |
 | CFG11 | 聊天/笔记内容字体：跟随阅读或独立字号/字体/行距 | F6 | Workspace Profiles独立Menlo/跟随Lora应用、真实聊天输入框样式与应用字体加载通过；消息正文/笔记及独立字号/行距待验，见第二十八流程 |
 | CFG12 | 新标注默认颜色 | F6 | 待验 |
-| CFG13 | 软件更新通道 stable/beta | F6 | 待验 |
+| CFG13 | 软件更新通道 stable/beta | F6 | 实际UI stable→beta、Worker/Agent修改及原生进程重启保留通过；更新包选择/安装/签名待验，见第四十四流程 |
 | SET01 | general.startView | F6 | 修复设置无启动消费者；真实macOS debug进程重启自动恢复最后FB2第二章/同CFI，手动关书不重开，shelf重载保持书架；虚拟书/外部冷启动/缺源/packaged及其他平台待验，见第四十三流程 |
-| SET02 | general.language | F6 | 待验 |
-| SET03 | general.crashPrompt | F6 | 待验 |
+| SET02 | general.language | F6 | 实际UI en→zh-Hans、Worker→ja、Agent→zh-Hans，页面/html语言同步且原生重启保持；其他语言/OS检测及完整翻译待验，见第四十四流程 |
+| SET03 | general.crashPrompt | F6 | 真实启动消费合成崩溃标记，关闭不提示、开启新标记显示询问，动作进入诊断、重启不重弹通过；没有发送报告，实际崩溃全程待验，见第四十四流程 |
 | SET04 | general.launchAtStartup | F6 | 待验 |
 | SET05 | general.fileAssociations | F6 | 待验 |
 | SET06 | general.autoUpdate | F6 | 待验 |
-| SET07 | appearance.theme | F6 | 待验 |
-| SET08 | appearance.motion | F6 | 待验 |
+| SET07 | appearance.theme | F6 | 实际UI Dark、Worker Light、Agent Dark的根主题/正文背景computed一致，原生重启保持并恢复System；OS自动切换/插件皮肤及packaged待验，见第四十四流程 |
+| SET08 | appearance.motion | F6 | 实际UI reduced使设置面板animation-name=none，Worker system移除强制标记，Agent修改/原生重启保持通过；其他动效/OS变化待验，见第四十四流程 |
 | SET09 | reading.theme | F6 | 实际设置UI Warm→Dark及原生KV通过；后台预览内联暗色、computed颜色过渡未完成，实际正文颜色待验，见第二十五流程 |
 | SET10 | reading.fontFamily | F6 | 实际设置UI及插件字体目录应用通过；Foliate FB2实际Lora样式/400与700 loaded通过，其他字体/格式待验，见第二十八流程 |
 | SET11 | reading.fontSize | F6 | 实际设置UI Medium→Small、预览15px及原生KV通过；Worker三目标覆盖/重置、FB2正文21px↔17px通过；其他格式待验，见第二十五流程 |
@@ -156,13 +156,13 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET46 | ai.connection.custom.maxOutputTokens | F6 | 待验 |
 | SET47 | reading.textAlign | F6 | Worker目标覆盖与实际设置UI Justified、预览及FB2正文computed justify、原生KV通过；其他格式待验，见第二十五流程 |
 | SET48 | reading.fixedLayoutColor | F6 | Worker theme/original目标覆盖及重置通过；PDF实际颜色与UI入口待验，见第二十五流程 |
-| SET49 | general.whatsNewDialog | F6 | 待验 |
+| SET49 | general.whatsNewDialog | F6 | 实际开关/Worker/Agent修改、合成版本变更的显示/静默消费/关闭及原生重启通过；实际升级/packaged待验，见第四十四流程 |
 | SET50 | appearance.contentTypography.followReader | F6 | Workspace Profiles false→true切换及输入框字体通过；release实际UI关闭跟随、笔记列表独立字体及进程重启通过，消息/跟随笔记绘制待验，见第二十八/三十二流程 |
 | SET51 | appearance.contentTypography.fontFamily | F6 | Workspace Profiles Menlo输入框样式通过；release设置Lora下载/预览/笔记列表实际字体及重启通过；消息和其他字形待验，见第二十八/三十二流程 |
 | SET52 | appearance.contentTypography.fontSize | F6 | release实际UI medium→XL、预览/笔记列表呈现、原生持久与重启保留并恢复通过；其他字号/消息待验，见第三十二流程 |
 | SET53 | appearance.contentTypography.lineSpacing | F6 | release实际UI comfortable→relaxed、预览/笔记列表呈现、原生持久与重启保留并恢复通过；其他行距/消息待验，见第三十二流程 |
 | SET54 | annotations.defaultColor | F6 | 待验 |
-| SET55 | general.updateChannel | F6 | 待验 |
+| SET55 | general.updateChannel | F6 | 实际UI beta选择、Worker stable、Agent恢复及原生重启保留通过；更新安装链路待验，见第四十四流程 |
 | SET56 | shelf.layout | F6 | 本机真实Worker grid→list，命令checked/列表DOM/原生KV一致并恢复；其他入口待验，见第二十三流程 |
 | SET57 | shelf.group | F6 | 本机真实Worker none→author，作者分组DOM/原生KV一致并恢复；其他分组/入口待验，见第二十三流程 |
 | SET58 | shelf.sort | F6 | 本机真实Worker recent→title，列表顺序/原生KV一致并恢复；其他排序/入口待验，见第二十三流程 |

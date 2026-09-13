@@ -1135,3 +1135,35 @@ Second chapterThe restored passage is in the second chapter.；SQLite progress_j
 平台。原生新进程dev会话64521，日志/tmp/readaware-validation-20260913-startup-restart.log；
 backup仍旧原生二进制，release尚未包含第38/39及本轮修复。语言、主题、动效和
 更新提示尚待下一轮实际流程，不能以读取原设置值计作通过。
+
+## 第四十四流程：语言、主题、动效及启动提示与更新通道
+
+实际设置UI将英语切为简体中文，html lang=zh-Hans及设置/书架文案同步；Dark使
+body背景从rgb(245,245,244)变为rgb(22,19,17)、color-scheme=dark；Reduce motion
+使data-motion=reduced，实际设置面板动画computed animation-name=none。
+初次同一JS回合连点两项产生旧appearance对象覆盖，随后按独立事件逐项操作确认，
+不把同步脚本复合事件的结果当作正常用户输入证据。
+
+真实权限受限Worker原子写语言ja、light/system动效、两个提示关闭，返回只含
+授权五路径；实际日语页面、light及无data-motion对应。global Agent真实工具再写
+中文/dark/reduced，事件actor分别user/plugin/agent。Worker关闭贡献0后设定开机
+样本，避免重载丢失驱动所有权。原生SQLite及重载后均保持中文/dark/reduced。
+
+设置whatsNewDialog=false、crashPrompt=false，注入合成上版0.5.3与render崩溃标记；
+真实启动将更新版本对账为0.5.4/dismissed=true并消费crash，界面无提示。实际UI
+重新开启两项后重载，旧提示不补弹。再次注入新标记，真实更新弹窗显示0.5.4
+Lake Baikal及已加载中文日志，另有崩溃报告询问。知道了将更新提示记为dismissed；
+查看并发送只导航到Settings/About的诊断入口，未准备、导出或发送报告。
+
+About实际UI稳定版→测试版aria-pressed与general.updateChannel=beta一致。
+正常关闭原生3650/父3496并确认进程和9224/5184端口释放，启动新PID6672：
+中文、dark、reduced、两个已开启提示及beta从SQLite保持；已读更新/已消费crash
+不再弹出。真实Worker改通道stable及global Agent最终恢复均成功。所有六设置、
+更新提示和崩溃标记恢复原值；自有Worker贡献0，原两书保留、导入意图0。
+
+证据：[general-settings-observations.json](./general-settings-observations.json)。
+无产品代码修改，不重复全量门禁。这里通过合成启动标记测试真实hook，不证明
+实际升级/崩溃全过程；通道选择不证明更新包选择、签名或安装。en/zh-Hans/ja切换
+不等于全部翻译质检；OS主题/语言变化、前台像素、packaged及其他平台仍待验。
+当前primary dev会话48756/port9224/PID6672，日志general-settings-restart.log；
+backup与release旧二进制边界保持。
