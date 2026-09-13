@@ -16,7 +16,7 @@
 
 ## 逐条轨迹
 
-这里按 `output.tools` 数组编号，1 起算，不把模型轮次当工具次数。
+这里按 `output.tools` 数组编号，1 起算；计数以 `output.turns[*].chunks` 中 `type=tool-step`、`phase=start` 的独立 `id` 为准，已核对最新 Berger 为 9 个、Lebon 为 11 个。模型轮次不算工具次数，同一次调用的 start/end 不能重复计数。
 
 | 样本 | 实际行为 | 可以归因的部分 |
 | --- | --- | --- |
@@ -54,4 +54,4 @@ Lebon 的数字 CFI 是内存 fixture 的可读偏移编码。模型自行拼出
 | `packages/agent/.eval/lebon-20260913T070333Z-12f410fc/runs.jsonl`，唯一一行 | `output.modelRequests[0].context.messages/tools`；`output.tools[0..10]`；`output.state`；`output.answer` | `a0e992f326558840d1f8496bda3b2e01a92a2c701ec7247f6d0231af074792ed` |
 | `packages/agent/.eval/berger-20260913T070305Z-798993c5/annotation-followup-observation.json` | `selection`；`observation.modelRequests[0].context.messages`；`observation.tools[0..5]`；`observation.state` | `f41c97480a4393f5315b9e84192b338c58f340211b3032e03949bcca8862c73a` |
 
-对应目录中的 `human-reviews.json` 保留四维人工评分；题库外的可读会话在关联 run 的 `manual-sessions.json`。复核更正：此前评语文字将最新 Berger/Lebon 的工具调用次数分别写成 10/12，数组实数为 **9/11**；本报告按数组重新逐项核对。该计数勘误不改变错误调用数、最终状态或评分。本次不改写历史评语或共享汇总。
+对应目录中的 `human-reviews.json` 保留四维人工评分；题库外的可读会话在关联 run 的 `manual-sessions.json`。复核更正：此前评语文字将最新 Berger/Lebon 的工具调用次数分别写成 10/12，数组实数为 **9/11**；本报告按上述 tool-step start 独立 ID 口径逐项核对。公开 `annotation-range-validation.json` 及对应私有 `human-reviews.json` 已仅修正该计数字样，并分别追加 audit correction；评分、维度、结论和原始模型输出保持不变，共享汇总未改。

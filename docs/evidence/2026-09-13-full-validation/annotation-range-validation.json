@@ -88,7 +88,7 @@
         "flags": [
           "过度展开"
         ],
-        "notes": "独立审阅全部12次工具调用、回执、最终状态和回答。三次错误范围写入被新fixture正确拒绝；之后模型计算完整CFI并readRange核验，高亮和笔记最终同范围、原文选区准确附着。笔记正文漏掉用户给定句号，答案冒出英语内部过程。机器因工具错误与正文保真失败；这是部分完成，非定位失败。本题未使用reader版本作查询条件，不因Berger版本修复而重跑。",
+        "notes": "独立审阅全部11次工具调用、回执、最终状态和回答。三次错误范围写入被新fixture正确拒绝；之后模型计算完整CFI并readRange核验，高亮和笔记最终同范围、原文选区准确附着。笔记正文漏掉用户给定句号，答案冒出英语内部过程。机器因工具错误与正文保真失败；这是部分完成，非定位失败。本题未使用reader版本作查询条件，不因Berger版本修复而重跑。",
         "updatedAt": "2026-09-13T07:08:35.264Z"
       }
     },
@@ -114,7 +114,7 @@
           "restraint": 4
         },
         "flags": [],
-        "notes": "修复已证实的fixture版本不一致后仅复验一次；已审全部10次工具调用、回执、最终状态和回答。会话版本与查询版本一致，无stale错误。前两次创建错误范围被拒绝；模型随后检索完整句子并readRange核验，高亮与笔记的完整选区、正文、同range/anchor均准确持久，最终回执与状态相符。最终读者任务通过4分；机器仍因既有noErrors规则failed，不放宽、不追加采样。内存端口证据，不证明桌面绘制或滚动定位。",
+        "notes": "修复已证实的fixture版本不一致后仅复验一次；已审全部9次工具调用、回执、最终状态和回答。会话版本与查询版本一致，无stale错误。前两次创建错误范围被拒绝；模型随后检索完整句子并readRange核验，高亮与笔记的完整选区、正文、同range/anchor均准确持久，最终回执与状态相符。最终读者任务通过4分；机器仍因既有noErrors规则failed，不放宽、不追加采样。内存端口证据，不证明桌面绘制或滚动定位。",
         "updatedAt": "2026-09-13T07:08:35.265Z"
       }
     }
@@ -155,5 +155,26 @@
     "remaining": "Models initially reuse partial search ranges for complete selections. Berger recovered completely; Lebon lost note punctuation and exposed English process; free question silently shortened selected source.",
     "boundary": "Memory ports only. No DOM/PDF/CSP/packaged desktop annotation painting, scrolling, persistence restart, or real Tauri acceptance. No production semantic change.",
     "historicalFirstRound": "247 total / 198 passed / 34 failed / 15 errors unchanged."
-  }
+  },
+  "auditCorrections": [
+    {
+      "type": "tool-call-count",
+      "countingRule": "Count distinct tool-step phase=start IDs, not model rounds or start/end events combined.",
+      "changes": [
+        {
+          "runId": "berger-20260913T070639Z-9a80dd98",
+          "targetId": "run:berger:berger-annotate-verbatim:baseline:1",
+          "from": 10,
+          "to": 9
+        },
+        {
+          "runId": "lebon-20260913T070333Z-12f410fc",
+          "targetId": "run:lebon:lebon-annotate-verbatim:baseline:1",
+          "from": 12,
+          "to": 11
+        }
+      ],
+      "preserved": "Scores, dimensions, verdicts, original model outputs and all other review wording unchanged."
+    }
+  ]
 }
