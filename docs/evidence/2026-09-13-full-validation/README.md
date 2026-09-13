@@ -2209,3 +2209,44 @@ annotationKind:ask，原生目标消失且Notes一致。删除请求自身新增
 引文、会话selection为null，不能宣称模型忽略了已给定的完整选区范围。短查询与
 长文本混用、自行改CFI及标点偏差仍是已观察到的模型行为；正在补真实选区夹具，
 以区分宿主选区直接使用与历史引文重新定位。
+
+
+## 第八十七流程：故障积压及非零同步游标跨进程恢复
+
+沿第83自有双隔离资料，503故障期间A新增696字节FB2，积压2事件/1Blob。
+停止A进程、同二进制和同profile重启，服务仍503时原生设备ID、连接、积压及数据
+保持；恢复服务后无需重新连接或输入口令，A补传，B拉取并懒取解密新书。
+两端15事件/3书完全一致。再以events游标2及3批journal做第二次A进程重启，
+自动startup cycle和显式重复均零推拉，游标/journal/ACK/书架/事件保持，3个实际
+Blob文件SHA与数据库一致。首份快照未解析相对storage_uri，未冒称当时已核对字节。
+
+desktop probe类型检查及8项原生状态断言通过，自有实例/MCP/服务停止，合成资料
+保留审计。不是断电/文件系统损坏、物理跨设备、生产服务、发布包CSP或换代回滚
+证明。见[同步重启记录](./sync-restart-observations.json)。
+
+
+第84主动选区夹具补正已完成：现有场景先从正文验证完整range，再初始化
+reader.selection；19项定向检查及Agent类型通过。Berger/Lebon各一次真实模型
+复验均机器通过，分别独立人工5/pass、4/pass；主代理已逐项复核完整回答、全部
+三次工具调用/回执及最终状态，同意结论。两题直接get_reading_session→两次
+create_annotation，完整范围和标点保持，无重新搜索、CFI重算或工具错误。
+这证明本次内存端口当前选区路径，不能据此关闭仅引文恢复或真实Tauri绘制。
+旧失败/评分、题库外有保留样本及首轮统计均保持。见[主动选区复验](./annotation-active-selection-validation.json)。
+
+
+## 第八十六流程：编译词典检索与能力目录分页/退役
+
+primary9224实际book/global ChatPanel→AgentThread→Dictionary1.4.0 Worker，
+save_word从自有预置缓存保存三词，retrieve验证limit1/2/3、单命中及无命中，
+来源/location/context一致；未重跑lookup或远端模型。能力目录host两页各2项
+同revision（总39项未全枚举），词典book四工具/global六工具完整分页。
+
+停用后下一真实回合不再暴露词典，旧revision翻页失败，fresh目录0；此前缓存
+adapter拒绝plugin/unavailable。恢复后下一回合目录6/检索3，旧adapter仍拒绝。
+恢复相同元数据时内容hash revision可相同，不据此冒称错误。22原生HTTP请求、
+18工具结果与原生parts逐项核对。模型选择受控，不计自主语义或发布包。
+
+自有词/缓存/书/ask/回合全部清理，原两书字段/会话hash/配置/buildMemory/15插件
+及原始启用映射保持，备份删除、19843停止。一次多操作cleanup提前返回后经原生
+复核发现残留，已用独立await操作清零。没有新产品修改或扩大测试。详见
+[词典检索与目录记录](./dictionary-retrieval-capabilities-observations.json)。
