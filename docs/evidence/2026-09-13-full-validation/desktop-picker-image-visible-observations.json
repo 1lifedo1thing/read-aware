@@ -1,0 +1,146 @@
+{
+  "flow": 73,
+  "baseline": "768426ae",
+  "environment": "macOS debug Tauri; user unlocked; CUA native UI and visible WebView",
+  "nativeFb2Zip": {
+    "book": {
+      "addedAt": "2026-09-13T05:14:21.256Z",
+      "author": "Ada Writer",
+      "collectionId": null,
+      "fileName": "fixture.fb2.zip",
+      "fileSize": 803,
+      "format": "fb2",
+      "id": "f1d8ace7-7175-4bac-88b6-594863fcc557",
+      "lastOpenedAt": "2026-09-13T05:14:25.677Z",
+      "starred": false,
+      "title": "Test Book",
+      "updatedAt": "2026-09-13T05:14:25.677Z"
+    },
+    "readerText": [
+      "Chapter One\n\nHello world. 1\n\n\nCell\nFirst line\nSecond line\n\nSubchapter\n\nNested text."
+    ],
+    "visibility": "visible"
+  },
+  "nativePicker": "Import -> macOS Open -> exact synthetic fixture.fb2.zip path -> Open enabled -> shelf Test Book -> physical open -> Chapter One and Nested text visible. Initial Go To typing lost prefix; Raise sheet corrected input, then selected verified file.",
+  "wideRotated": {
+    "focus": {
+      "role": "dialog",
+      "tag": "DIV"
+    },
+    "images": [
+      {
+        "animations": [],
+        "natural": [
+          5000,
+          400
+        ],
+        "rect": {
+          "bottom": 750,
+          "height": 750,
+          "left": 420,
+          "right": 480,
+          "top": 0,
+          "width": 60,
+          "x": 420,
+          "y": 0
+        },
+        "style": "transform: translate(0px) rotate(90deg) scale(0.833333); transform-origin: center center; transition: transform 120ms ease-out;",
+        "transform": "matrix(0, 0.833333, -0.833333, 0, 0, 0)"
+      }
+    ],
+    "snapshot": {
+      "bookId": "ba7533e2-9ef8-4e3c-8a5f-3d6adfdab0f8",
+      "id": "95f3b068-ba4f-410c-88d7-383b86b296dd",
+      "panX": 0,
+      "panY": 0,
+      "revision": 4,
+      "rotation": 90,
+      "scale": 1,
+      "sessionId": "32f63df5-a536-45ae-987d-9c48f6a298f3"
+    },
+    "viewport": [
+      900,
+      750
+    ],
+    "visibility": "visible"
+  },
+  "tallRotated": {
+    "focus": {
+      "role": "dialog",
+      "tag": "DIV"
+    },
+    "images": [
+      {
+        "animations": [],
+        "natural": [
+          400,
+          5000
+        ],
+        "rect": {
+          "bottom": 405,
+          "height": 60,
+          "left": 75,
+          "right": 825,
+          "top": 345,
+          "width": 750,
+          "x": 75,
+          "y": 345
+        },
+        "style": "transform: translate(0px) rotate(90deg) scale(1); transform-origin: center center; transition: transform 120ms ease-out;",
+        "transform": "matrix(0, 1, -1, 0, 0, 0)"
+      }
+    ],
+    "snapshot": {
+      "bookId": "ba7533e2-9ef8-4e3c-8a5f-3d6adfdab0f8",
+      "id": "6075f645-6672-4dc3-ae9d-7cbb82cbe86e",
+      "panX": 0,
+      "panY": 0,
+      "revision": 9,
+      "rotation": 90,
+      "scale": 1,
+      "sessionId": "32f63df5-a536-45ae-987d-9c48f6a298f3"
+    },
+    "viewport": [
+      900,
+      750
+    ],
+    "visibility": "visible"
+  },
+  "focus": "Production lightbox opened via readerImageOpen public service. CUA Rotate, Tab focused Zoom out; Escape closed from dialog and from button, focus returned to reader HTML. Screenshots inspected both orientations. No synthetic animation completion.",
+  "cleanup": {
+    "books": [
+      "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+      "07ef226e-1ebc-47b6-8dc9-d09109448d22"
+    ],
+    "chatHash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "owned": [
+      {
+        "cover": null,
+        "id": "f1d8ace7-7175-4bac-88b6-594863fcc557",
+        "source": null
+      },
+      {
+        "cover": null,
+        "id": "ba7533e2-9ef8-4e3c-8a5f-3d6adfdab0f8",
+        "source": null
+      }
+    ],
+    "pending": {
+      "content": [
+        {
+          "text": "{\"items\":[],\"nextCursor\":null}",
+          "type": "text"
+        }
+      ]
+    }
+  },
+  "releaseBuild": {
+    "source": "768426ae",
+    "exitCode": 0,
+    "nativeDuration": "1m12s",
+    "sha256": "603dfe1af2801294e30e6a778a2bafd5fceb11faf84764f159b8e42d7a653951",
+    "path": "apps/desktop/src-tauri/target/release/bundle/macos/ReadAware Format Validation.app",
+    "identifier": "com.readaware.app.validation-packaged-e2e",
+    "note": "Latest package built with production CSP/debug boundary unchanged. Runtime acceptance tracked separately."
+  }
+}

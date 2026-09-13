@@ -1957,3 +1957,21 @@ File cleanup complete，源/封面null、待清理为空，关闭后返回原两
 原两书、空集合、原会话完整hash保持，无临时标记/文件残留，无产品改动。
 本批实际故障和插件恢复通过，不外推完整模型轮次、进程重启或发布包。
 详见[book-removal-cleanup-fault-observations.json](./book-removal-cleanup-fault-observations.json)。
+
+## 第七十三流程：解锁后的系统导入、图片终态和键盘焦点
+
+CUA真实Import打开macOS选择器，选已知fixture.fb2.zip后Open可用，导入为
+Test Book/Ada Writer/803字节，点击书架进入Chapter One/Nested text正文。
+路径输入最初未完整生效，Raise面板后核对系统实际选中文件才继续；不以一次
+键盘派发当成功。该流程补第69批书架复合后缀入口，不替代插件复合过滤验收。
+
+复用第67批5000×400/400×5000合成CBZ；通过公共readerImageOpen打开实际
+灯箱后CUA点击Rotate。visible状态动画自然结束，宽图旋转为60×750、高图为
+750×60，均在900×750窗口内，截图可见完整色条。Tab进入Zoom out，Escape
+从容器/按钮关闭并返回阅读HTML焦点；未伪造动画完成或关闭过渡。不是物理
+平移手势或固定版式书页整体适配的新增证据。
+
+两自有书/源/封面清零、待清理空、原两书和会话hash保持。最新源码另构建隔离
+ReadAware Format Validation.app，退出0，原生1m12s，SHA256 603dfe1a…；
+包含第69/70修复。实际新包启动/验收另记，构建不等于运行。详见
+[desktop-picker-image-visible-observations.json](./desktop-picker-image-visible-observations.json)。
