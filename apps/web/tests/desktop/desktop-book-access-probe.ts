@@ -5,6 +5,14 @@ import { localKV } from "../../src/platform/local-store";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { startPluginWorker } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
+import { createReadingDomain } from "../../src/domain/reading";
+
+/** Open a caller-prepared fixture through the actual isolated reader. */
+export async function openFull2AccessFixture(bookId: string) {
+  const dataDir = (await appDataDir()).replace(/[/\\]$/, "");
+  if (!dataDir.endsWith("/com.readaware.app.validation-full2-e2e")) throw new Error("Requires isolated full2 validation profile");
+  return createReadingDomain("user").commands.openBook(bookId, AbortSignal.timeout(20_000));
+}
 
 /** Uses caller-prepared fixtures only in the owned full-validation profile. */
 export async function runDesktopBookAccessProbe(grant: PluginBookAccess, allowed: string, other: string) {
