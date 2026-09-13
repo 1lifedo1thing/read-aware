@@ -77,6 +77,11 @@ export class FixedLayout extends HTMLElement {
     #observer = new ResizeObserver(() => this.#onResize())
     #spreads: FixedSpread[] = []
     #index = -1
+    #displayedIndex = -1
+    #navigation = 0
+    #positionContext: object = {}
+    #stackScrollFeedback: { position: number; context: object } | undefined
+    #clearScrollFeedback = () => { this.#stackScrollFeedback = undefined }
     defaultViewport: Rendition['viewport']
     spread: string | undefined
     #portrait = false
@@ -120,7 +125,8 @@ export class FixedLayout extends HTMLElement {
         if (!this.#stack || this.#stackScrollTimer) return
         this.#stackScrollTimer = setTimeout(() => {
             this.#stackScrollTimer = 0
-            this.#updateStackWindow('scroll')
+            const feedback = this.#stackScrollFeedback
+            this.#updateStackWindow('scroll', feedback?.position === this.scrollTop ? feedback.context : {})
         }, 32)
     }
     constructor() {
@@ -145,6 +151,8 @@ export class FixedLayout extends HTMLElement {
 
         this.#observer.observe(this)
         this.addEventListener('scroll', this.#onStackScroll, { passive: true })
+        for (const name of ['wheel', 'touchstart', 'keydown']) this.addEventListener(name,
+            this.#clearScrollFeedback, { capture: true, passive: true })
     }
     attributeChangedCallback(name: string, _: string | null, value: string | null) {
         switch (name) {
@@ -220,6 +228,8 @@ export class FixedLayout extends HTMLElement {
             iframe.addEventListener('load', () => {
                 const doc = iframe.contentDocument
                 if (!doc) return fail(new Error('Fixed-layout page document is inaccessible'))
+                for (const name of ['wheel', 'touchstart', 'keydown']) doc.addEventListener(name,
+                    this.#clearScrollFeedback, { capture: true, passive: true })
                 doc.addEventListener('wheel', event => {
                     if (!this.scrolled) return
                     event.preventDefault()
@@ -273,7 +283,7 @@ export class FixedLayout extends HTMLElement {
     // permanently blank page. Renders are cancellable through the signal the
     // PDF layer honors; a stale in-flight render (scale or palette changed)
     // is cancelled rather than raced.
-    #renderFrameAt(frame: FixedFrame | null | undefined, scale: number) {
+    #renderFrameAt(frame: FixedFrame | null | undefined, scale: number, context = this.#positionContext) {
         if (!frame?.onZoom) return
         if (frame.renderedScale === scale || frame.renderingScale === scale) return
         // Two strikes at one scale and the page stops hammering a render that
@@ -296,7 +306,7 @@ export class FixedLayout extends HTMLElement {
                 frame.renderError = undefined
                 frame.failedScale = null
                 frame.failCount = 0
-                this.dispatchEvent(new Event('rendered'))
+                this.dispatchEvent(new CustomEvent('rendered', { detail: { context, index: frame.index } }))
                 // The render rebuilt the text layer, so the overlayer's
                 // ranges are detached — start it over.
                 this.#createOverlayer(frame)
@@ -373,8 +383,8 @@ export class FixedLayout extends HTMLElement {
                 ) || 1
         return { scale, portrait, target, blankWidth, blankHeight }
     }
-    #render(side = this.#side) {
-        if (this.scrolled) return this.#layoutStack()
+    #render(side = this.#side, context = this.#positionContext) {
+        if (this.scrolled) return this.#layoutStack(context)
         if (!side) return
         const left = this.#left
         const right = this.#center ?? this.#right
@@ -389,7 +399,7 @@ export class FixedLayout extends HTMLElement {
             // READAWARE: re-render only when the scale actually changed. A
             // ResizeObserver tick that leaves the scale alone would otherwise
             // redraw the whole page and rebuild its overlayer for nothing.
-            this.#renderFrameAt(frame, scale)
+            this.#renderFrameAt(frame, scale, context)
             const iframeScale = onZoom ? scale : 1
             Object.assign(iframe.style, {
                 width: `${(width ?? blankWidth) * iframeScale}px`,
@@ -485,7 +495,7 @@ export class FixedLayout extends HTMLElement {
         for (const frame of [frames?.left, frames?.right, frames?.center])
             if (frame) fn(frame)
     }
-    #showFrames(frames: SpreadFrames, side: Side) {
+    #showFrames(frames: SpreadFrames, side: Side, context: object) {
         const next = new Set([frames.left, frames.right, frames.center])
         for (const frame of [this.#left, this.#right, this.#center])
             if (frame && !next.has(frame)) this.#setFrameHidden(frame, true)
@@ -502,10 +512,10 @@ export class FixedLayout extends HTMLElement {
         // attach to the document must dedupe (the doc may be the same one).
         this.#eachFrame(frames, frame => {
             if (frame.doc) this.dispatchEvent(new CustomEvent('load', {
-                detail: { doc: frame.doc, index: frame.index },
+                detail: { doc: frame.doc, index: frame.index, context },
             }))
         })
-        this.#render()
+        this.#render(this.#side, context)
     }
     #touchLRU(spreadIndex: number) {
         const at = this.#lru.indexOf(spreadIndex)
@@ -541,7 +551,7 @@ export class FixedLayout extends HTMLElement {
     // competes with the page being read for the PDF worker. A newer
     // navigation bumps the token and the stale chain stops where it is —
     // anything it already built stays cached.
-    #schedulePreload() {
+    #schedulePreload(context = this.#positionContext) {
         const token = ++this.#preloadToken
         const origin = this.#index
         const total = this.#spreads?.length ?? 0
@@ -572,7 +582,7 @@ export class FixedLayout extends HTMLElement {
                         : this.rtl ? 'right' : 'left'
                     const { scale } = this.#scaleFor(
                         frames.left, frames.right, frames.center, side)
-                    this.#eachFrame(frames, frame => this.#renderFrameAt(frame, scale))
+                    this.#eachFrame(frames, frame => this.#renderFrameAt(frame, scale, context))
                     await Promise.allSettled(
                         [frames.left, frames.right, frames.center]
                             .map(frame => frame?.renderPromise))
@@ -674,7 +684,7 @@ export class FixedLayout extends HTMLElement {
         }
         return lo
     }
-    async #ensureStackFrame(entryIndex: number): Promise<FixedFrame | null> {
+    async #ensureStackFrame(entryIndex: number, context: object): Promise<FixedFrame | null> {
         const entry = this.#stack?.[entryIndex]
         if (!entry || !this.book) return null
         if (entry.framePromise) return entry.framePromise
@@ -711,7 +721,7 @@ export class FixedLayout extends HTMLElement {
                     this.#restackTops()
                     // Growth above the reading position would shove the page
                     // under the reader — keep the view anchored.
-                    if (entry.top < this.scrollTop) this.scrollTop += delta
+                    if (entry.top < this.scrollTop) this.#setStackScroll(this.scrollTop + delta, context)
                 }
             }
             Object.assign(frame.element.style, {
@@ -722,9 +732,9 @@ export class FixedLayout extends HTMLElement {
             })
             frame.hidden = false
             if (frame.doc) this.dispatchEvent(new CustomEvent('load', {
-                detail: { doc: frame.doc, index: frame.index },
+                detail: { doc: frame.doc, index: frame.index, context },
             }))
-            this.#layoutStackFrame(entry)
+            this.#layoutStackFrame(entry, context)
             return frame
         })
         entry.framePromise = promise
@@ -737,11 +747,11 @@ export class FixedLayout extends HTMLElement {
         })
         return promise
     }
-    #layoutStackFrame(entry: StackEntry) {
+    #layoutStackFrame(entry: StackEntry, context: object) {
         const frame = entry.frame
         if (!frame || frame.blank) return
         const scale = this.#stackScale(entry)
-        this.#renderFrameAt(frame, scale)
+        this.#renderFrameAt(frame, scale, context)
         const iframeScale = frame.onZoom ? scale : 1
         Object.assign(frame.iframe.style, {
             width: `${frame.width * iframeScale}px`,
@@ -769,24 +779,25 @@ export class FixedLayout extends HTMLElement {
         entry.framePromise = null
         this.#stackLive.delete(entryIndex)
     }
-    #layoutStack() {
+    #layoutStack(context = this.#positionContext) {
         if (!this.#stack) return
         const width = this.clientWidth
         for (const entry of this.#stack) this.#sizeSlot(entry, width)
         this.#restackTops()
         for (const i of this.#stackLive) {
             const entry = this.#stack[i]
-            if (entry) this.#layoutStackFrame(entry)
+            if (entry) this.#layoutStackFrame(entry, context)
         }
-        this.#updateStackWindow('layout')
+        this.#updateStackWindow('layout', context)
     }
     // READAWARE: the heart of the scrolled flow — called on scroll (throttled),
     // on resize, and after navigations. Reports the new reading position,
     // recomputes the wanted window (binary search over slot offsets, never a
     // full sweep of thousands of entries), demotes what fell out of the keep
     // range, and kicks the drain loop that does the actual work.
-    #updateStackWindow(reason: RelocateReason | 'layout') {
+    #updateStackWindow(reason: RelocateReason | 'layout', context: object) {
         if (!this.#stack?.length) return
+        this.#positionContext = context
         const height = this.clientHeight
         const top = this.scrollTop
         const center = top + height / 2
@@ -796,9 +807,11 @@ export class FixedLayout extends HTMLElement {
             this.#index = current
             // Debounced: a fling crosses many pages; report where it rests.
             if (this.#stackReportTimer) clearTimeout(this.#stackReportTimer)
+            const navigation = this.#navigation, generation = this.#frameGeneration
             this.#stackReportTimer = setTimeout(() => {
                 this.#stackReportTimer = 0
-                this.#reportLocation(reason === 'layout' ? 'page' : reason)
+                if (this.#stackCurrent === current && this.#navigation === navigation && this.#frameGeneration === generation)
+                    this.#reportLocation(reason === 'layout' ? 'page' : reason, null, context)
             }, 120)
         }
 
@@ -861,11 +874,12 @@ export class FixedLayout extends HTMLElement {
                     continue
                 }
                 const entry = this.#stack[best]
+                const context = this.#positionContext
                 try {
-                    const frame = await this.#ensureStackFrame(best)
+                    const frame = await this.#ensureStackFrame(best, context)
                     if (!this.#stack || this.#stack[best] !== entry) continue
                     if (frame && entry.frame === frame) {
-                        this.#layoutStackFrame(entry)
+                        this.#layoutStackFrame(entry, context)
                         await frame.renderPromise
                     }
                 } catch (error) {
@@ -890,16 +904,21 @@ export class FixedLayout extends HTMLElement {
         if (frame.failedScale === scale && (frame.failCount ?? 0) >= 2) return false
         return true
     }
-    async #goToStack(index: number, reason?: RelocateReason) {
+    #setStackScroll(top: number, context: object) {
+        this.scrollTop = top
+        this.#stackScrollFeedback = { position: this.scrollTop, context }
+    }
+    async #goToStack(index: number, reason: RelocateReason, context: object) {
         if (!this.#stack?.length) return
         const clamped = Math.max(0, Math.min(index, this.#stack.length - 1))
         const entry = this.#stack[clamped]
         this.#stackCurrent = clamped
         this.#index = clamped
-        this.scrollTop = entry.top
-        this.#updateStackWindow('navigation')
-        this.#reportLocation(reason ?? 'navigation')
-        await this.#ensureStackFrame(clamped)
+        if (this.#stackReportTimer) { clearTimeout(this.#stackReportTimer); this.#stackReportTimer = 0 }
+        this.#setStackScroll(entry.top, context)
+        this.#updateStackWindow('navigation', context)
+        this.#reportLocation(reason, null, context)
+        await this.#ensureStackFrame(clamped, context)
     }
     #onResize() {
         if (this.scrolled && this.#stack) {
@@ -909,12 +928,17 @@ export class FixedLayout extends HTMLElement {
                 ? (this.scrollTop - entry.top) / Math.max(1, entry.pixelHeight)
                 : 0
             this.#layoutStack()
-            if (entry) this.scrollTop = entry.top + offset * entry.pixelHeight
+            if (entry) this.#setStackScroll(entry.top + offset * entry.pixelHeight, this.#positionContext)
             return
         }
         this.#render()
     }
     #clearFrameCache() {
+        this.#navigation++
+        this.#displayedIndex = -1
+        this.#stackScrollFeedback = undefined
+        this.#positionContext = {}
+        if (this.#stackScrollTimer) { clearTimeout(this.#stackScrollTimer); this.#stackScrollTimer = 0 }
         this.#frameGeneration++
         this.#preloadToken++
         for (const frames of this.#liveFrames.values())
@@ -932,21 +956,21 @@ export class FixedLayout extends HTMLElement {
         this.#stackDefaultDims = null
         this.#root.replaceChildren()
     }
-    #goLeft() {
+    #goLeft(context: object) {
         if (this.#center || this.#left?.blank) return
         if (this.#portrait && this.#left?.element?.style?.display === 'none') {
             this.#side = 'left'
-            this.#render()
-            this.#reportLocation('page')
+            this.#render(this.#side, context)
+            this.#reportLocation('page', null, context)
             return true
         }
     }
-    #goRight() {
+    #goRight(context: object) {
         if (this.#center || this.#right?.blank) return
         if (this.#portrait && this.#right?.element?.style?.display === 'none') {
             this.#side = 'right'
-            this.#render()
-            this.#reportLocation('page')
+            this.#render(this.#side, context)
+            this.#reportLocation('page', null, context)
             return true
         }
     }
@@ -1076,9 +1100,10 @@ export class FixedLayout extends HTMLElement {
             ? spread.left ?? spread.right : spread.right ?? spread.left)
         return section && this.book ? this.book.sections.indexOf(section) : -1
     }
-    #reportLocation(reason: RelocateReason, range: Range | null = null) {
+    #reportLocation(reason: RelocateReason, range: Range | null, context: object) {
+        this.#positionContext = context
         this.dispatchEvent(new CustomEvent('relocate', { detail:
-            { reason, range, index: this.index, fraction: 0, size: 1 } }))
+            { reason, range, index: this.index, fraction: 0, size: 1, context } }))
     }
     getSpreadOf(section: BookSection): { index: number; side: Side } | undefined {
         const spreads = this.#spreads
@@ -1089,46 +1114,54 @@ export class FixedLayout extends HTMLElement {
             if (center === section) return { index, side: 'center' }
         }
     }
-    async goToSpread(index: number, side: Side, reason: RelocateReason = 'navigation') {
+    goToSpread(index: number, side: Side, reason: RelocateReason = 'navigation', context: object = {}) {
+        return this.#goToSpread(index, side, reason, context, ++this.#navigation)
+    }
+    async #goToSpread(index: number, side: Side, reason: RelocateReason, context: object, navigation: number) {
         if (index < 0 || index > this.#spreads.length - 1) return
-        if (this.scrolled) return this.#goToStack(index, reason)
-        if (index === this.#index) {
-            this.#render(side)
+        if (this.scrolled) return this.#goToStack(index, reason, context)
+        if (index === this.#index && index === this.#displayedIndex) {
+            this.#side = side
+            this.#render(side, context)
+            this.#reportLocation(reason, null, context)
             return
         }
         this.#index = index
         const frames = await this.#framesFor(index)
         // READAWARE: a newer navigation landed while the frames were loading —
         // it owns the display now.
-        if (this.#index !== index) return
-        this.#showFrames(frames, side)
-        this.#reportLocation(reason)
+        if (this.#index !== index || this.#navigation !== navigation) return
+        this.#displayedIndex = index
+        this.#showFrames(frames, side, context)
+        if (this.#navigation !== navigation) return
+        this.#reportLocation(reason, null, context)
         this.#touchLRU(index)
         this.#evict()
-        this.#schedulePreload()
+        this.#schedulePreload(context)
     }
-    async select(target: MaybePromise<ResolvedNavigation | null | undefined>) {
-        const resolved = await target
-        if (resolved) await this.goTo({ ...resolved, select: true })
+    select(target: MaybePromise<ResolvedNavigation | null | undefined>) {
+        return this.goTo(Promise.resolve(target).then(resolved => resolved ? { ...resolved, select: true } : resolved))
     }
     async goTo(target: MaybePromise<ResolvedNavigation | null | undefined>) {
         const { book } = this
+        const navigation = ++this.#navigation
         const resolved = await target
-        if (!book || !resolved) return
+        if (!book || !resolved || this.book !== book || this.#navigation !== navigation) return
         const section = book.sections[resolved.index]
         if (!section) return
         const spread = this.getSpreadOf(section)
         if (!spread) return
         const { index, side } = spread
-        await this.goToSpread(index, side)
-        if (book !== this.book) return
+        const context = resolved.context ?? {}
+        await this.#goToSpread(index, side, 'navigation', context, navigation)
+        if (book !== this.book || this.#navigation !== navigation) return
         const content = this.getContents().find(content => content.index === resolved.index)
         if (content) {
             const anchor = anchorValue(content.doc, resolved.anchor)
-            if (anchor != null) await this.scrollToAnchor(anchor, resolved.select)
+            if (anchor != null) await this.scrollToAnchor(anchor, resolved.select, context)
         }
     }
-    async scrollToAnchor(anchor: Anchor, select = false) {
+    async scrollToAnchor(anchor: Anchor, select = false, context: object = {}) {
         if (typeof anchor === 'number') return
         const doc = isRange(anchor) ? anchor.startContainer.ownerDocument : anchor.ownerDocument
         if (!doc || !this.getContents().some(content => content.doc === doc)) return
@@ -1137,19 +1170,22 @@ export class FixedLayout extends HTMLElement {
             if (range && selection) { selection.removeAllRanges(); selection.addRange(range) }
         }
         anchorElement(anchor)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-        this.#reportLocation('navigation', anchorRange(doc, anchor))
+        if (this.scrolled) this.#stackScrollFeedback = { position: this.scrollTop, context }
+        this.#reportLocation('navigation', anchorRange(doc, anchor), context)
     }
-    async next() {
+    async next(_distance?: number, context: object = {}) {
+        const navigation = ++this.#navigation
         if (this.scrolled)
-            return this.#goToStack(this.#stackCurrent + 1, 'page')
-        const s = this.rtl ? this.#goLeft() : this.#goRight()
-        if (!s) await this.goToSpread(this.#index + 1, this.rtl ? 'right' : 'left', 'page')
+            return this.#goToStack(this.#stackCurrent + 1, 'page', context)
+        const s = this.rtl ? this.#goLeft(context) : this.#goRight(context)
+        if (!s) await this.#goToSpread(this.#index + 1, this.rtl ? 'right' : 'left', 'page', context, navigation)
     }
-    async prev() {
+    async prev(_distance?: number, context: object = {}) {
+        const navigation = ++this.#navigation
         if (this.scrolled)
-            return this.#goToStack(this.#stackCurrent - 1, 'page')
-        const s = this.rtl ? this.#goRight() : this.#goLeft()
-        if (!s) await this.goToSpread(this.#index - 1, this.rtl ? 'left' : 'right', 'page')
+            return this.#goToStack(this.#stackCurrent - 1, 'page', context)
+        const s = this.rtl ? this.#goRight(context) : this.#goLeft(context)
+        if (!s) await this.#goToSpread(this.#index - 1, this.rtl ? 'left' : 'right', 'page', context, navigation)
     }
     /** Wait for the displayed page, not background preloads or the iframe load. */
     async waitForCurrentRender(): Promise<void> {

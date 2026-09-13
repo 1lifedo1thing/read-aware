@@ -1,5 +1,6 @@
 import type { Book } from "../../foliate-js/src/book";
 import type { Paginator } from "../../foliate-js/src/paginator";
+import type { LoadDetail, RelocateDetail } from "../../foliate-js/src/renderer";
 
 type Result = { name: string; passed: boolean; details?: string };
 
@@ -25,6 +26,25 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
   const dispose = (renderer: Paginator, urls: string[]) => {
     renderer.destroy(); renderer.remove(); urls.forEach(url => URL.revokeObjectURL(url));
   };
+
+  for (const flow of ["paginated", "scrolled"]) await check(`${flow} navigation and expansion retain context while a native step starts a new one`, async () => {
+    const urls = [page("First ".repeat(200)), page("Second ".repeat(200))], renderer = mount();
+    const initial = {}, target = {}, events: RelocateDetail[] = [], loads: LoadDetail[] = [];
+    renderer.addEventListener("relocate", event => events.push((event as CustomEvent<RelocateDetail>).detail));
+    renderer.addEventListener("load", event => loads.push((event as CustomEvent<LoadDetail>).detail));
+    try {
+      renderer.setAttribute("flow", flow);
+      renderer.open({ sections: urls.map((url, id) => ({ id, size: 1000, load: () => url })) });
+      await renderer.goTo({ index: 0, context: initial });
+      equal(events.at(-1)?.context, initial); equal(loads.at(-1)?.context, initial);
+      await renderer.goTo({ index: 1, context: target });
+      equal(events.at(-1)?.context, target); equal(loads.at(-1)?.context, target);
+      renderer.render();
+      equal(events.at(-1)?.context, target);
+      await renderer.prev();
+      equal(!!events.at(-1)?.context, true); equal(events.at(-1)?.context === target, false);
+    } finally { dispose(renderer, urls); }
+  });
 
   await check("page boundaries skip non-linear sections and remain usable after a failed load", async () => {
     const urls = ["First", "Footnote", "Last"].map(text => page(text));
@@ -63,16 +83,22 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
     const loading = new Promise<string>(resolve => { complete = resolve; });
     const renderer = mount();
     let released = 0;
+    const old = {}, current = {}, observed: object[] = [];
+    renderer.addEventListener("relocate", event => {
+      const context = (event as CustomEvent<RelocateDetail>).detail.context;
+      if (context) observed.push(context);
+    });
     try {
       renderer.open({ sections: [{ id: 0, size: 10, load: () => loading, unload: () => { released++; } }, { id: 1, size: 10, load: () => urls[1] }] });
-      const first = renderer.goTo({ index: 0 });
+      const first = renderer.goTo({ index: 0, context: old });
       await Promise.resolve();
-      await renderer.goTo({ index: 1 });
+      await renderer.goTo({ index: 1, context: current });
       complete(urls[0]);
       await first;
       equal(renderer.getContents()[0]?.index, 1);
       equal(renderer.getContents()[0]?.doc.querySelector("p")?.textContent, "Current");
       equal(released, 1);
+      equal(observed.includes(old), false); equal(observed.at(-1), current);
     } finally { dispose(renderer, urls); }
   });
 

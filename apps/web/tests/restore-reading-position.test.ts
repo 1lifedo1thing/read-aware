@@ -32,3 +32,13 @@ test("valid saved targets and fractions are retained instead of restarting the b
   await restoreReadingPosition(view, { virtual: false, reset: false, target: null, fraction: 0.5 });
   expect(page).toBe(3);
 });
+
+test("failed saved positions retain the opening request identity through every fallback", async () => {
+  const context = {}, seen: (object | undefined)[] = [];
+  await restoreReadingPosition({
+    goTo: async (_target, source) => { seen.push(source); return undefined; },
+    goToFraction: async (_fraction, source) => { seen.push(source); throw Error("missing fraction"); },
+    init: async input => { seen.push(input?.context); },
+  }, { virtual: false, reset: false, target: "missing", fraction: 0.5, context });
+  expect(seen).toHaveLength(3); expect(seen.every(source => source === context)).toBe(true);
+});

@@ -82,6 +82,8 @@ export class Paginator extends HTMLElement {
     #margin = 0
     #index = -1
     #anchor: Anchor = 0 // anchor view to a fraction (0-1), Range, or Element
+    #anchorContext: object | undefined
+    #scrollFeedback: { position: number; context: object } | undefined
     #justAnchored = false
     #locked = false // while true, prevent any further navigation
     #styles: Styles
@@ -231,16 +233,22 @@ export class Paginator extends HTMLElement {
         this.#container.addEventListener('scroll', debounce(() => {
             if (this.scrolled) {
                 if (this.#justAnchored) this.#justAnchored = false
-                else this.#afterScroll('scroll')
+                else {
+                    const feedback = this.#scrollFeedback
+                    this.#afterScroll('scroll', feedback?.position === this.#container[this.scrollProp] ? feedback.context : {})
+                }
             }
         }, 250))
 
         const opts = { passive: false }
+        const input = () => { this.#scrollFeedback = undefined; this.#justAnchored = false }
+        for (const name of ['wheel', 'touchstart', 'keydown']) this.addEventListener(name, input, { capture: true, passive: true })
         this.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
         this.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
         this.addEventListener('touchend', this.#onTouchEnd.bind(this))
         this.addEventListener('load', event => {
             const { doc } = (event as CustomEvent<LoadDetail>).detail
+            for (const name of ['wheel', 'touchstart', 'keydown']) doc.addEventListener(name, input, { capture: true, passive: true })
             doc.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
             doc.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
             doc.addEventListener('touchend', this.#onTouchEnd.bind(this))
@@ -351,7 +359,7 @@ export class Paginator extends HTMLElement {
         }
         this.#view = new SectionView({
             container: this,
-            onExpand: () => this.#scrollToAnchor(this.#anchor),
+            onExpand: () => this.#scrollToAnchor(this.#anchor, 'anchor', this.#anchorContext),
         })
         this.#container.append(this.#view.element)
         return this.#view
@@ -438,7 +446,7 @@ export class Paginator extends HTMLElement {
             vertical: this.#vertical,
             rtl: this.#rtl,
         }))
-        this.#scrollToAnchor(this.#anchor)
+        this.#scrollToAnchor(this.#anchor, 'anchor', this.#anchorContext)
     }
     get scrolled() {
         return this.getAttribute('flow') === 'scrolled'
@@ -568,46 +576,49 @@ export class Paginator extends HTMLElement {
                 ? ({ top, bottom }) => ({ left: top, right: bottom })
                 : f => f
     }
-    async #scrollToRect(rect: DOMRect, reason: RelocateReason | null) {
+    async #scrollToRect(rect: DOMRect, reason: RelocateReason | null, context: object) {
         if (this.scrolled) {
             const offset = this.#getRectMapper()(rect).left - this.#margin
-            return this.#scrollTo(offset, reason)
+            return this.#scrollTo(offset, reason, false, context)
         }
         const offset = this.#getRectMapper()(rect).left
-        return this.#scrollToPage(Math.floor(offset / this.size) + (this.#rtl ? -1 : 1), reason)
+        return this.#scrollToPage(Math.floor(offset / this.size) + (this.#rtl ? -1 : 1), reason, false, context)
     }
-    async #scrollTo(offset: number, reason: RelocateReason | null, smooth = false) {
+    async #scrollTo(offset: number, reason: RelocateReason | null, smooth = false, context: object = {}) {
         const element = this.#container
         const { scrollProp, size } = this
         if (element[scrollProp] === offset) {
             this.#scrollBounds = [offset, this.atStart ? 0 : size, this.atEnd ? 0 : size]
-            this.#afterScroll(reason)
+            this.#scrollFeedback = { position: element[scrollProp], context }
+            this.#afterScroll(reason, context)
             return
         }
         // FIXME: vertical-rl only, not -lr
         if (this.scrolled && this.#vertical) offset = -offset
         if ((reason === 'snap' || smooth) && this.hasAttribute('animated')) return animate(
             element[scrollProp], offset, 300, easeOutQuad,
-            x => element[scrollProp] = x,
+            x => { element[scrollProp] = x; this.#scrollFeedback = { position: element[scrollProp], context } },
         ).then(() => {
             this.#scrollBounds = [offset, this.atStart ? 0 : size, this.atEnd ? 0 : size]
-            this.#afterScroll(reason)
+            this.#afterScroll(reason, context)
         })
         else {
             element[scrollProp] = offset
+            this.#scrollFeedback = { position: element[scrollProp], context }
             this.#scrollBounds = [offset, this.atStart ? 0 : size, this.atEnd ? 0 : size]
-            this.#afterScroll(reason)
+            this.#afterScroll(reason, context)
         }
     }
-    async #scrollToPage(page: number, reason: RelocateReason | null, smooth = false) {
+    async #scrollToPage(page: number, reason: RelocateReason | null, smooth = false, context?: object) {
         const offset = this.size * (this.#rtl ? -page : page)
-        return this.#scrollTo(offset, reason, smooth)
+        return this.#scrollTo(offset, reason, smooth, context)
     }
-    async scrollToAnchor(anchor: Anchor, select?: boolean) {
-        return this.#scrollToAnchor(anchor, select ? 'selection' : 'navigation')
+    async scrollToAnchor(anchor: Anchor, select?: boolean, context?: object) {
+        return this.#scrollToAnchor(anchor, select ? 'selection' : 'navigation', context)
     }
-    async #scrollToAnchor(anchor: Anchor, reason: RelocateReason = 'anchor') {
+    async #scrollToAnchor(anchor: Anchor, reason: RelocateReason = 'anchor', context: object = {}) {
         this.#anchor = anchor
+        this.#anchorContext = context
         const rects = typeof anchor !== 'number' ? uncollapse(anchor)?.getClientRects() : undefined
         // if anchor is an element or a range
         if (rects) {
@@ -616,20 +627,20 @@ export class Paginator extends HTMLElement {
             const rect = Array.from(rects)
                 .find(r => r.width > 0 && r.height > 0) || rects[0]
             if (!rect) return
-            await this.#scrollToRect(rect, reason)
+            await this.#scrollToRect(rect, reason, context)
             return
         }
         // if anchor is a fraction
         if (typeof anchor !== 'number') return
         if (this.scrolled) {
-            await this.#scrollTo(anchor * this.viewSize, reason)
+            await this.#scrollTo(anchor * this.viewSize, reason, false, context)
             return
         }
         const { pages } = this
         if (!pages) return
         const textPages = pages - 2
         const newPage = Math.round(anchor * (textPages - 1))
-        await this.#scrollToPage(newPage + 1, reason)
+        await this.#scrollToPage(newPage + 1, reason, false, context)
     }
     #getVisibleRange() {
         const doc = this.#view?.document
@@ -640,17 +651,18 @@ export class Paginator extends HTMLElement {
         return getVisibleRange(doc,
             this.start - size, this.end - size, this.#getRectMapper())
     }
-    #afterScroll(reason: RelocateReason | null) {
+    #afterScroll(reason: RelocateReason | null, context: object = {}) {
         const range = this.#getVisibleRange()
         if (!range) return
         this.#lastVisibleRange = range
         // don't set new anchor if relocation was to scroll to anchor
-        if (reason !== 'selection' && reason !== 'navigation' && reason !== 'anchor')
+        if (reason !== 'selection' && reason !== 'navigation' && reason !== 'anchor') {
             this.#anchor = range
-        else this.#justAnchored = true
+            this.#anchorContext = context
+        } else this.#justAnchored = true
 
         const index = this.#index
-        const detail: RelocateDetail = { reason, range, index }
+        const detail: RelocateDetail = { reason, range, index, context }
         if (this.scrolled) detail.fraction = this.start / this.viewSize
         else if (this.pages > 0) {
             const { page, pages } = this
@@ -661,11 +673,13 @@ export class Paginator extends HTMLElement {
         this.dispatchEvent(new CustomEvent('relocate', { detail }))
     }
     async #display(promise: MaybePromise<DisplayTarget>, navigation: number) {
-        const { index, src, anchor, onLoad, select, release } = await promise
+        const { index, src, anchor, onLoad, select, release, context = {} } = await promise
         if (navigation !== this.#navigation) { release?.(); return }
         this.#index = index
         const hasFocus = this.#view?.document?.hasFocus()
         if (src) {
+            this.#anchor = 0
+            this.#anchorContext = context
             const view = this.#createView()
             this.#releaseSection?.()
             this.#releaseSection = release
@@ -678,7 +692,7 @@ export class Paginator extends HTMLElement {
                     doc.head.append($style)
                     this.#styleMap.set(doc, [$styleBefore, $style])
                 }
-                onLoad?.({ doc, index })
+                onLoad?.({ doc, index, context })
             }
             const beforeRender = this.#beforeRender.bind(this)
             try { await view.load(src, afterLoad, beforeRender) }
@@ -697,7 +711,7 @@ export class Paginator extends HTMLElement {
             if (navigation !== this.#navigation) return
             this.dispatchEvent(new CustomEvent('create-overlayer', {
                 detail: {
-                    doc: view.document, index,
+                    doc: view.document, index, context,
                     attach: (overlayer: Overlayer) => view.overlayer = overlayer,
                 },
             }))
@@ -706,15 +720,15 @@ export class Paginator extends HTMLElement {
         const doc = this.#view?.document
         if (!doc) return
         await this.scrollToAnchor((typeof anchor === 'function'
-            ? anchor(doc) : anchor) ?? 0, select)
+            ? anchor(doc) : anchor) ?? 0, select, context)
         if (hasFocus) this.focusView()
     }
     #canGoToIndex(index: number): boolean {
         return Number.isInteger(index) && index >= 0 && index <= this.sections.length - 1
     }
-    async #goTo({ index, anchor, select }: ResolvedNavigation, navigation = ++this.#navigation) {
+    async #goTo({ index, anchor, select, context = {} }: ResolvedNavigation, navigation = ++this.#navigation) {
         if (!this.#canGoToIndex(index)) return
-        if (index === this.#index && this.#view?.ready) await this.#display({ index, anchor, select }, navigation)
+        if (index === this.#index && this.#view?.ready) await this.#display({ index, anchor, select, context }, navigation)
         else {
             const onLoad = (detail: LoadDetail) => {
                 this.setStyles(this.#styles)
@@ -731,7 +745,7 @@ export class Paginator extends HTMLElement {
                     const release = () => {
                         if (!released) { released = true; section.unload?.() }
                     }
-                    return { index, src, anchor, onLoad, select, release }
+                    return { index, src, anchor, onLoad, select, release, context }
                 }), navigation)
         }
     }
@@ -742,28 +756,28 @@ export class Paginator extends HTMLElement {
         if (navigation === this.#navigation && resolved && this.#canGoToIndex(resolved.index))
             return this.#goTo(resolved, navigation)
     }
-    #scrollPrev(distance?: number) {
+    #scrollPrev(distance: number | undefined, context: object) {
         if (!this.#view) return true
         if (this.scrolled) {
             if (this.start > 0) return this.#scrollTo(
-                Math.max(0, this.start - (distance ?? this.size)), null, true)
+                Math.max(0, this.start - (distance ?? this.size)), null, true, context)
             return true
         }
         if (this.atStart) return
         const page = this.page - 1
-        return this.#scrollToPage(page, 'page', true).then(() => page <= 0)
+        return this.#scrollToPage(page, 'page', true, context).then(() => page <= 0)
     }
-    #scrollNext(distance?: number) {
+    #scrollNext(distance: number | undefined, context: object) {
         if (!this.#view) return true
         if (this.scrolled) {
             if (this.viewSize - this.end > 2) return this.#scrollTo(
-                Math.min(this.viewSize, distance ? this.start + distance : this.end), null, true)
+                Math.min(this.viewSize, distance ? this.start + distance : this.end), null, true, context)
             return true
         }
         if (this.atEnd) return
         const page = this.page + 1
         const pages = this.pages
-        return this.#scrollToPage(page, 'page', true).then(() => page >= pages - 1)
+        return this.#scrollToPage(page, 'page', true, context).then(() => page >= pages - 1)
     }
     get atStart() {
         return this.#adjacentIndex(-1) == null && this.page <= 1
@@ -775,25 +789,26 @@ export class Paginator extends HTMLElement {
         for (let index = this.#index + dir; this.#canGoToIndex(index); index += dir)
             if (this.sections[index]?.linear !== 'no') return index
     }
-    async #turnPage(dir: -1 | 1, distance?: number) {
+    async #turnPage(dir: -1 | 1, distance?: number, context: object = {}) {
         if (this.#locked) return
         this.#locked = true
         try {
         const prev = dir === -1
-        const shouldGo = await (prev ? this.#scrollPrev(distance) : this.#scrollNext(distance))
+        const shouldGo = await (prev ? this.#scrollPrev(distance, context) : this.#scrollNext(distance, context))
         const index = shouldGo ? this.#adjacentIndex(dir) : undefined
         if (index !== undefined) await this.#goTo({
             index,
             anchor: prev ? () => 1 : () => 0,
+            context,
         })
         if (shouldGo || !this.hasAttribute('animated')) await wait(100)
         } finally { this.#locked = false }
     }
-    prev(distance?: number) {
-        return this.#turnPage(-1, distance)
+    prev(distance?: number, context?: object) {
+        return this.#turnPage(-1, distance, context)
     }
-    next(distance?: number) {
-        return this.#turnPage(1, distance)
+    next(distance?: number, context?: object) {
+        return this.#turnPage(1, distance, context)
     }
     prevSection() {
         const index = this.#adjacentIndex(-1)

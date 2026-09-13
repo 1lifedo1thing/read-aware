@@ -55,6 +55,8 @@ export type ResolvedNavigation = {
     index: number
     anchor?: Anchor | ((doc: Document) => Anchor | null | undefined)
     select?: boolean
+    /** Opaque caller identity carried through this navigation's feedback only. */
+    context?: object
 }
 export type NavigationTarget = string | number | { fraction: number } | ResolvedNavigation
 export type PageColors = { background: string; foreground?: string } | null

@@ -1,5 +1,6 @@
 import type { Book } from "../../foliate-js/src/book";
 import type { View } from "../../foliate-js/src/view";
+import type { LoadDetail, RelocateDetail } from "../../foliate-js/src/renderer";
 import { fb2Fixture } from "../fixtures/foliate-books";
 
 type Modules = {
@@ -36,6 +37,49 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
   const page = (index: number) => URL.createObjectURL(new Blob([
     `<!doctype html><html><head></head><body><p>Fixed page ${index}</p></body></html>`,
   ], { type: "text/html" }));
+
+  await check("same-page overlapping loads publish only the latest navigation context", async () => {
+    const urls = [page(0), page(1)], view = mount(), gate = Promise.withResolvers<string>();
+    let reads = 0;
+    const book: Book = { rendition: { layout: "pre-paginated", spread: "none", viewport: "width=600,height=800" },
+      sections: [{ id: 0, size: 1000, load: () => { reads++; return gate.promise; } }, { id: 1, size: 1000, load: () => urls[1] }] };
+    try {
+      await view.open(book);
+      const renderer = view.renderer;
+      if (!(renderer instanceof modules.fixed.FixedLayout)) throw new Error("Wrong renderer");
+      const old = {}, current = {}, loads: LoadDetail[] = [], relocations: RelocateDetail[] = [];
+      renderer.addEventListener("load", event => loads.push((event as CustomEvent<LoadDetail>).detail));
+      renderer.addEventListener("relocate", event => relocations.push((event as CustomEvent<RelocateDetail>).detail));
+      const first = renderer.goTo({ index: 0, context: old });
+      await waitFor(() => reads === 1);
+      const next = renderer.goTo({ index: 0, context: current });
+      gate.resolve(urls[0]); await Promise.all([first, next]);
+      equal(reads, 1); equal(renderer.index, 0);
+      equal(loads.some(event => event.context === old), false);
+      equal(relocations.some(event => event.context === old), false);
+      equal(loads.at(-1)?.context, current); equal(relocations.at(-1)?.context, current);
+      const slow = Promise.withResolvers<{ index: number; context: object }>();
+      const pending = renderer.goTo(slow.promise);
+      await renderer.goTo({ index: 1, context: current });
+      slow.resolve({ index: 0, context: old }); await pending;
+      equal(renderer.index, 1); equal(relocations.at(-1)?.context, current);
+    } finally { gate.resolve(urls[0]); dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
+  });
+
+  await check("same-spread navigation reports the selected side and its context", async () => {
+    const urls = [0, 1, 2].map(page), view = mount(); view.style.width = "400px";
+    try {
+      await view.open({ rendition: { layout: "pre-paginated", viewport: "width=600,height=800" },
+        sections: urls.map((url, id) => ({ id, size: 1000, load: () => url })) });
+      const renderer = view.renderer;
+      if (!(renderer instanceof modules.fixed.FixedLayout)) throw new Error("Wrong renderer");
+      renderer.setLayout("paginated", 2);
+      const first = {}, next = {}, events: RelocateDetail[] = [];
+      renderer.addEventListener("relocate", event => events.push((event as CustomEvent<RelocateDetail>).detail));
+      await view.goTo(1, first); await view.goTo(2, next);
+      equal(renderer.index, 2); equal(events.at(-1)?.index, 2); equal(events.at(-1)?.context, next);
+    } finally { dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
+  });
 
   await check("FB2 loads native XHTML and preserves notes and CFI selections", async () => {
     const book = await modules.fb2.makeFB2(new Blob([fb2Fixture]));

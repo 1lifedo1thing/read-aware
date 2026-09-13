@@ -14,6 +14,7 @@ import { FoliateReaderView } from "./FoliateReaderView";
 import { ReaderShellOverlay } from "./ReaderShellOverlay";
 import type { LoadedBook, ReadingCursor, TocEntry } from "../lib/reader-types";
 import type { FoliateBook } from "../lib/foliate-engine";
+import type { DomainActor } from "../../../platform/domain-actor";
 
 type ReaderWorkspaceProps = {
   selectedBook: LibraryBook;
@@ -45,7 +46,7 @@ type ReaderWorkspaceProps = {
    *  bytes never reached this device (sha-keyed dedup binds them back). */
   onReimportBook: () => void;
   onToggleShell: () => void;
-  onHideShell: () => void;
+  onHideShell: (origin?: DomainActor) => void;
   onReaderPageChange: (current: number, total: number) => void;
   onEpubProgressChange: (progress: ReaderProgress) => void;
   onReaderFractionChange: (fraction: number) => void;

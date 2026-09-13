@@ -44,8 +44,8 @@ export const unavailablePlayback = (): ReadingPlaybackSnapshot => ({
 
 export type ReadingEngineAdapter = {
   sourceRevision?: string;
-  navigate(target: ReadingTarget): Promise<ReadingLocation>;
-  step(direction: ReadingStep): Promise<ReadingLocation>;
+  navigate(target: ReadingTarget, origin?: DomainActor): Promise<ReadingLocation>;
+  step(direction: ReadingStep, origin?: DomainActor): Promise<ReadingLocation>;
   pagination?(): ReadingPaginationSnapshot | null;
 };
 const paginationOf = (engine?: ReadingEngineAdapter): ReadingPaginationSnapshot | null => structuredClone(engine?.pagination?.() ?? null);
@@ -158,12 +158,12 @@ export class ReadingSessionController {
     };
   }
 
-  relocate(id: string, location: ReadingLocation, visibleText: string, source?: ReadingEngineAdapter, visibleTextState?: ReadingVisibleTextState): void {
+  relocate(id: string, location: ReadingLocation, visibleText: string, source?: ReadingEngineAdapter, visibleTextState?: ReadingVisibleTextState, origin: DomainActor = "system"): void {
     if (this.session?.id !== id || source && (this.session.engine !== source || this.state.status !== "ready")) return;
     this.publish({ location, visibleText: visibleText.slice(0, 12_000), selection: null,
       visibleTextState: visibleTextState ? structuredClone(visibleTextState)
         : { status: visibleText ? "available" : "unavailable", source: null, truncated: visibleText.length > 12_000 },
-      pagination: this.state.status === "ready" ? paginationOf(this.session.engine) : null });
+      pagination: this.state.status === "ready" ? paginationOf(this.session.engine) : null }, { origin, reason: "relocate" });
   }
 
   /** Host-only feedback from the attached reader. Stale renderers cannot publish. */
@@ -573,8 +573,8 @@ export class ReadingSessionController {
         // The newly ready virtual engine has already resolved its source-bound
         // locator (or fallen back to its start). Do not override that with start.
         if (reload && this.state.location?.contentVersion.startsWith("virtual:sha256:")) return this.state.location;
-        return direction ? engine.step(direction)
-          : target.cfi || target.href || target.fraction !== undefined || target.sectionIndex !== undefined ? engine.navigate(target)
+        return direction ? engine.step(direction, change.origin)
+          : target.cfi || target.href || target.fraction !== undefined || target.sectionIndex !== undefined ? engine.navigate(target, change.origin)
           : this.state.location;
       });
       this.engineTails.set(engine, movement.catch(() => {}));

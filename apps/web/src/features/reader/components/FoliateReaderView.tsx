@@ -95,6 +95,7 @@ import { resolveContentProvider } from "../../plugins/lib/virtual-books";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { useReferencePreview } from "../hooks/useReferencePreview";
 import { attachReadingEngine, waitForReadingPaint } from "../lib/reading-engine-adapter";
+import { readingRenderActor, readingRenderContext } from "../lib/reading-render-context";
 import { captureReadingSelection, type SelectionContentIdentity } from "../lib/selection-range";
 import { useSelectionRender } from "../hooks/useSelectionRender";
 import { createReadingSelectionAdapter } from "../lib/reading-selection-adapter";
@@ -118,7 +119,7 @@ type FoliateReaderViewProps = {
   onContentClick?: () => void;
   /** Dismiss the reader shell. Fired once a scroll travels far enough (scroll
    *  mode) or as soon as a page turn lands (paginated mode). */
-  onContentScroll?: () => void;
+  onContentScroll?: (origin?: DomainActor) => void;
   /** Any interaction inside the book (pointer/keys/scroll) — used to keep the
    *  reading-time tracker awake, since iframe events don't reach the window. */
   onReadingActivity?: () => void;
@@ -1847,8 +1848,10 @@ export function FoliateReaderView({
     const cleanups: Array<() => void> = [];
     const runtimeSession = readingRuntime.snapshot();
     const sessionId = runtimeSession.bookId === selectedBook?.id ? runtimeSession.sessionId : null;
+    const openingActor = sessionId ? readingRuntime.openingActor(sessionId) : causalActor("system");
+    const openingContext = readingRenderContext(openingActor);
 
-    clearSelection();
+    clearSelection(openingActor);
     setIsLoading(true);
     setError(null);
     setTocEntries([]);
@@ -1939,7 +1942,10 @@ export function FoliateReaderView({
           // Every finished page raster keeps the busy signal fresh while the
           // stack prerenders around a scrolling reader.
           const rendererTarget = view.renderer;
-          const onRendered = () => { if (!cancelled && sessionId) emitAppEvent("reader-demand-activity", { sessionId, reason: "render" }); };
+          const onRendered = (event: Event) => {
+            if (!cancelled && sessionId) emitAppEvent("reader-demand-activity", { sessionId, reason: "render" },
+              readingRenderActor((event as CustomEvent<object>).detail, openingActor));
+          };
           rendererTarget.addEventListener("rendered", onRendered);
           cleanups.push(() => rendererTarget.removeEventListener("rendered", onRendered));
         }
@@ -1974,9 +1980,10 @@ export function FoliateReaderView({
           if (!view || cancelled || sessionId && readingRuntime.snapshot().sessionId !== sessionId) return;
           // Tell background pipelines (text extraction) the reader is busy —
           // the page being read must win the PDF worker and the blob channel.
-          if (sessionId) emitAppEvent("reader-demand-activity", { sessionId, reason: "relocate" });
           const detail = (event as CustomEvent<FoliateRelocateDetail>).detail;
-          clearSelection();
+          const origin = readingRenderActor(detail);
+          if (sessionId) emitAppEvent("reader-demand-activity", { sessionId, reason: "relocate" }, origin);
+          clearSelection(origin);
           setActiveAnnotation(null);
           const fraction = Math.max(0, Math.min(1, detail.fraction ?? 0));
           const { current, total } = readingPagePosition(view.isFixedLayout, detail);
@@ -2025,7 +2032,7 @@ export function FoliateReaderView({
               next: { current, cfi },
             })
           ) {
-            onContentScrollRef.current?.();
+            onContentScrollRef.current?.(origin);
           }
           // 句级菜单只在页码真的变了时随位置收掉。Android 上点击后常跟着一次
           // 并非翻页的 relocate（视口/布局微调），无条件关会让菜单开了即灭。
@@ -2142,7 +2149,7 @@ export function FoliateReaderView({
 
         const resetPosition = initialBook.resetPosition && resetPositionSourceRef.current !== initialBook;
         await restoreReadingPosition(view, { virtual: !!initialBook.virtual, reset: !!resetPosition,
-          target: lastLocationTargetRef.current, fraction: initialFractionRef.current });
+          target: lastLocationTargetRef.current, fraction: initialFractionRef.current, context: openingContext });
         if (view) {
           applyHighlights(view, highlightsRef.current);
           applyNotes(view, notesRef.current, highlightsRef.current);

@@ -33,7 +33,7 @@ export type Location = ReturnType<SectionProgress['getProgress']> & {
     cfi: string
     range: Range | null
 }
-export type ViewRelocateDetail = Location & Pick<RelocateDetail, 'reason'>
+export type ViewRelocateDetail = Location & Pick<RelocateDetail, 'reason' | 'context'>
 export type ViewSearchOptions = SearchMatcherOptions & {
     query: string; index?: number; draw?: DrawFunction; drawOptions?: DrawOptions
 }
@@ -171,31 +171,31 @@ export class View extends HTMLElement {
         this.isFixedLayout = false
         return Promise.resolve(owned?.destroy?.())
     }
-    goToTextStart() {
+    goToTextStart(context?: object) {
         const book = this.#requireBook()
         return this.goTo(book.landmarks?.find(item => item.type?.some(type => type === 'bodymatter' || type === 'text'))?.href
-            ?? book.sections.findIndex(section => section.linear !== 'no'))
+            ?? book.sections.findIndex(section => section.linear !== 'no'), context)
     }
-    async init({ lastLocation, showTextStart = false }: { lastLocation?: NavigationTarget | null; showTextStart?: boolean } = {}) {
-        if (lastLocation != null && await this.goTo(lastLocation)) return
-        if (showTextStart) await this.goToTextStart()
-        else await this.goTo(this.#requireBook().sections.findIndex(section => section.linear !== 'no'))
+    async init({ lastLocation, showTextStart = false, context = {} }: { lastLocation?: NavigationTarget | null; showTextStart?: boolean; context?: object } = {}) {
+        if (lastLocation != null && await this.goTo(lastLocation, context)) return
+        if (showTextStart) await this.goToTextStart(context)
+        else await this.goTo(this.#requireBook().sections.findIndex(section => section.linear !== 'no'), context)
     }
     #emit<T>(name: string, detail: T, cancelable = false) {
         return this.dispatchEvent(new CustomEvent<T>(name, { detail, cancelable }))
     }
     #onRelocate(detail: RelocateDetail) {
         if (!this.#sectionProgress || !this.#book?.sections[detail.index]) return
-        const { reason, range, index, fraction, size } = detail
+        const { reason, range, index, fraction, size, context } = detail
         this.#lastRelocateDetail = detail
         const progress = this.#sectionProgress.getProgress(index, fraction, size)
         const { tocItem, pageItem } = this.getProgressOf(index, range)
         const cfi = this.getCFI(index, range)
         this.lastLocation = { ...progress, tocItem, pageItem, cfi, range }
         if (reason === 'snap' || reason === 'page' || reason === 'scroll') this.history.replaceState(cfi)
-        this.#emit<ViewRelocateDetail>('relocate', { ...this.lastLocation, reason })
+        this.#emit<ViewRelocateDetail>('relocate', { ...this.lastLocation, reason, context })
     }
-    #onLoad({ doc, index }: LoadDetail) {
+    #onLoad({ doc, index, context }: LoadDetail) {
         doc.documentElement.lang ||= this.language.canonical ?? ''
         if (!this.language.isCJK) doc.documentElement.dir ||= this.language.direction ?? ''
         if (!this.#docsSetup.has(doc)) {
@@ -203,7 +203,7 @@ export class View extends HTMLElement {
             this.#handleLinks(doc, index)
             this.#documentCursors.add(this.#cursorAutohider.cloneFor(doc.documentElement))
         }
-        this.#emit<LoadDetail>('load', { doc, index })
+        this.#emit<LoadDetail>('load', { doc, index, context })
     }
     #handleLinks(doc: Document, index: number) {
         const book = this.#requireBook(), section = book.sections[index]
@@ -297,21 +297,21 @@ export class View extends HTMLElement {
         } else resolved = CFI.isCFI.test(target) ? this.resolveCFI(target) : await book.resolveHref?.(target)
         if (resolved && Number.isInteger(resolved.index) && book.sections[resolved.index]) return resolved
     }
-    async #navigate(target: NavigationTarget, select = false): Promise<ResolvedNavigation | undefined> {
+    async #navigate(target: NavigationTarget, select = false, context?: object): Promise<ResolvedNavigation | undefined> {
         const renderer = this.#requireRenderer(), generation = this.#generation, navigation = ++this.#navigation
         const resolved = await this.resolveNavigation(target)
         if (!resolved || generation !== this.#generation || navigation !== this.#navigation) return
-        await renderer.goTo(select ? { ...resolved, select: true } : resolved)
+        await renderer.goTo({ ...resolved, ...(select ? { select: true } : {}), context: context ?? resolved.context ?? {} })
         if (generation === this.#generation && navigation === this.#navigation) return resolved
     }
-    async goTo(target: NavigationTarget) {
-        const resolved = await this.#navigate(target)
+    async goTo(target: NavigationTarget, context?: object) {
+        const resolved = await this.#navigate(target, false, context)
         if (resolved) this.history.pushState(target)
         return resolved
     }
-    async goToFraction(fraction: number) { await this.goTo({ fraction }) }
-    async select(target: NavigationTarget) {
-        if (await this.#navigate(target, true)) this.history.pushState(target)
+    async goToFraction(fraction: number, context?: object) { await this.goTo({ fraction }, context) }
+    async select(target: NavigationTarget, context?: object) {
+        if (await this.#navigate(target, true, context)) this.history.pushState(target)
     }
     deselect() {
         for (const { doc } of this.#requireRenderer().getContents()) doc.defaultView?.getSelection()?.removeAllRanges()
@@ -329,8 +329,8 @@ export class View extends HTMLElement {
         const range = doc ? anchorRange(doc, anchorValue(doc, resolved.anchor)) : null
         return this.#tocProgress?.getProgress(resolved.index, range)
     }
-    async prev(distance?: number) { this.#navigation++; await this.#requireRenderer().prev(distance) }
-    async next(distance?: number) { this.#navigation++; await this.#requireRenderer().next(distance) }
+    async prev(distance?: number, context: object = {}) { this.#navigation++; await this.#requireRenderer().prev(distance, context) }
+    async next(distance?: number, context: object = {}) { this.#navigation++; await this.#requireRenderer().next(distance, context) }
     goLeft() { return this.#requireBook().dir === 'rtl' ? this.next() : this.prev() }
     goRight() { return this.#requireBook().dir === 'rtl' ? this.prev() : this.next() }
     async *search(options: ViewSearchOptions): AsyncGenerator<ViewSearchResult, void, unknown> {

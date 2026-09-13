@@ -5,6 +5,7 @@ import type { ReadingEngineAdapter } from "../../../domain/reading-session-contr
 import { adjacentTocEntry, flattenToc } from "./epub-utils";
 import { readingPagination } from "./reading-pagination";
 import { readingVisibleText } from "./reading-visible-text";
+import { readingRenderActor, readingRenderContext } from "./reading-render-context";
 
 export async function waitForReadingPaint(view: FoliateView): Promise<void> {
   const renderer = view.renderer;
@@ -31,11 +32,12 @@ export function createReadingEngineAdapter(view: FoliateView, bookId: string, co
   return {
     sourceRevision,
     pagination: () => readingPagination(view),
-    navigate: async target => {
+    navigate: async (target, origin = "system") => {
+      const context = readingRenderContext(origin);
       if (target.sectionIndex !== undefined && !view.book?.sections[target.sectionIndex]) {
         throw new AppError("reader/target-not-found", "Source section does not exist");
       }
-      const resolved = await view.goTo(target.sectionIndex ?? target.cfi ?? target.href ?? { fraction: target.fraction! }).catch((error: unknown) => {
+      const resolved = await view.goTo(target.sectionIndex ?? target.cfi ?? target.href ?? { fraction: target.fraction! }, context).catch((error: unknown) => {
         if (error && typeof error === "object" && "name" in error && error.name === "ContentRangeError") {
           throw new AppError("reader/target-not-found", "Stored source location no longer resolves", { cause: error });
         }
@@ -50,21 +52,22 @@ export function createReadingEngineAdapter(view: FoliateView, bookId: string, co
         let range: Range;
         try { range = resolveTextQuote(content.doc, target.textQuote); }
         catch (error) { throw new AppError("reader/target-not-found", "Search text could not be uniquely resolved", { cause: error }); }
-        if (!await view.goTo(view.getCFI(resolved.index, range))) throw new AppError("reader/target-not-found", "Search text no longer resolves");
+        if (!await view.goTo(view.getCFI(resolved.index, range), context)) throw new AppError("reader/target-not-found", "Search text no longer resolves");
       }
       return location();
     },
-    step: async direction => {
-      if (direction === "next") await view.next();
-      else if (direction === "previous") await view.prev();
+    step: async (direction, origin = "system") => {
+      const context = readingRenderContext(origin);
+      if (direction === "next") await view.next(undefined, context);
+      else if (direction === "previous") await view.prev(undefined, context);
       else if (direction === "next-chapter" || direction === "previous-chapter") {
         const entry = adjacentTocEntry(flattenToc(view.book?.toc ?? []), view.lastLocation?.tocItem?.href ?? null,
           direction === "next-chapter" ? 1 : -1);
         if (!entry) return location();
-        if (!await view.goTo(entry.href)) throw new AppError("reader/target-not-found", "Adjacent TOC chapter could not be resolved");
+        if (!await view.goTo(entry.href, context)) throw new AppError("reader/target-not-found", "Adjacent TOC chapter could not be resolved");
       }
       else if (direction === "start" || direction === "end") {
-        if (!await view.goTo({ fraction: direction === "start" ? 0 : 1 })) throw new AppError("reader/target-not-found", "Book boundary could not be resolved");
+        if (!await view.goTo({ fraction: direction === "start" ? 0 : 1 }, context)) throw new AppError("reader/target-not-found", "Book boundary could not be resolved");
       } else {
         const sections = view.book?.sections, current = view.lastLocation?.section.current;
         if (!sections || current === undefined || !sections[current]) throw new AppError("reader/unavailable", "Current source section is unavailable");
@@ -73,7 +76,7 @@ export function createReadingEngineAdapter(view: FoliateView, bookId: string, co
         while (index >= 0 && index < sections.length && sections[index]?.linear === "no") index += delta;
         // At a book boundary keep the actual position, rather than fabricating movement.
         if (index < 0 || index >= sections.length) return location();
-        if (!await view.goTo(index)) throw new AppError("reader/target-not-found", "Adjacent source section could not be resolved");
+        if (!await view.goTo(index, context)) throw new AppError("reader/target-not-found", "Adjacent source section could not be resolved");
       }
       await waitForReadingPaint(view);
       return location();
@@ -82,11 +85,14 @@ export function createReadingEngineAdapter(view: FoliateView, bookId: string, co
 }
 
 export function attachReadingEngine(view: FoliateView, sessionId: string, bookId: string, contentVersion: string, sourceRevision = contentVersion): () => void {
+  if (readingRuntime.snapshot().sessionId !== sessionId) return () => {};
+  const openingActor = readingRuntime.openingActor(sessionId);
   const location = () => currentLocation(view, bookId, contentVersion);
   const engine = createReadingEngineAdapter(view, bookId, contentVersion, sourceRevision);
-  const publish = () => {
+  const publish = (event?: Event) => {
     const visible = readingVisibleText(view);
-    readingRuntime.relocate(sessionId, location(), visible.text, engine, visible.state);
+    const origin = event ? readingRenderActor((event as CustomEvent<object>).detail) : openingActor;
+    readingRuntime.relocate(sessionId, location(), visible.text, engine, visible.state, origin);
   };
   const detach = readingRuntime.attach(sessionId, engine, location());
   view.addEventListener("relocate", publish);

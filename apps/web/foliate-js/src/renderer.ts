@@ -7,7 +7,8 @@ export type RelocateDetail = {
     index: number
     fraction?: number
     size?: number
+    context?: object
 }
 export type Content = { doc: Document; index: number; overlayer?: Overlayer }
-export type LoadDetail = { doc: Document; index: number }
+export type LoadDetail = { doc: Document; index: number; context?: object }
 export type CreateOverlayerDetail = LoadDetail & { attach: (overlayer: Overlayer) => void }

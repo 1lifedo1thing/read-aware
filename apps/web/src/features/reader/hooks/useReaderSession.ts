@@ -9,6 +9,7 @@ import {
 import { readingTraces } from "../lib/reading-trace-runtime";
 import type { ReadingTrace } from "../lib/reading-trace";
 import { createLogger } from "../../../platform/logger";
+import type { DomainActor } from "../../../platform/domain-actor";
 import { createProgressPatch, getReadingStatus } from "../../library/lib/library-progress";
 import type {
   BookFormat,
@@ -239,8 +240,8 @@ export function useReaderSession({
     setShellVisible((visible) => !visible);
   }, [setShellVisible]);
 
-  const hideShell = useCallback(() => {
-    setShellVisible(false);
+  const hideShell = useCallback((origin: DomainActor = "user") => {
+    setShellVisible(false, origin);
   }, [setShellVisible]);
 
   const handleReaderPageChange = useCallback((current: number, total: number) => {
