@@ -17,6 +17,7 @@ import { useReaderFocusTarget } from "../../reader/hooks/useReaderFocusTarget";
 export type ChatComposerHandle = { focus: () => void; adoptDraft: (text: string) => boolean };
 
 type ChatComposerProps = {
+  scope?: "book" | "global";
   readerBookId?: string;
   isStreaming: boolean;
   disabled?: boolean;
@@ -35,7 +36,7 @@ const MAX_HEIGHT = 160;
  */
 export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   function ChatComposer(
-    { isStreaming, disabled = false, pendingAttachment, onRemoveAttachment, onSend, onStop, readerBookId },
+    { isStreaming, disabled = false, pendingAttachment, onRemoveAttachment, onSend, onStop, readerBookId, scope = "book" },
     ref,
   ) {
     const { t } = useTranslation("ai");
@@ -139,7 +140,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
               placeholder={
                 pendingAttachment
                   ? t("chat.placeholderWithPassage")
-                  : t("chat.placeholder")
+                  : t(scope === "global" ? "chat.globalPlaceholder" : "chat.placeholder")
               }
               // Sized with the transcript: what you type should read the same
               // as what comes back.

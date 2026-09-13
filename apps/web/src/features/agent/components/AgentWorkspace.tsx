@@ -32,6 +32,7 @@ export function AgentWorkspace() {
     // transcript and composer center their own content to a shared measure.
     <div className="ra-motion-page-enter flex h-full min-h-0 flex-col">
       <ChatTranscript
+        scope="global"
         messages={conversation.messages}
         isLoading={conversation.isLoading}
         isStreaming={conversation.isStreaming}
@@ -41,6 +42,7 @@ export function AgentWorkspace() {
       />
       <ChatTurnRequest request={turnRequests.request} onAccept={turnRequests.accept} onDismiss={turnRequests.dismiss} />
       <ChatComposer
+        scope="global"
         key={activeThreadId}
         ref={composerRef}
         disabled={conversation.isLoading}

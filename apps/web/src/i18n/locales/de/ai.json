@@ -10,6 +10,7 @@
     },
     "messageLabel": "Nachricht",
     "placeholder": "Frag etwas über dieses Buch…",
+    "globalPlaceholder": "Frage zu deiner Bibliothek…",
     "placeholderWithPassage": "Frag etwas über diese Passage…",
     "send": "Senden",
     "stopGenerating": "Generierung stoppen",
@@ -182,6 +183,10 @@
       "failed": "Generierung fehlgeschlagen"
     },
     "removePassage": "Passage entfernen",
+    "globalEmpty": {
+      "title": "Entdecke deine Bibliothek",
+      "description": "Stelle Fragen zu deinen Büchern, verbinde Gedanken aus verschiedenen Werken oder greife frühere Gespräche wieder auf."
+    },
     "empty": {
       "title": "Frag zu diesem Buch",
       "description": "Wähle eine Passage aus und wähle „KI fragen“, oder tippe einfach los. Diese Unterhaltung bleibt beim Buch."

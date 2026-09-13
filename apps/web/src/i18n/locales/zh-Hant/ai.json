@@ -10,6 +10,7 @@
     },
     "messageLabel": "訊息",
     "placeholder": "詢問關於這本書…",
+    "globalPlaceholder": "詢問關於書架的問題…",
     "placeholderWithPassage": "詢問關於這段文字…",
     "send": "傳送",
     "stopGenerating": "停止生成",
@@ -182,6 +183,10 @@
       "failed": "生成失敗"
     },
     "removePassage": "移除段落",
+    "globalEmpty": {
+      "title": "探索你的書架",
+      "description": "聊聊你的書，連結不同書中的觀點，或回顧先前的對話。"
+    },
     "empty": {
       "title": "詢問關於這本書",
       "description": "選取一段文字並選擇「詢問 AI」，或直接開始輸入。這段對話會與這本書一同保存。"

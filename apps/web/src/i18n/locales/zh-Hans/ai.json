@@ -10,6 +10,7 @@
     },
     "messageLabel": "消息",
     "placeholder": "询问关于本书的问题…",
+    "globalPlaceholder": "询问关于书架的问题…",
     "placeholderWithPassage": "询问关于这段文字的问题…",
     "send": "发送",
     "stopGenerating": "停止生成",
@@ -182,6 +183,10 @@
       "failed": "生成失败"
     },
     "removePassage": "移除段落",
+    "globalEmpty": {
+      "title": "探索你的书架",
+      "description": "聊聊你的书，联系不同书中的观点，或回顾之前的对话。"
+    },
     "empty": {
       "title": "询问关于本书的问题",
       "description": "选中一段文字并选择“询问 AI”，或直接开始输入。此对话会与本书一同保存。"

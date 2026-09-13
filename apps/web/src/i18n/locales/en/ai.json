@@ -10,6 +10,7 @@
     },
     "messageLabel": "Message",
     "placeholder": "Ask about this book…",
+    "globalPlaceholder": "Ask about your library…",
     "placeholderWithPassage": "Ask about this passage…",
     "send": "Send",
     "stopGenerating": "Stop generating",
@@ -182,6 +183,10 @@
       "failed": "Generation failed"
     },
     "removePassage": "Remove passage",
+    "globalEmpty": {
+      "title": "Explore your library",
+      "description": "Ask about your books, connect ideas across them, or revisit earlier conversations."
+    },
     "empty": {
       "title": "Ask about this book",
       "description": "Select a passage and choose Ask AI, or just start typing. This conversation stays with the book."

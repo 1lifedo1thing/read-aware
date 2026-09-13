@@ -10,6 +10,7 @@
     },
     "messageLabel": "Message",
     "placeholder": "Posez une question sur ce livre…",
+    "globalPlaceholder": "Posez une question sur votre bibliothèque…",
     "placeholderWithPassage": "Posez une question sur ce passage…",
     "send": "Envoyer",
     "stopGenerating": "Arrêter la génération",
@@ -182,6 +183,10 @@
       "failed": "Échec de la génération"
     },
     "removePassage": "Retirer le passage",
+    "globalEmpty": {
+      "title": "Explorez votre bibliothèque",
+      "description": "Posez des questions sur vos livres, reliez leurs idées ou revenez sur vos conversations précédentes."
+    },
     "empty": {
       "title": "Posez une question sur ce livre",
       "description": "Sélectionnez un passage et choisissez Demander à l’IA, ou commencez simplement à écrire. Cette conversation reste liée au livre."

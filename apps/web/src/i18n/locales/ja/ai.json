@@ -10,6 +10,7 @@
     },
     "messageLabel": "メッセージ",
     "placeholder": "この本について質問…",
+    "globalPlaceholder": "ライブラリについて質問…",
     "placeholderWithPassage": "この一節について質問…",
     "send": "送信",
     "stopGenerating": "生成を停止",
@@ -182,6 +183,10 @@
       "failed": "生成に失敗しました"
     },
     "removePassage": "一節を削除",
+    "globalEmpty": {
+      "title": "ライブラリを探索",
+      "description": "本について質問したり、本をまたいで考えをつなげたり、以前の会話を振り返ったりできます。"
+    },
     "empty": {
       "title": "この本について質問",
       "description": "一節を選んで「AIに質問」を選ぶか、そのまま入力を始めてください。この会話は本とともに保存されます。"

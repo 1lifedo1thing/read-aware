@@ -1,6 +1,7 @@
 /** Loopback-only request evidence for isolated reading privacy and streaming UI probes. */
 const followProbe = process.env.READAWARE_STREAMING_PROBE === "1";
 const configProbe = process.env.READAWARE_CONFIG_PROBE === "1";
+const textOnly = process.env.READAWARE_RESPONSES_TEXT_ONLY === "1";
 const records: Array<{ selected: boolean; viewport: boolean; grounding: boolean; held: boolean; cancelled: boolean; paragraphs?: number; model?: unknown; maxOutputTokens?: unknown; reasoningEffort?: unknown; api?: string; toolResults?: number }> = [];
 const releases = new Set<() => void>();
 const advances = new Set<() => void>();
@@ -28,7 +29,7 @@ Bun.serve({
       records.push(record);
       const fail = failNext; failNext = false;
       const id = `resp_probe_${records.length}`;
-      const callTool = !toolResults && body.tools?.some(tool => tool.name === "get_toc");
+      const callTool = !textOnly && !toolResults && body.tools?.some(tool => tool.name === "get_toc");
       const item = callTool
         ? { id: `fc_${id}`, type: "function_call", call_id: `call_${id}`, name: "get_toc", arguments: "{}", status: "completed" }
         : { id: `msg_${id}`, type: "message", role: "assistant", status: "completed", content: [{ type: "output_text", text: "Responses native protocol probe completed.", annotations: [] }] };

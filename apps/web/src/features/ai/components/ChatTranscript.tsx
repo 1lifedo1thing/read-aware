@@ -6,6 +6,7 @@ import type { ChatAssistantPart, ChatMessage } from "../lib/chat-types";
 import { ChatMessageItem } from "./ChatMessageItem";
 
 type ChatTranscriptProps = {
+  scope?: "book" | "global";
   messages: ChatMessage[];
   isLoading: boolean;
   isStreaming: boolean;
@@ -33,6 +34,7 @@ function ThinkingRow({ label }: { label: string }) {
  * useTranscriptAutoScroll (anchored by default, opt-in follow).
  */
 export function ChatTranscript({
+  scope = "book",
   messages,
   isLoading,
   isStreaming,
@@ -61,8 +63,8 @@ export function ChatTranscript({
       <div className="flex flex-1 items-center justify-center px-6 py-10">
         <EmptyState
           icon={<ChatCircleDots size={28} weight="regular" />}
-          title={t("chat.empty.title")}
-          description={t("chat.empty.description")}
+          title={t(scope === "global" ? "chat.globalEmpty.title" : "chat.empty.title")}
+          description={t(scope === "global" ? "chat.globalEmpty.description" : "chat.empty.description")}
         />
       </div>
     );
