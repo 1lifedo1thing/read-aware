@@ -1,0 +1,52 @@
+{
+  "date": "2026-09-13",
+  "scenario": "B01",
+  "capability": "READ17",
+  "classification": "external-blocker",
+  "boundary": "Actual compiled first-party TTS Worker in isolated macOS Tauri WebKit, native profile and host voice registration. No audio synthesis success.",
+  "observations": {
+    "attempts": [
+      {
+        "code": null,
+        "message": "Set the custom endpoint URL in Settings → TTS Voices"
+      },
+      {
+        "code": null,
+        "message": "Set the custom endpoint URL in Settings → TTS Voices"
+      }
+    ],
+    "audioCreated": false,
+    "enabledRestored": true,
+    "pluginVersion": "0.6.0",
+    "profile": "/Users/ahpx/Library/Application Support/com.readaware.app.sync-acceptance-20260913",
+    "retiredRegistrationCount": 0,
+    "stale": {
+      "code": "plugin/unavailable",
+      "message": "Voice provider is not active"
+    },
+    "voices": [
+      {
+        "id": "default",
+        "label": "Custom endpoint · local"
+      }
+    ]
+  },
+  "blocker": "Default custom provider has no endpoint configured. Two actual synthesize calls fail with the same actionable endpoint error; no endpoint, credentials, controlled tone or alternate provider was fabricated.",
+  "passedSubBoundaries": [
+    "Compiled TTS 0.6.0 voice list reaches host registry",
+    "Disabling plugin removes voice contribution and previously acquired handle rejects plugin/unavailable",
+    "Original enabled state restored"
+  ],
+  "unverified": [
+    "Decodable synthesized audio",
+    "Playback success receipt",
+    "Audio-resource release after successful synthesis"
+  ],
+  "cleanup": {
+    "ownBridge9225Stopped": true,
+    "ownNativePid43520Stopped": true,
+    "syncDisabled": true,
+    "originalSyntheticBooksRetained": true
+  },
+  "implementationChanges": []
+}
