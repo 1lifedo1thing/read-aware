@@ -1,0 +1,775 @@
+{
+  "flow": 85,
+  "date": "2026-09-13",
+  "baselineCommit": "740afd1e",
+  "boundary": "macOS debug Tauri PID15611 / bridge9224; mounted ChatPanel and production AgentThread / native SQLite. Controlled Responses SSE, MCP/DOM component clicks, no CUA or remote model.",
+  "fixture": {
+    "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+    "title": "Reading Context Policy Probe",
+    "markerNote": "ANN81 strings were created before the coordinator assigned flow 85; the strings are synthetic labels, not flow identifiers.",
+    "driver": "apps/web/tests/desktop/desktop-reading-context-probe.ts",
+    "approvalServer": "scripts/annotation-ask-acceptance-server.ts"
+  },
+  "observations": {
+    "approvePrompt": {
+      "remaining": {
+        "anchor": "epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)",
+        "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+        "chapterHref": "0",
+        "createdAt": "2026-09-13T07:11:22.068Z",
+        "id": "05fb7c31-70f6-44cf-a2ef-4731a2d7c209",
+        "kind": "ask",
+        "text": "ANN81 selected question: explain this synthetic marker."
+      },
+      "text": "\nShelf\n\nContents\n\nNotes\nReading Context Policy Probe\n1 / 1 · 100%\n\nRead by sentence or paragraph\n\nReading appearance\n\nChat\n\nMore\n\nPrivacy sample\nSELECTION_MARKER_947\nANN81 selected question: explain this synthetic marker.\n\nCopy message\nResponses native protocol probe completed.\n\nCopy message\nANN81 cursor question: explain the current synthetic page.\n\nCopy message\nResponses native protocol probe completed.\n\nCopy message\nSELECTION_MARKER_947\nANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Please request confirmation before deleting this synthetic question trace.\n\nCopy message\n\nNot approved · Delete this annotation?\nControlled annotation approval round completed.\n\nCopy message\nANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Ask again; I will approve this synthetic trace deletion.\n\nCopy message\nDelete this annotation?\n“ANN81 selected question: explain this synthetic marker.” will be permanently removed from your reading context.\nDelete annotation\nKeep it\n\n"
+    },
+    "approved": {
+      "annotations": [
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one],/1:0,/4/1:107)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:14:25.846Z",
+          "id": "76c6bac0-1c7c-4b1b-8771-ae3c0116a0c1",
+          "kind": "ask",
+          "text": "ANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Ask again; I will approve this synthetic trace deletion."
+        },
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:13:55.023Z",
+          "id": "4b71897d-4115-4f31-b7d8-fcd28944b2fd",
+          "kind": "ask",
+          "text": "ANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Please request confirmation before deleting this synthetic question trace."
+        },
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one],/1:0,/4/1:107)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:11:42.852Z",
+          "id": "0c39b500-5b4a-40d0-9372-3b8bd2fbc076",
+          "kind": "ask",
+          "text": "ANN81 cursor question: explain the current synthetic page."
+        }
+      ],
+      "messages": [
+        {
+          "attachmentsJson": "[{\"kind\":\"selection\",\"text\":\"SELECTION_MARKER_947\",\"cfiRange\":\"epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)\",\"chapterHref\":\"0\"}]",
+          "content": "ANN81 selected question: explain this synthetic marker.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:21.808Z",
+          "id": "932c5a9e-5cc9-42c2-8a79-72af67050da6",
+          "role": "user",
+          "seq": 0
+        },
+        {
+          "content": "Responses native protocol probe completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:22.079Z",
+          "id": "265d1d12-018a-4c53-98b4-751b95031c7e",
+          "partsJson": "[{\"type\":\"text\",\"text\":\"Responses native protocol probe completed.\"}]",
+          "role": "assistant",
+          "seq": 1
+        },
+        {
+          "content": "ANN81 cursor question: explain the current synthetic page.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:42.750Z",
+          "id": "9696146d-ab2b-486b-8f9e-394a66b3ef49",
+          "role": "user",
+          "seq": 2
+        },
+        {
+          "content": "Responses native protocol probe completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:42.857Z",
+          "id": "b0414140-c2a2-4e28-a6f3-91e2f7d32c02",
+          "partsJson": "[{\"type\":\"text\",\"text\":\"Responses native protocol probe completed.\"}]",
+          "role": "assistant",
+          "seq": 3
+        },
+        {
+          "attachmentsJson": "[{\"kind\":\"selection\",\"text\":\"SELECTION_MARKER_947\",\"cfiRange\":\"epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)\",\"chapterHref\":\"0\"}]",
+          "content": "ANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Please request confirmation before deleting this synthetic question trace.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:13:17.606Z",
+          "id": "ad08a2b8-d396-40cd-860a-8dbd9b209535",
+          "role": "user",
+          "seq": 4
+        },
+        {
+          "content": "Controlled annotation approval round completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:13:55.035Z",
+          "id": "96928185-be5c-419d-a267-7d22c5e5ec3d",
+          "partsJson": "[{\"type\":\"interaction\",\"id\":\"book:50db829c-377a-43f2-a84d-8c3a784e3c58:call_ann81_1|fc_ann81_1\",\"request\":{\"id\":\"book:50db829c-377a-43f2-a84d-8c3a784e3c58:call_ann81_1|fc_ann81_1\",\"threadKey\":\"book:50db829c-377a-43f2-a84d-8c3a784e3c58\",\"kind\":\"permission\",\"action\":\"delete-annotation\",\"subject\":\"ANN81 selected question: explain this synthetic marker.\"},\"state\":\"answered\",\"answer\":{\"optionId\":\"decline\",\"text\":\"Declined\"}},{\"type\":\"text\",\"text\":\"Controlled annotation approval round completed.\"}]",
+          "role": "assistant",
+          "seq": 5
+        },
+        {
+          "content": "ANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Ask again; I will approve this synthetic trace deletion.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:14:11.125Z",
+          "id": "9b683831-7e5f-4f90-8756-c868c4e65cc6",
+          "role": "user",
+          "seq": 6
+        },
+        {
+          "content": "Controlled annotation approval round completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:14:25.853Z",
+          "id": "16b3b637-9957-489d-8bd0-ec49bcf14538",
+          "partsJson": "[{\"type\":\"interaction\",\"id\":\"book:50db829c-377a-43f2-a84d-8c3a784e3c58:call_ann81_3|fc_ann81_3\",\"request\":{\"id\":\"book:50db829c-377a-43f2-a84d-8c3a784e3c58:call_ann81_3|fc_ann81_3\",\"threadKey\":\"book:50db829c-377a-43f2-a84d-8c3a784e3c58\",\"kind\":\"permission\",\"action\":\"delete-annotation\",\"subject\":\"ANN81 selected question: explain this synthetic marker.\"},\"state\":\"answered\",\"answer\":{\"optionId\":\"approve\",\"text\":\"Approved\"}},{\"type\":\"text\",\"text\":\"Controlled annotation approval round completed.\"}]",
+          "role": "assistant",
+          "seq": 7
+        }
+      ],
+      "remaining": null,
+      "text": "\nShelf\n\nContents\n\nNotes\nReading Context Policy Probe\n1 / 1 · 100%\n\nRead by sentence or paragraph\n\nReading appearance\n\nChat\n\nMore\n\nPrivacy sample\nSELECTION_MARKER_947\nANN81 selected question: explain this synthetic marker.\n\nCopy message\nResponses native protocol probe completed.\n\nCopy message\nANN81 cursor question: explain the current synthetic page.\n\nCopy message\nResponses native protocol probe completed.\n\nCopy message\nSELECTION_MARKER_947\nANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Please request confirmation before deleting this synthetic question trace.\n\nCopy message\n\nNot approved · Delete this annotation?\nControlled annotation approval round completed.\n\nCopy message\nANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Ask again; I will approve this synthetic trace deletion.\n\nCopy message\n\nApproved · Delete this annotation?\nControlled annotation approval round completed.\n\nCopy message\n\nRegenerate response\n\n"
+    },
+    "baseline": {
+      "hash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+      "plugins": [
+        {
+          "enabled": true,
+          "id": "annotation-desk",
+          "version": "0.7.0"
+        },
+        {
+          "enabled": true,
+          "id": "dictionary",
+          "version": "1.4.0"
+        },
+        {
+          "enabled": true,
+          "id": "editorial-themes",
+          "version": "1.0.0"
+        },
+        {
+          "enabled": true,
+          "id": "jumper",
+          "version": "0.8.0"
+        },
+        {
+          "enabled": true,
+          "id": "library-desk",
+          "version": "0.12.0"
+        },
+        {
+          "enabled": true,
+          "id": "listening-desk",
+          "version": "0.10.0"
+        },
+        {
+          "enabled": true,
+          "id": "maintenance-desk",
+          "version": "0.4.0"
+        },
+        {
+          "enabled": true,
+          "id": "memory-desk",
+          "version": "0.13.0"
+        },
+        {
+          "enabled": true,
+          "id": "reading-goals",
+          "version": "0.5.0"
+        },
+        {
+          "enabled": true,
+          "id": "rss-reader",
+          "version": "0.20.0"
+        },
+        {
+          "enabled": true,
+          "id": "sentence-reader",
+          "version": "1.1.0"
+        },
+        {
+          "enabled": true,
+          "id": "text-desk",
+          "version": "0.22.0"
+        },
+        {
+          "enabled": true,
+          "id": "tts",
+          "version": "0.6.0"
+        },
+        {
+          "enabled": true,
+          "id": "webdav-sync",
+          "version": "0.3.0"
+        },
+        {
+          "enabled": true,
+          "id": "workspace-profiles",
+          "version": "0.6.0"
+        }
+      ],
+      "rows": [
+        {
+          "content": "Memory policy probe UI history stays available.",
+          "conversationId": "e0ef3734-4486-4ef0-b167-326725ca9fa4",
+          "createdAt": "2026-09-09T00:54:18.490Z",
+          "id": "6d7a3ee2-0a84-40bd-a402-e90837d935f3",
+          "role": "user",
+          "seq": 0
+        },
+        {
+          "content": "Memory policy probe answer.",
+          "conversationId": "e0ef3734-4486-4ef0-b167-326725ca9fa4",
+          "createdAt": "2026-09-09T00:54:18.545Z",
+          "id": "7b62697e-cde1-47d2-b3b1-1f32635942a9",
+          "partsJson": "[{\"type\":\"text\",\"text\":\"Memory policy probe answer.\"}]",
+          "role": "assistant",
+          "seq": 1
+        }
+      ],
+      "selected": "\"__global__\""
+    },
+    "declinePrompt": {
+      "remaining": {
+        "anchor": "epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)",
+        "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+        "chapterHref": "0",
+        "createdAt": "2026-09-13T07:11:22.068Z",
+        "id": "05fb7c31-70f6-44cf-a2ef-4731a2d7c209",
+        "kind": "ask",
+        "text": "ANN81 selected question: explain this synthetic marker."
+      },
+      "text": "SELECTION_MARKER_947ANN81 selected question: explain this synthetic marker.Copy messageResponses native protocol probe completed.Copy messageANN81 cursor question: explain the current synthetic page.Copy messageResponses native protocol probe completed.Copy messageSELECTION_MARKER_947ANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Please request confirmation before deleting this synthetic question trace.Copy messageDelete this annotation?“ANN81 selected question: explain this synthetic marker.” will be permanently removed from your reading context.Delete annotationKeep it"
+    },
+    "declined": {
+      "messages": [
+        {
+          "attachmentsJson": "[{\"kind\":\"selection\",\"text\":\"SELECTION_MARKER_947\",\"cfiRange\":\"epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)\",\"chapterHref\":\"0\"}]",
+          "content": "ANN81 selected question: explain this synthetic marker.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:21.808Z",
+          "id": "932c5a9e-5cc9-42c2-8a79-72af67050da6",
+          "role": "user",
+          "seq": 0
+        },
+        {
+          "content": "Responses native protocol probe completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:22.079Z",
+          "id": "265d1d12-018a-4c53-98b4-751b95031c7e",
+          "partsJson": "[{\"type\":\"text\",\"text\":\"Responses native protocol probe completed.\"}]",
+          "role": "assistant",
+          "seq": 1
+        },
+        {
+          "content": "ANN81 cursor question: explain the current synthetic page.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:42.750Z",
+          "id": "9696146d-ab2b-486b-8f9e-394a66b3ef49",
+          "role": "user",
+          "seq": 2
+        },
+        {
+          "content": "Responses native protocol probe completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:42.857Z",
+          "id": "b0414140-c2a2-4e28-a6f3-91e2f7d32c02",
+          "partsJson": "[{\"type\":\"text\",\"text\":\"Responses native protocol probe completed.\"}]",
+          "role": "assistant",
+          "seq": 3
+        },
+        {
+          "attachmentsJson": "[{\"kind\":\"selection\",\"text\":\"SELECTION_MARKER_947\",\"cfiRange\":\"epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)\",\"chapterHref\":\"0\"}]",
+          "content": "ANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Please request confirmation before deleting this synthetic question trace.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:13:17.606Z",
+          "id": "ad08a2b8-d396-40cd-860a-8dbd9b209535",
+          "role": "user",
+          "seq": 4
+        },
+        {
+          "content": "Controlled annotation approval round completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:13:55.035Z",
+          "id": "96928185-be5c-419d-a267-7d22c5e5ec3d",
+          "partsJson": "[{\"type\":\"interaction\",\"id\":\"book:50db829c-377a-43f2-a84d-8c3a784e3c58:call_ann81_1|fc_ann81_1\",\"request\":{\"id\":\"book:50db829c-377a-43f2-a84d-8c3a784e3c58:call_ann81_1|fc_ann81_1\",\"threadKey\":\"book:50db829c-377a-43f2-a84d-8c3a784e3c58\",\"kind\":\"permission\",\"action\":\"delete-annotation\",\"subject\":\"ANN81 selected question: explain this synthetic marker.\"},\"state\":\"answered\",\"answer\":{\"optionId\":\"decline\",\"text\":\"Declined\"}},{\"type\":\"text\",\"text\":\"Controlled annotation approval round completed.\"}]",
+          "role": "assistant",
+          "seq": 5
+        }
+      ],
+      "remaining": {
+        "anchor": "epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)",
+        "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+        "chapterHref": "0",
+        "createdAt": "2026-09-13T07:11:22.068Z",
+        "id": "05fb7c31-70f6-44cf-a2ef-4731a2d7c209",
+        "kind": "ask",
+        "text": "ANN81 selected question: explain this synthetic marker."
+      },
+      "text": "\nShelf\n\nContents\n\nNotes\nReading Context Policy Probe\n1 / 1 · 100%\n\nRead by sentence or paragraph\n\nReading appearance\n\nChat\n\nMore\n\nPrivacy sample\nSELECTION_MARKER_947\nANN81 selected question: explain this synthetic marker.\n\nCopy message\nResponses native protocol probe completed.\n\nCopy message\nANN81 cursor question: explain the current synthetic page.\n\nCopy message\nResponses native protocol probe completed.\n\nCopy message\nSELECTION_MARKER_947\nANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Please request confirmation before deleting this synthetic question trace.\n\nCopy message\n\nNot approved · Delete this annotation?\nControlled annotation approval round completed.\n\nCopy message\n\nRegenerate response\n\n"
+    },
+    "first": {
+      "annotations": [
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:11:22.068Z",
+          "id": "05fb7c31-70f6-44cf-a2ef-4731a2d7c209",
+          "kind": "ask",
+          "text": "ANN81 selected question: explain this synthetic marker."
+        }
+      ],
+      "messages": [
+        {
+          "attachmentsJson": "[{\"kind\":\"selection\",\"text\":\"SELECTION_MARKER_947\",\"cfiRange\":\"epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)\",\"chapterHref\":\"0\"}]",
+          "content": "ANN81 selected question: explain this synthetic marker.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:21.808Z",
+          "id": "932c5a9e-5cc9-42c2-8a79-72af67050da6",
+          "role": "user",
+          "seq": 0
+        },
+        {
+          "content": "Responses native protocol probe completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:22.079Z",
+          "id": "265d1d12-018a-4c53-98b4-751b95031c7e",
+          "partsJson": "[{\"type\":\"text\",\"text\":\"Responses native protocol probe completed.\"}]",
+          "role": "assistant",
+          "seq": 1
+        }
+      ],
+      "session": {
+        "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+        "change": {
+          "origin": "system",
+          "reason": "controls"
+        },
+        "controls": {
+          "visible": true
+        },
+        "history": {
+          "canGoBack": false,
+          "canGoForward": false
+        },
+        "location": {
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "cfi": "epubcfi(/6/2!/4/2[one],/1:0,/4/1:107)",
+          "contentVersion": "sha256:d8b2b869c908ccbbee57cd685ae7e10a85fb0aa693cb3f1872ff20c1b3d458e3",
+          "fraction": 1,
+          "href": "0"
+        },
+        "mode": {
+          "availableModes": [
+            {
+              "defaultUnitId": "sentence",
+              "key": "sentence-reader:guided-reading",
+              "label": "Sentence Reader: Read by sentence or paragraph",
+              "units": [
+                {
+                  "id": "sentence",
+                  "label": "By sentence"
+                },
+                {
+                  "id": "paragraph",
+                  "label": "By paragraph"
+                }
+              ]
+            }
+          ],
+          "cfiRange": null,
+          "label": "Sentence Reader: Read by sentence or paragraph",
+          "modeKey": "sentence-reader:guided-reading",
+          "position": null,
+          "progress": null,
+          "requestedActive": false,
+          "status": "inactive",
+          "unavailableReason": null,
+          "unitId": "paragraph",
+          "units": [
+            {
+              "id": "sentence",
+              "label": "By sentence"
+            },
+            {
+              "id": "paragraph",
+              "label": "By paragraph"
+            }
+          ]
+        },
+        "pagination": {
+          "flow": "paginated",
+          "layout": "reflowable",
+          "screen": {
+            "count": 1,
+            "index": 0
+          },
+          "section": {
+            "count": 1,
+            "index": 0
+          }
+        },
+        "playback": {
+          "backend": null,
+          "cfiRange": null,
+          "fallback": false,
+          "owner": null,
+          "status": "unavailable",
+          "unavailableReason": "mode-inactive"
+        },
+        "readerDemand": {
+          "active": false,
+          "idleAt": 1789283466841,
+          "lastActivityAt": 1789283465341,
+          "reason": "relocate"
+        },
+        "revision": 26,
+        "selection": null,
+        "sessionId": "d9a67f76-3552-487b-ae36-599ebc4c680a",
+        "sourceRevision": "sha256:d8b2b869c908ccbbee57cd685ae7e10a85fb0aa693cb3f1872ff20c1b3d458e3",
+        "status": "ready",
+        "visibleText": "Privacy sampleBEFORE_MARKER_512. SELECTION_MARKER_947. VIEWPORT_MARKER_628. This is synthetic test text, not a user book.",
+        "visibleTextState": {
+          "source": "range",
+          "status": "available",
+          "truncated": false
+        }
+      }
+    },
+    "notes": {
+      "remaining": [
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one],/1:0,/4/1:107)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:14:25.846Z",
+          "id": "76c6bac0-1c7c-4b1b-8771-ae3c0116a0c1",
+          "kind": "ask",
+          "text": "ANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Ask again; I will approve this synthetic trace deletion."
+        },
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:13:55.023Z",
+          "id": "4b71897d-4115-4f31-b7d8-fcd28944b2fd",
+          "kind": "ask",
+          "text": "ANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Please request confirmation before deleting this synthetic question trace."
+        },
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one],/1:0,/4/1:107)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:11:42.852Z",
+          "id": "0c39b500-5b4a-40d0-9372-3b8bd2fbc076",
+          "kind": "ask",
+          "text": "ANN81 cursor question: explain the current synthetic page."
+        }
+      ],
+      "text": "Notes3Privacy sampleANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Ask again; I will approve this synthetic trace deletion.Sep 13ANN81_DELETE:05fb7c31-70f6-44cf-a2ef-4731a2d7c209 Please request confirmation before deleting this synthetic question trace.Sep 13ANN81 cursor question: explain the current synthetic page.Sep 13"
+    },
+    "reopened": {
+      "annotations": [
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one],/1:0,/4/1:107)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:11:42.852Z",
+          "id": "0c39b500-5b4a-40d0-9372-3b8bd2fbc076",
+          "kind": "ask",
+          "text": "ANN81 cursor question: explain the current synthetic page."
+        },
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:11:22.068Z",
+          "id": "05fb7c31-70f6-44cf-a2ef-4731a2d7c209",
+          "kind": "ask",
+          "text": "ANN81 selected question: explain this synthetic marker."
+        }
+      ],
+      "messages": [
+        {
+          "attachmentsJson": "[{\"kind\":\"selection\",\"text\":\"SELECTION_MARKER_947\",\"cfiRange\":\"epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)\",\"chapterHref\":\"0\"}]",
+          "content": "ANN81 selected question: explain this synthetic marker.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:21.808Z",
+          "id": "932c5a9e-5cc9-42c2-8a79-72af67050da6",
+          "role": "user",
+          "seq": 0
+        },
+        {
+          "content": "Responses native protocol probe completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:22.079Z",
+          "id": "265d1d12-018a-4c53-98b4-751b95031c7e",
+          "partsJson": "[{\"type\":\"text\",\"text\":\"Responses native protocol probe completed.\"}]",
+          "role": "assistant",
+          "seq": 1
+        },
+        {
+          "content": "ANN81 cursor question: explain the current synthetic page.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:42.750Z",
+          "id": "9696146d-ab2b-486b-8f9e-394a66b3ef49",
+          "role": "user",
+          "seq": 2
+        },
+        {
+          "content": "Responses native protocol probe completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:42.857Z",
+          "id": "b0414140-c2a2-4e28-a6f3-91e2f7d32c02",
+          "partsJson": "[{\"type\":\"text\",\"text\":\"Responses native protocol probe completed.\"}]",
+          "role": "assistant",
+          "seq": 3
+        }
+      ]
+    },
+    "second": {
+      "annotations": [
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one],/1:0,/4/1:107)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:11:42.852Z",
+          "id": "0c39b500-5b4a-40d0-9372-3b8bd2fbc076",
+          "kind": "ask",
+          "text": "ANN81 cursor question: explain the current synthetic page."
+        },
+        {
+          "anchor": "epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)",
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "chapterHref": "0",
+          "createdAt": "2026-09-13T07:11:22.068Z",
+          "id": "05fb7c31-70f6-44cf-a2ef-4731a2d7c209",
+          "kind": "ask",
+          "text": "ANN81 selected question: explain this synthetic marker."
+        }
+      ],
+      "messages": [
+        {
+          "attachmentsJson": "[{\"kind\":\"selection\",\"text\":\"SELECTION_MARKER_947\",\"cfiRange\":\"epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)\",\"chapterHref\":\"0\"}]",
+          "content": "ANN81 selected question: explain this synthetic marker.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:21.808Z",
+          "id": "932c5a9e-5cc9-42c2-8a79-72af67050da6",
+          "role": "user",
+          "seq": 0
+        },
+        {
+          "content": "Responses native protocol probe completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:22.079Z",
+          "id": "265d1d12-018a-4c53-98b4-751b95031c7e",
+          "partsJson": "[{\"type\":\"text\",\"text\":\"Responses native protocol probe completed.\"}]",
+          "role": "assistant",
+          "seq": 1
+        },
+        {
+          "content": "ANN81 cursor question: explain the current synthetic page.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:42.750Z",
+          "id": "9696146d-ab2b-486b-8f9e-394a66b3ef49",
+          "role": "user",
+          "seq": 2
+        },
+        {
+          "content": "Responses native protocol probe completed.",
+          "conversationId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "createdAt": "2026-09-13T07:11:42.857Z",
+          "id": "b0414140-c2a2-4e28-a6f3-91e2f7d32c02",
+          "partsJson": "[{\"type\":\"text\",\"text\":\"Responses native protocol probe completed.\"}]",
+          "role": "assistant",
+          "seq": 3
+        }
+      ]
+    },
+    "selected": {
+      "selection": {
+        "id": "ba94fdcd-c4fa-4972-95fa-d7383dd3b8ce",
+        "range": {
+          "bookId": "50db829c-377a-43f2-a84d-8c3a784e3c58",
+          "cfi": "epubcfi(/6/2!/4/2[one]/4,/1:19,/1:39)",
+          "contentVersion": "sha256:d8b2b869c908ccbbee57cd685ae7e10a85fb0aa693cb3f1872ff20c1b3d458e3"
+        },
+        "text": "SELECTION_MARKER_947",
+        "textLength": 20
+      },
+      "sessionId": "d9a67f76-3552-487b-ae36-599ebc4c680a",
+      "status": "completed"
+    }
+  },
+  "cleanup": {
+    "backupAbsent": true,
+    "book": null,
+    "books": [
+      {
+        "addedAt": "2026-09-08T14:23:58.647Z",
+        "author": "Unknown author",
+        "collectionId": null,
+        "fileName": "reading-paint-probe.pdf",
+        "fileSize": 3289,
+        "format": "pdf",
+        "id": "8ced004f-efe3-408f-80a8-a0ebffec84d3",
+        "lastOpenedAt": "2026-09-12T22:18:31.987Z",
+        "starred": false,
+        "title": "Reading Paint Probe",
+        "updatedAt": "2026-09-12T22:18:31.987Z"
+      },
+      {
+        "addedAt": "2026-09-08T14:21:21.622Z",
+        "author": "ReadAware Tests",
+        "collectionId": null,
+        "fileName": "reading-capability-probe.fb2",
+        "fileSize": 22220,
+        "format": "fb2",
+        "id": "07ef226e-1ebc-47b6-8dc9-d09109448d22",
+        "lastOpenedAt": "2026-09-12T21:58:05.361Z",
+        "narrativity": "narrative",
+        "starred": false,
+        "title": "Reading Capability Probe",
+        "updatedAt": "2026-09-12T21:58:05.361Z"
+      }
+    ],
+    "buildMemory": {
+      "path": "ai.preferences.buildMemory",
+      "target": {
+        "kind": "global"
+      },
+      "value": true
+    },
+    "config": null,
+    "fixtureKey": null,
+    "hash": "185d960aa1e6613c965d5bf39af96dea8692d7b70de0fec86a705e31e6cfe00a",
+    "originalMessageCount": 2,
+    "ownedAnnotations": [],
+    "ownedMessages": [],
+    "plugins": [
+      {
+        "enabled": true,
+        "id": "annotation-desk",
+        "version": "0.7.0"
+      },
+      {
+        "enabled": true,
+        "id": "dictionary",
+        "version": "1.4.0"
+      },
+      {
+        "enabled": true,
+        "id": "editorial-themes",
+        "version": "1.0.0"
+      },
+      {
+        "enabled": true,
+        "id": "jumper",
+        "version": "0.8.0"
+      },
+      {
+        "enabled": true,
+        "id": "library-desk",
+        "version": "0.12.0"
+      },
+      {
+        "enabled": true,
+        "id": "listening-desk",
+        "version": "0.10.0"
+      },
+      {
+        "enabled": true,
+        "id": "maintenance-desk",
+        "version": "0.4.0"
+      },
+      {
+        "enabled": true,
+        "id": "memory-desk",
+        "version": "0.13.0"
+      },
+      {
+        "enabled": true,
+        "id": "reading-goals",
+        "version": "0.5.0"
+      },
+      {
+        "enabled": true,
+        "id": "rss-reader",
+        "version": "0.20.0"
+      },
+      {
+        "enabled": true,
+        "id": "sentence-reader",
+        "version": "1.1.0"
+      },
+      {
+        "enabled": true,
+        "id": "text-desk",
+        "version": "0.22.0"
+      },
+      {
+        "enabled": true,
+        "id": "tts",
+        "version": "0.6.0"
+      },
+      {
+        "enabled": true,
+        "id": "webdav-sync",
+        "version": "0.3.0"
+      },
+      {
+        "enabled": true,
+        "id": "workspace-profiles",
+        "version": "0.6.0"
+      }
+    ],
+    "pluginsUnchanged": true,
+    "selected": "\"__global__\"",
+    "nativeBlobRecheck": {
+      "bookfileStorageUri": null,
+      "booktextStorageUri": null,
+      "ownedRemovalCleanup": 0,
+      "ownedImportCleanup": 0,
+      "method": "read-only SQLite; rows retained as tombstones, source and derived storage_uri both null"
+    }
+  },
+  "transport": {
+    "normalRounds": 2,
+    "normalServer": "scripts/reading-context-probe-server.ts, READAWARE_CONFIG_PROBE=1 READAWARE_RESPONSES_TEXT_ONLY=1",
+    "approvalRounds": 2,
+    "toolResults": [
+      {
+        "deleted": false,
+        "reason": "User declined."
+      },
+      {
+        "deleted": true,
+        "annotationId": "05fb7c31-70f6-44cf-a2ef-4731a2d7c209",
+        "annotationKind": "ask"
+      }
+    ],
+    "serverSessions": [
+      {
+        "id": 83348,
+        "exitCode": 130
+      },
+      {
+        "id": 81859,
+        "exitCode": 130
+      }
+    ],
+    "port19843": "No listener after both owned servers stopped"
+  },
+  "validation": [
+    "actual four mounted ChatPanel rounds and native re-reads",
+    "apps/web typecheck:desktop passed"
+  ],
+  "limits": [
+    "Controlled tool choice and fixed answers do not prove autonomous model selection or semantic quality.",
+    "Real host-issued search CFI and Foliate selectRange, then actual Ask AI action; no physical selection gesture, pixels, focus or CUA acceptance.",
+    "Close/reopen persisted two question traces and original four messages; no process restart or packaged build.",
+    "The two deletion requests themselves also generated new ask traces; deleting one ask does not clear its chat transcript.",
+    "No new cancellation, stale revision, failed persistence or Worker contract test; prior ANN06 port/Worker evidence reused.",
+    "Original conversation hash is SHA256 of JSON.stringify(native ai_chat_load result); ChatMessage projection serialization produces a different hash."
+  ]
+}
