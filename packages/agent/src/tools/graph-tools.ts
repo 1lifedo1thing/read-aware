@@ -49,6 +49,9 @@ export function buildGraphTools(scope: ThreadScope, deps: RuntimeDeps, turnState
       const digests = await deps.bookMemory.listDigests(target);
       const result = queryBookGraph(digests, query, boundary, book.narrativity);
       if (confirmSpoiler && turnState && ownBook && result.graph !== "empty" && result.graph !== "unavailable") turnState.spoilerGranted = true;
+      // Only the returned, boundary-filtered projection is answer evidence;
+      // never register the underlying unrestricted digest collection.
+      if (ownBook) turnState?.evidenceTexts.push(JSON.stringify(result));
       return textResult(result);
     },
   }];

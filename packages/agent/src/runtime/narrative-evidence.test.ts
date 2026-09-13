@@ -100,4 +100,16 @@ describe("narrative evidence boundary", () => {
     });
     expect(violations).toContainEqual({ kind: "future-phrase", phrase: "弑父" });
   });
+
+  test("does not treat recurring discourse words as future character names", () => {
+    const repeated = "随即说，随即走，随即来；表面看，表面说，表面走；接着说，接着走，接着来；角度说，角度看，角度来。";
+    const edition = book(["眼前的讨论。", repeated + repeated + repeated]);
+    const violations = inspectNarrativeEvidence({
+      answer: "随即说出判断；表面看起来如此；接着走下去；从这个角度说。",
+      readerText: "解释这一段",
+      cursor: { chapterIndex: 0, visibleText: "眼前的讨论。" },
+      book: edition,
+    });
+    expect(violations.filter((item) => item.kind === "future-name")).toEqual([]);
+  });
 });

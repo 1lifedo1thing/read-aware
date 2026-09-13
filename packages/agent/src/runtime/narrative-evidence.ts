@@ -48,6 +48,9 @@ const segmenter = new Segmenter("zh", { granularity: "word" });
 const QUOTED_SPAN = /[“「『"]([^”」』"\n]{2,80})[”」』"]/gu;
 const ATTRIBUTION_CUE = /(?:书中|原文|作者|文中|写道|写着|说过|说道|称为|名言|表述|quote|book|author|writes?|says?)/iu;
 const NAME_ACTIONS = "说问答道想看笑摇点走来回叫站坐拿望听";
+// These short words are common discourse vocabulary. Their recurrence next to
+// an action is not enough evidence that the model named a future character.
+const COMMON_NON_NAME_WORDS = new Set(["随即", "表面", "接着", "角度"]);
 const ENUMERATION = /([\p{Script=Han}A-Za-z]{2,6})[、/]([\p{Script=Han}A-Za-z]{2,6})([、/]|和|与|及)([\p{Script=Han}A-Za-z]{2,6})/gu;
 const ENUMERATION_CUE = /(?:核心|三种|三样|公式|所谓|书中|原文|文中|写|说|是|用|包括|分为|即)/u;
 const TRANSLITERATION_CHAR = /[阿埃艾爱安奥巴贝比波布达德迪多俄尔法费夫弗格哈赫胡基加捷杰卡凯柯克库拉莱勒雷里利罗洛马梅米姆穆娜尼诺帕佩皮普奇乔切日萨塞斯塔泰特托瓦维沃乌西希谢亚耶伊扎泽佐露莘乜甫辽]/gu;
@@ -312,6 +315,7 @@ export function inspectNarrativeEvidence(
     for (const word of words) {
       const normalized = normalizeEvidenceText(word);
       if (!/^[\p{Script=Han}]{2,3}$/u.test(normalized) || allowedPhrase(normalized)) continue;
+      if (COMMON_NON_NAME_WORDS.has(word)) continue;
       const futureCount = countOccurrences(unreadChapters, normalized);
       if (futureCount < 4) continue;
       const actionPattern = new RegExp(`${escapeRegExp(word)}[${NAME_ACTIONS}]`, "gu");

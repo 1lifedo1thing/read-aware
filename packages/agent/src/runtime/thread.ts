@@ -8,7 +8,7 @@
 import { Agent, type AgentEvent, type ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { Usage } from "@earendil-works/pi-ai";
 import type { ThreadChunk } from "../chunks";
-import { errorCode, ERR_AI_MEMORY_DISABLED, profileContextText, type ProfileContext } from "@read-aware/core";
+import { AppError, errorCode, ERR_AI_MEMORY_DISABLED, ERR_AI_PROVIDER, profileContextText, type ProfileContext } from "@read-aware/core";
 import { runMemoryBuild } from "../memory/build-policy";
 import { buildSystemPrompt } from "../context/system-prompt";
 import { extractMemories, extractMemoriesFromTranscript } from "../memory/extraction";
@@ -551,6 +551,10 @@ export class AgentThread {
       }
       const startedAt = new Date().toISOString();
       let runError: unknown;
+      let sawInteraction = false;
+      let sawReference = false;
+      let sawToolActivity = false;
+      const runMessageStart = agent.state.messages.length;
       const run = agent
         .prompt(promptText)
         .then(() => agent.waitForIdle())
@@ -604,6 +608,7 @@ export class AgentThread {
             }
             break;
           case "tool_execution_start":
+            sawToolActivity = true;
             yield {
               type: "tool-step",
               phase: "start",
@@ -628,12 +633,14 @@ export class AgentThread {
               partialResult?.details,
             );
             if (interaction?.phase === "request") {
+              sawInteraction = true;
               yield {
                 type: "interaction",
                 phase: "request",
                 request: interaction.request,
               };
             } else if (interaction?.phase === "response") {
+              sawInteraction = true;
               yield {
                 type: "interaction",
                 phase: "response",
@@ -644,6 +651,7 @@ export class AgentThread {
             break;
           }
           case "tool_execution_end": {
+            sawToolActivity = true;
             yield {
               type: "tool-step",
               phase: "end",
@@ -659,6 +667,7 @@ export class AgentThread {
                 (event.result as { details?: unknown } | undefined)?.details,
               );
               if (interaction?.phase === "response") {
+                sawInteraction = true;
                 yield {
                   type: "interaction",
                   phase: "response",
@@ -679,6 +688,7 @@ export class AgentThread {
                 reference = books.length ? { kind: "books", books } : undefined;
               }
               if (reference) {
+                sawReference = true;
                 yield { type: "reference", id: event.toolCallId, reference };
               }
             }
@@ -695,7 +705,18 @@ export class AgentThread {
       if (runError) throw classifyModelFailure(runError);
       if (agent.state.errorMessage) throw classifyModelFailure(agent.state.errorMessage);
 
-      let answer = lastAssistantText(agent.state.messages);
+      // Read only the messages produced by this invocation. If a provider ends
+      // after reasoning (with no text, tool call, or interaction), treating the
+      // previous assistant message as the answer would publish a false success.
+      const runMessages = agent.state.messages.slice(runMessageStart);
+      let answer = lastAssistantText(runMessages);
+      if (!answer.trim() && !bufferedText.trim() && !sawReference && !sawInteraction && !sawToolActivity) {
+        throw new AppError(
+          ERR_AI_PROVIDER,
+          "[ai/provider] Model returned an empty response",
+          { retryable: true },
+        );
+      }
       let discardUnsafeAgent = false;
       if (narrativeUnfinished) {
         const visibleDraft = bufferedText || stripEmoji(answer);

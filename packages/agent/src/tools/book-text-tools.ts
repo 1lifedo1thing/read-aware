@@ -108,14 +108,16 @@ export function buildBookTextTools(
       }
       // hrefs 是运行时的反查键（阅读位置 → 章节），对模型是纯噪音。
       // chapterNumber 让"第 N 章 → index"从心算变成查表——off-by-one 的根除。
-      return textResult(
-        toc.map(({ index, title, chars }) => ({
+      const entries = toc.map(({ index, title, chars }) => ({
           chapterIndex: index,
           chapterNumber: index + 1,
           title,
           chars,
-        })),
-      );
+        }));
+      // The rewriter must retain the same catalog metadata the reader's model
+      // received. This grants titles/indices, never the unread chapter prose.
+      if (target === defaultBookId) turnState?.evidenceTexts.push(JSON.stringify(entries));
+      return textResult(entries);
     },
   };
 

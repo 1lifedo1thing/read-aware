@@ -70,6 +70,17 @@ function parse(result: { content: Array<{ type: string; text?: string }> }): Rec
 }
 
 describe("query_book_graph", () => {
+  test("answer evidence keeps returned aliases without admitting future digests", async () => {
+    const { deps } = createInMemoryDeps({ books: [{ id: BOOK, title: "Novel", status: "reading", narrativity: "narrative" }], chapterDigests: { [BOOK]: DIGESTS } });
+    const state = createAgentTurnState();
+    state.bookMemoryBoundary = { kind: "before", chapterIndex: 1 };
+    const [tool] = buildGraphTools({ kind: "book", bookId: BOOK }, deps, state);
+    await tool!.execute("profiles", { names: ["米嘉", "斯乜尔加科夫"] });
+    const evidence = JSON.parse(state.evidenceTexts[0]!);
+    expect(evidence.profiles).toHaveLength(1);
+    expect(evidence.profiles[0].aliases).toContain("米嘉");
+    expect(JSON.stringify(evidence.profiles)).not.toContain("厨子");
+  });
   test("unclassified books are fenced and a former all-visible snapshot cannot bypass reclassification", async () => {
     const { deps } = createInMemoryDeps({ books: [{ id: BOOK, title: "Unknown", status: "reading" }], chapterDigests: { [BOOK]: DIGESTS } });
     const state = createAgentTurnState();

@@ -672,6 +672,32 @@ describe("AgentThread", () => {
     expect(captured?.messages).toHaveLength(1);
   });
 
+  test("a reasoning-only completion is surfaced as one retryable provider error", async () => {
+    const { faux, model } = makeFaux();
+    faux.setResponses([
+      fauxAssistantMessage(""),
+      fauxAssistantMessage("recovered"),
+    ]);
+    const { deps, turns } = makeDeps();
+    const thread = new AgentThread({
+      scope: { kind: "global", threadId: "empty-response" },
+      deps,
+      resolveModel: () => model,
+      getApiKey: () => "test-key",
+      completeFn: noopComplete,
+      streamFn: streamSimple,
+    });
+
+    await expect(collect(thread.sendTurn({ text: "q1" }))).rejects.toMatchObject({
+      code: "ai/provider",
+      retryable: true,
+    });
+    expect(turns.get("global:empty-response")).toBeUndefined();
+
+    await collect(thread.sendTurn({ text: "q1-retry" }));
+    expect(turns.get("global:empty-response")?.map((turn) => turn.content)).toEqual(["q1-retry", "recovered"]);
+  });
+
   test("reset discards the in-memory session and rebuilds from the persisted transcript", async () => {
     const { faux, model } = makeFaux();
     const contexts: Context[] = [];
