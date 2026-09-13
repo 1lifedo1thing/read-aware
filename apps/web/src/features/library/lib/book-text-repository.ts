@@ -4,6 +4,7 @@ import { extractBookText } from "./book-text-extraction";
 import { parseBookTextRecord, snapshotFromText, textComplete, type BookTextRecord, type ExtractedChapter } from "./book-text-record";
 
 import { BookTextScheduler } from "./book-text-scheduler";
+import { actorFromEvent, causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 
 export type TextSource = { contentVersion: string | null; format: string; revision?: string; available?: boolean };
 export type BookTextDependencies = {
@@ -14,9 +15,13 @@ export type BookTextDependencies = {
   content<T>(bookId: string, version: string, signal: AbortSignal, read: (book: FoliateBook) => Promise<T>): Promise<T>;
   yieldToReader(signal: AbortSignal, waiting?: (value: boolean) => void): Promise<void>;
   warn(message: string, error: unknown): void;
+  changed?(bookId: string, origin: DomainActor): void;
 };
 type PreparedText = { chapters: ExtractedChapter[]; state: BookTextSnapshot };
 export type TextPreparationOptions = {
+  /** Host-only request identity; never serialized into extracted text. */
+  origin?: DomainActor;
+  cancellationOrigin?(): DomainActor | undefined;
   rebuild?: boolean;
   priority?(): BookTextPriority;
   scheduling?(reason: BookTextWaitReason): void;
@@ -25,7 +30,7 @@ export type TextPreparationOptions = {
   /** Internal request checkpoint: reset completed, so a resumed rebuild must not erase new progress. */
   onRebuildReset?(): void;
 };
-type Job = { version: string; sourceRevision?: string; controller: AbortController; snapshot: BookTextSnapshot; promise: Promise<PreparedText>;
+type Job = { cause: object; version: string; sourceRevision?: string; controller: AbortController; snapshot: BookTextSnapshot; promise: Promise<PreparedText>;
   settled: boolean; waitReason: BookTextWaitReason; consumers: Map<symbol, TextPreparationOptions> };
 
 /** Owns extraction, durable verdicts and current-source reads. No independent chapter cache. */
@@ -35,6 +40,9 @@ export class BookTextRepository {
   private writes = new Map<string, Promise<void>>();
   private readonly scheduler: BookTextScheduler;
   constructor(private readonly deps: BookTextDependencies) { this.scheduler = new BookTextScheduler(deps.yieldToReader); }
+  private changed(bookId: string, origin: DomainActor): void {
+    try { this.deps.changed?.(bookId, origin); } catch (error) { this.deps.warn("Text availability observer failed", error); }
+  }
 
   private async source(bookId: string, fetchMissing = false): Promise<TextSource> {
     if (typeof bookId !== "string" || !bookId.trim()) throw new AppError("library/invalid-input", "A book ID is required");
@@ -81,12 +89,12 @@ export class BookTextRepository {
     return record && textComplete(record) ? record.chapters : null;
   }
 
-  async ensure(bookId: string, waitForPdf = false): Promise<ExtractedChapter[]> {
-    return (await this.request(bookId, waitForPdf, {})).chapters;
+  async ensure(bookId: string, waitForPdf = false, origin?: DomainActor): Promise<ExtractedChapter[]> {
+    return (await this.request(bookId, waitForPdf, { origin })).chapters;
   }
 
-  async chapter(bookId: string, index: number, version: string, signal?: AbortSignal): Promise<ExtractedChapter | undefined> {
-    const result = await this.request(bookId, true, { signal });
+  async chapter(bookId: string, index: number, version: string, signal?: AbortSignal, origin?: DomainActor): Promise<ExtractedChapter | undefined> {
+    const result = await this.request(bookId, true, { signal, origin });
     if (result.state.contentVersion !== version) throw new AppError("memory/conflict", "Chapter text belongs to another source");
     const chapter = result.chapters[index];
     if (chapter && chapter.text.length > 2 * 1024 * 1024) throw new AppError("memory/input-budget-exceeded", "Digest chapter exceeds its read budget");
@@ -109,6 +117,7 @@ export class BookTextRepository {
   /** A cancelled request releases its lease, not another reader's work. */
   private join(bookId: string, job: Job, options: TextPreparationOptions): Promise<PreparedText> {
     const token = Symbol();
+    job.cause = mergeEventCauses([job.cause, stampEventCause({}, options.origin)], {});
     job.consumers.set(token, options);
     return new Promise((resolve, reject) => {
       let finished = false;
@@ -116,8 +125,10 @@ export class BookTextRepository {
         options.signal?.removeEventListener("abort", abort);
         job.consumers.delete(token);
         if (!job.settled && !job.consumers.size) {
+          const cancelledBy = options.cancellationOrigin?.() ?? options.origin;
+          job.cause = mergeEventCauses([job.cause, stampEventCause({}, cancelledBy)], {});
           job.controller.abort(new AppError("library/text-cancelled", "No text preparation consumers remain"));
-          if (this.jobs.get(bookId) === job) this.jobs.delete(bookId);
+          if (this.jobs.get(bookId) === job) { this.jobs.delete(bookId); this.changed(bookId, actorFromEvent(job.cause)); }
         }
       };
       const abort = () => {
@@ -142,6 +153,7 @@ export class BookTextRepository {
   }
 
   private async request(bookId: string, waitForPdf: boolean, options: TextPreparationOptions): Promise<PreparedText> {
+    options = { ...options, origin: causalActor(options.origin ?? "system") };
     options.signal?.throwIfAborted();
     const source = await this.source(bookId, true);
     options.signal?.throwIfAborted();
@@ -163,10 +175,11 @@ export class BookTextRepository {
     if (!job) {
       // Install before asynchronous extraction, so callers share one parser.
       const controller = new AbortController();
-      const next: Job = { version, sourceRevision: source.revision, controller,
+      const next: Job = { cause: stampEventCause({}, options.origin), version, sourceRevision: source.revision, controller,
         snapshot: { bookId, contentVersion: version, status: "preparing", text: "unknown", chapterCount: 0, progress: null },
         settled: false, waitReason: null, consumers: new Map(), promise: Promise.resolve({ chapters: [], state: { bookId, contentVersion: version, status: "preparing", text: "unknown", chapterCount: 0, progress: null } }) };
       this.jobs.set(bookId, next); this.failures.delete(bookId);
+      this.changed(bookId, actorFromEvent(next.cause));
       const signal = controller.signal;
       const current = async () => {
         signal.throwIfAborted();
@@ -202,7 +215,9 @@ export class BookTextRepository {
         if (this.jobs.get(bookId) === next && !signal.aborted) this.failures.set(bookId, { version, sourceRevision: source.revision, code: errorCode(error) ?? "library/text-extraction-failed" });
         if (!signal.aborted) this.deps.warn("Book text extraction failed", error);
         throw error;
-      }).finally(() => { next.settled = true; if (this.jobs.get(bookId) === next) this.jobs.delete(bookId); });
+      }).finally(() => { next.settled = true; if (this.jobs.get(bookId) === next) {
+        this.jobs.delete(bookId); this.changed(bookId, actorFromEvent(next.cause));
+      } });
       job = next;
     }
     const pending = this.join(bookId, job, options);
@@ -214,9 +229,12 @@ export class BookTextRepository {
     return pending;
   }
 
-  async remove(bookId: string): Promise<void> {
+  async remove(bookId: string, origin: DomainActor = "system"): Promise<void> {
+    const actor = causalActor(origin);
     this.jobs.get(bookId)?.controller.abort(new AppError("library/book-not-found", "Book was removed"));
     this.jobs.delete(bookId); this.failures.delete(bookId);
+    this.changed(bookId, actor);
     await this.queueWrite(bookId, () => this.deps.remove(bookId));
+    this.changed(bookId, actor);
   }
 }

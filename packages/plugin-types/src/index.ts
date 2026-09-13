@@ -1821,8 +1821,9 @@ export type PluginDomains = {
     retryGraphTask(bookId: string, taskId: string, options?: import("@read-aware/core").BookGraphTaskOptions): Promise<import("@read-aware/core").BookGraphTaskSnapshot>;
   };
     events: {
-      /** Initial snapshot, then changed results/errors; bounded polling, not an event log. */
-      observe(query: import("@read-aware/core").MemoryObservationQuery, handler: (event: import("@read-aware/core").MemoryObservation) => unknown): PluginDisposable;
+      /** Initial snapshot, then changed results/errors; bounded polling, not an event log.
+       * Plugins 1.5 supplies a separate reaction delivery, including graph task updates. */
+      observe(query: import("@read-aware/core").MemoryObservationQuery, handler: PluginObservationHandler<import("@read-aware/core").MemoryObservation>): PluginDisposable;
     };
   };
   settings: PluginSettingsDomain;
@@ -2518,7 +2519,8 @@ export type PluginContext = {
    * also accepts the second callback argument from settings.observe,
    * library/conversations.observeInvalidation and storage.observeDocuments.
    * Plugins 1.4 adds annotations.events.observe, retaining causes through query
-   * retries and remote/restore invalidation. The snapshot contains no token. */
+   * retries and remote/restore invalidation. The snapshot contains no token.
+   * Plugins 1.5 also accepts memory.events.observe deliveries. */
   withEvent(event: PluginReactionEvent | undefined): PluginContext;
   readonly manifest: Readonly<PluginManifest>;
   readonly appVersion: string;

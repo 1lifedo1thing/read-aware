@@ -2,7 +2,8 @@
 import { AppError, type BookTextSnapshot } from "@read-aware/core";
 import { createTextTaskHistory } from "./book-text-history-storage";
 import { readingRuntime } from "../../../domain/reading-runtime";
-import { onAppEvent } from "../../../platform/app-events";
+import { emitAppEvent, onAppEvent } from "../../../platform/app-events";
+import { actorFromEvent, type DomainActor } from "../../../platform/domain-actor";
 import { deleteDesktopBlob, getDesktopBlob, getDesktopBlobInfo, putDesktopBlob } from "../../../platform/blob-store";
 import { createLogger } from "../../../platform/logger";
 import type { FoliateBook } from "../../reader/lib/foliate-engine";
@@ -57,19 +58,21 @@ const repository = new BookTextRepository({
     signal.throwIfAborted(); waiting?.(false); await yieldToUi(); signal.throwIfAborted();
   },
   warn: (message, error) => log.warn(message, error),
+  changed: (bookId, actor) => emitAppEvent("book-text-changed", { bookId }, actor),
 });
 
-onAppEvent("book-removed", ({ bookId }) => {
+onAppEvent("book-removed", event => {
+  const { bookId } = event;
   forgetVirtualTextSource(bookId);
-  void repository.remove(bookId).catch(error => log.warn("Removed book text cleanup failed", error));
+  void repository.remove(bookId, actorFromEvent(event)).catch(error => log.warn("Removed book text cleanup failed", error));
 });
 
 export const getBookTextSnapshot = (bookId: string): Promise<BookTextSnapshot> => repository.snapshot(bookId);
 export const createBookTextTaskOwner = (lifetime?: AbortSignal, origin: import("../../../platform/domain-actor").DomainActor = "user", trackCleanup?: (work: Promise<void>) => void) => new BookTextTaskOwner(repository, (message, error) => log.warn(message, error), lifetime, createTextTaskHistory(origin, trackCleanup));
-export const getDigestChapterSource = (bookId: string, index: number, version: string, signal?: AbortSignal) => repository.chapter(bookId, index, version, signal);
+export const getDigestChapterSource = (bookId: string, index: number, version: string, signal?: AbortSignal, origin?: DomainActor) => repository.chapter(bookId, index, version, signal, origin);
 export const getPersistedBookText = (bookId: string) => repository.persisted(bookId);
 // Borrow the active parser with its registered version, never attach a new hash to an old parser.
-export const ensureBookTextExtracted = (bookId: string, preopened?: FoliateBook) => repository.ensure(bookId, !!preopened);
+export const ensureBookTextExtracted = (bookId: string, preopened?: FoliateBook, origin?: DomainActor) => repository.ensure(bookId, !!preopened, origin);
 export async function getBookTextStatus(bookId: string): Promise<"ok" | "unextracted" | "textless"> {
   const state = await repository.snapshot(bookId);
   return state.status === "ready" ? state.text === "textless" ? "textless" : "ok" : "unextracted";

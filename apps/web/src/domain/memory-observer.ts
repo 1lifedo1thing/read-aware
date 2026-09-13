@@ -1,4 +1,5 @@
-import { AppError, errorCode, normalizeMemoryQuery, validateMemoryId, type MemoryObservation, type MemoryObservationQuery, type MemoryObservationResult } from "@read-aware/core";
+import { AppError, normalizeMemoryQuery, validateMemoryId, type MemoryObservation, type MemoryObservationQuery, type MemoryObservationResult } from "@read-aware/core";
+import { observeQuery, type QueryObservationSources } from "./query-observation";
 import { normalizeBookGraphQuery } from "@read-aware/agent";
 import { normalizeUserProfileQuery, normalizeMemoryPageQuery, normalizeProfileInspectionQuery } from "@read-aware/core";
 
@@ -39,34 +40,15 @@ export class MemoryObserver {
   constructor(private readonly deps: { schedule(work: () => void): () => void; report(error: unknown): void }) {}
 
   observe(input: MemoryObservationQuery, read: (query: MemoryObservationQuery) => Promise<MemoryObservationResult>,
-    handler: (event: MemoryObservation) => unknown, lifetime?: AbortSignal): () => void {
+    handler: (event: MemoryObservation) => unknown, lifetime?: AbortSignal,
+    sources?: (query: MemoryObservationQuery) => QueryObservationSources): () => void {
     const query = normalizeMemoryObservation(input);
     if (typeof handler !== "function") throw new AppError("memory/invalid-query", "Expected an observation callback");
     if (lifetime?.aborted) throw new AppError("memory/cancelled", "Memory observer owner retired");
     if (this.count >= 64) throw new AppError("memory/observer-limit", "Too many memory observers");
+    const dependencies = sources?.(query);
     ++this.count;
-    let disposed = false, revision = 0, settled: string | undefined, cancelTimer: (() => void) | undefined;
-    const dispose = () => {
-      if (disposed) return;
-      disposed = true; --this.count; cancelTimer?.(); cancelTimer = undefined;
-      lifetime?.removeEventListener("abort", dispose);
-    };
-    const poll = async () => {
-      let value: Omit<Extract<MemoryObservation, { status: "ready" }>, "revision"> | Omit<Extract<MemoryObservation, { status: "error" }>, "revision">;
-      try { value = { status: "ready", result: await read(structuredClone(query)) }; }
-      catch (error) { this.deps.report(error); value = { status: "error", errorCode: errorCode(error) ?? "memory/observation-failed" }; }
-      if (disposed) return;
-      // Compare before invoking untrusted callbacks; callback mutation cannot
-      // change the next query or falsely acknowledge a failed delivery.
-      const key = JSON.stringify(value);
-      if (key !== settled) {
-        try { await handler({ ...structuredClone(value), revision: ++revision }); settled = key; }
-        catch (error) { this.deps.report(error); }
-      }
-      if (!disposed) cancelTimer = this.deps.schedule(() => { cancelTimer = undefined; void poll(); });
-    };
-    lifetime?.addEventListener("abort", dispose, { once: true });
-    void poll();
-    return dispose;
+    return observeQuery(() => read(structuredClone(query)), handler,
+      { ...this.deps, failureCode: "memory/observation-failed", release: () => { --this.count; } }, lifetime, dependencies);
   }
 }

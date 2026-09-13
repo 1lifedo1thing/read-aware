@@ -10,6 +10,35 @@ const empty: DigestReport = { status: "complete", eligible: 0, attempted: 0, dig
 const next = () => new Promise(resolve => setTimeout(resolve, 0));
 function deferred() { let resolve!: () => void; const promise = new Promise<void>(r => { resolve = r; }); return { promise, resolve }; }
 
+test("graph invalidations retain execution context, cancellation feedback and the caller causing eviction", async () => {
+  const gate = deferred(), start = {}, cancel = {}, retry = {}, eviction = {};
+  const observed: { bookId: string; kind: string; taskId: string; context: unknown }[] = [], executionContexts: unknown[] = [];
+  const owner = new BookGraphTaskOwner<object>(async (input, context) => {
+    executionContexts.push(context); input.onStarted(); await gate.promise;
+    return { ...empty, status: "partial", remaining: 1 };
+  }, () => {});
+  const stop = owner.subscribeChanges((change, context) => { observed.push({ ...change, context }); });
+  const task = await owner.start("b", "catch-up", undefined, undefined, start);
+  expect(observed.map(item => item.context)).toEqual([start, start]);
+  await owner.cancel("b", task.taskId, cancel); gate.resolve(); await owner.drain();
+  expect(observed.slice(2).map(item => item.context)).toEqual([cancel, cancel]);
+  expect(executionContexts).toEqual([start]);
+  await owner.retry("b", task.taskId, undefined, undefined, retry); await owner.drain();
+  expect(executionContexts[executionContexts.length - 1]).toBe(retry); expect(observed[observed.length - 1]?.context).toBe(retry);
+  for (let i = 0; i < 63; i++) { await owner.start("b", "catch-up", undefined, undefined, eviction); await owner.drain(); }
+  expect(observed.find(item => item.kind === "removed")).toEqual({ bookId: "b", taskId: task.taskId, kind: "removed", context: eviction });
+  const count = observed.length; stop(); await owner.start("b", "catch-up"); await owner.drain(); expect(observed).toHaveLength(count);
+  owner.dispose(); expect(() => owner.subscribeChanges(() => {})).toThrow(expect.objectContaining({ code: "memory/cancelled" }));
+});
+
+test("reentrant cancellation from a queued invalidation cannot recurse or dispatch execution", async () => {
+  let calls = 0, notifications = 0;
+  const owner = new BookGraphTaskOwner(async () => { calls++; return empty; }, () => {});
+  owner.subscribeChanges(change => { notifications++; void owner.cancel(change.bookId, change.taskId); });
+  const task = await owner.start("b", "catch-up"); await owner.drain();
+  expect(calls).toBe(0); expect(notifications).toBe(3); expect((await owner.get("b", task.taskId)).status).toBe("cancelled"); owner.dispose();
+});
+
 test("shared task ownership retains distinct host contexts after dispatch and uses the retry caller's context", async () => {
   const gate = deferred(), first = {}, second = {}, retry = {};
   const received: unknown[] = [];

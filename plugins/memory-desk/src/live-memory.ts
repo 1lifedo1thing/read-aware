@@ -26,11 +26,12 @@ export async function liveMemoryView(ctx: PluginContext, query: MemoryObservatio
     : render(sample);
   return { ...content(), live: { subscribe(channel) {
     let disposed = false, revision = 0;
-    const subscription = memory.events.observe(query, async event => {
-      if (disposed) return;
+    const subscription = memory.events.observe(query, async (event, delivery) => {
+      if (disposed || delivery?.reaction?.status === "cycle") return;
+      const reaction = ctx.withEvent(delivery);
       if (event.status === "ready") { sample = event.result; failure = undefined; }
       else { sample = undefined; failure = event.errorCode; }
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: content() });
+      await reaction.services.ui.publishView(channel, { revision: ++revision, view: content() });
     });
     return { dispose() { disposed = true; subscription.dispose(); } };
   } } };

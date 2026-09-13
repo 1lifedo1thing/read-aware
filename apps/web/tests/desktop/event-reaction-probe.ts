@@ -2,6 +2,14 @@ import type { PluginModule } from "@read-aware/plugin-types";
 
 const plugin: PluginModule = {
   activate(ctx) {
+    if (ctx.manifest.description === "memory-observation-reaction") {
+      ctx.domains.memory!.events.observe({ kind: "inspect", memoryId: "m" }, async (snapshot, delivery) => {
+        if (snapshot.status !== "ready" || "reaction" in snapshot) throw new Error("Memory snapshot shape changed");
+        const bound = ctx.withEvent(delivery); await Promise.resolve();
+        await bound.domains.memory!.commands!.mutate({ op: "correct", memoryId: "m", expectedRevision: `mem1:${"a".repeat(64)}`, content: "changed" });
+      });
+      return;
+    }
     if (ctx.manifest.description === "annotation-observation-reaction") {
       ctx.domains.annotations!.events.observe({ kind: "page", query: { bookId: "b" } }, async (snapshot, delivery) => {
         if (snapshot.status !== "ready" || "reaction" in snapshot) throw new Error("Annotation snapshot shape changed");

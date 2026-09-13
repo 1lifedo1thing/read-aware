@@ -12,7 +12,8 @@ export interface BookGraphTaskExecution {
   onChapterCommitted(chapter: number): void;
   onReport(report: DigestReport): void;
 }
-type Task<TContext = unknown> = { context?: TContext; state: BookGraphTaskSnapshot; controller: AbortController; pending?: Set<number>; settled?: Promise<void>; detach(): void };
+type Task<TContext = unknown> = { context?: TContext; feedbackContext?: TContext; state: BookGraphTaskSnapshot; controller: AbortController; pending?: Set<number>; settled?: Promise<void>; detach(): void };
+export type BookGraphTaskChange = Readonly<{ bookId: string; taskId: string; kind: "changed" | "removed" }>;
 const active = (task: Task) => ["queued", "running", "cancelling"].includes(task.state.status);
 const cancelled = () => new AppError("memory/cancelled", "Graph task cancelled");
 
@@ -20,6 +21,7 @@ const cancelled = () => new AppError("memory/cancelled", "Graph task cancelled")
 export class BookGraphTaskOwner<TContext = undefined> implements BookGraphTaskPort {
   private readonly tasks = new Map<string, Task<TContext>>();
   private readonly executions = new Set<Promise<void>>();
+  private readonly listeners = new Set<(change: BookGraphTaskChange, context?: TContext) => void>();
   private stopped = false;
   constructor(private readonly execute: (input: BookGraphTaskExecution, context?: TContext) => Promise<DigestReport>,
     private readonly warn: (message: string, error: unknown) => void, lifetime?: AbortSignal) {
@@ -27,6 +29,17 @@ export class BookGraphTaskOwner<TContext = undefined> implements BookGraphTaskPo
     else lifetime?.addEventListener("abort", () => this.dispose(), { once: true });
   }
   private assertLive() { if (this.stopped) throw cancelled(); }
+  /** Host invalidation only; context is never part of a public task snapshot. */
+  subscribeChanges(listener: (change: BookGraphTaskChange, context?: TContext) => void): () => void {
+    this.assertLive(); this.listeners.add(listener); return () => { this.listeners.delete(listener); };
+  }
+  private notify(task: Task<TContext>, kind: BookGraphTaskChange["kind"] = "changed", context = task.feedbackContext ?? task.context) {
+    const change = Object.freeze({ bookId: task.state.bookId, taskId: task.state.taskId, kind });
+    for (const listener of [...this.listeners]) {
+      if (this.stopped) break;
+      try { listener(change, context); } catch (error) { this.warn("Graph task observer failed", error); }
+    }
+  }
   private lookup(bookId: string, taskId: string) {
     this.assertLive(); validateClassificationBookId(bookId);
     const task = this.tasks.get(taskId);
@@ -36,6 +49,7 @@ export class BookGraphTaskOwner<TContext = undefined> implements BookGraphTaskPo
   private update(task: Task<TContext>, change: Partial<BookGraphTaskSnapshot>) {
     if (!active(task)) return;
     task.state = { ...task.state, ...change, revision: task.state.revision + 1, updatedAt: new Date().toISOString() };
+    this.notify(task);
   }
   async start(bookId: string, mode: "catch-up" | "rebuild", options?: BookGraphTaskOptions, signal?: AbortSignal, context?: TContext) {
     return this.create(bookId, mode, normalizeBookGraphTaskOptions(options), undefined, undefined, signal, context);
@@ -47,8 +61,10 @@ export class BookGraphTaskOwner<TContext = undefined> implements BookGraphTaskPo
     if ([...this.tasks.values()].filter(active).length >= 16) throw new AppError("memory/task-limit", "Too many active graph requests for this actor", { retryable: true });
     for (const [id, task] of this.tasks) {
       if (this.tasks.size < 64) break;
-      if (!active(task)) this.tasks.delete(id);
+      if (!active(task)) { this.tasks.delete(id); this.notify(task, "removed", context); }
     }
+    this.assertLive();
+    if (signal?.aborted) throw cancelled();
     const now = new Date().toISOString(), controller = new AbortController();
     const abort = () => this.abort(task);
     const task: Task<TContext> = { context, controller, pending: targets && new Set(targets), detach: () => signal?.removeEventListener("abort", abort), state: {
@@ -62,6 +78,7 @@ export class BookGraphTaskOwner<TContext = undefined> implements BookGraphTaskPo
     task.settled = work;
     this.executions.add(work);
     void work.then(() => this.executions.delete(work), () => this.executions.delete(work));
+    this.notify(task);
     return initial;
   }
   private async run(task: Task<TContext>, targets?: number[]) {
@@ -95,13 +112,14 @@ export class BookGraphTaskOwner<TContext = undefined> implements BookGraphTaskPo
     this.assertLive(); validateClassificationBookId(bookId);
     return [...this.tasks.values()].filter(task => task.state.bookId === bookId).map(task => structuredClone(task.state));
   }
-  private abort(task: Task<TContext>) {
-    if (!active(task) || task.controller.signal.aborted) return;
+  private abort(task: Task<TContext>, context?: TContext) {
+    if (!active(task) || task.controller.signal.aborted || task.state.status === "cancelling") return;
+    task.feedbackContext = context ?? task.context;
     this.update(task, { status: "cancelling" });
     task.controller.abort(cancelled());
   }
-  async cancel(bookId: string, taskId: string) {
-    const task = this.lookup(bookId, taskId); this.abort(task); return structuredClone(task.state);
+  async cancel(bookId: string, taskId: string, context?: TContext) {
+    const task = this.lookup(bookId, taskId); this.abort(task, context); return structuredClone(task.state);
   }
   async retry(bookId: string, taskId: string, options?: BookGraphTaskOptions, signal?: AbortSignal, context?: TContext) {
     const task = this.lookup(bookId, taskId);
@@ -112,6 +130,7 @@ export class BookGraphTaskOwner<TContext = undefined> implements BookGraphTaskPo
   dispose() {
     if (this.stopped) return;
     this.stopped = true;
+    this.listeners.clear();
     for (const task of this.tasks.values()) { task.detach(); this.abort(task); }
     this.tasks.clear();
   }

@@ -1,6 +1,7 @@
 import { classifyBookIfUnclassified } from "./book-classification";
 import type { DomainActor } from "../platform/domain-actor";
 import { createBookMemoryPort } from "../features/ai/agent/ports/book-memory-port";
+import { createBookTextPort } from "../features/ai/agent/ports/book-text-port";
 import { BookGraphTaskOwner } from "@read-aware/agent";
 import { AppError } from "@read-aware/core";
 import { getBookRecord } from "../features/library/lib/library-db";
@@ -25,7 +26,7 @@ export function createBookGraphTasks(lifetime?: AbortSignal, trackCleanup?: (wor
     input.signal.throwIfAborted();
     const runtime = getAgentRuntime();
     if (!runtime) throw new AppError("ai/not-configured", "Graph tasks require a configured model");
-    return runtime.runBookGraphTask({ ...input, bookMemory: createBookMemoryPort(actor),
+    return runtime.runBookGraphTask({ ...input, bookMemory: createBookMemoryPort(actor), bookText: createBookTextPort(actor),
       classifyBookIfUnclassified: (bookId, flavor, signal) => classifyBookIfUnclassified(bookId, flavor, signal, actor),
       resolveBoundary: () => resolveBoundary(input.bookId) });
   }, (message, error) => log.warn(message, error), lifetime);

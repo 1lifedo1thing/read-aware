@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { AppError, type BookTextSnapshot, type BookTextTaskSnapshot } from "@read-aware/core";
 import { BookTextTaskOwner } from "./book-text-tasks";
+import { causalActor } from "../../../platform/domain-actor";
 import type { TextPreparationOptions } from "./book-text-repository";
 
 function deferred<T>() {
@@ -20,6 +21,18 @@ function harness(lifetime?: AbortSignal) {
   }, (_message, error) => { warnings.push(error); }, lifetime);
   return { owner, work, warnings, failRead: (error: unknown) => { readError = error; } };
 }
+
+test("text request source is captured per run, including pause and a later independent resume", async () => {
+  const h = harness(), start = causalActor("plugin:start"), pause = causalActor("plugin:pause"), resume = causalActor("user");
+  const task = await h.owner.start("book", {}, start), first = h.work[0]!.options;
+  expect(first.origin).toBe(start);
+  h.owner.pause("book", task.taskId, pause); expect(first.cancellationOrigin?.()).toBe(pause);
+  h.owner.resume("book", task.taskId, resume);
+  expect(h.work[1]!.options.origin).toBe(resume); expect(first.cancellationOrigin?.()).toBe(pause);
+  h.work[0]!.result.resolve(state("book", "ready")); await settle();
+  expect(h.owner.get("book", task.taskId).status).toBe("running");
+  h.work[1]!.result.resolve(state("book", "ready")); await settle(); expect(h.owner.get("book", task.taskId).status).toBe("completed"); h.owner.dispose();
+});
 
 test("task receipts are actor/book scoped, cloned, and not completion acknowledgements", async () => {
   const h = harness(); const other = harness();

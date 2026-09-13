@@ -30,8 +30,8 @@ test("Agent and authorized plugin task controls use the same owner seam and reti
   expect(await commands.pauseTextTask("book", "task")).toEqual(task);
   expect(await agent.resume("book", "task")).toMatchObject({ status: "running", revision: 3 });
   expect(await commands.resumeTextTask("book", "task")).toMatchObject({ status: "running", revision: 3 });
-  expect(pause.mock.calls).toEqual([["book", "task"], ["book", "task"]]);
-  expect(resume.mock.calls).toEqual([["book", "task"], ["book", "task"]]);
+  expect(pause.mock.calls).toEqual([["book", "task", "agent"], ["book", "task", "plugin:text-control"]]);
+  expect(resume.mock.calls).toEqual([["book", "task", "agent"], ["book", "task", "plugin:text-control"]]);
   writer.lifecycle.stop();
   expect(() => commands.setTextTaskPriority("book", "task", "normal")).toThrow();
   expect(() => commands.resumeTextTask("book", "task")).toThrow();

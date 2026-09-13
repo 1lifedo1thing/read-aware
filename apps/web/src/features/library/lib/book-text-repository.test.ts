@@ -3,6 +3,7 @@ import { AppError } from "@read-aware/core";
 import type { FoliateBook } from "../../reader/lib/foliate-engine";
 import { BookTextRepository, type TextSource } from "./book-text-repository";
 import { parseBookTextRecord, type BookTextRecord } from "./book-text-record";
+import { actorCause, causalActor, reactionActor, type DomainActor } from "../../../platform/domain-actor";
 
 function deferred<T = void>() {
   let resolve!: (value: T) => void;
@@ -16,7 +17,7 @@ function harness(book = makeBook([async () => prose])) {
   let exists = true, saved: unknown = null, parses = 0;
   let sourceError: unknown, writeError: unknown;
   let beforeWrite = async () => {};
-  const warnings: unknown[] = [], sourceReads: boolean[] = [], signals: AbortSignal[] = [];
+  const warnings: unknown[] = [], sourceReads: boolean[] = [], signals: AbortSignal[] = [], changes: DomainActor[] = [];
   const repo = new BookTextRepository({
     source: async (_id, fetch) => {
       sourceReads.push(fetch);
@@ -29,13 +30,42 @@ function harness(book = makeBook([async () => prose])) {
     remove: async () => { saved = null; },
     content: async (_id, _version, signal, read) => { parses++; signals.push(signal); return read(book); },
     yieldToReader: async () => {}, warn: (_message, error) => { warnings.push(error); },
+    changed: (_bookId, actor) => { changes.push(actor); },
   });
-  return { repo, warnings, sourceReads, signals, saved: () => saved, parses: () => parses,
+  return { repo, warnings, sourceReads, signals, changes, saved: () => saved, parses: () => parses,
     source: (value: TextSource) => { source = value; }, book: (value: FoliateBook) => { book = value; },
     exists: (value: boolean) => { exists = value; }, seed: (value: unknown) => { saved = value; },
     sourceError: (value?: unknown) => { sourceError = value; }, writeError: (value?: unknown) => { writeError = value; },
     beforeWrite: (value: () => Promise<void>) => { beforeWrite = value; } };
 }
+
+test("shared text completion preserves both steps of one causal path outside persisted text", async () => {
+  const entered = deferred(), gate = deferred<string>(), joined = deferred();
+  const h = harness(makeBook([async () => { entered.resolve(); return gate.promise; }]));
+  const root = causalActor("user"), first = reactionActor("plugin:a", "a", actorCause(root)!);
+  const second = reactionActor("plugin:b", "b", actorCause(first)!);
+  const a = h.repo.prepare("book", { origin: first }); await entered.promise;
+  const b = h.repo.prepare("book", { origin: second, progress: () => joined.resolve() }); await joined.promise;
+  expect(await h.repo.persisted("book")).toBeNull(); gate.resolve(prose); await Promise.all([a, b]);
+  const cause = actorCause(h.changes.at(-1)!)!;
+  expect(cause.root).toBe(actorCause(root)!.root);
+  for (const rule of ["a", "b"]) expect(() => reactionActor("plugin:again", rule, cause)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+  expect(JSON.stringify(h.saved())).not.toContain(cause.root); expect(await h.repo.persisted("book")).toHaveLength(1);
+});
+
+test("last lease cancellation keeps its source, while a late old completion cannot relabel a replacement", async () => {
+  const entered = deferred(), gate = deferred<string>();
+  const h = harness(makeBook([async () => { entered.resolve(); return gate.promise; }]));
+  const original = causalActor("user"), cancel = reactionActor("plugin:cancel", "cancel", actorCause(original)!);
+  const signal = new AbortController();
+  const pending = h.repo.prepare("book", { origin: original, signal: signal.signal, cancellationOrigin: () => cancel }).catch(error => error);
+  await entered.promise; signal.abort(); await pending;
+  expect(actorCause(h.changes.at(-1)!)?.steps).toContain("cancel");
+  const replacement = causalActor("user"); h.book(makeBook([async () => prose]));
+  await h.repo.prepare("book", { origin: replacement }); const count = h.changes.length;
+  gate.resolve(prose + " obsolete"); await new Promise(resolve => setTimeout(resolve, 0));
+  expect(h.changes).toHaveLength(count); expect(actorCause(h.changes.at(-1)!)?.root).toBe(actorCause(replacement)!.root);
+});
 
 test("status reads never start extraction or fetch missing source; missing is not textless", async () => {
   const h = harness();

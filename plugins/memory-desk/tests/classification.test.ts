@@ -17,6 +17,7 @@ function fixture(write = true) {
     ...(write ? { commands: { classify: async (input: BookClassificationChange) => { writes.push(input); } } } : {}),
     events: { observe: (_: unknown, callback: typeof handler) => { handler = callback; return { dispose() { stopped = true; } }; } },
   } }, services: { ui: { publishView: async (_: unknown, update: PluginViewUpdate) => { updates.push(update); } } } } as unknown as PluginContext;
+  ctx.withEvent = () => ctx;
   return { ctx, snapshot, writes, updates, emit: (event: MemoryObservation) => handler(event), stopped: () => stopped };
 }
 test("classification read-only views do not grant mutation and explicit forms require confirmation", async () => {

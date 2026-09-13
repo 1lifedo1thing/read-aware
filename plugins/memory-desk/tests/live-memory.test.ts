@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { MemoryObservation, MemoryObservationQuery, MemorySnapshot, MemoryRecord, PluginContext, PluginDetailView, PluginFormView, PluginViewUpdate } from "@read-aware/plugin-types";
+import type { MemoryObservation, MemoryObservationQuery, MemorySnapshot, MemoryRecord, PluginContext, PluginDetailView, PluginFormView, PluginViewUpdate, PluginReactionEvent } from "@read-aware/plugin-types";
 import { memories } from "../src/views";
 import { memoryDetail } from "../src/management";
 import { graphView } from "../src/graph";
@@ -27,7 +27,7 @@ test("shared observation adapter routes profileContext to its matching query, ne
 });
 
 function fixture() {
-  let handler!: (event: MemoryObservation) => unknown, stopped = 0;
+  let handler!: (event: MemoryObservation, delivery?: PluginReactionEvent) => unknown, stopped = 0;
   const requests: MemoryObservationQuery[] = [], updates: PluginViewUpdate[] = [], writes: unknown[] = [];
   const snapshot = (content: string, revision: string, pinned = false): MemorySnapshot => ({ revision,
     memory: { id: "m", scope: "user", kind: "fact", content, importance: 0.5, evidenceCount: 1, createdAt: "now", updatedAt: "now", pinned } });
@@ -37,8 +37,25 @@ function fixture() {
     commands: { mutate: async (input: unknown) => { writes.push(input); } },
     events: { observe: (query: MemoryObservationQuery, callback: typeof handler) => { requests.push(query); handler = callback; return { dispose() { stopped++; } }; } },
   } }, services: { ui: { publishView: async (_: unknown, update: PluginViewUpdate) => { updates.push(update); return { status: "applied" }; } } } } as unknown as PluginContext;
-  return { ctx, requests, updates, writes, snapshot, emit: (event: MemoryObservation) => handler(event), stopped: () => stopped };
+  ctx.withEvent = () => ctx;
+  return { ctx, requests, updates, writes, snapshot, emit: (event: MemoryObservation, delivery?: PluginReactionEvent) => handler(event, delivery), stopped: () => stopped };
 }
+
+test("automatic memory publication uses the event binding while later user actions keep their original context", async () => {
+  const f = fixture(), bound: unknown[] = [], published: PluginViewUpdate[] = [];
+  const reaction = { ...f.ctx, services: { ...f.ctx.services, ui: { ...f.ctx.services.ui,
+    publishView: async (_channel: unknown, update: PluginViewUpdate) => { published.push(update); return { status: "applied" as const }; },
+  } } };
+  f.ctx.withEvent = delivery => { bound.push(delivery); return reaction; };
+  const view = await memoryDetail(f.ctx, "m", () => memories(f.ctx, "user"));
+  const subscription = await view.live!.subscribe({ id: "channel" });
+  const event = { status: "ready" as const, revision: 1, result: { kind: "inspect" as const, snapshot: f.snapshot("Updated", "mem1:b") } };
+  const delivery = { reaction: { id: "lease", status: "ready" as const } };
+  await f.emit(event, delivery); expect(bound).toEqual([delivery]); expect(f.updates).toEqual([]);
+  await (published[0]!.view as PluginDetailView).actions!.find(action => action.id === "pin")!.run();
+  expect(f.writes).toHaveLength(1);
+  await f.emit(event, { reaction: { id: "cycle", status: "cycle" } }); expect(published).toHaveLength(1); subscription.dispose();
+});
 test("live search changes results, clears failed content/actions and recovers without an empty-state lie", async () => {
   const f = fixture(), view = await memories(f.ctx, "user", "term");
   const subscription = await view.live!.subscribe({ id: "channel" });

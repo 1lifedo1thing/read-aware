@@ -10,6 +10,7 @@ function fixture() {
     commands: { startGraphTask: async (...args: unknown[]) => { calls.push(args); return task; }, retryGraphTask: async (...args: unknown[]) => { calls.push(args); return task; }, cancelGraphTask: async () => { task.status = "cancelling"; return task; } },
     events: { observe: (_: unknown, listener: typeof handler) => { handler = listener; return { dispose() { stopped = true; } }; } },
   } }, services: { ui: { publishView: async (_: unknown, update: PluginViewUpdate) => { updates.push(update); } } } } as unknown as PluginContext;
+  ctx.withEvent = () => ctx;
   return { ctx, task, calls, updates, stopped: () => stopped, emit: (event: MemoryObservation) => handler(event) };
 }
 test("task strings cover all locales, start and rebuild require confirmation", async () => {

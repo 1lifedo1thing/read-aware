@@ -115,6 +115,24 @@ test("real Worker annotation observations bind conditional edits across await wi
   expect(await s.next(message => message.t === "result" && message.id === 937)).toMatchObject({ ok: true });
 });
 
+test("real Worker memory observations retain the host lease through conditional mutation", async () => {
+  const s = sandbox("memory-observation-reaction", "event-reaction-probe.ts", {
+    shape: { domains: { memory: { events: { observe: "fn" }, commands: { mutate: "fn" } } }, services: {}, contributions: {} },
+  });
+  const registration = await s.next(message => message.method === "domains.memory.events.observe");
+  const args = data(registration.args!) as [object, () => string]; expect(args[0]).toEqual({ kind: "inspect", memoryId: "m" });
+  const handle = args[1]();
+  s.worker.postMessage({ t: "result", id: registration.id, ok: true, value: null, disposable: "memory-subscription" });
+  await s.next(message => message.t === "ready"); s.worker.postMessage({ t: "sync", patch: { phase: "active" } });
+  const reaction = { id: "memory-lease", status: "ready" };
+  s.worker.postMessage({ t: "invoke", id: 938, handle, args: [{ status: "ready", revision: 1, result: { kind: "inspect", snapshot: null } }, { reaction }] });
+  const call = await s.next(message => message.method === "domains.memory.commands.mutate");
+  expect((call as unknown as { reaction: unknown }).reaction).toEqual(reaction);
+  expect(data(call.args!)).toEqual([{ op: "correct", memoryId: "m", expectedRevision: `mem1:${"a".repeat(64)}`, content: "changed" }]);
+  s.worker.postMessage({ t: "result", id: call.id, ok: true, value: { memoryId: "m", revision: "next" } });
+  expect(await s.next(message => message.t === "result" && message.id === 938)).toMatchObject({ ok: true });
+});
+
 test.each([undefined, 0, 2, "1"])("real Worker rejects incompatible boot version %s before loading plugin code", async protocolVersion => {
   const s = sandbox("must-not-activate", "wire-probe.ts", { protocolVersion });
   expect(await s.next(message => message.t === "failed")).toMatchObject({ error: "Host protocol or transport version rejected" });

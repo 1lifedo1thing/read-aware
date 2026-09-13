@@ -87,8 +87,8 @@ export function toBookSummary(book: LibraryBook): BookSummary {
 
 const notifyLibraryChanged = (actor: DomainActor): void => emitAppEvent("library-changed", {}, actor);
 
-export async function getExtractedChapters(bookId: string): Promise<ExtractedChapter[]> {
-  return ensureBookTextExtracted(bookId);
+export async function getExtractedChapters(bookId: string, origin?: DomainActor): Promise<ExtractedChapter[]> {
+  return ensureBookTextExtracted(bookId, undefined, origin);
 }
 
 export async function getPersistedChapters(bookId: string): Promise<ExtractedChapter[] | null> {
@@ -192,20 +192,20 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
       listReferences: listBookReferences,
       listImages: listBookImages,
       readReference: readBookReference,
-      searchText: (input, signal) => searchBookText({ list: listLibraryBooks, extract: getExtractedChapters, persisted: getPersistedChapters }, input, signal ?? lifetime),
+      searchText: (input, signal) => searchBookText({ list: listLibraryBooks, extract: bookId => getExtractedChapters(bookId, origin), persisted: getPersistedChapters }, input, signal ?? lifetime),
       list: async () => (await listLibraryBooks()).map(toBookSummary),
       get: async (bookId) => {
         const book = (await listLibraryBooks()).find((entry) => entry.id === String(bookId));
         return book ? toBookSummary(book) : null;
       },
       getToc: async (bookId) =>
-        (await getExtractedChapters(bookId)).map<ChapterRef>((chapter, index) => ({
+        (await getExtractedChapters(bookId, origin)).map<ChapterRef>((chapter, index) => ({
           index,
           title: chapter.title,
           chars: chapter.text.length,
         })),
       getChapterText: async (bookId, chapterIndex) =>
-        (await getExtractedChapters(bookId))[Number(chapterIndex)]?.text ?? null,
+        (await getExtractedChapters(bookId, origin))[Number(chapterIndex)]?.text ?? null,
     },
     collections: {
       list: async () =>
@@ -223,13 +223,13 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
 
   const commands: LibraryCommands = {
     books: {
-      prepareText: (bookId, options) => textTasks.start(bookId, options),
+      prepareText: (bookId, options) => textTasks.start(bookId, options, origin),
       mergeDuplicates: (input, signal) => mergeDuplicateBooks(input, origin, signal ?? lifetime),
       retryEnrichment: (bookId, signal) => retryBookEnrichment(bookId, origin, signal ?? lifetime),
       setTextTaskPriority: async (bookId, taskId, priority) => textTasks.setPriority(bookId, taskId, priority),
-      pauseTextTask: async (bookId, taskId) => textTasks.pause(bookId, taskId),
-      resumeTextTask: async (bookId, taskId) => textTasks.resume(bookId, taskId),
-      cancelTextTask: async (bookId, taskId) => textTasks.cancel(bookId, taskId),
+      pauseTextTask: async (bookId, taskId) => textTasks.pause(bookId, taskId, origin),
+      resumeTextTask: async (bookId, taskId) => textTasks.resume(bookId, taskId, origin),
+      cancelTextTask: async (bookId, taskId) => textTasks.cancel(bookId, taskId, origin),
       importBook: async (input, signal) => {
         const inputSignal = signal && lifetime ? AbortSignal.any([signal, lifetime]) : signal ?? lifetime;
         inputSignal?.throwIfAborted();

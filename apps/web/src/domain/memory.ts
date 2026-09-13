@@ -1,4 +1,4 @@
-import type { DomainActor } from "../platform/domain-actor";
+import { causalActor, type DomainActor } from "../platform/domain-actor";
 import type { DomainActorOwners } from "./actor-owners";
 import { AppError, FULL_DOMAIN_GRANTS, type DomainGrants } from "@read-aware/core";
 import { createBookMemoryPort } from "../features/ai/agent/ports/book-memory-port";
@@ -12,6 +12,7 @@ import { bookMemoryBoundary } from "./book-memory-boundary";
 import { inspectMemory, mutateMemory } from "./memory-management";
 import { inspectBookClassification, changeBookClassification } from "./book-classification";
 import { MemoryObserver } from "./memory-observer";
+import { memoryObservationSources } from "./memory-observation-sources";
 import { createLogger } from "../platform/logger";
 import { createBookGraphTasks } from "./book-graph-tasks";
 import { changeUserProfile } from "./user-profile";
@@ -98,11 +99,12 @@ export function createMemoryDomain(origin: DomainActor, lifetime?: AbortSignal, 
         trackCleanup?.(work.then(() => {}, () => {}));
         return work;
       },
-      startGraphTask: (bookId: string, mode: "catch-up" | "rebuild", options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.start(bookId, mode, options, entitySignal(access?.signal), origin), access),
-      cancelGraphTask: (bookId: string, taskId: string) => tasks.cancel(bookId, taskId),
-      retryGraphTask: (bookId: string, taskId: string, options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.retry(bookId, taskId, options, entitySignal(access?.signal), origin), access) },
+      startGraphTask: (bookId: string, mode: "catch-up" | "rebuild", options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.start(bookId, mode, options, entitySignal(access?.signal), causalActor(origin)), access),
+      cancelGraphTask: (bookId: string, taskId: string) => tasks.cancel(bookId, taskId, causalActor(origin)),
+      retryGraphTask: (bookId: string, taskId: string, options?: import("@read-aware/core").BookGraphTaskOptions, access?: ResourceAccess) => retainGraphTaskAccess(tasks.retry(bookId, taskId, options, entitySignal(access?.signal), causalActor(origin)), access) },
     events: { observe: (input: MemoryObservationQuery, handler: (event: MemoryObservation) => unknown,
-      authorizedRead?: (query: MemoryObservationQuery) => Promise<MemoryObservationResult>) => observer.observe(input, authorizedRead ?? read, handler, lifetime) } };
+      authorizedRead?: (query: MemoryObservationQuery) => Promise<MemoryObservationResult>) => observer.observe(input, authorizedRead ?? read, handler, lifetime,
+        query => memoryObservationSources(query, origin, tasks)) } };
 
   async function retainGraphTaskAccess(work: Promise<import("@read-aware/core").BookGraphTaskSnapshot>, access?: ResourceAccess) {
     try {

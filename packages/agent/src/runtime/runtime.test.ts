@@ -21,6 +21,19 @@ function makeRuntime(fixture = createInMemoryDeps(), now?: () => number) {
 }
 
 describe("AgentRuntime maintenance", () => {
+  test("public graph execution uses the host-bound text port under the existing cancellation policy", async () => {
+    const fixture = createInMemoryDeps({ books: [{ id: "b", title: "Book", narrativity: "narrative", status: "finished" }] });
+    let defaultReads = 0, boundReads = 0;
+    fixture.deps.bookText.getToc = async () => { defaultReads++; return []; };
+    const { runtime } = makeRuntime(fixture);
+    const input = { bookId: "b", rebuild: false, maxChapters: 1, signal: new AbortController().signal,
+      resolveBoundary: async () => 1, onStarted() {}, onPlan() {}, onChapterAttempted() {}, onChapterCommitted() {}, onReport() {},
+      bookText: { ...fixture.deps.bookText, getToc: async () => { boundReads++; return []; } } };
+    expect(await runtime.runBookGraphTask(input)).toMatchObject({ status: "unavailable", reason: "no-toc" });
+    expect(boundReads).toBeGreaterThan(0); expect(defaultReads).toBe(0);
+    const before = boundReads; await expect(runtime.runBookGraphTask({ ...input, signal: AbortSignal.abort() })).rejects.toThrow();
+    expect(boundReads).toBe(before);
+  });
   test("idle consolidation runs once while memory stays unchanged", async () => {
     const { runtime, memoryLists } = makeRuntime();
 

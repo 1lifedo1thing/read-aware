@@ -1,10 +1,11 @@
 import { AppError, errorCode, type BookTextPriority, type BookTextPrepareOptions, type BookTextTaskSnapshot } from "@read-aware/core";
 import type { BookTextTaskHistory } from "./book-text-task-history";
 import type { BookTextRepository } from "./book-text-repository";
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 
 type Listener = (state: BookTextTaskSnapshot) => void | Promise<void>;
 type Observer = { send(state: BookTextTaskSnapshot): void; stop(): void };
-type Task = { admitted: boolean; lastHistoryRevision?: number; timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
+type Task = { source: { origin: DomainActor; cancellationOrigin?: DomainActor }; admitted: boolean; lastHistoryRevision?: number; timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
 const active = (state: BookTextTaskSnapshot) => state.status === "queued" || state.status === "running" || state.status === "paused";
 const cancelled = () => new AppError("library/text-cancelled", "This text preparation request was cancelled");
 
@@ -82,7 +83,8 @@ export class BookTextTaskOwner {
     if (typeof task.timer === "object" && "unref" in task.timer) task.timer.unref();
   }
 
-  async start(bookId: string, options: BookTextPrepareOptions = {}): Promise<BookTextTaskSnapshot> {
+  async start(bookId: string, options: BookTextPrepareOptions = {}, origin: DomainActor = "system"): Promise<BookTextTaskSnapshot> {
+    const actor = causalActor(origin);
     this.assertLive();
     if (!options || typeof options !== "object" || Array.isArray(options)
       || Object.keys(options).some(key => !["rebuild", "priority", "timeoutMs"].includes(key)) || options.rebuild !== undefined && typeof options.rebuild !== "boolean"
@@ -104,7 +106,7 @@ export class BookTextTaskOwner {
       if (!active(task.state)) { for (const observer of task.observers) observer.stop(); this.tasks.delete(id); }
     }
     const now = new Date().toISOString(), deadlineAt = new Date(Date.parse(now) + request.timeoutMs).toISOString();
-    const task: Task = { admitted: false, controller: new AbortController(), rebuildPending: request.rebuild === true, observers: new Set(), state: {
+    const task: Task = { source: { origin: actor }, admitted: false, controller: new AbortController(), rebuildPending: request.rebuild === true, observers: new Set(), state: {
       taskId: crypto.randomUUID(), bookId, mode: request.rebuild ? "rebuild" : "prepare", revision: 0,
       status: "queued", priority: request.priority, timeoutMs: request.timeoutMs, deadlineAt, waitReason: null, createdAt: now, updatedAt: now, textState: state,
     } };
@@ -120,11 +122,12 @@ export class BookTextTaskOwner {
   }
 
   private async run(task: Task): Promise<void> {
-    const controller = task.controller;
+    const controller = task.controller, source = task.source;
     const current = () => { this.expire(task); return task.controller === controller && !controller.signal.aborted && task.state.status === "running"; };
     this.publish(task, { status: "running", errorCode: undefined, waitReason: null });
     try {
       const textState = await this.repository.prepare(task.state.bookId, {
+        origin: source.origin, cancellationOrigin: () => source.cancellationOrigin,
         rebuild: task.rebuildPending, signal: controller.signal,
         priority: () => task.state.priority,
         scheduling: reason => { if (current() && task.state.waitReason !== reason) this.publish(task, { waitReason: reason }); },
@@ -143,18 +146,20 @@ export class BookTextTaskOwner {
   }
 
   /** Release only this lease. Other readers can continue; dispatched work may drain. */
-  pause(bookId: string, taskId: string): BookTextTaskSnapshot {
+  pause(bookId: string, taskId: string, origin?: DomainActor): BookTextTaskSnapshot {
     const task = this.lookup(bookId, taskId);
     if (task.state.status === "queued" || task.state.status === "running") {
+      task.source.cancellationOrigin = origin === undefined ? task.source.origin : causalActor(origin);
       this.publish(task, { status: "paused", waitReason: null, errorCode: undefined });
       task.controller.abort(new AppError("library/text-cancelled", "Text request paused"));
     }
     return structuredClone(task.state);
   }
 
-  resume(bookId: string, taskId: string): BookTextTaskSnapshot {
+  resume(bookId: string, taskId: string, origin?: DomainActor): BookTextTaskSnapshot {
     const task = this.lookup(bookId, taskId);
     if (task.state.status === "paused") {
+      task.source = { origin: origin === undefined ? task.source.origin : causalActor(origin) };
       task.controller = new AbortController();
       if (task.admitted) void this.run(task);
       else this.publish(task, { status: "queued" });
@@ -176,9 +181,10 @@ export class BookTextTaskOwner {
     for (const task of this.tasks.values()) if (task.state.bookId === bookId) this.expire(task);
     return [...this.tasks.values()].filter(task => task.state.bookId === bookId).map(task => structuredClone(task.state));
   }
-  cancel(bookId: string, taskId: string): BookTextTaskSnapshot {
+  cancel(bookId: string, taskId: string, origin?: DomainActor): BookTextTaskSnapshot {
     const task = this.lookup(bookId, taskId);
     if (active(task.state)) {
+      task.source.cancellationOrigin = origin === undefined ? task.source.origin : causalActor(origin);
       this.publish(task, { status: "cancelled", waitReason: null, errorCode: "library/text-cancelled" });
       task.controller.abort(cancelled());
     }
