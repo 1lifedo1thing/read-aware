@@ -1,0 +1,48 @@
+{
+  "id": "B08",
+  "capability": "SET69",
+  "classification": "外部阻塞",
+  "acceptance": "发布包真实选区复制快捷键得到准确文本，恢复原剪贴板",
+  "observations": {
+    "release": {
+      "observer": "parent agent via CUA",
+      "syntheticBookOpenedAndBodyVisible": true,
+      "copyShortcutExecuted": false,
+      "copiedTextVerified": false
+    },
+    "clipboardBackup": {
+      "appIdentifier": "9224",
+      "runtime": "primary debug Tauri WebView",
+      "api": "installed @tauri-apps/plugin-clipboard-manager 2.3.2",
+      "commands": ["plugin:clipboard-manager|read_text", "plugin:clipboard-manager|read_image"],
+      "readTextAttempts": 2,
+      "textReadable": false,
+      "readTextPermissionDenied": true,
+      "readImageAttempts": 1,
+      "readImagePermissionDenied": true,
+      "safeErrorEvidence": {
+        "predicate": "String(error).includes('not allowed')",
+        "readTextFinalResult": {"permissionDenied": true, "textReadable": false},
+        "readImageResult": "permission-denied",
+        "rawErrorCaptured": false,
+        "note": "Only the safe error category was returned. No full error message or original clipboard content is reconstructed or claimed."
+      },
+      "apiSurfaceInspected": ["clear", "readImage", "readText", "writeHtml", "writeImage", "writeText"],
+      "formatEnumerationAvailable": false,
+      "originalClipboardTypeKnown": false,
+      "losslessRestoreConfirmed": false
+    }
+  },
+  "privacyAndCleanup": {
+    "originalClipboardContentReturned": false,
+    "originalClipboardContentPersisted": false,
+    "clipboardWriteOrClearCalled": false,
+    "privateWebViewBackupVariableDeleted": true,
+    "nativePermissionBypassAttempted": false,
+    "frontendOrPermissionConfigurationChanged": false,
+    "shellAppleScriptOrUIClipboardAccessUsed": false
+  },
+  "boundary": "The normal native read API is permission-blocked in the assigned primary instance. This does not establish that the release copy shortcut fails. Without reading and preserving the original clipboard, the authorized restore prerequisite cannot be met, so no copy was attempted and this item is not passed.",
+  "stopReason": "Two text-read attempts failed under the same permission condition; stop without another retry or permission repair. Resume only with an authorized environment that can preserve and restore the original clipboard.",
+  "references": ["../../host-capability-validation-bounded-goal.md"]
+}
