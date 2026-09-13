@@ -2204,3 +2204,8 @@ annotationKind:ask，原生目标消失且Notes一致。删除请求自身新增
 原两书完整字段、原会话hash、配置、buildMemory与15插件启用状态保持；自有服务
 退出。desktop类型及证据检查通过。回答和工具选择来自受控Responses服务，
 不计真实模型自主语义、发布包或物理焦点验收。见[聊天问题留痕记录](./annotation-ask-chat-observations.json)。
+
+第84后续[范围与标点诊断](./annotation-model-diagnosis.md)确认实际模型输入仅有完整
+引文、会话selection为null，不能宣称模型忽略了已给定的完整选区范围。短查询与
+长文本混用、自行改CFI及标点偏差仍是已观察到的模型行为；正在补真实选区夹具，
+以区分宿主选区直接使用与历史引文重新定位。
