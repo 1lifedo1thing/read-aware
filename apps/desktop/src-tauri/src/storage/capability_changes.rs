@@ -34,7 +34,20 @@ fn selector_key(owner: &str, selector: &mut ChangeSelector) -> Result<String, Co
     Ok(serde_json::to_string(selector)?)
 }
 fn epoch(conn: &Connection) -> Result<String, CommandError> {
+    // Older wipes removed this singleton. A fresh epoch also invalidates any
+    // surviving token rather than silently attaching it to a new history.
+    conn.execute("INSERT OR IGNORE INTO capability_change_state(id,epoch) VALUES(1,lower(hex(randomblob(24))))", [])?;
     Ok(conn.query_row("SELECT epoch FROM capability_change_state WHERE id=1", [], |r| r.get(0))?)
+}
+pub(crate) fn invalidate(conn: &Connection) -> Result<(), CommandError> {
+    conn.execute("INSERT INTO capability_change_state(id,epoch) VALUES(1,lower(hex(randomblob(24)))) ON CONFLICT(id) DO UPDATE SET epoch=excluded.epoch", [])?;
+    Ok(())
+}
+pub(crate) fn reset_after_wipe(conn: &Connection) -> Result<(), CommandError> {
+    // Delete-trigger producers may have recreated notices during the wipe.
+    conn.execute("DELETE FROM capability_changes", [])?;
+    conn.execute("DELETE FROM capability_change_cursors", [])?;
+    invalidate(conn)
 }
 fn cursor(conn: &Connection, owner: &str, selector: &str, position: i64, epoch: &str) -> Result<String, CommandError> {
     let token: String = conn.query_row("SELECT lower(hex(randomblob(24)))", [], |r| r.get(0))?;
@@ -45,7 +58,7 @@ fn cursor(conn: &Connection, owner: &str, selector: &str, position: i64, epoch: 
 pub(crate) fn capability_changes_open_inner(conn: &mut Connection, owner: &str, mut selector: ChangeSelector) -> Result<String, CommandError> {
     let key = selector_key(owner, &mut selector)?;
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-    let position: i64 = tx.query_row("SELECT COALESCE(MAX(seq),0) FROM capability_changes", [], |r| r.get(0))?;
+    let position: i64 = tx.query_row("SELECT COALESCE((SELECT seq FROM sqlite_sequence WHERE name='capability_changes'),0)", [], |r| r.get(0))?;
     let token = cursor(&tx, owner, &key, position, &epoch(&tx)?)?;
     tx.commit()?; Ok(token)
 }
@@ -57,7 +70,7 @@ pub(crate) fn capability_changes_read_inner(conn: &mut Connection, owner: &str, 
     let (bound, after, prior_epoch) = saved.ok_or_else(expired)?;
     let current_epoch = epoch(&tx)?;
     if bound!=key { return Err(CommandError::new("changes/cursor-scope-changed", "Change cursor belongs to different grants or query")); }
-    let (first,last): (i64,i64) = tx.query_row("SELECT COALESCE(MIN(seq),0),COALESCE(MAX(seq),0) FROM capability_changes", [], |r| Ok((r.get(0)?,r.get(1)?)))?;
+    let (first,last): (i64,i64) = tx.query_row("SELECT COALESCE(MIN(seq),0),COALESCE((SELECT seq FROM sqlite_sequence WHERE name='capability_changes'),0) FROM capability_changes", [], |r| Ok((r.get(0)?,r.get(1)?)))?;
     if prior_epoch!=current_epoch || after>last || first>after+1 { return Err(expired()); }
     let event_types = serde_json::to_string(&selector.event_types)?;
     let settings = serde_json::to_string(&selector.settings_keys)?;
@@ -132,6 +145,22 @@ mod tests {
         conn.execute("INSERT INTO domain_events(id,type,hlc_wall_ms,hlc_counter,hlc_device,payload_json,created_at) VALUES('string-pref','preference.changed',15,0,'device','{\"key\":\"read-aware-default-mark-color\",\"value\":\"yellow\"}','now')",[]).unwrap();
         conn.execute("INSERT INTO domain_events(id,type,hlc_wall_ms,hlc_counter,hlc_device,payload_json,created_at) VALUES('reset-event','book.removed',1,0,'device','{}','now')",[]).unwrap();
         conn.execute("DELETE FROM domain_events WHERE id='reset-event'",[]).unwrap();
-        assert_eq!(capability_changes_read_inner(&mut conn,"plugin:sample",selector,&page.cursor,20).err().unwrap().code,"changes/cursor-expired");
+        assert_eq!(capability_changes_read_inner(&mut conn,"plugin:sample",selector.clone(),&page.cursor,20).err().unwrap().code,"changes/cursor-expired");
+        let before_wipe=capability_changes_open_inner(&mut conn,"plugin:sample",selector.clone()).unwrap();
+        super::super::schema::wipe_all_data_inner(&mut conn,dir.path()).unwrap();
+        assert_eq!(conn.query_row("SELECT count(*) FROM capability_changes",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+        assert_eq!(capability_changes_read_inner(&mut conn,"plugin:sample",selector.clone(),&before_wipe,20).err().unwrap().code,"changes/cursor-expired");
+        let fresh=capability_changes_open_inner(&mut conn,"plugin:sample",selector.clone()).unwrap();
+        conn.execute("INSERT INTO plugin_documents(plugin_id,collection,id,json,book_id,updated_at) VALUES('sample','notes','after-wipe','{}','book','now')",[]).unwrap();
+        let after=capability_changes_read_inner(&mut conn,"plugin:sample",selector.clone(),&fresh,20).unwrap();
+        assert_eq!(after.changes.len(),1);
+        assert_eq!(after.changes[0].entity_id,"after-wipe");
+        // A rolled-back restore must not expire a valid cursor.
+        { let tx=conn.transaction().unwrap(); invalidate(&tx).unwrap(); }
+        assert!(capability_changes_read_inner(&mut conn,"plugin:sample",selector.clone(),&after.cursor,20).is_ok());
+        invalidate(&conn).unwrap();
+        assert_eq!(capability_changes_read_inner(&mut conn,"plugin:sample",selector.clone(),&after.cursor,20).err().unwrap().code,"changes/cursor-expired");
+        conn.execute("DELETE FROM capability_change_state",[]).unwrap();
+        assert!(capability_changes_open_inner(&mut conn,"plugin:sample",selector).is_ok());
     }
 }

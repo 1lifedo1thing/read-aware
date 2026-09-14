@@ -749,6 +749,7 @@ pub(crate) fn rebuild_projections_inner(conn: &mut Connection) -> Result<Rebuild
     let tx = conn.transaction()?;
     let report = replay_into(&tx)?;
     set_projections_stale(&tx, false)?;
+    super::capability_changes::invalidate(&tx)?;
     tx.commit()?;
     Ok(report)
 }

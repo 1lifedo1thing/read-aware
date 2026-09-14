@@ -1230,6 +1230,7 @@ pub(crate) fn wipe_all_data_inner(conn: &mut Connection, data_dir: &Path) -> Res
         tx.execute(&format!("DELETE FROM \"{table}\""), [])
             .map_err(|e| format!("wiping {table}: {e}"))?;
     }
+    super::capability_changes::reset_after_wipe(&tx)?;
     ensure_local_device(&tx)?;
     // Commit anti-import flags with the deletion itself. A crash or filesystem
     // failure must never let the next WebView resurrect legacy user data.

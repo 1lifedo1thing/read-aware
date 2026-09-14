@@ -746,6 +746,7 @@ pub(crate) fn restore_bootstrap_checkpoint(
 
     let tx = conn.transaction()?;
     restore_tables_from_file(&tx, &file)?;
+    super::capability_changes::invalidate(&tx)?;
     sync_cursor_set_inner(
         &tx,
         &SyncCursor {
