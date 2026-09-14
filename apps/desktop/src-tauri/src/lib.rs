@@ -957,6 +957,8 @@ pub fn run() {
             storage::append_events,
             storage::commit_events,
             storage::durable_agent_job_owners,
+            storage::capability_changes_open,
+            storage::capability_changes_read,
             storage::durable_job_create,
             storage::durable_job_get,
             storage::durable_job_list,

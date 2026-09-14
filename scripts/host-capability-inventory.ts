@@ -291,6 +291,7 @@ const nativeMap = pairs([
   ["ai_chat_load ai_chat_load_all ai_chat_list ai_chat_replace ai_chat_clear", "AI01 AI02 AI03"],
   ["plugin_docs_put plugin_docs_get plugin_docs_delete plugin_docs_list plugin_docs_clear vocabulary_migrate_to_plugin_documents", "SYS02 SYS03"],
   ["plugin_docs_snapshot plugin_docs_restore plugin_data_snapshot plugin_data_restore", "SYS03"],
+  ["capability_changes_open capability_changes_read", "CON07 OPS05 SYS02"],
   ["durable_agent_job_owners durable_job_create durable_job_get durable_job_list durable_job_checkpoint", "MORE01 CON03 CON08"],
   ["atomic_commit atomic_aggregate_revisions atomic_receipt_get", "CON08"],
   ["plugin_docs_page plugin_docs_apply", "SYS02"],

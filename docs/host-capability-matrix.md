@@ -415,7 +415,7 @@
 - Capability services：16 个。
 - Capability schemas：3 个。
 - Settings path：73 个。
-- Native command：239 个。
+- Native command：241 个。
 - Native plugin：12 个。
 - Menu placement：16 个。
 - Shortcut：19 个。
@@ -1183,6 +1183,8 @@
 | `storage::append_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::commit_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::durable_agent_job_owners` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::capability_changes_open` | [CON07](#CON07) [OPS05](#OPS05) [SYS02](#SYS02) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::capability_changes_read` | [CON07](#CON07) [OPS05](#OPS05) [SYS02](#SYS02) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::durable_job_create` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::durable_job_get` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::durable_job_list` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |

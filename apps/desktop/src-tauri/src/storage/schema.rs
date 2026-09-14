@@ -789,6 +789,56 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
         revision TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
         PRIMARY KEY(owner,id)
     );"),
+    (48, "capability_changes", "CREATE TABLE capability_change_state (id INTEGER PRIMARY KEY CHECK(id=1), epoch TEXT NOT NULL);
+      INSERT INTO capability_change_state VALUES(1,lower(hex(randomblob(24))));
+      CREATE TABLE capability_changes (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, operation TEXT NOT NULL,
+        entity_id TEXT NOT NULL, book_id TEXT, plugin_id TEXT, detail TEXT, event_id TEXT
+      );
+      CREATE INDEX capability_changes_book ON capability_changes(book_id,seq);
+      CREATE INDEX capability_changes_plugin ON capability_changes(plugin_id,seq);
+      CREATE TABLE capability_change_cursors (
+        token TEXT PRIMARY KEY, owner TEXT NOT NULL, selector TEXT NOT NULL, seq INTEGER NOT NULL, epoch TEXT NOT NULL
+      );
+      CREATE INDEX capability_change_cursors_owner ON capability_change_cursors(owner);
+      CREATE TRIGGER capability_change_event_insert AFTER INSERT ON domain_events BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id,detail,event_id)
+        VALUES('event',NEW.type,COALESCE(NEW.aggregate_id,NEW.id),
+          COALESCE(json_extract(NEW.payload_json,'$.bookId'),CASE WHEN NEW.aggregate_type='book' THEN NEW.aggregate_id END),NEW.aggregate_type,NEW.id);
+      END;
+      CREATE TRIGGER capability_change_event_delete AFTER DELETE ON domain_events BEGIN
+        UPDATE capability_change_state SET epoch=lower(hex(randomblob(24))) WHERE id=1;
+      END;
+      CREATE TRIGGER capability_change_document_insert AFTER INSERT ON plugin_documents BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id,plugin_id,detail)
+        VALUES('document','put',NEW.id,NEW.book_id,NEW.plugin_id,NEW.collection);
+      END;
+      CREATE TRIGGER capability_change_document_update AFTER UPDATE ON plugin_documents
+      WHEN OLD.json IS NOT NEW.json OR OLD.book_id IS NOT NEW.book_id OR OLD.anchor IS NOT NEW.anchor BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id,plugin_id,detail)
+        SELECT 'document','removed-from-book',OLD.id,OLD.book_id,OLD.plugin_id,OLD.collection WHERE OLD.book_id IS NOT NEW.book_id;
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id,plugin_id,detail)
+        VALUES('document','put',NEW.id,NEW.book_id,NEW.plugin_id,NEW.collection);
+      END;
+      CREATE TRIGGER capability_change_document_delete AFTER DELETE ON plugin_documents BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id,plugin_id,detail)
+        VALUES('document','delete',OLD.id,OLD.book_id,OLD.plugin_id,OLD.collection);
+      END;
+      CREATE TRIGGER capability_change_setting_insert AFTER INSERT ON app_kv WHEN (NEW.key IN ('read-aware-app-settings','read-aware-general-settings','read-aware-shelf-view','read-aware-shortcuts','read-aware-reader-settings','read-aware-reader-overrides','read-aware-content-typography','read-aware-ai-preferences','read-aware-menu-config','read-aware-ai-config') OR NEW.key GLOB 'read-aware-plugin.*.settings') BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id,detail)
+        VALUES('setting','invalidate',NEW.key,NULL);
+      END;
+      CREATE TRIGGER capability_change_setting_update AFTER UPDATE ON app_kv WHEN (NEW.key IN ('read-aware-app-settings','read-aware-general-settings','read-aware-shelf-view','read-aware-shortcuts','read-aware-reader-settings','read-aware-reader-overrides','read-aware-content-typography','read-aware-ai-preferences','read-aware-menu-config','read-aware-ai-config') OR NEW.key GLOB 'read-aware-plugin.*.settings') AND OLD.value_json IS NOT NEW.value_json BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id,detail)
+        VALUES('setting','invalidate',NEW.key,NULL);
+      END;
+      CREATE TRIGGER capability_change_setting_delete AFTER DELETE ON app_kv WHEN (OLD.key IN ('read-aware-app-settings','read-aware-general-settings','read-aware-shelf-view','read-aware-shortcuts','read-aware-reader-settings','read-aware-reader-overrides','read-aware-content-typography','read-aware-ai-preferences','read-aware-menu-config','read-aware-ai-config') OR OLD.key GLOB 'read-aware-plugin.*.settings') BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id,detail)
+        VALUES('setting','invalidate',OLD.key,NULL);
+      END;
+      CREATE TRIGGER capability_change_retention AFTER INSERT ON capability_changes BEGIN
+        DELETE FROM capability_changes WHERE seq<=NEW.seq-100000;
+      END;"),
 ];
 
 /// Rebuild the annotation FTS index from the table. Required after any VACUUM

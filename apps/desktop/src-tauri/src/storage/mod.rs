@@ -460,3 +460,6 @@ pub async fn replace_kv_prefix(
 
 #[cfg(test)]
 mod tests;
+
+mod capability_changes;
+pub use capability_changes::*;

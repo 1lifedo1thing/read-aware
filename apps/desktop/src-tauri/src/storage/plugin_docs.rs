@@ -191,6 +191,8 @@ pub async fn plugin_docs_clear(
         tx.execute("DELETE FROM plugin_document_generations WHERE plugin_id=?1", params![plugin_id])?;
         tx.execute("DELETE FROM atomic_receipts WHERE owner=?1", params![format!("plugin:{plugin_id}")])?;
         tx.execute("DELETE FROM durable_jobs WHERE owner=?1", params![format!("plugin:{plugin_id}")])?;
+        tx.execute("DELETE FROM capability_change_cursors WHERE owner=?1", params![format!("plugin:{plugin_id}")])?;
+        tx.execute("DELETE FROM capability_changes WHERE plugin_id=?1", params![plugin_id])?;
         tx.commit()?;
         let dir = app.state::<DataDir>();
         super::plugin_assets::reclaim(&conn, &dir.0, &plugin_id)
