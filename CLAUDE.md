@@ -33,9 +33,6 @@ TanStack Router, Jotai, Tailwind CSS v4, Vite, and a Tauri 2 desktop shell.
   Production CSP or packaging changes need the packaged desktop build.
 - Respect the user's implementation and acceptance phases. Mark deferred runtime
   acceptance explicitly pending; local checks do not close that boundary.
-- For capability work, follow the [project delivery workflow](.agents/skills/capability-delivery/SKILL.md).
-  The current user request defines scope and phase. Historical goals, ledger
-  entries and remembered workflows do not add work or require earlier acceptance.
 - Validate document facts and links for content edits. Check rendered layout or
   interactions when those change or content creates a concrete rendering risk;
   unchanged templates do not require repeating the full visual suite.
@@ -64,7 +61,7 @@ Read only the references needed for the current change. Paths are repo-relative.
 | Product UI and component conventions | [UI conventions](docs/agent-guidance/ui.md) |
 | Error handling and IPC | [Error contract](docs/agent-guidance/errors.md); keep stable codes, localized user messages, logged raw errors, honest retries and visible read/write failures |
 | Plugin boundaries | [Plugin system](docs/plugin-system.md) |
-| Host/Agent/plugin capability delivery | [Delivery workflow](.agents/skills/capability-delivery/SKILL.md), then the finite [acceptance list](docs/host-capability-acceptance.md) and affected rows in `docs/host-capability-matrix.data.ts` / `docs/host-capability-model.data.ts`; use the compact [evidence index](docs/host-capability-delivery.md) for prior proof. Generated MD/HTML are outputs |
+| Host/Agent/plugin capability delivery | Start from the finite [acceptance list](docs/host-capability-acceptance.md), then read only affected rows in `docs/host-capability-matrix.data.ts` / `docs/host-capability-model.data.ts`; use the compact [evidence index](docs/host-capability-delivery.md) for prior proof. Generated MD/HTML are outputs |
 | Agent behavior evals | `.agents/skills/evals/SKILL.md` |
 | Authorized release work | `.agents/skills/publishing/SKILL.md` |
 | Historical migrations | [Historical implementation notes](docs/agent-guidance/implementation-history.md); not current status |
