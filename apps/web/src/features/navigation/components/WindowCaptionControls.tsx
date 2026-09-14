@@ -21,7 +21,11 @@ import {
 } from "../../../platform/environment";
 import { setTrafficLightsVisible } from "../../../platform/traffic-lights";
 import { useWindowMaximized } from "../hooks/useWindowMaximized";
+import { invoke } from "../../../platform/ipc";
+import { createLogger } from "../../../platform/logger";
 import { useWindowActions } from "../hooks/useWindowActions";
+
+const log = createLogger("window-caption");
 
 async function currentWindow() {
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
@@ -64,9 +68,10 @@ export function WindowCaptionControls({
   // decorum's command replays that for a self-drawn one. Elsewhere it no-ops.
   const showSnapOverlay = () => {
     if (!isWindows()) return;
-    void import("@tauri-apps/api/core").then(({ invoke }) =>
-      invoke("plugin:decorum|show_snap_overlay").catch(() => {}),
-    );
+    void invoke("plugin:decorum|show_snap_overlay").catch((error) => {
+      // Hover-only enhancement: log failures without interrupting window controls.
+      log.warn("Could not show Windows Snap Layouts", error);
+    });
   };
 
   return (
