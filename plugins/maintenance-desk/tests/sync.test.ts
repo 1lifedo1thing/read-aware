@@ -42,7 +42,10 @@ function fixture() {
   const disposeObserver = mock(() => {}), publishView = mock(async (_channel: unknown, _update: { revision: number; view: PluginView }) => ({ status: "applied" }));
   const ctx = { withEvent: () => ctx, locale: "en", domains: { settings: { commands: { refreshModelCatalog: mock() } } },
     contributions: { commands: { register: (value: PluginCommand) => { command = value; } }, headerActions: { register: mock() } },
-    services: { maintenance: {}, diagnostics: {}, ui: { publishView }, logging: { write: mock(async () => {}) },
+    services: { session: { operationAvailability: async (query: unknown) => {
+      expect(query).toEqual({ operation: "sync.requestFlow", flow: { action: "connect", transportRef: "webdav-sync:webdav" } });
+      return { state: "unknown", conditions: [{ reason: "sync-flow-remote-not-checked", state: "unknown" }] };
+    } }, maintenance: {}, diagnostics: {}, ui: { publishView }, logging: { write: mock(async () => {}) },
       sync: { snapshot: mock(async () => state), requestFlow, requestSync, backlog, account, connectionOptions, openSettings,
         observe: (next: typeof handler) => { handler = next; return { dispose: disposeObserver }; } } },
   } as unknown as PluginContext;
@@ -94,6 +97,8 @@ test("backend selection freezes the public reference and cancellation does not a
   const choices = view(await action(overview, "connect").run());
   const review = await select(choices, "backend-1");
   expect(JSON.stringify(review)).toContain("WebDAV");
+  const prerequisites = view(await action(review, "prerequisites").run());
+  expect(JSON.stringify(prerequisites)).toContain("Remote action");
   expect(f.requestFlow).not.toHaveBeenCalled();
   expect(await action(review, "continue").run()).toEqual({ close: true });
   expect(f.requestFlow.mock.calls[0]![0]).toEqual({ action: "connect", transportRef: "webdav-sync:webdav" });

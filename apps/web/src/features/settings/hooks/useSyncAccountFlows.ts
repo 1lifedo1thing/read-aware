@@ -1,3 +1,4 @@
+import { syncFlowConditions } from "../../../services/sync-flow-conditions";
 import { actorFromEvent, type DomainActor } from "../../../platform/domain-actor";
 import { useLayoutEffect, useRef, useState } from "react";
 import { AppError, type HostSyncFlow } from "@read-aware/core";
@@ -72,14 +73,13 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
     open: request => {
       if (working || getSyncConnectionBusy() || connectOpen || transportDialogRef || disconnectOpen || deleteAccountOpen) throw new AppError("ui/unavailable", "A native sync dialog is already active");
       const status = getSyncStatusSnapshot();
+      const blocked = syncFlowConditions(request, status, getSyncConnectionBusy(), sync.transports, purchaseAllowed).find(value => value.state === "unavailable");
+      if (blocked) throw new AppError(blocked.errorCode === "sync/transport-unavailable" ? "sync/transport-unavailable" : "ui/unavailable", blocked.reason);
       if (request.action === "connect") {
-        if (status.accountConnected && (status.backend !== "relay" || status.state !== "unauthenticated" || request.transportRef)) throw new AppError("ui/unavailable", "Disconnect before connecting another backend");
         if (request.transportRef) {
-          if (!sync.transports.some(item => item.ref === request.transportRef)) throw new AppError("sync/transport-unavailable", "Sync backend is not registered");
           setTransportDialogRef(request.transportRef);
         } else setConnectOpen(true);
       } else {
-        if (!status.accountConnected || (request.action !== "disconnect" && status.backend !== "relay")) throw new AppError("ui/unavailable", "The requested sync account action is unavailable");
         if (request.action === "disconnect") setDisconnectOpen(true);
         else if (request.action === "delete-account") setDeleteAccountOpen(true);
         else void billing(request.action, actorFromEvent(request));

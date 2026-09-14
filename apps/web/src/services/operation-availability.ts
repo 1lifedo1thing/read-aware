@@ -97,6 +97,19 @@ export async function checkOperationAvailability(input: OperationAvailabilityQue
     signal?.throwIfAborted();
     return operationAvailability(query, [condition("permission", "satisfied", "authorized"), ...softwareUpdater.checkConditions()]);
   }
+  if (query.operation === "sync.requestFlow") {
+    if (!isTauri()) return operationAvailability(query, [condition("provider", "unavailable", "host-flow-desktop-required", "ui/unavailable")]);
+    const { externalPurchaseAllowed } = await import("../platform/purchase-gate");
+    const { syncFlowConditions } = await import("./sync-flow-conditions");
+    const { getSyncStatusSnapshot } = await import("../platform/sync/sync-scheduler");
+    const { getSyncConnectionBusy } = await import("../platform/sync/connection-operation");
+    const { listSyncTransports } = await import("../platform/sync/transport-registry");
+    const { hostSyncFlows } = await import("./sync");
+    const purchase = query.flow.action === "billing" || query.flow.action === "upgrade" ? await externalPurchaseAllowed() : true;
+    signal?.throwIfAborted();
+    return operationAvailability(query, [condition("permission", "satisfied", "authorized"), ...hostSyncFlows.requestConditions(query.flow.action !== "billing" && query.flow.action !== "upgrade"),
+      ...syncFlowConditions(query.flow, getSyncStatusSnapshot(), getSyncConnectionBusy(), listSyncTransports(), purchase)]);
+  }
   if (query.operation === "sync.now") {
     try { return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...await hostSync.conditions(signal)]); }
     catch (error) { signal?.throwIfAborted(); log.warn("Cannot read sync prerequisites", error);

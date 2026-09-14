@@ -1,3 +1,4 @@
+import { normalizeHostSyncFlow, type HostSyncFlowRequest } from "./host-sync";
 import { normalizeHostCommandRequest, type HostCommandRequest } from "./host-commands";
 import { normalizePluginServiceCall, type PluginServiceCall } from "./plugin-services";
 import { normalizeBookGraphTaskOptions, type BookGraphTaskOptions } from "./book-graph-task";
@@ -19,7 +20,7 @@ export type GraphAvailabilityQuery = { operation: "memory.graph.generate"; bookI
 export type WindowAvailabilityQuery = { operation: "window.control"; request: HostWindowRequest };
 export type ExportAvailabilityQuery = { operation: "ui.exportFile" } & HostExportDescription;
 export type HostIOAvailabilityQuery = ExportAvailabilityQuery | { operation: "clipboard.writeText"; text: string } | { operation: "ui.openExternal"; url: string };
-export type SyncAvailabilityQuery = { operation: "sync.now" };
+export type SyncAvailabilityQuery = { operation: "sync.now" } | { operation: "sync.requestFlow"; flow: HostSyncFlowRequest };
 export type UpdateAvailabilityQuery = { operation: "maintenance.checkForUpdates" } | { operation: "diagnostics.verifyProjections" };
 export type HostFlowAvailabilityQuery =
   | { operation: "maintenance.requestBackup"; action: "import" | "export" }
@@ -60,6 +61,10 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
   if (raw.operation === "maintenance.requestConnectionTest" || raw.operation === "diagnostics.requestProjectionRepair") {
     if (Object.keys(raw).some(key => key !== "operation")) throw invalid();
     return { operation: raw.operation };
+  }
+  if (raw.operation === "sync.requestFlow") {
+    if (Object.keys(raw).some(key => key !== "operation" && key !== "flow")) throw invalid();
+    return { operation: raw.operation, flow: normalizeHostSyncFlow(raw.flow as HostSyncFlowRequest) };
   }
   if (raw.operation === "memory.graph.generate") {
     if (Object.keys(raw).some(key => !["operation", "bookId", "mode", "maxChapters"].includes(key))

@@ -1,5 +1,7 @@
 # 宿主能力实现与验收进度
 
+session2.15新增sync.requestFlow条件查询，接受与实际流程共用的严格flow归一化；插件先检service:sync，Agent工具同接。宿主与useSyncAccountFlows共用本地账号准入：连接busy、Relay重连、断开前置、后端注册、Relay账号动作及外部购买；查询合并流程占用，远端/控件未知，账单自动交接不误报另需原生确认。Maintenance Desk0.13各账号确认页可查看条件且保留所选后端引用。受影响Core/Web/Agent/插件类型、构建、权限/关键准入及消费者检查通过；真实连接/删除/账单Tauri验收与其余C04/C05、完整目标待完成。
+
 session2.14新增maintenance.requestBackup/import-export、maintenance.requestConnectionTest、diagnostics.requestReport/export-send和diagnostics.requestProjectionRepair条件查询，Agent同接。插件诊断权限先检；查询不导航、不推理、不导出/发送/修复。HostActionFlow共用occupied判定覆盖导航、待确认和执行，取消等待后已受理操作仍占用；空闲只返回可请求，控件与用户确认保留unknown。Maintenance Desk0.12相关确认页均可查条件并返回明确确认。受影响Core/Web/Agent/插件类型、构建与参数/权限/取消占用及消费者检查通过；真实Tauri、其他C04/C05和完整目标仍未完成。
 
 AI配置保存/清除在入口捕获单一宿主来源，普通配置KV、当前提供者密钥写删、旧单槽密钥清理及全部提供者清除沿同源。实际AIConfigPanel防抖/失焦/连接检查前flush沿既有saveAIConfig消费，无新增保存动作。受影响类型及现有配置兼容/密钥行为、通知来源检查通过；此证据是本地内存适配器，真实加密存储/持久发布及跨重启待验。连接检查结果状态来源与其余C04/C05及完整目标仍未完成。

@@ -1,3 +1,4 @@
+import { syncFlowConditions } from "./sync-flow-conditions";
 import { expect, test } from "bun:test";
 import type { HostSyncFlowRequest } from "@read-aware/core";
 import { actorCause, causalActor, eventCause, type DomainActor } from "../platform/domain-actor";
@@ -88,4 +89,17 @@ test("invalid inputs and pre-cancellation do not open UI; account replacement in
   let writes = 0;
   await expect(f.controller.run("delete-account", async () => { writes++; })).rejects.toMatchObject({ code: "ui/superseded" });
   await expect(stale).rejects.toMatchObject({ code: "ui/superseded" }); expect(writes).toBe(0); f.unbind();
+});
+
+test("sync flow account admission permits reconnect but rejects stale backends and unavailable account actions", () => {
+  const disconnected = { accountConnected: false, backend: null, state: "disabled" } as const;
+  const connected = { accountConnected: true, backend: "relay", state: "idle" } as const;
+  const inspect = (request: HostSyncFlowRequest, state = connected, busy = false, purchase = true) => syncFlowConditions(request, state, busy, [], purchase);
+  expect(syncFlowConditions({ action: "connect" }, disconnected, false, [], true).some(item => item.state === "unavailable")).toBe(false);
+  expect(inspect({ action: "connect" })[0]?.reason).toBe("sync-disconnect-before-connect");
+  expect(syncFlowConditions({ action: "connect" }, { ...connected, state: "unauthenticated" }, false, [], true).some(item => item.state === "unavailable")).toBe(false);
+  expect(syncFlowConditions({ action: "connect", transportRef: "retired" }, disconnected, false, [], true)[0]?.reason).toBe("sync-transport-unregistered");
+  expect(inspect({ action: "disconnect" }, connected, true)[0]?.reason).toBe("sync-connection-busy");
+  expect(inspect({ action: "billing" }, connected, false, false)[0]?.reason).toBe("sync-purchase-unavailable");
+  expect(syncFlowConditions({ action: "delete-account" }, { ...connected, backend: "transport" }, false, [], true)[0]?.reason).toBe("sync-flow-account-unavailable");
 });

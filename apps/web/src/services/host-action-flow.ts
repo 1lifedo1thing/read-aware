@@ -27,11 +27,11 @@ export class HostActionFlow<R extends Request, S extends string> {
 
   private get occupied(): boolean { return this.requesting || !!this.pending || this.running; }
 
-  requestConditions(): OperationCondition[] {
+  requestConditions(confirmationRequired = true): OperationCondition[] {
     if (this.occupied) return [{ kind: "capacity", state: "unavailable", reason: "host-flow-active", errorCode: "ui/unavailable" }];
     return [{ kind: "capacity", state: "satisfied", reason: "host-flow-ready" },
       { kind: "provider", state: "unknown", reason: "host-flow-controls-not-checked" },
-      { kind: "input", state: "unknown", reason: "host-flow-user-confirmation-required" }];
+      ...(confirmationRequired ? [{ kind: "input" as const, state: "unknown" as const, reason: "host-flow-user-confirmation-required" }] : [])];
   }
 
   bind(surface: Surface<R>): () => void {

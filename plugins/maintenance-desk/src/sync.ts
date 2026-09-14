@@ -36,6 +36,17 @@ export function syncViews(ctx: PluginContext, signal: AbortSignal, operations: O
       { id: "refresh", label: t.refresh, run: async () => ({ view: await prerequisites(), navigation: "replace" as const }) }, settings,
     ] };
   };
+  const flowPrerequisites = async (request: Request): Promise<PluginView> => {
+    const value = await ctx.services.session.operationAvailability({ operation: "sync.requestFlow", flow: request }, { signal });
+    signal.throwIfAborted();
+    return { kind: "detail", title: t.prerequisites, content: [
+      { kind: "text", text: t.flowPrerequisitesNote },
+      { kind: "keyValue", rows: value.conditions.map(item => ({ label: t.conditionReasons[item.reason as keyof typeof t.conditionReasons] ?? t.unknown, value: t.conditionStates[item.state] })) },
+    ], actions: [
+      ...(value.state === "available" || value.state === "unknown" ? [{ id: "continue", label: t.continue, run: () => ({ view: requestReview(request) }) }] : []),
+      { id: "refresh", label: t.refresh, run: async () => ({ view: await flowPrerequisites(request), navigation: "replace" as const }) }, settings,
+    ] };
+  };
   const requestReview = (request: Request, label?: string): PluginView => {
     const operation = flowOperations[request.action];
     const review = { connect: t.connectReview, disconnect: t.disconnectReview, "delete-account": t.deleteReview,
@@ -52,7 +63,7 @@ export function syncViews(ctx: PluginContext, signal: AbortSignal, operations: O
         })) return { toast: common.busy };
         return { close: true };
       },
-    }] };
+    }, { id: "prerequisites", label: t.prerequisites, run: async () => ({ view: await flowPrerequisites(request) }) }] };
   };
   const connect = async (): Promise<PluginView> => {
     const options = await service().connectionOptions();

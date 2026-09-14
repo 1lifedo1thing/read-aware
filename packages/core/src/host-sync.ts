@@ -1,3 +1,4 @@
+import { AppError } from "./errors";
 import type { SyncTier, SyncTierLimits } from "./sync";
 
 export type HostSyncSnapshot = {
@@ -38,3 +39,12 @@ export type HostSyncPort = {
    * final local outcome or external handoff. Cancellation cannot undo a started operation. */
   requestFlow(request: HostSyncFlowRequest, signal?: AbortSignal): Promise<HostSyncFlowReceipt>;
 };
+
+export function normalizeHostSyncFlow(input: HostSyncFlowRequest): HostSyncFlowRequest {
+  if (!input || !["connect", "disconnect", "delete-account", "upgrade", "billing"].includes(input.action)
+    || Object.keys(input).some(key => key !== "action" && key !== "transportRef")
+    || (input.transportRef !== undefined && (input.action !== "connect" || typeof input.transportRef !== "string" || !input.transportRef.length || input.transportRef.length > 256))) {
+    throw new AppError("ui/invalid-target", "Invalid sync flow");
+  }
+  return { action: input.action, ...(input.transportRef !== undefined ? { transportRef: input.transportRef } : {}) };
+}

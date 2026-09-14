@@ -1007,7 +1007,7 @@ export function buildPluginContext(
             ]));
             return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
           }
-          if (query.operation === "sync.now") {
+          if (query.operation === "sync.now" || query.operation === "sync.requestFlow") {
             if (!canUseHostService("sync", permissions)) return Promise.resolve(operationAvailability(query, [
               { kind: "permission", state: "unavailable", reason: "service:sync-required" },
             ]));

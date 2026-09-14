@@ -1,7 +1,8 @@
 const en = {
+  flowPrerequisitesNote: "Checks local account and flow availability without opening a connection or billing page. Remote operations remain unverified.",
   prerequisites: "Sync prerequisites", prerequisitesNote: "Checks local connection, credentials and provider registration without sending a request. Unknown remote health can be tried; synchronization checks again before starting.",
   conditionStates: { satisfied: "Ready", unconfigured: "Not configured", unavailable: "Unavailable", unknown: "Not verified" },
-  conditionReasons: { authorized: "Permission", "desktop-required": "Desktop app", "sync-connection-busy": "Connection management in progress",
+  conditionReasons: { "sync-disconnect-before-connect": "Disconnect before connecting", "sync-transport-unregistered": "Backend is not registered", "sync-flow-account-unavailable": "Account action unavailable", "sync-purchase-unavailable": "External purchase unavailable", "sync-flow-account-ready": "Account ready", "sync-flow-remote-not-checked": "Remote action", "host-flow-active": "Another flow is active", "host-flow-ready": "Flow available", "host-flow-desktop-required": "Desktop required", "host-flow-controls-not-checked": "Native controls", "host-flow-user-confirmation-required": "Native confirmation", authorized: "Permission", "desktop-required": "Desktop app", "sync-connection-busy": "Connection management in progress",
     "sync-not-connected": "Connect synchronization", "sync-disabled": "Enable synchronization", "sync-reconnect-required": "Reconnect synchronization",
     "sync-connected": "Connection configured", "source-sync-credentials-present": "Local sync credentials", "source-sync-credentials-missing": "Missing local sync credentials",
     "source-transport-unavailable": "Transport provider unavailable", "source-sync-disabled": "Enable synchronization",
@@ -28,9 +29,10 @@ const en = {
     blobs: "Transferring files", backfill: "Backfilling history", checkpoint: "Updating checkpoint" },
 };
 const zh: typeof en = {
+  flowPrerequisitesNote: "检查本机账号和流程可用性，不打开连接或账单页面。远端操作结果仍未验证。",
   prerequisites: "同步操作条件", prerequisitesNote: "检查本机连接、凭据和提供者注册状态，不发送请求。远端状态未知时可以尝试，同步开始前会再次检查。",
   conditionStates: { satisfied: "已就绪", unconfigured: "未配置", unavailable: "不可用", unknown: "未验证" },
-  conditionReasons: { authorized: "权限", "desktop-required": "桌面应用", "sync-connection-busy": "正在管理连接",
+  conditionReasons: { "sync-disconnect-before-connect": "需要先断开连接", "sync-transport-unregistered": "后端未注册", "sync-flow-account-unavailable": "账号操作不可用", "sync-purchase-unavailable": "外部购买不可用", "sync-flow-account-ready": "账号已就绪", "sync-flow-remote-not-checked": "远端操作", "host-flow-active": "已有流程占用", "host-flow-ready": "流程可用", "host-flow-desktop-required": "需要桌面应用", "host-flow-controls-not-checked": "原生控件", "host-flow-user-confirmation-required": "原生确认", authorized: "权限", "desktop-required": "桌面应用", "sync-connection-busy": "正在管理连接",
     "sync-not-connected": "需要连接同步", "sync-disabled": "需要启用同步", "sync-reconnect-required": "需要重新连接同步",
     "sync-connected": "连接已配置", "source-sync-credentials-present": "本机同步凭据", "source-sync-credentials-missing": "缺少本机同步凭据",
     "source-transport-unavailable": "传输提供者不可用", "source-sync-disabled": "需要启用同步",

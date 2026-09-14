@@ -183,6 +183,8 @@ test("maintenance prerequisites hide native state from plugins without required 
   try {
     expect((await client.context.services.session.operationAvailability({ operation: "maintenance.checkForUpdates" })).conditions)
       .toEqual([{ kind: "permission", state: "unavailable", reason: "service:network-required" }]);
+    expect((await client.context.services.session.operationAvailability({ operation: "sync.requestFlow", flow: { action: "connect" } })).conditions)
+      .toEqual([{ kind: "permission", state: "unavailable", reason: "service:sync-required" }]);
     for (const query of [{ operation: "diagnostics.verifyProjections" }, { operation: "diagnostics.requestProjectionRepair" }, { operation: "diagnostics.requestReport", action: "send" }] as const)
     expect((await client.context.services.session.operationAvailability(query)).conditions)
       .toEqual([{ kind: "permission", state: "unavailable", reason: "service:diagnostics-required" }]);

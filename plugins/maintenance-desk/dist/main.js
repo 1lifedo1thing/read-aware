@@ -672,10 +672,22 @@ function updateViews(ctx, signal) {
 
 // src/sync-strings.ts
 var en3 = {
+  flowPrerequisitesNote: "Checks local account and flow availability without opening a connection or billing page. Remote operations remain unverified.",
   prerequisites: "Sync prerequisites",
   prerequisitesNote: "Checks local connection, credentials and provider registration without sending a request. Unknown remote health can be tried; synchronization checks again before starting.",
   conditionStates: { satisfied: "Ready", unconfigured: "Not configured", unavailable: "Unavailable", unknown: "Not verified" },
   conditionReasons: {
+    "sync-disconnect-before-connect": "Disconnect before connecting",
+    "sync-transport-unregistered": "Backend is not registered",
+    "sync-flow-account-unavailable": "Account action unavailable",
+    "sync-purchase-unavailable": "External purchase unavailable",
+    "sync-flow-account-ready": "Account ready",
+    "sync-flow-remote-not-checked": "Remote action",
+    "host-flow-active": "Another flow is active",
+    "host-flow-ready": "Flow available",
+    "host-flow-desktop-required": "Desktop required",
+    "host-flow-controls-not-checked": "Native controls",
+    "host-flow-user-confirmation-required": "Native confirmation",
     authorized: "Permission",
     "desktop-required": "Desktop app",
     "sync-connection-busy": "Connection management in progress",
@@ -752,10 +764,22 @@ var en3 = {
   }
 };
 var zh3 = {
+  flowPrerequisitesNote: "检查本机账号和流程可用性，不打开连接或账单页面。远端操作结果仍未验证。",
   prerequisites: "同步操作条件",
   prerequisitesNote: "检查本机连接、凭据和提供者注册状态，不发送请求。远端状态未知时可以尝试，同步开始前会再次检查。",
   conditionStates: { satisfied: "已就绪", unconfigured: "未配置", unavailable: "不可用", unknown: "未验证" },
   conditionReasons: {
+    "sync-disconnect-before-connect": "需要先断开连接",
+    "sync-transport-unregistered": "后端未注册",
+    "sync-flow-account-unavailable": "账号操作不可用",
+    "sync-purchase-unavailable": "外部购买不可用",
+    "sync-flow-account-ready": "账号已就绪",
+    "sync-flow-remote-not-checked": "远端操作",
+    "host-flow-active": "已有流程占用",
+    "host-flow-ready": "流程可用",
+    "host-flow-desktop-required": "需要桌面应用",
+    "host-flow-controls-not-checked": "原生控件",
+    "host-flow-user-confirmation-required": "原生确认",
     authorized: "权限",
     "desktop-required": "桌面应用",
     "sync-connection-busy": "正在管理连接",
@@ -869,6 +893,18 @@ function syncViews(ctx, signal, operations, history) {
       settings
     ] };
   };
+  const flowPrerequisites = async (request) => {
+    const value = await ctx.services.session.operationAvailability({ operation: "sync.requestFlow", flow: request }, { signal });
+    signal.throwIfAborted();
+    return { kind: "detail", title: t.prerequisites, content: [
+      { kind: "text", text: t.flowPrerequisitesNote },
+      { kind: "keyValue", rows: value.conditions.map((item) => ({ label: t.conditionReasons[item.reason] ?? t.unknown, value: t.conditionStates[item.state] })) }
+    ], actions: [
+      ...value.state === "available" || value.state === "unknown" ? [{ id: "continue", label: t.continue, run: () => ({ view: requestReview(request) }) }] : [],
+      { id: "refresh", label: t.refresh, run: async () => ({ view: await flowPrerequisites(request), navigation: "replace" }) },
+      settings
+    ] };
+  };
   const requestReview = (request, label) => {
     const operation = flowOperations[request.action];
     const review = {
@@ -895,7 +931,7 @@ function syncViews(ctx, signal, operations, history) {
           return { toast: common.busy };
         return { close: true };
       }
-    }] };
+    }, { id: "prerequisites", label: t.prerequisites, run: async () => ({ view: await flowPrerequisites(request) }) }] };
   };
   const connect = async () => {
     const options = await service().connectionOptions();
