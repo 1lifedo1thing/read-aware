@@ -1,7 +1,7 @@
 {
   "id": "rss-reader",
   "name": "RSS Reader",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "schemaVersion": 1,
   "minAppVersion": "0.3.0",
   "requires": {
@@ -17,6 +17,7 @@
       "agentTools": "^1.2.0"
     },
     "services": {
+      "session": "^2.17.0",
       "storage": "^2.5.0",
       "plugins": "^1.9.0",
       "ui": "^1.2.0",

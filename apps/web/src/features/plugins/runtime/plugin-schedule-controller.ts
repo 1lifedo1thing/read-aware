@@ -1,5 +1,5 @@
 import { actorFromEvent, causalActor, copyEventCause, ObservationCauses, restoreActorSource, saveActorSource, stampEventCause, type DomainActor, type DurableActorSource } from "../../../platform/domain-actor";
-import { AppError, errorCode, normalizeDeferredRequest, type PluginDeferredRequest, type PluginDeferredReceipt,
+import { AppError, errorCode, normalizeScheduleControl, assertOperationConditions, type OperationCondition, normalizeDeferredRequest, type PluginDeferredRequest, type PluginDeferredReceipt,
   type PluginScheduleRun, type PluginDeferredState, type PluginScheduleControl, type PluginSchedulePage, type PluginScheduleQuery,
   type PluginScheduleReceipt, type PluginScheduleState } from "@read-aware/core";
 import { MIN_SCHEDULE_MINUTES, type PluginScheduleDeclaration } from "@read-aware/plugin-types";
@@ -172,11 +172,20 @@ export class PluginScheduleController {
     const off = this.subscribe(source => { causes.add(source); void publish(); }); void publish();
     return () => { disposed = true; off(); };
   }
+  conditions(input: PluginScheduleControl): OperationCondition[] {
+    const accepted = normalizeScheduleControl(input), task = this.tasks.get(`${accepted.pluginId}:${accepted.id}`);
+    if (!task?.active) return [{ kind: "provider", state: "unavailable", reason: "schedule-not-bound", errorCode: "ui/unavailable" }];
+    if (this.writeReservation) return [{ kind: "capacity", state: "unavailable", reason: "schedule-persistence-paused", errorCode: "backup/busy" }];
+    if (accepted.action === "run" && !task.flight && !this.capacity(task)) return [{ kind: "capacity", state: "unavailable", reason: "schedule-capacity-occupied", errorCode: "plugin/busy" }];
+    return [{ kind: "provider", state: "satisfied", reason: "schedule-bound" },
+      { kind: "capacity", state: "satisfied", reason: accepted.action === "run" && task.flight ? "schedule-already-running" : "schedule-control-ready" },
+      ...(accepted.action === "run" && !task.flight ? [{ kind: "provider" as const, state: "unknown" as const, reason: "schedule-callback-not-checked" }] : [])];
+  }
   async control(input: PluginScheduleControl, signal?: AbortSignal, origin: DomainActor = "system"): Promise<PluginScheduleReceipt> {
     origin = causalActor(origin);
     signal?.throwIfAborted();
-    if (!input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).some(key => !["pluginId", "id", "action"].includes(key))
-      || !validId(input.pluginId) || !validId(input.id) || !["pause", "resume", "run"].includes(input.action)) throw new AppError("ui/invalid-target", "Invalid schedule control");
+    input = normalizeScheduleControl(input);
+    assertOperationConditions(this.conditions(input));
     const task = this.tasks.get(`${input.pluginId}:${input.id}`);
     if (!task?.active) throw new AppError("ui/unavailable", "Schedule is not bound");
     this.assertWritable();

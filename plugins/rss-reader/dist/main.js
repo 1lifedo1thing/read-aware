@@ -4877,6 +4877,10 @@ async function refreshScheduleView(ctx) {
         return { toast: action === "pause" ? t.pausedReceipt : t.resumedReceipt };
       } },
       { id: "run", label: t.run, icon: "arrows-clockwise", run: async () => {
+        const availability = await ctx.services.session.operationAvailability({ operation: "schedules.control", schedule: { pluginId: current.pluginId, id: REFRESH_SCHEDULE, action: "run" } });
+        const blocked = availability.conditions.find((item) => item.state === "unavailable" || item.state === "unconfigured");
+        if (blocked)
+          return { view: { kind: "detail", title: t.title, content: [{ kind: "error", code: blocked.errorCode ?? "ui/unavailable" }], actions: [refresh] } };
         const result = await ctx.services.schedules.control(REFRESH_SCHEDULE, "run");
         return { toast: result.status === "already-running" ? t.alreadyRunning : t.completed };
       } },

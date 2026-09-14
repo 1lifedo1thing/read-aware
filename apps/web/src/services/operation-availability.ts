@@ -63,6 +63,11 @@ export function inspectInferenceAvailability(input: InferenceAvailabilityQuery, 
 export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal, context?: OperationAvailabilityContext): Promise<OperationAvailability> {
   const query = normalizeOperationAvailability(input);
   signal?.throwIfAborted();
+  if (query.operation === "schedules.control") {
+    const { pluginSchedules } = await import("../features/plugins/runtime/plugin-scheduler");
+    signal?.throwIfAborted();
+    return operationAvailability(query, pluginSchedules.conditions(query.schedule));
+  }
   if (query.operation === "settings.refreshModelCatalog") {
     const { createSettingsDomain } = await import("../domain/settings/domain");
     signal?.throwIfAborted();

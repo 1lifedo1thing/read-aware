@@ -9,6 +9,9 @@ test("schedule services only enumerate/control their own bindings and stop obser
   try {
     a.context.services.schedules.bind("tick", () => {}); b.context.services.schedules.bind("tick", () => {});
     a.lifecycle.promote(); b.lifecycle.promote();
+    const check = (pluginId: string) => a.context.services.session.operationAvailability({ operation: "schedules.control", schedule: { pluginId, id: "tick", action: "run" } });
+    expect(await check("schedule-b")).toMatchObject({ state: "unavailable", conditions: [{ reason: "schedule-owner-required" }] });
+    expect(await check("schedule-a")).toMatchObject({ state: "unknown", remoteChecked: false });
     const page = await a.context.services.schedules.list({ pluginId: "schedule-b" } as never);
     expect(page.schedules.map(item => item.pluginId)).toEqual(["schedule-a"]);
     await expect(a.context.services.schedules.control("missing", "run")).rejects.toMatchObject({ code: "ui/unavailable" });

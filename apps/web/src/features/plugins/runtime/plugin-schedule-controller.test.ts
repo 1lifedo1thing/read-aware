@@ -23,6 +23,8 @@ test("backup freezes controls and periodic dispatch while running completion wai
   await f.controller.defer("other", "later", { requestId: "one", delayMs: 1000, when: "any" });
   const execution = f.controller.control(command("run")); await Bun.sleep(0);
   const paused = f.controller.withPersistencePaused(() => backup.promise); await Bun.sleep(0);
+  expect(f.controller.conditions(command("run"))).toEqual([{ kind: "capacity", state: "unavailable", reason: "schedule-persistence-paused", errorCode: "backup/busy" }]);
+
   f.advance(); f.controller.sweep(true); expect(called).toBe(1);
   for (const action of ["pause", "resume", "run"] as const) await expect(f.controller.control(command(action))).rejects.toMatchObject({ code: "backup/busy" });
   await expect(f.controller.defer("other", "later", { requestId: "two", delayMs: 1000, when: "any" })).rejects.toMatchObject({ code: "backup/busy" });

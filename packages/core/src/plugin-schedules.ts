@@ -25,3 +25,11 @@ export type PluginSchedulePage = { schedules: PluginScheduleState[]; total: numb
 export type PluginScheduleQuery = { pluginId?: string; offset?: number; limit?: number };
 export type PluginScheduleControl = { pluginId: string; id: string; action: "pause" | "resume" | "run" };
 export type PluginScheduleReceipt = { status: "completed" | "already-running"; schedule: PluginScheduleState };
+
+export function normalizeScheduleControl(input: PluginScheduleControl): PluginScheduleControl {
+  if (!input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).some(key => !["pluginId", "id", "action"].includes(key))
+    || typeof input.pluginId !== "string" || !input.pluginId.length || input.pluginId.length > 256
+    || typeof input.id !== "string" || !input.id.length || input.id.length > 256
+    || !["pause", "resume", "run"].includes(input.action)) throw new AppError("ui/invalid-target", "Invalid schedule control");
+  return { pluginId: input.pluginId, id: input.id, action: input.action };
+}

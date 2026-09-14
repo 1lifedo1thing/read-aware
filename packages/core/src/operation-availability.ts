@@ -1,3 +1,4 @@
+import { normalizeScheduleControl, type PluginScheduleControl } from "./plugin-schedules";
 import { normalizeHostSyncFlow, type HostSyncFlowRequest } from "./host-sync";
 import { normalizeHostCommandRequest, type HostCommandRequest } from "./host-commands";
 import { normalizePluginServiceCall, type PluginServiceCall } from "./plugin-services";
@@ -21,6 +22,7 @@ export type WindowAvailabilityQuery = { operation: "window.control"; request: Ho
 export type ExportAvailabilityQuery = { operation: "ui.exportFile" } & HostExportDescription;
 export type HostIOAvailabilityQuery = ExportAvailabilityQuery | { operation: "clipboard.writeText"; text: string } | { operation: "ui.openExternal"; url: string };
 export type SyncAvailabilityQuery = { operation: "sync.now" } | { operation: "sync.requestFlow"; flow: HostSyncFlowRequest };
+export type ScheduleAvailabilityQuery = { operation: "schedules.control"; schedule: PluginScheduleControl };
 export type ModelCatalogAvailabilityQuery = { operation: "settings.refreshModelCatalog"; provider: string };
 export type UpdateAvailabilityQuery = { operation: "maintenance.checkForUpdates" } | { operation: "diagnostics.verifyProjections" };
 export type HostFlowAvailabilityQuery =
@@ -30,8 +32,8 @@ export type HostFlowAvailabilityQuery =
   | { operation: "diagnostics.requestProjectionRepair" };
 export type PluginServiceAvailabilityQuery = { operation: "plugins.callService"; serviceCall: PluginServiceCall };
 export type HostCommandAvailabilityQuery = { operation: "ui.commands.execute"; command: HostCommandRequest };
-export type OperationAvailabilityQuery = ModelCatalogAvailabilityQuery | HostFlowAvailabilityQuery | UpdateAvailabilityQuery | HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
-export type NormalizedOperationAvailabilityQuery = ModelCatalogAvailabilityQuery | HostFlowAvailabilityQuery | UpdateAvailabilityQuery | HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
+export type OperationAvailabilityQuery = ScheduleAvailabilityQuery | ModelCatalogAvailabilityQuery | HostFlowAvailabilityQuery | UpdateAvailabilityQuery | HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
+export type NormalizedOperationAvailabilityQuery = ScheduleAvailabilityQuery | ModelCatalogAvailabilityQuery | HostFlowAvailabilityQuery | UpdateAvailabilityQuery | HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
 export type OperationConditionState = "satisfied" | "unconfigured" | "unavailable" | "unknown";
 export type OperationCondition = {
   kind: "permission" | "account" | "model" | "endpoint" | "provider" | "input" | "object" | "reader" | "capacity";
@@ -53,6 +55,10 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
   const invalid = () => new AppError("plugin/invalid-argument", "Invalid operation availability query");
   if (!input || typeof input !== "object" || Array.isArray(input)) throw invalid();
   const raw = input as Record<string, unknown>;
+  if (raw.operation === "schedules.control") {
+    if (Object.keys(raw).some(key => key !== "operation" && key !== "schedule")) throw invalid();
+    return { operation: raw.operation, schedule: normalizeScheduleControl(raw.schedule as PluginScheduleControl) };
+  }
   if (raw.operation === "settings.refreshModelCatalog") {
     if (Object.keys(raw).some(key => key !== "operation" && key !== "provider")
       || typeof raw.provider !== "string" || !raw.provider.trim() || raw.provider.length > 128) throw invalid();

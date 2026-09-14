@@ -9,11 +9,14 @@ type Page = Awaited<ReturnType<PluginContext["services"]["schedules"]["list"]>>;
 function fixture() {
   const initial: Page["schedules"][number] = { pluginId: "rss-reader", id: "refresh-feeds", label: "Refresh feeds", everyMinutes: 60,
     paused: false, running: false, lastOutcome: null, lastStartedAt: null, lastFinishedAt: null, lastSuccessAt: null, lastErrorCode: null };
-  const state = { schedule: initial, missing: false, fail: false, alreadyRunning: false };
+  const state = { schedule: initial, missing: false, fail: false, alreadyRunning: false, blocked: false };
   const page = (): Page => ({ schedules: state.missing ? [] : [structuredClone(state.schedule)], total: state.missing ? 0 : 1, nextOffset: null });
   const controls: unknown[] = [], published: PluginView[] = [];
   let handler!: (page: Page) => Promise<void>, disposed = 0;
-  const ctx = { withEvent: () => ctx, locale: "en", services: { schedules: {
+  const ctx = { withEvent: () => ctx, locale: "en", services: { session: { operationAvailability: async (query: unknown) => {
+    expect(query).toEqual({ operation: "schedules.control", schedule: { pluginId: "rss-reader", id: "refresh-feeds", action: "run" } });
+    return { state: state.blocked ? "unavailable" : "unknown", conditions: state.blocked ? [{ state: "unavailable", errorCode: "backup/busy" }] : [] };
+  } }, schedules: {
     list: async (query: unknown) => { expect(query).toEqual({ limit: 64 }); if (state.fail) throw Object.assign(Error("read failed"), { code: "db/locked" }); return page(); },
     observe: (_query: unknown, next: typeof handler) => { handler = next; return { dispose() { disposed++; } }; },
     control: async (id: string, action: string) => {
@@ -42,6 +45,10 @@ test("schedule controls address only the own schedule and preserve the displayed
   expect(await action(paused, "run").run!()).toEqual({ toast: "Refresh is already running" });
   f.state.alreadyRunning = false;
   expect(await action(paused, "run").run!()).toEqual({ toast: "Scheduled refresh completed" });
+  f.state.blocked = true;
+  const before = f.controls.length;
+  expect(JSON.stringify(await action(paused, "run").run!())).toContain("backup/busy");
+  expect(f.controls).toHaveLength(before);
   f.state.fail = true;
   await expect(action(paused, "resume").run!() as Promise<unknown>).rejects.toMatchObject({ code: "db/locked" });
   await expect(refreshScheduleView(f.ctx)).rejects.toMatchObject({ code: "db/locked" });
