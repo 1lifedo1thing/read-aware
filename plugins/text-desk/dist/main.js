@@ -1,6 +1,9 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  durableJobs: ["Saved tasks", "持久任务", "持久任務", "保存済みタスク", "Сохранённые задачи", "Tâches enregistrées", "Gespeicherte Aufgaben", "Tareas guardadas"],
+  preparePage: ["Prepare this page in background", "后台准备本页书籍", "背景準備本頁書籍", "このページの本を準備", "Подготовить книги страницы", "Préparer les livres de cette page", "Bücher dieser Seite vorbereiten", "Preparar los libros de esta página"],
+  jobAttention: ["Needs review", "需要核对", "需要核對", "確認が必要", "Требует проверки", "À vérifier", "Prüfung nötig", "Requiere revisión"],
   jumperBookmarks: ["Jumper bookmarks", "Jumper 书签", "Jumper 書籤", "Jumper のブックマーク", "Закладки Jumper", "Signets Jumper", "Jumper-Lesezeichen", "Marcadores de Jumper"],
   jumperUnavailable: ["Enable Jumper and grant both plugins access to this book to read its bookmarks.", "请启用 Jumper，并允许两个插件访问本书，以读取书签。", "請啟用 Jumper，並允許兩個外掛存取本書，以讀取書籤。", "Jumper を有効にして、両方のプラグインにこの本へのアクセスを許可してください。", "Включите Jumper и разрешите обоим плагинам доступ к этой книге.", "Activez Jumper et autorisez les deux extensions à accéder à ce livre.", "Aktiviere Jumper und erlaube beiden Plugins den Zugriff auf dieses Buch.", "Activa Jumper y permite a ambos complementos acceder a este libro."],
   jumperChanged: ["The bookmarks or Jumper changed. Refresh to read the current list.", "书签或 Jumper 已发生变化，请刷新列表。", "書籤或 Jumper 已變更，請重新整理清單。", "ブックマークまたは Jumper が変わりました。更新してください。", "Закладки или Jumper изменились. Обновите список.", "Les signets ou Jumper ont changé. Actualisez la liste.", "Die Lesezeichen oder Jumper wurden geändert. Aktualisiere die Liste.", "Los marcadores o Jumper han cambiado. Actualiza la lista."],
@@ -312,6 +315,40 @@ async function readingAvailability(ctx, target) {
     }]),
     { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await readingAvailability(ctx, guard), navigation: "replace" }) }
   ] };
+}
+
+// src/saved-jobs.ts
+async function jobDetail(ctx, id) {
+  const job = await ctx.services.jobs.get(id);
+  const refresh = async () => ({ view: await jobDetail(ctx, id), navigation: "replace" });
+  const actions = [{ id: "refresh", label: tr(ctx.locale, "refresh"), run: refresh }];
+  if (!["completed", "cancelled"].includes(job.status)) {
+    for (const action of job.status === "running" || job.status === "queued" ? ["pause", "cancel"] : ["resume", "cancel"]) {
+      actions.push({ id: action, label: tr(ctx.locale, `${action}Request`), run: async () => {
+        await ctx.services.jobs.control(id, action);
+        return refresh();
+      } });
+    }
+  }
+  return { kind: "detail", title: job.title, content: [{ kind: "keyValue", rows: [
+    { label: tr(ctx.locale, "status"), value: job.status === "needs-attention" ? tr(ctx.locale, "jobAttention") : tr(ctx.locale, `task_${job.status}`) },
+    { label: tr(ctx.locale, "durableJobs"), value: `${job.completedSteps} / ${job.totalSteps}` },
+    ...job.errorCode ? [{ label: tr(ctx.locale, "jobAttention"), value: job.errorCode }] : []
+  ] }], actions };
+}
+async function savedJobs(ctx, offset = 0) {
+  const page = await ctx.services.jobs.list({ offset, limit: 20 });
+  const actions = [{ id: "refresh", label: tr(ctx.locale, "refresh"), run: async () => ({ view: await savedJobs(ctx, offset), navigation: "replace" }) }];
+  if (page.nextOffset !== null)
+    actions.push({ id: "next", label: tr(ctx.locale, "next"), run: async () => ({ view: await savedJobs(ctx, page.nextOffset), navigation: "replace" }) });
+  if (offset)
+    actions.push({ id: "previous", label: tr(ctx.locale, "previous"), run: async () => ({ view: await savedJobs(ctx, Math.max(0, offset - 20)), navigation: "replace" }) });
+  return { kind: "list", title: tr(ctx.locale, "durableJobs"), items: page.jobs.map((job) => ({
+    id: job.id,
+    title: job.title,
+    subtitle: `${job.completedSteps} / ${job.totalSteps}`,
+    onSelect: async () => ({ view: await jobDetail(ctx, job.id) })
+  })), actions, emptyText: tr(ctx.locale, "empty") };
 }
 
 // src/task-views.ts
@@ -703,6 +740,8 @@ var HOST_SERVICE_CATALOG = {
   secrets: { version: "1.0.0", permission: null },
   ui: { version: "1.15.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
+  jobs: { version: "1.0.0", permission: null },
+  transactions: { version: "1.0.0", permission: null },
   session: { version: "2.3.0", permission: null },
   plugins: { version: "1.8.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
@@ -1574,6 +1613,13 @@ async function textDesk(ctx, page = 0) {
     icon: "arrows-clockwise",
     run: async () => ({ view: await textDesk(ctx, index), navigation: "replace" })
   }];
+  actions.push({ id: "saved-jobs", label: tr(ctx.locale, "durableJobs"), run: async () => ({ view: await savedJobs(ctx) }) });
+  const pageBooks = books.slice(index * 20, (index + 1) * 20);
+  if (pageBooks.length)
+    actions.push({ id: "prepare-page", label: tr(ctx.locale, "preparePage"), run: async () => {
+      await ctx.services.jobs.start({ title: tr(ctx.locale, "preparePage"), steps: pageBooks.map((book, i) => ({ id: `book-${i}`, kind: "library.text.prepare", bookId: book.id, options: { priority: "background" } })) });
+      return { view: await savedJobs(ctx) };
+    } });
   if (ctx.services.llm)
     actions.push({ id: "inference-history", label: tr(ctx.locale, "inferenceHistory"), icon: "clock-counter-clockwise", run: async () => ({ view: await inferenceHistory(ctx) }) });
   actions.push({ id: "reader-activity", label: tr(ctx.locale, "readerActivity"), icon: "book-open", run: async () => ({ view: await readerDemandDetail(ctx) }) });

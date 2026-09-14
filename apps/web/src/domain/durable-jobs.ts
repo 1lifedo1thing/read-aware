@@ -35,7 +35,7 @@ export class DurableJobRunner {
     const grant = await this.executor.authorize(plan, signal ?? controller.signal);
     try {
       signal?.throwIfAborted(); await grant.assert();
-      const record = await this.store.create(crypto.randomUUID(), plan);
+      const record = await this.store.create(crypto.randomUUID(), plan, async () => { signal?.throwIfAborted(); await grant.assert(); });
       this.launch(record.id, false); return durableJobSnapshot(record);
     } finally { grant.dispose(); }
   }
@@ -140,7 +140,7 @@ export class DurableJobRunner {
     } catch (error) {
       // A stale runner has lost its right to change the checkpoint. In
       // particular, it must not overwrite a newer owner's reconciliation.
-      if (errorCode(error) === "jobs/conflict") throw error;
+      if (!grant || errorCode(error) === "jobs/conflict") throw error;
       const action = record.state.requestedAction;
       const uncertain = !!record.state.attempt && ["dispatching", "unknown"].includes(record.state.attempt.phase);
       await save(state => ({ ...state, status: uncertain ? "needs-attention" : action === "cancel" ? "cancelled" : action === "pause" || this.closed ? "paused" : "failed",
@@ -152,6 +152,17 @@ export class DurableJobRunner {
     const record = await this.store.get(id);
     const grant = await this.executor.authorize(normalizeDurableJobPlan(record.plan), new AbortController().signal);
     try { await grant.assert(); return record; } finally { grant.dispose(); }
+  }
+  async list(query: { offset?: number; limit?: number } = {}) {
+    const offset = query.offset ?? 0, limit = query.limit ?? 20;
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > 256 || !Number.isSafeInteger(limit) || limit < 1 || limit > 50) throw new AppError("jobs/invalid-plan", "Invalid job page");
+    const records = await this.store.list(offset, limit);
+    const jobs: DurableJobSnapshot[] = [];
+    for (const record of records) {
+      try { jobs.push(durableJobSnapshot(await this.visible(record.id))); }
+      catch (error) { if (!["plugin/permission-denied", "plugin/object-access-denied"].includes(errorCode(error) ?? "")) throw error; }
+    }
+    return { jobs, nextOffset: records.length === limit && offset + limit < 256 ? offset + limit : null };
   }
   async get(id: string): Promise<DurableJobSnapshot> { return durableJobSnapshot(await this.visible(id)); }
   async control(id: string, action: DurableJobControl): Promise<DurableJobSnapshot> {

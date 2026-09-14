@@ -122,6 +122,20 @@ export class TransactionSession implements TransactionsPort {
       return { id, committed: true, ...(metadata.undoOf ? { undoOf: metadata.undoOf } : {}) };
     } finally { prepared.authority.dispose(); this.owner.releasePreview?.(); if (!this.plans.size) this.owner.onIdle?.(); }
   }
+  async authorizeDurableOperations(input: AtomicOperation[], signal?: AbortSignal) {
+    const operations = normalizeAtomicOperations(input);
+    const authority = await this.owner.acquire(operations, signal);
+    try {
+      for (const operation of operations) {
+        if (!operation.kind.startsWith("document.")) continue;
+        if (!this.owner.pluginId || !("collection" in operation)) throw new AppError("plugin/permission-denied", "Private documents require their owner");
+        const old = await pluginDocsGet(this.owner.pluginId, operation.collection, operation.id);
+        if (old) await this.owner.assertDocumentBook(old.bookId ?? null);
+      }
+      await authority.assert(); signal?.throwIfAborted();
+      return authority;
+    } catch (error) { authority.dispose(); throw error; }
+  }
   /** Host-only job preparation. No raw checkpoint is exposed on the public port. */
   async prepareDurable(input: AtomicOperation[], dispatchId: string, signal?: AbortSignal): Promise<FrozenAtomicHostPlan> {
     const view = await this.preview(input, signal);

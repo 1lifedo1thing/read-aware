@@ -1,3 +1,4 @@
+import { createPluginJobs } from "./plugin-jobs";
 import { createPluginTransactions } from "./plugin-transactions";
 import { bookServiceStorage, denyUnscopedServiceData } from "./plugin-service-storage";
 import { pluginServices, type PluginServiceParticipant } from "./plugin-services";
@@ -379,6 +380,7 @@ export function buildPluginContext(
   const owners: DomainActorOwners = {};
   const documentObserver = new PluginDocumentObserver(lifecycle);
   const transactionBudget = { pending: 0 };
+  let activationJobs: ReturnType<typeof createPluginJobs> | undefined;
   const logging = createPluginLogging(manifest.id, manifest.version, lifecycle);
   const scopedWorkspaceState = { revision: 0 };
   const scopedConversationState = { revision: 0 };
@@ -418,6 +420,11 @@ export function buildPluginContext(
   };
   let transactionSession: ReturnType<typeof createPluginTransactions> | undefined;
   const transactions = () => transactionSession ??= createPluginTransactions(manifest, objectAccess, lifecycle, documentObserver, operationActor, settingsAccess, transactionBudget);
+  if (operationActor === selfOrigin && !serviceInvocation) activationJobs ??= createPluginJobs(manifest, objectAccess, lifecycle, transactions(), operationActor);
+  const jobs = () => {
+    if (serviceInvocation || operationActor !== selfOrigin || !activationJobs) throw new AppError("plugin/permission-denied", "Persistent jobs require the activation root context");
+    return activationJobs;
+  };
   const transactionCall = <T,>(perform: () => Promise<T>): Promise<T> => {
     const pending = perform(); lifecycle.trackCleanup(pending.then(() => {}, () => {})); return pending;
   };
@@ -873,6 +880,12 @@ export function buildPluginContext(
             return { dispose: () => { registration.dispose(); lifecycle.trackCleanup(pluginSchedules.drainWrites(manifest.id)); } };
           });
         },
+      },
+      jobs: {
+        start: (plan, options) => transactionCall(() => jobs().start(plan, callSignal(options))),
+        get: async (id, options) => { const signal = callSignal(options); signal.throwIfAborted(); const value = await jobs().get(id); signal.throwIfAborted(); return value; },
+        list: async (query, options) => { const signal = callSignal(options); signal.throwIfAborted(); const value = await jobs().list(query); signal.throwIfAborted(); return value; },
+        control: (id, action, options) => transactionCall(() => { callSignal(options).throwIfAborted(); return jobs().control(id, action); }),
       },
       transactions: {
         preview: (operations, options) => transactionCall(() => transactions().preview(operations, callSignal(options))),

@@ -1,3 +1,4 @@
+import { savedJobs } from "./saved-jobs";
 import { inferenceHistory } from "./inference-history";
 import type { PluginContext, PluginDetailView, PluginListView, PluginAction, PluginListItem } from "@read-aware/plugin-types";
 import { taskHistory } from "./task-history";
@@ -56,6 +57,12 @@ export async function textDesk(ctx: PluginContext, page = 0): Promise<PluginList
   }
   const actions: PluginAction[] = [{ id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise",
     run: async () => ({ view: await textDesk(ctx, index), navigation: "replace" }) }];
+  actions.push({ id: "saved-jobs", label: tr(ctx.locale, "durableJobs"), run: async () => ({ view: await savedJobs(ctx) }) });
+  const pageBooks = books.slice(index * 20, (index + 1) * 20);
+  if (pageBooks.length) actions.push({ id: "prepare-page", label: tr(ctx.locale, "preparePage"), run: async () => {
+    await ctx.services.jobs.start({ title: tr(ctx.locale, "preparePage"), steps: pageBooks.map((book, i) => ({ id: `book-${i}`, kind: "library.text.prepare", bookId: book.id, options: { priority: "background" } })) });
+    return { view: await savedJobs(ctx) };
+  } });
   if (ctx.services.llm) actions.push({ id: "inference-history", label: tr(ctx.locale, "inferenceHistory"), icon: "clock-counter-clockwise", run: async () => ({ view: await inferenceHistory(ctx) }) });
   actions.push({ id: "reader-activity", label: tr(ctx.locale, "readerActivity"), icon: "book-open", run: async () => ({ view: await readerDemandDetail(ctx) }) });
   actions.push({ id: "search", label: tr(ctx.locale, "searchShelf"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx) }) });

@@ -2444,6 +2444,12 @@ export type PluginHostServices = {
   };
   /** Local semantic transactions. Preview does not execute; commit consumes the
    * frozen preview once. Query the receipt after an unknown response before retrying. */
+  jobs: {
+    start(plan: import("@read-aware/core").DurableJobPlan, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
+    get(id: string, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
+    list(query?: { offset?: number; limit?: number }, options?: PluginCallOptions): Promise<{ jobs: import("@read-aware/core").DurableJobSnapshot[]; nextOffset: number | null }>;
+    control(id: string, action: import("@read-aware/core").DurableJobControl, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
+  };
   transactions: {
     preview(operations: import("@read-aware/core").AtomicOperation[], options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicPreview>;
     commit(previewId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicReceipt>;

@@ -1,5 +1,9 @@
 const locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 const labels = {
+  durableJobs: ["Saved tasks", "持久任务", "持久任務", "保存済みタスク", "Сохранённые задачи", "Tâches enregistrées", "Gespeicherte Aufgaben", "Tareas guardadas"],
+  preparePage: ["Prepare this page in background", "后台准备本页书籍", "背景準備本頁書籍", "このページの本を準備", "Подготовить книги страницы", "Préparer les livres de cette page", "Bücher dieser Seite vorbereiten", "Preparar los libros de esta página"],
+  jobAttention: ["Needs review", "需要核对", "需要核對", "確認が必要", "Требует проверки", "À vérifier", "Prüfung nötig", "Requiere revisión"],
+
   jumperBookmarks: ["Jumper bookmarks", "Jumper 书签", "Jumper 書籤", "Jumper のブックマーク", "Закладки Jumper", "Signets Jumper", "Jumper-Lesezeichen", "Marcadores de Jumper"],
   jumperUnavailable: ["Enable Jumper and grant both plugins access to this book to read its bookmarks.", "请启用 Jumper，并允许两个插件访问本书，以读取书签。", "請啟用 Jumper，並允許兩個外掛存取本書，以讀取書籤。", "Jumper を有効にして、両方のプラグインにこの本へのアクセスを許可してください。", "Включите Jumper и разрешите обоим плагинам доступ к этой книге.", "Activez Jumper et autorisez les deux extensions à accéder à ce livre.", "Aktiviere Jumper und erlaube beiden Plugins den Zugriff auf dieses Buch.", "Activa Jumper y permite a ambos complementos acceder a este libro."],
   jumperChanged: ["The bookmarks or Jumper changed. Refresh to read the current list.", "书签或 Jumper 已发生变化，请刷新列表。", "書籤或 Jumper 已變更，請重新整理清單。", "ブックマークまたは Jumper が変わりました。更新してください。", "Закладки или Jumper изменились. Обновите список.", "Les signets ou Jumper ont changé. Actualisez la liste.", "Die Lesezeichen oder Jumper wurden geändert. Aktualisiere die Liste.", "Los marcadores o Jumper han cambiado. Actualiza la lista."],

@@ -7232,3 +7232,13 @@ pending concentrated acceptance; these limits are not a system-wide URI sandbox.
 [代码] Library1.31 also supports current-book task start, priority, pause, resume and cancel. A host-owned fence spans initial reads/history admission and remains attached through running/paused states; a book/session change cancels that request and prevents new extraction. Terminal states release the observer. Other leases and already dispatched I/O can drain. Host access objects are not accepted from Worker arguments; plugin retirement still owns cleanup. This is not cross-restart task recovery.
 
 [消费者/验证] Text Desk0.26 exposes preparation and rebuild prerequisites from book details. Refresh/actions keep the inspected book; unknown permits an attempt and known missing conditions hide execution. Rebuild still requires its confirmation form. Controlled repository/task/source/download admission, public permission/scope cancellation, Agent and compiled consumer checks cover the new path. Actual Bun Worker covers the query shape/cancellation; it is not Tauri/SQLite/download/provider acceptance, which remains pending.
+
+
+### 持久任务 jobs 1.0
+
+插件可通过 `ctx.services.jobs.start/get/list/control` 保存并控制最多32步的语义计划，
+目前步骤包含原子事务、正文准备和书图谱任务。每步沿用对应领域和对象权限；
+任务属于创建插件，列表按当前授权过滤。Text Desk 0.28 使用它后台准备当前页书籍。
+任务在插件激活后恢复，退出时等待已派发工作收尾；暂停、取消和显式恢复意图持久保存。
+未知执行结果先核对，不能把取消当回滚。图谱重建的持久章节计划和真实桌面重启验收尚待补齐。
+后台任务目前要求激活根上下文，服务 Worker 与反应上下文不开放此入口；完整因果续接和 Agent 入口待接。

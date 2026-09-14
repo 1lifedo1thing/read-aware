@@ -408,11 +408,11 @@
 
 - Agent global：145 个。
 - Agent book：124 个。
-- Plugin ctx：266 个。
+- Plugin ctx：270 个。
 - Plugin returned interface：30 个。
 - Capability domains：6 个。
 - Capability contributions：16 个。
-- Capability services：15 个。
+- Capability services：16 个。
 - Capability schemas：3 个。
 - Settings path：73 个。
 - Native command：237 个。
@@ -433,7 +433,7 @@
 - Plugin setting declaration：24 个。
 - Native bundled plugin：6 个。
 
-以下“已映射”只保证注册项可追到矩阵行，不意味着目标已实现。Plugin ctx 是授予当前全部 manifest 权限后的 266 个顶层可调用路径；返回的 collection/session 方法单列。Settings 73 路径是在 custom + 主/快模型配置的完整条件快照中生成，不表示未配置 AI 时也显示全部路径。Native command 包含 cfg/no-op 历史项，见 SYS18，不能算桌面能力全部对插件开放。
+以下“已映射”只保证注册项可追到矩阵行，不意味着目标已实现。Plugin ctx 是授予当前全部 manifest 权限后的 270 个顶层可调用路径；返回的 collection/session 方法单列。Settings 73 路径是在 custom + 主/快模型配置的完整条件快照中生成，不表示未配置 AI 时也显示全部路径。Native command 包含 cfg/no-op 历史项，见 SYS18，不能算桌面能力全部对插件开放。
 
 ### Agent global
 
@@ -904,6 +904,10 @@
 | `services.schedules.observe` | [MORE01](#MORE01) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.schedules.control` | [MORE01](#MORE01) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.schedules.bind` | [MORE01](#MORE01) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `services.jobs.start` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `services.jobs.get` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `services.jobs.list` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `services.jobs.control` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.transactions.preview` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.transactions.commit` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.transactions.previewUndo` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -1060,6 +1064,7 @@
 | `secrets` | [SYS04](#SYS04) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `ui` | [EXT07](#EXT07) [SYS10](#SYS10) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `schedules` | [MORE01](#MORE01) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `jobs` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `transactions` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `session` | [MORE03](#MORE03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `plugins` | [EXT11](#EXT11) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -1636,7 +1641,7 @@
 | `reading-goals` | [AI11](#AI11) [MEM03](#MEM03) [SET23](#SET23) [STAT02](#STAT02) [STAT05](#STAT05) [STAT03](#STAT03) [EXT07](#EXT07) [EXT02](#EXT02) [EXT05](#EXT05) [SYS01](#SYS01) [SYS02](#SYS02) | [代码] 源码版本 0.5.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `rss-reader` | [EXT10](#EXT10) | [代码] 源码版本 0.21.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `sentence-reader` | [READ15](#READ15) [READ16](#READ16) | [代码] 源码版本 1.1.0；源码存在不等于打包、安装、启用或模型可调用 |
-| `text-desk` | [TXT04](#TXT04) [TXT05](#TXT05) [TXT06](#TXT06) [TXT07](#TXT07) [TXT10](#TXT10) [TXT11](#TXT11) [TXT12](#TXT12) [TXT13](#TXT13) [LIB01](#LIB01) [READ01](#READ01) [READ13](#READ13) [EXT01](#EXT01) [EXT02](#EXT02) [EXT05](#EXT05) [EXT06](#EXT06) [SYS09](#SYS09) [SYS13](#SYS13) [AI07](#AI07) | [代码] 源码版本 0.27.0；源码存在不等于打包、安装、启用或模型可调用 |
+| `text-desk` | [TXT04](#TXT04) [TXT05](#TXT05) [TXT06](#TXT06) [TXT07](#TXT07) [TXT10](#TXT10) [TXT11](#TXT11) [TXT12](#TXT12) [TXT13](#TXT13) [LIB01](#LIB01) [READ01](#READ01) [READ13](#READ13) [EXT01](#EXT01) [EXT02](#EXT02) [EXT05](#EXT05) [EXT06](#EXT06) [SYS09](#SYS09) [SYS13](#SYS13) [AI07](#AI07) | [代码] 源码版本 0.28.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `tts` | [READ17](#READ17) [READ18](#READ18) | [代码] 源码版本 0.6.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `webdav-sync` | [OPS04](#OPS04) | [代码] 源码版本 0.3.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `workspace-profiles` | [UI02](#UI02) [UI04](#UI04) [CFG01](#CFG01) [CFG10](#CFG10) [EXT02](#EXT02) [EXT05](#EXT05) [SYS02](#SYS02) | [代码] 源码版本 0.8.0；源码存在不等于打包、安装、启用或模型可调用 |

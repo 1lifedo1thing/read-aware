@@ -18,7 +18,7 @@ export type DurableJobState = {
 };
 export type DurableJobRecord = { owner: string; id: string; plan: DurableJobPlan; state: DurableJobState; revision: string; createdAt: string; updatedAt: string };
 export interface DurableJobStore {
-  create(id: string, plan: DurableJobPlan): Promise<DurableJobRecord>;
+  create(id: string, plan: DurableJobPlan, assertAuthorized?: () => void | Promise<void>): Promise<DurableJobRecord>;
   get(id: string): Promise<DurableJobRecord>;
   list(offset?: number, limit?: number): Promise<DurableJobRecord[]>;
   checkpoint(record: DurableJobRecord, state: DurableJobState): Promise<DurableJobRecord>;
@@ -32,9 +32,9 @@ export function nativeDurableJobStore(owner: string): DurableJobStore {
     return withPluginDataWrites(pluginId ? [pluginId] : [], () => runDomainWrite(perform));
   };
   return {
-    create: (id, plan) => {
+    create: (id, plan, assertAuthorized) => {
       const accepted = normalizeDurableJobPlan(plan);
-      return write(() => invoke("durable_job_create", { owner, id, plan: accepted }));
+      return write(async () => { await assertAuthorized?.(); return invoke("durable_job_create", { owner, id, plan: accepted }); });
     },
     get: async id => {
       ready();
