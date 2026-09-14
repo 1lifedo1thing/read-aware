@@ -453,16 +453,16 @@ async function bookAssets(ctx, selected) {
   });
   return { ...content(), live: { subscribe(channel) {
     let disposed = false, revision = 0;
-    const subscription = library.events.observeEnrichment(book.id, async (event) => {
-      if (disposed)
+    const subscription = library.events.observeEnrichment(book.id, async (event, delivery) => {
+      if (disposed || delivery?.reaction?.status === "cycle")
         return;
       if (event.status === "ready") {
         snapshot = event.snapshot;
         failure = undefined;
       } else
         failure = event.errorCode;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: content() });
-    });
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: content() });
+    }, { ruleId: "book-assets-live" });
     return { dispose() {
       disposed = true;
       subscription.dispose();

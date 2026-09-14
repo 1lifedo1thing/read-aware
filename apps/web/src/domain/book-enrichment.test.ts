@@ -1,4 +1,6 @@
 import { afterEach, expect, spyOn, test } from "bun:test";
+import { emitAppEvent } from "../platform/app-events";
+import { actorFromEvent, saveActorSource, causalActor, actorOrigin } from "../platform/domain-actor";
 import { AppError, type BookEnrichmentObservation } from "@read-aware/core";
 import * as environment from "../platform/environment";
 import * as library from "../features/library/lib/library-db";
@@ -29,7 +31,8 @@ test("enrichment reads project availability without parsing, and only write gran
   expect(f.schedule).not.toHaveBeenCalled();
   const write = createActorDomainView("plugin:write", { library: "write" });
   expect(await write.library!.commands!.books.retryEnrichment(f.book.id)).toMatchObject({ status: "queued", snapshot: { job: { phase: "queued" } } });
-  expect(f.schedule).toHaveBeenCalledWith({ bookId: f.book.id, cover: true, metadata: true, origin: "plugin:write" });
+  expect(f.schedule.mock.calls[0]![0]).toMatchObject({ bookId: f.book.id, cover: true, metadata: true });
+  expect(actorOrigin(f.schedule.mock.calls[0]![0].origin!)).toBe("plugin:write");
   await expect(retryBookEnrichment(f.book.id, "agent", AbortSignal.abort())).rejects.toBeDefined();
   expect(f.schedule).toHaveBeenCalledTimes(1);
 });
@@ -52,8 +55,10 @@ test("observers report load errors, recover, serialize callbacks and retire with
   const observe = createEnrichmentObserver(lifetime.signal);
   const stop = observe(f.book.id, event => { events.push(event); });
   await Bun.sleep(0); expect(events[0]).toEqual({ status: "error", errorCode: "db/locked" });
-  f.get.mockResolvedValue(f.book); await Bun.sleep(1050);
+  const source = causalActor("plugin:enrichment-refresh");
+  f.get.mockResolvedValue(f.book); emitAppEvent("book-changed", { bookId: f.book.id }, source); await Bun.sleep(1050);
   expect(events[1]).toMatchObject({ status: "ready", snapshot: { bookId: f.book.id } });
+  expect(saveActorSource(actorFromEvent(events[1]!)).paths).toEqual(expect.arrayContaining(saveActorSource(source).paths));
   lifetime.abort(); stop();
   const calls = f.get.mock.calls.length; await Bun.sleep(1050);
   expect(f.get.mock.calls).toHaveLength(calls);

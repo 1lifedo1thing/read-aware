@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { actorCause, causalActor, eventCause, saveActorSource } from "../../../platform/domain-actor";
 import { AppError } from "@read-aware/core";
 import { EnrichmentQueue, type EnrichmentRequest } from "./enrichment-queue";
 
@@ -9,11 +10,19 @@ test("background enrichment is serial, queued flags coalesce and running request
   expect(queue.snapshot("a").phase).toBe("queued");
   await Bun.sleep(0); expect(queue.snapshot("a").phase).toBe("running");
   expect(queue.enqueue({ bookId: "a", cover: true, metadata: false })).toBe(a);
-  const b = queue.enqueue({ bookId: "b", cover: false, metadata: true, origin: "plugin:fixture" });
-  expect(queue.enqueue({ bookId: "b", cover: true, metadata: false })).toBe(b);
+  const first = causalActor("plugin:fixture"), second = causalActor("user"), sources: object[] = [];
+  const stop = queue.observe((id, source) => { if (id === "b") sources.push(source); });
+  const b = queue.enqueue({ bookId: "b", cover: false, metadata: true, origin: first });
+  expect(queue.enqueue({ bookId: "b", cover: true, metadata: false, origin: second })).toBe(b);
   expect(calls).toHaveLength(1); gate.resolve();
   await b.done;
-  expect(calls[1]).toEqual({ bookId: "b", cover: true, metadata: true, origin: "plugin:fixture" });
+  expect(calls[1]).toMatchObject({ bookId: "b", cover: true, metadata: true });
+  const merged = actorCause(calls[1]!.origin);
+  expect(saveActorSource(calls[1]!.origin!).paths).toEqual([...saveActorSource(first).paths, ...saveActorSource(second).paths]);
+  expect(eventCause(sources[0]!)).toEqual(actorCause(first));
+  expect(eventCause(sources.at(-1)!)).toEqual(merged);
+  expect(eventCause(queue.snapshot("b"))).toEqual(merged);
+  stop();
   expect(queue.snapshot("a")).toMatchObject({ phase: "completed", errorCode: null });
   const external = queue.snapshot("b"); external.phase = "failed";
   expect(queue.snapshot("b").phase).toBe("completed");

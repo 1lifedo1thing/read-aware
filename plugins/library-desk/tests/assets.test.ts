@@ -32,14 +32,14 @@ function fixture() {
     retryEnrichment: async (id: string) => { calls.push(["retry", id]); snapshot = { ...snapshot, job: { ...snapshot.job, phase: "queued" } }; return { status: "queued", snapshot }; },
   };
   const clipboard = { writeImage: async (id: string) => { calls.push(["copy", id]); return { copied: true, width: 4, height: 6 }; } };
-  const ctx = { locale: "en", domains: { library: { queries: { books: queries }, commands: { books: write }, events: {
+  const ctx = { withEvent: () => ctx, locale: "en", domains: { library: { queries: { books: queries }, commands: { books: write }, events: {
     observeEnrichment: (_id: string, next: typeof handler) => { handler = next; return { dispose() { calls.push(["dispose"]); } }; },
   } } }, services: { resources, clipboard, ui: { publishView: async (_channel: unknown, update: { view: PluginViewContent }) => {
     updates.push(update.view); return { status: "applied" };
   } } } } as unknown as PluginContext;
   return { ctx, book, resource, resources, queries, write, clipboard, calls, updates,
     setSnapshot(next: typeof snapshot) { snapshot = next; }, get snapshot() { return snapshot; },
-    emit(event: Parameters<NonNullable<typeof handler>>[0]) { return handler!(event); },
+    emit(event: Parameters<NonNullable<typeof handler>>[0]) { return handler!(event, { reaction: { id: "fixture", status: "ready" } } as Parameters<NonNullable<typeof handler>>[1]); },
   };
 }
 const action = (view: PluginViewContent, id: string) => (view as PluginDetailView).actions!.find(item => item.id === id)!;
