@@ -37,9 +37,7 @@
 
 ## 开发规范
 
-- [架构约束](./agent-guidance/architecture.md)：修改代码时要遵守的产品与分层边界。
-- [UI 约定](./agent-guidance/ui.md)：共享组件、样式和职责划分。
-- [错误处理](./agent-guidance/errors.md)：稳定错误码、日志和用户反馈。
+- [项目开发约定](../AGENTS.md)：架构边界、UI、错误处理及交付规则统一维护在根目录。
 - [多语言](./development/i18n.md)：文案、翻译、语言切换及格式化。
 - [诊断与日志](./development/diagnostics.md)：本地日志、导出诊断包和主动报告。
 
