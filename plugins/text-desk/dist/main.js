@@ -1,6 +1,15 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  bookUpdates: ["Book updates", "书籍更新", "書籍更新", "本の更新", "Обновления книг", "Mises à jour des livres", "Buchänderungen", "Actualizaciones de libros"],
+  updatesNeedBook: ["Open a book to check its updates.", "请先打开获授权的书籍。", "請先開啟獲授權的書籍。", "許可された本を開いてください。", "Откройте разрешённую книгу.", "Ouvrez un livre autorisé.", "Öffnen Sie ein freigegebenes Buch.", "Abre un libro autorizado."],
+  updatesBaseline: ["Tracking started. Current books (up to 20) are shown below.", "已开始记录更新。下方显示当前书籍，最多 20 本。", "已開始記錄更新。下方顯示目前書籍，最多 20 本。", "更新の記録を開始しました。現在の本を最大20冊表示します。", "Отслеживание начато. Ниже до 20 текущих книг.", "Suivi démarré. Jusqu’à 20 livres actuels sont affichés.", "Erfassung gestartet. Unten stehen bis zu 20 aktuelle Bücher.", "Seguimiento iniciado. Se muestran hasta 20 libros actuales."],
+  updatesReset: ["Older updates expired. Current books have been reloaded (up to 20).", "旧更新已过期，已重新载入当前书籍，最多 20 本。", "舊更新已過期，已重新載入目前書籍，最多 20 本。", "古い更新は期限切れです。現在の本を最大20冊再読み込みしました。", "Старые обновления истекли. Перезагружено до 20 текущих книг.", "Les anciennes mises à jour ont expiré. Jusqu’à 20 livres ont été rechargés.", "Ältere Änderungen sind abgelaufen. Bis zu 20 aktuelle Bücher wurden neu geladen.", "Las actualizaciones antiguas caducaron. Se recargaron hasta 20 libros actuales."],
+  updatesNote: ["Saved update page: current book details, not a complete edit history.", "已保存的更新页：展示书籍当前状态，不是完整编辑历史。", "已儲存的更新頁：展示書籍目前狀態，不是完整編輯歷史。", "保存済みの更新ページです。編集履歴ではなく現在の本の状態を表示します。", "Сохранённая страница: текущее состояние книг, не полная история правок.", "Page enregistrée : état actuel des livres, pas un historique complet.", "Gespeicherte Seite: aktueller Buchstand, kein vollständiger Änderungsverlauf.", "Página guardada: estado actual, no un historial completo de ediciones."],
+  updatesShelf: ["Library organization updated", "书库组织已更新", "書庫組織已更新", "ライブラリ構成が更新されました", "Структура библиотеки обновлена", "Organisation de la bibliothèque mise à jour", "Bibliotheksstruktur aktualisiert", "Organización de biblioteca actualizada"],
+  updatesRemoved: ["Book removed or no longer available", "书籍已移除或不再可用", "書籍已移除或不再可用", "本が削除されたか利用できません", "Книга удалена или недоступна", "Livre supprimé ou indisponible", "Buch entfernt oder nicht mehr verfügbar", "Libro eliminado o no disponible"],
+  updatesMore: ["More updates", "更多更新", "更多更新", "続きの更新", "Ещё обновления", "Autres mises à jour", "Weitere Änderungen", "Más actualizaciones"],
+  updatesCheck: ["Check updates", "检查更新", "檢查更新", "更新を確認", "Проверить обновления", "Vérifier les mises à jour", "Änderungen prüfen", "Comprobar actualizaciones"],
   durableJobs: ["Saved tasks", "持久任务", "持久任務", "保存済みタスク", "Сохранённые задачи", "Tâches enregistrées", "Gespeicherte Aufgaben", "Tareas guardadas"],
   preparePage: ["Prepare this page in background", "后台准备本页书籍", "背景準備本頁書籍", "このページの本を準備", "Подготовить книги страницы", "Préparer les livres de cette page", "Bücher dieser Seite vorbereiten", "Preparar los libros de esta página"],
   jobAttention: ["Needs review", "需要核对", "需要核對", "確認が必要", "Требует проверки", "À vérifier", "Prüfung nötig", "Requiere revisión"],
@@ -349,6 +358,102 @@ async function savedJobs(ctx, offset = 0) {
     subtitle: `${job.completedSteps} / ${job.totalSteps}`,
     onSelect: async () => ({ view: await jobDetail(ctx, job.id) })
   })), actions, emptyText: tr(ctx.locale, "empty") };
+}
+
+// src/book-updates.ts
+var tail = Promise.resolve();
+function bookUpdates(ctx, openDetail, advance = false) {
+  const result = tail.then(() => load(ctx, openDetail, advance));
+  tail = result.then(() => {}, () => {});
+  return result;
+}
+function savedPage(value) {
+  if (value === null)
+    return null;
+  const page = value;
+  if (!page || page.version !== 1 || typeof page.cursor !== "string" || !/^[a-f0-9]{48}$/.test(page.cursor) || !Array.isArray(page.ids) || page.ids.length > 50 || page.ids.some((id) => typeof id !== "string" || !id || id.length > 512) || [page.general, page.hasMore, page.baseline, page.reset].some((flag) => typeof flag !== "boolean")) {
+    throw Error("Invalid saved book updates");
+  }
+  return page;
+}
+async function load(ctx, openDetail, advance) {
+  const grant = ctx.grants.book;
+  const session = grant.mode === "current" ? await ctx.domains.reading.queries.session() : undefined;
+  const bookId = grant.mode === "book" ? grant.bookId : session?.bookId;
+  if (grant.mode !== "all" && !bookId)
+    return { kind: "list", title: tr(ctx.locale, "bookUpdates"), items: [], emptyText: tr(ctx.locale, "updatesNeedBook") };
+  const query = { areas: ["library"], ...bookId ? { bookId } : {} };
+  const key = `book-updates:v1:${bookId ? `book:${bookId}` : "all"}`;
+  let page = savedPage(await ctx.services.storage.getDurable(key));
+  let changed = false;
+  const baseline = async (reset) => {
+    const { cursor } = await ctx.services.changes.open(query);
+    const books = await ctx.domains.library.queries.books.list();
+    return {
+      version: 1,
+      cursor,
+      ids: books.filter((book) => !bookId || book.id === bookId).slice(0, 20).map((book) => book.id),
+      general: false,
+      hasMore: false,
+      baseline: true,
+      reset
+    };
+  };
+  if (!page) {
+    page = await baseline(false);
+    changed = true;
+  } else if (advance) {
+    try {
+      const next = await ctx.services.changes.read(query, page.cursor, 50);
+      page = {
+        version: 1,
+        cursor: next.cursor,
+        ids: [...new Set(next.changes.flatMap((change) => change.bookId ? [change.bookId] : []))],
+        general: next.changes.some((change) => !change.bookId),
+        hasMore: next.hasMore,
+        baseline: false,
+        reset: false
+      };
+    } catch (error) {
+      if (error?.code !== "changes/cursor-expired")
+        throw error;
+      page = await baseline(true);
+    }
+    changed = true;
+  }
+  const items = [{ id: "$notice", title: tr(ctx.locale, page.reset ? "updatesReset" : page.baseline ? "updatesBaseline" : "updatesNote") }];
+  if (page.general) {
+    await ctx.domains.library.queries.books.list();
+    items.push({ id: "$shelf", title: tr(ctx.locale, "updatesShelf") });
+  }
+  for (const id of page.ids) {
+    const book = await ctx.domains.library.queries.books.get(id);
+    items.push(book ? {
+      id,
+      title: book.title,
+      subtitle: book.format.toUpperCase(),
+      icon: "book-open",
+      onSelect: async () => ({ view: await openDetail(ctx, book.id, book.title) })
+    } : { id, title: tr(ctx.locale, "updatesRemoved") });
+  }
+  if (changed)
+    await ctx.services.storage.set(key, page);
+  if (session) {
+    const current = await ctx.domains.reading.queries.session();
+    if (current.bookId !== session.bookId || current.sessionId !== session.sessionId)
+      throw Error(tr(ctx.locale, "updatesNeedBook"));
+  }
+  return {
+    kind: "list",
+    title: tr(ctx.locale, "bookUpdates"),
+    items,
+    actions: [{
+      id: "check-updates",
+      label: tr(ctx.locale, page.hasMore ? "updatesMore" : "updatesCheck"),
+      icon: "arrows-clockwise",
+      run: async () => ({ view: await bookUpdates(ctx, openDetail, true), navigation: "replace" })
+    }]
+  };
 }
 
 // src/task-views.ts
@@ -741,6 +846,7 @@ var HOST_SERVICE_CATALOG = {
   ui: { version: "1.15.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
   jobs: { version: "1.0.0", permission: null },
+  changes: { version: "1.0.0", permission: null },
   transactions: { version: "1.0.0", permission: null },
   session: { version: "2.3.0", permission: null },
   plugins: { version: "1.8.0", permission: null },
@@ -1248,8 +1354,8 @@ async function rangeDetail(ctx, input) {
 }
 
 // src/content-pagination.ts
-function contentPagination(offsets, nextOffset, load) {
-  const go = async (next) => ({ view: await load(next), navigation: "replace" });
+function contentPagination(offsets, nextOffset, load2) {
+  const go = async (next) => ({ view: await load2(next), navigation: "replace" });
   return {
     page: offsets.length,
     ...offsets.length > 1 ? { onPrevious: () => go(offsets.slice(0, -1)) } : {},
@@ -1614,6 +1720,7 @@ async function textDesk(ctx, page = 0) {
     run: async () => ({ view: await textDesk(ctx, index), navigation: "replace" })
   }];
   actions.push({ id: "saved-jobs", label: tr(ctx.locale, "durableJobs"), run: async () => ({ view: await savedJobs(ctx) }) });
+  actions.push({ id: "book-updates", label: tr(ctx.locale, "bookUpdates"), run: async () => ({ view: await bookUpdates(ctx, textDetail) }) });
   const pageBooks = books.slice(index * 20, (index + 1) * 20);
   if (pageBooks.length)
     actions.push({ id: "prepare-page", label: tr(ctx.locale, "preparePage"), run: async () => {
@@ -1662,6 +1769,7 @@ var src_default = {
     if (!ctx.domains.library?.commands || !ctx.domains.reading?.commands)
       throw Error("Text Desk requires library:write and reading:write");
     const title = tr(ctx.locale, "title");
+    ctx.contributions.commands.register({ id: "book-updates", title: `${title}: ${tr(ctx.locale, "bookUpdates")}`, icon: "clock-counter-clockwise", run: async () => ({ view: await bookUpdates(ctx, textDetail) }) });
     ctx.contributions.commands.register({ id: "reading-availability", title: `${title}: ${tr(ctx.locale, "readingAvailability")}`, icon: "speaker-high", run: async () => ({ view: await readingAvailability(ctx) }) });
     ctx.contributions.commands.register({ id: "inference-availability", title: `${title}: ${tr(ctx.locale, "inferenceAvailability")}`, icon: "sparkle", run: async () => ({ view: await inferenceAvailability(ctx) }) });
     ctx.contributions.commands.register({ id: "open", title, icon: "book-open", run: async () => ({ view: await textDesk(ctx) }) });

@@ -343,7 +343,7 @@
 - 当前 catalog 身份：`services.changes`。
 - [设计] 操作：changes1.0提供先取边界再读基线、持久owner/查询绑定游标和有界变化通知分页；只返回领域/书域与自有文档身份。
 - [设计] Agent：Agent open_change_cursor/read_changes按会话owner隔离，书会话只能查询本书，不能读取插件私有文档。
-- [设计] 插件：插件逐领域权限、书域围栏及设置目录可读路径检查，Worker传递取消并在退休排空；停用期间续读的消费者仍待接。
+- [设计] 插件：插件逐领域权限、书域围栏及设置目录可读路径检查，Worker传递取消并在退休排空；Text Desk0.29书籍更新页持久保存已处理页和游标，失败不前移，过期重载基线。
 - [设计] 限制/不建设：通知不是原始事件、值或精确编辑数；设置通知覆盖所请求路径的共享存储命名空间。钥匙串凭据状态暂不支持；游标过期需重读基线。
 - [设计] 通过条件：原生事务/范围/重开检查已有证据；Agent/Web/desktop类型检查通过；真实权限/Worker/Tauri消费验收待完成。
 - [代码] 现状证据：[CON07](./host-capability-matrix.md#CON07) · [OPS05](./host-capability-matrix.md#OPS05) · [SYS02](./host-capability-matrix.md#SYS02)。

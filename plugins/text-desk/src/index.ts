@@ -2,7 +2,8 @@ import { inferenceHistory } from "./inference-history";
 import { inferenceAvailability } from "./inference-availability";
 import { readingAvailability } from "./reading-availability";
 import type { PluginModule } from "@read-aware/plugin-types";
-import { textDesk } from "./views";
+import { textDesk, textDetail } from "./views";
+import { bookUpdates } from "./book-updates";
 import { tr } from "./strings";
 import { capturedRangeDetail } from "./range-views";
 import { imageControls } from "./image-controls";
@@ -11,6 +12,7 @@ export default {
   activate(ctx) {
     if (!ctx.domains.library?.commands || !ctx.domains.reading?.commands) throw Error("Text Desk requires library:write and reading:write");
     const title = tr(ctx.locale, "title");
+    ctx.contributions.commands.register({ id: "book-updates", title: `${title}: ${tr(ctx.locale, "bookUpdates")}`, icon: "clock-counter-clockwise", run: async () => ({ view: await bookUpdates(ctx, textDetail) }) });
     ctx.contributions.commands.register({ id: "reading-availability", title: `${title}: ${tr(ctx.locale, "readingAvailability")}`, icon: "speaker-high", run: async () => ({ view: await readingAvailability(ctx) }) });
     ctx.contributions.commands.register({ id: "inference-availability", title: `${title}: ${tr(ctx.locale, "inferenceAvailability")}`, icon: "sparkle", run: async () => ({ view: await inferenceAvailability(ctx) }) });
     ctx.contributions.commands.register({ id: "open", title, icon: "book-open", run: async () => ({ view: await textDesk(ctx) }) });

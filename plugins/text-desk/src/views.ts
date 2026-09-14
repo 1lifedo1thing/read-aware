@@ -1,4 +1,5 @@
 import { savedJobs } from "./saved-jobs";
+import { bookUpdates } from "./book-updates";
 import { inferenceHistory } from "./inference-history";
 import type { PluginContext, PluginDetailView, PluginListView, PluginAction, PluginListItem } from "@read-aware/plugin-types";
 import { taskHistory } from "./task-history";
@@ -58,6 +59,7 @@ export async function textDesk(ctx: PluginContext, page = 0): Promise<PluginList
   const actions: PluginAction[] = [{ id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise",
     run: async () => ({ view: await textDesk(ctx, index), navigation: "replace" }) }];
   actions.push({ id: "saved-jobs", label: tr(ctx.locale, "durableJobs"), run: async () => ({ view: await savedJobs(ctx) }) });
+  actions.push({ id: "book-updates", label: tr(ctx.locale, "bookUpdates"), run: async () => ({ view: await bookUpdates(ctx, textDetail) }) });
   const pageBooks = books.slice(index * 20, (index + 1) * 20);
   if (pageBooks.length) actions.push({ id: "prepare-page", label: tr(ctx.locale, "preparePage"), run: async () => {
     await ctx.services.jobs.start({ title: tr(ctx.locale, "preparePage"), steps: pageBooks.map((book, i) => ({ id: `book-${i}`, kind: "library.text.prepare", bookId: book.id, options: { priority: "background" } })) });
