@@ -73,7 +73,7 @@ export interface ChatInteractionOption {
   description?: string;
 }
 
-export type ChatPermissionAction = "delete-book" | "delete-books" | "delete-collection" | "delete-annotation" | "manage-memory" | "classify-book" | "generate-book-graph" | "clear-conversation" | "sync-now" | "manage-schedule" | "access-book-file" | "import-resource" | "merge-books" | "plugin-tool" | "atomic-transaction" | "download-resource" | "complete-onboarding" | "update-profile" | "manage-entity";
+export type ChatPermissionAction = "delete-book" | "delete-books" | "delete-collection" | "delete-annotation" | "manage-memory" | "classify-book" | "generate-book-graph" | "clear-conversation" | "sync-now" | "manage-schedule" | "access-book-file" | "import-resource" | "merge-books" | "plugin-tool" | "atomic-transaction" | "manage-job" | "download-resource" | "complete-onboarding" | "update-profile" | "manage-entity";
 
 export type ChatInteractionRequest = {
   id: string;

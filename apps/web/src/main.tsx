@@ -88,6 +88,8 @@ void (async () => {
   // tree) off the boot-critical path entirely.
   const { registerAgentChatTransport } = await import("./features/ai/agent/register");
   registerAgentChatTransport();
+  const { recoverAgentJobs } = await import("./features/ai/agent/ports/jobs-port");
+  void recoverAgentJobs().catch(error => log.error("saved Agent task recovery failed", error));
 })().catch((error: unknown) => {
   // A failed boot used to be the worst diagnostic hole in the app: React
   // never mounts, the router's error boundary never renders, and the user

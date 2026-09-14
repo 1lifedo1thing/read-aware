@@ -55,6 +55,7 @@ const agentMap = pairs([
   ["open_resource_external", "SYS12"],
   ["list_installed_plugins", "EXT11"],
   ["list_plugin_contributions", "EXT11 MORE06"],
+  ["start_durable_job get_durable_job list_durable_jobs control_durable_job", "MORE01 CON03 CON08"],
   ["preview_atomic_transaction commit_atomic_transaction preview_transaction_undo get_transaction_receipt", "CON08 CON02 CON03"],
   ["list_plugin_services", "MORE06 CON02 CON03"],
   ["call_plugin_service", "MORE06 CON02 CON03"],
@@ -290,7 +291,7 @@ const nativeMap = pairs([
   ["ai_chat_load ai_chat_load_all ai_chat_list ai_chat_replace ai_chat_clear", "AI01 AI02 AI03"],
   ["plugin_docs_put plugin_docs_get plugin_docs_delete plugin_docs_list plugin_docs_clear vocabulary_migrate_to_plugin_documents", "SYS02 SYS03"],
   ["plugin_docs_snapshot plugin_docs_restore plugin_data_snapshot plugin_data_restore", "SYS03"],
-  ["durable_job_create durable_job_get durable_job_list durable_job_checkpoint", "MORE01 CON03 CON08"],
+  ["durable_agent_job_owners durable_job_create durable_job_get durable_job_list durable_job_checkpoint", "MORE01 CON03 CON08"],
   ["atomic_commit atomic_aggregate_revisions atomic_receipt_get", "CON08"],
   ["plugin_docs_page plugin_docs_apply", "SYS02"],
   ["plugin_storage_usage", "SYS05"],
@@ -378,6 +379,8 @@ export function collectInventory(): Inventory[] {
   assertUniqueSourceKeys();
   inventory.length = 0;
   const { deps } = createInMemoryDeps();
+  const noJobExecution = async (): Promise<never> => { throw new Error("Inventory does not execute jobs"); };
+  deps.jobs = () => ({ start: noJobExecution, get: noJobExecution, list: noJobExecution, control: noJobExecution, inspectPlan: noJobExecution });
   deps.transactions = () => ({
     preview: async () => { throw new Error("Inventory does not execute transactions"); },
     commit: async () => { throw new Error("Inventory does not execute transactions"); },

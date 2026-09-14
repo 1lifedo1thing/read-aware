@@ -151,3 +151,14 @@ mod tests {
         assert!(durable_job_checkpoint_inner(&mut conn, "plugin:sample", "job", &done.revision, completed).is_err());
     }
 }
+
+/// Startup discovery is host-only and reveals no plans or plugin owners.
+#[tauri::command]
+pub async fn durable_agent_job_owners(app: tauri::AppHandle) -> Result<Vec<String>, CommandError> {
+    crate::storage::blocking("durable_agent_job_owners", move || {
+        let db = tauri::Manager::state::<Db>(&app); let conn = db.0.lock()?;
+        let mut stmt = conn.prepare("SELECT DISTINCT owner FROM durable_jobs WHERE owner LIKE 'agent:%' AND json_extract(state_json,'$.status') IN ('queued','running') ORDER BY owner LIMIT 256")?;
+        let owners = stmt.query_map([], |row| row.get::<_, String>(0))?.collect::<Result<Vec<_>,_>>()?;
+        Ok(owners)
+    }).await
+}

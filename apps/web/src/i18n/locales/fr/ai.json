@@ -167,6 +167,11 @@
           "fact": "Fait",
           "preference": "Préférence"
         },
+        "manageJob": {
+          "question": "Exécuter cette tâche enregistrée ?",
+          "description": "Les étapes se suivent et peuvent reprendre après redémarrage. L’annulation ne restaure pas les modifications déjà effectuées.",
+          "approve": "Autoriser la tâche"
+        },
         "atomicTransaction": {
           "question": "Appliquer ces modifications ?",
           "description": "Les modifications locales sont validées ensemble si l’aperçu est toujours à jour. L’annulation vérifie aussi les conditions et n’écrase pas les modifications ultérieures.",

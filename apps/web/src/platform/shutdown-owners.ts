@@ -9,6 +9,7 @@ export function registerShutdownOwners(): () => void {
   const disposers = [
     hostShutdown.register("reading-traces", "settle", () => readingTraces.settle()),
     hostShutdown.register("plugins", "settle", signal => shutdownPlugins(signal)),
+    hostShutdown.register("agent-jobs", "settle", async () => { const { stopAgentJobs } = await import("../features/ai/agent/ports/jobs-port"); await stopAgentJobs(); }),
     registerPersistenceShutdownOwners(hostShutdown),
   ];
   return () => { for (const dispose of disposers) dispose(); };

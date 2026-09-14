@@ -406,8 +406,8 @@
 
 ## 注册库存与覆盖反查
 
-- Agent global：145 个。
-- Agent book：124 个。
+- Agent global：149 个。
+- Agent book：128 个。
 - Plugin ctx：270 个。
 - Plugin returned interface：30 个。
 - Capability domains：6 个。
@@ -415,7 +415,7 @@
 - Capability services：16 个。
 - Capability schemas：3 个。
 - Settings path：73 个。
-- Native command：237 个。
+- Native command：238 个。
 - Native plugin：12 个。
 - Menu placement：16 个。
 - Shortcut：19 个。
@@ -469,6 +469,10 @@
 | `preview_transaction_undo` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `get_transaction_receipt` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `commit_atomic_transaction` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `start_durable_job` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `get_durable_job` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `list_durable_jobs` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `control_durable_job` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `get_sync_status` | [OPS01](#OPS01) [OPS03](#OPS03) [OPS06](#OPS06) [OPS07](#OPS07) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `manage_sync` | [OPS01](#OPS01) [OPS04](#OPS04) [OPS06](#OPS06) [OPS07](#OPS07) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `request_ai_connection_test` | [CFG08](#CFG08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -618,6 +622,10 @@
 | `preview_transaction_undo` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `get_transaction_receipt` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `commit_atomic_transaction` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `start_durable_job` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `get_durable_job` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `list_durable_jobs` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `control_durable_job` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `get_sync_status` | [OPS01](#OPS01) [OPS03](#OPS03) [OPS06](#OPS06) [OPS07](#OPS07) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `manage_sync` | [OPS01](#OPS01) [OPS04](#OPS04) [OPS06](#OPS06) [OPS07](#OPS07) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `request_ai_connection_test` | [CFG08](#CFG08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -1174,6 +1182,7 @@
 | `covers::library_cover_backlog` | [LIB09](#LIB09) [LIB10](#LIB10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::append_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::commit_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::durable_agent_job_owners` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::durable_job_create` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::durable_job_get` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::durable_job_list` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |

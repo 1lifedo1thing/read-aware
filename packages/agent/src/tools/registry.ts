@@ -1,3 +1,4 @@
+import { buildDurableJobTools } from "./durable-job-tools";
 import { buildTransactionTools } from "./transaction-tools";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import type { RuntimeDeps } from "../ports";
@@ -63,6 +64,7 @@ export function buildAgentTools(
     ...buildHostIOTools(deps),
     ...buildPluginServiceTools(scope, deps, turnState),
     ...buildTransactionTools(scope, deps),
+    ...buildDurableJobTools(scope, deps),
     ...buildSyncTools(scope, deps),
     ...buildMaintenanceTools(deps),
     ...buildResourceTools(scope, deps),

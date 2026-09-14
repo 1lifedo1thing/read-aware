@@ -167,6 +167,11 @@
           "fact": "Hecho",
           "preference": "Preferencia"
         },
+        "manageJob": {
+          "question": "¿Ejecutar esta tarea guardada?",
+          "description": "Los pasos se ejecutan en orden y pueden continuar tras reiniciar. Cancelar no revierte los cambios completados.",
+          "approve": "Aprobar tarea"
+        },
         "atomicTransaction": {
           "question": "¿Aplicar estos cambios?",
           "description": "Los cambios locales se confirman juntos solo si la vista previa sigue vigente. Deshacer también comprueba las condiciones y no sobrescribe cambios posteriores.",

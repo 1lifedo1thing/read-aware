@@ -19,9 +19,9 @@ const CUSTOM_CHOICE = "__read_aware_custom_answer__";
 const permissionKeys: Record<
   ChatPermissionAction,
   {
-    question: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "atomicTransaction" | "downloadResource" | "updateProfile" | "manageEntity" | "completeOnboarding"}.question`;
-    description: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "atomicTransaction" | "downloadResource" | "updateProfile" | "manageEntity" | "completeOnboarding"}.description`;
-    approve: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "atomicTransaction" | "downloadResource" | "updateProfile" | "manageEntity" | "completeOnboarding"}.approve`;
+    question: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "atomicTransaction" | "manageJob" | "downloadResource" | "updateProfile" | "manageEntity" | "completeOnboarding"}.question`;
+    description: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "atomicTransaction" | "manageJob" | "downloadResource" | "updateProfile" | "manageEntity" | "completeOnboarding"}.description`;
+    approve: `chat.interaction.permission.${"deleteBook" | "deleteBooks" | "deleteCollection" | "deleteAnnotation" | "manageMemory" | "classifyBook" | "generateBookGraph" | "clearConversation" | "syncNow" | "manageSchedule" | "accessBookFile" | "importResource" | "mergeBooks" | "pluginTool" | "atomicTransaction" | "manageJob" | "downloadResource" | "updateProfile" | "manageEntity" | "completeOnboarding"}.approve`;
   }
 > = {
   "complete-onboarding": {
@@ -43,6 +43,11 @@ const permissionKeys: Record<
     question: "chat.interaction.permission.updateProfile.question",
     description: "chat.interaction.permission.updateProfile.description",
     approve: "chat.interaction.permission.updateProfile.approve",
+  },
+  "manage-job": {
+    question: "chat.interaction.permission.manageJob.question",
+    description: "chat.interaction.permission.manageJob.description",
+    approve: "chat.interaction.permission.manageJob.approve",
   },
   "atomic-transaction": {
     question: "chat.interaction.permission.atomicTransaction.question",

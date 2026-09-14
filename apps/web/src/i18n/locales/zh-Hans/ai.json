@@ -167,6 +167,11 @@
           "fact": "事实",
           "preference": "偏好"
         },
+        "manageJob": {
+          "question": "执行这个持久任务？",
+          "description": "所示步骤依次执行，重启后可能继续。取消会停止后续工作，不会撤销已完成的修改。",
+          "approve": "批准任务"
+        },
         "atomicTransaction": {
           "question": "提交这组变更？",
           "description": "显示的本地变更只会在预览仍有效时一起提交。撤销同样检查条件，不会覆盖后续修改。",

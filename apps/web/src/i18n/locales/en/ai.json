@@ -167,6 +167,11 @@
           "fact": "Fact",
           "preference": "Preference"
         },
+        "manageJob": {
+          "question": "Run this saved task?",
+          "description": "The displayed steps execute in order and may continue after restart. Cancellation stops later work; it does not undo completed changes.",
+          "approve": "Approve task"
+        },
         "atomicTransaction": {
           "question": "Apply this transaction?",
           "description": "The displayed local changes commit together only if the preview is still current. Undo is also conditional and will not overwrite later changes.",

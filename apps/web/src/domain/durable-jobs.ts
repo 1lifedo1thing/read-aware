@@ -29,6 +29,7 @@ export class DurableJobRunner {
   private flights = new Map<string, Flight>();
   private closed = false;
   constructor(private readonly store: DurableJobStore, private readonly executor: DurableJobExecutor) {}
+  get active(): boolean { return this.flights.size > 0; }
   async start(input: DurableJobPlan, signal?: AbortSignal): Promise<DurableJobSnapshot> {
     if (this.closed) throw new AppError("jobs/unavailable", "Job owner retired");
     const plan = normalizeDurableJobPlan(input), controller = new AbortController();
@@ -148,26 +149,29 @@ export class DurableJobRunner {
         errorCode: errorCode(error) ?? (signal.aborted ? "jobs/interrupted" : "jobs/step-failed") }));
     } finally { grant?.dispose(); }
   }
-  private async visible(id: string): Promise<DurableJobRecord> {
+  private async visible(id: string, signal = new AbortController().signal): Promise<DurableJobRecord> {
     const record = await this.store.get(id);
-    const grant = await this.executor.authorize(normalizeDurableJobPlan(record.plan), new AbortController().signal);
-    try { await grant.assert(); return record; } finally { grant.dispose(); }
+    const grant = await this.executor.authorize(normalizeDurableJobPlan(record.plan), signal);
+    try { await grant.assert(); signal.throwIfAborted(); return record; } finally { grant.dispose(); }
   }
-  async list(query: { offset?: number; limit?: number } = {}) {
+  async list(query: { offset?: number; limit?: number } = {}, signal?: AbortSignal) {
     const offset = query.offset ?? 0, limit = query.limit ?? 20;
     if (!Number.isSafeInteger(offset) || offset < 0 || offset > 256 || !Number.isSafeInteger(limit) || limit < 1 || limit > 50) throw new AppError("jobs/invalid-plan", "Invalid job page");
     const records = await this.store.list(offset, limit);
     const jobs: DurableJobSnapshot[] = [];
     for (const record of records) {
-      try { jobs.push(durableJobSnapshot(await this.visible(record.id))); }
+      try { jobs.push(durableJobSnapshot(await this.visible(record.id, signal))); }
       catch (error) { if (!["plugin/permission-denied", "plugin/object-access-denied"].includes(errorCode(error) ?? "")) throw error; }
     }
     return { jobs, nextOffset: records.length === limit && offset + limit < 256 ? offset + limit : null };
   }
-  async get(id: string): Promise<DurableJobSnapshot> { return durableJobSnapshot(await this.visible(id)); }
-  async control(id: string, action: DurableJobControl): Promise<DurableJobSnapshot> {
+  async inspectPlan(id: string): Promise<DurableJobPlan> { return structuredClone((await this.visible(id)).plan); }
+  async get(id: string, signal?: AbortSignal): Promise<DurableJobSnapshot> { return durableJobSnapshot(await this.visible(id, signal)); }
+  async control(id: string, action: DurableJobControl, signal?: AbortSignal): Promise<DurableJobSnapshot> {
     if (this.closed) throw new AppError("jobs/unavailable", "Job owner retired");
-    const visible = await this.visible(id);
+    signal?.throwIfAborted();
+    if (!["pause", "resume", "cancel"].includes(action)) throw new AppError("jobs/invalid-plan", "Invalid job control");
+    const visible = await this.visible(id, signal);
     const flight = this.flights.get(id);
     if (flight) {
       if (action !== "resume") { await flight.request(action); await flight.promise; }

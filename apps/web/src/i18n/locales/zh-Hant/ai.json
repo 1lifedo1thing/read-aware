@@ -167,6 +167,11 @@
           "fact": "事實",
           "preference": "偏好"
         },
+        "manageJob": {
+          "question": "執行這個持久任務？",
+          "description": "所示步驟依次執行，重新啟動後可能繼續。取消會停止後續工作，不會撤銷已完成的修改。",
+          "approve": "核准任務"
+        },
         "atomicTransaction": {
           "question": "提交這組變更？",
           "description": "顯示的本機變更只會在預覽仍有效時一起提交。復原同樣檢查條件，不會覆蓋後續修改。",
