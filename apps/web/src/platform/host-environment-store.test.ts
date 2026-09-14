@@ -54,3 +54,27 @@ test("reentrant refreshes never send a later observer a stale revision", () => {
   expect(f.store.snapshot().revision).toBe(3);
   offFirst(); offSecond();
 });
+
+
+test("applied locale requests retain their own cause through environment copies and queued reversal", async () => {
+  const { initI18n, setLocale, i18n } = await import("../i18n");
+  const { hostEnvironment } = await import("./host-environment");
+  const { causalActor, actorCause, eventCause, reactionActor } = await import("./domain-actor");
+  await initI18n("en");
+  const source = reactionActor("plugin:environment", "language-follow", actorCause(causalActor("user"))!);
+  const seen: HostEnvironmentSnapshot[] = [];
+  const stop = hostEnvironment.observe(value => { seen.push(value); });
+  try {
+    await setLocale("ja", source);
+    const applied = seen.at(-1)!;
+    expect(applied.locale).toBe("ja");
+    expect(eventCause(applied)).toEqual(actorCause(source));
+    expect(eventCause(hostEnvironment.snapshot())).toEqual(actorCause(source));
+    expect(() => reactionActor("plugin:environment", "language-follow", eventCause(applied)!)).toThrow();
+    const first = setLocale("de", source), last = setLocale("ja", "user");
+    await Promise.all([first, last]);
+    expect(i18n.language).toBe("ja");
+    expect(seen.slice(-2).map(value => value.locale)).toEqual(["de", "ja"]);
+    expect(eventCause(seen.at(-1)!)!.root).not.toBe(actorCause(source)!.root);
+  } finally { stop(); await setLocale("en"); }
+});

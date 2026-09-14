@@ -11,6 +11,7 @@
 import { initReactI18next, useTranslation } from "react-i18next";
 import resourcesToBackend from "i18next-resources-to-backend";
 import { i18n } from "./instance";
+import { actorFromEvent, causalActor, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import {
   DEFAULT_LOCALE,
   LOCALES,
@@ -57,9 +58,29 @@ export function initI18n(locale: AppLocale): Promise<typeof i18n> {
   return initPromise;
 }
 
-/** Switch the active language at runtime and keep `<html lang>` in sync. */
-export function setLocale(locale: AppLocale): void {
-  void i18n.changeLanguage(locale).then(() => syncDocumentLocale(locale));
+let localeSource = stampEventCause({ locale: i18n.language });
+let localeRequest: { locale: AppLocale; origin: DomainActor } | undefined;
+let localeTail: Promise<unknown> = Promise.resolve();
+i18n.on("languageChanged", locale => {
+  localeSource = stampEventCause({ locale }, localeRequest?.locale === locale ? localeRequest.origin : "system");
+});
+
+/** Host-private source of the currently applied locale, including lazy reads. */
+export function localeActor(): DomainActor {
+  return localeSource.locale === i18n.language ? actorFromEvent(localeSource) : causalActor("system");
+}
+
+/** Serialize lazy catalog loads so each applied language retains its requester. */
+export function setLocale(locale: AppLocale, origin: DomainActor = "user"): Promise<void> {
+  const request = { locale, origin: causalActor(origin) };
+  const pending = localeTail.then(async () => {
+    if (i18n.language === locale) return;
+    localeRequest = request;
+    try { await i18n.changeLanguage(locale); syncDocumentLocale(locale); }
+    finally { localeRequest = undefined; }
+  });
+  localeTail = pending.catch(() => {});
+  return pending;
 }
 
 /** Subscribe to the active locale; re-renders the caller on a language switch. */

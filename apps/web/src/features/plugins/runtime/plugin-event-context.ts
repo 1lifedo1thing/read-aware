@@ -51,6 +51,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
     [context.domains.library?.events, "observeInvalidation", 0],
     [context.domains.conversations?.events, "observeInvalidation", 0],
     [context.services.storage, "observeDocuments", 1],
+    [context.services.session, "observeEnvironment", 0],
     [context.services.ui.reader, "observe", 0],
     [context.services.ui.reader?.image, "observe", 0],
     [context.services.plugins, "observeContributions", 1],
@@ -63,7 +64,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
       const handler = args[index], subscription = {};
       args[index] = (snapshot: object | null, source?: object) => reactions.deliver(subscription, source ?? snapshot!,
         reaction => handler(snapshot, { reaction }));
-      if (key !== "observeSession" && key !== "observeTime") return observe(...args);
+      if (key !== "observeSession" && key !== "observeTime" && key !== "observeEnvironment") return observe(...args);
       const release = reactions.bindRule(subscription, args[index + 1]?.ruleId);
       try {
         const registration = observe(...args) as PluginDisposable;

@@ -2485,7 +2485,8 @@ export type PluginHostServices = {
     /** Fresh non-sensitive metadata; contains no reading or account state. */
     environment(): Promise<import("@read-aware/core").HostEnvironmentSnapshot>;
     /** Delivers an initial snapshot, then changed revisions. Disposed on unload. */
-    observeEnvironment(handler: (snapshot: import("@read-aware/core").HostEnvironmentSnapshot) => void | Promise<void>): PluginDisposable;
+    /** Session 2.7: locale effects retain their requester; other system facts keep independent sources. */
+    observeEnvironment(handler: (snapshot: import("@read-aware/core").HostEnvironmentSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string }): PluginDisposable;
   };
   network?: {
     /** Network 2.0: this activation's immutable authorization and transport limits.

@@ -26,7 +26,7 @@ function fixture() {
   const panels: Panels = { sessionId: "s1", bookId: "b1", revision: 1, controlsVisible: true, sizes: { toc: 288, chat: 352 }, layout: "docked",
     panels: { toc: { open: true, visible: true }, chat: { open: true, visible: false }, annotations: { open: false, visible: false }, appearance: { open: false, visible: false } } };
   const environment: Environment = { revision: 1, runtime: "desktop", platform: "macos", locale: "en", timeZone: "UTC", utcOffsetMinutes: 0, networkHint: "online" };
-  let sessionHandler!: (value: ReadingSessionSnapshot) => unknown, panelHandler!: (value: Panels | null, delivery?: PluginReactionEvent) => unknown, environmentHandler!: (value: Environment) => unknown;
+  let sessionHandler!: (value: ReadingSessionSnapshot) => unknown, panelHandler!: (value: Panels | null, delivery?: PluginReactionEvent) => unknown, environmentHandler!: (value: Environment, delivery?: PluginReactionEvent) => unknown;
   const disposeSession = mock(() => {}), disposePanel = mock(() => {}), disposeEnvironment = mock(() => {});
   const commands: PluginCommand[] = [];
   const snapshot = mock(async (): Promise<Panels | null> => panels);
@@ -45,10 +45,10 @@ function fixture() {
     ? Object.assign({}, ctx, { dispose: async () => { await registration.dispose(); } }) : ctx) as PluginContext["withEvent"];
   return { ctx, state, panels, environment, snapshot, setWidth, controlPlayback, publishView, commands, disposeSession, disposePanel, disposeEnvironment,
     sessionChanged: (value: ReadingSessionSnapshot) => sessionHandler(value), panelsChanged: (value: Panels | null, delivery?: PluginReactionEvent) => panelHandler(value, delivery),
-    environmentChanged: (value: Environment) => environmentHandler(value) };
+    environmentChanged: (value: Environment, delivery?: PluginReactionEvent) => environmentHandler(value, delivery) };
 }
 
-test("panel publications use the observation lease, while subsequent user controls retain the root context", async () => {
+test("panel and environment publications use the observation lease, while subsequent user controls retain the root context", async () => {
   const f = fixture(), lifetime = new AbortController(), boundPublish = mock(async () => ({ status: "applied" }));
   const bound = { ...f.ctx, services: { ...f.ctx.services, ui: { ...f.ctx.services.ui, publishView: boundPublish } } } as unknown as PluginContext;
   f.ctx.withEvent = mock((_event: unknown, registration?: { dispose(): void | Promise<void> }) => registration
@@ -61,6 +61,10 @@ test("panel publications use the observation lease, while subsequent user contro
     await action(current, "start").run(); expect(f.controlPlayback).toHaveBeenCalledTimes(1);
     await f.panelsChanged(null, { reaction: { id: "loop", status: "cycle" } });
     expect(boundPublish).toHaveBeenCalledTimes(1); expect(f.ctx.withEvent).toHaveBeenCalledTimes(1);
+    await f.environmentChanged(f.environment, delivery);
+    expect(boundPublish).toHaveBeenCalledTimes(2);
+    await f.environmentChanged(f.environment, { reaction: { id: "loop", status: "cycle" } });
+    expect(boundPublish).toHaveBeenCalledTimes(2);
   } finally { subscription.dispose(); }
 });
 

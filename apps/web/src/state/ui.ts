@@ -240,7 +240,7 @@ onLocalKVChange((key, _value, origin) => {
       const settings = getGeneralSettings();
       store.set(generalSettingsBaseAtom, settings);
       const locale = detectInitialLocale(settings.language);
-      if (i18n.isInitialized && i18n.language !== locale) setLocale(locale);
+      if (i18n.isInitialized) void setLocale(locale, origin);
       break;
     }
   }

@@ -7,6 +7,8 @@
 
 ## 最近交付与接续入口
 
+session2.7已接observeEnvironment反应凭证和可选稳定ruleId；环境快照及查询副本保留宿主来源。general.language的KV来源进入有序setLocale，实际languageChanged保留对应请求actor；未变化不重标，排队反向切换按请求顺序完成。环境仅语言变化沿用该来源，网络/时区等独立变化保留系统分支。Listening Desk0.13环境观察经withEvent发布并跳过循环凭证，用户按钮保持独立上下文。受影响类型/插件构建、真实JS语言切换来源和既有观察清理/消费者检查通过；真实Worker/Tauri及其他C04来源仍待完成。
+
 reading2.24已接observeTime独立反应凭证及可选稳定ruleId；宿主采样保留订阅actor跨定时器的因果祖先，成功/错误均带来源，受限书域过滤后等待完整异步回调。Reading Goals0.6实时视图经withEvent发布，循环凭证不执行。保留原64订阅上限、背压和退休丢弃迟到结果。受影响类型、构建及定向书域/凭证释放/采样清理检查通过。这仅证明采样订阅来源，不代表数据库历史统计写入来源已追溯；真实Worker/Tauri仍待集中验收，完整C04保持未完成。
 
 session2.6已补window.control只读条件：平台支持、32项队列和当前目标状态复用执行入口检查；无窗口派发/几何/原生输入信息，读取失败保留unknown。Agent嵌套request及插件生命周期接口已接，Workspace Profiles0.9在点击前查询，明确不可用显示错误，已满足目标则提示而不重复派发。受影响类型、插件构建和窗口关键检查通过；真实Tauri窗口状态/动画和公共Worker仍待集中验收。

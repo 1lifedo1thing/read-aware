@@ -1,7 +1,9 @@
-import { DEFAULT_LOCALE, i18n } from "../i18n";
+import { DEFAULT_LOCALE, i18n, localeActor } from "../i18n";
 import { isTauri, isMacOS, isWindows, isLinux } from "./environment";
 import { createLogger } from "./logger";
 import { HostEnvironmentStore } from "./host-environment-store";
+
+import { actorFromEvent, mergeEventCauses, stampEventCause } from "./domain-actor";
 
 const log = createLogger("host-environment");
 export const hostEnvironment = new HostEnvironmentStore({
@@ -17,6 +19,12 @@ export const hostEnvironment = new HostEnvironmentStore({
       utcOffsetMinutes: -new Date().getTimezoneOffset(),
       networkHint: typeof navigator === "undefined" || typeof navigator.onLine !== "boolean" ? "unknown" : navigator.onLine ? "online" : "offline",
     };
+  },
+  source: (previous, next) => {
+    const sources: object[] = [];
+    if (!previous || previous.locale !== next.locale) sources.push(stampEventCause({}, localeActor()));
+    if (previous && Object.entries(next).some(([key, value]) => key !== "locale" && previous[key as keyof typeof next] !== value)) sources.push(stampEventCause({}));
+    return actorFromEvent(mergeEventCauses(sources, {}));
   },
   watch: changed => {
     i18n.on("languageChanged", changed);

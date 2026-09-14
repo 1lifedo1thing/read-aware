@@ -1,3 +1,4 @@
+import { copyEventCause, stampEventCause, type DomainActor } from "./domain-actor";
 import type { HostEnvironmentSnapshot } from "@read-aware/core";
 
 type Facts = Omit<HostEnvironmentSnapshot, "revision">;
@@ -11,13 +12,14 @@ export class HostEnvironmentStore {
 
   constructor(private readonly deps: {
     read(): Facts;
+    source?(previous: Facts | undefined, next: Facts): DomainActor;
     watch(changed: () => void): () => void;
     report(error: unknown): void;
   }) {}
 
   snapshot = (): HostEnvironmentSnapshot => {
     this.refresh();
-    return structuredClone(this.state!);
+    return copyEventCause(this.state!, structuredClone(this.state!));
   };
 
   observe = (handler: Listener): (() => void) => {
@@ -37,14 +39,14 @@ export class HostEnvironmentStore {
   };
 
   private deliver(listener: Listener, state: HostEnvironmentSnapshot): void {
-    try { void Promise.resolve(listener(structuredClone(state))).catch(this.deps.report); }
+    try { void Promise.resolve(listener(copyEventCause(state, structuredClone(state)))).catch(this.deps.report); }
     catch (error) { this.deps.report(error); }
   }
 
   private refresh = (): void => {
     const facts = this.deps.read();
     if (this.state && Object.entries(facts).every(([key, value]) => this.state![key as keyof Facts] === value)) return;
-    this.state = { ...facts, revision: (this.state?.revision ?? 0) + 1 };
+    this.state = stampEventCause({ ...facts, revision: (this.state?.revision ?? 0) + 1 }, this.deps.source?.(this.state, facts) ?? "system");
     for (const listener of [...this.listeners]) {
       if (this.listeners.has(listener)) this.deliver(listener, this.state);
     }
