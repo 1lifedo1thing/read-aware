@@ -1,3 +1,4 @@
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { AppError } from "@read-aware/core";
 import type { PluginBookAccess } from "@read-aware/plugin-types";
 import type { PluginDataSnapshot } from "../../plugins/runtime/plugin-data-snapshot";
@@ -23,8 +24,9 @@ export type BackupProgramResult = {
  * No candidate is promoted, installed, or given the live storage namespace. */
 export async function migrateFullBackupPrograms(
   review: FullBackupReview, choices: ReadonlyMap<string, BackupProgramChoice>,
-  grants: ReadonlyMap<string, PluginBookAccess>, appVersion: string, signal?: AbortSignal,
+  grants: ReadonlyMap<string, PluginBookAccess>, appVersion: string, signal?: AbortSignal, origin: DomainActor = "user",
 ): Promise<Record<string, BackupProgramResult>> {
+  origin = causalActor(origin);
   const selected = new Map([...choices].map(([id, choice]) => [id, structuredClone(choice)]));
   // Consent results are caller-owned objects. Snapshot the complete map before
   // the review/staging awaits so later caller mutation cannot change the grant
@@ -46,11 +48,11 @@ export async function migrateFullBackupPrograms(
     const worker = await startPluginWorker(program.manifest, appVersion, [], {
       moduleUrl: pluginCandidateModuleUrl(stage.token, program.manifest.main ?? "main.js"),
       instanceId: `restore:${stage.token}`, restoreStorage: storage,
-      bookAccess,
+      bookAccess, activationOrigin: origin,
       onRuntimeError: error => { runtimeError = error; },
     });
     let termination: Promise<void> | undefined;
-    const stop = () => termination ??= worker.terminate();
+    const stop = () => termination ??= worker.terminate(origin);
     const abort = () => { void stop().catch(() => {}); };
     signal?.addEventListener("abort", abort, { once: true });
     let migration: ReturnType<typeof planPluginDataMigration>;

@@ -1,3 +1,4 @@
+import { causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { errorCode } from "@read-aware/core";
 import { Channel } from "@tauri-apps/api/core";
 import { invoke } from "../../../platform/ipc";
@@ -27,13 +28,14 @@ export type FullBackupApplyReceipt = FullBackupRestoreReceipt & { taskId: string
  * physical decision to the result dialog. Cancellation cannot reopen old actors.
  * An unfinished rollback needs the same protection until startup recovery. */
 export function applyFullBackup(taskId: string, request: FullBackupRestoreRequest,
-  onProgress: (progress: FullBackupImportProgress) => void, signal?: AbortSignal): Promise<FullBackupApplyReceipt> {
+  onProgress: (progress: FullBackupImportProgress) => void, signal?: AbortSignal, origin: DomainActor = "user"): Promise<FullBackupApplyReceipt> {
+  origin = causalActor(origin);
   return new Promise((resolve, reject) => {
     const untilReload = () => new Promise<never>(() => {});
     const stopPlugins = async () => {
       try {
         const { shutdownPlugins } = await import("../../plugins/runtime/plugin-host");
-        await shutdownPlugins();
+        await shutdownPlugins(undefined, origin);
       } catch (error) { createLogger("backup-import").error("Plugin shutdown failed; writes remain paused until reload", error); }
     };
     void withSyncBackup(() => withPluginDataBackup("import", () => withBackupCapture(async () => {
@@ -46,7 +48,7 @@ export function applyFullBackup(taskId: string, request: FullBackupRestoreReques
         await stopPlugins();
         return untilReload();
       }
-      resolve(receipt);
+      resolve(stampEventCause(receipt, origin));
       await stopPlugins();
       return untilReload();
     }, signal), signal), signal).catch(reject);

@@ -1,3 +1,5 @@
+import { actorCause, causalActor, eventCause } from "../../../platform/domain-actor";
+import type { applyFullBackup } from "./full-backup-apply";
 import { expect, test } from "bun:test";
 import { createFullBackupImport, type BackupPlanReceipt, type BackupSourceReceipt } from "./full-backup-import-task";
 import type { BackupReviewPage, BackupReviewQuery } from "./backup-review-types";
@@ -25,7 +27,7 @@ function fixture() {
     chooseRows: async (_id: string, request: import("./backup-review-types").BackupRowChoiceRequest) => ({ revision: "updated", changed: request.edits.length }),
     stageProgram: async () => ({ token: "stage", storage: {} }),
     stageStorage: async <T>() => null as T,
-    apply: async () => ({ taskId: "task", format: 2 as const, restoreId: "restore", domainRows: 1, files: 0, plugins: 0, credentials: 0, cleanupPending: false }),
+    apply: async (..._args: Parameters<typeof applyFullBackup>) => ({ taskId: "task", format: 2 as const, restoreId: "restore", domainRows: 1, files: 0, plugins: 0, credentials: 0, cleanupPending: false }),
     cancel: async () => { calls.push("cancel"); },
     warn: (_message: string, _error: unknown) => { calls.push("warn"); },
   };
@@ -187,10 +189,11 @@ test("restore consumes review once and retains the committed receipt through lat
   const { deps, run } = fixture();
   const entered = Promise.withResolvers<void>();
   const decision = Promise.withResolvers<Awaited<ReturnType<typeof deps.apply>>>();
-  deps.apply = async () => { entered.resolve(); return decision.promise; };
+  const origin = causalActor("user");
+  deps.apply = async (_id, _request, _progress, _signal, accepted) => { expect(actorCause(accepted)).toEqual(actorCause(origin)); entered.resolve(); return decision.promise; };
   const review = (await run("a test password"))!;
   const request = { rowRevision: "fixed", files: {}, programs: {}, programResults: {}, credentials: {} };
-  const applied = review.apply(request);
+  const applied = review.apply(request, origin);
   await entered.promise;
   await expect(review.apply(request)).rejects.toMatchObject({ code: "backup/changed" });
   await expect(review.read({ kind: "rowDecisions" })).rejects.toMatchObject({ code: "backup/changed" });
@@ -199,6 +202,7 @@ test("restore consumes review once and retains the committed receipt through lat
   await Bun.sleep(0); expect(closed).toBe(false);
   decision.resolve({ taskId: "task", format: 2, restoreId: "restore", domainRows: 3, files: 1, plugins: 0, credentials: 0, cleanupPending: false });
   expect(await applied).toMatchObject({ format: 2, domainRows: 3 });
+  expect(eventCause(await applied)).toEqual(actorCause(origin));
   expect(JSON.stringify(await applied)).not.toContain("taskId");
   await disposing; expect(closed).toBe(true);
 });

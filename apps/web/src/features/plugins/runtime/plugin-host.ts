@@ -198,9 +198,10 @@ export async function initializePlugins(): Promise<void> {
 
 /** Coordinated shutdown: quiesce every active plugin so Worker writes reach native storage
  * before the process ends. Failures are logged per plugin and never block the others. */
-export async function shutdownPlugins(signal?: AbortSignal): Promise<void> {
+export async function shutdownPlugins(signal?: AbortSignal, origin: DomainActor = "system"): Promise<void> {
+  origin = causalActor(origin);
   signal?.throwIfAborted();
-  const results = await Promise.allSettled([...active.keys()].map(id => deactivatePlugin(id)));
+  const results = await Promise.allSettled([...active.keys()].map(id => deactivatePlugin(id, origin)));
   for (const result of results) if (result.status === "rejected") log.warn("plugin shutdown failed", result.reason);
 }
 

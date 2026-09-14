@@ -1,3 +1,4 @@
+import { causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { AppError } from "@read-aware/core";
 import { validBackupPassword } from "./backup-password";
 import type { BackupReviewPage, BackupReviewQuery, BackupRowChoiceRequest, BackupRowChoiceReceipt, BackupRowStructureReceipt } from "./backup-review-types";
@@ -32,7 +33,7 @@ type Dependencies = {
   chooseRows(taskId: string, request: BackupRowChoiceRequest): Promise<BackupRowChoiceReceipt>;
   stageProgram(taskId: string, request: BackupProgramStageRequest): Promise<BackupProgramStageReceipt>;
   stageStorage<T>(taskId: string, token: string, query: BackupProgramStageQuery): Promise<T>;
-  apply(taskId: string, request: FullBackupRestoreRequest, progress: (update: FullBackupImportProgress) => void, signal?: AbortSignal): Promise<FullBackupApplyReceipt>;
+  apply(taskId: string, request: FullBackupRestoreRequest, progress: (update: FullBackupImportProgress) => void, signal?: AbortSignal, origin?: DomainActor): Promise<FullBackupApplyReceipt>;
   cancel(taskId: string): Promise<void>;
   warn(message: string, error: unknown): void;
 };
@@ -48,7 +49,7 @@ export type FullBackupReview = {
   checkRows(expectedRevision: string): Promise<BackupRowStructureReceipt>;
   stageProgram(request: BackupProgramStageRequest): Promise<BackupProgramStageReceipt>;
   stageStorage<T>(token: string, query: BackupProgramStageQuery): Promise<T>;
-  apply(request: FullBackupRestoreRequest): Promise<FullBackupRestoreReceipt>;
+  apply(request: FullBackupRestoreRequest, origin?: DomainActor): Promise<FullBackupRestoreReceipt>;
   dispose(): Promise<void>;
 };
 
@@ -136,15 +137,16 @@ export function createFullBackupImport(deps: Dependencies) {
         const candidate = structuredClone(query);
         return enqueue(() => deps.stageStorage<T>(taskId, token, candidate));
       };
-      const apply = (request: FullBackupRestoreRequest): Promise<FullBackupRestoreReceipt> => {
+      const apply = (request: FullBackupRestoreRequest, origin: DomainActor = "user"): Promise<FullBackupRestoreReceipt> => {
         if (disposed || consuming) return Promise.reject(new AppError("backup/changed", "Backup review has been disposed"));
         if (pendingOperations >= 32) return Promise.reject(new AppError("backup/busy", "Backup review queue is full"));
+        origin = causalActor(origin);
         const candidate = structuredClone(request);
         const pending = enqueue(async () => {
-          const receipt = await deps.apply(taskId, candidate, progress, signal);
+          const receipt = await deps.apply(taskId, candidate, progress, signal, origin);
           if (receipt.taskId !== taskId || receipt.format !== 2) throw new AppError("backup/recovery-required", "Unexpected restore decision receipt");
           const { taskId: _taskId, ...result } = receipt;
-          return result;
+          return stampEventCause(result, origin);
         }, undefined, true);
         consuming = true;
         return pending.finally(() => { disposed = true; signal?.removeEventListener("abort", abort); });

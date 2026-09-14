@@ -1,3 +1,4 @@
+import { causalActor } from "../../../platform/domain-actor";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useAtomValue } from "jotai";
 import { AppError, errorCode } from "@read-aware/core";
@@ -149,6 +150,7 @@ export function useBackupImport() {
   const restore = async () => {
     const current = flight.current, value = currentView.current;
     if (!current || current.running || value?.step !== "review" || !value.confirmed || !backupChoicesComplete(value.model)) return;
+    const origin = causalActor("user");
     current.running = true; publish({ ...value, busy: true });
     try {
       const choices = new Map(Object.entries(value.model.programChoices));
@@ -165,11 +167,11 @@ export function useBackupImport() {
         grants.set(program.id, structuredClone(consent.grant));
       }
       publish({ step: "running", progress: "migrating", cancelling: false });
-      const programResults = await migrateFullBackupPrograms(value.review, choices, grants, version, current.signal);
+      const programResults = await migrateFullBackupPrograms(value.review, choices, grants, version, current.signal, origin);
       current.signal.throwIfAborted();
       progress("restoring");
       const receipt = await value.review.apply({ rowRevision: value.model.decisions.revision, files: value.model.fileChoices,
-        programs: value.model.programChoices, credentials: value.model.credentialChoices, programResults });
+        programs: value.model.programChoices, credentials: value.model.credentialChoices, programResults }, origin);
       await value.review.dispose();
       publish({ step: "result", receipt }); finish(current, receipt);
     } catch (error) {
