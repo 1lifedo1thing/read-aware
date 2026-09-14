@@ -2,6 +2,7 @@ import { accountCredential, createModelResolver } from "@read-aware/agent";
 import { errorCode, normalizeOperationAvailability, operationAvailability, type OperationAvailabilityQuery,
   type InferenceAvailabilityQuery, type OperationAvailability, type OperationCondition } from "@read-aware/core";
 import { readingRuntime } from "../domain/reading-runtime";
+import { hostWindow } from "./window";
 import { hostSync } from "./sync";
 import { getAIConfig, type AIConfig } from "../features/ai/lib/ai-config";
 import { accountFromConfig } from "../features/ai/agent/account";
@@ -60,6 +61,9 @@ export function inspectInferenceAvailability(input: InferenceAvailabilityQuery, 
 export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal, context?: OperationAvailabilityContext): Promise<OperationAvailability> {
   const query = normalizeOperationAvailability(input);
   signal?.throwIfAborted();
+  if (query.operation === "window.control") {
+    return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...await hostWindow.conditions(query.request, signal)]);
+  }
   if (query.operation === "sync.now") {
     try { return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...await hostSync.conditions(signal)]); }
     catch (error) { signal?.throwIfAborted(); log.warn("Cannot read sync prerequisites", error);

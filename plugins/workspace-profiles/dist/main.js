@@ -440,7 +440,8 @@ var en2 = {
   restore: "Restore window",
   enter: "Enter full screen",
   leave: "Exit full screen",
-  requested: "Window change requested"
+  requested: "Window change requested",
+  unchanged: "Window is already in the requested state"
 };
 var zh2 = {
   title: "窗口",
@@ -457,7 +458,8 @@ var zh2 = {
   restore: "还原窗口",
   enter: "进入全屏",
   leave: "退出全屏",
-  requested: "已请求窗口变更"
+  requested: "已请求窗口变更",
+  unchanged: "窗口已处于目标状态"
 };
 var windowCopy = (locale) => locale.startsWith("zh") ? zh2 : en2;
 async function windowView(ctx) {
@@ -470,6 +472,17 @@ async function windowView(ctx) {
     const available = snapshot.supported && !error;
     const fullscreen = snapshot.supported && snapshot.fullscreen;
     const request = async (input) => {
+      const availability = await ctx.services.session.operationAvailability({ operation: "window.control", request: input });
+      const blocked = availability.conditions.find((value) => value.state === "unavailable" || value.state === "unconfigured");
+      if (blocked)
+        return { view: {
+          kind: "detail",
+          title: t.title,
+          content: [{ kind: "error", code: blocked.errorCode ?? "ui/unavailable" }],
+          actions: [{ id: "refresh", label: t.refresh, run: async () => ({ view: await windowView(ctx), navigation: "replace" }) }]
+        } };
+      if (availability.conditions.some((value) => value.reason === "window-already-in-requested-state"))
+        return { toast: t.unchanged };
       await window.control(input);
       return { toast: t.requested };
     };

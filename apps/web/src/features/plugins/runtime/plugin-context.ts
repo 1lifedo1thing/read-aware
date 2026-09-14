@@ -963,6 +963,9 @@ export function buildPluginContext(
           const signal = callSignal(options);
           signal.throwIfAborted();
           const query = normalizeOperationAvailability(input);
+          if (query.operation === "window.control") {
+            return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
+          }
           if (query.operation === "sync.now") {
             if (!canUseHostService("sync", permissions)) return Promise.resolve(operationAvailability(query, [
               { kind: "permission", state: "unavailable", reason: "service:sync-required" },

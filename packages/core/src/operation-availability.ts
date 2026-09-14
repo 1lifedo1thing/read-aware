@@ -1,4 +1,5 @@
 import { normalizeBookGraphTaskOptions, type BookGraphTaskOptions } from "./book-graph-task";
+import { normalizeHostWindowRequest, type HostWindowRequest } from "./host-window";
 import { AppError } from "./errors";
 import type { ReadingModeConfiguration } from "./reading-session";
 import { normalizeBookTextPrepareOptions, type BookTextPrepareOptions } from "./book-text";
@@ -12,9 +13,10 @@ export type ReadingOperationQuery = { bookId: string; sessionId?: string } & (
 );
 export type BookTextAvailabilityQuery = { operation: "library.text.prepare"; bookId: string } & BookTextPrepareOptions;
 export type GraphAvailabilityQuery = { operation: "memory.graph.generate"; bookId: string; mode: "catch-up" | "rebuild"; maxChapters?: number };
+export type WindowAvailabilityQuery = { operation: "window.control"; request: HostWindowRequest };
 export type SyncAvailabilityQuery = { operation: "sync.now" };
-export type OperationAvailabilityQuery = InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery;
-export type NormalizedOperationAvailabilityQuery = Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery;
+export type OperationAvailabilityQuery = InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery;
+export type NormalizedOperationAvailabilityQuery = Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery | WindowAvailabilityQuery;
 export type OperationConditionState = "satisfied" | "unconfigured" | "unavailable" | "unknown";
 export type OperationCondition = {
   kind: "permission" | "account" | "model" | "endpoint" | "provider" | "input" | "object" | "reader" | "capacity";
@@ -42,6 +44,10 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
       || raw.mode !== "catch-up" && raw.mode !== "rebuild") throw invalid();
     return { operation: raw.operation, bookId: raw.bookId, mode: raw.mode,
       ...normalizeBookGraphTaskOptions(raw.maxChapters === undefined ? undefined : { maxChapters: raw.maxChapters }) };
+  }
+  if (raw.operation === "window.control") {
+    if (Object.keys(raw).some(key => !["operation", "request"].includes(key))) throw invalid();
+    return { operation: raw.operation, request: normalizeHostWindowRequest(raw.request as HostWindowRequest) };
   }
   if (raw.operation === "sync.now") {
     if (Object.keys(raw).some(key => key !== "operation")) throw invalid();

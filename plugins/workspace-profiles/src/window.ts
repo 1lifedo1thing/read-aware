@@ -4,13 +4,13 @@ const en = {
   title: "Window", minimized: "Minimized", maximized: "Maximized", fullscreen: "Full screen", focused: "Focused",
   yes: "Yes", no: "No", unavailable: "Window controls unavailable", refresh: "Refresh",
   minimize: "Minimize", maximize: "Maximize", restore: "Restore window", enter: "Enter full screen", leave: "Exit full screen",
-  requested: "Window change requested",
+  requested: "Window change requested", unchanged: "Window is already in the requested state",
 };
 const zh: typeof en = {
   title: "窗口", minimized: "已最小化", maximized: "已最大化", fullscreen: "全屏", focused: "已聚焦",
   yes: "是", no: "否", unavailable: "窗口控制不可用", refresh: "刷新",
   minimize: "最小化", maximize: "最大化", restore: "还原窗口", enter: "进入全屏", leave: "退出全屏",
-  requested: "已请求窗口变更",
+  requested: "已请求窗口变更", unchanged: "窗口已处于目标状态",
 };
 export const windowCopy = (locale: string) => locale.startsWith("zh") ? zh : en;
 
@@ -23,6 +23,13 @@ export async function windowView(ctx: PluginContext): Promise<PluginDetailView &
     const available = snapshot.supported && !error;
     const fullscreen = snapshot.supported && snapshot.fullscreen;
     const request = async (input: Parameters<typeof window.control>[0]) => {
+      const availability = await ctx.services.session.operationAvailability({ operation: "window.control", request: input });
+      const blocked = availability.conditions.find(value => value.state === "unavailable" || value.state === "unconfigured");
+      if (blocked) return { view: { kind: "detail" as const, title: t.title,
+        content: [{ kind: "error" as const, code: blocked.errorCode ?? "ui/unavailable" }],
+        actions: [{ id: "refresh", label: t.refresh, run: async () => ({ view: await windowView(ctx), navigation: "replace" as const }) }],
+      } };
+      if (availability.conditions.some(value => value.reason === "window-already-in-requested-state")) return { toast: t.unchanged };
       await window.control(input);
       // The native receipt acknowledges an intent, not a finished OS animation.
       return { toast: t.requested };

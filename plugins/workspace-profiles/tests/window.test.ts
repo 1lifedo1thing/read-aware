@@ -12,6 +12,7 @@ function fixture(locale = "en") {
   const requests: Parameters<WindowService["control"]>[0][] = [];
   const published: { revision: number; view: PluginDetailView }[] = [];
   const ctx = { locale, services: {
+    session: { operationAvailability: async () => ({ operation: "window.control", state: "available", conditions: [], remoteChecked: false }) },
     storage: { collection: () => ({ page: async () => ({ status: "ready", items: [], nextCursor: null }) }) },
     ui: { window: {
       snapshot: async () => { reads++; if (failure) throw failure; return snapshot; },
@@ -117,7 +118,19 @@ test("compiled header and command both expose window controls without new host A
   }
   expect(f.requests).toEqual([{ action: "maximize" }, { action: "maximize" }]);
   const manifest = await Bun.file(new URL("../dist/manifest.json", import.meta.url)).json();
-  expect(manifest.version).toBe("0.8.0");
+  expect(manifest.version).toBe("0.9.0");
   expect(manifest.requires.services.ui).toBe("^1.11.0");
   expect(manifest.permissions).toEqual(["agent:tools"]);
+});
+
+
+test("window prerequisites block dispatch and already-satisfied intents do not write", async () => {
+  const f = fixture(), view = await windowView(f.ctx);
+  f.ctx.services.session.operationAvailability = async query => ({ operation: query.operation, state: "unavailable", remoteChecked: false,
+    conditions: [{ kind: "capacity", state: "unavailable", reason: "window-queue-full", errorCode: "ui/unavailable" }] });
+  expect((await action(view, "maximize")).view).toMatchObject({ content: [{ kind: "error", code: "ui/unavailable" }] });
+  f.ctx.services.session.operationAvailability = async query => ({ operation: query.operation, state: "available", remoteChecked: false,
+    conditions: [{ kind: "input", state: "satisfied", reason: "window-already-in-requested-state" }] });
+  expect(await action(view, "restore")).toEqual({ toast: "Window is already in the requested state" });
+  expect(f.requests).toHaveLength(0);
 });

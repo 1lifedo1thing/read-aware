@@ -1,4 +1,4 @@
-import { AppError, errorCode, normalizeHostWindowRequest, type HostWindowObservation,
+import { AppError, assertOperationConditions, type OperationCondition, errorCode, normalizeHostWindowRequest, type HostWindowObservation,
   type HostWindowPort, type HostWindowRequest, type HostWindowSnapshot, type HostWindowState } from "@read-aware/core";
 import { causalActor, copyEventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
 
@@ -11,6 +11,12 @@ export type WindowAdapter = {
   apply(request: HostWindowRequest, signal?: AbortSignal): Promise<void>;
   watch(changed: () => void): Promise<() => void>;
 };
+
+function requestedState(state: HostWindowSnapshot | undefined, request: HostWindowRequest): boolean {
+  return !!state?.supported && (request.action === "fullscreen" ? state.fullscreen === request.enabled
+    : request.action === "maximize" ? state.maximized && !state.minimized
+    : request.action === "minimize" ? state.minimized : !state.minimized && !state.maximized && !state.fullscreen);
+}
 
 /** Main-window intents only. A native acknowledgement is not an animation receipt. */
 export class HostWindowService implements HostWindowPort {
@@ -31,8 +37,37 @@ export class HostWindowService implements HostWindowPort {
 
   constructor(private adapter: WindowAdapter, private report: (error: unknown) => void) {}
 
+  private capacityConditions(): OperationCondition[] {
+    return [{ kind: "capacity", state: this.queued >= 32 ? "unavailable" : "satisfied",
+      reason: this.queued >= 32 ? "window-queue-full" : "window-queue-available", errorCode: "ui/unavailable" }];
+  }
+
+  private platformConditions(): OperationCondition[] {
+    const supported = this.adapter.supported();
+    return [{ kind: "provider", state: supported ? "satisfied" : "unavailable",
+      reason: supported ? "desktop-window-supported" : "desktop-window-unsupported", errorCode: "ui/unavailable" }];
+  }
+
+  /** Read only; the result is a snapshot, never a reservation or OS receipt. */
+  async conditions(input: HostWindowRequest, signal?: AbortSignal): Promise<OperationCondition[]> {
+    const request = normalizeHostWindowRequest(input);
+    signal?.throwIfAborted();
+    const conditions = [...this.platformConditions(), ...this.capacityConditions()];
+    if (conditions.some(value => value.state === "unavailable")) return conditions;
+    try {
+      const state = await this.snapshot(signal);
+      return [...this.platformConditions(), ...this.capacityConditions(), { kind: "input", state: "satisfied",
+        reason: requestedState(state, request) ? "window-already-in-requested-state" : "window-change-required" }];
+    } catch (error) {
+      signal?.throwIfAborted();
+      this.report(error);
+      return [...this.platformConditions(), ...this.capacityConditions(), { kind: "object", state: "unknown",
+        reason: "window-state-read-failed", errorCode: "ui/unavailable" }];
+    }
+  }
+
   private enqueue<T>(run: () => Promise<T>): Promise<T> {
-    if (this.queued >= 32) return Promise.reject(new AppError("ui/unavailable", "Too many pending window requests"));
+    try { assertOperationConditions(this.capacityConditions()); } catch (error) { return Promise.reject(error); }
     this.queued++;
     const result = this.tail.then(run).finally(() => { this.queued--; });
     this.tail = result.catch(() => {}); // Failure must not poison later independent intents.
@@ -113,15 +148,12 @@ export class HostWindowService implements HostWindowPort {
     this.commandRevision++;
     return this.enqueue(async () => {
       signal?.throwIfAborted();
-      if (!this.adapter.supported()) throw new AppError("ui/unavailable", "Window controls require the desktop app");
+      assertOperationConditions(this.platformConditions());
       // Establish an unclaimed baseline before dispatch. A no-op request must
       // not relabel old state or geometry as an effect of the caller.
       await this.read();
       signal?.throwIfAborted();
-      const state = this.observed;
-      const unchanged = state?.supported && (request.action === "fullscreen" ? state.fullscreen === request.enabled
-        : request.action === "maximize" ? state.maximized && !state.minimized
-        : request.action === "minimize" ? state.minimized : !state.minimized && !state.maximized && !state.fullscreen);
+      const unchanged = requestedState(this.observed, request);
       // A no-op cannot replace an earlier effect's source. New native input
       // invalidates this association; acknowledgement or elapsed time does not.
       if (!unchanged) this.layoutCommand = this.inputRevision === null ? undefined : { revision: this.inputRevision, origin };

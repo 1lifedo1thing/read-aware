@@ -132,6 +132,7 @@ test("queued cancellation prevents dispatch, native failures do not poison later
   abort.abort(new AppError("plugin/cancelled", "Retired"));
   const rest = Array.from({ length: 30 }, () => f.service.control({ action: "restore" }));
   await expect(f.service.control({ action: "maximize" })).rejects.toMatchObject({ code: "ui/unavailable" });
+  expect(await f.service.conditions({ action: "restore" })).toContainEqual({ kind: "capacity", state: "unavailable", reason: "window-queue-full", errorCode: "ui/unavailable" });
   held.resolve(); await first; await Promise.all(rest);
   expect(await cancelled).toMatchObject({ code: "plugin/cancelled" });
   expect(f.calls.some(request => request.action === "maximize")).toBe(false);
@@ -178,11 +179,13 @@ test("unsupported previews expose no guessed flags; plugin activation gates all 
   expect(() => window.control({ action: "maximize" })).toThrow();
   plugin.lifecycle.promote();
   expect(await window.snapshot()).toMatchObject({ supported: false });
+  expect(await plugin.context.services.session.operationAvailability({ operation: "window.control", request: { action: "maximize" } })).toMatchObject({ operation: "window.control", state: "unavailable", remoteChecked: false });
   await expect(window.control({ action: "maximize" })).rejects.toMatchObject({ code: "ui/unavailable" });
   let calls = 0; window.observe(() => { calls++; }); await tick();
   expect(calls).toBe(1);
   plugin.lifecycle.stop(); await plugin.lifecycle.drainCleanups();
   expect(() => window.snapshot()).toThrow(); expect(() => window.control({ action: "restore" })).toThrow();
+  expect(() => plugin.context.services.session.operationAvailability({ operation: "window.control", request: { action: "restore" } })).toThrow();
 });
 
 test("desktop window capabilities grant the bounded native operations only to main", async () => {
@@ -191,4 +194,20 @@ test("desktop window capabilities grant the bounded native operations only to ma
   for (const name of ["minimize", "maximize", "unmaximize", "unminimize", "set-fullscreen",
     "is-minimized", "is-maximized", "is-fullscreen", "is-focused"]) expect(capability.permissions).toContain("core:window:allow-" + name);
   expect(capability.windows).toEqual(["main"]);
+});
+
+
+test("window prerequisites are read-only and reflect unsupported, unknown and target-state conditions", async () => {
+  const f = fixture();
+  expect(await f.service.conditions({ action: "restore" })).toContainEqual({ kind: "input", state: "satisfied", reason: "window-already-in-requested-state" });
+  expect(await f.service.conditions({ action: "maximize" })).toContainEqual({ kind: "input", state: "satisfied", reason: "window-change-required" });
+  expect(f.calls).toHaveLength(0);
+  f.adapter.read = async () => { throw Error("private native failure"); };
+  expect(await f.service.conditions({ action: "maximize" })).toContainEqual({ kind: "object", state: "unknown", reason: "window-state-read-failed", errorCode: "ui/unavailable" });
+  f.adapter.supported = () => false;
+  expect(await f.service.conditions({ action: "maximize" })).toContainEqual({ kind: "provider", state: "unavailable", reason: "desktop-window-unsupported", errorCode: "ui/unavailable" });
+  await expect(f.service.control({ action: "maximize" })).rejects.toMatchObject({ code: "ui/unavailable" });
+  const aborted = new AbortController(); aborted.abort();
+  await expect(f.service.conditions({ action: "restore" }, aborted.signal)).rejects.toBeDefined();
+  expect(f.calls).toHaveLength(0);
 });
