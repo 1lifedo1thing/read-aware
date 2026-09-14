@@ -142,6 +142,22 @@ mod tests {
         assert_eq!(settings_page.changes.len(),1);
         conn.execute("UPDATE app_kv SET value_json='{\"book\":{\"scope\":\"book\"},\"outside\":{\"scope\":\"global\"}}' WHERE key='read-aware-reader-overrides'",[]).unwrap();
         assert!(capability_changes_read_inner(&mut conn,"plugin:sample",settings,&settings_page.cursor,20).unwrap().changes.is_empty());
+        let credentials=ChangeSelector { projection_key:None,event_types:vec![],settings_keys:vec!["read-aware-ai-config".into()],book_id:None,plugin_id:None };
+        let credential_cursor=capability_changes_open_inner(&mut conn,"plugin:sample",credentials.clone()).unwrap();
+        {
+            let tx=conn.transaction().unwrap();
+            tx.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES('read-aware-secret:ai-api-key.rollback','SECRET_SEALED','now')",[]).unwrap();
+        }
+        assert!(capability_changes_read_inner(&mut conn,"plugin:sample",credentials.clone(),&credential_cursor,20).unwrap().changes.is_empty());
+        conn.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES('read-aware-secret:ai-api-key.provider','SECRET_SEALED','now'),('read-aware-secret:plugin.sample.token','PRIVATE_SEALED','now'),('read-aware-secret:sync.session','PRIVATE_SESSION','now')",[]).unwrap();
+        conn.execute("UPDATE app_kv SET value_json='SECRET_ROTATED' WHERE key='read-aware-secret:ai-api-key.provider'",[]).unwrap();
+        conn.execute("UPDATE app_kv SET value_json=value_json WHERE key='read-aware-secret:ai-api-key.provider'",[]).unwrap();
+        conn.execute("DELETE FROM app_kv WHERE key='read-aware-secret:ai-api-key.provider'",[]).unwrap();
+        let credential_page=capability_changes_read_inner(&mut conn,"plugin:sample",credentials,&credential_cursor,20).unwrap();
+        assert_eq!(credential_page.changes.len(),3);
+        assert!(credential_page.changes.iter().all(|change| change.entity_id=="read-aware-ai-config" && change.detail.is_none() && change.book_id.is_none()));
+        let serialized=serde_json::to_string(&credential_page).unwrap();
+        for private in ["SECRET", "PRIVATE", "ai-api-key", "provider", "sync.session"] { assert!(!serialized.contains(private)); }
         conn.execute("INSERT INTO domain_events(id,type,hlc_wall_ms,hlc_counter,hlc_device,payload_json,created_at) VALUES('string-pref','preference.changed',15,0,'device','{\"key\":\"read-aware-default-mark-color\",\"value\":\"yellow\"}','now')",[]).unwrap();
         conn.execute("INSERT INTO domain_events(id,type,hlc_wall_ms,hlc_counter,hlc_device,payload_json,created_at) VALUES('reset-event','book.removed',1,0,'device','{}','now')",[]).unwrap();
         conn.execute("DELETE FROM domain_events WHERE id='reset-event'",[]).unwrap();

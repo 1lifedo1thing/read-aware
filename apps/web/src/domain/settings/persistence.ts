@@ -25,10 +25,6 @@ export async function settingsChangeKeys(domain: SettingsDomain, paths: readonly
   for (const path of paths) {
     await domain.queries.read(path, target);
     let key: string | undefined;
-    if (path === "ai.connection.credentialConfigured") {
-      // Keychain mutations do not participate in the SQLite change transaction.
-      throw new AppError("changes/invalid-query", "Credential changes do not support persistent cursors");
-    }
     if (path === "general.updateChannel") key = CHANNEL_KV_KEY;
     else if (path.startsWith("general.")) key = GENERAL_SETTINGS_KEY;
     else if (path.startsWith("appearance.contentTypography.")) key = CONTENT_TYPOGRAPHY_KEY;

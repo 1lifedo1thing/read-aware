@@ -909,6 +909,19 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
         WHERE (SELECT value FROM json_each(OLD.value_json) WHERE key=k.key) IS NOT (SELECT value FROM json_each('{}') WHERE key=k.key);
       END;
       UPDATE capability_change_state SET epoch=lower(hex(randomblob(24))) WHERE id=1;"),
+    (50, "capability_change_credential_presence", "CREATE TRIGGER capability_change_ai_secret_insert AFTER INSERT ON app_kv
+      WHEN NEW.key='read-aware-secret:ai-api-key' OR NEW.key GLOB 'read-aware-secret:ai-api-key.*' BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id) VALUES('setting','invalidate','read-aware-ai-config');
+      END;
+      CREATE TRIGGER capability_change_ai_secret_update AFTER UPDATE ON app_kv
+      WHEN (NEW.key='read-aware-secret:ai-api-key' OR NEW.key GLOB 'read-aware-secret:ai-api-key.*') AND OLD.value_json IS NOT NEW.value_json BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id) VALUES('setting','invalidate','read-aware-ai-config');
+      END;
+      CREATE TRIGGER capability_change_ai_secret_delete AFTER DELETE ON app_kv
+      WHEN OLD.key='read-aware-secret:ai-api-key' OR OLD.key GLOB 'read-aware-secret:ai-api-key.*' BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id) VALUES('setting','invalidate','read-aware-ai-config');
+      END;
+      UPDATE capability_change_state SET epoch=lower(hex(randomblob(24))) WHERE id=1;"),
 ];
 
 /// Rebuild the annotation FTS index from the table. Required after any VACUUM

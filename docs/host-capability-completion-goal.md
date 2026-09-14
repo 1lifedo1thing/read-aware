@@ -86,7 +86,9 @@
   changes1.0已接插件领域读/写授权、显式书域与当前书围栏、设置目录可读路径映射，
   原始存储键只在宿主内部使用；派发前和返回前重新检查生命周期、书域及设置目录。
   Agent open_change_cursor/read_changes按会话owner绑定，书会话必须指定本书，拒绝插件私有文档。
-  Worker取消参数与退休排空已接；凭据状态不参与SQLite事务，credentialConfigured明确拒绝游标查询。
+  Worker取消参数与退休排空已接。已纠正此前对凭据来源的误判：secrets.rs把密文写入SQLite app_kv。
+  schema50在AI密钥新增/轮换/删除事务中仅记录AI设置失效，不存秘密键名、提供者槽、密文或明文；
+  credentialConfigured现在经既有设置目录授权映射接入插件/Agent游标，非AI秘密不进入该通知。
   Agent/Web/desktop类型通过，日志 `/tmp/readaware-c09-agent-types.log`、`/tmp/readaware-c09-wired-web-types.log`。
   Text Desk0.29新增书籍更新页，按授权书域保存游标和已处理页面；先打开边界再读基线，
   当前授权书籍状态读取成功后同一KV写保存页面及位置，失败保留旧位置，重开显示已保存页，
@@ -530,3 +532,9 @@
 - C07接线批次：transactions1.0公开preview/commit/previewUndo/receipt，实际context/Worker options及提交取消排空已接。插件书域/当前书围栏、library:write、设置路径/目标、自有文档归属与本激活来源逐次复核；预览限时、消费一次，每激活跨actor共享16份预览/在途提交额度，停用退休预览并排空已派发调用，空闲时解除生命周期订阅；check文档只加版本条件，不发布假写通知。Agent四工具接实际runtime port，书内只改本书元数据/本书设置，无插件私有数据权；批准弹窗用宿主冻结内容，拒绝无执行。Workspace Profiles0.8应用预设联合document.check和settings，杜绝读完预设后被替换仍应用；新增可见撤销及获批准undo_workspace_profile，返回事务ID供回执查询。
   派发前重验设置目录/提供者版本；本书或all-books阅读变更另外持有原生只读全局排版基线，避免撤销恢复继承后使用已变化的全局值却发布旧值。此基线不写入KV，若同批也修改全局排版，撤销改用该批提交后的基线。Workspace Profiles编译/类型与受影响检查通过，初轮两处旧工具数/版本断言已更新且定向复跑通过；Agent类型、Web/desktop类型、库存与统一模型检查通过，模型旧目录数39改为40；无新增全量回归。受控Agent批准与真实Bun Worker调用transactions.preview后拒绝只读插件写入通过；原生单项SQLite组合涵盖跨域回滚、持久回执与只读条件，仍不是Tauri组合成功证据。相关日志/tmp/readaware-c07-boundaries.log、readaware-c07-workspace-final.log、readaware-c07-workspace-rerun.log、readaware-c07-contracts.log、readaware-c07-model-final.log、readaware-c07-types-final.log、readaware-c07-native-complete.log。
   C07接线已推进到消费者；集中仍需真实Agent批准UI、全/书域插件三域正向与冲突、切书/停用取消、进程重启回执和条件撤销及Workspace Profiles可见动作。C04、C05余项与C08/C09继续，不把本批当全目标完成。
+
+- C04/C09凭据来源补全：秘密队列持久成功通知保留宿主actor/cause，设置观察复制该来源；
+  插件秘密set/remove从operationActor跨原生写入延续plugin-storage-changed来源。
+  复用既有关键检查验证同规则反馈拒绝、失败不通知，以及SQLite回滚不留通知、秘密族隔离和不泄露值/槽名。
+  日志 `/tmp/readaware-secret-cause-check.log`、`/tmp/readaware-secret-native.log`、`/tmp/readaware-secret-web-types.log`。
+  凭据漫游自动发布/远端重放的完整因果、目录atom及其余C04/C05断点继续保留，真实Tauri仍待集中验收。

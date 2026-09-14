@@ -823,12 +823,12 @@ export function buildPluginContext(
         set: async (key, value) => {
           lifecycle.assertActive("services.secrets.set");
           requireSecretKey(key);
-          await lifecycle.storageWrite("services.secrets.set", () => setPluginSecret(manifest.id, key, String(value)));
+          await lifecycle.storageWrite("services.secrets.set", () => setPluginSecret(manifest.id, key, String(value), operationActor));
         },
         remove: async (key) => {
           lifecycle.assertActive("services.secrets.remove");
           requireSecretKey(key);
-          await lifecycle.storageWrite("services.secrets.remove", () => deletePluginSecret(manifest.id, key));
+          await lifecycle.storageWrite("services.secrets.remove", () => deletePluginSecret(manifest.id, key, operationActor));
         },
       },
       ui: {

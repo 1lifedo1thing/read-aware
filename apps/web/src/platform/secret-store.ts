@@ -15,11 +15,13 @@
  */
 import { runDomainWrite, runObservedDomainWrite } from "./domain-write-gate";
 import { invoke } from "./ipc";
-import { errorCode } from "@read-aware/core";
+import { errorCode, type EventOrigin } from "@read-aware/core";
 import { emitAppEvent } from "./app-events";
 import { isTauri } from "./environment";
 import { createLogger } from "./logger";
-import { KVWriteQueue, type KVWriteOrigin } from "./kv-write-queue";
+import { KVWriteQueue, type KVCommit, type KVWriteOrigin } from "./kv-write-queue";
+
+import { actorOrigin, causalActor, copyEventCause, stampEventCause, type DomainActor } from "./domain-actor";
 
 const log = createLogger("secrets");
 
@@ -28,8 +30,8 @@ const log = createLogger("secrets");
  * the legacy single slot plus one slot per provider (`ai-api-key.<provider>`),
  * so switching providers never clobbers another provider's key. The `sync.`
  * family: the relay session token and the passphrase-derived E2E master key
- * (base64) — the "encryption_key_ref" that `sync_profile` points at, kept out
- * of SQLite per the schema's key-material policy. Hydration discovers live
+ * (base64) — the "encryption_key_ref" that `sync_profile` points at. SQLite
+ * stores only sealed values, never this plaintext key material. Hydration discovers live
  * slots by prefix (`secret_keys`); plugin credentials go through their own
  * async helpers below and never enter this snapshot.
  */
@@ -45,7 +47,9 @@ const LEGACY_AI_KEY_STORAGE_KEY = "read-aware-ai-key";
 
 const snapshot = new Map<SecretKey, string>();
 let hydrated = false;
-const commitListeners = new Set<(key: SecretKey, source: KVWriteOrigin) => void>();
+export type SecretCommit = { source: KVCommit["source"]; origin: EventOrigin | null };
+type SecretCommitListener = (key: SecretKey, source: KVWriteOrigin, commit: SecretCommit) => void;
+const commitListeners = new Set<SecretCommitListener>();
 const writeListeners = new Set<(key: SecretKey, value: string | null) => void>();
 /** Credential-policy boundary only: exact durable local values for sealing, never a public observer. */
 export function onLocalSecretWrite(listener: (key: SecretKey, value: string | null) => void): () => void {
@@ -53,13 +57,13 @@ export function onLocalSecretWrite(listener: (key: SecretKey, value: string | nu
   return () => writeListeners.delete(listener);
 }
 /** Host-only invalidation; values never leave the credential boundary. */
-export function onSecretCommit(listener: (key: SecretKey, source: KVWriteOrigin) => void): () => void {
+export function onSecretCommit(listener: SecretCommitListener): () => void {
   commitListeners.add(listener);
   return () => commitListeners.delete(listener);
 }
-function notifyCommit(key: SecretKey, source: KVWriteOrigin): void {
+function notifyCommit(key: SecretKey, source: KVWriteOrigin, commit: SecretCommit): void {
   for (const listener of [...commitListeners]) {
-    try { listener(key, source); } catch (error) { log.warn("Credential observer failed", error); }
+    try { listener(key, source, commit); } catch (error) { log.warn("Credential observer failed", error); }
   }
 }
 const writes = new KVWriteQueue({
@@ -74,7 +78,10 @@ const writes = new KVWriteQueue({
       try { listener(key as SecretKey, value); } catch (error) { log.warn("Credential publication failed", error); }
     }
   },
-  settled: commit => { for (const { key } of commit.entries) notifyCommit(key as SecretKey, commit.source === "remote" ? "remote" : "local"); },
+  settled: commit => {
+    const notice = copyEventCause(commit, { source: commit.source, origin: commit.actor });
+    for (const { key } of commit.entries) notifyCommit(key as SecretKey, commit.source === "remote" ? "remote" : "local", notice);
+  },
   failed: (key, error) => {
     if (errorCode(error) === "ui/superseded") { log.debug("Deferred stale credential overlay while local publication is pending"); return; }
     log.error(`failed to persist "${key}"`, error);
@@ -141,22 +148,23 @@ export function getDurableSecret(key: SecretKey): string {
   return writes.readDurable(key) ?? "";
 }
 
-export function setSecretAsync(key: SecretKey, value: string, source: KVWriteOrigin = "local"): Promise<void> {
-  if (isTauri()) return runObservedDomainWrite(() => writes.write(key, value || null, source), error => {
+export function setSecretAsync(key: SecretKey, value: string, source: KVWriteOrigin = "local", actor: DomainActor | null = null): Promise<void> {
+  const cause = causalActor(actor ?? "system");
+  if (isTauri()) return runObservedDomainWrite(() => writes.write(key, value || null, source, cause), error => {
     log.warn("Credential write admission failed", error);
     emitAppEvent("local-write-failed", { kind: "secret", code: errorCode(error) });
   });
   if (value) snapshot.set(key, value); else snapshot.delete(key);
-  notifyCommit(key, source);
+  notifyCommit(key, source, stampEventCause({ source, origin: actor === null ? null : actorOrigin(actor) }, cause));
   return Promise.resolve();
 }
 
-export function deleteSecretAsync(key: SecretKey, source: KVWriteOrigin = "local"): Promise<void> {
-  return setSecretAsync(key, "", source);
+export function deleteSecretAsync(key: SecretKey, source: KVWriteOrigin = "local", actor: DomainActor | null = null): Promise<void> {
+  return setSecretAsync(key, "", source, actor);
 }
 
-export function setSecret(key: SecretKey, value: string, source: KVWriteOrigin = "local"): void {
-  void setSecretAsync(key, value, source);
+export function setSecret(key: SecretKey, value: string, source: KVWriteOrigin = "local", actor: DomainActor | null = null): void {
+  void setSecretAsync(key, value, source, actor);
 }
 
 /** Hydrated slot names under a prefix — never the values. */
@@ -164,17 +172,16 @@ export function listSecretSlots(prefix: string): SecretKey[] {
   return [...snapshot.keys()].filter((key) => key.startsWith(prefix));
 }
 
-export function deleteSecret(key: SecretKey, source: KVWriteOrigin = "local"): void {
-  void deleteSecretAsync(key, source);
+export function deleteSecret(key: SecretKey, source: KVWriteOrigin = "local", actor: DomainActor | null = null): void {
+  void deleteSecretAsync(key, source, actor);
 }
 
 // ─── Plugin-scoped secrets ───────────────────────────────────────────────────
 //
 // Same encrypted store, namespaced per plugin (`plugin.<id>.<key>`), but
 // ASYNC and snapshot-free: plugin tokens are read at use time, not per
-// request on the hot path. Values live outside SQLite and outside backups,
-// and survive uninstall — a reinstall finds its credentials again, mirroring
-// how the plugin KV behaves.
+// request on the hot path. SQLite holds only sealed values; plaintext remains
+// behind native IPC and the device-local encryption key.
 
 function pluginSecretKey(pluginId: string, key: string): string {
   return `plugin.${pluginId}.${key}`;
@@ -189,18 +196,21 @@ export async function setPluginSecret(
   pluginId: string,
   key: string,
   value: string,
+  actor: DomainActor = "system",
 ): Promise<void> {
   if (!isTauri()) throw new Error("secrets require the desktop app");
+  const cause = causalActor(actor);
   await runDomainWrite(async () => {
     await invoke("secret_set", { key: pluginSecretKey(pluginId, key), value });
-    emitAppEvent("plugin-storage-changed", { pluginId });
+    emitAppEvent("plugin-storage-changed", { pluginId }, cause);
   });
 }
 
-export async function deletePluginSecret(pluginId: string, key: string): Promise<void> {
+export async function deletePluginSecret(pluginId: string, key: string, actor: DomainActor = "system"): Promise<void> {
   if (!isTauri()) throw new Error("secrets require the desktop app");
+  const cause = causalActor(actor);
   await runDomainWrite(async () => {
     await invoke("secret_delete", { key: pluginSecretKey(pluginId, key) });
-    emitAppEvent("plugin-storage-changed", { pluginId });
+    emitAppEvent("plugin-storage-changed", { pluginId }, cause);
   });
 }

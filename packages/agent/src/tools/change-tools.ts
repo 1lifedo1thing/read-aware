@@ -14,7 +14,7 @@ export function buildChangeTools(scope: ThreadScope, deps: RuntimeDeps): AgentTo
   }, { additionalProperties: false });
   const accepted = (raw: unknown) => normalizeChangesQuery(raw);
   return [{ name: "open_change_cursor", label: "Start tracking changes",
-    description: "Open a persistent change cursor BEFORE reading a baseline with domain query tools. Select areas and optional bookId; book conversations must specify their own bookId. Settings require exact readable catalog settingsPaths; credentialConfigured is unsupported. Returns a cursor owned by this conversation scope, with no content or event history.",
+    description: "Open a persistent change cursor BEFORE reading a baseline with domain query tools. Select areas and optional bookId; book conversations must specify their own bookId. Settings require exact readable catalog settingsPaths, including credentialConfigured presence metadata. Returns a cursor owned by this conversation scope, with no content or event history.",
     parameters: Type.Object({ query }, { additionalProperties: false }),
     execute: async (_id, raw, signal) => textResult(await port.open(accepted((raw as { query: unknown }).query), signal)),
   }, { name: "read_changes", label: "Read changes since cursor",

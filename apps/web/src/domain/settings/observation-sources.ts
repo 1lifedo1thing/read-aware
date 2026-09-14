@@ -31,8 +31,8 @@ export function initializeSettingsObservation(): void {
     if (!commit.entries.some(({ key }) => keys.has(key) || (key.startsWith("read-aware-plugin.") && key.endsWith(".settings")))) return;
     settingsObservation.invalidate(copyEventCause(commit, { source: commit.source, origin: commit.actor }));
   });
-  onSecretCommit((key, source) => {
-    if (key === "ai-api-key" || key.startsWith("ai-api-key.")) settingsObservation.invalidate({ source, origin: null });
+  onSecretCommit((key, _source, commit) => {
+    if (key === "ai-api-key" || key.startsWith("ai-api-key.")) settingsObservation.invalidate(copyEventCause(commit, { source: commit.source, origin: commit.origin }));
   });
   const store = getDefaultStore();
   for (const atom of [installedPluginsAtom, pluginFontsAtom, pluginThemesAtom, headerActionsAtom, selectionActionsAtom, textUnitReaderModeAtom, shortcutEnvironmentAtom]) {

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
-import { afterSecretWrites, deleteSecret, getSecret, hydrateSecrets, onSecretCommit, setSecret } from "./secret-store";
+import { afterSecretWrites, deleteSecret, getSecret, hydrateSecrets, onSecretCommit, setSecret, type SecretCommit } from "./secret-store";
 import { afterSettingsWrites } from "../domain/settings/observation-sources";
+import { causalActor, actorCause, eventCause, reactionActor } from "./domain-actor";
 import { localKV } from "./local-store";
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -17,14 +18,21 @@ if (process.env.SECRET_ORDERING_CASE === "1") {
   } } });
   test("credential writes preserve newer optimism, roll back failures, and expose only committed slot notifications", async () => {
     await hydrateSecrets(); const seen: unknown[] = [];
-    const stop = onSecretCommit((key, source) => seen.push({ key, source }));
+    const origin = reactionActor("plugin:sample", "rule:plugin:sample:credential", actorCause(causalActor("system"))!)!;
+    const commits: SecretCommit[] = [];
+    const stop = onSecretCommit((key, source, commit) => {
+      seen.push({ key, source }); commits.push(commit);
+    });
     setSecret("ai-api-key.test", "synthetic-first");
-    setSecret("ai-api-key.test", "synthetic-next", "remote");
+    setSecret("ai-api-key.test", "synthetic-next", "remote", origin);
     expect(getSecret("ai-api-key.test")).toBe("synthetic-next");
     await tick(); expect(pending).toHaveLength(1); pending.shift()!.reject({ code: "db/locked" });
     await tick(); expect(getSecret("ai-api-key.test")).toBe("synthetic-next"); expect(seen).toEqual([]);
     pending.shift()!.resolve(); await afterSecretWrites(() => {});
     expect(seen).toEqual([{ key: "ai-api-key.test", source: "remote" }]);
+    expect(commits.map(eventCause)).toEqual([actorCause(origin)]);
+    expect(JSON.stringify(commits)).not.toContain("synthetic");
+    expect(() => reactionActor("plugin:sample", "rule:plugin:sample:credential", eventCause(commits[0]!)!)).toThrow("Event reaction would repeat a causal step");
     deleteSecret("ai-api-key.test"); await tick(); pending.shift()!.reject({ code: "db/locked" });
     await afterSecretWrites(() => {}); expect(getSecret("ai-api-key.test")).toBe("synthetic-next");
     expect(JSON.stringify(seen)).not.toContain("synthetic"); stop();
