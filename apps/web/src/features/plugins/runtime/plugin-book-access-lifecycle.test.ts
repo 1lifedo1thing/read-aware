@@ -23,6 +23,7 @@ if (process.env.PLUGIN_BOOK_ACCESS_LIFECYCLE === "1") {
   const { localKV } = await import("../../../platform/local-store");
   const { installedPluginsAtom, getPluginBookAccess, persistPluginBookAccess } = await import("../state/plugin-store");
   const host = await import("./plugin-host");
+  const { causalActor, actorCause, eventCause } = await import("../../../platform/domain-actor");
   const tick = () => Bun.sleep(0);
 
   test("grant changes drain old execution and await durability before restarting", async () => {
@@ -43,7 +44,8 @@ if (process.env.PLUGIN_BOOK_ACCESS_LIFECYCLE === "1") {
     expect(starts).toEqual([{ mode: "all" }]);
 
     holdGrant = true;
-    const change = host.updatePluginBookAccess(id, { mode: "book", bookId: "A" });
+    const origin = causalActor("user");
+    const change = host.updatePluginBookAccess(id, { mode: "book", bookId: "A" }, origin);
     await tick();
     expect(getPluginBookAccess(id).grant).toEqual({ mode: "all" });
     expect(starts).toHaveLength(1);
@@ -53,6 +55,7 @@ if (process.env.PLUGIN_BOOK_ACCESS_LIFECYCLE === "1") {
     expect(starts).toHaveLength(1);
     expect(getDefaultStore().get(installedPluginsAtom)[0]?.bookAccess).toBeUndefined();
     holdGrant = false; releaseGrant!(); await change;
+    expect(eventCause(getDefaultStore().get(installedPluginsAtom))).toBe(actorCause(origin));
     expect(starts).toEqual([{ mode: "all" }, { mode: "book", bookId: "A" }]);
     expect(JSON.parse(disk.get(accessKey)!)[id]).toEqual({ mode: "book", bookId: "A" });
 

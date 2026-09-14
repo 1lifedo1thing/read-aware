@@ -61,13 +61,14 @@ test("observers are bounded and disposal suppresses in-flight reads", async () =
 
 test("settings catalog invalidation retains contribution and selected-mode causes", async () => {
   const { initializeSettingsObservation, settingsObservation } = await import("./observation-sources");
-  const { registerCommandContribution, pluginCommandsAtom, setActiveReaderMode, releaseActiveReaderMode, activeReaderModeSourceAtom } = await import("../../features/plugins/state/plugin-store");
+  const { setInstalledPlugins, updateInstalledPlugin, installedPluginsAtom, registerCommandContribution, pluginCommandsAtom, setActiveReaderMode, releaseActiveReaderMode, activeReaderModeSourceAtom } = await import("../../features/plugins/state/plugin-store");
   const { getDefaultStore } = await import("jotai");
   const store = getDefaultStore(), owner = {};
+  const previousInstalled = store.get(installedPluginsAtom);
   const source = reactionActor("plugin:catalog", "catalog-follow", actorCause(causalActor("user"))!);
   const seen: SettingsObservation[] = [];
   initializeSettingsObservation();
-  const stop = settingsObservation.observe(async () => snapshot(`${store.get(pluginCommandsAtom).length}:${store.get(activeReaderModeSourceAtom).value?.key ?? "none"}`), value => { seen.push(value); });
+  const stop = settingsObservation.observe(async () => snapshot(`${JSON.stringify(store.get(installedPluginsAtom))}:${store.get(pluginCommandsAtom).length}:${store.get(activeReaderModeSourceAtom).value?.key ?? "none"}`), value => { seen.push(value); });
   await tick();
   const registration = registerCommandContribution({ id: "follow", key: "catalog:follow", pluginId: "catalog", pluginName: "Catalog", title: "Follow", run: () => {} }, source);
   try {
@@ -78,5 +79,13 @@ test("settings catalog invalidation retains contribution and selected-mode cause
     expect(eventCause(seen.at(-1)!)).toBe(actorCause(source));
     releaseActiveReaderMode(owner, source); await tick();
     expect(eventCause(seen.at(-1)!)).toBe(actorCause(source));
-  } finally { stop(); registration.dispose(); releaseActiveReaderMode(owner); }
+    setInstalledPlugins([{ manifest: { id: "catalog", name: "Catalog", version: "1", schemaVersion: 1, requires: {} }, enabled: true }], source);
+    await tick(); expect(eventCause(seen.at(-1)!)).toBe(actorCause(source));
+    const unchanged = store.get(installedPluginsAtom);
+    updateInstalledPlugin("catalog", { enabled: true }, "user");
+    expect(store.get(installedPluginsAtom)).toBe(unchanged);
+    updateInstalledPlugin("catalog", { error: "runtime stopped" }, source);
+    await tick(); expect(eventCause(seen.at(-1)!)).toBe(actorCause(source));
+    expect(() => reactionActor("plugin:catalog", "catalog-follow", eventCause(seen.at(-1)!)!)).toThrow();
+  } finally { stop(); registration.dispose(); releaseActiveReaderMode(owner); setInstalledPlugins(previousInstalled); }
 });

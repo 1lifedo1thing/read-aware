@@ -8,6 +8,7 @@
  * Plugin CODE runs in a Worker (plugin-sandbox.worker.ts), not here. This
  * module only decides what may start and holds the handle for tearing it down.
  */
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { AppError } from "@read-aware/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { getDefaultStore } from "jotai";
@@ -108,6 +109,7 @@ function getInstalled(): InstalledPlugin[] {
 
 /** Boot entry — enumerate plugin folders and activate the enabled ones. */
 export async function initializePlugins(): Promise<void> {
+  const origin = causalActor("system");
   if (!isTauri()) {
     // No plugin runtime in a plain browser — appearance fallbacks must not
     // keep waiting for contributions that will never register.
@@ -174,12 +176,12 @@ export async function initializePlugins(): Promise<void> {
       });
     }
   }
-  setInstalledPlugins(installed);
+  setInstalledPlugins(installed, origin);
 
   await Promise.all(
     installed
       .filter((plugin) => plugin.enabled && !plugin.error)
-      .map((plugin) => activatePlugin(plugin.manifest)),
+      .map((plugin) => activatePlugin(plugin.manifest, origin)),
   );
   markPluginsReady();
 
@@ -207,7 +209,8 @@ export async function shutdownPlugins(signal?: AbortSignal): Promise<void> {
  * entry. The plugin's code never enters this realm — `startPluginWorker` runs
  * it in a Worker and brokers everything through its permission-gated context.
  */
-function activatePlugin(manifest: PluginManifest): Promise<void> {
+function activatePlugin(manifest: PluginManifest, origin: DomainActor = "system"): Promise<void> {
+  origin = causalActor(origin);
   if (active.has(manifest.id)) return Promise.resolve();
   const pending = activating.get(manifest.id);
   if (pending) return pending;
@@ -216,10 +219,10 @@ function activatePlugin(manifest: PluginManifest): Promise<void> {
     try {
       await deactivating.get(manifest.id);
       active.set(manifest.id, await startPluginInstance(manifest));
-      updateInstalledPlugin(manifest.id, { error: undefined });
+      updateInstalledPlugin(manifest.id, { error: undefined }, origin);
     } catch (error) {
       log.error(`activation of "${manifest.id}" failed`, error);
-      updateInstalledPlugin(manifest.id, { error: errorMessage(error) });
+      updateInstalledPlugin(manifest.id, { error: errorMessage(error) }, origin);
     }
   })();
   activating.set(manifest.id, work);
@@ -386,20 +389,22 @@ async function stopPluginInstance(entry: ActivePlugin): Promise<void> {
 }
 
 /** Settings toggle — persists, then (de)activates immediately, no restart. */
-export async function setPluginEnabled(id: string, enabled: boolean): Promise<void> {
+export async function setPluginEnabled(id: string, enabled: boolean, origin: DomainActor = "user"): Promise<void> {
+  origin = causalActor(origin);
   assertBookAccessNotChanging(id);
-  persistPluginEnabled(id, enabled);
-  updateInstalledPlugin(id, { enabled, error: undefined });
+  persistPluginEnabled(id, enabled, origin);
+  updateInstalledPlugin(id, { enabled, error: undefined }, origin);
   if (enabled) {
     const plugin = getInstalled().find((entry) => entry.manifest.id === id);
-    if (plugin) await activatePlugin(plugin.manifest);
+    if (plugin) await activatePlugin(plugin.manifest, origin);
   } else {
     await deactivatePlugin(id);
   }
 }
 
 /** Change authority only after the old realm and its writes have drained. */
-export async function updatePluginBookAccess(id: string, input: PluginBookAccess): Promise<void> {
+export async function updatePluginBookAccess(id: string, input: PluginBookAccess, origin: DomainActor = "user"): Promise<void> {
+  origin = causalActor(origin);
   const grant = checkedBookAccess(input);
   assertBookAccessNotChanging(id);
   const plugin = getInstalled().find(entry => entry.manifest.id === id);
@@ -409,12 +414,12 @@ export async function updatePluginBookAccess(id: string, input: PluginBookAccess
     await activating.get(id);
     await withPluginDataUpdate(id, async scope => {
       await deactivatePlugin(id);
-      await persistPluginBookAccess(id, grant);
-      updateInstalledPlugin(id, { bookAccess: grant, bookAccessSource: "user", error: undefined });
+      await persistPluginBookAccess(id, grant, origin);
+      updateInstalledPlugin(id, { bookAccess: grant, bookAccessSource: "user", error: undefined }, origin);
       if (plugin.enabled) active.set(id, await startPluginInstance(plugin.manifest, { bookAccess: grant }, undefined, scope));
     });
   } catch (error) {
-    updateInstalledPlugin(id, { error: errorMessage(error) });
+    updateInstalledPlugin(id, { error: errorMessage(error) }, origin);
     throw error;
   } finally {
     changingBookAccess.delete(id);
@@ -465,7 +470,8 @@ async function restartPreviousInstance(previous: ActivePlugin, dataUpdate: Plugi
  * previous version still owns the durable on-disk slot. Only then commit the
  * candidate, switch runtime ownership, and retire the previous sandbox.
  */
-async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: PluginBookAccess): Promise<InstalledPlugin> {
+async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: PluginBookAccess, origin: DomainActor = "user"): Promise<InstalledPlugin> {
+  origin = causalActor(origin);
   let manifest: PluginManifest;
   let previousAccess: ReturnType<typeof getPluginBookAccess>;
   let grant: PluginBookAccess;
@@ -493,8 +499,8 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
     if (journal && !recovered) { await rollbackPluginUpdate(journal); recovered = true; }
     publication?.rollback();
     if (grantPersisted) {
-      if (previousAccess.source === "legacy-domain") await forgetPluginBookAccess(manifest.id);
-      else await persistPluginBookAccess(manifest.id, previousAccess.grant);
+      if (previousAccess.source === "legacy-domain") await forgetPluginBookAccess(manifest.id, origin);
+      else await persistPluginBookAccess(manifest.id, previousAccess.grant, origin);
       grantPersisted = false;
     }
   };
@@ -557,7 +563,7 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
       accept: async (next) => {
         if (!journal) throw new Error("plugin update has no durable baseline");
         if (requestedGrant) {
-          await persistPluginBookAccess(manifest.id, grant);
+          await persistPluginBookAccess(manifest.id, grant, origin);
           grantPersisted = true;
         }
         const decision = await acceptPluginUpdate(journal);
@@ -566,8 +572,8 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
         setInstalledPlugins([
           ...getInstalled().filter((installed) => installed.manifest.id !== manifest.id),
           plugin,
-        ]);
-        persistPluginEnabled(manifest.id, true);
+        ], origin);
+        persistPluginEnabled(manifest.id, true, origin);
         accepted = true;
       },
       retirePrevious: async () => {
@@ -652,8 +658,10 @@ export async function installPluginFiles(
   id: string,
   files: PluginFilePayload[],
   grant?: PluginBookAccess,
+  origin: DomainActor = "user",
 ): Promise<InstalledPlugin> {
-  return applyCandidate(await stagePluginFiles(id, files), grant);
+  origin = causalActor(origin);
+  return applyCandidate(await stagePluginFiles(id, files), grant, origin);
 }
 
 /**
@@ -661,7 +669,8 @@ export async function installPluginFiles(
  * survive a reinstall); its DOCUMENT collections are wiped — documents'
  * declared lifecycle is the plugin's own.
  */
-export async function uninstallPlugin(id: string): Promise<void> {
+export async function uninstallPlugin(id: string, origin: DomainActor = "user"): Promise<void> {
+  origin = causalActor(origin);
   assertBookAccessNotChanging(id);
   const target = getInstalled().find((entry) => entry.manifest.id === id);
   if (target?.builtin) throw new Error(`"${id}" is a built-in plugin`);
@@ -673,8 +682,8 @@ export async function uninstallPlugin(id: string): Promise<void> {
       log.error(`private data wipe for "${id}" failed`, error);
       throw error;
     });
-    forgetPluginEnabled(id);
-    await forgetPluginBookAccess(id);
-    setInstalledPlugins(getInstalled().filter((entry) => entry.manifest.id !== id));
+    forgetPluginEnabled(id, origin);
+    await forgetPluginBookAccess(id, origin);
+    setInstalledPlugins(getInstalled().filter((entry) => entry.manifest.id !== id), origin);
   });
 }

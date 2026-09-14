@@ -80,7 +80,7 @@ export const pluginFontsAtom = fontsRegistry.atom;
 export const voiceProvidersAtom = voiceProvidersRegistry.atom;
 
 /** Installed plugins (manifest + enabled + activation error), for settings. */
-export const installedPluginsAtom = atom<InstalledPlugin[]>([]);
+export const installedPluginsAtom = atom<InstalledPlugin[]>(stampEventCause([]));
 
 /**
  * True once `initializePlugins` has enumerated and activated everything (or
@@ -278,20 +278,19 @@ export const textUnitReaderModeAtom = atom((get) => {
   return get(readerModesAtom).find(mode => mode.kind === "text-unit-navigator" && (!selection || mode.key === selection.key)) ?? null;
 });
 
-export function setInstalledPlugins(plugins: InstalledPlugin[]): void {
-  store.set(installedPluginsAtom, plugins);
+export function setInstalledPlugins(plugins: InstalledPlugin[], origin: DomainActor = "system"): void {
+  store.set(installedPluginsAtom, stampEventCause([...plugins], causalActor(origin)));
 }
 
 export function updateInstalledPlugin(
   id: string,
   patch: Partial<Omit<InstalledPlugin, "manifest">>,
+  origin: DomainActor = "system",
 ): void {
-  store.set(
-    installedPluginsAtom,
-    store
-      .get(installedPluginsAtom)
-      .map((plugin) => (plugin.manifest.id === id ? { ...plugin, ...patch } : plugin)),
-  );
+  const current = store.get(installedPluginsAtom);
+  const target = current.find(plugin => plugin.manifest.id === id);
+  if (!target || Object.entries(patch).every(([key, value]) => Object.is(target[key as keyof InstalledPlugin], value))) return;
+  setInstalledPlugins(current.map(plugin => plugin.manifest.id === id ? { ...plugin, ...patch } : plugin), origin);
 }
 
 // ─── Enabled state (persisted) ───────────────────────────────────────────────
@@ -321,16 +320,16 @@ export function isPluginEnabled(id: string, builtin = false): boolean {
   return builtin ? value !== false : value === true;
 }
 
-export function persistPluginEnabled(id: string, enabled: boolean): void {
+export function persistPluginEnabled(id: string, enabled: boolean, origin: DomainActor = "user"): void {
   const map = readEnabledMap();
   map[id] = enabled;
-  localKV.setItem(ENABLED_KEY, JSON.stringify(map));
+  localKV.setItem(ENABLED_KEY, JSON.stringify(map), "local", causalActor(origin));
 }
 
-export function forgetPluginEnabled(id: string): void {
+export function forgetPluginEnabled(id: string, origin: DomainActor = "user"): void {
   const map = readEnabledMap();
   delete map[id];
-  localKV.setItem(ENABLED_KEY, JSON.stringify(map));
+  localKV.setItem(ENABLED_KEY, JSON.stringify(map), "local", causalActor(origin));
 }
 
 type PluginBookAccessSource = "legacy-domain" | "user";
@@ -374,24 +373,25 @@ export function getPluginBookAccess(id: string): StoredPluginBookAccess {
 // Different plugins share one persisted map. Read it only after the previous
 // write settles, including rollback after a failed native commit.
 let bookAccessWriteTail: Promise<void> = Promise.resolve();
-function writeBookAccess(id: string, grant: PluginBookAccess | null): Promise<void> {
+function writeBookAccess(id: string, grant: PluginBookAccess | null, origin: DomainActor): Promise<void> {
+  origin = causalActor(origin);
   const work = bookAccessWriteTail.then(() => {
     const map = readBookAccessMap();
     if (grant) map[id] = grant; else delete map[id];
-    return localKV.setItemAsync(BOOK_ACCESS_KEY, JSON.stringify(map), "user");
+    return localKV.setItemAsync(BOOK_ACCESS_KEY, JSON.stringify(map), origin);
   });
   bookAccessWriteTail = work.catch(() => {});
   return work;
 }
 
-export function persistPluginBookAccess(id: string, grant: PluginBookAccess): Promise<void> {
+export function persistPluginBookAccess(id: string, grant: PluginBookAccess, origin: DomainActor = "user"): Promise<void> {
   const captured = normalizeBookAccess(grant);
   if (!captured) return Promise.reject(new AppError("plugin/invalid-input", "Invalid plugin book grant"));
-  return writeBookAccess(id, captured);
+  return writeBookAccess(id, captured, origin);
 }
 
-export function forgetPluginBookAccess(id: string): Promise<void> {
-  return writeBookAccess(id, null);
+export function forgetPluginBookAccess(id: string, origin: DomainActor = "user"): Promise<void> {
+  return writeBookAccess(id, null, origin);
 }
 
 // ─── Placement (user-owned pinning; docs/plugin-system.md §7) ────────────────
