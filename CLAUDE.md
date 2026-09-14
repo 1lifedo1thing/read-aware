@@ -41,14 +41,36 @@ TanStack Router, Jotai, Tailwind CSS v4, Vite, and Tauri 2.
   `apps/web/public/foliate-js` as static runtime modules. Read original files without
   conversion or rebundling the engine; surface DRM as unsupported.
 
+## Reuse existing components and architecture
+
+- Before implementing, search the existing exports, component stories, hooks,
+  services and similar call sites. Start from the established implementation and
+  module boundaries. This applies to the desktop app, landing site and internal
+  tools, not just shared packages.
+- Prefer existing APIs and composition. If a concrete requirement exposes a small
+  reusable gap, extend the existing implementation compatibly instead of copying
+  it. Use the established domain, storage, IPC and state paths; do not create a
+  parallel component, service, abstraction or directory merely for convenience.
+- Add a new implementation only when the existing options cannot reasonably meet
+  the requirement. Briefly state what was checked and the missing capability in
+  the change description or a relevant code comment. Native elements inside
+  shared controls, semantic document markup and specialized interactions without
+  a suitable shared control are valid uses; a different appearance alone is not
+  a reason to rebuild a control.
+
 ## UI and code structure
 
 - Components render; hooks own React state, effects and orchestration; pure
   transformations belong in reusable modules. Keep these responsibilities separate.
 - Use `@read-aware/ui` components, `@read-aware/ui/cn`, and
-  `@phosphor-icons/react` icons for product UI. Shared components and their
-  co-located Storybook stories live in `packages/ui/src`; use the existing APIs
-  rather than maintaining a second component catalog here.
+  `@phosphor-icons/react` icons for UI. Shared components and their co-located
+  Storybook stories live in `packages/ui/src`. Check `TextField`, `SearchField`,
+  `TextArea`, `Select`, `Button`, `IconButton`, `ChoiceGroup`, `Tabs`, `Dialog`,
+  `Popover` and `DropdownMenu` before hand-writing equivalent controls.
+- Configure shared controls through their supported props and theme tokens.
+  Avoid broad page-level CSS that overrides their internal input/button padding,
+  borders or focus states. Keep reusable styling and interaction changes in the
+  shared component so callers do not maintain competing versions.
 - Follow tokens in `apps/web/src/index.css`: paper backgrounds, stone colors,
   `text-eyebrow`, `text-caption`, and `leading-display`. Keep the interface quiet:
   no gradients, decorative badges or ornamental highlights. Use serif for display
