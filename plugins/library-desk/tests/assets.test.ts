@@ -37,7 +37,7 @@ function fixture() {
   const clipboard = { writeImage: async (id: string) => { calls.push(["copy", id]); return { copied: true, width: 4, height: 6 }; } };
   const ctx = { withEvent: () => ctx, locale: "en", domains: { library: { queries: { books: queries }, commands: { books: write }, events: {
     observeEnrichment: (_id: string, next: typeof handler) => { handler = next; return { dispose() { calls.push(["dispose"]); } }; },
-  } } }, services: { resources, clipboard, ui: { publishView: async (_channel: unknown, update: { view: PluginViewContent }) => {
+  } } }, services: { session: { operationAvailability: async () => ({ state: "unknown", conditions: [] }) }, resources, clipboard, ui: { publishView: async (_channel: unknown, update: { view: PluginViewContent }) => {
     updates.push(update.view); return { status: "applied" };
   } } } } as unknown as PluginContext;
   return { ctx, book, resource, resources, queries, write, clipboard, calls, updates,
@@ -92,6 +92,15 @@ test("original exports acquire fresh references and release on save, cancellatio
   f.resources.save = async () => { throw Error("save failed"); };
   await expect(action(root, "export").run()).rejects.toThrow("save failed");
   expect(f.calls.filter(call => call[0] === "release")).toHaveLength(3);
+  f.ctx.services.session.operationAvailability = async query => {
+    expect(query).toEqual({ operation: "resources.save", resourceId: "owned", filename: "Alpha.epub" });
+    return { operation: query.operation, state: "unavailable", remoteChecked: false, conditions: [
+      { kind: "object", state: "unavailable", reason: "resource-inaccessible", errorCode: "fs/not-found" },
+    ] };
+  };
+  expect(JSON.stringify(await action(root, "export").run())).toContain("fs/not-found");
+  expect(f.calls.filter(call => call[0] === "release")).toHaveLength(4);
+
 });
 
 test("enrichment observation preserves failure, disables stale actions, recovers and retires", async () => {

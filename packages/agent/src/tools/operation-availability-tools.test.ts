@@ -18,8 +18,12 @@ test("both Agent scopes expose live operation prerequisites and retire cancelled
   expect(JSON.stringify((await buildOperationAvailabilityTools(deps, { kind: "book", bookId: "b" })[0]!.execute("schedule", schedule)).content)).toContain("global-scope-required");
   expect(calls).toHaveLength(2);
   await buildOperationAvailabilityTools(deps, { kind: "global", threadId: "g" })[0]!.execute("schedule", schedule);
-  expect(calls.at(-1)).toEqual(schedule);
+  expect(calls[calls.length - 1]).toEqual(schedule);
 
+  const resources = deps.resources, owners: unknown[] = [];
+  deps.resources = (...args) => { owners.push(args); return resources(...args); };
+  await buildOperationAvailabilityTools(deps, { kind: "book", bookId: "b" })[0]!.execute("resource", { operation: "resources.save", resourceId: "owned", filename: "book.epub" });
+  expect(owners).toEqual([["book:b", "b"]]);
   const abort = new AbortController(), wait = Promise.withResolvers<void>();
   const prior = deps.operationAvailability.check;
   deps.operationAvailability.check = async query => { await wait.promise; return prior(query); };

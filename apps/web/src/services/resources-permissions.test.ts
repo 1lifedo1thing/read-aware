@@ -32,6 +32,8 @@ test("resource handles expose no raw paths and book acquisition requires library
     expect(() => resources.pick()).toThrow();
     expect(() => resources.openAssociated("foreign-id")).toThrow();
     plugin.lifecycle.promote();
+    expect(await plugin.context.services.session.operationAvailability({ operation: "resources.save", resourceId: "foreign-id" }))
+      .toMatchObject({ state: "unavailable", conditions: [{ reason: "resource-inaccessible", errorCode: "fs/not-found" }] });
     await expect(resources.stat("foreign-id")).rejects.toMatchObject({ code: "fs/not-found" });
     await expect(resources.openAssociated("foreign-id")).rejects.toMatchObject({ code: "fs/not-found" });
     if (plugin.context.domains.library) {

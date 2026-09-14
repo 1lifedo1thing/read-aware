@@ -383,6 +383,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
       listDirectory: async () => ({ entries: [], nextCursor: null, omittedCount: 0 }),
       openDirectoryFile: async () => { throw new AppError("ui/unavailable", "No selected directory"); },
       releaseDirectory: async () => {},
+      conditions: async () => [{ kind: "provider", state: "unknown", reason: "fixture-resource-entry" }],
       openAssociated: async () => ({ opened: false }),
       pick: async () => ({ cancelled: true, resources: [] }), openBook: async () => null, openCover: async () => null,
       copyImage: async () => { throw new AppError("ui/unavailable", "Attach an image clipboard fixture"); },

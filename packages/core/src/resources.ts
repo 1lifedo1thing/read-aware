@@ -1,3 +1,4 @@
+import type { OperationCondition } from "./operation-availability";
 import externalFormats from "./resource-external-formats.json";
 /** Document/media extensions accepted for a host-confirmed OS handoff. Not format validation. */
 export const RESOURCE_EXTERNAL_EXTENSIONS: readonly string[] = Object.freeze(externalFormats);
@@ -18,7 +19,11 @@ export type ResourceDirectoryPage = {
 export type ResourceCreateOptions = { name: string; mimeType?: string };
 export type ResourceChunk = { data: ArrayBuffer; nextOffset: number; eof: boolean };
 export type ResourceImageReceipt = { copied: true; width: number; height: number };
+export type ResourceOperationQuery = { operation: "resources.save"; resourceId: string; filename?: string }
+  | { operation: "resources.openAssociated"; resourceId: string };
 export type ResourcePort = {
+  /** Owner-local metadata check; never reads bytes, opens a dialog or dispatches an export. */
+  conditions(query: ResourceOperationQuery, signal?: AbortSignal): Promise<OperationCondition[]>;
   /** Four grants per owner, one hour lifetime. Cancellation returns no grant. */
   pickDirectory(signal?: AbortSignal): Promise<{ cancelled: boolean; directory: ResourceDirectoryRef | null }>;
   /** Direct children only; 1..100 entries/page. Changed listings invalidate cursors. Symlinks/special files are omitted. */

@@ -966,6 +966,10 @@ export function buildPluginContext(
             ]));
             return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
           }
+          if (query.operation === "resources.save" || query.operation === "resources.openAssociated") {
+            return lifecycle.read("services.session.operationAvailability", async () => operationAvailability(query,
+              await resources.conditions(query, signal)), signal);
+          }
           if (query.operation === "schedules.control") {
             if (query.schedule.pluginId !== manifest.id) return Promise.resolve(operationAvailability(query, [
               { kind: "permission", state: "unavailable", reason: "schedule-owner-required", errorCode: "plugin/permission-denied" },

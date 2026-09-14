@@ -388,12 +388,20 @@ async function bookAssets(ctx, selected) {
     return { kind: "detail", title: selected.title, content: [{ kind: "text", text: t.unavailable }] };
   let snapshot = await library.queries.books.getEnrichment(book.id), failure;
   const unavailable = () => ({ toast: t.unavailable });
+  const exportResource = async (id, name, associated = false) => {
+    const query = associated ? { operation: "resources.openAssociated", resourceId: id } : { operation: "resources.save", resourceId: id, filename: name };
+    const availability = await ctx.services.session.operationAvailability(query);
+    const blocked = availability.conditions.find((item) => item.state === "unavailable" || item.state === "unconfigured");
+    if (blocked)
+      return { view: { kind: "detail", title: book.title, content: [{ kind: "error", code: blocked.errorCode ?? "ui/unavailable" }] } };
+    return associated ? (await resources.openAssociated(id)).opened ? { toast: external.dispatched } : null : (await resources.save(id, name)).saved ? { toast: t.saved } : null;
+  };
   const saveOriginal = async () => {
     const resource = await resources.openBook(book.id);
     if (!resource)
       return unavailable();
     try {
-      return (await resources.save(resource.id, resource.name)).saved ? { toast: t.saved } : null;
+      return await exportResource(resource.id, resource.name);
     } finally {
       await resources.release(resource.id);
     }
@@ -410,13 +418,13 @@ async function bookAssets(ctx, selected) {
         title: book.title,
         content: [{ kind: "image", resourceId: resource.id, alt: book.title, aspectRatio: 2 / 3 }],
         actions: [
-          { id: "open-cover", label: external.open, icon: "arrow-square-out", run: async () => (await resources.openAssociated(resource.id)).opened ? { toast: external.dispatched } : null },
+          { id: "open-cover", label: external.open, icon: "arrow-square-out", run: async () => exportResource(resource.id, resource.name, true) },
           { id: "keep-cover", label: t.keepPrivate, icon: "floppy-disk", run: async () => {
             const receipt = await saveCover(ctx, book, resource, expectedRevision);
             expectedRevision = receipt.asset.revision;
             return { toast: receipt.cleanupPending ? t.cleanupPending : t.saved };
           } },
-          { id: "save-cover", label: t.save, icon: "download-simple", run: async () => (await resources.save(resource.id, resource.name)).saved ? { toast: t.saved } : null },
+          { id: "save-cover", label: t.save, icon: "download-simple", run: async () => exportResource(resource.id, resource.name) },
           { id: "copy-cover", label: t.copy, icon: "copy", run: async () => {
             await ctx.services.clipboard.writeImage(resource.id);
             return { toast: t.copied };
@@ -450,7 +458,7 @@ async function bookAssets(ctx, selected) {
         if (!resource)
           return unavailable();
         try {
-          return (await resources.openAssociated(resource.id)).opened ? { toast: external.dispatched } : null;
+          return await exportResource(resource.id, resource.name, true);
         } finally {
           await resources.release(resource.id);
         }

@@ -63,6 +63,9 @@ export function inspectInferenceAvailability(input: InferenceAvailabilityQuery, 
 export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal, context?: OperationAvailabilityContext): Promise<OperationAvailability> {
   const query = normalizeOperationAvailability(input);
   signal?.throwIfAborted();
+  if (query.operation === "resources.save" || query.operation === "resources.openAssociated") {
+    return operationAvailability(query, [condition("object", "unknown", "resource-owner-required")]);
+  }
   if (query.operation === "schedules.control") {
     const { pluginSchedules } = await import("../features/plugins/runtime/plugin-scheduler");
     signal?.throwIfAborted();

@@ -10,10 +10,19 @@ export async function bookAssets(ctx: PluginContext, selected: PluginBook): Prom
   if (!book) return { kind: "detail", title: selected.title, content: [{ kind: "text", text: t.unavailable }] };
   let snapshot = await library.queries.books.getEnrichment(book.id), failure: string | undefined;
   const unavailable = (): PluginViewResult => ({ toast: t.unavailable });
+  const exportResource = async (id: string, name: string, associated = false): Promise<PluginViewResult> => {
+    const query = associated ? { operation: "resources.openAssociated" as const, resourceId: id }
+      : { operation: "resources.save" as const, resourceId: id, filename: name };
+    const availability = await ctx.services.session.operationAvailability(query);
+    const blocked = availability.conditions.find(item => item.state === "unavailable" || item.state === "unconfigured");
+    if (blocked) return { view: { kind: "detail", title: book.title, content: [{ kind: "error", code: blocked.errorCode ?? "ui/unavailable" }] } };
+    return associated ? (await resources.openAssociated(id)).opened ? { toast: external.dispatched } : null
+      : (await resources.save(id, name)).saved ? { toast: t.saved } : null;
+  };
   const saveOriginal = async (): Promise<PluginViewResult> => {
     const resource = await resources.openBook!(book.id);
     if (!resource) return unavailable();
-    try { return (await resources.save(resource.id, resource.name)).saved ? { toast: t.saved } : null; }
+    try { return await exportResource(resource.id, resource.name); }
     finally { await resources.release(resource.id); }
   };
   const cover = async (): Promise<PluginViewResult> => {
@@ -26,14 +35,14 @@ export async function bookAssets(ctx: PluginContext, selected: PluginBook): Prom
       content: [{ kind: "image", resourceId: resource.id, alt: book.title, aspectRatio: 2 / 3 }],
       actions: [
         { id: "open-cover", label: external.open, icon: "arrow-square-out", run: async () =>
-          (await resources.openAssociated(resource.id)).opened ? { toast: external.dispatched } : null },
+          exportResource(resource.id, resource.name, true) },
         { id: "keep-cover", label: t.keepPrivate, icon: "floppy-disk", run: async () => {
           const receipt = await saveCover(ctx, book, resource, expectedRevision);
           expectedRevision = receipt.asset.revision;
           return { toast: receipt.cleanupPending ? t.cleanupPending : t.saved };
         } },
         { id: "save-cover", label: t.save, icon: "download-simple", run: async () =>
-          (await resources.save(resource.id, resource.name)).saved ? { toast: t.saved } : null },
+          exportResource(resource.id, resource.name) },
         { id: "copy-cover", label: t.copy, icon: "copy", run: async () => {
           await ctx.services.clipboard!.writeImage(resource.id); return { toast: t.copied };
         } },
@@ -57,7 +66,7 @@ export async function bookAssets(ctx: PluginContext, selected: PluginBook): Prom
       ...(!failure && snapshot.sourceLocal ? [{ id: "open-original", label: external.open, icon: "arrow-square-out", run: async (): Promise<PluginViewResult> => {
         const resource = await resources.openBook!(book.id);
         if (!resource) return unavailable();
-        try { return (await resources.openAssociated(resource.id)).opened ? { toast: external.dispatched } : null; }
+        try { return await exportResource(resource.id, resource.name, true); }
         finally { await resources.release(resource.id); }
       } }] : []),
       ...(!failure && snapshot.supported && snapshot.sourceLocal && snapshot.job.phase !== "queued" && snapshot.job.phase !== "running"

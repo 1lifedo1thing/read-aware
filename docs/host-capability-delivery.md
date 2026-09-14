@@ -1,6 +1,6 @@
 # 宿主能力实现与验收进度
 
-session2.17新增schedules.control(schedule: pluginId/id/action)条件查询。宿主与控制执行共享严格归一化、绑定/备份写暂停/运行容量条件；已运行返回可接收already-running，不将暂停周期误作禁止手动运行。插件先限制自身owner，Agent仅global查询，book不读全局状态。RSS Reader0.24立即运行先查条件，明确阻塞不派发，unknown回调结果允许用户尝试；实际control重验。Web/desktop、Agent、RSS类型及构建、owner/scope/备份锁/取消释放和消费者检查通过；真实Worker/Tauri及RSS网络刷新未验。当前C04窗口后续帧和Foliate重排已有来源接线，旧行已更正；原生来源边界和C05其他操作条件仍待确认，C06–C09真实桌面/重启/模型验收保留。
+session2.18新增resources.save/openAssociated条件查询：资源owner直接检查授权/过期/封存/格式/队列及桌面入口，不读内容或弹框。Agent按threadScopeKey和书域访问自身资源，插件复用activation owner，非owner宿主入口仅返回unknown。实际导出继续重验资源与授权，外部打开共用格式/入口检查，保存位置和关联应用结果保持unknown。Library Desk0.18原书/封面导出与外部打开先查询，阻塞不派发且临时原书引用始终释放。受影响类型/构建与owner权限、封存、取消后真实回执、资源释放和插件消费者检查通过；真实Tauri保存/外部打开尚未验收。C04剩余来源、C05剩余操作条件与C06–C09集中桌面/重启/模型验收保留，完整目标未完成。
 
 语音提供者串行刷新不再覆盖等待中的设置来源：ObservationCauses在一次查询受理时取出有界来源，查询期间的新设置通知合并给下一次查询；过期查询仍丢弃，失败仍保留最后有效声音列表。既有声音目录公开观察和消费者沿原路径消费。定向检查验证最终列表包含两条待处理反应分支且同规则cycle拒绝，保留串行、退休和失败检查；受影响类型通过。真实Worker/Tauri/音频及其他C04/C05与完整验收仍待完成。
 

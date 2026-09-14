@@ -1,10 +1,11 @@
-import { AppError, BOOK_IMAGE_MAX_BYTES, RESOURCE_LIFETIME_MS, RESOURCE_MAX_CHUNK, RESOURCE_MAX_SIZE, RESOURCE_EXTERNAL_EXTENSIONS,
+import { errorCode, type OperationCondition, type ResourceOperationQuery, AppError, BOOK_IMAGE_MAX_BYTES, RESOURCE_LIFETIME_MS, RESOURCE_MAX_CHUNK, RESOURCE_MAX_SIZE, RESOURCE_EXTERNAL_EXTENSIONS,
   type ResourcePort, type ResourceRef, type ResourcePickOptions, type ResourceCreateOptions, type ResourceImageReceipt,
   type ResourceDirectoryRef, type ResourceDirectoryQuery, type ResourceDirectoryPage } from "@read-aware/core";
 import { retainResourceAccess, type ContextResourceAccess } from "./resource-access";
 
 export type NativeResource = { id: string; size: number; name: string; mimeType: string };
 export type ResourceAdapter = {
+  supported?(): boolean;
   directories?: {
     pick(signal?: AbortSignal): Promise<{ id: string; name: string } | null>;
     list(id: string, query: ResourceDirectoryQuery): Promise<ResourceDirectoryPage>;
@@ -309,6 +310,32 @@ export class ResourceOwner implements ResourcePort {
       this.guard(signal); this.authorizeEntry(entry); return { ...entry.ref };
     }, signal);
   }
+  async conditions(query: ResourceOperationQuery, signal?: AbortSignal): Promise<OperationCondition[]> {
+    this.guard(signal);
+    let entry: Entry;
+    try {
+      entry = this.get(query.resourceId); this.authorizeEntry(entry);
+    } catch (error) {
+      return [{ kind: "object", state: "unavailable", reason: "resource-inaccessible", errorCode: errorCode(error) ?? "fs/not-found" }];
+    }
+    if (entry.ref.state !== "ready") return [{ kind: "object", state: "unavailable", reason: "resource-not-sealed", errorCode: "ui/invalid-target" }];
+    try {
+      if (query.operation === "resources.save") resourceName(query.filename ?? entry.ref.name);
+      else this.associatedEntry(entry);
+    } catch (error) {
+      return [{ kind: "input", state: "unavailable", reason: "resource-export-unsupported", errorCode: errorCode(error) ?? "ui/invalid-target" }];
+    }
+    const supported = this.adapter.supported?.();
+    return [{ kind: "object", state: "satisfied", reason: "resource-sealed-and-authorized" },
+      { kind: "provider", state: supported === false ? "unavailable" : supported === true ? "satisfied" : "unknown", reason: supported === false ? "resource-desktop-required" : "resource-host-entry", ...(supported === false ? { errorCode: "ui/unavailable" } : {}) },
+      { kind: "capacity", state: this.queued >= 32 ? "unavailable" : "satisfied", reason: this.queued >= 32 ? "resource-queue-full" : "resource-queue-ready", ...(this.queued >= 32 ? { errorCode: "ui/unavailable" } : {}) },
+      { kind: "provider", state: "unknown", reason: query.operation === "resources.save" ? "resource-save-destination-not-checked" : "resource-associated-app-not-checked" }];
+  }
+  private associatedEntry(entry: Entry): void {
+    const extension = entry.ref.name.includes(".") ? entry.ref.name.split(".").at(-1)!.toLowerCase() : "";
+    if (entry.ref.source === "context" || !RESOURCE_EXTERNAL_EXTENSIONS.includes(extension)) throw new AppError("ui/invalid-target", "Resource format is not supported for external opening");
+    if (!this.adapter.openAssociated) throw new AppError("ui/unavailable", "Associated applications unavailable");
+  }
   save(id: string, filename?: string, signal?: AbortSignal) {
     if (filename !== undefined) resourceName(filename);
     return this.run(async () => {
@@ -326,10 +353,8 @@ export class ResourceOwner implements ResourcePort {
   openAssociated(id: string, signal?: AbortSignal): Promise<{ opened: boolean }> {
     return this.run(async () => {
       const entry = this.get(id, true); this.authorizeEntry(entry);
-      const extension = entry.ref.name.includes(".") ? entry.ref.name.split(".").at(-1)!.toLowerCase() : "";
-      if (entry.ref.source === "context" || !RESOURCE_EXTERNAL_EXTENSIONS.includes(extension)) throw new AppError("ui/invalid-target", "Resource format is not supported for external opening");
-      if (!this.adapter.openAssociated) throw new AppError("ui/unavailable", "Associated applications unavailable");
-      const opened = await this.adapter.openAssociated(entry.nativeId, entry.ref.name, signal,
+      this.associatedEntry(entry);
+      const opened = await this.adapter.openAssociated!(entry.nativeId, entry.ref.name, signal,
         () => { this.guard(signal); const current = this.get(id, true); this.authorizeEntry(current); });
       // Once dispatched, preserve the real OS result; abort cannot recall a shared copy.
       return { opened };

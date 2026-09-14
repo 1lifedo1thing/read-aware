@@ -21,6 +21,7 @@ async function cleanup(values: NativeInfo[]) {
   }
 }
 export const resourceAdapter: ResourceAdapter = {
+  supported: () => isTauri() && !isMobileOS(),
   directories: {
     async pick(signal) {
       desktop(); signal?.throwIfAborted();

@@ -114,8 +114,15 @@ test("associated opening requires an owned sealed document and rechecks before d
   f.adapter.openAssociated = async (_id, _name, _signal, beforeWrite) => { beforeWrite!(); dispatched++; return false; };
   try {
     const text = await f.owner.create({ name: "note.txt" });
+    expect(await f.owner.conditions({ operation: "resources.openAssociated", resourceId: text.id })).toEqual([
+      { kind: "object", state: "unavailable", reason: "resource-not-sealed", errorCode: "ui/invalid-target" }]);
+
     await expect(f.owner.openAssociated(text.id)).rejects.toMatchObject({ code: "ui/invalid-target" });
     await f.owner.commit(text.id);
+    expect((await f.owner.conditions({ operation: "resources.openAssociated", resourceId: text.id })).map(item => item.reason)).toContain("resource-associated-app-not-checked");
+    expect((await other.owner.conditions({ operation: "resources.save", resourceId: text.id }))[0]?.errorCode).toBe("fs/not-found");
+    expect(dispatched).toBe(0);
+
     await expect(other.owner.openAssociated(text.id)).rejects.toMatchObject({ code: "fs/not-found" });
     expect(await f.owner.openAssociated(text.id)).toEqual({ opened: false });
     const executable = await f.owner.create({ name: "run.exe" }); await f.owner.commit(executable.id);
