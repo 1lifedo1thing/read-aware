@@ -100,6 +100,7 @@ import { readingRenderActor, readingRenderContext } from "../lib/reading-render-
 import { acknowledgeReadingSelection, readingInputContext, readingNativeInput, readingSelectionFeedback } from "../lib/reading-document-input";
 import { captureReadingSelection, type SelectionContentIdentity } from "../lib/selection-range";
 import { useSelectionRender } from "../hooks/useSelectionRender";
+import { useReaderViewportResize } from "../hooks/useReaderViewportResize";
 import { createReadingSelectionAdapter } from "../lib/reading-selection-adapter";
 import { createReadingEmphasisAdapter } from "../lib/reading-emphasis-adapter";
 import { readingEmphasis } from "../../../domain/reading-emphasis";
@@ -1745,16 +1746,7 @@ export function FoliateReaderView({
     };
   }, []);
 
-  useEffect(() => {
-    const element = viewportRef.current;
-    if (!element) return;
-    const observer = new ResizeObserver(() => {
-      clearSelection();
-      applyReaderMaxInlineSize();
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [clearSelection, applyReaderMaxInlineSize]);
+  useReaderViewportResize({ viewportRef, viewRef, selectionRef, clearSelection, applyMaxInlineSize: applyReaderMaxInlineSize });
 
   // Bridge wheel and click events that land on the empty area *outside* the
   // iframe content. In scrolled mode the foliate engine sizes the section's

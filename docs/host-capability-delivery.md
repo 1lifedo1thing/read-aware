@@ -7,7 +7,7 @@
 
 ## 最近交付与接续入口
 
-当前目标：[九类缺失能力补全](./host-capability-completion-goal.md)，基线 `4657c3d0`。C01–C03已接，集中真实桌面验收待执行；字体/主题/分段批次已提交 `223a3fc3`。C04本批：窗口命令在派发前读基线，原生请求后的实际状态/客户区尺寸变化保留Agent、插件事件或原生用户来源；无变化不重标，取消或中途失败仍保留已观察效果。布局读按已准入窗口命令隔离合并，不能复用命令前的在途样本；尺寸不进入公开窗口数据。图片ResizeObserver只接受匹配窗口尺寸的来源，重复尺寸不通知，父组件重绘不冒用旧pan/zoom来源；新变换、新尺寸或卸载退休旧异步反馈。受控原生/实际React与公开插件路径通过；未关联的动画后续帧、同viewport其他容器变化和OS读取失败仍无完整来源，C04不关闭，真实Tauri布局后置。下一步接FoliateReaderView与paginator/fixed-layout的ResizeObserver、useReaderPanels窄窗口分支，并处理后续动画帧/同viewport变化/读取失败归因；其余安装状态、设置目录/凭据及自动消费者仍缺。reading.observeSession reaction未开放，C05–C09完整保留未实施。窗口/图片/来源21项、Agent/Workspace Profiles9项检查通过，Web/desktop类型通过，日志/tmp/readaware-c04-window-layout-{final,consumers,types-final}.log。
+当前目标：[九类缺失能力补全](./host-capability-completion-goal.md)，基线 `4657c3d0`。C01–C03已接，C05–C09未实施，完整范围保持；窗口/图片批次已提交 `1157a05b`。C04本批：外层阅读器viewport的选区清除和正文宽度更新已接匹配窗口尺寸来源；新原生输入、选区或章节保护新选区，新尺寸/引擎替换/卸载退休旧反馈。公开插件窗口调用→宿主采样→实际React/受控几何及DOM选区检查通过，独立用户变化不继承旧循环。Foliate内部ResizeObserver与窄窗口面板分支仍待接，未覆盖后续原生动画或同viewport其他来源，真实Tauri布局留集中验收。下一步接paginator/fixed-layout自身ResizeObserver与useReaderPanels窄窗口分支；其余安装状态、设置目录/凭据和自动消费者继续保留，reading.observeSession reaction未开放。6项受影响React/DOM/原生适配器组合及相邻字体/选区检查、Web/desktop类型通过，日志/tmp/readaware-c04-reader-viewport{,-types}.log。
 
 历史目标：[有界实现补齐与集中验收](./host-capability-gap-goal.md)，基线 `f312d24a`。五项实现已接通，localOnly 按用户要求删除。真实 Full2 已验证对象授权读取/创建/CAS/越权拒绝和插件授权重启、类型化播放取消与清理、搜索 200 条预算终态；编辑器 Worker 保存/取消/冲突和备份原生取消/授权恢复事务已通过；可见交互、授权弹窗与键盘焦点已补验。窗口无变化重复写入导致备份误拒已由 `5450ba03` 修复并在重建 Full2 实例通过真实授权恢复。冻结模型首轮 7/10，仅复测 3 项后机器合并 9/10；人工仍有失败/partial，已达到运行上限，不追加采样。剩余具体条件及证据边界见目标文档；实现完成不冒充验收通过，goal 仍 active，不推送。
 

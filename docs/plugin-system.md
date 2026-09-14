@@ -2012,6 +2012,11 @@ effects that were actually observed. Geometry reads admitted after a new
 window command cannot reuse an earlier in-flight sample. Image resize feedback
 matches that geometry and rejects stale viewer, transform and size samples;
 an unrelated parent render does not republish under an old pan/zoom source.
+The outer reader viewport also uses a matching geometry source for its text
+measure update and selection dismissal. A new native input, changed selection,
+or replaced chapter protects the new selection from a late resize query;
+replaced views, newer sizes and unmounting retire the old update. Foliate's own
+resize observers and the narrow-window panel branch are still pending.
 This does not attribute later native animation frames, unrelated element
 layout changes or failed OS reads. Their complete causal path and actual Tauri
 layout acceptance remain pending under C04.

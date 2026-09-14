@@ -84,6 +84,13 @@ export function readingSelectionFeedback(doc: Document, event: Event) {
     current: () => current.revision === revision && equal(sample, position(doc)) };
 }
 
+/** A delayed layout may clear only the selection it actually sampled. Native
+ * input retires the sample even when the caret returns to the same position. */
+export function readingSelectionUnchanged(doc: Document): () => boolean {
+  const current = state(doc), revision = current.revision, sample = position(doc);
+  return () => current.revision === revision && equal(sample, position(doc));
+}
+
 /** Focus only the supplied host element. Capture exact synchronous effects on
  * the target and formerly focused document; nested focus supersedes old work. */
 export function focusWithReadingSource(element: HTMLElement, source: DomainActor = "user"): void {
