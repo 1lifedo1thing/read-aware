@@ -1,3 +1,4 @@
+import { actorFromEvent, causalActor, ObservationCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 /**
  * Declarative plugin settings (manifest.settings): the app renders the form,
  * values persist as ONE object under the plugin's storage key `settings`
@@ -27,17 +28,19 @@ export function pluginSettingsKey(pluginId: string): string {
 
 // Invalidate from the actual overlay, including failed-write rollback. Defer
 // until all KV observers have run so Worker mirrors precede provider callbacks.
-const pendingInvalidations = new Set<string>();
-onLocalKVChange((key) => {
+const pendingInvalidations = new Map<string, ObservationCauses>();
+onLocalKVChange((key, _value, origin) => {
   const prefix = "read-aware-plugin.";
   const suffix = ".settings";
   if (!key.startsWith(prefix) || !key.endsWith(suffix)) return;
   const pluginId = key.slice(prefix.length, -suffix.length);
-  if (pendingInvalidations.has(pluginId)) return;
-  pendingInvalidations.add(pluginId);
+  const pending = pendingInvalidations.get(pluginId);
+  if (pending) { pending.add(stampEventCause({}, origin)); return; }
+  const causes = new ObservationCauses(origin);
+  pendingInvalidations.set(pluginId, causes);
   queueMicrotask(() => {
     pendingInvalidations.delete(pluginId);
-    emitAppEvent("plugin-storage-changed", { pluginId });
+    emitAppEvent("plugin-storage-changed", { pluginId }, actorFromEvent(causes.take({})));
   });
 });
 
@@ -77,8 +80,11 @@ export function buildPluginSettingsView(
       }
       return { ...field, value: typeof value === "string" ? value : field.value };
     }),
-    onSubmit: (values) => withPluginDataWrites([manifest.id],
-      () => localKV.setItemAsync(pluginSettingsKey(manifest.id), JSON.stringify(values)), expected),
+    onSubmit: (values) => {
+      const origin = causalActor("user");
+      return withPluginDataWrites([manifest.id],
+        () => localKV.setItemAsync(pluginSettingsKey(manifest.id), JSON.stringify(values), origin), expected);
+    },
     // Dynamic selects resolve through the source the plugin bound at
     // activate() (ctx.contributions.settingsOptions.register); an unbound field resolves
     // empty and renders as free text input.
@@ -91,8 +97,14 @@ export function buildPluginSettingsView(
         const value = await getPluginSecret(manifest.id, id);
         return value != null && value !== "";
       },
-      set: (id, value) => withPluginDataWrites([manifest.id], () => setPluginSecret(manifest.id, id, value), expected),
-      remove: (id) => withPluginDataWrites([manifest.id], () => deletePluginSecret(manifest.id, id), expected),
+      set: (id, value) => {
+        const origin = causalActor("user");
+        return withPluginDataWrites([manifest.id], () => setPluginSecret(manifest.id, id, value, origin), expected);
+      },
+      remove: (id) => {
+        const origin = causalActor("user");
+        return withPluginDataWrites([manifest.id], () => deletePluginSecret(manifest.id, id, origin), expected);
+      },
     },
   };
 }
@@ -101,8 +113,10 @@ export function buildPluginSettingsView(
 export function writePluginSettingsValues(
   pluginId: string,
   values: PluginFormValues,
+  origin: DomainActor = "user",
 ): Promise<void> {
-  return withPluginDataWrites([pluginId], () => localKV.setItemAsync(pluginSettingsKey(pluginId), JSON.stringify(values)));
+  origin = causalActor(origin);
+  return withPluginDataWrites([pluginId], () => localKV.setItemAsync(pluginSettingsKey(pluginId), JSON.stringify(values), origin));
 }
 
 export type AgentPluginSettings = {

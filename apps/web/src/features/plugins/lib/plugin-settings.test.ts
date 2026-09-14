@@ -1,3 +1,5 @@
+import { actorCause, assertReactionAllowed, causalActor, eventCause, reactionActor } from "../../../platform/domain-actor";
+import { onAppEvent } from "../../../platform/app-events";
 import { beforeEach, describe, expect, test } from "bun:test";
 import type { PluginManifest } from "./plugin-types";
 
@@ -14,7 +16,7 @@ Object.defineProperty(globalThis, "localStorage", {
 
 import {
   buildPluginSettingsView,
-  readPluginSettingsValues,
+  readPluginSettingsValues, writePluginSettingsValues,
 } from "./plugin-settings";
 import { parseManifestJson } from "./manifest";
 
@@ -215,4 +217,23 @@ describe("plugin data schema manifest", () => {
       ).toThrow(/schemaVersion/);
     }
   });
+});
+
+test("coalesced settings invalidation retains reaction ancestry for Worker and provider refresh", async () => {
+  await Promise.resolve();
+  const events: object[] = [];
+  const off = onAppEvent("plugin-storage-changed", event => { if (event.pluginId === manifest.id) events.push(event); });
+  const rule = "rule:settings-test:refresh";
+  const first = reactionActor("plugin:settings-test", rule, actorCause(causalActor("user"))!);
+  const second = reactionActor("plugin:settings-test", rule, actorCause(causalActor("user"))!);
+  try {
+    await Promise.all([
+      writePluginSettingsValues(manifest.id, { enabled: true }, first),
+      writePluginSettingsValues(manifest.id, { enabled: false }, second),
+    ]);
+    await Promise.resolve();
+    expect(events).toHaveLength(1);
+    expect(() => assertReactionAllowed(eventCause(events[0]!), rule)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+    expect(readPluginSettingsValues(manifest.id)).toEqual({ enabled: false });
+  } finally { off(); }
 });
