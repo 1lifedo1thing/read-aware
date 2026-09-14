@@ -1,5 +1,7 @@
 # 宿主能力实现与验收进度
 
+语音提供者串行刷新不再覆盖等待中的设置来源：ObservationCauses在一次查询受理时取出有界来源，查询期间的新设置通知合并给下一次查询；过期查询仍丢弃，失败仍保留最后有效声音列表。既有声音目录公开观察和消费者沿原路径消费。定向检查验证最终列表包含两条待处理反应分支且同规则cycle拒绝，保留串行、退休和失败检查；受影响类型通过。真实Worker/Tauri/音频及其他C04/C05与完整验收仍待完成。
+
 声明式插件设置修复实际因果断点：KV overlay通知按插件用ObservationCauses合并，微任务发布plugin-storage-changed保留全部来源，继续供现有Worker镜像/语音和传输刷新消费。表单普通/秘密字段提交在准入前捕获用户来源，writePluginSettingsValues可传入既有actor。既有设置/提供者检查及合并设置写→延迟通知→同规则cycle拒绝检查通过，受影响类型通过。此处仍是overlay/回滚通知而非持久写成功回执；真实Worker/Tauri、C04原生派生来源及C05其余接口保持未完成。
 
 session2.15新增sync.requestFlow条件查询，接受与实际流程共用的严格flow归一化；插件先检service:sync，Agent工具同接。宿主与useSyncAccountFlows共用本地账号准入：连接busy、Relay重连、断开前置、后端注册、Relay账号动作及外部购买；查询合并流程占用，远端/控件未知，账单自动交接不误报另需原生确认。Maintenance Desk0.13各账号确认页可查看条件且保留所选后端引用。受影响Core/Web/Agent/插件类型、构建、权限/关键准入及消费者检查通过；真实连接/删除/账单Tauri验收与其余C04/C05、完整目标待完成。

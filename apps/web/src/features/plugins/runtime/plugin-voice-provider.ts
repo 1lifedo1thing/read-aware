@@ -1,6 +1,6 @@
 import { AppError } from "@read-aware/core";
 import type { PluginVoiceProvider } from "@read-aware/plugin-types";
-import { actorFromEvent, causalActor, type DomainActor } from "../../../platform/domain-actor";
+import { actorFromEvent, causalActor, ObservationCauses, type DomainActor } from "../../../platform/domain-actor";
 import { onAppEvent } from "../../../platform/app-events";
 import { createLogger } from "../../../platform/logger";
 import { contributionKey, type RegisteredVoiceProvider } from "../lib/plugin-types";
@@ -20,7 +20,7 @@ export function registerPluginVoiceProvider(
   source: DomainActor = "system",
 ): { dispose(source?: DomainActor): void } {
   const origin = causalActor(source);
-  let requestedSource = origin;
+  const requestedCauses = new ObservationCauses(origin);
   const signal = lifecycle.signal;
   const key = contributionKey(brand.pluginId, provider.id);
   const releaseResult = (value: unknown) => {
@@ -52,7 +52,7 @@ export function registerPluginVoiceProvider(
     running = true;
     try {
       while (current() && completed !== requested) {
-        const revision = requested, source = requestedSource;
+        const revision = requested, source = actorFromEvent(requestedCauses.take({}));
         try {
           const voices = await provider.listVoices();
           try {
@@ -72,7 +72,7 @@ export function registerPluginVoiceProvider(
   const offStorage = onAppEvent("plugin-storage-changed", event => {
     const { pluginId } = event;
     if (pluginId !== brand.pluginId || !current()) return;
-    requestedSource = actorFromEvent(event);
+    requestedCauses.add(event);
     requested++;
     void refresh();
   });
