@@ -6,6 +6,7 @@ import { readingRuntime } from "../../../domain/reading-runtime";
 import * as resources from "../../../services/resources";
 import * as ipc from "../../../platform/ipc";
 import { createSettingsDomain } from "../../../domain/settings/domain";
+import { emitAppEvent } from "../../../platform/app-events";
 import { deferred } from "../../../../tests/helpers/entity-host";
 
 test("event contexts retain the activation's permissions and resource owner, and stamp real reading commands across await", async () => {
@@ -326,4 +327,39 @@ test("conversation runtime stop feedback retains the public reaction across awai
     expect(() => retained!.domains.conversations!.queries.runtime()).toThrow(expect.objectContaining({ code: "plugin/invalid-cause" }));
     off.dispose();
   } finally { binding.dispose(); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); }
+});
+
+
+test("storage change reactions serialize, reject repeated causes and stop queued delivery", async () => {
+  const runtime = buildPluginContext({ id: "storage-reaction", name: "Storage", version: "1", schemaVersion: 1, requires: {} }, "1", []);
+  const gate = deferred(), done = deferred();
+  let calls = 0;
+  try {
+    runtime.lifecycle.promote();
+    const subscription = runtime.context.services.storage.onChange(async (snapshot, delivery) => {
+      calls++;
+      expect(snapshot).toEqual({ kind: "changed" });
+      if (calls === 1) {
+        const actor = runtime.reactions.actor(delivery!.reaction!);
+        await gate.promise;
+        expect(() => runtime.context.withEvent(delivery).services.storage.collection("settings")).not.toThrow();
+        for (let i = 0; i < 3; i++) emitAppEvent("plugin-storage-changed", { pluginId: "storage-reaction" }, actor);
+        expect(calls).toBe(1);
+      } else {
+        expect(delivery?.reaction?.status).toBe("cycle");
+        expect(() => runtime.context.withEvent(delivery)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+        subscription.dispose();
+        emitAppEvent("plugin-storage-changed", { pluginId: "storage-reaction" });
+        done.resolve();
+      }
+    }, { ruleId: "refresh-settings" });
+    expect(calls).toBe(0);
+    emitAppEvent("plugin-storage-changed", { pluginId: "other" });
+    expect(calls).toBe(0);
+    emitAppEvent("plugin-storage-changed", { pluginId: "storage-reaction" });
+    expect(calls).toBe(1);
+    gate.resolve(); await done.promise;
+    await runtime.reactions.drain();
+    expect(calls).toBe(2);
+  } finally { gate.resolve(); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); }
 });

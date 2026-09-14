@@ -1903,11 +1903,13 @@ export type PluginStorage = {
   /**
    * Fires when this plugin's namespace is written from OUTSIDE the plugin —
    * its settings page, the reading agent, another surface editing the same
-   * object. The plugin's own `set`/`remove` calls do not echo back. Use it
+   * object. Settings-key changes can also echo after own writes. Serial callbacks
+   * receive a reaction credential; use withEvent to preserve causes. No initial
+   * callback; intermediate changes coalesce. Use it
    * to re-read (or re-derive from) settings you would otherwise have cached
    * at activate().
    */
-  onChange(handler: () => void): PluginDisposable;
+  onChange(handler: PluginObservationHandler<{ kind: "changed" }>, options?: { ruleId?: string }): PluginDisposable;
 };
 
 export type PluginMigrationStorage = Omit<PluginStorage, "onChange" | "observeDocuments" | "policy">;

@@ -1,3 +1,4 @@
+import { observeSnapshot } from "../../../domain/snapshot-observation";
 import { createPluginJobs } from "./plugin-jobs";
 import { createPluginChanges } from "./plugin-changes";
 import { createPluginTransactions } from "./plugin-transactions";
@@ -801,19 +802,12 @@ export function buildPluginContext(
           await lifecycle.drainStorageWrites();
           await flushLocalKV(storagePrefix);
         },
-        onChange: (handler) =>
-          track(() => ({
-            dispose: onAppEvent("plugin-storage-changed", ({ pluginId }) => {
-              if (pluginId !== manifest.id) return;
-              try {
-                void Promise.resolve(handler()).catch(error => {
-                  log.error(`storage.onChange handler from "${manifest.id}" failed`, error);
-                });
-              } catch (error) {
-                log.error(`storage.onChange handler from "${manifest.id}" failed`, error);
-              }
-            }),
-          })),
+        onChange: handler => track(() => ({ dispose: observeSnapshot(
+          () => ({ kind: "changed" as const }),
+          notify => onAppEvent("plugin-storage-changed", event => { if (event.pluginId === manifest.id) notify(event); }),
+          (value, source) => handler(copyEventCause(source, value)),
+          error => log.error(`storage.onChange handler from "${manifest.id}" failed`, error), operationActor, false,
+        ) })),
         ...documents,
       },
       secrets: {

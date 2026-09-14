@@ -308,9 +308,9 @@ function buildContext(
     },
     // Host-side writes (settings page, agent) arrive as a `sync` patch and
     // then as this notification — in that order, so the mirror the handler
-    // reads from is already fresh. The plugin's own writes do not echo.
-    onChange: (handler: () => void) =>
-      call("services.storage.onChange", [handler]),
+    // reads from is already fresh. Settings-key writes may echo with a reaction token.
+    onChange: (handler: Parameters<import("@read-aware/plugin-types").PluginStorage["onChange"]>[0], options?: Parameters<import("@read-aware/plugin-types").PluginStorage["onChange"]>[1]) =>
+      call("services.storage.onChange", [handler, options]),
     observeDocuments: (query: import("@read-aware/plugin-types").PluginDocumentObservationQuery, handler: (event: import("@read-aware/plugin-types").PluginDocumentObservation) => unknown) =>
       call("services.storage.observeDocuments", [query, handler]),
     collection: (name: string) =>

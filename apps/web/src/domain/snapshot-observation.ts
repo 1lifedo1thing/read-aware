@@ -4,8 +4,8 @@ import { copyEventCause, ObservationCauses, stampEventCause, type DomainActor } 
  * consumers. Metadata stays separate from public data and preserves every
  * coalesced trigger while the previous consumer is still working. */
 export function observeSnapshot<T>(read: () => T, subscribe: (notify: (source: object) => void) => () => void,
-  handler: (value: T, source: object) => unknown, report: (error: unknown) => void, origin?: DomainActor): () => void {
-  const causes = new ObservationCauses(origin);
+  handler: (value: T, source: object) => unknown, report: (error: unknown) => void, origin?: DomainActor, initial = true): () => void {
+  const causes = new ObservationCauses(initial ? origin : undefined);
   let stopped = false, running = false, dirty = false, retry: object | undefined;
   const deliver = async () => {
     if (running || stopped) return;
@@ -25,6 +25,6 @@ export function observeSnapshot<T>(read: () => T, subscribe: (notify: (source: o
   });
   // A subscription created by a reaction inherits that reaction, not the
   // unrelated intent that originally produced the ambient snapshot.
-  if (!dirty && !running) { causes.add(stampEventCause({}, origin)); dirty = true; void deliver(); }
+  if (initial && !dirty && !running) { causes.add(stampEventCause({}, origin)); dirty = true; void deliver(); }
   return () => { if (stopped) return; stopped = true; retry = undefined; stop(); };
 }
