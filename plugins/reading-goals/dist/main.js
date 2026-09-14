@@ -325,10 +325,13 @@ async function readingTimeView(ctx, query = {}) {
   ] });
   return { ...content(sample), live: { subscribe(channel) {
     let revision = 0;
-    return reading.events.observeTime({ ...query, limit: 10 }, async (event) => {
+    return reading.events.observeTime({ ...query, limit: 10 }, async (event, delivery) => {
+      if (delivery?.reaction?.status === "cycle")
+        return;
+      const reaction = ctx.withEvent(delivery);
       if (event.status === "ready")
         sample = event.snapshot;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: content(sample, event.status === "error" ? event.errorCode : undefined) });
+      await reaction.services.ui.publishView(channel, { revision: ++revision, view: content(sample, event.status === "error" ? event.errorCode : undefined) });
     });
   } } };
 }

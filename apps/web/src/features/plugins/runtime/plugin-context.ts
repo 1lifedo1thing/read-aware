@@ -1557,8 +1557,8 @@ export function buildPluginContext(
                 objectAccess.assertReturnedBook(event.snapshot.bookId, "reading.events.observeTime");
                 if (event.snapshot.nextCursor) objectAccess.assertReturnedBook(event.snapshot.nextCursor.bookId, "reading.events.observeTime");
               }
-              handler(event);
-            } catch (error) { log.debug?.("reading time outside book grant", error); }
+            } catch (error) { log.debug?.("reading time outside book grant", error); return; }
+            return handler(event);
           }) }));
         },
       } as typeof ctx.domains.reading.events;

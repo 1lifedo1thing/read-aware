@@ -1616,8 +1616,10 @@ export type PluginReadingDomain = {
      * keep the original context for later user actions. A stable ruleId can resume job causality across activations. */
     observeSession(handler: (snapshot: import("@read-aware/core").ReadingSessionSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string }): PluginDisposable;
     observeEmphasis(handler: (snapshot: import("@read-aware/core").ReadingEmphasisSnapshot[], delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable;
-    /** Immediate sample then a 1s minimum gap after each delivery. Errors are explicit; dispose stops further delivery. */
-    observeTime(query: import("@read-aware/core").ReadingTimeQuery, handler: (event: import("@read-aware/core").ReadingTimeObservation) => void | Promise<void>): PluginDisposable;
+    /** Immediate sample then a 1s minimum gap after each delivery. Errors are explicit; dispose stops further delivery.
+     * Reading 2.24: delivery retains sampling subscription ancestry across timers.
+     * It does not identify historical writers of the aggregate. */
+    observeTime(query: import("@read-aware/core").ReadingTimeQuery, handler: (event: import("@read-aware/core").ReadingTimeObservation, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string }): PluginDisposable;
   };
 };
 

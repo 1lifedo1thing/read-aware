@@ -164,6 +164,6 @@ export function createReadingDomain(origin: DomainActor, lifetime?: AbortSignal,
     queries,
     commands,
     events: { subscribe: domainSubscribe(READING_EVENTS, actorOrigin(origin)), observeEmphasis: emphasis.observe, observeSession: handler => readingRuntime.observe(handler),
-      observeTime: (query, handler) => readingTimeObserver.observe(query, handler) },
+      observeTime: (query, handler) => readingTimeObserver.observe(query, handler, origin) },
   };
 }

@@ -13,6 +13,7 @@ test("reading time composes bounded queries, live failure states, pending pages 
       observeTime(query: unknown, handler: typeof observe) { queryCalls.push(query); observe = handler; return { dispose() { disposed++; } }; },
     } }, library: { queries: { books: { get: async () => ({ title: "Book" }) } } },
   }, services: { ui: { publishView: async (_channel: unknown, update: unknown) => { published.push(update); } } } } as unknown as PluginContext;
+  ctx.withEvent = ((_event: unknown, registration?: { dispose(): void | Promise<void> }) => registration ? Object.assign({}, ctx, { dispose: async () => { await registration.dispose(); } }) : ctx) as PluginContext["withEvent"];
   const view = await readingTimeView(ctx, { bookId: "b" }) as PluginDetailView & PluginView;
   const live = await view.live!.subscribe({ id: "time" });
   await observe({ status: "ready", revision: 1, snapshot: sample });

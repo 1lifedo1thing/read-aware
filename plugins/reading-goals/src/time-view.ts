@@ -52,9 +52,11 @@ export async function readingTimeView(ctx: PluginContext, query: ReadingTimeQuer
   ] });
   return { ...content(sample), live: { subscribe(channel) {
     let revision = 0;
-    return reading.events.observeTime({ ...query, limit: 10 }, async (event: ReadingTimeObservation) => {
+    return reading.events.observeTime({ ...query, limit: 10 }, async (event: ReadingTimeObservation, delivery) => {
+      if (delivery?.reaction?.status === "cycle") return;
+      const reaction = ctx.withEvent(delivery);
       if (event.status === "ready") sample = event.snapshot;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: content(sample, event.status === "error" ? event.errorCode : undefined) });
+      await reaction.services.ui.publishView(channel, { revision: ++revision, view: content(sample, event.status === "error" ? event.errorCode : undefined) });
     });
   } } };
 }

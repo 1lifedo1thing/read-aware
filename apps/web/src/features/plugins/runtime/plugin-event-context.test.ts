@@ -247,3 +247,34 @@ test("public document observation follows an event-bound transaction and refuses
     expect(writes).toBe(2);
   } finally { runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); invoke.mockRestore(); }
 });
+
+
+test("scoped time sampling keeps the public reaction lease until async delivery finishes", async () => {
+  const { readingTimeObserver } = await import("../../../domain/reading-time");
+  const { ReadingTimeObserver } = await import("../../../domain/reading-time-observer");
+  const errors: unknown[] = [], entered = deferred(), gate = deferred();
+  const observer = new ReadingTimeObserver({ read: async () => ({ bookId: "b", localDay: null, observedAtEpochMs: 1,
+    settledMs: 0, pendingMs: 0, totalMs: 0, pendingBucketCount: 0, pending: [], nextCursor: null }),
+    schedule: () => () => {}, report: error => errors.push(error) });
+  const sample = spyOn(readingTimeObserver, "observe").mockImplementation((...args) => observer.observe(...args));
+  const runtime = buildPluginContext({ id: "time-reaction", name: "Time", version: "1", schemaVersion: 1, requires: {},
+    permissions: ["reading:read"] }, "1", [], { mode: "book", bookId: "b" });
+  let retained: PluginContext | undefined;
+  try {
+    runtime.lifecycle.promote();
+    expect(() => runtime.context.domains.reading!.events.observeTime({ bookId: "other" }, () => {})).toThrow();
+    const subscription = runtime.context.domains.reading!.events.observeTime({ bookId: "b" }, async (_event, delivery) => {
+      retained = runtime.context.withEvent(delivery); entered.resolve();
+      await gate.promise;
+      retained.services.storage.collection("sample");
+    }, { ruleId: "time-display" });
+    await entered.promise;
+    expect(() => retained!.services.storage.collection("during")).not.toThrow();
+    gate.resolve();
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    expect(errors).toEqual([]);
+    expect(() => retained!.services.storage.collection("expired")).toThrow(expect.objectContaining({ code: "plugin/invalid-cause" }));
+    subscription.dispose();
+    runtime.context.domains.reading!.events.observeTime({ bookId: "b" }, () => {}, { ruleId: "time-display" }).dispose();
+  } finally { gate.resolve(); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); sample.mockRestore(); }
+});

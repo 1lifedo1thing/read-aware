@@ -2,6 +2,8 @@ import { expect, test } from "bun:test";
 import { AppError, normalizeReadingTimeQuery, type ReadingTimeSnapshot, type ReadingTimeObservation } from "@read-aware/core";
 import { ReadingTimeObserver } from "./reading-time-observer";
 
+import { actorCause, causalActor, eventCause, reactionActor } from "../platform/domain-actor";
+
 const snapshot: ReadingTimeSnapshot = { bookId: "b", localDay: null, observedAtEpochMs: 123,
   settledMs: 1000, pendingMs: 2000, totalMs: 3000, pendingBucketCount: 1,
   pending: [{ bookId: "b", localDay: "2026-09-09", localHour: 10, ms: 2000, startedAt: 1, lastAt: 3, positionAt: 2 }], nextCursor: null };
@@ -27,10 +29,15 @@ test("observer waits for slow consumers, reports read errors explicitly, and sto
     if (++calls === 2) throw new AppError("db/locked", "private details");
     return new Promise(resolve => { resolveRead = resolve; });
   }, schedule: callback => { scheduled = () => { scheduled = undefined; callback(); }; return () => { scheduled = undefined; }; }, report: error => errors.push(error) });
-  const dispose = observer.observe({}, async event => { events.push(event); if (event.revision === 1) await new Promise<void>(resolve => { finish = resolve; }); });
+  const source = reactionActor("plugin:time", "reading-time-rule", actorCause(causalActor("user"))!);
+  const dispose = observer.observe({}, async event => { events.push(event); if (event.revision === 1) await new Promise<void>(resolve => { finish = resolve; }); }, source);
   expect(calls).toBe(1); resolveRead(snapshot); await tick(); expect(scheduled).toBeUndefined();
   finish(); await tick(); expect(scheduled).toBeFunction(); scheduled!(); await tick();
   expect(events[1]).toEqual({ revision: 2, status: "error", errorCode: "db/locked" });
+  for (const event of events) {
+    expect(eventCause(event)).toEqual(actorCause(source));
+    expect(() => reactionActor("plugin:time", "reading-time-rule", eventCause(event)!)).toThrow();
+  }
   expect(JSON.stringify(events)).not.toContain("private details"); expect(errors).toHaveLength(1);
   scheduled!(); await tick(); dispose(); dispose(); resolveRead(snapshot); await tick();
   expect(events).toHaveLength(2); expect(scheduled).toBeUndefined();
