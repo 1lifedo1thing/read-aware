@@ -10,20 +10,33 @@ import { initI18n } from "../src/i18n";
 import { useImageViewer } from "../src/features/reader/hooks/useImageViewer";
 import { readerImageOpen } from "../src/services/reader-image-open";
 import type { BookImageData } from "../src/features/library/lib/book-images";
-import { actorCause, causalActor, eventCause, stampEventCause } from "../src/platform/domain-actor";
+import { actorCause, causalActor, eventCause, reactionActor, stampEventCause } from "../src/platform/domain-actor";
 import { buildPluginContext } from "../src/features/plugins/runtime/plugin-context";
+import { hostWindow } from "../src/services/window";
 
 if (process.env.READER_IMAGE_CONTROLS_CASE === "1") {
 test("native lightbox and public controls share zoom, pan, rotation, reset and committed close under StrictMode", async () => {
   const dom = new JSDOM("<div id='root'></div>", { url: "http://localhost" });
-  const values = { window: dom.window, document: dom.window.document, IS_REACT_ACT_ENVIRONMENT: true };
+  const observers: ResizeProbe[] = [];
+  class ResizeProbe {
+    element?: Element;
+    active = true;
+    constructor(readonly callback: () => void) { observers.push(this); }
+    observe(element: Element) { this.element = element; }
+    disconnect() { this.active = false; }
+  }
+  const values = { window: dom.window, document: dom.window.document, ResizeObserver: ResizeProbe, IS_REACT_ACT_ENVIRONMENT: true };
   const saved = new Map(Object.keys(values).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   for (const [key, value] of Object.entries(values)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
   const root = createRoot(dom.window.document.getElementById("root")!);
+  const readLayout = hostWindow.layout;
   const sessionId = readingRuntime.begin("image-book");
   const location = { bookId: "image-book", contentVersion: "v1", cfi: "start" };
   const detach = readingRuntime.attach(sessionId, { navigate: async () => location, step: async () => location }, location);
+  let rerender = () => {};
   function Surface() {
+    const [, redraw] = useState(0);
+    rerender = () => redraw(value => value + 1);
     const [open, setOpen] = useState(true);
     return open ? <ReaderImageLightbox session={{ sessionId, bookId: "image-book" }} alt="Illustration"
       src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1kAAAAASUVORK5CYII="
@@ -34,7 +47,8 @@ test("native lightbox and public controls share zoom, pan, rotation, reset and c
     await act(async () => root.render(<StrictMode><Surface /></StrictMode>));
     const id = readerImage.snapshot()!.id;
     const img = dom.window.document.querySelector("img")!, stage = img.parentElement!;
-    Object.defineProperties(stage, { clientWidth: { value: 600 }, clientHeight: { value: 400 } });
+    let width = 600;
+    Object.defineProperties(stage, { clientWidth: { get: () => width }, clientHeight: { value: 400 } });
     Object.defineProperties(img, { naturalWidth: { value: 300 }, naturalHeight: { value: 200 } });
     async function control(action: ReaderImageAction) {
       let pending!: Promise<ReaderImageReceipt>;
@@ -46,6 +60,49 @@ test("native lightbox and public controls share zoom, pan, rotation, reset and c
     await control({ action: "pan", dx: 0.25, dy: -0.5 });
     expect(readerImage.snapshot()).toMatchObject({ panX: 0.25, panY: -0.5 });
     expect(img.style.transform).toContain("translate(150px, -200px)");
+    const resizeActor = reactionActor("plugin:window", "resize-image", eventCause(stampEventCause({}, causalActor("user")))!);
+    const resize = () => { for (const observer of observers) if (observer.active && observer.element === stage) observer.callback(); };
+    hostWindow.layout = async () => stampEventCause({ width: 900, height: 700 }, resizeActor);
+    await act(async () => {
+      width = 300;
+      Object.defineProperties(dom.window, { innerWidth: { value: 900, configurable: true }, innerHeight: { value: 700, configurable: true } });
+      resize(); await Promise.resolve();
+    });
+    expect(readerImage.snapshot()?.panX).toBe(0.5);
+    expect(eventCause(readerImage.snapshot()!)).toBe(actorCause(resizeActor));
+    expect(() => reactionActor("plugin:window", "resize-image", eventCause(readerImage.snapshot()!)!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+    const revision = readerImage.snapshot()!.revision;
+    await act(async () => { resize(); await Promise.resolve(); });
+    expect(readerImage.snapshot()!.revision).toBe(revision);
+    const parentRender = Promise.withResolvers<{ width: number; height: number }>();
+    hostWindow.layout = () => parentRender.promise;
+    await act(async () => {
+      width = 350; Object.defineProperty(dom.window, "innerWidth", { value: 950, configurable: true }); resize(); rerender();
+    });
+    expect(readerImage.snapshot()!.revision).toBe(revision);
+    await act(async () => { parentRender.resolve(stampEventCause({ width: 950, height: 700 }, resizeActor)); await Promise.resolve(); });
+    expect(readerImage.snapshot()!.panX).toBe(150 / 350);
+    expect(eventCause(readerImage.snapshot()!)).toBe(actorCause(resizeActor));
+    const late = Promise.withResolvers<{ width: number; height: number }>();
+    hostWindow.layout = () => late.promise;
+    await act(async () => {
+      width = 400; Object.defineProperty(dom.window, "innerWidth", { value: 1000, configurable: true }); resize();
+    });
+    const delivered: ReturnType<typeof eventCause>[] = [];
+    const stop = readerImage.observe((_value, source) => { delivered.push(eventCause(source)); });
+    try {
+      let userZoom!: Promise<ReaderImageReceipt>;
+      await act(async () => {
+        userZoom = readerImage.control({ id, action: "zoom-in" });
+        // Resolve the older geometry while the new intent is admitted but its
+        // React render has not committed. It must not publish even transiently.
+        late.resolve(stampEventCause({ width: 1000, height: 700 }, resizeActor));
+        await Promise.resolve(); await Promise.resolve();
+      });
+      await userZoom;
+      expect(delivered.some(cause => cause?.steps.includes("resize-image"))).toBe(false);
+      expect(eventCause(readerImage.snapshot()!)).not.toBe(actorCause(resizeActor));
+    } finally { stop(); }
     await control({ action: "rotate" });
     expect(readerImage.snapshot()).toMatchObject({ scale: 1, rotation: 90, panX: 0, panY: 0 });
     await act(async () => (dom.window.document.querySelector('[aria-label="Zoom in"]') as HTMLButtonElement).click());
@@ -55,6 +112,7 @@ test("native lightbox and public controls share zoom, pan, rotation, reset and c
     expect(await control({ action: "close" })).toEqual({ status: "closed", id });
     expect(readerImage.snapshot()).toBeNull(); expect(dom.window.document.querySelector('[role="dialog"]')).toBeNull();
   } finally {
+    hostWindow.layout = readLayout;
     await act(async () => root.unmount()); detach(); dom.window.close();
     for (const [key, value] of saved) { if (value) Object.defineProperty(globalThis, key, value); else Reflect.deleteProperty(globalThis, key); }
   }

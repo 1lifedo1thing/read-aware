@@ -19,6 +19,11 @@ const IDENTITY: Transform = { scale: 1, x: 0, y: 0 };
  */
 export function useZoomPan(initialOrigin: DomainActor = "user") {
   const [origin, setOrigin] = useState(() => causalActor(initialOrigin));
+  const intentRevision = useRef(0);
+  const beginIntent = useCallback((source: DomainActor) => {
+    intentRevision.current++;
+    setOrigin(causalActor(source));
+  }, []);
   const [transform, setTransform] = useState<Transform>(IDENTITY);
   // Quarter-turn rotation plus the extra shrink that keeps a rotated image
   // inside the stage (a wide plate turned 90° would otherwise overflow).
@@ -47,7 +52,7 @@ export function useZoomPan(initialOrigin: DomainActor = "user") {
   }, []);
 
   const applyScale = useCallback((nextScaleRaw: number, aroundClientX: number, aroundClientY: number, origin: DomainActor = "user") => {
-    setOrigin(causalActor(origin));
+    beginIntent(origin);
     setTransform((current) => {
       const nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, nextScaleRaw));
       if (nextScale === 1) return IDENTITY;
@@ -60,7 +65,7 @@ export function useZoomPan(initialOrigin: DomainActor = "user") {
         y: cursor.y - (cursor.y - current.y) * ratio,
       };
     });
-  }, [toCenterFrame]);
+  }, [toCenterFrame, beginIntent]);
 
   const onWheel = useCallback((event: ReactWheelEvent) => {
     event.stopPropagation();
@@ -93,13 +98,13 @@ export function useZoomPan(initialOrigin: DomainActor = "user") {
   const panByPixels = useCallback((dx: number, dy: number, origin: DomainActor = "user") => {
     const stage = stageRef.current;
     if (!stage) return;
-    setOrigin(causalActor(origin));
+    beginIntent(origin);
     setTransform(current => current.scale <= 1 ? current : {
       ...current,
       x: Math.max(-stage.clientWidth * MAX_SCALE, Math.min(stage.clientWidth * MAX_SCALE, current.x + dx)),
       y: Math.max(-stage.clientHeight * MAX_SCALE, Math.min(stage.clientHeight * MAX_SCALE, current.y + dy)),
     });
-  }, []);
+  }, [beginIntent]);
   const pan = useCallback((dx: number, dy: number, origin: DomainActor = "user") => {
     const stage = stageRef.current;
     if (stage) panByPixels(dx * stage.clientWidth, dy * stage.clientHeight, origin);
@@ -141,12 +146,12 @@ export function useZoomPan(initialOrigin: DomainActor = "user") {
   }, []);
 
   const reset = useCallback((origin: DomainActor = "user") => {
-    setOrigin(causalActor(origin));
+    beginIntent(origin);
     setTransform(IDENTITY);
     rotationRef.current = 0;
     setRotation(0);
     setRotationFit(1);
-  }, []);
+  }, [beginIntent]);
 
   /** Toolbar zoom steps, anchored at the stage center. */
   const zoomBy = useCallback((factor: number, origin: DomainActor) => {
@@ -169,7 +174,7 @@ export function useZoomPan(initialOrigin: DomainActor = "user") {
    * width/height inside the stage.
    */
   const rotateRight = useCallback((origin: DomainActor = "user") => {
-    setOrigin(causalActor(origin));
+    beginIntent(origin);
     const next = (rotationRef.current + 90) % 360;
     rotationRef.current = next;
     let fit = 1;
@@ -190,7 +195,7 @@ export function useZoomPan(initialOrigin: DomainActor = "user") {
     setTransform(IDENTITY);
     setRotation(next);
     setRotationFit(fit);
-  }, []);
+  }, [beginIntent]);
 
   const style = useMemo<CSSProperties>(() => ({
     transform: `translate(${transform.x}px, ${transform.y}px) rotate(${rotation}deg) scale(${transform.scale * rotationFit})`,
@@ -206,6 +211,7 @@ export function useZoomPan(initialOrigin: DomainActor = "user") {
 
   return {
     origin,
+    intentRevision,
     snapshot,
     pan,
     stageRef,

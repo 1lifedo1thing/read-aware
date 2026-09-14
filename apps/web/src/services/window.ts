@@ -19,10 +19,12 @@ async function native<T>(run: (window: import("@tauri-apps/api/window").Window) 
 
 export const hostWindow = new HostWindowService({
   supported: () => isTauri() && !isMobileOS(),
-  read: () => native(async window => ({
-    minimized: await window.isMinimized(), maximized: await window.isMaximized(),
-    fullscreen: await window.isFullscreen(), focused: await window.isFocused(),
-  })),
+  read: () => native(async window => {
+    const [minimized, maximized, fullscreen, focused, size, scale] = await Promise.all([
+      window.isMinimized(), window.isMaximized(), window.isFullscreen(), window.isFocused(), window.innerSize(), window.scaleFactor(),
+    ]);
+    return { minimized, maximized, fullscreen, focused, viewport: { width: Math.round(size.width / scale), height: Math.round(size.height / scale) } };
+  }),
   apply: (request, signal) => native(async window => {
     signal?.throwIfAborted();
     if (request.action === "minimize") return window.minimize();

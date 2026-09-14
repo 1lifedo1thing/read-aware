@@ -7,7 +7,7 @@
 
 ## 最近交付与接续入口
 
-当前目标：[九类缺失能力补全](./host-capability-completion-goal.md)，基线 `4657c3d0`。C01–C03已接，真实桌面组合待集中验收；贡献目录批次已提交 `b221a8cc`。C04本批：选中字体/主题与分段提供者换代后的消费者已接来源；注册表按key提供宿主私有快照，替换/移除在发布时更新，React批次中的后续无关注册不覆盖来源，同值换owner仍生效。阅读CSS/固定页配色与应用主题auto投影只采用实际改变的输入；启动主题缓存写入/清除同源。分段重建使用选中提供者的来源，目录变化不改当前请求；公开设置反应及React/受控IPC、替换/移除/回滚和独立用户根检查通过，真实字体、布局与Worker分段仍待集中Tauri验收。下一步接窗口响应式布局/图片ResizeObserver、其他异步原生反馈、插件安装状态观察、设置目录/凭据与其余消费者来源。reading.observeSession公共reaction仍未开放。C04未完成，C05–C09未实施且完整保留。本批消费者/目录/模式持久写/KV检查64项、注册回滚与选中来源/React组合15项通过，Web/desktop类型通过，生成校验及21项库存/模型契约通过；日志为/tmp/readaware-c04-contribution-consumers-{final,activation,types-final,contracts}.log。
+当前目标：[九类缺失能力补全](./host-capability-completion-goal.md)，基线 `4657c3d0`。C01–C03已接，集中真实桌面验收待执行；字体/主题/分段批次已提交 `223a3fc3`。C04本批：窗口命令在派发前读基线，原生请求后的实际状态/客户区尺寸变化保留Agent、插件事件或原生用户来源；无变化不重标，取消或中途失败仍保留已观察效果。布局读按已准入窗口命令隔离合并，不能复用命令前的在途样本；尺寸不进入公开窗口数据。图片ResizeObserver只接受匹配窗口尺寸的来源，重复尺寸不通知，父组件重绘不冒用旧pan/zoom来源；新变换、新尺寸或卸载退休旧异步反馈。受控原生/实际React与公开插件路径通过；未关联的动画后续帧、同viewport其他容器变化和OS读取失败仍无完整来源，C04不关闭，真实Tauri布局后置。下一步接FoliateReaderView与paginator/fixed-layout的ResizeObserver、useReaderPanels窄窗口分支，并处理后续动画帧/同viewport变化/读取失败归因；其余安装状态、设置目录/凭据及自动消费者仍缺。reading.observeSession reaction未开放，C05–C09完整保留未实施。窗口/图片/来源21项、Agent/Workspace Profiles9项检查通过，Web/desktop类型通过，日志/tmp/readaware-c04-window-layout-{final,consumers,types-final}.log。
 
 历史目标：[有界实现补齐与集中验收](./host-capability-gap-goal.md)，基线 `f312d24a`。五项实现已接通，localOnly 按用户要求删除。真实 Full2 已验证对象授权读取/创建/CAS/越权拒绝和插件授权重启、类型化播放取消与清理、搜索 200 条预算终态；编辑器 Worker 保存/取消/冲突和备份原生取消/授权恢复事务已通过；可见交互、授权弹窗与键盘焦点已补验。窗口无变化重复写入导致备份误拒已由 `5450ba03` 修复并在重建 Full2 实例通过真实授权恢复。冻结模型首轮 7/10，仅复测 3 项后机器合并 9/10；人工仍有失败/partial，已达到运行上限，不追加采样。剩余具体条件及证据边界见目标文档；实现完成不冒充验收通过，goal 仍 active，不推送。
 

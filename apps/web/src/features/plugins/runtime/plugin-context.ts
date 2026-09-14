@@ -813,7 +813,7 @@ export function buildPluginContext(
           observe: handler => track(() => ({ dispose: hostWindow.observe(handler) })),
           control: request => {
             lifecycle.assertActive("services.ui.window.control");
-            return lifecycle.read("services.ui.window.control", () => hostWindow.control(request, lifecycle.signal));
+            return lifecycle.read("services.ui.window.control", () => hostWindow.control(request, lifecycle.signal, operationActor));
           },
         },
         publishView: async (channel, update) => {

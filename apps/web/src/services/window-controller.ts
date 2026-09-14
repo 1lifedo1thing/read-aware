@@ -1,9 +1,12 @@
 import { AppError, errorCode, normalizeHostWindowRequest, type HostWindowObservation,
   type HostWindowPort, type HostWindowRequest, type HostWindowSnapshot, type HostWindowState } from "@read-aware/core";
+import { causalActor, copyEventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
+
+export type WindowViewport = { width: number; height: number };
 
 export type WindowAdapter = {
   supported(): boolean;
-  read(): Promise<HostWindowState>;
+  read(): Promise<HostWindowState & { viewport?: WindowViewport }>;
   apply(request: HostWindowRequest, signal?: AbortSignal): Promise<void>;
   watch(changed: () => void): Promise<() => void>;
 };
@@ -14,6 +17,10 @@ export class HostWindowService implements HostWindowPort {
   private queued = 0;
   private revision = 0;
   private previous = "";
+  private observed?: HostWindowSnapshot;
+  private viewport: WindowViewport | null = null;
+  private commandRevision = 0;
+  private layoutReading?: { revision: number; work: Promise<WindowViewport | null> };
   private reading?: Promise<HostWindowSnapshot>;
   private listeners = new Set<() => void>();
   private stopWatch?: () => void;
@@ -29,11 +36,42 @@ export class HostWindowService implements HostWindowPort {
     return result;
   }
 
-  private async read(): Promise<HostWindowSnapshot> {
-    const state = this.adapter.supported() ? { supported: true as const, ...await this.adapter.read() } : { supported: false as const };
+  private async read(origin?: DomainActor): Promise<HostWindowSnapshot> {
+    const native = this.adapter.supported() ? await this.adapter.read() : null;
+    // Geometry is host-private. The public window contract exposes no sizes or
+    // platform fields, and read receipts do not claim animation completion.
+    const state = native ? { supported: true as const, minimized: native.minimized, maximized: native.maximized,
+      fullscreen: native.fullscreen, focused: native.focused } : { supported: false as const };
+    const viewport = native?.viewport;
+    const source = causalActor(origin ?? "system");
+    if (viewport && Number.isFinite(viewport.width) && Number.isFinite(viewport.height) && viewport.width > 0 && viewport.height > 0) {
+      if (viewport.width !== this.viewport?.width || viewport.height !== this.viewport?.height) {
+        this.viewport = stampEventCause({ width: viewport.width, height: viewport.height }, source);
+      }
+    } else this.viewport = null;
     const key = JSON.stringify(state);
-    if (key !== this.previous) { this.previous = key; this.revision++; }
-    return { ...state, revision: this.revision };
+    if (key !== this.previous) {
+      this.previous = key; this.revision++;
+      this.observed = stampEventCause({ ...state, revision: this.revision }, source);
+    }
+    return copyEventCause(this.observed!, { ...this.observed! });
+  }
+
+  /** Exact observed client geometry, for delayed DOM resize feedback only.
+   * Callers must compare it with their still-current viewport after awaiting. */
+  async layout(signal?: AbortSignal): Promise<WindowViewport | null> {
+    signal?.throwIfAborted();
+    if (!this.layoutReading || this.layoutReading.revision !== this.commandRevision) {
+      const read = { revision: this.commandRevision, work: this.enqueue(async () => {
+        await this.read();
+        return this.viewport ? copyEventCause(this.viewport, { ...this.viewport }) : null;
+      }) };
+      this.layoutReading = read;
+      void read.work.finally(() => { if (this.layoutReading === read) this.layoutReading = undefined; }).catch(() => {});
+    }
+    const value = await this.layoutReading.work;
+    signal?.throwIfAborted();
+    return value ? copyEventCause(value, { ...value }) : null;
   }
 
   async snapshot(signal?: AbortSignal): Promise<HostWindowSnapshot> {
@@ -45,19 +83,30 @@ export class HostWindowService implements HostWindowPort {
     }
     const value = await this.reading;
     signal?.throwIfAborted();
-    return { ...value };
+    return copyEventCause(value, { ...value });
   }
 
-  control(input: HostWindowRequest, signal?: AbortSignal) {
+  control(input: HostWindowRequest, signal?: AbortSignal, origin: DomainActor = "system") {
     const request = normalizeHostWindowRequest(input);
+    origin = causalActor(origin);
     signal?.throwIfAborted();
+    this.commandRevision++;
     return this.enqueue(async () => {
       signal?.throwIfAborted();
       if (!this.adapter.supported()) throw new AppError("ui/unavailable", "Window controls require the desktop app");
+      // Establish an unclaimed baseline before dispatch. A no-op request must
+      // not relabel old state or geometry as an effect of the caller.
+      await this.read();
+      signal?.throwIfAborted();
       try {
-        await this.adapter.apply(request, signal);
-        signal?.throwIfAborted();
-        const snapshot = await this.read();
+        try { await this.adapter.apply(request, signal); }
+        catch (error) {
+          // Restore can fail after an earlier native step succeeded. Preserve
+          // that observed effect even though the caller receives a failure.
+          try { await this.read(origin); } catch (readError) { this.report(readError); }
+          throw error;
+        }
+        const snapshot = await this.read(origin);
         signal?.throwIfAborted();
         return { status: "requested" as const, snapshot };
       } finally { this.notify(); }
@@ -78,7 +127,7 @@ export class HostWindowService implements HostWindowPort {
         do {
           dirty = false;
           let value: HostWindowObservation;
-          try { value = { status: "ready", snapshot: await this.snapshot() }; }
+          try { const snapshot = await this.snapshot(); value = copyEventCause(snapshot, { status: "ready", snapshot }); }
           catch (error) { this.report(error); value = { status: "error", code: errorCode(error) ?? "ipc/unknown" }; }
           const key = JSON.stringify(value);
           if (!stopped && key !== last) {

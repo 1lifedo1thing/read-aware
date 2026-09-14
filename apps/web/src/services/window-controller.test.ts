@@ -2,26 +2,88 @@ import { expect, test } from "bun:test";
 import { AppError, normalizeHostWindowRequest, type HostWindowObservation, type HostWindowRequest, type HostWindowState } from "@read-aware/core";
 import { HostWindowService, type WindowAdapter } from "./window-controller";
 import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
+import { actorCause, causalActor, eventCause, stampEventCause } from "../platform/domain-actor";
+import { hostWindow } from "./window";
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 function fixture() {
   const state: HostWindowState = { minimized: false, maximized: false, fullscreen: false, focused: true };
   const calls: HostWindowRequest[] = [], errors: unknown[] = [];
+  const viewport = { width: 800, height: 600 };
   let changed = () => {}, stops = 0;
   const adapter: WindowAdapter = {
-    supported: () => true, read: async () => ({ ...state }),
+    supported: () => true, read: async () => ({ ...state, viewport: { ...viewport } }),
     apply: async request => {
       calls.push(request);
       if (request.action === "fullscreen") state.fullscreen = request.enabled;
       else if (request.action === "minimize") state.minimized = true;
-      else if (request.action === "maximize") { state.minimized = false; state.maximized = true; }
-      else Object.assign(state, { minimized: false, maximized: false, fullscreen: false });
+      else if (request.action === "maximize") { state.minimized = false; state.maximized = true; Object.assign(viewport, { width: 1200, height: 900 }); }
+      else { Object.assign(state, { minimized: false, maximized: false, fullscreen: false }); Object.assign(viewport, { width: 800, height: 600 }); }
     },
     watch: async handler => { changed = handler; return () => { stops++; }; },
   };
   const service = new HostWindowService(adapter, error => errors.push(error));
-  return { service, adapter, state, calls, errors, changed: () => changed(), get stops() { return stops; } };
+  return { service, adapter, state, viewport, calls, errors, changed: () => changed(), get stops() { return stops; } };
 }
+
+test("public event-bound window requests retain source in receipts and exact sampled geometry", async () => {
+  const f = fixture(), original = hostWindow.control;
+  hostWindow.control = (request, signal, origin) => f.service.control(request, signal, origin);
+  const runtime = buildPluginContext({ id: "window-cause", name: "Window", version: "1", schemaVersion: 1, requires: {} }, "1", []);
+  runtime.lifecycle.promote();
+  const rule = {};
+  try {
+    await runtime.reactions.deliver(rule, stampEventCause({}, causalActor("user")), async reaction => {
+      const actor = runtime.reactions.actor(reaction);
+      const receipt = await runtime.context.withEvent({ reaction }).services.ui.window!.control({ action: "maximize" });
+      expect(eventCause(receipt.snapshot)).toBe(actorCause(actor));
+      expect(eventCause((await f.service.layout())!)).toBe(actorCause(actor));
+      expect(receipt.snapshot).not.toHaveProperty("viewport");
+      await runtime.reactions.deliver(rule, receipt.snapshot, next => { expect(next.status).toBe("cycle"); });
+      await f.service.control({ action: "maximize" }, undefined, causalActor("user"));
+      expect(eventCause((await f.service.layout())!)).toBe(actorCause(actor)); // no-op cannot relabel geometry
+    });
+    f.viewport.width = 1100; f.state.maximized = false;
+    const user = await f.service.layout();
+    expect(user).toEqual({ width: 1100, height: 900 });
+    await runtime.reactions.deliver(rule, user!, next => { expect(next.status).toBe("ready"); });
+  } finally { hostWindow.control = original; runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); }
+});
+
+test("layout reads wait behind native dispatch and cancelled or partially failed effects retain their source", async () => {
+  const f = fixture(), held = Promise.withResolvers<void>(), source = causalActor("plugin:window"), abort = new AbortController();
+  const apply = f.adapter.apply;
+  f.adapter.apply = async request => { await held.promise; await apply(request); abort.abort(new AppError("plugin/cancelled", "Retired")); };
+  const request = f.service.control({ action: "maximize" }, abort.signal, source).catch(error => error);
+  let complete = false;
+  const layout = f.service.layout().then(value => { complete = true; return value; });
+  await tick(); expect(complete).toBe(false);
+  held.resolve(); expect(await request).toMatchObject({ code: "plugin/cancelled" });
+  const observed = await layout;
+  expect(observed).toEqual({ width: 1200, height: 900 });
+  expect(eventCause(observed!)).toBe(actorCause(source));
+  const partial = causalActor("plugin:restore");
+  f.adapter.apply = async () => { f.state.maximized = false; f.viewport.width = 900; throw new AppError("ipc/unknown", "Second native step failed"); };
+  await expect(f.service.control({ action: "restore" }, undefined, partial)).rejects.toMatchObject({ code: "ipc/unknown" });
+  expect(eventCause((await f.service.layout())!)).toBe(actorCause(partial));
+});
+
+test("a layout read admitted after a new command never shares the earlier in-flight sample", async () => {
+  const f = fixture(), firstRead = Promise.withResolvers<HostWindowState & { viewport: { width: number; height: number } }>();
+  const read = f.adapter.read;
+  let count = 0;
+  f.adapter.read = () => ++count === 1 ? firstRead.promise : read();
+  const before = f.service.layout(); await tick();
+  const source = causalActor("plugin:window");
+  const request = f.service.control({ action: "maximize" }, undefined, source);
+  const after = f.service.layout();
+  firstRead.resolve({ ...f.state, viewport: { width: 800, height: 600 } });
+  expect(await before).toEqual({ width: 800, height: 600 });
+  await request;
+  const current = await after;
+  expect(current).toEqual({ width: 1200, height: 900 });
+  expect(eventCause(current!)).toBe(actorCause(source));
+});
 
 test("window intents are bounded, typed, ordered and return observed state rather than a paint claim", async () => {
   const f = fixture();

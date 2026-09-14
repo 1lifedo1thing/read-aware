@@ -2005,6 +2005,17 @@ for concentrated E2E; no browser-only result is claimed as desktop proof.
 
 ### Main Window Controls (UI 1.11)
 
+[代码] Window commands retain their host source in the observed state and
+host-private client geometry sampled after dispatch. No-op requests preserve
+the previous source; cancelled or partially failed native operations retain
+effects that were actually observed. Geometry reads admitted after a new
+window command cannot reuse an earlier in-flight sample. Image resize feedback
+matches that geometry and rejects stale viewer, transform and size samples;
+an unrelated parent render does not republish under an old pan/zoom source.
+This does not attribute later native animation frames, unrelated element
+layout changes or failed OS reads. Their complete causal path and actual Tauri
+layout acceptance remain pending under C04.
+
 [代码] `services.ui.window.snapshot / observe / control` expose only the main
 desktop window, through the existing local UI service without a new permission.
 The Agent's `get_app_window / control_app_window` use the same service in both
@@ -2013,7 +2024,7 @@ native OS traffic lights remain native.
 
 Snapshots return `supported: false, revision` outside desktop; supported
 snapshots additionally include `minimized, maximized, fullscreen, focused`.
-Revision changes when sampled flags change. These sequential OS reads are not an
+Revision changes when sampled flags change. These OS reads are not an
 atomic layout snapshot. There are no title, paths, coordinates, window handles,
 window enumeration, creation or focus-stealing methods.
 

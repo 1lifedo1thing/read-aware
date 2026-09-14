@@ -2,8 +2,12 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { errorCode } from "@read-aware/core";
 import { readerImage, type ReaderImageService } from "../../../services/reader-image";
 import type { useZoomPan } from "./useZoomPan";
-import type { DomainActor } from "../../../platform/domain-actor";
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 import type { ImageViewLifetime } from "./useImageViewer";
+import { resizeSource, sameResizeSample, sampleResize } from "../lib/resize-source";
+import { createLogger } from "../../../platform/logger";
+
+const log = createLogger("reader-image-layout");
 
 export function useImageControls(zoom: ReturnType<typeof useZoomPan>,
   session: { bookId: string; sessionId: string } | undefined, onClose: (origin?: DomainActor) => void,
@@ -37,11 +41,30 @@ export function useImageControls(zoom: ReturnType<typeof useZoomPan>,
     }
     binding.current = bound;
     const stage = current.current.zoom.stageRef.current;
+    let sample = stage ? sampleResize(stage) : undefined;
+    let generation = 0;
     const resize = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => {
-      bound.publish(current.current.zoom.snapshot(), 0, "system");
+      if (!stage || !sample || binding.current !== bound) return;
+      const next = sampleResize(stage), before = sample;
+      if (sameResizeSample(before, next)) return;
+      sample = next;
+      const request = ++generation, view = current.current.zoom;
+      const intent = view.intentRevision.current;
+      void resizeSource(before, next, undefined).catch(error => {
+        // Geometry remains observable when the OS state query fails. This is
+        // an uncorrelated layout change, not a claimed native-command effect.
+        log.warn("Image layout source unavailable", error);
+        return causalActor("system");
+      }).then(origin => {
+        if (generation !== request || source.closedBy || view.intentRevision.current !== intent || binding.current !== bound || current.current.zoom.snapshot !== view.snapshot
+          || current.current.zoom.origin !== view.origin || !sameResizeSample(next, sampleResize(stage))) return;
+        bound.publish(view.snapshot(), 0, origin);
+      });
     });
     if (stage) resize?.observe(stage);
-    return () => { resize?.disconnect(); bound.dispose(source.closedBy ?? source.opening); if (binding.current === bound) binding.current = null; };
+    return () => { generation++; resize?.disconnect(); bound.dispose(source.closedBy ?? source.opening); if (binding.current === bound) binding.current = null; };
   }, [service, session?.bookId, session?.sessionId, viewerId, source]);
-  useLayoutEffect(() => { binding.current?.publish(zoom.snapshot(), token, zoom.origin); });
+  // Parent renders do not make a new zoom intent. A geometry-only change is
+  // published by its resize sample, not under the previous pan/zoom's source.
+  useLayoutEffect(() => { binding.current?.publish(zoom.snapshot(), token, zoom.origin); }, [zoom.snapshot, token, zoom.origin]);
 }
