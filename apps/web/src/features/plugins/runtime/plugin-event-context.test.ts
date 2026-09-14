@@ -278,3 +278,29 @@ test("scoped time sampling keeps the public reaction lease until async delivery 
     runtime.context.domains.reading!.events.observeTime({ bookId: "b" }, () => {}, { ruleId: "time-display" }).dispose();
   } finally { gate.resolve(); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); sample.mockRestore(); }
 });
+
+
+test("workspace reactions survive await and retain their cycle on retirement null", async () => {
+  const { workspace } = await import("../../../services/workspace");
+  const runtime = buildPluginContext({ id: "workspace-reaction", name: "Workspace", version: "1", schemaVersion: 1, requires: {}, permissions: ["library:write"] }, "1", []);
+  const view = { surface: "shelf" as "shelf" | "stats", collectionId: null, settings: { open: false, section: null }, search: { open: false, query: "" }, selection: { active: false, bookIds: [] } };
+  let source: import("../../../platform/domain-actor").DomainActor = "system";
+  const binding = workspace.bind({ prepare: async () => {}, apply: async (_target, _signal, _close, actor) => { source = actor; view.surface = "stats"; },
+    requestCommit: token => { binding.publish(stampEventCause({ ...view }, source), token); workspace.acknowledge("stats", token); } }, view);
+  const statuses: string[] = [], failures: unknown[] = [];
+  let retained: PluginContext | undefined;
+  try {
+    runtime.lifecycle.promote();
+    const subscription = runtime.context.services.ui.workspace!.observe({}, async (snapshot, delivery) => {
+      statuses.push(`${snapshot?.surface ?? "null"}:${delivery?.reaction?.status}`);
+      if (delivery?.reaction?.status === "cycle") return;
+      try { retained = runtime.context.withEvent(delivery); await Promise.resolve(); await retained.services.ui.workspace!.navigate!({ surface: "stats" }); }
+      catch (error) { failures.push(error); }
+    }, { ruleId: "workspace-follow" });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(failures).toEqual([]); expect(statuses).toEqual(["shelf:ready", "stats:cycle"]);
+    expect(() => retained!.services.ui.workspace!.snapshot()).toThrow(expect.objectContaining({ code: "plugin/invalid-cause" }));
+    binding.dispose(source); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(statuses.at(-1)).toBe("null:cycle"); subscription.dispose();
+  } finally { binding.dispose(); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); }
+});

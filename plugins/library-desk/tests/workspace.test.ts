@@ -11,6 +11,7 @@ function fixture(grant: PluginContext["grants"]["book"] = { mode: "all" }) {
     workspace: { snapshot: async () => state, navigate: async (target: unknown) => { calls.push(target); return { status: "completed", snapshot: state }; },
       observe: (_query: unknown, handler: typeof observe) => { observe = handler; return { dispose() { disposed = true; } }; } },
   } } } as unknown as PluginContext;
+  ctx.withEvent = (() => ctx) as unknown as PluginContext["withEvent"];
   return { ctx, state, calls, observe: (s: WorkspaceSnapshot | null) => observe(s), get disposed() { return disposed; } };
 }
 test("mixed-collection selection requires an explicit group choice and passes only visible IDs", async () => {

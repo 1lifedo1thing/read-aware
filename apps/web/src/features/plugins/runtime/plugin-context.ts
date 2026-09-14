@@ -6,7 +6,7 @@ import { pluginServices, type PluginServiceParticipant } from "./plugin-services
 import type { DomainActorOwners } from "../../../domain/actor-owners";
 import { PluginEventReactions } from "./plugin-event-reactions";
 import { attachPluginEventReactions, bindPluginEventContext } from "./plugin-event-context";
-import { copyEventCause, type DomainActor } from "../../../platform/domain-actor";
+import { stampEventCause, copyEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { inferenceHistoryStorage } from "./plugin-inference-history-storage";
 import { resourceModelImage } from "../../../services/model-image";
 import { createPluginStoragePolicy } from "./plugin-storage-policy";
@@ -1142,7 +1142,7 @@ export function buildPluginContext(
     };
     ctx.services.ui.workspace = {
       snapshot: async query => { lifecycle.assertActive("services.ui.workspace.snapshot"); return workspace.snapshot(query); },
-      observe: (query, handler) => track(() => ({ dispose: workspace.observe(query, handler) })),
+      observe: (query, handler) => track(() => ({ dispose: workspace.observe(query, handler, undefined, operationActor) })),
       ...(library.commands ? { navigate: (target: import("@read-aware/core").WorkspaceTarget, expectedRevision?: number) => {
         lifecycle.assertActive("services.ui.workspace.navigate");
         return workspace.navigate(target, expectedRevision, lifecycle.signal, !!domain.reading?.commands, undefined, operationActor);
@@ -1151,7 +1151,14 @@ export function buildPluginContext(
     if (objectAccess.restricted) {
       const scoped = scopePluginWorkspace(workspace, commands, objectAccess, lifecycle, {
         current: () => latestCurrent,
-        observe: handler => readingRuntime.observe(() => handler()),
+        observe: handler => {
+          let initial = true;
+          return readingRuntime.observe(snapshot => {
+            const source = initial ? stampEventCause({}, operationActor) : snapshot;
+            initial = false;
+            return handler(source);
+          });
+        },
       }, !!library.commands, !!domain.reading?.commands, scopedWorkspaceState, operationActor);
       commandAvailability = scoped.checkCommand;
       ctx.services.ui.commands = scoped.commands;
@@ -1787,7 +1794,14 @@ export function buildPluginContext(
   if (objectAccess.restricted && domain.conversations) {
     ctx.domains.conversations = scopePluginConversations(domain.conversations, objectAccess, lifecycle, {
       current: () => latestCurrent,
-      observe: handler => readingRuntime.observe(snapshot => handler(snapshot)),
+      observe: handler => {
+          let initial = true;
+          return readingRuntime.observe(snapshot => {
+            const source = initial ? stampEventCause({}, operationActor) : snapshot;
+            initial = false;
+            return handler(source);
+          });
+        },
     }, operationActor, scopedConversationState);
   }
 

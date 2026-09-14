@@ -108,7 +108,7 @@ test("workspace observations follow the current grant and release host and reade
   const f = fixture(), seen: unknown[] = [];
   const subscription = f.api.workspace!.observe({ limit: 1 }, snapshot => { seen.push(snapshot?.selection.bookIds); });
   try {
-    expect(seen).toEqual([["z-owned"]]); f.switchBook("foreign"); expect(seen.at(-1)).toEqual([]);
+    expect(seen).toEqual([["z-owned"]]); f.switchBook("foreign"); await new Promise(resolve => setTimeout(resolve, 0)); expect(seen.at(-1)).toEqual([]);
     subscription.dispose(); const count = seen.length; f.switchBook("z-owned"); expect(seen).toHaveLength(count); expect(f.readers.size).toBe(0);
   } finally { subscription.dispose(); await f.close(); }
 });

@@ -12,6 +12,7 @@ function fixture() {
       { id: "go-stats", title: "Statistics", enabled: false, unavailableReason: "reader-control" },
     ] }; }, execute: async (request: unknown) => { calls.push(request); return receipt; },
   } } } } as unknown as PluginContext;
+  ctx.withEvent = (() => ctx) as unknown as PluginContext["withEvent"];
   return { ctx, calls, set receipt(value: HostCommandReceipt) { receipt = value; }, get lists() { return lists; } };
 }
 test("command view uses host titles, checked and unavailable states, guarding actual execution", async () => {

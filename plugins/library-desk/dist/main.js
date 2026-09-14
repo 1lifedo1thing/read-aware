@@ -107,16 +107,16 @@ async function commandsView(ctx) {
   };
   return { ...content(), live: { subscribe(channel) {
     let disposed = false, revision = 0;
-    const subscription = api.observe(async (state) => {
-      if (disposed)
+    const subscription = api.observe(async (state, delivery) => {
+      if (disposed || delivery?.reaction?.status === "cycle")
         return;
       if (state.status === "ready") {
         snapshot = state.snapshot;
         failure = undefined;
       } else
         failure = state.code;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: content() });
-    });
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: content() });
+    }, { ruleId: "commands-live" });
     return { dispose() {
       disposed = true;
       subscription.dispose();
@@ -184,12 +184,12 @@ async function workspaceView(ctx, selected) {
   });
   return { ...content(), live: { subscribe: async (next) => {
     channel = next;
-    const subscription = api.observe({ limit: 1 }, async (snapshot) => {
-      if (!snapshot || channel?.id !== next.id)
+    const subscription = api.observe({ limit: 1 }, async (snapshot, delivery) => {
+      if (!snapshot || channel?.id !== next.id || delivery?.reaction?.status === "cycle")
         return;
       state = snapshot;
-      await ctx.services.ui.publishView(next, { revision: ++revision, view: content() });
-    });
+      await ctx.withEvent(delivery).services.ui.publishView(next, { revision: ++revision, view: content() });
+    }, { ruleId: "workspace-live" });
     return { dispose() {
       subscription.dispose();
       if (channel?.id === next.id)

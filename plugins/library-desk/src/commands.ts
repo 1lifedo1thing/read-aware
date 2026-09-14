@@ -65,12 +65,12 @@ export async function commandsView(ctx: PluginContext): Promise<PluginView & Plu
   };
   return { ...content(), live: { subscribe(channel) {
     let disposed = false, revision = 0;
-    const subscription = api.observe(async state => {
-      if (disposed) return;
+    const subscription = api.observe(async (state, delivery) => {
+      if (disposed || delivery?.reaction?.status === "cycle") return;
       if (state.status === "ready") { snapshot = state.snapshot; failure = undefined; }
       else failure = state.code;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: content() });
-    });
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: content() });
+    }, { ruleId: "commands-live" });
     return { dispose() { disposed = true; subscription.dispose(); } };
   } } };
 }

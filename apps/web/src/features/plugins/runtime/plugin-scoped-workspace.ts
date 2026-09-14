@@ -1,4 +1,5 @@
-import { copyEventCause, type DomainActor } from "../../../platform/domain-actor";
+import { observeSnapshot } from "../../../domain/snapshot-observation";
+import { stampEventCause, copyEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { AppError, errorCode, normalizeHostCommandRequest, normalizeWorkspaceQuery, normalizeWorkspaceTarget,
   type HostCommandSnapshot, type HostCommandRequest, type OperationAvailability, operationAvailability, type WorkspaceQuery, type WorkspaceSnapshot, type WorkspaceTarget } from "@read-aware/core";
 import type { PluginContext } from "@read-aware/plugin-types";
@@ -9,7 +10,7 @@ import { createLogger } from "../../../platform/logger";
 import type { PluginLifecycleController } from "./plugin-lifecycle";
 
 type Ui = PluginContext["services"]["ui"];
-type Reader = { current(): CurrentBookSnapshot; observe(handler: () => void): () => void };
+type Reader = { current(): CurrentBookSnapshot; observe(handler: (source?: object) => void): () => void };
 const log = createLogger("scoped-workspace");
 
 /** The host retains its complete selection; only the authorized projection and
@@ -138,23 +139,16 @@ export function scopePluginWorkspace(host: WorkspaceService, hostCommands: Retur
       const query = normalizeWorkspaceQuery(input);
       if (typeof handler !== "function") throw new AppError("ui/invalid-target", "Expected a workspace callback");
       if (query.selectionAfter !== undefined) policy.assertBook(query.selectionAfter, "workspace selection cursor");
-      return lifecycle.stage(() => {
-        let stopped = false;
-        const publish = (state: WorkspaceSnapshot | null) => {
-          if (!stopped && !lifecycle.signal.aborted) return handler(state ? stamp(state) : null);
-        };
-        const offHost = host.observe(query, publish, project);
-        const offReader = reader.observe(() => {
-          try { Promise.resolve(publish(host.snapshot(query, project))).catch(error => log.warn("Workspace callback failed", error)); }
-          catch (error) {
-            if (errorCode(error) === "ui/unavailable") {
-              try { Promise.resolve(publish(null)).catch(error => log.warn("Workspace callback failed", error)); }
-              catch (error) { log.warn("Workspace callback failed", error); }
-            } else log.warn("Workspace scope refresh failed", error);
-          }
-        });
-        return { dispose: () => { stopped = true; offHost(); offReader(); } };
-      });
+      return lifecycle.stage(() => ({ dispose: observeSnapshot(() => {
+        try { return stamp(host.snapshot(query, project)); }
+        catch (error) { if (errorCode(error) === "ui/unavailable") return null; throw error; }
+      }, notify => {
+        const offHost = host.observe(query, (_value, source) => notify(source), project, origin);
+        try {
+          const offReader = reader.observe(source => notify(source ?? stampEventCause({}, "system")));
+          return () => { offHost(); offReader(); };
+        } catch (error) { offHost(); throw error; }
+      }, handler, error => log.warn("Workspace scope observation failed", error), origin) }));
     },
     ...(canNavigate ? { navigate(input: WorkspaceTarget, expectedRevision?: number) {
       const target = normalizeTarget(input);

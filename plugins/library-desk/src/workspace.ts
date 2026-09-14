@@ -45,11 +45,11 @@ export async function workspaceView(ctx: PluginContext, selected?: PluginBook[])
   });
   return { ...content(), live: { subscribe: async next => {
     channel = next;
-    const subscription = api.observe({ limit: 1 }, async (snapshot: WorkspaceSnapshot | null) => {
-      if (!snapshot || channel?.id !== next.id) return;
+    const subscription = api.observe({ limit: 1 }, async (snapshot: WorkspaceSnapshot | null, delivery) => {
+      if (!snapshot || channel?.id !== next.id || delivery?.reaction?.status === "cycle") return;
       state = snapshot;
-      await ctx.services.ui.publishView(next, { revision: ++revision, view: content() });
-    });
+      await ctx.withEvent(delivery).services.ui.publishView(next, { revision: ++revision, view: content() });
+    }, { ruleId: "workspace-live" });
     return { dispose() { subscription.dispose(); if (channel?.id === next.id) channel = undefined; } };
   } } };
 }
