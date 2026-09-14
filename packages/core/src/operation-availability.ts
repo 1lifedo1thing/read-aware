@@ -1,3 +1,4 @@
+import { normalizeHostCommandRequest, type HostCommandRequest } from "./host-commands";
 import { normalizePluginServiceCall, type PluginServiceCall } from "./plugin-services";
 import { normalizeBookGraphTaskOptions, type BookGraphTaskOptions } from "./book-graph-task";
 import { normalizeHostWindowRequest, type HostWindowRequest } from "./host-window";
@@ -20,8 +21,9 @@ export type ExportAvailabilityQuery = { operation: "ui.exportFile" } & HostExpor
 export type HostIOAvailabilityQuery = ExportAvailabilityQuery | { operation: "clipboard.writeText"; text: string } | { operation: "ui.openExternal"; url: string };
 export type SyncAvailabilityQuery = { operation: "sync.now" };
 export type PluginServiceAvailabilityQuery = { operation: "plugins.callService"; serviceCall: PluginServiceCall };
-export type OperationAvailabilityQuery = PluginServiceAvailabilityQuery | InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
-export type NormalizedOperationAvailabilityQuery = PluginServiceAvailabilityQuery | Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
+export type HostCommandAvailabilityQuery = { operation: "ui.commands.execute"; command: HostCommandRequest };
+export type OperationAvailabilityQuery = HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
+export type NormalizedOperationAvailabilityQuery = HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
 export type OperationConditionState = "satisfied" | "unconfigured" | "unavailable" | "unknown";
 export type OperationCondition = {
   kind: "permission" | "account" | "model" | "endpoint" | "provider" | "input" | "object" | "reader" | "capacity";
@@ -49,6 +51,10 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
       || raw.mode !== "catch-up" && raw.mode !== "rebuild") throw invalid();
     return { operation: raw.operation, bookId: raw.bookId, mode: raw.mode,
       ...normalizeBookGraphTaskOptions(raw.maxChapters === undefined ? undefined : { maxChapters: raw.maxChapters }) };
+  }
+  if (raw.operation === "ui.commands.execute") {
+    if (Object.keys(raw).some(key => key !== "operation" && key !== "command")) throw invalid();
+    return { operation: raw.operation, command: normalizeHostCommandRequest(raw.command) };
   }
   if (raw.operation === "plugins.callService") {
     if (Object.keys(raw).some(key => key !== "operation" && key !== "serviceCall")) throw invalid();

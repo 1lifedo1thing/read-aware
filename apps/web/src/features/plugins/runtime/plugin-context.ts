@@ -399,6 +399,7 @@ export function buildPluginContext(
     if (typeof operationActor === "object") {
       const cached = contexts.get(operationActor); if (cached) return cached;
     }
+  let commandAvailability: ((request: import("@read-aware/core").HostCommandRequest, signal: AbortSignal) => Promise<import("@read-aware/core").OperationAvailability>) | undefined;
   const documents = createPluginDocuments(manifest.id, lifecycle, undefined, operationActor, documentObserver);
   const domain = createActorDomainView(
     operationActor,
@@ -971,6 +972,13 @@ export function buildPluginContext(
             ]));
             return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
           }
+          if (query.operation === "ui.commands.execute") {
+            if (!permissions.has("library:write") || !commandAvailability) return Promise.resolve(operationAvailability(query, [
+              { kind: "permission", state: "unavailable", reason: "library:write-required" },
+            ]));
+            const check = commandAvailability;
+            return lifecycle.read("services.session.operationAvailability", () => check(query.command, signal), signal);
+          }
           if (query.operation === "plugins.callService") {
             return lifecycle.read("services.session.operationAvailability", async () => pluginServices.inspect(serviceParticipant(operationActor), query.serviceCall), signal);
           }
@@ -1120,6 +1128,7 @@ export function buildPluginContext(
   if (domain.library) {
     const library = domain.library;
     const commands = actorHostCommands(settingsDomain, true, !!library.commands, !!domain.reading?.commands, operationActor);
+    commandAvailability = commands.check;
     ctx.services.ui.commands = {
       observe: handler => track(() => ({ dispose: commands.observe(handler) })),
       list: async () => {
@@ -1144,6 +1153,7 @@ export function buildPluginContext(
         current: () => latestCurrent,
         observe: handler => readingRuntime.observe(() => handler()),
       }, !!library.commands, !!domain.reading?.commands, scopedWorkspaceState, operationActor);
+      commandAvailability = scoped.checkCommand;
       ctx.services.ui.commands = scoped.commands;
       ctx.services.ui.workspace = scoped.workspace;
     }

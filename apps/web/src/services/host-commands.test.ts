@@ -43,6 +43,8 @@ test("command requests are a finite, parameterless vocabulary with copied revisi
 
 test("discovery exposes only authorized checked values and separate navigation and reader permissions", async () => {
   const f = fixture();
+  expect((await f.api.check({ id: "layout-list" })).state).toBe("unknown"); expect(f.calls).toEqual([]);
+  expect((await f.api.check({ id: "layout-list", expectedWorkspaceRevision: 1 })).conditions[0]?.errorCode).toBe("ui/superseded");
   expect((await f.api.list()).commands).toHaveLength(18);
   expect((await f.api.list()).commands.find(c => c.id === "layout-grid")).toMatchObject({ checked: true, enabled: true });
   f.settings.queries.snapshot = async () => ({ settings: [] } as unknown as SettingsSnapshot);
@@ -53,6 +55,7 @@ test("discovery exposes only authorized checked values and separate navigation a
   const commands = (await f.api.list()).commands;
   expect(commands.find(c => c.id === "go-stats")).toMatchObject({ enabled: false, unavailableReason: "reader-control" });
   expect(commands.find(c => c.id === "open-settings")?.enabled).toBe(true);
+  expect((await f.api.check({ id: "go-stats" })).conditions[0]?.kind).toBe("permission");
   await expect(f.api.execute({ id: "go-stats" })).rejects.toMatchObject({ code: "ui/unavailable" });
   expect(f.calls).toEqual([]);
   expect((await fixture({ canNavigate: false }).api.list()).commands.every(c => c.unavailableReason === "permission")).toBe(true);

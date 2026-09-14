@@ -1,6 +1,6 @@
 import { type DomainActor } from "../../../platform/domain-actor";
 import { AppError, errorCode, normalizeHostCommandRequest, normalizeWorkspaceQuery, normalizeWorkspaceTarget,
-  type HostCommandSnapshot, type WorkspaceQuery, type WorkspaceSnapshot, type WorkspaceTarget } from "@read-aware/core";
+  type HostCommandSnapshot, type HostCommandRequest, type OperationAvailability, operationAvailability, type WorkspaceQuery, type WorkspaceSnapshot, type WorkspaceTarget } from "@read-aware/core";
 import type { PluginContext } from "@read-aware/plugin-types";
 import { pluginObjectAccessDenied, type CurrentBookSnapshot, type PluginBookAccessPolicy } from "../../../domain/plugin-object-access";
 import type { WorkspaceService, WorkspaceView } from "../../../services/workspace";
@@ -16,7 +16,7 @@ const log = createLogger("scoped-workspace");
  * an actor-local concurrency token cross the plugin boundary. */
 export function scopePluginWorkspace(host: WorkspaceService, hostCommands: ReturnType<typeof actorHostCommands>,
   policy: PluginBookAccessPolicy, lifecycle: PluginLifecycleController, reader: Reader,
-  canNavigate: boolean, canCloseReader: boolean, state: { revision: number; nativeRevision?: number; scopeKey?: string } = { revision: 0 }, origin: DomainActor = "system"): Pick<Ui, "workspace" | "commands"> {
+  canNavigate: boolean, canCloseReader: boolean, state: { revision: number; nativeRevision?: number; scopeKey?: string } = { revision: 0 }, origin: DomainActor = "system"): Pick<Ui, "workspace" | "commands"> & { checkCommand(request: HostCommandRequest, signal?: AbortSignal): Promise<OperationAvailability> } {
   const denied = (operation: string): never => { throw pluginObjectAccessDenied(`workspace.${operation}`); };
   const bookId = () => policy.grant.mode === "book" ? policy.grant.bookId : reader.current().bookId;
   const project = (view: WorkspaceView): WorkspaceView => {
@@ -105,7 +105,26 @@ export function scopePluginWorkspace(host: WorkspaceService, hostCommands: Retur
     }) };
   };
 
-  return { workspace: {
+  return { async checkCommand(input, signal = lifecycle.signal) {
+    lifecycle.assertActive("ui.commands.check"); signal.throwIfAborted();
+    const request = normalizeHostCommandRequest(input);
+    const authorize = () => {
+      if (!canNavigate || request.id === "open-collection") denied(request.id);
+      if (request.id === "open-book") policy.assertBook(request.args.bookId, "workspace open-book");
+      if (request.id !== "open-settings" && request.id !== "open-book") checkClosing();
+    };
+    try {
+      authorize(); await list(signal); signal.throwIfAborted(); authorize();
+      const result = await hostCommands.check({ ...request, expectedWorkspaceRevision: expectedNative(request.expectedWorkspaceRevision) }, signal);
+      signal.throwIfAborted(); authorize(); return result;
+    } catch (error) {
+      signal.throwIfAborted();
+      const code = errorCode(error) ?? "internal", permission = code === "plugin/object-access-denied";
+      if (!permission && code !== "ui/superseded") log.warn("Cannot inspect scoped command", error);
+      return operationAvailability({ operation: "ui.commands.execute", command: request }, [{ kind: permission ? "permission" : "object",
+        state: permission || code === "ui/superseded" ? "unavailable" : "unknown", reason: permission ? "book-scope-required" : "command-prerequisites-read-failed", errorCode: code }]);
+    }
+  }, workspace: {
     async snapshot(input) {
       lifecycle.assertActive("ui.workspace.snapshot");
       const query = normalizeWorkspaceQuery(input), id = bookId();

@@ -29,6 +29,7 @@ function fixture(grant: PluginBookAccess = { mode: "current" }, write = true) {
     list: async () => ({ version: 1, workspaceRevision: host.snapshot().revision,
       commands: HOST_COMMAND_IDS.map(id => ({ id, title: id, enabled: true, parameters: hostCommandParameters(id) })) }),
     execute: async input => { const request = input as HostCommandRequest; requests.push(request); return { commandId: request.id, status: "completed", completed: ["workspace"] }; },
+    check: async _request => ({ operation: "ui.commands.execute", remoteChecked: false, state: "unknown", conditions: [] }),
     observe: () => () => {},
   };
   const api = scopePluginWorkspace(host, commands, policy, lifecycle, reader, write, true);
@@ -59,6 +60,7 @@ test("command discovery uses the same actor revision and rejects collections and
     expect(commands.workspaceRevision).toBe(state.revision);
     expect(commands.commands.find(command => command.id === "open-collection")).toMatchObject({ enabled: false, unavailableReason: "object-scope" });
     expect(() => f.api.commands!.execute!({ id: "open-collection", args: { collectionId: "private-collection" } })).toThrow();
+    expect((await f.api.checkCommand({ id: "open-book", args: { bookId: "foreign" } })).conditions[0]?.kind).toBe("permission");
     expect(() => f.api.commands!.execute!({ id: "open-book", args: { bookId: "foreign" } })).toThrow();
     await f.api.commands!.execute!({ id: "open-book", args: { bookId: "z-owned" }, expectedWorkspaceRevision: state.revision });
     expect(f.requests).toEqual([{ id: "open-book", args: { bookId: "z-owned" }, expectedWorkspaceRevision: f.host.snapshot().revision }]);

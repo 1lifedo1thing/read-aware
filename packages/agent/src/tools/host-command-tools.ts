@@ -1,6 +1,6 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { HOST_COMMAND_IDS, normalizeHostCommandRequest } from "@read-aware/core";
+import { assertOperationAvailable, HOST_COMMAND_IDS, normalizeHostCommandRequest } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import { textResult } from "./tool-result";
 
@@ -23,6 +23,7 @@ export function buildHostCommandTools(deps: RuntimeDeps): AgentTool[] {
     executionMode: "sequential",
     execute: async (_id, input, signal) => {
       signal?.throwIfAborted(); const request = normalizeHostCommandRequest(input);
+      if (deps.operationAvailability) assertOperationAvailable(await deps.operationAvailability.check({ operation: "ui.commands.execute", command: request }, signal));
       const result = await deps.hostCommands.execute(request, signal);
       // Preserve a settled/partial receipt even when cancellation followed a write.
       return textResult(result);

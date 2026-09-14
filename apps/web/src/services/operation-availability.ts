@@ -62,6 +62,10 @@ export function inspectInferenceAvailability(input: InferenceAvailabilityQuery, 
 export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal, context?: OperationAvailabilityContext): Promise<OperationAvailability> {
   const query = normalizeOperationAvailability(input);
   signal?.throwIfAborted();
+  if (query.operation === "ui.commands.execute") {
+    const { trustedHostCommands } = await import("./host-command-runtime");
+    signal?.throwIfAborted(); return trustedHostCommands("agent").check(query.command, signal);
+  }
   if (query.operation === "plugins.callService") {
     const { pluginServices } = await import("../features/plugins/runtime/plugin-services");
     signal?.throwIfAborted(); return pluginServices.inspectForAgent(query.serviceCall);

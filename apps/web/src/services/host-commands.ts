@@ -1,6 +1,15 @@
-import { AppError, errorCode, HOST_COMMAND_IDS, hostCommandParameters, normalizeHostCommandRequest, type HostCommandId, type HostCommandRequest, type HostCommandReceipt, type HostCommandSnapshot, type WorkspaceTarget, type WorkspaceSnapshot } from "@read-aware/core";
+import { createLogger } from "../platform/logger";
+import { AppError, errorCode, operationAvailability, type OperationAvailability, type OperationCondition, HOST_COMMAND_IDS, hostCommandParameters, normalizeHostCommandRequest, type HostCommandId, type HostCommandRequest, type HostCommandReceipt, type HostCommandSnapshot, type WorkspaceTarget, type WorkspaceSnapshot } from "@read-aware/core";
 import type { SettingsDomain } from "../domain/settings/domain";
 import type { WorkspaceService } from "./workspace";
+
+const log = createLogger("host-commands");
+class CommandConditionError extends AppError {
+  constructor(readonly condition: OperationCondition) { super(condition.errorCode ?? "ui/unavailable", condition.reason); }
+}
+const unavailable = (kind: OperationCondition["kind"], reason: string, errorCode = "ui/unavailable"): never => {
+  throw new CommandConditionError({ kind, state: "unavailable", reason, errorCode });
+};
 
 type Dependencies = {
   workspace: Pick<WorkspaceService, "snapshot" | "navigate">;
@@ -46,24 +55,45 @@ export function createHostCommands(deps: Dependencies) {
         parameters: hostCommandParameters(id) };
     }) };
   };
-  const execute = async (input: unknown, signal?: AbortSignal): Promise<HostCommandReceipt> => {
+  const prepare = async (input: unknown, signal?: AbortSignal) => {
     signal?.throwIfAborted();
     const accepted = normalizeHostCommandRequest(input);
     const snapshot = await list(signal);
     const command = snapshot.commands.find(item => item.id === accepted.id)!;
-    if (!command.enabled) throw new AppError("ui/unavailable", `Host command unavailable: ${command.unavailableReason}`);
+    if (!command.enabled) unavailable(command.unavailableReason === "permission" || command.unavailableReason === "reader-control" ? "permission" : "provider", `command-${command.unavailableReason}`);
     if (accepted.expectedWorkspaceRevision !== undefined && accepted.expectedWorkspaceRevision !== snapshot.workspaceRevision) {
-      throw new AppError("ui/superseded", "Workspace changed since command discovery");
+      unavailable("object", "workspace-revision-changed", "ui/superseded");
     }
-    const completed: HostCommandReceipt["completed"] = [];
     const change = setting(accepted.id);
     const state = deps.workspace.snapshot({ limit: 1000 });
-    if (state.revision !== snapshot.workspaceRevision) throw new AppError("ui/superseded", "Workspace changed during command validation");
+    if (state.revision !== snapshot.workspaceRevision) unavailable("object", "workspace-revision-changed", "ui/superseded");
+    if (change && state.selection.total > state.selection.bookIds.length) unavailable("capacity", "workspace-selection-limit");
+    return { accepted, snapshot, state, change };
+  };
+  const check = async (input: unknown, signal?: AbortSignal): Promise<OperationAvailability> => {
+    const command = normalizeHostCommandRequest(input);
+    const query = { operation: "ui.commands.execute" as const, command };
+    try {
+      await prepare(command, signal); signal?.throwIfAborted();
+      return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "command-authorized" },
+        { kind: "object", state: "satisfied", reason: "workspace-revision-current" },
+        { kind: "provider", state: "unknown", reason: "command-target-and-commit-not-probed" }]);
+    } catch (error) {
+      signal?.throwIfAborted();
+      if (error instanceof CommandConditionError) return operationAvailability(query, [error.condition]);
+      log.warn("Cannot inspect command prerequisites", error);
+      return operationAvailability(query, [{ kind: "provider", state: "unknown", reason: "command-prerequisites-read-failed", errorCode: errorCode(error) ?? "internal" }]);
+    }
+  };
+  const execute = async (input: unknown, signal?: AbortSignal): Promise<HostCommandReceipt> => {
+    const { accepted, snapshot, state, change } = await prepare(input, signal);
+    signal?.throwIfAborted();
+    if (deps.workspace.snapshot({ limit: 1 }).revision !== snapshot.workspaceRevision) unavailable("object", "workspace-revision-changed", "ui/superseded");
+    const completed: HostCommandReceipt["completed"] = [];
     if (accepted.id === "open-book") {
       await deps.openBook(accepted.args.bookId, signal);
       return { commandId: accepted.id, status: "completed", completed: ["reading"] };
     }
-    if (change && state.selection.total > state.selection.bookIds.length) throw new AppError("ui/unavailable", "Selection exceeds the workspace navigation limit");
     if (change) {
       await deps.settings.commands.update([change], signal);
       completed.push("settings");
@@ -78,5 +108,5 @@ export function createHostCommands(deps: Dependencies) {
       return { commandId: accepted.id, status: "partial", completed, errorCode: errorCode(error) ?? "ui/unavailable" };
     }
   };
-  return { list, execute };
+  return { list, check, execute };
 }

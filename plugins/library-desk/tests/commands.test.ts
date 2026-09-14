@@ -6,7 +6,7 @@ const list = (view: PluginDetailView) => view.content[1] as PluginListView;
 function fixture() {
   let receipt: HostCommandReceipt = { commandId: "layout-list", status: "completed", completed: ["settings", "workspace"] }, lists = 0;
   const calls: unknown[] = [];
-  const ctx = { locale: "en", services: { ui: { commands: {
+  const ctx = { locale: "en", services: { session: { operationAvailability: async () => ({ state: "unknown", conditions: [] }) }, ui: { commands: {
     list: async () => { lists++; return { version: 1, workspaceRevision: 7, commands: [
       { id: "layout-list", title: "List", enabled: true, checked: true },
       { id: "go-stats", title: "Statistics", enabled: false, unavailableReason: "reader-control" },
@@ -20,6 +20,11 @@ test("command view uses host titles, checked and unavailable states, guarding ac
   expect(view.items[1].onSelect).toBeUndefined(); expect(view.items[1].subtitle).toBe("Reader control required");
   expect(await view.items[0].onSelect!()).toEqual({ close: true });
   expect(f.calls).toEqual([{ id: "layout-list", expectedWorkspaceRevision: 7 }]);
+  f.ctx.services.session.operationAvailability = async query => ({ operation: query.operation, remoteChecked: false, state: "unavailable",
+    conditions: [{ kind: "object", state: "unavailable", reason: "workspace-revision-changed", errorCode: "ui/superseded" }] });
+  const denied = await view.items[0].onSelect!();
+  expect((denied?.view as PluginDetailView).content).toEqual([{ kind: "error", code: "ui/superseded" }]);
+  expect(f.calls).toHaveLength(1);
   for (const locale of ["en", "zh-Hans", "zh-Hant", "ja", "de", "fr", "es", "ru"]) expect(commandStrings(locale)).toHaveLength(8);
 });
 test("partial commit stays open with localized host error and refresh, never automatically repeats the write", async () => {

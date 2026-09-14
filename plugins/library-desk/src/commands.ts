@@ -17,7 +17,14 @@ export async function commandsView(ctx: PluginContext): Promise<PluginView & Plu
   let snapshot = await api.list(), failure: string | undefined;
   const refresh = async (): Promise<PluginViewResult> => ({ view: await commandsView(ctx), navigation: "replace" });
   const execute = async (command: HostCommandDescriptor, request: HostCommandRequest, expectedWorkspaceRevision: number | null): Promise<PluginViewResult> => {
-    const receipt = await api.execute!({ ...request, ...(expectedWorkspaceRevision === null ? {} : { expectedWorkspaceRevision }) });
+    const accepted = { ...request, ...(expectedWorkspaceRevision === null ? {} : { expectedWorkspaceRevision }) };
+    const available = await ctx.services.session.operationAvailability({ operation: "ui.commands.execute", command: accepted });
+    if (available.state === "unavailable" || available.state === "unconfigured") {
+      const blocked = available.conditions.find(item => item.state === "unavailable" || item.state === "unconfigured");
+      return { view: { kind: "detail", title: command.title, content: [{ kind: "error", code: blocked?.errorCode ?? "ui/unavailable" }],
+        actions: [{ id: "refresh", label: t[1], run: refresh }] }, navigation: "replace" };
+    }
+    const receipt = await api.execute!(accepted);
     if (receipt.status === "completed") return { close: true };
     return { view: { kind: "detail", title: command.title, content: [
       { kind: "text", text: t[6] }, { kind: "error", code: receipt.errorCode ?? "ui/unavailable" },
