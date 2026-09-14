@@ -245,6 +245,7 @@ async function startPluginInstance(
   candidateToken?: string,
   dataUpdate?: PluginDataUpdate,
 ): Promise<ActivePlugin> {
+  options = { ...options, activationOrigin: causalActor(options.activationOrigin ?? "system") };
   assertManifestCanActivate(manifest);
   PluginPreferencePublication.assertAvailable(manifest.id);
   const disposables: PluginDisposable[] = [];
@@ -273,7 +274,7 @@ async function startPluginInstance(
       } catch (error) {
         // A teardown failure must not restore under a possibly live writer.
         try {
-          await instance.sandbox.terminate();
+          await instance.sandbox.terminate(options.activationOrigin);
           if (journal) await rollbackPluginUpdate(journal);
           publication?.rollback();
         } catch (recoveryError) {
@@ -287,7 +288,7 @@ async function startPluginInstance(
   } catch (error) {
     // Quiesce the Worker before closing the scope's write gate: messages
     // already issued by the plugin must reach the host's durable-write drain.
-    await sandbox?.terminate().catch((terminateError) => {
+    await sandbox?.terminate(options.activationOrigin).catch((terminateError) => {
       log.error(`activation sandbox rollback for "${manifest.id}" failed`, terminateError);
     });
     for (const disposable of [...disposables].reverse()) {
@@ -304,8 +305,8 @@ async function startPluginInstance(
 function promotePluginInstance(instance: ActivePlugin): void {
   if (instance.promoted) return;
   withContributionActivation(() => {
+    registerManifestContributions(instance.manifest, instance.sandbox);
     instance.sandbox.promote();
-    registerManifestContributions(instance.manifest, instance.disposables);
     instance.promoted = true;
   });
 }
@@ -318,16 +319,16 @@ function promotePluginInstance(instance: ActivePlugin): void {
  */
 function registerManifestContributions(
   manifest: PluginManifest,
-  disposables: PluginDisposable[],
+  sandbox: SandboxedPlugin,
 ): void {
   for (const font of manifest.fonts ?? []) {
-    disposables.push(
+    sandbox.stageHostContribution(source =>
       registerFontContribution({
         ...font,
         key: contributionKey(manifest.id, font.id),
         pluginId: manifest.id,
         pluginName: manifest.name,
-      }),
+      }, source),
     );
   }
   for (const theme of manifest.themes ?? []) {
@@ -337,7 +338,7 @@ function registerManifestContributions(
       fontFamily && /^plugin:[a-z0-9][a-z0-9-]*$/.test(fontFamily)
         ? toPluginRef(manifest.id, fontFamily.slice("plugin:".length))
         : fontFamily;
-    disposables.push(
+    sandbox.stageHostContribution(source =>
       registerThemeContribution({
         ...theme,
         reader: theme.reader && {
@@ -347,19 +348,19 @@ function registerManifestContributions(
         key: contributionKey(manifest.id, theme.id),
         pluginId: manifest.id,
         pluginName: manifest.name,
-      }),
+      }, source),
     );
   }
 }
 
 /** Dispose every contribution, then tear the plugin's realm down. */
-function deactivatePlugin(id: string): Promise<void> {
+function deactivatePlugin(id: string, origin: DomainActor = "system"): Promise<void> {
   const pending = deactivating.get(id);
   if (pending) return pending;
   const entry = active.get(id);
   if (!entry) return Promise.resolve();
   active.delete(id);
-  const work = stopPluginInstance(entry);
+  const work = stopPluginInstance(entry, causalActor(origin));
   deactivating.set(id, work);
   const release = () => { if (deactivating.get(id) === work) deactivating.delete(id); };
   // Failed teardown remains a barrier: a retry must not start a new realm
@@ -368,10 +369,10 @@ function deactivatePlugin(id: string): Promise<void> {
   return work;
 }
 
-async function stopPluginInstance(entry: ActivePlugin): Promise<void> {
+async function stopPluginInstance(entry: ActivePlugin, origin: DomainActor): Promise<void> {
   const id = entry.manifest.id;
   try {
-    await entry.sandbox.terminate();
+    await entry.sandbox.terminate(origin);
   } finally {
     for (const disposable of [...entry.disposables].reverse()) {
       try {
@@ -398,7 +399,7 @@ export async function setPluginEnabled(id: string, enabled: boolean, origin: Dom
     const plugin = getInstalled().find((entry) => entry.manifest.id === id);
     if (plugin) await activatePlugin(plugin.manifest, origin);
   } else {
-    await deactivatePlugin(id);
+    await deactivatePlugin(id, origin);
   }
 }
 
@@ -413,7 +414,7 @@ export async function updatePluginBookAccess(id: string, input: PluginBookAccess
   try {
     await activating.get(id);
     await withPluginDataUpdate(id, async scope => {
-      await deactivatePlugin(id);
+      await deactivatePlugin(id, origin);
       await persistPluginBookAccess(id, grant, origin);
       updateInstalledPlugin(id, { bookAccess: grant, bookAccessSource: "user", error: undefined }, origin);
       if (plugin.enabled) active.set(id, await startPluginInstance(plugin.manifest, { bookAccess: grant, activationOrigin: origin }, undefined, scope));
@@ -523,8 +524,8 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
             moduleUrl: pluginCandidateModuleUrl(entry.token, manifest.main ?? "main.js"),
             instanceId: `${manifest.id}@candidate:${entry.token}`,
             bookAccess: grant,
-            onRuntimeError: (message) => {
-              if (accepted) updateInstalledPlugin(manifest.id, { error: message });
+            onRuntimeError: (message, source) => {
+              if (accepted) updateInstalledPlugin(manifest.id, { error: message }, source);
               else candidateRuntimeError = message;
             },
             deferPromotion: true,
@@ -550,7 +551,7 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
         if (!previous) return;
         previousQuiesced = true;
         if (active.get(manifest.id) === previous) active.delete(manifest.id);
-        await stopPluginInstance(previous);
+        await stopPluginInstance(previous, origin);
       },
       snapshotData: async () => {
         journal = await beginPluginUpdate(manifest.id, entry.token);
@@ -578,11 +579,11 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
         accepted = true;
       },
       retirePrevious: async () => {
-        if (previous && !previousQuiesced) await stopPluginInstance(previous);
+        if (previous && !previousQuiesced) await stopPluginInstance(previous, origin);
       },
       cleanupCandidate: async (next) => {
         if (active.get(manifest.id) === next) active.delete(manifest.id);
-        if (next) await stopPluginInstance(next);
+        if (next) await stopPluginInstance(next, origin);
         else await discardPluginCandidate(entry.token);
       },
       rollbackFiles: recoverJournal,
@@ -676,7 +677,7 @@ export async function uninstallPlugin(id: string, origin: DomainActor = "user"):
   const target = getInstalled().find((entry) => entry.manifest.id === id);
   if (target?.builtin) throw new Error(`"${id}" is a built-in plugin`);
   await withPluginDataUpdate(id, async () => {
-    await deactivatePlugin(id);
+    await deactivatePlugin(id, origin);
     await clearPluginScheduleState(id);
     await uninstallPluginFiles(id);
     await pluginDocsClear(id).catch((error) => {

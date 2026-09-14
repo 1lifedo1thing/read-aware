@@ -2,6 +2,7 @@ import type {
   PluginDisposable,
   PluginLifecyclePhase,
 } from "@read-aware/plugin-types";
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { AppError } from "@read-aware/core";
 import { createLogger } from "../../../platform/logger";
 import { withContributionActivation } from "../state/contribution-activation";
@@ -33,6 +34,13 @@ export class PluginLifecycleController {
   private readonly reads = new Set<Promise<unknown>>();
   private readonly cleanupErrors: unknown[] = [];
   private stopped = false;
+  private retirement: DomainActor | undefined;
+
+  /** Host-only, single source for cancellation and contribution retirement. */
+  get retirementActor(): DomainActor | undefined { return this.retirement; }
+  beginRetirement(source: DomainActor = "system"): DomainActor {
+    return this.retirement ??= causalActor(source);
+  }
   private readonly operations = new AbortController();
 
   get signal(): AbortSignal { return this.operations.signal; }
@@ -180,8 +188,9 @@ export class PluginLifecycleController {
     }
   }
 
-  stop(): void {
+  stop(source?: DomainActor): void {
     if (this.stopped) return;
+    this.beginRetirement(source);
     this.stopped = true;
     this.current = "activating";
     this.cancelOperations();

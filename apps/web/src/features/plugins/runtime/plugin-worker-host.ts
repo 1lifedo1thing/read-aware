@@ -63,8 +63,10 @@ export type SandboxedPlugin = {
   readonly hasMigration: boolean;
   checkHealth(): Promise<void>;
   migrate(migration: PluginMigration): Promise<void>;
+  /** Host-owned manifest contributions share the realm lifecycle and provenance. */
+  stageHostContribution(factory: (source: DomainActor) => { dispose(source?: DomainActor): void }): void;
   promote(): void;
-  terminate(): Promise<void>;
+  terminate(source?: DomainActor): Promise<void>;
   invokeService?(serviceId: string, input: unknown): Promise<unknown>;
 };
 
@@ -82,7 +84,7 @@ export type StartPluginWorkerOptions = {
   /** Distinguishes two simultaneous versions of one plugin. */
   instanceId?: string;
   /** Candidate failures must not overwrite the installed version's status. */
-  onRuntimeError?: (message: string) => void;
+  onRuntimeError?: (message: string, source: DomainActor) => void;
 };
 
 // ─── Host → worker state sync ────────────────────────────────────────────────
@@ -361,6 +363,7 @@ export function startPluginWorker(
     const ordinarySource = () => !startupSettled || runtime.lifecycle.phase === "migrating" ? activationActor : undefined;
     let handshaken = false;
     const failRuntime = (reason: string) => {
+      const source = runtime.lifecycle.beginRetirement(ordinarySource() ?? options.serviceExecution?.origin ?? "system");
       const starting = !startupSettled;
       const currentInstance = liveWorkers.get(instanceId)?.worker === worker;
       startupSettled = true;
@@ -376,8 +379,8 @@ export function startPluginWorker(
       );
       else {
         log.error(`runtime error in "${manifest.id}"`, reason);
-        if (options.onRuntimeError) options.onRuntimeError(reason);
-        else if (currentInstance) updateInstalledPlugin(manifest.id, { error: reason });
+        if (options.onRuntimeError) options.onRuntimeError(reason, source);
+        else if (currentInstance) updateInstalledPlugin(manifest.id, { error: reason }, source);
       }
     };
     const activationTimeout = setTimeout(() => {
@@ -488,6 +491,13 @@ export function startPluginWorker(
                   catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
                 });
               },
+              stageHostContribution(factory) {
+                if (!activationActor) throw new AppError("plugin/unavailable", "Isolated executions cannot install manifest contributions");
+                runtime.lifecycle.stage(() => {
+                  const registration = factory(activationActor);
+                  return { dispose: () => registration.dispose(runtime.lifecycle.retirementActor ?? activationActor) };
+                });
+              },
               promote() {
                 assertRunning();
                 post({ t: "sync", patch: { phase: "active" } });
@@ -498,7 +508,8 @@ export function startPluginWorker(
                   throw error;
                 }
               },
-              terminate() {
+              terminate(source: DomainActor = "system") {
+                if (!termination) runtime.lifecycle.beginRetirement(source);
                 return termination ??= (async () => {
                   quiescing = true;
                   runtime.lifecycle.cancelOperations();

@@ -28,10 +28,10 @@ export class PluginContributionReactions {
     let live: HostRegistration | undefined, retirement: DomainActor | undefined;
     const staged = this.lifecycle.stage(() => {
       live = factory(registrationSource);
-      return { dispose: () => live?.dispose(retirement ?? registrationSource) };
+      return { dispose: () => live?.dispose(retirement ?? this.lifecycle.retirementActor ?? registrationSource) };
     });
     const operations: Operations = {
-      dispose: source => { retirement ??= causalActor(source); staged.dispose(); },
+      dispose: source => { retirement ??= this.lifecycle.retirementActor ?? causalActor(source); staged.dispose(); },
       ...(action ? { updateState: (state: PluginActionState, source?: DomainActor) => {
         this.lifecycle.assertActive("contribution.updateState");
         return live?.updateState ? live.updateState(state, causalActor(source ?? this.origin)) : Promise.resolve({ status: "inactive" as const });

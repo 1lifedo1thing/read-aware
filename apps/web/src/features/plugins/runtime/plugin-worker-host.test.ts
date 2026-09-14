@@ -645,11 +645,15 @@ describe("plugin worker capability bridge", () => {
     try {
       await worker.deliver({ t: "call", id: 1, method: "contributions.commands.register",
         args: worker.callbacks.encode([{ id: "crash", title: "Crash", run: () => null }]) });
+      let retired: DomainActor | undefined;
+      runtime.stageHostContribution(() => ({ dispose: source => { retired = source; } }));
       const pending = runtime.checkHealth().catch(error => error);
       if (kind === "error") worker.onerror?.({ message: "runtime crashed" } as ErrorEvent);
       else if (kind === "messageerror") worker.onmessageerror?.();
       else await worker.deliver({ t: "failed", error: "runtime failed" });
       expect(worker.terminated).toBe(true);
+      expect(actorCause(retired)).toBe(eventCause(getDefaultStore().get(pluginCommandsAtom)));
+      expect(retired).toBeDefined();
       expect(await pending).toMatchObject({ code: "plugin/unavailable" });
       expect(worker.callbacks.size).toBe(0);
       expect(getDefaultStore().get(pluginCommandsAtom).some(command => command.id === "crash")).toBe(false);
@@ -1002,12 +1006,25 @@ test("startup and migration calls retain their initiating cause without relabell
     expect(actorCause(writes.mock.calls.at(-1)![2]!)).toBe(actorCause(origin));
     await fixture.worker.deliver({ t: "migrated", id: request.id, ok: true });
     await migration;
+    const manifestSources: Array<DomainActor | undefined> = [];
+    fixture.runtime.stageHostContribution(source => {
+      manifestSources.push(source);
+      return { dispose: source => { manifestSources.push(source); } };
+    });
     fixture.runtime.promote();
+    expect(actorCause(manifestSources[0])).toBe(actorCause(origin));
     expect(fixture.worker.sent.find(message => message.t === "result" && message.id === 1901)).toMatchObject({ ok: true });
     expect(eventCause(getDefaultStore().get(pluginCommandsAtom))).toBe(actorCause(origin));
     await fixture.worker.deliver({ t: "call", id: 1902, method: "contributions.commands.register",
       args: fixture.worker.callbacks.encode([{ id: "later-cause", title: "Later", run: () => {} }]) });
     expect(fixture.worker.sent.find(message => message.t === "result" && message.id === 1902)).toMatchObject({ ok: true });
     expect(eventCause(getDefaultStore().get(pluginCommandsAtom))!.root).not.toBe(actorCause(origin)!.root);
+    const retirement = causalActor("user");
+    await fixture.runtime.terminate(retirement);
+    expect(manifestSources).toHaveLength(2);
+    expect(actorCause(manifestSources[1])).toBe(actorCause(retirement));
+    expect(eventCause(getDefaultStore().get(pluginCommandsAtom))).toBe(actorCause(retirement));
+    await fixture.runtime.terminate(causalActor("system"));
+    expect(eventCause(getDefaultStore().get(pluginCommandsAtom))).toBe(actorCause(retirement));
   } finally { FaultWorker.beforeReady = undefined; await fixture?.close(); writes.mockRestore(); entries.mockRestore(); }
 });
