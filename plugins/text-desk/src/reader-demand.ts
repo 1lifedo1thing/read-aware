@@ -27,10 +27,11 @@ export async function readerDemandDetail(ctx: PluginContext): Promise<PluginDeta
   const current = await reading.queries.session();
   return { ...snapshot(ctx, current), live: { subscribe: channel => {
     let previous: string | undefined;
-    return reading.events.observeSession(async session => {
+    return reading.events.observeSession(async (session, delivery) => {
+      if (delivery?.reaction?.status === "cycle") return;
       const next = JSON.stringify([session.readerDemand, session.change]);
       if (previous === next) return;
-      await ctx.services.ui.publishView(channel, { revision: session.revision, view: snapshot(ctx, session) });
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: session.revision, view: snapshot(ctx, session) });
       previous = next;
     });
   } } };

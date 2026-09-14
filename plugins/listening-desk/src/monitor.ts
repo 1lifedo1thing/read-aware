@@ -64,7 +64,11 @@ export async function readingMonitor(ctx: PluginContext, signal: AbortSignal): P
       }
     };
     try {
-      subscriptions.push(reading.events.observeSession(value => { session = value; return publish(); }));
+      subscriptions.push(reading.events.observeSession((value, delivery) => {
+        session = value;
+        if (delivery?.reaction?.status === "cycle") return;
+        return publish(ctx.withEvent(delivery));
+      }));
       subscriptions.push(ctx.services.session.observeEnvironment(value => { environment = value; return publish(); }));
       subscriptions.push(reader.observe((value, delivery) => {
         panels = value;

@@ -243,9 +243,11 @@ async function readingMonitor(ctx, signal) {
       }
     };
     try {
-      subscriptions.push(reading.events.observeSession((value) => {
+      subscriptions.push(reading.events.observeSession((value, delivery) => {
         session = value;
-        return publish();
+        if (delivery?.reaction?.status === "cycle")
+          return;
+        return publish(ctx.withEvent(delivery));
       }));
       subscriptions.push(ctx.services.session.observeEnvironment((value) => {
         environment = value;

@@ -29,11 +29,12 @@ const plugin: PluginModule = {
           await ctx.domains.reading.commands[direction]({ sessionId: session.sessionId ?? undefined });
         } }),
     }));
-    ctx.domains.reading.events.observeSession(async session => {
+    ctx.domains.reading.events.observeSession(async (session, delivery) => {
+      if (delivery?.reaction?.status === "cycle") return;
       const state = { revision: session.revision + 1, visible: true, enabled: session.status === "ready" };
-      await Promise.all([header.updateState(state), open.updateState(state), ...history.map(({ direction, registration }) =>
-        registration.updateState({ ...state, enabled: state.enabled && (direction === "back" ? session.history.canGoBack : session.history.canGoForward) }))]);
-    });
+      await Promise.all([ctx.withEvent(delivery, header).updateState(state), ctx.withEvent(delivery, open).updateState(state), ...history.map(({ direction, registration }) =>
+        ctx.withEvent(delivery, registration).updateState({ ...state, enabled: state.enabled && (direction === "back" ? session.history.canGoBack : session.history.canGoForward) }))]);
+    }, { ruleId: "reader-action-state" });
   },
 };
 export default plugin;

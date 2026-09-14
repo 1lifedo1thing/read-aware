@@ -1531,7 +1531,8 @@ export function buildPluginContext(
         observeSession: handler => {
           objectAccess.assertBook(latestCurrent.bookId ?? "", "reading.events.observeSession");
           return track(() => ({ dispose: reading.events.observeSession(snapshot => {
-            try { verifySession(snapshot); handler(snapshot); } catch (error) { log.debug?.("reading session outside book grant", error); }
+            try { verifySession(snapshot); } catch (error) { log.debug?.("reading session outside book grant", error); return; }
+            return handler(snapshot);
           }) }));
         },
         observeEmphasis: handler => {

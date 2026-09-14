@@ -1652,15 +1652,15 @@
 | `annotation-desk` | [ANN01](#ANN01) [ANN04](#ANN04) [ANN05](#ANN05) [ANN08](#ANN08) [ANN09](#ANN09) [EXT02](#EXT02) [EXT05](#EXT05) [SYS10](#SYS10) | [代码] 源码版本 0.8.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `dictionary` | [EXT09](#EXT09) [AI12](#AI12) [READ07](#READ07) [LIB01](#LIB01) | [代码] 源码版本 1.4.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `editorial-themes` | [EXT08](#EXT08) | [代码] 源码版本 1.0.0；源码存在不等于打包、安装、启用或模型可调用 |
-| `jumper` | [TXT02](#TXT02) [TXT07](#TXT07) [READ01](#READ01) [READ06](#READ06) [READ07](#READ07) [READ13](#READ13) [EXT02](#EXT02) [SYS02](#SYS02) [AI05](#AI05) | [代码] 源码版本 0.10.0；源码存在不等于打包、安装、启用或模型可调用 |
+| `jumper` | [TXT02](#TXT02) [TXT07](#TXT07) [READ01](#READ01) [READ06](#READ06) [READ07](#READ07) [READ13](#READ13) [EXT02](#EXT02) [SYS02](#SYS02) [AI05](#AI05) | [代码] 源码版本 0.11.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `library-desk` | [LIB01](#LIB01) [LIB02](#LIB02) [LIB03](#LIB03) [LIB05](#LIB05) [LIB06](#LIB06) [LIB07](#LIB07) [LIB08](#LIB08) [LIB09](#LIB09) [LIB10](#LIB10) [LIB11](#LIB11) [LIB15](#LIB15) [LIB16](#LIB16) [LIB17](#LIB17) [LIB18](#LIB18) [READ01](#READ01) [UI01](#UI01) [UI02](#UI02) [UI03](#UI03) [EXT02](#EXT02) [EXT03](#EXT03) [EXT05](#EXT05) [EXT06](#EXT06) [SYS09](#SYS09) [SYS11](#SYS11) [SYS13](#SYS13) [MORE05](#MORE05) [MORE07](#MORE07) | [代码] 源码版本 0.13.0；源码存在不等于打包、安装、启用或模型可调用 |
-| `listening-desk` | [READ16](#READ16) [READ18](#READ18) [READ06](#READ06) [EXT02](#EXT02) [MORE03](#MORE03) | [代码] 源码版本 0.11.0；源码存在不等于打包、安装、启用或模型可调用 |
+| `listening-desk` | [READ16](#READ16) [READ18](#READ18) [READ06](#READ06) [EXT02](#EXT02) [MORE03](#MORE03) | [代码] 源码版本 0.12.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `maintenance-desk` | [CFG08](#CFG08) [SYS15](#SYS15) [OPS03](#OPS03) [OPS08](#OPS08) [OPS11](#OPS11) [EXT02](#EXT02) [EXT05](#EXT05) | [代码] 源码版本 0.6.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `memory-desk` | [MEM01](#MEM01) [MEM04](#MEM04) [MEM05](#MEM05) [MEM09](#MEM09) [MEM10](#MEM10) [MEM11](#MEM11) [READ01](#READ01) [EXT02](#EXT02) [EXT05](#EXT05) | [代码] 源码版本 0.17.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `reading-goals` | [AI11](#AI11) [MEM03](#MEM03) [SET23](#SET23) [STAT02](#STAT02) [STAT05](#STAT05) [STAT03](#STAT03) [EXT07](#EXT07) [EXT02](#EXT02) [EXT05](#EXT05) [SYS01](#SYS01) [SYS02](#SYS02) | [代码] 源码版本 0.5.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `rss-reader` | [EXT10](#EXT10) | [代码] 源码版本 0.22.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `sentence-reader` | [READ15](#READ15) [READ16](#READ16) | [代码] 源码版本 1.1.0；源码存在不等于打包、安装、启用或模型可调用 |
-| `text-desk` | [TXT04](#TXT04) [TXT05](#TXT05) [TXT06](#TXT06) [TXT07](#TXT07) [TXT10](#TXT10) [TXT11](#TXT11) [TXT12](#TXT12) [TXT13](#TXT13) [LIB01](#LIB01) [READ01](#READ01) [READ13](#READ13) [EXT01](#EXT01) [EXT02](#EXT02) [EXT05](#EXT05) [EXT06](#EXT06) [SYS09](#SYS09) [SYS13](#SYS13) [AI07](#AI07) | [代码] 源码版本 0.29.0；源码存在不等于打包、安装、启用或模型可调用 |
+| `text-desk` | [TXT04](#TXT04) [TXT05](#TXT05) [TXT06](#TXT06) [TXT07](#TXT07) [TXT10](#TXT10) [TXT11](#TXT11) [TXT12](#TXT12) [TXT13](#TXT13) [LIB01](#LIB01) [READ01](#READ01) [READ13](#READ13) [EXT01](#EXT01) [EXT02](#EXT02) [EXT05](#EXT05) [EXT06](#EXT06) [SYS09](#SYS09) [SYS13](#SYS13) [AI07](#AI07) | [代码] 源码版本 0.30.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `tts` | [READ17](#READ17) [READ18](#READ18) | [代码] 源码版本 0.6.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `webdav-sync` | [OPS04](#OPS04) | [代码] 源码版本 0.3.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `workspace-profiles` | [UI02](#UI02) [UI04](#UI04) [CFG01](#CFG01) [CFG10](#CFG10) [EXT02](#EXT02) [EXT05](#EXT05) [SYS02](#SYS02) | [代码] 源码版本 0.8.0；源码存在不等于打包、安装、启用或模型可调用 |

@@ -114,7 +114,7 @@ var HOST_COMMAND_IDS = [...PARAMETERLESS_HOST_COMMAND_IDS, "open-book", "open-co
 // ../../packages/core/src/domains.ts
 var DOMAIN_CATALOG = {
   library: { version: "1.31.0", pluginAccess: ["read", "write"] },
-  reading: { version: "2.21.0", pluginAccess: ["read", "write"] },
+  reading: { version: "2.22.0", pluginAccess: ["read", "write"] },
   annotations: { version: "2.2.0", pluginAccess: ["read", "write"] },
   conversations: { version: "1.5.0", pluginAccess: ["read", "write"] },
   settings: { version: "1.10.0", pluginAccess: [] },
@@ -146,8 +146,11 @@ var HOST_SERVICE_CATALOG = {
   secrets: { version: "1.0.0", permission: null },
   ui: { version: "1.15.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
-  session: { version: "2.3.0", permission: null },
-  plugins: { version: "1.8.0", permission: null },
+  jobs: { version: "1.1.0", permission: null },
+  changes: { version: "1.0.0", permission: null },
+  transactions: { version: "1.0.0", permission: null },
+  session: { version: "2.5.0", permission: null },
+  plugins: { version: "1.9.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
   logging: { version: "1.0.0", permission: null },
@@ -1306,10 +1309,12 @@ var plugin = {
         }
       })
     }));
-    ctx.domains.reading.events.observeSession(async (session) => {
+    ctx.domains.reading.events.observeSession(async (session, delivery) => {
+      if (delivery?.reaction?.status === "cycle")
+        return;
       const state = { revision: session.revision + 1, visible: true, enabled: session.status === "ready" };
-      await Promise.all([header.updateState(state), open.updateState(state), ...history.map(({ direction, registration }) => registration.updateState({ ...state, enabled: state.enabled && (direction === "back" ? session.history.canGoBack : session.history.canGoForward) }))]);
-    });
+      await Promise.all([ctx.withEvent(delivery, header).updateState(state), ctx.withEvent(delivery, open).updateState(state), ...history.map(({ direction, registration }) => ctx.withEvent(delivery, registration).updateState({ ...state, enabled: state.enabled && (direction === "back" ? session.history.canGoBack : session.history.canGoForward) }))]);
+    }, { ruleId: "reader-action-state" });
   }
 };
 var src_default = plugin;

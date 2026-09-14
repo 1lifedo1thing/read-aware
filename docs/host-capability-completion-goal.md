@@ -27,6 +27,17 @@
 
 ## 当前交接
 
+- C04阅读会话反应入口：reading2.22 observeSession新增独立delivery凭证和可选稳定ruleId，
+  在既有授权过滤后签发；书域过滤现在返回回调Promise，凭证保持到异步回调结束。
+  当前快照的宿主来源跨Worker通知进入withEvent，循环反馈标为cycle，退休/回调结束拒绝旧凭证。
+  Jumper0.11用具名会话规则绑定按钮句柄状态更新；Text Desk0.30和Listening Desk0.12
+  用事件上下文发布实时视图，后续用户动作仍保留原始上下文。三者类型/构建和既有受影响流程通过。
+  受限宿主链检查覆盖跨await写入、同来源循环、凭证过期、新用户根及退订后具名规则复用，
+  日志 `/tmp/readaware-session-reaction.log`；Web/desktop类型 `/tmp/readaware-session-web-types.log`。
+  **入口接通不代表所有阅读来源闭合**：原生窗口动画/失败回退等尚会产生独立系统来源，
+  这些路径仍可能切断祖先；需继续补齐后才能声称完整跨插件防环。observeTime/Emphasis和
+  环境观察等其他未接来源仍保留，真实Worker/Tauri集中验收未执行。
+
 - C08因果任务续接：新任务创建时将有界source与计划同事务保存，原生校验结构/配额，
   同id重试必须同source，所有检查点必须保持source完全一致。公共快照不返回来源或原始检查点。
   runner每次派发/恢复按保存source构造独立执行器；正文/图谱和事务事件/设置/私有文档观察
@@ -61,7 +72,7 @@
   React挂载定向检查验证面板通知保留原始因果链、同规则反应拒绝及断点反转保留新状态，
   日志 `/tmp/readaware-c04-responsive-check.log`；真实Tauri窗口链尚待集中验收。
   原生读取失败/不匹配仍降为独立系统来源以保持布局可用，不算完整防环；Foliate内部ResizeObserver、
-  动画后续帧/同viewport变化、凭据与其他自动来源、持久任务因果续接及observeSession reaction继续保留。
+  动画后续帧/同viewport变化、凭据与其他自动来源、持久任务因果和observeSession入口已有后续实现；上述窗口及其他自动来源仍保留。
 
 - C05同步批次：session2.4新增sync.now无参数条件查询，插件先检查service:sync，未授权只返回权限条件。
   HostSyncService条件与执行共用桌面/连接管理/账号/启用/认证检查，真实profile、凭据和已注册传输

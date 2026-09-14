@@ -41,6 +41,8 @@ function fixture() {
       session: { environment: mock(async () => environment), observeEnvironment: (handler: typeof environmentHandler) => { environmentHandler = handler; return { dispose: disposeEnvironment }; } },
       logging: { write: mock(async () => {}) } },
   } as unknown as PluginContext;
+  ctx.withEvent = ((_event: unknown, registration?: { dispose(): void | Promise<void> }) => registration
+    ? Object.assign({}, ctx, { dispose: async () => { await registration.dispose(); } }) : ctx) as PluginContext["withEvent"];
   return { ctx, state, panels, environment, snapshot, setWidth, controlPlayback, publishView, commands, disposeSession, disposePanel, disposeEnvironment,
     sessionChanged: (value: ReadingSessionSnapshot) => sessionHandler(value), panelsChanged: (value: Panels | null, delivery?: PluginReactionEvent) => panelHandler(value, delivery),
     environmentChanged: (value: Environment) => environmentHandler(value) };
@@ -49,7 +51,8 @@ function fixture() {
 test("panel publications use the observation lease, while subsequent user controls retain the root context", async () => {
   const f = fixture(), lifetime = new AbortController(), boundPublish = mock(async () => ({ status: "applied" }));
   const bound = { ...f.ctx, services: { ...f.ctx.services, ui: { ...f.ctx.services.ui, publishView: boundPublish } } } as unknown as PluginContext;
-  f.ctx.withEvent = mock(() => bound);
+  f.ctx.withEvent = mock((_event: unknown, registration?: { dispose(): void | Promise<void> }) => registration
+    ? Object.assign({}, bound, { dispose: async () => { await registration.dispose(); } }) : bound) as unknown as PluginContext["withEvent"];
   const current = await readingMonitor(f.ctx, lifetime.signal), subscription = await current.live!.subscribe({ id: "causal" });
   try {
     const delivery = { reaction: { id: "lease", status: "ready" as const } };

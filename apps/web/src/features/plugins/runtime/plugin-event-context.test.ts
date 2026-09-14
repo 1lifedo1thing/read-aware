@@ -42,6 +42,43 @@ test("event contexts retain the activation's permissions and resource owner, and
   } finally { runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); readingRuntime.closed(); owner.mockRestore(); }
 });
 
+test("scoped reading observation retains its lease across await and rejects its own feedback", async () => {
+  const runtime = buildPluginContext({ id: "session-reaction", name: "Session", version: "1", schemaVersion: 1, requires: {},
+    permissions: ["reading:write"] }, "1", [], { mode: "book", bookId: "b" });
+  const session = readingRuntime.begin("b");
+  const detach = readingRuntime.attach(session, { navigate: async () => ({ bookId: "b", contentVersion: "v", cfi: "start" }),
+    step: async () => ({ bookId: "b", contentVersion: "v", cfi: "step" }) }, { bookId: "b", contentVersion: "v", cfi: "start" });
+  const gate = deferred(), done = deferred();
+  let retained: PluginContext | undefined, failed: unknown, run = true;
+  const statuses: string[] = [];
+  try {
+    runtime.lifecycle.promote();
+    const root = eventCause(readingRuntime.snapshot())!.root;
+    const subscription = runtime.context.domains.reading!.events.observeSession(async (_snapshot, delivery) => {
+      statuses.push(delivery!.reaction!.status);
+      if (delivery?.reaction?.status === "cycle" || !run) return;
+      run = false;
+      try {
+        retained = runtime.context.withEvent(delivery);
+        await gate.promise;
+        await retained.domains.reading!.commands!.step("next", { sessionId: session });
+      } catch (error) { failed = error; }
+      finally { done.resolve(); }
+    }, { ruleId: "session-follow" });
+    gate.resolve(); await done.promise; await Promise.resolve();
+    expect(failed).toBeUndefined();
+    expect(statuses).toContain("cycle");
+    expect(eventCause(readingRuntime.snapshot())!.root).toBe(root);
+    expect(() => retained!.domains.reading!.commands!.step("next")).toThrow(expect.objectContaining({ code: "plugin/invalid-cause" }));
+    await runtime.context.domains.reading!.commands!.step("next");
+    expect(statuses.at(-1)).toBe("ready");
+    expect(eventCause(readingRuntime.snapshot())!.root).not.toBe(root);
+    subscription.dispose();
+    const replacement = runtime.context.domains.reading!.events.observeSession(() => {}, { ruleId: "session-follow" });
+    replacement.dispose();
+  } finally { gate.resolve(); detach(); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); readingRuntime.closed(); }
+});
+
 test("authorized settings subscriptions preserve provenance and keep the lease live until the returned callback promise settles", async () => {
   const restoreStorage = memoryStorage();
   const path = "appearance.theme";
