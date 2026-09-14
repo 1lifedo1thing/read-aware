@@ -964,6 +964,13 @@ export function buildPluginContext(
           const signal = callSignal(options);
           signal.throwIfAborted();
           const query = normalizeOperationAvailability(input);
+          if (query.operation === "clipboard.writeText" || query.operation === "ui.openExternal") {
+            const service = query.operation === "clipboard.writeText" ? "clipboard" : "network";
+            if (!canUseHostService(service, permissions)) return Promise.resolve(operationAvailability(query, [
+              { kind: "permission", state: "unavailable", reason: `service:${service}-required` },
+            ]));
+            return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
+          }
           if (query.operation === "window.control") {
             return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
           }

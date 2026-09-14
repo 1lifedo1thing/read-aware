@@ -15,6 +15,13 @@ test("Agent IO shares bounded host effects, preserves cancelled export and retur
   await expect(call("open_external_url", { url: "file:///tmp/private" })).rejects.toMatchObject({ code: "ui/invalid-target" });
   await expect(call("list_installed_plugins", { limit: 101 })).rejects.toMatchObject({ code: "ui/invalid-target" });
   expect(calls).toHaveLength(3);
+  deps.operationAvailability = { check: async query => ({ operation: query.operation, state: "unavailable", remoteChecked: false,
+    conditions: [{ kind: "provider", state: "unavailable", reason: "entry-missing", errorCode: "ui/unavailable" }] }) };
+  await expect(call("copy_to_clipboard", { text: "blocked" })).rejects.toMatchObject({ code: "ui/unavailable" });
+  await expect(call("open_external_url", { url: "https://example.com" })).rejects.toMatchObject({ code: "ui/unavailable" });
+  expect(calls).toHaveLength(3);
+  deps.operationAvailability = { check: async query => ({ operation: query.operation, state: "unknown", remoteChecked: false,
+    conditions: [{ kind: "provider", state: "unknown", reason: "access-not-probed" }] }) };
   deps.hostIO.writeClipboard = async () => { throw Error("write failed"); };
   await expect(call("copy_to_clipboard", { text: "no success" })).rejects.toThrow("write failed");
 });

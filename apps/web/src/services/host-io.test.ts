@@ -44,3 +44,25 @@ test("plugin directory projects only public metadata and observers release", asy
   expect(pages).toHaveLength(2); off(); store.set(installedPluginsAtom, []); expect(pages).toHaveLength(2);
   expect((await pluginDirectory.list()).total).toBe(0);
 });
+
+
+test("IO availability enforces grants without effects and rechecks clipboard entry at dispatch", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator"), copied: string[] = [];
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { clipboard: { writeText: async (text: string) => { copied.push(text); } } } });
+  cleanups.push(() => { if (descriptor) Object.defineProperty(globalThis, "navigator", descriptor); else Reflect.deleteProperty(globalThis, "navigator"); });
+  const denied = actor([]).context.services.session;
+  expect((await denied.operationAvailability({ operation: "clipboard.writeText", text: "private" })).conditions).toEqual([
+    { kind: "permission", state: "unavailable", reason: "service:clipboard-required" },
+  ]);
+  expect((await denied.operationAvailability({ operation: "ui.openExternal", url: "https://example.com" })).conditions).toEqual([
+    { kind: "permission", state: "unavailable", reason: "service:network-required" },
+  ]);
+  const allowed = actor(["service:clipboard"]).context.services;
+  const availability = await allowed.session.operationAvailability({ operation: "clipboard.writeText", text: "private" });
+  expect(availability.state).toBe("unknown"); expect(JSON.stringify(availability)).not.toContain("private"); expect(copied).toEqual([]);
+  await allowed.clipboard!.writeText("requested"); expect(copied).toEqual(["requested"]);
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: {} });
+  expect((await allowed.session.operationAvailability({ operation: "clipboard.writeText", text: "later" })).state).toBe("unavailable");
+  await expect(allowed.clipboard!.writeText("later")).rejects.toMatchObject({ code: "ui/unavailable" });
+  expect(copied).toEqual(["requested"]);
+});

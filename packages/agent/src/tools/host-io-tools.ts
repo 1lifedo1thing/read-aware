@@ -1,6 +1,6 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { CONTRIBUTION_CATALOG, normalizePluginContributionQuery, normalizeClipboardText, normalizeExternalUrl, normalizeHostExport, normalizePluginDirectoryQuery, type HostExportFile, type PluginDirectoryQuery, type PluginContributionQuery } from "@read-aware/core";
+import { assertOperationAvailable, CONTRIBUTION_CATALOG, normalizePluginContributionQuery, normalizeClipboardText, normalizeExternalUrl, normalizeHostExport, normalizePluginDirectoryQuery, type HostExportFile, type PluginDirectoryQuery, type PluginContributionQuery } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import { textResult } from "./tool-result";
 
@@ -32,7 +32,11 @@ export function buildHostIOTools(deps: RuntimeDeps): AgentTool[] {
     parameters: Type.Object({ text: Type.String({ maxLength: 1_000_000 }) }, { additionalProperties: false }),
     executionMode: "sequential",
     execute: async (_id, params, signal) => {
-      await deps.hostIO.writeClipboard(normalizeClipboardText((params as { text: unknown })?.text), signal);
+      const text = normalizeClipboardText((params as { text: unknown })?.text);
+      signal?.throwIfAborted();
+      if (deps.operationAvailability) assertOperationAvailable(await deps.operationAvailability.check({ operation: "clipboard.writeText", text }, signal));
+      signal?.throwIfAborted();
+      await deps.hostIO.writeClipboard(text, signal);
       return textResult({ copied: true });
     },
   }, {
@@ -48,7 +52,11 @@ export function buildHostIOTools(deps: RuntimeDeps): AgentTool[] {
     parameters: Type.Object({ url: Type.String({ minLength: 1, maxLength: 8192 }) }, { additionalProperties: false }),
     executionMode: "sequential",
     execute: async (_id, params, signal) => {
-      await deps.hostIO.openExternal(normalizeExternalUrl((params as { url: unknown })?.url), signal);
+      const url = normalizeExternalUrl((params as { url: unknown })?.url);
+      signal?.throwIfAborted();
+      if (deps.operationAvailability) assertOperationAvailable(await deps.operationAvailability.check({ operation: "ui.openExternal", url }, signal));
+      signal?.throwIfAborted();
+      await deps.hostIO.openExternal(url, signal);
       return textResult({ dispatched: true });
     },
   }];

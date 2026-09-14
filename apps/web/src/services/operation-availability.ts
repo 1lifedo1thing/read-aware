@@ -2,6 +2,7 @@ import { accountCredential, createModelResolver } from "@read-aware/agent";
 import { errorCode, normalizeOperationAvailability, operationAvailability, type OperationAvailabilityQuery,
   type InferenceAvailabilityQuery, type OperationAvailability, type OperationCondition } from "@read-aware/core";
 import { readingRuntime } from "../domain/reading-runtime";
+import { hostIOConditions } from "./host-io";
 import { hostWindow } from "./window";
 import { hostSync } from "./sync";
 import { getAIConfig, type AIConfig } from "../features/ai/lib/ai-config";
@@ -61,6 +62,9 @@ export function inspectInferenceAvailability(input: InferenceAvailabilityQuery, 
 export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal, context?: OperationAvailabilityContext): Promise<OperationAvailability> {
   const query = normalizeOperationAvailability(input);
   signal?.throwIfAborted();
+  if (query.operation === "clipboard.writeText" || query.operation === "ui.openExternal") {
+    return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...hostIOConditions(query)]);
+  }
   if (query.operation === "window.control") {
     return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...await hostWindow.conditions(query.request, signal)]);
   }
