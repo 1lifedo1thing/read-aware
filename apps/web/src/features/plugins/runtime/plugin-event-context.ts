@@ -43,14 +43,14 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
   }
   const bindSchedule = context.services.schedules.bind;
   context.services.schedules.bind = (id, handler) => {
-    const subscription = {}, release = reactions.bindRule(subscription, `schedule:${id}`);
-    try {
-      const registration = bindSchedule(id, (run) => reactions.deliver(subscription, run, reaction => {
-        if (reaction.status === "ready") stampEventCause(run, reactions.actor(reaction));
-        return handler(run, { reaction });
-      }));
-      return { dispose: () => { try { registration.dispose(); } finally { release(); } } };
-    } catch (error) { release(); throw error; }
+    const subscription = {};
+    reactions.bindScheduleRule(subscription, id);
+    // Keep the contribution handle identity so reaction-bound retirement reaches
+    // the controller with its source; replacement is owned by the controller.
+    return bindSchedule(id, (run) => reactions.deliver(subscription, run, reaction => {
+      if (reaction.status === "ready") stampEventCause(run, reactions.actor(reaction));
+      return handler(run, { reaction });
+    }));
   };
   const observations: [object | undefined, string, number][] = [
     [context.domains.settings?.queries, "observe", 1],

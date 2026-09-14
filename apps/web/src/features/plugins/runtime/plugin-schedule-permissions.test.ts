@@ -25,7 +25,7 @@ test("manual schedule callback carries a reaction through await and retires the 
     schedules: [{ id: "tick", label: "Tick", everyMinutes: 60 }] }, "0.5.4", []);
   let expired: (() => unknown) | undefined, called = 0;
   try {
-    host.context.services.schedules.bind("tick", async (_run, delivery) => {
+    const registration = host.context.services.schedules.bind("tick", async (_run, delivery) => {
       expect(delivery?.reaction?.status).toBe("ready"); called++;
       const reaction = host.context.withEvent(delivery);
       await Promise.resolve(); await reaction.services.schedules.control("tick", "pause");
@@ -35,5 +35,17 @@ test("manual schedule callback carries a reaction through await and retires the 
     await host.context.services.schedules.control("tick", "run");
     expect(called).toBe(1); expect((await host.context.services.schedules.list()).schedules[0]?.paused).toBe(true);
     expect(expired).toBeDefined(); expect(expired!).toThrow();
+    const retirement: string[] = [];
+    const observation = host.context.services.schedules.observe({}, async (_page, delivery) => {
+      retirement.push(delivery?.reaction?.status ?? "missing");
+      if (retirement.length === 1) await host.context.withEvent(delivery, registration).dispose();
+    }, { ruleId: "retire-schedule" });
+    await Bun.sleep(0); observation.dispose();
+    expect(retirement).toEqual(["ready", "cycle"]);
+    expect((await host.context.services.schedules.list()).total).toBe(0);
+    const replacement = host.context.services.schedules.bind("tick", () => {});
+    const rebound = host.context.services.schedules.bind("tick", () => {});
+    replacement.dispose();
+    expect((await host.context.services.schedules.list()).total).toBe(1); rebound.dispose();
   } finally { host.lifecycle.stop();  write.mockRestore(); }
 });

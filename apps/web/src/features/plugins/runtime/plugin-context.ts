@@ -879,9 +879,9 @@ export function buildPluginContext(
               `schedule "${scheduleId}" is not declared in manifest.schedules`,
             );
           }
-          return track(() => {
-            const registration = registerPluginSchedule(manifest.id, declaration, run, manifest.version, operationActor);
-            return { dispose: () => { registration.dispose(); lifecycle.trackCleanup(pluginSchedules.drainWrites(manifest.id)); } };
+          return trackContribution(source => {
+            const registration = registerPluginSchedule(manifest.id, declaration, run, manifest.version, source);
+            return { dispose: retirement => { registration.dispose(retirement); lifecycle.trackCleanup(pluginSchedules.drainWrites(manifest.id)); } };
           });
         },
       },

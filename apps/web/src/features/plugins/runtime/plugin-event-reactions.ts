@@ -36,6 +36,14 @@ export class PluginEventReactions {
     return () => { if (this.named.get(name) === subscription) this.named.delete(name); };
   }
 
+  /** Schedule ownership/replacement is enforced by the controller, not by the
+   * named observer registry. Old flights and replacement bindings share a rule. */
+  bindScheduleRule(subscription: object, id: string): void {
+    this.lifetime.throwIfAborted();
+    if (!/^[a-z][a-z0-9-]{0,63}$/.test(id)) throw new AppError("plugin/invalid-argument", "Invalid schedule id");
+    this.rules.set(subscription, `rule:${this.origin}:schedule:${id}`);
+  }
+
   async deliver<T>(subscription: object, event: object, handler: (token: PluginReactionToken) => T | Promise<T>): Promise<T> {
     this.lifetime.throwIfAborted();
     if (this.entries.size >= 64) throw new AppError("plugin/busy", "Too many active event reactions");
