@@ -1,3 +1,4 @@
+import { actorCause, causalActor, reactionActor } from "../../../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { AppError, type PluginServiceDeclaration } from "@read-aware/core";
 import { PluginServiceBroker, serviceExecutionManifest, type PluginServiceParticipant } from "./plugin-services";
@@ -20,6 +21,13 @@ test("typed calls narrow permissions/settings/network and reject forbidden targe
     calls++; expect(execution.manifest.permissions).toEqual(["library:read"]); expect(execution.bookAccess).toEqual({ mode: "book", bookId: "book" }); return "result";
   });
   const service = broker.list(caller.value).services[0]!.ref;
+  const request = { service, bookId: "book", input: null };
+  expect(broker.inspect(caller.value, request).state).toBe("unknown");
+  expect(broker.inspectForAgent(request).conditions[0]?.reason).toBe("service-approval-required");
+  expect(calls).toBe(0); expect(caller.listeners.size).toBe(0);
+  expect(broker.inspect(participant("denied", { mode: "all" }, []).value, request).conditions).toEqual([
+    { kind: "permission", state: "unavailable", reason: "service-authority-required", errorCode: "plugin/service-forbidden" },
+  ]);
   expect((await broker.call(caller.value, { service, bookId: "book", input: null })).value).toBe("result");
   for (const request of [{ service, bookId: "foreign", input: null }, { service, bookId: "book", input: {} }, { service: { ...service, generation: "old" }, bookId: "book", input: null }]) await expect(broker.call(caller.value, request)).rejects.toThrow();
   expect(broker.list(participant("denied", { mode: "all" }, []).value).services).toEqual([]); expect(calls).toBe(1);
@@ -50,6 +58,9 @@ test("failed provider activation restores the old contract and recursive calls a
   expect(() => withContributionActivation(() => { const candidate = broker.register(provider.value, async () => "new"); candidate.dispose(); throw Error("Failed activation"); })).toThrow();
   expect((await broker.call(caller.value, { service, bookId: "book", input: null })).value).toBe("old");
   await expect(broker.call({ ...caller.value, lineage: ["provider/inspect"] }, { service, bookId: "book", input: null })).rejects.toMatchObject({ code: "plugin/service-cycle" });
+  const repeated = { ...caller.value, origin: reactionActor("plugin:caller", "service:provider/inspect", actorCause(causalActor("user"))!) };
+  expect(broker.inspect(repeated, { service, bookId: "book", input: null }).conditions[0]?.errorCode).toBe("plugin/event-cycle");
+  await expect(broker.call(repeated, { service, bookId: "book", input: null })).rejects.toMatchObject({ code: "plugin/event-cycle" });
   registration.dispose();
 });
 
@@ -63,6 +74,7 @@ test("all exports share provider capacity until cancelled physical work drains, 
   const running = callers.slice(0, 4).map((caller, index) => broker.call(caller.value, { service: services[index % 2]!.ref, bookId: "book", input: null }));
   const settled = Promise.allSettled(running); await entered.promise;
   callers[0]!.abort.abort();
+  expect(broker.inspect(callers[4]!.value, { service: services[1]!.ref, bookId: "book", input: null }).state).toBe("unavailable");
   await expect(broker.call(callers[4]!.value, { service: services[1]!.ref, bookId: "book", input: null })).rejects.toMatchObject({ code: "plugin/busy" });
   hold.resolve(); await settled;
   expect((await broker.call(callers[4]!.value, { service: services[0]!.ref, bookId: "book", input: null })).value).toBe("done");

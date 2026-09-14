@@ -1,6 +1,6 @@
 import { commitContributionReplacement, undoContributionReplacement } from "../state/contribution-activation";
 import {
-  AppError, errorCode, normalizePluginServiceCall, normalizePluginServiceQuery, normalizePluginServices,
+  AppError, errorCode, assertOperationAvailable, operationAvailability, type OperationAvailability, type OperationCondition, normalizePluginServiceCall, normalizePluginServiceQuery, normalizePluginServices,
   validatePluginServiceValue, PLUGIN_SERVICE_LIMITS,
   type PluginServiceDeclaration, type PluginServiceCall, type PluginServiceQuery, type PluginServiceReceipt,
   type PluginServicePage, type PluginServiceRef, type SettingsAccessPolicy,
@@ -8,7 +8,7 @@ import {
 import type { PluginManifest, PluginBookAccess } from "@read-aware/plugin-types";
 import type { PluginBookAccessPolicy, PluginBookAccessFence } from "../../../domain/plugin-object-access";
 import { createPluginBookAccessPolicy } from "../../../domain/plugin-object-access";
-import { actorCause, causalActor, reactionActor, type DomainActor } from "../../../platform/domain-actor";
+import { assertReactionAllowed, actorCause, causalActor, reactionActor, type DomainActor } from "../../../platform/domain-actor";
 import { createLogger } from "../../../platform/logger";
 
 import { i18n } from "../../../i18n/instance";
@@ -94,6 +94,7 @@ export class PluginServiceBroker {
     this.current(entry);
     if (scope.kind === "book" && (entry.declaration.scope !== "book" || request.bookId !== scope.bookId)) throw denied();
     if (entry.declaration.scope === "book" ? !request.bookId : request.bookId !== undefined || entry.provider.access.grant.mode !== "all") throw denied();
+    assertOperationAvailable(this.inspectForAgent(request));
     request.input = validatePluginServiceValue(entry.declaration.input, request.input);
     const approvedPermissions = [...entry.declaration.permissions];
     const approvedSettings = structuredClone(entry.provider.manifest.settingsAccess ?? {});
@@ -175,17 +176,69 @@ export class PluginServiceBroker {
     const services = visible.slice(query.offset, query.offset + query.limit).map(entry => structuredClone({ ...entry.declaration, ref: entry.ref }));
     return { services, total: visible.length, nextOffset: query.offset + services.length < visible.length ? query.offset + services.length : null };
   }
-  async call(caller: PluginServiceParticipant, raw: PluginServiceCall, callSignal?: AbortSignal): Promise<PluginServiceReceipt> {
-    caller.assertLive(); caller.signal.throwIfAborted(); callSignal?.throwIfAborted();
+  private prepare(caller: PluginServiceParticipant, raw: PluginServiceCall) {
+    caller.assertLive(); caller.signal.throwIfAborted();
     const request = normalizePluginServiceCall(raw), entry = this.entries.get(key(request.service.pluginId, request.service.id));
     if (!entry || entry.ref.version !== request.service.version || entry.ref.generation !== request.service.generation) throw unavailable();
     this.current(entry);
     if (!granted(caller, entry.declaration) || !granted(entry.provider, entry.declaration)) throw denied();
     if (entry.declaration.scope === "book" ? !request.bookId : request.bookId !== undefined
       || caller.access.grant.mode !== "all" || entry.provider.access.grant.mode !== "all") throw denied();
+    if (request.bookId) for (const participant of [caller, entry.provider]) participant.access.assertBook(request.bookId, "plugin service");
     const nextKey = key(entry.ref.pluginId, entry.ref.id), lineage = [...caller.lineage ?? []];
     if (lineage.length >= 8 || lineage.includes(nextKey)) throw fail("plugin/service-cycle", "Plugin service call would repeat its invocation chain");
+    assertReactionAllowed(actorCause(caller.origin), `service:${nextKey}`);
     const input = validatePluginServiceValue(entry.declaration.input, request.input);
+    return { request, entry, input, nextKey, lineage };
+  }
+  private capacity(entry: Entry, caller?: PluginServiceParticipant): OperationCondition {
+    const busy = this.running >= 16 || (this.providerCounts.get(entry.provider.signal) ?? 0) >= 4
+      || !!caller && (this.callerCounts.get(caller.signal) ?? 0) >= 4;
+    return { kind: "capacity", state: busy ? "unavailable" : "satisfied", reason: busy ? "service-capacity-exceeded" : "service-capacity-available",
+      ...(busy ? { errorCode: "plugin/busy" } : {}) };
+  }
+  private inspectionFailure(request: PluginServiceCall, error: unknown): OperationAvailability {
+    const code = errorCode(error) ?? "internal";
+    const permission = code === "plugin/service-forbidden" || code === "plugin/object-access-denied";
+    const known = permission || ["plugin/service-unavailable", "plugin/service-cycle", "plugin/event-cycle", "plugin/invalid-argument"].includes(code);
+    if (!known) log.warn("Cannot inspect plugin service prerequisites", error);
+    return operationAvailability({ operation: "plugins.callService", serviceCall: request }, [{
+      kind: permission ? "permission" : code === "plugin/invalid-argument" ? "input" : "provider",
+      state: known ? "unavailable" : "unknown", reason: permission ? "service-authority-required" : "service-prerequisite-failed", errorCode: code,
+    }]);
+  }
+  inspect(caller: PluginServiceParticipant, raw: PluginServiceCall): OperationAvailability {
+    caller.assertLive(); caller.signal.throwIfAborted();
+    const request = normalizePluginServiceCall(raw);
+    try {
+      const { entry } = this.prepare(caller, request);
+      return operationAvailability({ operation: "plugins.callService", serviceCall: request }, [
+        { kind: "permission", state: "satisfied", reason: "shared-service-authority" },
+        { kind: "input", state: "satisfied", reason: "service-contract-valid" }, this.capacity(entry, caller),
+        { kind: "provider", state: "unknown", reason: "service-execution-not-probed" },
+      ]);
+    } catch (error) { caller.signal.throwIfAborted(); return this.inspectionFailure(request, error); }
+  }
+  inspectForAgent(raw: PluginServiceCall): OperationAvailability {
+    const request = normalizePluginServiceCall(raw);
+    try {
+      const entry = this.entries.get(key(request.service.pluginId, request.service.id));
+      if (!entry || entry.ref.generation !== request.service.generation || entry.ref.version !== request.service.version) throw unavailable();
+      this.current(entry);
+      if (!granted(entry.provider, entry.declaration)) throw denied();
+      if (entry.declaration.scope === "book" ? !request.bookId : request.bookId !== undefined || entry.provider.access.grant.mode !== "all") throw denied();
+      if (request.bookId) entry.provider.access.assertBook(request.bookId, "Agent service inspection");
+      validatePluginServiceValue(entry.declaration.input, request.input);
+      return operationAvailability({ operation: "plugins.callService", serviceCall: request }, [
+        { kind: "permission", state: "unknown", reason: "service-approval-required" },
+        { kind: "input", state: "satisfied", reason: "service-contract-valid" }, this.capacity(entry),
+        { kind: "provider", state: "unknown", reason: "service-execution-not-probed" },
+      ]);
+    } catch (error) { return this.inspectionFailure(request, error); }
+  }
+  async call(caller: PluginServiceParticipant, raw: PluginServiceCall, callSignal?: AbortSignal): Promise<PluginServiceReceipt> {
+    caller.assertLive(); caller.signal.throwIfAborted(); callSignal?.throwIfAborted();
+    const { request, entry, input, nextKey, lineage } = this.prepare(caller, raw);
     const fences: PluginBookAccessFence[] = [];
     const deadline = new AbortController();
     const timer = setTimeout(() => deadline.abort(fail("plugin/service-timeout", "Plugin service deadline elapsed")), PLUGIN_SERVICE_LIMITS.timeoutMs);
@@ -196,7 +249,7 @@ export class PluginServiceBroker {
       const signal = AbortSignal.any([caller.signal, entry.provider.signal, entry.lifetime.signal, deadline.signal,
         ...callSignal ? [callSignal] : [], ...fences.flatMap(fence => fence.signal ? [fence.signal] : [])]);
       signal.throwIfAborted(); caller.assertLive(); this.current(entry);
-      if (this.running >= 16 || (this.providerCounts.get(entry.provider.signal) ?? 0) >= 4 || (this.callerCounts.get(caller.signal) ?? 0) >= 4) throw fail("plugin/busy", "Plugin service execution capacity exceeded");
+      if (this.capacity(entry, caller).state === "unavailable") throw fail("plugin/busy", "Plugin service execution capacity exceeded");
       this.running++; this.providerCounts.set(entry.provider.signal, (this.providerCounts.get(entry.provider.signal) ?? 0) + 1); this.callerCounts.set(caller.signal, (this.callerCounts.get(caller.signal) ?? 0) + 1); accounted = true;
       const origin = reactionActor(`plugin:${entry.ref.pluginId}`, `service:${nextKey}`, actorCause(causalActor(caller.origin))!);
       const execution = Promise.resolve().then(() => {

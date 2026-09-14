@@ -21,7 +21,9 @@ test("compiled Text Desk consumes the compiled Jumper export, keeps its generati
   const ctx = { locale: "en", domains: {
     library: { commands: {}, queries: { books: { list: async () => [{ id: "book", title: "Book", format: "epub" }], getTextState: async () => ({ status: "unprepared", text: "unknown", chapterCount: 0 }) } } },
     reading: { commands: {}, queries: { session: async () => ({}) } },
-  }, services: { plugins: {
+  }, services: { session: { operationAvailability: async () => changed
+    ? ({ state: "unavailable", conditions: [{ state: "unavailable", errorCode: "plugin/service-unavailable" }] })
+    : ({ state: "unknown", conditions: [] }) }, plugins: {
     listServices: async () => ({ services: [{ ...manifest.services[0], ref }], total: 1, nextOffset: null }),
     callService: async (request: { service: typeof ref; bookId: string; input: unknown }) => {
       requests.push(request);
@@ -42,14 +44,14 @@ test("compiled Text Desk consumes the compiled Jumper export, keeps its generati
   changed = true;
   const replaced = (await expired.actions![0]!.run())!.view as PluginDetailView;
   expect(replaced.actions!.map(action => action.id)).toEqual(["refresh"]);
-  expect(requests).toHaveLength(3);
+  expect(requests).toHaveLength(2);
   for (const locale of ["zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"]) {
     expect(JSON.stringify(await jumperBookmarks({ ...ctx, locale }, "book", "Book"))).not.toContain("undefined");
   }
 });
 
 test("missing Jumper is explained without calling a service; unexpected output fails visibly", async () => {
-  const ctx = { locale: "en", services: { plugins: { listServices: async () => ({ services: [] }), callService: async () => { throw Error("must not call"); } } } } as unknown as PluginContext;
+  const ctx = { locale: "en", services: { session: { operationAvailability: async () => ({ state: "unknown", conditions: [] }) }, plugins: { listServices: async () => ({ services: [] }), callService: async () => { throw Error("must not call"); } } } } as unknown as PluginContext;
   const unavailable = await jumperBookmarks(ctx, "book", "Book") as PluginDetailView;
   expect(JSON.stringify(unavailable.content)).toContain("Enable Jumper");
   ctx.services.plugins.callService = async () => ({ callId: "call", service: { pluginId: "jumper", id: "bookmark-page", version: "1.0.0", generation: "g" }, value: { status: "ready", items: [{ name: 42 }], nextCursor: null } });

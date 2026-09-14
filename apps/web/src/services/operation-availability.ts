@@ -62,6 +62,10 @@ export function inspectInferenceAvailability(input: InferenceAvailabilityQuery, 
 export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal, context?: OperationAvailabilityContext): Promise<OperationAvailability> {
   const query = normalizeOperationAvailability(input);
   signal?.throwIfAborted();
+  if (query.operation === "plugins.callService") {
+    const { pluginServices } = await import("../features/plugins/runtime/plugin-services");
+    signal?.throwIfAborted(); return pluginServices.inspectForAgent(query.serviceCall);
+  }
   if (query.operation === "clipboard.writeText" || query.operation === "ui.openExternal" || query.operation === "ui.exportFile") {
     return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...hostIOConditions(query)]);
   }

@@ -32,6 +32,10 @@ test("Agent reading condition queries keep book scope and forward exact action/s
   const query = { operation: "reading.playback", bookId: "book", sessionId: "session", action: "start" };
   const tool = buildOperationAvailabilityTools(deps, { kind: "book", bookId: "book" })[0]!;
   expect(JSON.stringify((await tool.execute("query", { ...query, bookId: "foreign" })).content)).toContain("book-scope-required");
+  const serviceCall = { service: { pluginId: "jumper", id: "bookmark-page", version: "1.0.0", generation: "known" }, input: null };
+  for (const target of [undefined, "foreign"]) {
+    expect(JSON.stringify((await tool.execute("service", { operation: "plugins.callService", serviceCall: { ...serviceCall, ...(target ? { bookId: target } : {}) } })).content)).toContain("book-scope-required");
+  }
   expect(calls).toHaveLength(0);
   await tool.execute("query", query); expect(calls).toEqual([query]);
   const mode = { operation: "reading.mode.configure", bookId: "other", active: true, selectModeKey: "mode", unitId: "sentence" };

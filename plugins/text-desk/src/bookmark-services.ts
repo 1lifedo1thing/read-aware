@@ -22,7 +22,15 @@ export async function jumperBookmarks(ctx: PluginContext, bookId: string, title:
   const ref = service ?? (await ctx.services.plugins.listServices({ pluginId: "jumper", id: "bookmark-page" })).services.find(item => item.version === "1.0.0")?.ref;
   if (!ref) return message("jumperUnavailable");
   let page: BookmarkPage;
-  try { page = bookmarkPage((await ctx.services.plugins.callService({ service: ref, bookId, input: { limit: 20, ...(cursor === undefined ? {} : { cursor }) } })).value); }
+  try {
+    const request = { service: ref, bookId, input: { limit: 20, ...(cursor === undefined ? {} : { cursor }) } };
+    const availability = await ctx.services.session.operationAvailability({ operation: "plugins.callService", serviceCall: request });
+    if (availability.state === "unavailable" || availability.state === "unconfigured") {
+      const blocked = availability.conditions.find(item => item.state === "unavailable" || item.state === "unconfigured");
+      throw Object.assign(Error("Bookmark service unavailable"), { code: blocked?.errorCode ?? "plugin/service-unavailable" });
+    }
+    page = bookmarkPage((await ctx.services.plugins.callService(request)).value);
+  }
   catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "plugin/service-unavailable") return message("jumperChanged");
     throw error;

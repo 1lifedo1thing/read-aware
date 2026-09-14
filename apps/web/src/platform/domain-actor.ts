@@ -138,14 +138,22 @@ export class ObservationCauses {
   }
 }
 
-/** Each subscription can react once in a causal path. A distinct rule in the
- * same plugin is a legitimate next step, and independent user events start new paths. */
-export function reactionActor(origin: EventOrigin, rule: string, cause: EventCause): DomainActor {
+/** Inspect eligibility without issuing or consuming a reaction actor. */
+export function assertReactionAllowed(cause: EventCause | undefined, rule: string): void {
+  if (cause) eligibleReactionBranches(cause, rule);
+}
+function eligibleReactionBranches(cause: EventCause, rule: string): readonly CausalBranch[] {
   if (!issued.has(cause)) throw new AppError("plugin/invalid-cause", "Event cause was not issued by this host");
   const eligible = branches.get(cause)!.filter(path => !path.steps.includes(rule) && path.steps.length < MAX_REACTION_DEPTH);
   if (!eligible.length) {
     throw new AppError("plugin/event-cycle", "Event reaction would repeat a causal step");
   }
+  return eligible;
+}
+/** Each subscription can react once in a causal path. A distinct rule in the
+ * same plugin is a legitimate next step, and independent user events start new paths. */
+export function reactionActor(origin: EventOrigin, rule: string, cause: EventCause): DomainActor {
+  const eligible = eligibleReactionBranches(cause, rule);
   // A new independent trigger can run even when coalesced with an exhausted
   // path. Only its eligible roots propagate; the repeated roots stay retired.
   const actor = Object.freeze({ origin, cause: joined(eligible.map(path => ({ root: path.root, steps: [...path.steps, rule] }))) });

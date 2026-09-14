@@ -815,7 +815,7 @@ var HOST_COMMAND_IDS = [...PARAMETERLESS_HOST_COMMAND_IDS, "open-book", "open-co
 // ../../packages/core/src/domains.ts
 var DOMAIN_CATALOG = {
   library: { version: "1.31.0", pluginAccess: ["read", "write"] },
-  reading: { version: "2.23.0", pluginAccess: ["read", "write"] },
+  reading: { version: "2.24.0", pluginAccess: ["read", "write"] },
   annotations: { version: "2.2.0", pluginAccess: ["read", "write"] },
   conversations: { version: "1.5.0", pluginAccess: ["read", "write"] },
   settings: { version: "1.10.0", pluginAccess: [] },
@@ -850,7 +850,7 @@ var HOST_SERVICE_CATALOG = {
   jobs: { version: "1.1.0", permission: null },
   changes: { version: "1.0.0", permission: null },
   transactions: { version: "1.0.0", permission: null },
-  session: { version: "2.5.0", permission: null },
+  session: { version: "2.10.0", permission: null },
   plugins: { version: "1.9.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
@@ -1646,7 +1646,13 @@ async function jumperBookmarks(ctx, bookId, title, service, cursor) {
     return message("jumperUnavailable");
   let page;
   try {
-    page = bookmarkPage((await ctx.services.plugins.callService({ service: ref, bookId, input: { limit: 20, ...cursor === undefined ? {} : { cursor } } })).value);
+    const request = { service: ref, bookId, input: { limit: 20, ...cursor === undefined ? {} : { cursor } } };
+    const availability = await ctx.services.session.operationAvailability({ operation: "plugins.callService", serviceCall: request });
+    if (availability.state === "unavailable" || availability.state === "unconfigured") {
+      const blocked = availability.conditions.find((item) => item.state === "unavailable" || item.state === "unconfigured");
+      throw Object.assign(Error("Bookmark service unavailable"), { code: blocked?.errorCode ?? "plugin/service-unavailable" });
+    }
+    page = bookmarkPage((await ctx.services.plugins.callService(request)).value);
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "plugin/service-unavailable")
       return message("jumperChanged");

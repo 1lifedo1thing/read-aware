@@ -1,3 +1,4 @@
+import { normalizePluginServiceCall, type PluginServiceCall } from "./plugin-services";
 import { normalizeBookGraphTaskOptions, type BookGraphTaskOptions } from "./book-graph-task";
 import { normalizeHostWindowRequest, type HostWindowRequest } from "./host-window";
 import { normalizeClipboardText, normalizeExternalUrl, normalizeHostExportDescription, type HostExportDescription } from "./host-io";
@@ -18,8 +19,9 @@ export type WindowAvailabilityQuery = { operation: "window.control"; request: Ho
 export type ExportAvailabilityQuery = { operation: "ui.exportFile" } & HostExportDescription;
 export type HostIOAvailabilityQuery = ExportAvailabilityQuery | { operation: "clipboard.writeText"; text: string } | { operation: "ui.openExternal"; url: string };
 export type SyncAvailabilityQuery = { operation: "sync.now" };
-export type OperationAvailabilityQuery = InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
-export type NormalizedOperationAvailabilityQuery = Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
+export type PluginServiceAvailabilityQuery = { operation: "plugins.callService"; serviceCall: PluginServiceCall };
+export type OperationAvailabilityQuery = PluginServiceAvailabilityQuery | InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
+export type NormalizedOperationAvailabilityQuery = PluginServiceAvailabilityQuery | Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
 export type OperationConditionState = "satisfied" | "unconfigured" | "unavailable" | "unknown";
 export type OperationCondition = {
   kind: "permission" | "account" | "model" | "endpoint" | "provider" | "input" | "object" | "reader" | "capacity";
@@ -47,6 +49,10 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
       || raw.mode !== "catch-up" && raw.mode !== "rebuild") throw invalid();
     return { operation: raw.operation, bookId: raw.bookId, mode: raw.mode,
       ...normalizeBookGraphTaskOptions(raw.maxChapters === undefined ? undefined : { maxChapters: raw.maxChapters }) };
+  }
+  if (raw.operation === "plugins.callService") {
+    if (Object.keys(raw).some(key => key !== "operation" && key !== "serviceCall")) throw invalid();
+    return { operation: raw.operation, serviceCall: normalizePluginServiceCall(raw.serviceCall) };
   }
   if (raw.operation === "ui.exportFile") {
     const { operation, ...description } = raw;

@@ -2478,7 +2478,7 @@ export type PluginHostServices = {
     receipt(receiptId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicReceipt | null>;
   };
   session: {
-    /** Session 2.9: inspect export metadata/save entry and clipboard/browser entry availability (no OS access probe), window support/capacity/target state, sync connection/credentials/provider, inference, book-targeted playback/mode, text preparation and graph prerequisites without executing
+    /** Session 2.10: inspect plugin service contract/authority/capacity (Agent approval remains required), export metadata/save entry and clipboard/browser entry availability (no OS access probe), window support/capacity/target state, sync connection/credentials/provider, inference, book-targeted playback/mode, text preparation and graph prerequisites without executing
      * or probing. Missing permission returns only the permission condition.
      * Unknown remote health is not a local refusal or a success guarantee. */
     operationAvailability(query: import("@read-aware/core").OperationAvailabilityQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").OperationAvailability>;

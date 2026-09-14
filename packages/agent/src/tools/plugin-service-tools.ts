@@ -1,6 +1,6 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { AppError, normalizePluginServiceCall, normalizePluginServiceQuery, type PluginServiceQuery } from "@read-aware/core";
+import { AppError, assertOperationAvailable, normalizePluginServiceCall, normalizePluginServiceQuery, type PluginServiceQuery } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import { threadScopeKey, type ThreadScope } from "../thread-scope";
 import { requestUserInteraction } from "./user-interaction";
@@ -34,6 +34,7 @@ export function buildPluginServiceTools(scope: ThreadScope, deps: RuntimeDeps, s
           && service.permissions.some(permission => permission.startsWith("reading:") || permission.startsWith("conversations:"))) {
           throw new AppError("ai/invalid-reading-context", "This service requires reading context disabled for this turn");
         }
+        if (deps.operationAvailability) assertOperationAvailable(await deps.operationAvailability.check({ operation: "plugins.callService", serviceCall: request }, policy.signal));
         return textResult(await port.call(scope, request, async (subject, approvalSignal) => {
           const result = await requestUserInteraction({ deps, toolCallId, threadKey: threadScopeKey(scope), signal: approvalSignal, onUpdate,
             request: { kind: "permission", action: "plugin-tool", subject } });
