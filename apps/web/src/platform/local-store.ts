@@ -363,8 +363,8 @@ export async function dumpLocalKV(): Promise<Record<string, string>> {
 }
 
 /** Merge a backup atomically before reload, retaining the existing roaming-publication policy. */
-export async function restoreLocalKV(entries: Record<string, string>, run: RunDomainWrite = runDomainWrite): Promise<void> {
-  await setLocalKVBatch(new Map(Object.entries(entries)), null, "restore", "store", run);
+export async function restoreLocalKV(entries: Record<string, string>, run: RunDomainWrite = runDomainWrite, origin: DomainActor = "user"): Promise<void> {
+  await setLocalKVBatch(new Map(Object.entries(entries)), causalActor(origin), "restore", "store", run);
 }
 
 /** Host rollback spanning KV and other SQLite tables, with the same queue/mirror contract. */

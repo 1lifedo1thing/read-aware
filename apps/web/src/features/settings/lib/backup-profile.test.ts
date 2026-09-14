@@ -1,3 +1,4 @@
+import { causalActor } from "../../../platform/domain-actor";
 import { expect, spyOn, test } from "bun:test";
 import { AppError, userProfileRevision, type UserProfileSnapshot } from "@read-aware/core";
 import * as profile from "../../../domain/user-profile";
@@ -29,6 +30,7 @@ test("v1 export materializes only the current summary and never resurrects a sta
 });
 
 test("v1 import separates large historical summary from KV and carries the pre-restore revision", async () => {
+  const origin = causalActor("user");
   const observed = { summary: "Current", revision: await userProfileRevision("Current", "event") };
   const read = spyOn(profile, "readUserProfileSnapshot").mockResolvedValue(observed);
   const restore = spyOn(profile, "restoreUserProfile").mockResolvedValue({ changed: true, revision: "next", persistence: "event-log" });
@@ -38,11 +40,11 @@ test("v1 import separates large historical summary from KV and carries the pre-r
   const json = (values: Record<string, unknown>) => JSON.stringify({ app: "read-aware", kind: "backup", version: 1, books: [], kv: values });
   try {
     const summary = "x".repeat(20000);
-    expect(await importBackup(json({ [profile.LEGACY_PROFILE_KEY]: summary, "read-aware-theme": "paper" }))).toMatchObject({ settings: 2 });
-    expect(write).toHaveBeenLastCalledWith({ "read-aware-theme": "paper" }, expect.any(Function));
-    expect(restore).toHaveBeenLastCalledWith(summary, observed.revision, expect.any(Function));
+    expect(await importBackup(json({ [profile.LEGACY_PROFILE_KEY]: summary, "read-aware-theme": "paper" }), undefined, origin)).toMatchObject({ settings: 2 });
+    expect(write).toHaveBeenLastCalledWith({ "read-aware-theme": "paper" }, expect.any(Function), origin);
+    expect(restore).toHaveBeenLastCalledWith(summary, observed.revision, expect.any(Function), origin);
     await importBackup(json({ [profile.LEGACY_PROFILE_KEY]: "" }));
-    expect(restore).toHaveBeenLastCalledWith("", observed.revision, expect.any(Function));
+    expect(restore).toHaveBeenLastCalledWith("", observed.revision, expect.any(Function), expect.any(Object));
     const reads = read.mock.calls.length, writes = restore.mock.calls.length;
     await importBackup(json({ "read-aware-theme": "dark" }));
     expect(read).toHaveBeenCalledTimes(reads); expect(restore).toHaveBeenCalledTimes(writes);

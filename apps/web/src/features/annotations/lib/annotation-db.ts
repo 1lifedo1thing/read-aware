@@ -1,4 +1,5 @@
-import type { DomainActor } from "../../../platform/domain-actor";
+import { emitAppEvent } from "../../../platform/app-events";
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 /**
  * Storage for annotations (highlights, notes, asks): the desktop SQLite
  * `annotations` table (Rust `annotation_*` commands; search is FTS5-backed).
@@ -63,10 +64,12 @@ function filterAndSortAnnotations(
 // boot. Every intent-level function below states its change as an event and
 // lets `commitDomainEvents` append + apply it in one transaction, then reads
 // the stored row back — the projection is derived, never written here.
-export async function saveAnnotation(annotation: Annotation, run: RunDomainWrite = runDomainWrite): Promise<Annotation> {
+export async function saveAnnotation(annotation: Annotation, run: RunDomainWrite = runDomainWrite, origin: DomainActor = "user"): Promise<Annotation> {
+  origin = causalActor(origin);
   assertDesktop("Saving an annotation");
   return run(async () => {
     await invoke("annotation_put", { annotation });
+    emitAppEvent("projections-invalidated", { source: "restore" }, origin);
     return annotation;
   });
 }

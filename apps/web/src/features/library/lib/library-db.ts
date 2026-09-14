@@ -1,4 +1,4 @@
-import { actorOrigin, type DomainActor } from "../../../platform/domain-actor";
+import { causalActor, actorOrigin, type DomainActor } from "../../../platform/domain-actor";
 import { runDomainWrite, type RunDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { AppError, normalizeBookRemovalCleanupQuery, type BookRemovalCleanupPage, type BookRemovalCleanupQuery } from "@read-aware/core";
@@ -469,22 +469,25 @@ export async function restoreLibraryBook(
   book: LibraryBook,
   fileBytes: Uint8Array | null,
   run: RunDomainWrite = runDomainWrite,
+  origin: DomainActor = "user",
 ): Promise<void> {
+  origin = causalActor(origin);
   return run(async () => {
     await putBookRecord(book);
     try {
       if (fileBytes) await putBookFileBytes(book.id, fileBytes, run);
     } finally {
       // The row already committed even when restoring its file fails.
-      emitAppEvent("projections-invalidated", { source: "restore" });
+      emitAppEvent("projections-invalidated", { source: "restore" }, origin);
     }
   });
 }
 
 /** Upsert a collection record verbatim (id preserved). */
-export async function restoreCollection(collection: Collection, run: RunDomainWrite = runDomainWrite): Promise<void> {
+export async function restoreCollection(collection: Collection, run: RunDomainWrite = runDomainWrite, origin: DomainActor = "user"): Promise<void> {
+  origin = causalActor(origin);
   return run(async () => {
     await putCollectionRecord(collection);
-    emitAppEvent("projections-invalidated", { source: "restore" });
+    emitAppEvent("projections-invalidated", { source: "restore" }, origin);
   });
 }

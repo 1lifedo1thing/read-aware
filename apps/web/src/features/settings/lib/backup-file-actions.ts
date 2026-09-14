@@ -1,3 +1,4 @@
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { AppError, RESOURCE_MAX_CHUNK, type ResourcePort } from "@read-aware/core";
 import { exportTextFile } from "../../../platform/export-file";
 import { createResourceOwner } from "../../../services/resources";
@@ -7,7 +8,7 @@ export const BACKUP_FILENAME = "readaware-backup.json";
 type Reader = Pick<ResourcePort, "pick" | "read"> & { dispose(): Promise<void> };
 type Dependencies = {
   serialize(signal?: AbortSignal): Promise<string>;
-  merge(json: string, signal?: AbortSignal): Promise<BackupImportResult>;
+  merge(json: string, signal?: AbortSignal, origin?: DomainActor): Promise<BackupImportResult>;
   save(json: string, signal?: AbortSignal): Promise<boolean>;
   reader(): Reader;
 };
@@ -21,8 +22,9 @@ export function createBackupFileActions(deps: Dependencies) {
       signal?.throwIfAborted();
       return deps.save(json, signal);
     },
-    async import(signal?: AbortSignal): Promise<BackupImportResult | null> {
+    async import(signal?: AbortSignal, origin: DomainActor = "user"): Promise<BackupImportResult | null> {
       signal?.throwIfAborted();
+      origin = causalActor(origin);
       const reader = deps.reader();
       try {
         const picked = await reader.pick({ multiple: false, extensions: ["json"] }, signal);
@@ -44,7 +46,7 @@ export function createBackupFileActions(deps: Dependencies) {
         signal?.throwIfAborted();
         // The existing v1 merge is not transactional. Once begun, finish its
         // writes rather than treating cancellation as a rollback.
-        return await deps.merge(parts.join(""), signal);
+        return await deps.merge(parts.join(""), signal, origin);
       } finally { await reader.dispose(); }
     },
   };

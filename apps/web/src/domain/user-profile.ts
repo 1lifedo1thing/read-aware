@@ -1,4 +1,4 @@
-import type { DomainActor } from "../platform/domain-actor";
+import { causalActor, type DomainActor } from "../platform/domain-actor";
 import { runDomainWrite, type RunDomainWrite } from "../platform/domain-write-gate";
 import { normalizeUserProfileChange, normalizeUserProfileQuery, userProfilePage,
   type UserProfileChange, type UserProfileQuery, type UserProfileReceipt, type UserProfileSnapshot } from "@read-aware/core";
@@ -55,7 +55,7 @@ export function createUserProfileService(host: ProfileHost) {
       await change({ summary, expectedRevision: observed.revision }, "agent");
     },
     // Only the host archive workflow can reach this; no override flag in public edits.
-    restore: (summary: string, expectedRevision: string, run: RunDomainWrite = runDomainWrite) => write("profile_restore", { summary, expectedRevision }, "user", undefined, run),
+    restore: (summary: string, expectedRevision: string, run: RunDomainWrite = runDomainWrite, origin: DomainActor = "user") => write("profile_restore", { summary, expectedRevision }, causalActor(origin), undefined, run),
   };
 }
 

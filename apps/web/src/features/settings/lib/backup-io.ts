@@ -1,3 +1,4 @@
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 /**
  * Legacy v1 subset: KV, books, collections, annotations and available original
  * files (including lazy downloads when connected). The profile summary uses
@@ -152,14 +153,15 @@ async function exportBackupContents(available: ReadonlyMap<string, boolean>, run
  * (existing rows can be overwritten; a later failure does not roll back prior writes).
  * Returns how many of each were restored.
  */
-export async function importBackup(json: string, signal?: AbortSignal): Promise<BackupImportResult> {
+export async function importBackup(json: string, signal?: AbortSignal, origin: DomainActor = "user"): Promise<BackupImportResult> {
   // Cancellation can stop admission/draining, but does not revoke a merge
   // which has begun writing. Its legacy partial-write behavior is unchanged.
+  origin = causalActor(origin);
   return withSyncBackup(() => withPluginDataBackup("import",
-    () => withBackupCapture(run => importBackupContents(json, run), signal), signal), signal);
+    () => withBackupCapture(run => importBackupContents(json, run, origin), signal), signal), signal);
 }
 
-async function importBackupContents(json: string, run: RunDomainWrite): Promise<BackupImportResult> {
+async function importBackupContents(json: string, run: RunDomainWrite, origin: DomainActor): Promise<BackupImportResult> {
   const parsed = JSON.parse(json) as Partial<Backup>;
   if (!parsed || parsed.kind !== "backup" || !Array.isArray(parsed.books)) {
     throw new Error("This file is not a ReadAware backup.");
@@ -179,15 +181,15 @@ async function importBackupContents(json: string, run: RunDomainWrite): Promise<
   const collections = parsed.collections ?? [];
   const annotations = parsed.annotations ?? [];
 
-  await restoreLocalKV(kv, run);
-  if (profile) await restoreUserProfile(summary!, profile.revision, run);
+  await restoreLocalKV(kv, run, origin);
+  if (profile) await restoreUserProfile(summary!, profile.revision, run, origin);
   // Collections first so book membership resolves against existing rows.
-  for (const collection of collections) await restoreCollection(collection, run);
+  for (const collection of collections) await restoreCollection(collection, run, origin);
   for (const book of parsed.books) {
     const encoded = files[book.id];
-    await restoreLibraryBook(book, encoded ? base64ToBytes(encoded) : null, run);
+    await restoreLibraryBook(book, encoded ? base64ToBytes(encoded) : null, run, origin);
   }
-  for (const annotation of annotations) await saveAnnotation(annotation, run);
+  for (const annotation of annotations) await saveAnnotation(annotation, run, origin);
 
   return {
     settings,
