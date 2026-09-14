@@ -1,3 +1,4 @@
+import type { DomainActor } from "../domain-actor";
 /**
  * Dismissal persistence for the "sign in again" notice that appears when the
  * relay rejects the stored session (sync status `unauthenticated`). Dismissing
@@ -18,6 +19,6 @@ export function dismissReauthNotice(): void {
   localKV.setItem(DISMISSED_KV_KEY, "1");
 }
 
-export function clearReauthNoticeDismissal(): void {
-  localKV.removeItem(DISMISSED_KV_KEY);
+export function clearReauthNoticeDismissal(origin?: DomainActor): void {
+  localKV.removeItem(DISMISSED_KV_KEY, "local", origin);
 }

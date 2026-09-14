@@ -471,7 +471,8 @@ export async function syncNow(origin: DomainActor = "user"): Promise<SyncCycleOu
  * present. Safe to call repeatedly — each call replaces the previous schedule.
  * Returns the disposer (also stored, for restartSyncScheduler).
  */
-export function startSyncScheduler(): () => void {
+export function startSyncScheduler(origin: DomainActor = "system"): () => void {
+  origin = causalActor(origin);
   connectionGeneration++;
   disposeScheduler?.();
   // Restarting is also the account-boundary transition. Clear the previous
@@ -487,7 +488,7 @@ export function startSyncScheduler(): () => void {
     cycleTotals: null,
     lastCycle: null,
     backfillRemaining: 0,
-  });
+  }, origin);
   if (!isTauri()) return () => {};
 
   let disposed = false;
@@ -654,24 +655,24 @@ export function startSyncScheduler(): () => void {
       backend: connection ? "transport" : "relay",
       transportRef: connection?.ref ?? null,
       lastSyncAt: lastSuccessfulSyncAt(profile),
-    });
+    }, origin);
     // Duplicates that predate this build (or arrived while sync was off)
     // reconcile once at start; pull-time detection covers everything after.
     void syncWork.run(() => disposed ? Promise.resolve(0) : reconcileDuplicateBooks());
     if (!connection) {
       // The doorbell socket is a relay feature; transports poll.
       void openWatch();
-      tick();
+      tick(origin);
       return;
     }
     // Plugin activation races scheduler start: when the bound transport is
     // not registered yet, wait for the registry instead of opening with a
     // guaranteed "transport unavailable" error. The interval stays as the
     // safety net; a registration (or plugin restart) ticks immediately.
-    offTransports = onSyncTransportsChanged(() => {
-      if (!disposed && findSyncTransport(connection.ref)) tick();
+    offTransports = onSyncTransportsChanged(source => {
+      if (!disposed && findSyncTransport(connection.ref)) tick(actorFromEvent(source));
     });
-    if (findSyncTransport(connection.ref)) tick();
+    if (findSyncTransport(connection.ref)) tick(origin);
     else schedule(PULL_INTERVAL_MS);
   })();
 
@@ -697,11 +698,12 @@ export function startSyncScheduler(): () => void {
 }
 
 /** After connect/disconnect: rebuild the engine (new session/key) and rerun. */
-export function restartSyncScheduler(): void {
+export function restartSyncScheduler(origin: DomainActor = "system"): void {
+  origin = causalActor(origin);
   engine = null;
   transportSessions.stop();
   transportSessions = newTransportSessions();
-  startSyncScheduler();
+  startSyncScheduler(origin);
 }
 
 // ── Connect / disconnect bookkeeping (called by the settings panel) ──────────
@@ -710,10 +712,11 @@ export async function persistConnection(options: {
   session: string;
   accountId: string;
   masterKeyBase64: string;
-}): Promise<void> {
+}, origin: DomainActor = "user"): Promise<void> {
+  origin = causalActor(origin);
   return syncWork.run(async () => {
-    await setSecretAsync("sync.session", options.session);
-    await setSecretAsync("sync.master-key", options.masterKeyBase64);
+    await setSecretAsync("sync.session", options.session, "local", origin);
+    await setSecretAsync("sync.master-key", options.masterKeyBase64, "local", origin);
     // Before the scheduler wakes up against this account: if the bookkeeping
     // belongs to a different one, it resets here — otherwise "already pushed"
     // marks earned against the OLD account's mailbox would silently withhold
@@ -732,12 +735,13 @@ export async function persistConnection(options: {
     await republishRoamingSecrets();
     // A fresh session opens a fresh epoch: if THIS one ever dies, the "sign in
     // again" notice must prompt anew, whatever the user dismissed before.
-    clearReauthNoticeDismissal();
-    restartSyncScheduler();
+    clearReauthNoticeDismissal(origin);
+    restartSyncScheduler(origin);
   });
 }
 
-export async function disconnectSync(): Promise<void> {
+export async function disconnectSync(origin: DomainActor = "user"): Promise<void> {
+  origin = causalActor(origin);
   return syncWork.run(async () => {
     const profile = await getSyncProfile();
     // Only a relay connection has a server session to revoke; a transport
@@ -749,16 +753,16 @@ export async function disconnectSync(): Promise<void> {
         // Best effort — the local teardown must succeed regardless.
       }
     }
-    await deleteSecretAsync("sync.session");
-    await deleteSecretAsync("sync.master-key");
-    clearReauthNoticeDismissal();
+    await deleteSecretAsync("sync.session", "local", origin);
+    await deleteSecretAsync("sync.master-key", "local", origin);
+    clearReauthNoticeDismissal(origin);
     await setSyncProfile({
       ...profile,
       syncEnabled: false,
       remoteAccountId: null,
       encryptionKeyRef: null,
     });
-    restartSyncScheduler();
+    restartSyncScheduler(origin);
   });
 }
 
@@ -774,12 +778,13 @@ export async function persistTransportConnection(options: {
   ref: string;
   endpointId: string;
   masterKeyBase64: string;
-}): Promise<void> {
+}, origin: DomainActor = "user"): Promise<void> {
+  origin = causalActor(origin);
   return syncWork.run(async () => {
-    await setSecretAsync("sync.master-key", options.masterKeyBase64);
+    await setSecretAsync("sync.master-key", options.masterKeyBase64, "local", origin);
     // No relay session in transport mode; a leftover one must not linger as a
     // phantom credential.
-    await deleteSecretAsync("sync.session");
+    await deleteSecretAsync("sync.session", "local", origin);
     // Different mailbox ⇒ wholesale outbox/cursor reset, same as switching
     // relay accounts — "already pushed" was only ever true of the old remote.
     await adoptSyncAccount(transportAccountId(options.ref, options.endpointId));
@@ -794,6 +799,6 @@ export async function persistTransportConnection(options: {
     // offline) get sealed into the log now, so they roam without waiting for
     // their next edit.
     await republishRoamingSecrets();
-    restartSyncScheduler();
+    restartSyncScheduler(origin);
   });
 }

@@ -123,7 +123,7 @@ export function useSyncConnection() {
    *  didn't pass through the email being shown. */
   const finishConnect = useCallback(
     (verification: SignInVerification, passphrase: string): Promise<void> =>
-      runSyncConnectionOperation(async () => {
+      runSyncConnectionOperation(async origin => {
         // The fresh session lives in this closure until the whole connect
         // succeeds — establishEncryption's publishKeys must already carry it
         // (the regression that once burned a live sign-in token), while
@@ -140,7 +140,7 @@ export function useSyncConnection() {
           session: verification.session,
           accountId: verification.accountId,
           masterKeyBase64,
-        });
+        }, origin);
         await reloadProfile();
       }),
     [reloadProfile],
@@ -148,18 +148,18 @@ export function useSyncConnection() {
 
   const disconnect = useCallback(
     (): Promise<void> =>
-      runSyncConnectionOperation(async () => {
-        await disconnectSync();
+      runSyncConnectionOperation(async origin => {
+        await disconnectSync(origin);
         await reloadProfile();
       }),
     [reloadProfile],
   );
 
   const deleteAccount = useCallback(
-    (): Promise<void> => runSyncConnectionOperation(async () => {
+    (): Promise<void> => runSyncConnectionOperation(async origin => {
       // Keep the account/session stable through both remote deletion and local disconnect.
       await syncRelayClient().deleteAccount();
-      await disconnectSync();
+      await disconnectSync(origin);
       await reloadProfile();
     }),
     [reloadProfile],
@@ -196,7 +196,7 @@ export function useSyncConnection() {
    *  the remote's key-material object, then a durable profile binding. */
   const connectTransport = useCallback(
     (ref: string, passphrase: string): Promise<void> =>
-      runSyncConnectionOperation(async () => {
+      runSyncConnectionOperation(async origin => {
         const session = await openTransport(ref);
         const masterKeyBase64 = await withTransportSession(session, () =>
           establishEncryptionWithStore(transportKeyMaterialStore(session), passphrase),
@@ -205,7 +205,7 @@ export function useSyncConnection() {
           ref,
           endpointId: session.endpointId,
           masterKeyBase64,
-        });
+        }, origin);
         await reloadProfile();
       }),
     [reloadProfile],

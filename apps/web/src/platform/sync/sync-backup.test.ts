@@ -152,9 +152,11 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
     const paused = scheduler.withSyncBackup(async fetch => { escaped = fetch; await hold.promise; });
     await Bun.sleep(0);
     const before = commands.filter(command => command === "secret_set").length;
-    const connect = scheduler.persistConnection({ session: "synthetic-next", accountId: "synthetic-account", masterKeyBase64: toBase64(new Uint8Array(32).fill(12)) });
+    const origin = causalActor("user");
+    const connect = scheduler.persistConnection({ session: "synthetic-next", accountId: "synthetic-account", masterKeyBase64: toBase64(new Uint8Array(32).fill(12)) }, origin);
     await Bun.sleep(0); expect(commands.filter(command => command === "secret_set")).toHaveLength(before);
     hold.resolve(); await paused; await connect;
+    expect(eventCause(scheduler.getSyncStatusSnapshot())).toEqual(actorCause(origin));
     expect(commands.filter(command => command === "secret_set")).toHaveLength(before + 2);
     const count = downloads.length;
     await expect(escaped!("outside")).rejects.toMatchObject({ code: "backup/busy" });
