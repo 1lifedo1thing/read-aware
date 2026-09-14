@@ -784,6 +784,11 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
         metadata_json TEXT NOT NULL, receipt_json TEXT NOT NULL, revisions_json TEXT NOT NULL,
         PRIMARY KEY(owner,id)
     );"),
+    (47, "durable_jobs", "CREATE TABLE durable_jobs (
+        owner TEXT NOT NULL, id TEXT NOT NULL, plan_json TEXT NOT NULL, state_json TEXT NOT NULL,
+        revision TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+        PRIMARY KEY(owner,id)
+    );"),
 ];
 
 /// Rebuild the annotation FTS index from the table. Required after any VACUUM

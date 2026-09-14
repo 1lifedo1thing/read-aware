@@ -79,3 +79,5 @@ export * from "./operation-availability";
 export * from "./plugin-services";
 
 export * from "./transactions";
+
+export * from "./jobs";

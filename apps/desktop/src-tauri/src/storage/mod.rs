@@ -92,6 +92,8 @@ mod plugin_update_journal;
 pub(crate) use plugin_update_journal::*;
 mod plugin_document_operations;
 mod atomic_commit;
+mod durable_jobs;
+pub use durable_jobs::*;
 pub use atomic_commit::*;
 mod plugin_document_search;
 pub use plugin_document_operations::*;

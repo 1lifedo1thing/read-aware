@@ -415,7 +415,7 @@
 - Capability services：15 个。
 - Capability schemas：3 个。
 - Settings path：73 个。
-- Native command：233 个。
+- Native command：237 个。
 - Native plugin：12 个。
 - Menu placement：16 个。
 - Shortcut：19 个。
@@ -1169,6 +1169,10 @@
 | `covers::library_cover_backlog` | [LIB09](#LIB09) [LIB10](#LIB10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::append_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::commit_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::durable_job_create` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::durable_job_get` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::durable_job_list` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::durable_job_checkpoint` | [MORE01](#MORE01) [CON03](#CON03) [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::atomic_commit` | [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::atomic_receipt_get` | [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::atomic_aggregate_revisions` | [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
