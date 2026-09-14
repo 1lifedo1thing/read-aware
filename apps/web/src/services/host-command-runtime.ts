@@ -1,4 +1,5 @@
-import type { EventOrigin, HostCommandId, HostCommandObservation, HostCommandSnapshot } from "@read-aware/core";
+import { type DomainActor } from "../platform/domain-actor";
+import type { HostCommandId, HostCommandObservation, HostCommandSnapshot } from "@read-aware/core";
 import { createSettingsDomain, type SettingsDomain } from "../domain/settings/domain";
 import { i18n } from "../i18n/instance";
 import { createHostCommands } from "./host-commands";
@@ -19,9 +20,10 @@ export function hostCommandTitle(id: HostCommandId): string {
   return i18n.t(key, { ns: "command", defaultValue: id });
 }
 
-export function actorHostCommands(settings: SettingsDomain, canReadWorkspace: boolean, canNavigate: boolean, canCloseReader: boolean) {
-  const commands = createHostCommands({ workspace, settings, canReadWorkspace, canNavigate, canCloseReader, title: hostCommandTitle,
-    openBook: (bookId, signal) => readingRuntime.navigate({ bookId }, signal) });
+export function actorHostCommands(settings: SettingsDomain, canReadWorkspace: boolean, canNavigate: boolean, canCloseReader: boolean, origin: DomainActor = "system") {
+  const commands = createHostCommands({ workspace: { snapshot: (...args) => workspace.snapshot(...args),
+    navigate: (target, revision, signal, allowClose, project) => workspace.navigate(target, revision, signal, allowClose, project, origin) }, settings, canReadWorkspace, canNavigate, canCloseReader, title: hostCommandTitle,
+    openBook: (bookId, signal) => readingRuntime.navigate({ bookId }, signal, origin) });
   return { ...commands, observe: (handler: (state: HostCommandObservation) => unknown,
     read: (signal: AbortSignal) => Promise<HostCommandSnapshot> = commands.list,
     observeExtra?: (invalidate: () => void) => () => void) => observers.observe(read, invalidate => {
@@ -37,6 +39,6 @@ export function actorHostCommands(settings: SettingsDomain, canReadWorkspace: bo
     } catch (error) { release(); throw error; }
   }, handler) };
 }
-export function trustedHostCommands(origin: EventOrigin) {
-  return actorHostCommands(createSettingsDomain(origin), true, true, true);
+export function trustedHostCommands(origin: DomainActor) {
+  return actorHostCommands(createSettingsDomain(origin), true, true, true, origin);
 }

@@ -1119,7 +1119,7 @@ export function buildPluginContext(
   // host-only details such as tracked subscriptions and virtual-book bindings.
   if (domain.library) {
     const library = domain.library;
-    const commands = actorHostCommands(settingsDomain, true, !!library.commands, !!domain.reading?.commands);
+    const commands = actorHostCommands(settingsDomain, true, !!library.commands, !!domain.reading?.commands, operationActor);
     ctx.services.ui.commands = {
       observe: handler => track(() => ({ dispose: commands.observe(handler) })),
       list: async () => {
@@ -1136,14 +1136,14 @@ export function buildPluginContext(
       observe: (query, handler) => track(() => ({ dispose: workspace.observe(query, handler) })),
       ...(library.commands ? { navigate: (target: import("@read-aware/core").WorkspaceTarget, expectedRevision?: number) => {
         lifecycle.assertActive("services.ui.workspace.navigate");
-        return workspace.navigate(target, expectedRevision, lifecycle.signal, !!domain.reading?.commands);
+        return workspace.navigate(target, expectedRevision, lifecycle.signal, !!domain.reading?.commands, undefined, operationActor);
       } } : {}),
     };
     if (objectAccess.restricted) {
       const scoped = scopePluginWorkspace(workspace, commands, objectAccess, lifecycle, {
         current: () => latestCurrent,
         observe: handler => readingRuntime.observe(() => handler()),
-      }, !!library.commands, !!domain.reading?.commands, scopedWorkspaceState);
+      }, !!library.commands, !!domain.reading?.commands, scopedWorkspaceState, operationActor);
       ctx.services.ui.commands = scoped.commands;
       ctx.services.ui.workspace = scoped.workspace;
     }

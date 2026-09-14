@@ -76,7 +76,7 @@ export function buildRuntimeDeps(): RuntimeDeps {
     operationAvailability: { check: (query, signal) => checkOperationAvailability(query, signal, { textPreparation: { conditions: agentTextPreparationConditions }, graphTasks: agentBookGraphTasks }) },
     window: { snapshot: signal => hostWindow.snapshot(signal),
       control: (request, signal) => hostWindow.control(request, signal, "agent") },
-    workspace: { snapshot: async query => workspace.snapshot(query), navigate: (target, revision, signal) => workspace.navigate(target, revision, signal, true) },
+    workspace: { snapshot: async query => workspace.snapshot(query), navigate: (target, revision, signal) => workspace.navigate(target, revision, signal, true, undefined, "agent") },
     memoryPolicy,
     readingContextPolicy,
     library: createLibraryPort(),

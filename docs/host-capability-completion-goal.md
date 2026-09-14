@@ -5,6 +5,10 @@
 旧范围裁决不能用来缩减本次目标。只提供经过授权的语义操作，不开放原始 SQL、
 文件系统、DOM、密钥或伪造历史。实现接通后集中运行真实桌面组合验收。
 
+## 本批工作区阅读器来源交付
+
+C04命令/工作区→阅读器来源已补：actorHostCommands的open-book和导航适配器显式传入宿主actor；Agent工作区入口带agent来源，全书与受限插件入口带其operationActor。WorkspaceService在异步校验前捕获来源，经真实useWorkspaceShell/applyWorkspaceTarget传到readingRuntime.close，关闭不再退回默认来源；现有授权、切书围栏、取消和界面提交回执不变。受影响类型与原有工作区/适配器/受限工作区检查通过。此次只补阅读器副作用的来源链；工作区快照/临时UI状态自身来源、宿主命令条件查询和其他C04/C05缺口仍待实施，真实Tauri组合仍待集中验收。
+
 ## 本批跨插件调用条件交付
 
 session2.10新增plugins.callService(serviceCall)只读条件查询，复用真实服务引用/代际、双方授权、目标书、输入契约、调用链/因果循环和容量检查；不启动Worker、不占执行槽、不签发反应来源、不读取服务内容。插件拒权只返回权限条件；执行复用prepare并在获得书围栏后重验容量。Agent统一查询检查嵌套书目标，跨书和书域调用全局服务在宿主查询前拒绝；查询只标approval-required/unknown，不创建委托权力，实际调用批准前检查、批准后再次校验。Text Desk0.32在请求Jumper书签页前消费查询，失效服务提示刷新且不派发。受影响类型、插件构建、原有授权/取消排空/容量/循环和编译消费者检查通过；真实Worker/Tauri组合及C04/C05剩余边界仍未完成。

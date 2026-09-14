@@ -1,3 +1,4 @@
+import { causalActor, type DomainActor } from "../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { AppError, normalizeWorkspaceTarget, type WorkspaceSnapshot, type WorkspaceTarget } from "@read-aware/core";
 import { WorkspaceService, type WorkspaceView } from "./workspace";
@@ -7,6 +8,7 @@ const initial = (): WorkspaceView => ({ surface: "shelf", collectionId: null, se
   search: { open: false, query: "" }, selection: { active: false, bookIds: [] } });
 function fixture(deadline = 1000) {
   const errors: unknown[] = [], view = initial();
+  const sources: DomainActor[] = [];
   const service = new WorkspaceService(error => errors.push(error), deadline);
   let token = 0, hold = false, release!: () => void, prepareError: unknown, applied = 0;
   const binding = service.bind({
@@ -14,7 +16,8 @@ function fixture(deadline = 1000) {
       if (hold) await new Promise<void>(resolve => { release = resolve; });
       signal.throwIfAborted(); if (prepareError) throw prepareError;
     },
-    apply: async (target, signal) => {
+    apply: async (target, signal, _allowClose, source) => {
+      sources.push(source);
       signal.throwIfAborted(); applied++;
       view.settings.open = false; view.search.open = false;
       if (target.surface === "settings") view.settings = { open: true, section: target.section! };
@@ -25,7 +28,7 @@ function fixture(deadline = 1000) {
       }
     }, requestCommit: value => { token = value; },
   }, view);
-  return { service, binding, view, errors, get applied() { return applied; }, get token() { return token; },
+  return { service, binding, view, errors, sources, get applied() { return applied; }, get token() { return token; },
     hold: () => { hold = true; }, release: () => { hold = false; release(); }, fail: (error: unknown) => { prepareError = error; },
     publish: () => binding.publish(view, token), ack: (surface: string) => service.acknowledge(surface, token),
   };
@@ -33,8 +36,9 @@ function fixture(deadline = 1000) {
 
 test("workspace receipts require a matching fresh destination commit, not dispatch or Suspense fallback", async () => {
   const f = fixture(); let settled = false;
-  const result = f.service.navigate({ surface: "stats" }).then(v => { settled = true; return v; });
-  await tick(); f.publish(); await tick(); expect(settled).toBe(false);
+  const source = causalActor("plugin:workspace-caller");
+  const result = f.service.navigate({ surface: "stats" }, undefined, undefined, false, undefined, source).then(v => { settled = true; return v; });
+  await tick(); expect(f.sources[0]).toBe(source); f.publish(); await tick(); expect(settled).toBe(false);
   f.service.acknowledge("stats", f.token - 1); await tick(); expect(settled).toBe(false);
   f.ack("stats"); expect((await result).snapshot.surface).toBe("stats");
   const again = f.service.navigate({ surface: "stats" }); await tick(); f.ack("stats"); f.publish();

@@ -1,10 +1,11 @@
+import { causalActor, type DomainActor } from "../platform/domain-actor";
 import { AppError, normalizeWorkspaceQuery, normalizeWorkspaceTarget, type WorkspaceQuery, type WorkspaceReceipt, type WorkspaceSnapshot, type WorkspaceTarget } from "@read-aware/core";
 import { createLogger } from "../platform/logger";
 
 export type WorkspaceView = Omit<WorkspaceSnapshot, "revision" | "selection"> & { selection: { active: boolean; bookIds: string[] } };
 type Adapter = {
   prepare(target: WorkspaceTarget, signal: AbortSignal): Promise<void>;
-  apply(target: WorkspaceTarget, signal: AbortSignal, allowReaderClose: boolean): Promise<void>;
+  apply(target: WorkspaceTarget, signal: AbortSignal, allowReaderClose: boolean, source: DomainActor): Promise<void>;
   requestCommit(token: number): void;
 };
 type Binding = { adapter: Adapter; view: WorkspaceView; token: number; acknowledgements: Map<string, number> };
@@ -94,9 +95,10 @@ export class WorkspaceService {
   }
 
   navigate(input: WorkspaceTarget, expectedRevision?: number, signal?: AbortSignal, allowReaderClose = false,
-    project?: (view: WorkspaceView) => WorkspaceView): Promise<WorkspaceReceipt> {
-    let target: WorkspaceTarget;
+    project?: (view: WorkspaceView) => WorkspaceView, origin: DomainActor = "user"): Promise<WorkspaceReceipt> {
+    let target: WorkspaceTarget, source: DomainActor;
     try {
+      source = causalActor(origin);
       signal?.throwIfAborted(); target = normalizeWorkspaceTarget(input);
       if (expectedRevision !== undefined && (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)) throw new AppError("ui/invalid-target", "Invalid workspace revision");
       if (expectedRevision !== undefined && expectedRevision !== this.revision) throw new AppError("ui/superseded", "Workspace revision changed");
@@ -117,7 +119,7 @@ export class WorkspaceService {
         controller.signal.throwIfAborted();
         // Async lookups must not overwrite a newer native UI choice.
         if (revision !== this.revision) throw new AppError("ui/superseded", "Workspace changed during target validation");
-        await binding.adapter.apply(target, controller.signal, allowReaderClose);
+        await binding.adapter.apply(target, controller.signal, allowReaderClose, source);
         controller.signal.throwIfAborted();
         if (this.pending !== pending || this.binding !== binding) return;
         pending.ready = true; binding.adapter.requestCommit(pending.token);

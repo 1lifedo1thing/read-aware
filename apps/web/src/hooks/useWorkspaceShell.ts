@@ -19,7 +19,7 @@ export function useWorkspaceShell(reading: boolean, books: LibraryBook[], collec
   useLayoutEffect(() => { committed.current = view; binding.current?.publish(view, token); });
   useEffect(() => {
     const owner = workspace.bind({ prepare: (target, signal) => validateWorkspaceTarget(store, target, signal),
-      apply: (target, signal, allowClose) => applyWorkspaceTarget(store, target, signal, allowClose), requestCommit: setToken }, committed.current);
+      apply: (target, signal, allowClose, source) => applyWorkspaceTarget(store, target, signal, allowClose, source), requestCommit: setToken }, committed.current);
     binding.current = owner;
     return () => { owner.dispose(); if (binding.current === owner) binding.current = null; };
   }, [store]);

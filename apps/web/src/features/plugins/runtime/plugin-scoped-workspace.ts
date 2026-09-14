@@ -1,3 +1,4 @@
+import { type DomainActor } from "../../../platform/domain-actor";
 import { AppError, errorCode, normalizeHostCommandRequest, normalizeWorkspaceQuery, normalizeWorkspaceTarget,
   type HostCommandSnapshot, type WorkspaceQuery, type WorkspaceSnapshot, type WorkspaceTarget } from "@read-aware/core";
 import type { PluginContext } from "@read-aware/plugin-types";
@@ -15,7 +16,7 @@ const log = createLogger("scoped-workspace");
  * an actor-local concurrency token cross the plugin boundary. */
 export function scopePluginWorkspace(host: WorkspaceService, hostCommands: ReturnType<typeof actorHostCommands>,
   policy: PluginBookAccessPolicy, lifecycle: PluginLifecycleController, reader: Reader,
-  canNavigate: boolean, canCloseReader: boolean, state: { revision: number; nativeRevision?: number; scopeKey?: string } = { revision: 0 }): Pick<Ui, "workspace" | "commands"> {
+  canNavigate: boolean, canCloseReader: boolean, state: { revision: number; nativeRevision?: number; scopeKey?: string } = { revision: 0 }, origin: DomainActor = "system"): Pick<Ui, "workspace" | "commands"> {
   const denied = (operation: string): never => { throw pluginObjectAccessDenied(`workspace.${operation}`); };
   const bookId = () => policy.grant.mode === "book" ? policy.grant.bookId : reader.current().bookId;
   const project = (view: WorkspaceView): WorkspaceView => {
@@ -140,7 +141,7 @@ export function scopePluginWorkspace(host: WorkspaceService, hostCommands: Retur
       const target = normalizeTarget(input);
       return navigate("ui.workspace.navigate", target.surface !== "settings" && target.surface !== "search", async signal => {
         const expected = expectedNative(expectedRevision);
-        const result = await host.navigate(target, expected, signal, canCloseReader, project);
+        const result = await host.navigate(target, expected, signal, canCloseReader, project, origin);
         return { ...result, snapshot: stamp(result.snapshot) };
       });
     } } : {}),

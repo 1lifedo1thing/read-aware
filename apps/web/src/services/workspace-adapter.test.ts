@@ -1,3 +1,4 @@
+import { causalActor } from "../platform/domain-actor";
 import { afterEach, expect, spyOn, test } from "bun:test";
 import { createStore } from "jotai";
 import { AppError } from "@read-aware/core";
@@ -42,8 +43,9 @@ test("leaving a reader needs the extra grant and preserves native handoff; overl
   expect(store.get(settingsSectionRequestAtom)).toBe("reading"); expect(close).not.toHaveBeenCalled();
   await applyWorkspaceTarget(store, { surface: "search", query: "kept" }, s, false);
   expect(store.get(commandQueryAtom)).toBe("kept"); expect(store.get(settingsOpenAtom)).toBe(false); expect(close).not.toHaveBeenCalled();
-  await applyWorkspaceTarget(store, { surface: "stats" }, s, true);
-  expect(close).toHaveBeenCalledWith(s, { sessionId: "reader" }); expect(store.get(activeTopNavAtom)).toBe("stats");
+  const source = causalActor("plugin:workspace-caller");
+  await applyWorkspaceTarget(store, { surface: "stats" }, s, true, source);
+  expect(close).toHaveBeenCalledWith(s, { sessionId: "reader" }, source); expect(store.get(activeTopNavAtom)).toBe("stats");
   expect(store.get(commandSearchOpenAtom)).toBe(false);
   store.set(commandSearchOpenAtom, true); expect(store.get(commandQueryAtom)).toBe("");
 });

@@ -1,3 +1,4 @@
+import { causalActor, type DomainActor } from "../platform/domain-actor";
 import { AppError, type WorkspaceTarget } from "@read-aware/core";
 import type { createStore } from "jotai";
 import { readingRuntime } from "../domain/reading-runtime";
@@ -62,14 +63,15 @@ async function waitForLibraryView(store: Store, target: WorkspaceTarget, signal:
   });
 }
 
-export async function applyWorkspaceTarget(store: Store, target: WorkspaceTarget, signal: AbortSignal, allowReaderClose: boolean): Promise<void> {
+export async function applyWorkspaceTarget(store: Store, target: WorkspaceTarget, signal: AbortSignal, allowReaderClose: boolean, origin: DomainActor = "user"): Promise<void> {
+  const source = causalActor(origin);
   signal.throwIfAborted();
   if (target.surface !== "settings" && target.surface !== "search") {
     const reading = readingRuntime.snapshot();
     if (reading.sessionId || readingRuntime.hasPendingOpening) {
       if (!allowReaderClose) throw new AppError("ui/reading-permission", "Leaving the reader requires reading:write");
       const before = intentState(store);
-      await readingRuntime.close(signal, reading.sessionId ? { sessionId: reading.sessionId } : undefined);
+      await readingRuntime.close(signal, reading.sessionId ? { sessionId: reading.sessionId } : undefined, source);
       signal.throwIfAborted();
       if (before !== intentState(store)) throw new AppError("ui/superseded", "Native workspace intent changed while closing the reader");
     }
