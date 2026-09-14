@@ -66,8 +66,12 @@ function publish(): void {
     }
   });
 }
+function remember(entry: RegisteredSyncTransport, source: DomainActor): void {
+  const previous = pending.get(entry), next = stampEventCause({}, source);
+  pending.set(entry, previous ? mergeEventCauses([previous, next], {}) : next);
+}
 function notify(entry: RegisteredSyncTransport, source: DomainActor): void {
-  pending.set(entry, stampEventCause({}, source)); publish();
+  remember(entry, source); publish();
 }
 
 export function syncTransportRef(pluginId: string, transportId: string): string {
@@ -158,7 +162,7 @@ export function invalidateSyncTransportSessions(pluginId: string, source: Domain
   for (const entry of transports.values()) {
     if (entry.pluginId !== pluginId) continue;
     changed = true;
-    pending.set(entry, stampEventCause({}, origin));
+    remember(entry, origin);
     void invalidations.get(entry)?.().catch(error => log.warn("Transport configuration cleanup failed", error));
   }
   if (changed) publish();

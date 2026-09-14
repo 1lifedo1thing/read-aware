@@ -6,7 +6,7 @@ import { withContributionActivation } from "../../features/plugins/state/contrib
 import { TransportSessionCache } from "./transport-session-cache";
 import { withTransportSession } from "./transport-session-scope";
 import { decodePluginCallbacks, PluginCallbackRegistry, releasePluginCallbacks } from "../../features/plugins/runtime/plugin-callback-wire";
-import { actorCause, causalActor, eventCause } from "../domain-actor";
+import { actorCause, actorFromEvent, saveActorSource, causalActor, eventCause } from "../domain-actor";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -16,20 +16,21 @@ function deferred<T>() {
 
 test("transport notifications retain committed configuration and retirement causes across a failed nested replacement", async () => {
   const seen: object[] = [], stop = onSyncTransportsChanged(source => { seen.push(source); });
-  const initial = causalActor("plugin:transport"), current = causalActor("user"), failed = causalActor("plugin:failed"), retirement = causalActor("plugin:retire");
+  const initial = causalActor("plugin:transport"), current = causalActor("user"), next = causalActor("plugin:settings"), failed = causalActor("plugin:failed"), retirement = causalActor("plugin:retire");
   const release = registerSyncTransport("cause-test", { id: "source", label: "Source", open: async () => fixture() }, undefined, initial);
   try {
     expect(eventCause(seen.at(-1)!)).toBe(actorCause(initial));
     withContributionActivation(() => {
       invalidateSyncTransportSessions("cause-test", current);
+      invalidateSyncTransportSessions("cause-test", next);
       expect(() => withContributionActivation(() => {
         const replaced = registerSyncTransport("cause-test", { id: "source", label: "Failed", open: async () => fixture() }, undefined, failed);
         void replaced();
         throw Error("nested failure");
       })).toThrow("nested failure");
     });
-    expect(findSyncTransport("plugin:cause-test:source")?.generation).toBe(1);
-    expect(eventCause(seen.at(-1)!)).toBe(actorCause(current));
+    expect(findSyncTransport("plugin:cause-test:source")?.generation).toBe(2);
+    expect(saveActorSource(actorFromEvent(seen.at(-1)!)).paths).toEqual([...saveActorSource(current).paths, ...saveActorSource(next).paths]);
     await release(retirement);
     expect(eventCause(seen.at(-1)!)).toBe(actorCause(retirement));
     expect(JSON.stringify(seen)).not.toContain("cause");
