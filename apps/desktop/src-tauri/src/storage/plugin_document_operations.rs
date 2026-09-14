@@ -200,6 +200,16 @@ pub async fn plugin_docs_apply(
 pub(crate) fn plugin_docs_apply_inner(
     conn: &mut Connection, plugin_id: &str, changes: Vec<PluginDocumentMutation>,
 ) -> Result<PluginDocumentCommitResult, CommandError> {
+    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    let result = plugin_docs_apply_in_transaction(&tx, plugin_id, changes)?;
+    if matches!(result, PluginDocumentCommitResult::Applied { .. }) { tx.commit()?; }
+    Ok(result)
+}
+
+/// The caller owns commit/rollback. A conflict must never commit preceding work.
+pub(crate) fn plugin_docs_apply_in_transaction(
+    tx: &rusqlite::Transaction<'_>, plugin_id: &str, changes: Vec<PluginDocumentMutation>,
+) -> Result<PluginDocumentCommitResult, CommandError> {
     validate_key(plugin_id, 128)?;
     if changes.is_empty() || changes.len() > 100 { return Err(invalid("Expected 1..100 document changes")); }
     let mut seen = std::collections::HashSet::new();
@@ -222,7 +232,6 @@ pub(crate) fn plugin_docs_apply_inner(
             if let Some(anchor) = anchor { validate_key(anchor, 16384)?; }
         }
     }
-    let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     for (index, change) in changes.iter().enumerate() {
         let revision: Option<String> = tx.query_row(
             "SELECT revision FROM plugin_documents WHERE plugin_id=?1 AND collection=?2 AND id=?3",
@@ -252,7 +261,6 @@ pub(crate) fn plugin_docs_apply_inner(
         ).optional()?;
         documents.push(PluginDocumentReceipt { collection: change.collection, id: change.id, revision });
     }
-    tx.commit()?;
     Ok(PluginDocumentCommitResult::Applied { documents })
 }
 

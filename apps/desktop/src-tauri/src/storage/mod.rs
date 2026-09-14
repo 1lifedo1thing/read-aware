@@ -91,6 +91,8 @@ pub(crate) use restored_credentials::*;
 mod plugin_update_journal;
 pub(crate) use plugin_update_journal::*;
 mod plugin_document_operations;
+mod atomic_commit;
+pub use atomic_commit::*;
 mod plugin_document_search;
 pub use plugin_document_operations::*;
 mod schema;
@@ -360,6 +362,13 @@ pub(crate) fn set_kv_batch_inner(
     entries: Vec<(String, Option<String>)>,
 ) -> Result<(), CommandError> {
     let tx = conn.transaction()?;
+    set_kv_batch_in_transaction(&tx, entries)?;
+    Ok(tx.commit()?)
+}
+
+pub(crate) fn set_kv_batch_in_transaction(
+    tx: &rusqlite::Transaction<'_>, entries: Vec<(String, Option<String>)>,
+) -> Result<(), CommandError> {
     for (key, value) in entries {
         let Some(value) = value else {
             tx.execute("DELETE FROM app_kv WHERE key = ?1", params![key])?;
@@ -374,7 +383,7 @@ pub(crate) fn set_kv_batch_inner(
             params![key, value],
         )?;
     }
-    Ok(tx.commit()?)
+    Ok(())
 }
 
 /// A settings command can span several preference records, but commits all or none.
