@@ -6,9 +6,9 @@ type Adapter = {
   supported(): boolean; busy(): boolean; epoch(): string; status(): SyncStatusSnapshot;
   subscribe(handler: (source: object) => void): () => void;
   backlog: HostSyncPort["backlog"]; account(): Promise<AccountResponse>;
-  run(origin?: DomainActor): Promise<unknown | null>; openSettings(signal?: AbortSignal): Promise<unknown>;
+  run(origin?: DomainActor): Promise<unknown | null>; openSettings(signal?: AbortSignal, origin?: DomainActor): Promise<unknown>;
   connectionOptions: HostSyncPort["connectionOptions"];
-  requestFlow: HostSyncPort["requestFlow"];
+  requestFlow(request: Parameters<HostSyncPort["requestFlow"]>[0], signal?: AbortSignal, origin?: DomainActor): ReturnType<HostSyncPort["requestFlow"]>;
   conditions?(): Promise<OperationCondition[]>;
 };
 function quota(value: number | null): number | null {
@@ -120,17 +120,18 @@ export class HostSyncService implements HostSyncPort {
     if (state.state === "unauthenticated") return [{ kind: "account", state: "unconfigured", reason: "sync-reconnect-required", errorCode: "sync/unauthorized" }];
     return [{ kind: "account", state: "satisfied", reason: "sync-connected" }];
   }
-  async openSettings(signal?: AbortSignal) {
-    signal?.throwIfAborted(); await this.adapter.openSettings(signal); signal?.throwIfAborted();
+  async openSettings(signal?: AbortSignal, origin: DomainActor = "user") {
+    origin = causalActor(origin);
+    signal?.throwIfAborted(); await this.adapter.openSettings(signal, origin); signal?.throwIfAborted();
     return { status: "opened" as const, surface: "dataSync" as const };
   }
   async connectionOptions() {
     if (!this.adapter.supported()) return [];
     return this.adapter.connectionOptions();
   }
-  requestFlow(...args: Parameters<HostSyncPort["requestFlow"]>) {
+  requestFlow(request: Parameters<HostSyncPort["requestFlow"]>[0], signal?: AbortSignal, origin: DomainActor = "user") {
     if (!this.adapter.supported()) return Promise.reject(new AppError("ui/unavailable", "Sync account flows require desktop"));
-    return this.adapter.requestFlow(...args);
+    return this.adapter.requestFlow(request, signal, causalActor(origin));
   }
   private guard(signal?: AbortSignal, expected?: string): string {
     signal?.throwIfAborted();

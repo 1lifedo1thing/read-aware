@@ -1,3 +1,4 @@
+import { actorFromEvent, type DomainActor } from "../../../platform/domain-actor";
 import { useLayoutEffect, useRef, useState } from "react";
 import { AppError, type HostSyncFlow } from "@read-aware/core";
 import { useToast } from "@read-aware/ui";
@@ -38,13 +39,13 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
     toast({ variant: "destructive", title: t("dataSync.noticeError"),
       description: describeError(error, { fallback: t("dataSync.connect.failed") }).body });
   };
-  const perform = async (action: HostSyncFlow, operation: (signal?: AbortSignal) => Promise<unknown>) => {
+  const perform = async (action: HostSyncFlow, operation: (signal?: AbortSignal, origin?: DomainActor) => Promise<unknown>, origin?: DomainActor) => {
     setWorking(true);
-    try { await hostSyncFlows.run(action, operation); close(); }
+    try { await hostSyncFlows.run(action, operation, false, origin); close(); }
     catch (error) { failure(error); }
     finally { setWorking(false); }
   };
-  const billing = (action: "upgrade" | "billing") => perform(action, async signal => {
+  const billing = (action: "upgrade" | "billing", origin?: DomainActor) => perform(action, async signal => {
     if (!purchaseAllowed) throw new AppError("ui/unavailable", "External purchases are unavailable");
     const status = getSyncStatusSnapshot();
     if (!status.accountConnected || status.backend !== "relay" || getSyncConnectionBusy()) throw new AppError("ui/unavailable", "No available relay account");
@@ -63,7 +64,7 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
     signal?.throwIfAborted();
     if (generation !== getSyncConnectionGeneration() || getSyncConnectionBusy()) throw new AppError("ui/superseded", "Sync account changed before external handoff");
     await openExternalUrl(target);
-  });
+  }, origin);
 
   const latest = useRef({ open: (_request: import("@read-aware/core").HostSyncFlowRequest) => {}, close });
   latest.current = {
@@ -81,7 +82,7 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
         if (!status.accountConnected || (request.action !== "disconnect" && status.backend !== "relay")) throw new AppError("ui/unavailable", "The requested sync account action is unavailable");
         if (request.action === "disconnect") setDisconnectOpen(true);
         else if (request.action === "delete-account") setDeleteAccountOpen(true);
-        else void billing(request.action);
+        else void billing(request.action, actorFromEvent(request));
       }
     },
   };
@@ -97,15 +98,15 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
     disconnectOpen, setDisconnectOpen: (open: boolean) => change("disconnect", open, setDisconnectOpen),
     deleteAccountOpen, setDeleteAccountOpen: (open: boolean) => change("delete-account", open, setDeleteAccountOpen),
     working,
-    disconnect: () => perform("disconnect", sync.disconnect),
-    deleteAccount: () => perform("delete-account", async () => {
-      await sync.deleteAccount();
+    disconnect: () => perform("disconnect", (_signal, origin) => sync.disconnect(origin)),
+    deleteAccount: () => perform("delete-account", async (_signal, origin) => {
+      await sync.deleteAccount(origin);
       toast({ title: t("dataSync.noticeDone"), description: t("dataSync.deleteAccount.done") });
     }),
     openPortal: () => billing("billing"), openUpgrade: () => billing("upgrade"),
     sync: { ...sync,
-      finishConnect: (...args: Parameters<typeof sync.finishConnect>) => hostSyncFlows.run("connect", () => sync.finishConnect(...args), true),
-      connectTransport: (...args: Parameters<typeof sync.connectTransport>) => hostSyncFlows.run("connect", () => sync.connectTransport(...args), true),
+      finishConnect: (...args: Parameters<typeof sync.finishConnect>) => hostSyncFlows.run("connect", (_signal, origin) => sync.finishConnect(args[0], args[1], origin), true),
+      connectTransport: (...args: Parameters<typeof sync.connectTransport>) => hostSyncFlows.run("connect", (_signal, origin) => sync.connectTransport(args[0], args[1], origin), true),
     },
   };
 }

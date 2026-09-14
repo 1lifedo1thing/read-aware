@@ -1,10 +1,11 @@
+import { causalActor, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import { AppError } from "@read-aware/core";
 
 type Request = { action: string };
 type Receipt<R extends Request, S extends string> = { action: R["action"]; status: S | "cancelled" };
 type Surface<R extends Request> = { open(request: R, signal?: AbortSignal): void; close(): void };
 type Pending<R extends Request, S extends string> = {
-  request: R; surface: Surface<R>; started: boolean; epoch: unknown;
+  origin: DomainActor; request: R; surface: Surface<R>; started: boolean; epoch: unknown;
   signal?: AbortSignal;
   resolve(receipt: Receipt<R, S>): void; reject(error: unknown): void;
   cleanup(): void;
@@ -18,7 +19,7 @@ export class HostActionFlow<R extends Request, S extends string> {
   private requesting = false;
   private running = false;
   constructor(private config: {
-    navigate(signal?: AbortSignal): Promise<unknown>;
+    navigate(signal?: AbortSignal, origin?: DomainActor): Promise<unknown>;
     normalize(input: R): R;
     completion(action: R["action"], value: unknown): S | "cancelled";
     epoch?(): unknown;
@@ -35,13 +36,14 @@ export class HostActionFlow<R extends Request, S extends string> {
     };
   }
 
-  async request(input: R, signal?: AbortSignal): Promise<Receipt<R, S>> {
+  async request(input: R, signal?: AbortSignal, origin: DomainActor = "user"): Promise<Receipt<R, S>> {
     signal?.throwIfAborted();
-    const request = this.config.normalize(input);
+    origin = causalActor(origin);
+    const request = stampEventCause(this.config.normalize(input), origin);
     if (this.requesting || this.pending || this.running) throw new AppError("ui/unavailable", "A host action flow is already active");
     this.requesting = true;
     try {
-      await this.config.navigate(signal);
+      await this.config.navigate(signal, origin);
       signal?.throwIfAborted();
       if (this.running) throw new AppError("ui/unavailable", "A native action started during navigation");
       const surface = this.surface;
@@ -52,7 +54,7 @@ export class HostActionFlow<R extends Request, S extends string> {
           this.settle(pending, "cancelled");
           surface.close();
         };
-        const pending: Pending<R, S> = { request, surface, signal, started: false, epoch: this.config.epoch?.(), resolve, reject,
+        const pending: Pending<R, S> = { origin, request, surface, signal, started: false, epoch: this.config.epoch?.(), resolve, reject,
           cleanup: () => signal?.removeEventListener("abort", abort) };
         this.pending = pending;
         signal?.addEventListener("abort", abort, { once: true });
@@ -62,9 +64,9 @@ export class HostActionFlow<R extends Request, S extends string> {
     } finally { this.requesting = false; }
   }
 
-  dismiss(action: R["action"]): void {
+  dismiss(action: R["action"], origin: DomainActor = "user"): void {
     const pending = this.pending;
-    if (pending?.request.action === action && !pending.started) this.settle(pending, "cancelled");
+    if (pending?.request.action === action && !pending.started) this.settle(pending, "cancelled", causalActor(origin));
   }
 
   /** Preparation failed before confirmation; no native effect was started. */
@@ -74,7 +76,7 @@ export class HostActionFlow<R extends Request, S extends string> {
   }
 
   /** Used by the existing native UI command callbacks, not exported to actors. */
-  async run<T>(action: R["action"], operation: (signal?: AbortSignal) => Promise<T>, retryInDialog = false): Promise<T> {
+  async run<T>(action: R["action"], operation: (signal?: AbortSignal, origin?: DomainActor) => Promise<T>, retryInDialog = false, origin: DomainActor = "user"): Promise<T> {
     if (this.running) throw new AppError("ui/unavailable", "Host action is already running");
     const pending = this.pending;
     if (pending && pending.request.action !== action) throw new AppError("ui/unavailable", "Another host dialog owns this request");
@@ -84,10 +86,11 @@ export class HostActionFlow<R extends Request, S extends string> {
       this.fail(pending, error);
       throw error;
     }
-    if (pending) pending.started = true;
+    origin = causalActor(origin);
+    if (pending) { pending.started = true; pending.origin = origin; }
     this.running = true;
     try {
-      const result = await operation(pending?.signal);
+      const result = await operation(pending?.signal, origin);
       if (pending) this.settle(pending, this.config.completion(action, result));
       return result;
     } catch (error) {
@@ -103,11 +106,11 @@ export class HostActionFlow<R extends Request, S extends string> {
     }
   }
 
-  private settle(pending: Pending<R, S>, status: S | "cancelled"): void {
+  private settle(pending: Pending<R, S>, status: S | "cancelled", origin: DomainActor = pending.origin): void {
     if (this.pending !== pending) return;
     this.pending = undefined; pending.cleanup();
     if (pending.signal?.aborted) pending.reject(pending.signal.reason);
-    else pending.resolve({ action: pending.request.action, status });
+    else pending.resolve(stampEventCause({ action: pending.request.action, status }, origin));
   }
   private fail(pending: Pending<R, S>, error: unknown): void {
     if (this.pending !== pending) return;

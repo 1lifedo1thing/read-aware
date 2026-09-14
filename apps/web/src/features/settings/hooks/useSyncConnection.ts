@@ -1,3 +1,4 @@
+import type { DomainActor } from "../../../platform/domain-actor";
 /**
  * Sync-account state for the Data & Sync panel: the live scheduler status,
  * the persisted profile, and the connect / disconnect / sync-now actions.
@@ -122,7 +123,7 @@ export function useSyncConnection() {
    *  verification phase 1 returned — there is no path to a passphrase that
    *  didn't pass through the email being shown. */
   const finishConnect = useCallback(
-    (verification: SignInVerification, passphrase: string): Promise<void> =>
+    (verification: SignInVerification, passphrase: string, source?: DomainActor): Promise<void> =>
       runSyncConnectionOperation(async origin => {
         // The fresh session lives in this closure until the whole connect
         // succeeds — establishEncryption's publishKeys must already carry it
@@ -142,26 +143,26 @@ export function useSyncConnection() {
           masterKeyBase64,
         }, origin);
         await reloadProfile();
-      }),
+      }, source),
     [reloadProfile],
   );
 
   const disconnect = useCallback(
-    (): Promise<void> =>
+    (source?: DomainActor): Promise<void> =>
       runSyncConnectionOperation(async origin => {
         await disconnectSync(origin);
         await reloadProfile();
-      }),
+      }, source),
     [reloadProfile],
   );
 
   const deleteAccount = useCallback(
-    (): Promise<void> => runSyncConnectionOperation(async origin => {
+    (source?: DomainActor): Promise<void> => runSyncConnectionOperation(async origin => {
       // Keep the account/session stable through both remote deletion and local disconnect.
       await syncRelayClient().deleteAccount();
       await disconnectSync(origin);
       await reloadProfile();
-    }),
+    }, source),
     [reloadProfile],
   );
 
@@ -195,7 +196,7 @@ export function useSyncConnection() {
   /** The transport counterpart of `finishConnect`: passphrase ritual against
    *  the remote's key-material object, then a durable profile binding. */
   const connectTransport = useCallback(
-    (ref: string, passphrase: string): Promise<void> =>
+    (ref: string, passphrase: string, source?: DomainActor): Promise<void> =>
       runSyncConnectionOperation(async origin => {
         const session = await openTransport(ref);
         const masterKeyBase64 = await withTransportSession(session, () =>
@@ -207,7 +208,7 @@ export function useSyncConnection() {
           masterKeyBase64,
         }, origin);
         await reloadProfile();
-      }),
+      }, source),
     [reloadProfile],
   );
 

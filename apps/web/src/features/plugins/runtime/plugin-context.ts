@@ -1864,12 +1864,12 @@ export function buildPluginContext(
       backlog: () => { lifecycle.assertActive("services.sync.backlog"); return hostSync.backlog(lifecycle.signal); },
       account: () => { lifecycle.assertActive("services.sync.account"); return hostSync.account(lifecycle.signal); },
       requestSync: () => { lifecycle.assertActive("services.sync.requestSync"); return hostSync.requestSync(lifecycle.signal, operationActor); },
-      openSettings: () => { lifecycle.assertActive("services.sync.openSettings"); return hostSync.openSettings(lifecycle.signal); },
+      openSettings: () => { lifecycle.assertActive("services.sync.openSettings"); return hostSync.openSettings(lifecycle.signal, operationActor); },
       connectionOptions: async () => { lifecycle.assertActive("services.sync.connectionOptions"); return hostSync.connectionOptions(); },
       requestFlow: (request, options) => {
         lifecycle.assertActive("services.sync.requestFlow");
         const signal = pluginOperationSignal(lifecycle.signal, options);
-        return lifecycle.read("services.sync.requestFlow", () => hostSync.requestFlow(request, signal), signal);
+        return lifecycle.read("services.sync.requestFlow", () => hostSync.requestFlow(request, signal, operationActor), signal);
       },
       observe: handler => track(() => ({ dispose: hostSync.observe(handler, operationActor) })),
     };

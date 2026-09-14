@@ -1,24 +1,35 @@
 import { expect, test } from "bun:test";
 import type { HostSyncFlowRequest } from "@read-aware/core";
+import { actorCause, causalActor, eventCause, type DomainActor } from "../platform/domain-actor";
 import { SyncFlowController } from "./sync-flow-controller";
 
 function fixture() {
   let epoch = 1, closed = 0;
   const opened: HostSyncFlowRequest[] = [];
-  const controller = new SyncFlowController(async signal => { signal?.throwIfAborted(); }, () => epoch);
+  let navigation: DomainActor | undefined;
+  const controller = new SyncFlowController(async (signal, origin) => { signal?.throwIfAborted(); navigation = origin; }, () => epoch);
   const unbind = controller.bind({ open: input => { opened.push(input); }, close: () => { closed++; } });
-  return { controller, opened, unbind, closed: () => closed, change: () => { epoch++; } };
+  return { controller, opened, unbind, navigation: () => navigation, closed: () => closed, change: () => { epoch++; } };
 }
 
 test("each directed flow waits for the native action, with no fabricated purchase receipt", async () => {
   const f = fixture();
   for (const action of ["connect", "disconnect", "delete-account", "upgrade", "billing"] as const) {
-    const request = f.controller.request({ action, ...(action === "connect" ? { transportRef: "plugin:backend" } : {}) });
+    const source = causalActor("agent");
+    const request = f.controller.request({ action, ...(action === "connect" ? { transportRef: "plugin:backend" } : {}) }, undefined, source);
     let done = false; void request.then(() => { done = true; });
     await Bun.sleep(0);
     expect(f.opened.at(-1)?.action).toBe(action); expect(done).toBe(false);
-    await f.controller.run(action, async () => ({ secret: "never returned" }));
-    expect(await request).toEqual({ action, status: action === "billing" || action === "upgrade" ? "external-opened" : "completed" });
+    expect(actorCause(f.navigation())).toEqual(actorCause(source));
+    expect(eventCause(f.opened.at(-1)!)).toEqual(actorCause(source));
+    const automatic = action === "billing" || action === "upgrade";
+    let accepted: DomainActor | undefined;
+    await f.controller.run(action, async (_signal, origin) => { accepted = origin; return { secret: "never returned" }; }, false, automatic ? source : undefined);
+    const receipt = await request;
+    expect(eventCause(receipt)).toEqual(actorCause(accepted));
+    if (automatic) expect(actorCause(accepted)).toEqual(actorCause(source));
+    else expect(actorCause(accepted)).not.toEqual(actorCause(source));
+    expect(receipt).toEqual({ action, status: action === "billing" || action === "upgrade" ? "external-opened" : "completed" });
   }
   f.unbind();
 });

@@ -1,8 +1,9 @@
+import type { DomainActor } from "../platform/domain-actor";
 import { AppError, type HostSyncFlowRequest } from "@read-aware/core";
 import { HostActionFlow } from "./host-action-flow";
 
 export class SyncFlowController extends HostActionFlow<HostSyncFlowRequest, "completed" | "external-opened"> {
-  constructor(navigate: (signal?: AbortSignal) => Promise<unknown>, epoch: () => number = () => 0) {
+  constructor(navigate: (signal?: AbortSignal, origin?: DomainActor) => Promise<unknown>, epoch: () => number = () => 0) {
     super({ navigate, epoch,
       normalize: input => {
         if (!input || !["connect", "disconnect", "delete-account", "upgrade", "billing"].includes(input.action)

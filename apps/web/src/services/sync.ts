@@ -20,7 +20,7 @@ async function remote<T>(operation: () => Promise<T>): Promise<T> {
     throw new AppError(classifySyncError(error) ?? "sync/server", "Sync request failed");
   }
 }
-export const hostSyncFlows = new SyncFlowController(signal => workspace.navigate({ surface: "settings", section: "dataSync" }, undefined, signal), getSyncConnectionGeneration);
+export const hostSyncFlows = new SyncFlowController((signal, origin) => workspace.navigate({ surface: "settings", section: "dataSync" }, undefined, signal, false, undefined, origin), getSyncConnectionGeneration);
 export const hostSync = new HostSyncService({
   supported: isTauri, busy: getSyncConnectionBusy,
   epoch: () => `${getSyncConnectionGeneration()}:${getSyncConnectionOperationRevision()}`,
@@ -35,10 +35,10 @@ export const hostSync = new HostSyncService({
   conditions: async () => (await getRemoteBlobFetchConditions()).map(value => ({ ...value,
     reason: value.reason === "source-download-not-checked" ? "sync-remote-health-not-checked" : value.reason,
     ...(value.errorCode ? { errorCode: "ui/unavailable" } : {}) })),
-  openSettings: signal => workspace.navigate({ surface: "settings", section: "dataSync" }, undefined, signal),
+  openSettings: (signal, origin) => workspace.navigate({ surface: "settings", section: "dataSync" }, undefined, signal, false, undefined, origin),
   connectionOptions: async () => listSyncTransports().map(({ ref, label }) => ({ ref, label: contributionText(label) })),
-  requestFlow: async (request, signal) => {
-    try { return await remote(() => hostSyncFlows.request(request, signal)); }
+  requestFlow: async (request, signal, origin) => {
+    try { return await remote(() => hostSyncFlows.request(request, signal, origin)); }
     catch (error) { signal?.throwIfAborted(); throw error; }
   },
 }, error => log.warn("Sync observer failed", error));
