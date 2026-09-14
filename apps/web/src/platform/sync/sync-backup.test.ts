@@ -7,6 +7,7 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
   const commands: string[] = [], order: string[] = [], blobs = new Map<string, ArrayBuffer>();
   let commitGate: Promise<void> | undefined;
   let failSecretDelete = false;
+  let coverBacklog: Array<{ bookId: string; coverBlobKey: string }> = [];
   const profile = { syncEnabled: true, remoteAccountId: null as string | null, encryptionKeyRef: "sync.master-key", lastPushAt: null, lastPullAt: null };
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => null } });
   Object.defineProperty(globalThis, "document", { configurable: true, value: { addEventListener() {}, removeEventListener() {} } });
@@ -16,7 +17,8 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
       commands.push(command);
       if (command === "secret_delete" && failSecretDelete) throw { code: "db/locked" };
       if (command === "sync_profile_get") return profile;
-      if (["secret_keys", "restored_credentials_pending", "reading_sessions_pending", "library_cover_backlog"].includes(command)) return [];
+      if (command === "library_cover_backlog") return coverBacklog;
+      if (["secret_keys", "restored_credentials_pending", "reading_sessions_pending"].includes(command)) return [];
       if (command === "sync_outbox_counts") return { events: 0, blobs: 0 };
       if (command === "local_device_get") return { deviceId: "sync-backup", lastHlcWallMs: null, lastHlcCounter: null };
       if (command === "get_blob") return blobs.get(args.key) ?? new ArrayBuffer(0);
@@ -206,12 +208,31 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
       expect(await scheduler.withSyncBackup(async () => "released")).toBe("released");
     } finally { failSecretDelete = false; relay.mockRestore(); }
   });
+  test("cover hydration retains the download source and suppresses retired completions", async () => {
+    const { hydrateMissingCovers, stopCoverHydration } = await import("./cover-hydrator");
+    const { onAppEvent } = await import("../app-events");
+    const events: object[] = [], origin = causalActor("plugin:cover-proof");
+    const off = onAppEvent("book-changed", event => { if (event.bookId === "cover-proof") events.push(event); });
+    stopCoverHydration(); coverBacklog = [{ bookId: "cover-proof", coverBlobKey: "cover:proof" }];
+    try {
+      expect(await hydrateMissingCovers(async (_key, source) => {
+        expect(actorCause(source)).toEqual(actorCause(origin)); return { outcome: "fetched" };
+      }, { origin })).toBe(1);
+      expect(eventCause(events[0]!)).toEqual(actorCause(origin));
+      const gate = Promise.withResolvers<void>();
+      const retired = hydrateMissingCovers(async () => { await gate.promise; return { outcome: "fetched" }; }, { origin });
+      await Bun.sleep(0); stopCoverHydration(); gate.resolve();
+      expect(await retired).toBe(0); expect(events).toHaveLength(1);
+      expect(await hydrateMissingCovers(async () => ({ outcome: "fetched" }), { origin })).toBe(1);
+      expect(events).toHaveLength(2);
+    } finally { stopCoverHydration(); coverBacklog = []; off(); }
+  });
 } else {
   test("isolated scheduler and production backup admission", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], {
       env: { ...process.env, SYNC_BACKUP_PROOF: "1" }, stdout: "ignore", stderr: "pipe",
     });
     const output = await new Response(child.stderr).text();
-    expect(await child.exited, output).toBe(0); expect(output).toContain("7 pass");
+    expect(await child.exited, output).toBe(0); expect(output).toContain("8 pass");
   }, 30_000);
 }

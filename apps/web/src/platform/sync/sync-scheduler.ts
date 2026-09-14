@@ -335,7 +335,7 @@ async function runAcceptedCycle(origin: DomainActor): Promise<SyncCycleOutcome |
     // Covers other devices extracted: fetch whatever the shelf still lacks.
     // Runs after EVERY cycle (not just pulls) because the peer's cover upload
     // produces no event to pull — only its bytes appearing on the relay.
-    void hydrateMissingCovers(fetchRemoteBlob, { reset: pulled > 0 || bootstrapped });
+    void hydrateMissingCovers(fetchRemoteBlob, { reset: pulled > 0 || bootstrapped, origin });
     return outcome;
   } finally {
     progressSink = undefined;
@@ -366,8 +366,9 @@ export type RemoteBlobFetch =
       detail: string;
     };
 
-export function fetchRemoteBlob(key: string): Promise<RemoteBlobFetch> {
-  return syncWork.run(() => fetchAcceptedRemoteBlob(key));
+export function fetchRemoteBlob(key: string, origin: DomainActor = "system"): Promise<RemoteBlobFetch> {
+  origin = causalActor(origin);
+  return syncWork.run(() => fetchAcceptedRemoteBlob(key, origin));
 }
 
 /** Read-only local admission used both by discovery and the accepted download.
@@ -438,7 +439,7 @@ export function withSyncBackup<T>(operation: (fetchBlob: typeof fetchRemoteBlob)
     // Cancelling backup must not release a cycle's still-dispatched event tail.
     await durableWrites.settle();
     signal?.throwIfAborted();
-    return operation(key => runOwned(() => fetchAcceptedRemoteBlob(key)));
+    return operation((key, origin) => runOwned(() => fetchAcceptedRemoteBlob(key, origin)));
   }, signal);
 }
 
@@ -548,7 +549,7 @@ export function startSyncScheduler(): () => void {
         // covers other devices extracted are still worth fetching. Not when
         // the relay itself is unreachable: that pass could only fail too.
         if (classifySyncError(error) !== ERR_SYNC_NETWORK) {
-          void hydrateMissingCovers(fetchRemoteBlob);
+          void hydrateMissingCovers(fetchRemoteBlob, { origin });
         }
         setStatus({
           state: "error",

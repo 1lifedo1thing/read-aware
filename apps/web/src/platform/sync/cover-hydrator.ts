@@ -1,3 +1,4 @@
+import { actorFromEvent, causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../domain-actor";
 /**
  * Cover hydration — the consumer half of `book.coverExtracted` on a device
  * that did not do the extracting.
@@ -25,7 +26,7 @@ import { createLogger } from "../logger";
  * never imports the scheduler that drives it. Structural: only the outcome
  * tags the pass reacts to are named here.
  */
-export type BlobFetcher = (key: string) => Promise<
+export type BlobFetcher = (key: string, origin?: DomainActor) => Promise<
   | { outcome: "fetched" }
   | { outcome: "unavailable" }
   | { outcome: "missing" }
@@ -40,10 +41,14 @@ type CoverBacklogEntry = { bookId: string; coverBlobKey: string };
 const RETRY_BASE_MS = 15_000;
 const RETRY_MAX_MS = 5 * 60_000;
 
-const misses = new Map<string, { count: number; nextAt: number }>();
+const misses = new Map<string, { count: number; nextAt: number; origin: DomainActor }>();
 let lastFetcher: BlobFetcher | null = null;
 let running = false;
-let rerunRequested = false;
+let generation = 0;
+let lastOrigin: DomainActor | undefined;
+let queued: { fetchBlob: BlobFetcher; origin: DomainActor } | undefined;
+const join = (first: DomainActor, second: DomainActor): DomainActor => actorFromEvent(
+  mergeEventCauses([stampEventCause({}, first), stampEventCause({}, second)], {}));
 let retryTimer: number | null = null;
 
 function scheduleRetry(at: number): void {
@@ -51,15 +56,15 @@ function scheduleRetry(at: number): void {
   if (retryTimer !== null) window.clearTimeout(retryTimer);
   retryTimer = window.setTimeout(() => {
     retryTimer = null;
-    if (lastFetcher) void hydrateMissingCovers(lastFetcher);
+    if (lastFetcher) void hydrateMissingCovers(lastFetcher, { origin: lastOrigin });
   }, delay);
 }
 
-function noteMiss(bookId: string): number {
+function noteMiss(bookId: string, origin: DomainActor): number {
   const prior = misses.get(bookId)?.count ?? 0;
   const count = prior + 1;
   const nextAt = Date.now() + Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** prior);
-  misses.set(bookId, { count, nextAt });
+  misses.set(bookId, { count, nextAt, origin });
   return nextAt;
 }
 
@@ -70,13 +75,14 @@ function noteMiss(bookId: string): number {
  */
 export async function hydrateMissingCovers(
   fetchBlob: BlobFetcher,
-  options: { reset?: boolean } = {},
+  options: { reset?: boolean; origin?: DomainActor } = {},
 ): Promise<number> {
   if (!isTauri()) return 0;
-  lastFetcher = fetchBlob;
+  const origin = causalActor(options.origin ?? "system"), epoch = generation;
+  lastFetcher = fetchBlob; lastOrigin = origin;
   if (options.reset) misses.clear();
   if (running) {
-    rerunRequested = true;
+    queued = { fetchBlob, origin: queued ? join(queued.origin, origin) : origin };
     return 0;
   }
   running = true;
@@ -84,22 +90,25 @@ export async function hydrateMissingCovers(
   let earliestRetry = Number.POSITIVE_INFINITY;
   try {
     const backlog = await invoke<CoverBacklogEntry[]>("library_cover_backlog");
+    if (epoch !== generation) return fetched;
     for (const entry of backlog) {
       const pending = misses.get(entry.bookId);
       if (pending && pending.nextAt > Date.now()) {
         earliestRetry = Math.min(earliestRetry, pending.nextAt);
         continue;
       }
-      const result = await fetchBlob(entry.coverBlobKey);
+      const source = pending ? join(pending.origin, origin) : origin;
+      const result = await fetchBlob(entry.coverBlobKey, source);
+      if (epoch !== generation) return fetched;
       switch (result.outcome) {
         case "fetched":
           misses.delete(entry.bookId);
           fetched += 1;
-          emitAppEvent("book-changed", { bookId: entry.bookId });
+          emitAppEvent("book-changed", { bookId: entry.bookId }, source);
           break;
         case "missing":
           // Not uploaded by the peer yet — the expected race; try again later.
-          earliestRetry = Math.min(earliestRetry, noteMiss(entry.bookId));
+          earliestRetry = Math.min(earliestRetry, noteMiss(entry.bookId, source));
           break;
         case "unavailable":
           // No credentials / sync off: nothing in this pass can succeed.
@@ -107,7 +116,7 @@ export async function hydrateMissingCovers(
         case "failed":
           if (result.reason === "unauthenticated") return fetched;
           log.warn(`cover fetch for ${entry.bookId} failed (${result.reason}); will retry`);
-          earliestRetry = Math.min(earliestRetry, noteMiss(entry.bookId));
+          earliestRetry = Math.min(earliestRetry, noteMiss(entry.bookId, source));
           break;
       }
     }
@@ -118,15 +127,14 @@ export async function hydrateMissingCovers(
     return fetched;
   } finally {
     running = false;
-    if (rerunRequested) {
-      rerunRequested = false;
-      void hydrateMissingCovers(fetchBlob);
-    }
+    const next = queued; queued = undefined;
+    if (next) void hydrateMissingCovers(next.fetchBlob, { origin: next.origin });
   }
 }
 
 /** Drop pending retries (scheduler shutdown / account change). */
 export function stopCoverHydration(): void {
+  generation++; queued = undefined; lastOrigin = undefined;
   if (retryTimer !== null) window.clearTimeout(retryTimer);
   retryTimer = null;
   misses.clear();
