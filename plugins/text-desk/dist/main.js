@@ -1,6 +1,18 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  inferenceAvailability: ["Image AI prerequisites", "图像 AI 使用条件", "影像 AI 使用條件", "画像AIの利用条件", "Условия для ИИ изображений", "Conditions pour l’IA d’images", "Voraussetzungen für Bild-KI", "Requisitos de IA de imágenes"],
+  availabilityNote: ["Checks the saved Smart-model configuration for image input. This does not send a request or verify the remote service.", "检查已保存的 Smart 模型是否具备图像输入条件。不会发送请求，也不验证远端服务。", "檢查已儲存的 Smart 模型是否具備影像輸入條件。不會傳送請求，也不驗證遠端服務。", "保存済みSmartモデルの画像入力条件を確認します。リクエスト送信や外部サービスの検証は行いません。", "Проверяет настройки Smart для изображений. Не отправляет запрос и не проверяет удалённый сервис.", "Vérifie la configuration Smart enregistrée pour les images, sans envoyer de requête ni tester le service distant.", "Prüft die gespeicherte Smart-Konfiguration für Bilder, ohne Anfrage oder Test des entfernten Dienstes.", "Comprueba la configuración Smart guardada para imágenes, sin enviar solicitudes ni probar el servicio remoto."],
+  availability_permission: ["Permission", "权限", "權限", "権限", "Разрешение", "Autorisation", "Berechtigung", "Permiso"],
+  availability_account: ["Account credentials", "账户凭据", "帳戶憑證", "アカウント認証情報", "Данные учётной записи", "Identifiants du compte", "Kontozugangsdaten", "Credenciales de la cuenta"],
+  availability_model: ["Model selection", "模型选择", "模型選擇", "モデル選択", "Выбор модели", "Sélection du modèle", "Modellauswahl", "Selección del modelo"],
+  availability_endpoint: ["Connection address", "连接地址", "連線位址", "接続先", "Адрес подключения", "Adresse de connexion", "Verbindungsadresse", "Dirección de conexión"],
+  availability_provider: ["Remote service", "远端服务", "遠端服務", "外部サービス", "Удалённый сервис", "Service distant", "Entfernter Dienst", "Servicio remoto"],
+  availability_input: ["Image input", "图像输入", "影像輸入", "画像入力", "Ввод изображений", "Entrée d’images", "Bildeingabe", "Entrada de imágenes"],
+  availability_satisfied: ["Configured", "条件满足", "條件符合", "設定済み", "Настроено", "Configuré", "Konfiguriert", "Configurado"],
+  availability_unconfigured: ["Not configured", "尚未配置", "尚未設定", "未設定", "Не настроено", "Non configuré", "Nicht konfiguriert", "Sin configurar"],
+  availability_unavailable: ["Unavailable", "不可用", "無法使用", "利用不可", "Недоступно", "Indisponible", "Nicht verfügbar", "No disponible"],
+  availability_unknown: ["Unknown", "未知", "未知", "不明", "Неизвестно", "Inconnu", "Unbekannt", "Desconocido"],
   inferenceHistory: ["AI request history", "AI 请求历史", "AI 請求歷史", "AIリクエスト履歴", "История запросов ИИ", "Historique des requêtes IA", "KI-Anfrageverlauf", "Historial de solicitudes IA"],
   noInferenceHistory: ["No saved AI requests", "没有已保存的 AI 请求", "沒有已儲存的 AI 請求", "保存済みAIリクエストはありません", "Нет сохранённых запросов ИИ", "Aucune requête IA enregistrée", "Keine gespeicherten KI-Anfragen", "No hay solicitudes IA guardadas"],
   requestTimedOut: ["Timed out", "已超时", "已逾時", "時間切れ", "Время истекло", "Délai dépassé", "Zeitüberschreitung", "Tiempo agotado"],
@@ -220,6 +232,24 @@ async function inferenceDetail(ctx, id) {
       return { view: await inferenceDetail(ctx, id), navigation: "replace" };
     } }] : []
   ] };
+}
+
+// src/inference-availability.ts
+async function inferenceAvailability(ctx) {
+  const result = await ctx.services.session.operationAvailability({ operation: "llm.infer", model: "smart", images: true });
+  return { kind: "detail", title: tr(ctx.locale, "inferenceAvailability"), content: [
+    { kind: "text", text: tr(ctx.locale, "availabilityNote") },
+    { kind: "keyValue", rows: result.conditions.map((condition) => ({
+      label: tr(ctx.locale, `availability_${condition.kind}`),
+      value: tr(ctx.locale, `availability_${condition.state}`)
+    })) },
+    ...result.conditions.filter((condition) => condition.errorCode).map((condition) => ({ kind: "error", code: condition.errorCode }))
+  ], actions: [{
+    id: "refresh",
+    label: tr(ctx.locale, "refresh"),
+    icon: "arrows-clockwise",
+    run: async () => ({ view: await inferenceAvailability(ctx), navigation: "replace" })
+  }] };
 }
 
 // src/task-views.ts
@@ -611,8 +641,8 @@ var HOST_SERVICE_CATALOG = {
   secrets: { version: "1.0.0", permission: null },
   ui: { version: "1.15.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
-  session: { version: "2.0.0", permission: null },
-  plugins: { version: "1.6.0", permission: null },
+  session: { version: "2.1.0", permission: null },
+  plugins: { version: "1.7.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
   logging: { version: "1.0.0", permission: null },
@@ -1451,6 +1481,7 @@ var src_default = {
     if (!ctx.domains.library?.commands || !ctx.domains.reading?.commands)
       throw Error("Text Desk requires library:write and reading:write");
     const title = tr(ctx.locale, "title");
+    ctx.contributions.commands.register({ id: "inference-availability", title: `${title}: ${tr(ctx.locale, "inferenceAvailability")}`, icon: "sparkle", run: async () => ({ view: await inferenceAvailability(ctx) }) });
     ctx.contributions.commands.register({ id: "open", title, icon: "book-open", run: async () => ({ view: await textDesk(ctx) }) });
     ctx.contributions.commands.register({
       id: "image-controls",

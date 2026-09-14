@@ -6,6 +6,7 @@ import { AiNotConfiguredError } from "../../ai/lib/ai-errors";
 import { createLogger } from "../../../platform/logger";
 import type { PluginLifecycleController } from "./plugin-lifecycle";
 import { PluginInferenceReceipts } from "./plugin-inference-receipts";
+import { assertOperationAvailable, type OperationAvailabilityPort } from "@read-aware/core";
 
 const LIMITS = { defaultTimeoutMs: 60_000, maxTimeoutMs: 110_000, perPluginLimit: 2, appLimit: 8, maxOutputTokensLimit: 65_536, maxImageCount: MODEL_IMAGES_MAX_COUNT, maxImageBytes: MODEL_IMAGE_MAX_BYTES, maxImageTotalBytes: MODEL_IMAGES_MAX_BYTES, maxTotalOutputTokensLimit: 131_072, maxOutputCharsLimit: 262_144, maxInputChars: 262_144 };
 const log = createLogger("plugin-llm");
@@ -66,6 +67,7 @@ export function createPluginLlm(
   capacity = slots,
   readImage?: (id: string, signal: AbortSignal) => Promise<ModelImageInput>,
   historyStorage?: InferenceHistoryStorage,
+  availability?: OperationAvailabilityPort,
 ): NonNullable<PluginHostServices["llm"]> {
   const receipts = new PluginInferenceReceipts(lifecycle, historyStorage);
   const run = async (raw: Input, detailed: boolean): Promise<unknown> => {
@@ -79,8 +81,6 @@ export function createPluginLlm(
     try {
       if (input.signal?.aborted || lifecycle.signal.aborted) throw new AppError(ERR_AI_REQUEST_CANCELLED, "Plugin inference was cancelled before dispatch");
       if (Date.now() >= deadlineAt) throw new AppError(ERR_AI_REQUEST_TIMEOUT, "Plugin inference deadline exceeded during admission");
-      const runtime = getRuntime();
-      if (!runtime) throw new AiNotConfiguredError();
       const release = capacity.acquire(pluginId);
       const external = AbortSignal.any([lifecycle.signal, ...(input.signal ? [input.signal] : [])]);
       external.addEventListener("abort", cancel, { once: true });
@@ -105,6 +105,12 @@ export function createPluginLlm(
           validateModelImages(images);
           controller.signal.throwIfAborted();
         }
+        if (availability) assertOperationAvailable(await availability.check({ operation: "llm.infer", model: input.model, images: images.length > 0 }, controller.signal));
+        controller.signal.throwIfAborted();
+        // Resolve the current runtime after resource/precondition reads. A
+        // cached query result cannot authorize a now-unconfigured request.
+        const runtime = getRuntime();
+        if (!runtime) throw new AiNotConfiguredError();
         const base = { images, prompt: input.prompt, system: input.system, model: input.model,
           readingContext: input.readingContext, signal: controller.signal, trackSource, maxOutputTokens: input.maxOutputTokens ?? (input.maxTotalOutputTokens === undefined ? undefined : LIMITS.maxOutputTokensLimit), maxTotalOutputTokens: input.maxTotalOutputTokens, maxOutputChars: input.maxOutputChars,
           onAttempt: receipt?.attempt };

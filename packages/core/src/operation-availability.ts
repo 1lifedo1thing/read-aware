@@ -1,0 +1,43 @@
+import { AppError } from "./errors";
+
+/** Semantic operation conditions, not a promise of remote success. More
+ * operation kinds share this contract as their authoritative checks are wired. */
+export type OperationAvailabilityQuery = { operation: "llm.infer"; model?: "fast" | "smart"; images?: boolean };
+export type OperationConditionState = "satisfied" | "unconfigured" | "unavailable" | "unknown";
+export type OperationCondition = {
+  kind: "permission" | "account" | "model" | "endpoint" | "provider" | "input";
+  state: OperationConditionState;
+  reason: string;
+  errorCode?: string;
+};
+export type OperationAvailability = {
+  operation: OperationAvailabilityQuery["operation"];
+  model: "fast" | "smart";
+  state: "available" | Exclude<OperationConditionState, "satisfied">;
+  conditions: OperationCondition[];
+  /** This query never sends a probe or executes the operation. */
+  remoteChecked: false;
+};
+export type OperationAvailabilityPort = { check(query: OperationAvailabilityQuery, signal?: AbortSignal): Promise<OperationAvailability> };
+
+export function normalizeOperationAvailability(input: unknown): Required<OperationAvailabilityQuery> {
+  const invalid = () => new AppError("plugin/invalid-argument", "Invalid operation availability query");
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw invalid();
+  const raw = input as Record<string, unknown>;
+  if (Object.keys(raw).some(key => !["operation", "model", "images"].includes(key))
+    || raw.operation !== "llm.infer" || raw.model !== undefined && raw.model !== "fast" && raw.model !== "smart"
+    || raw.images !== undefined && typeof raw.images !== "boolean") throw invalid();
+  return { operation: "llm.infer", model: raw.model as "fast" | "smart" | undefined ?? "fast", images: raw.images as boolean | undefined ?? false };
+}
+
+export function operationAvailability(query: Required<OperationAvailabilityQuery>, conditions: OperationCondition[]): OperationAvailability {
+  const state = (["unavailable", "unconfigured", "unknown"] as const).find(state => conditions.some(condition => condition.state === state)) ?? "available";
+  return { operation: query.operation, model: query.model, state, conditions, remoteChecked: false };
+}
+
+/** Unknown remote health is not a local refusal. Real execution retains its
+ * own authorization, object validation, cancellation and provider errors. */
+export function assertOperationAvailable(snapshot: OperationAvailability): void {
+  const blocked = snapshot.conditions.find(condition => condition.state === "unavailable" || condition.state === "unconfigured");
+  if (blocked) throw new AppError(blocked.errorCode ?? "ui/unavailable", `Operation condition not met: ${blocked.kind}/${blocked.reason}`);
+}

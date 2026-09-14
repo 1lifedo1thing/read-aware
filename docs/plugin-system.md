@@ -5564,7 +5564,7 @@ The current host services are:
 | `secrets` | plugin-scoped credential slots | built in |
 | `ui` | host toast and save/export flow | built in |
 | `schedules` | 1.1: bind, list, observe, pause/resume and run declared tasks | built in, own schedules only |
-| `session` | 2.0: environment snapshot/observation only; reading state requires the reading domain | built in |
+| `session` | 2.1: environment snapshot/observation and authorized operation prerequisites; reading state requires the reading domain | built in |
 | `plugins` | 1.1: installed metadata and registered contribution identity discovery/observation | built in |
 | `maintenance` | 1.0: updater snapshot/observation, release check and native maintenance controls | built in; check requires `service:network` |
 | `diagnostics` | 1.1: verification counts and host-confirmed export/send outcomes | `service:diagnostics` |
@@ -7135,3 +7135,11 @@ route identifiers and traversal paths are rejected. The in-memory queue holds
 This is neither durable delivery nor exactly-once execution. Full queues drop
 additional links without invoking plugins. OS/Worker/dialog integration remains
 pending concentrated acceptance; these limits are not a system-wide URI sandbox.
+
+### Operation prerequisites (Session 2.1)
+
+[代码] `services.session.operationAvailability({ operation: "llm.infer", model: "fast" | "smart", images?: boolean }, options?)` reads settled local configuration without executing inference, migrating credentials or probing the provider. Missing `service:llm` returns only the permission condition. Authorized callers receive condition states for account configuration, model selection, endpoint validity and image input; no credential, model ID or endpoint address is returned. Invalid input rejects; failed configuration reads return unknown with a stable error code. Remote health remains unknown, even with a cached catalog or an online hint.
+
+[代码] Both Agent scopes expose the same query through `get_operation_availability`. The plugin inference boundary rechecks after image reads, before resolving the current runtime and dispatching. Locally missing/unsupported prerequisites refuse the call; unknown remote health permits trying it and does not predict success. Text Desk0.24 exposes the Smart image-inference conditions and a fresh query action. Other operation kinds are not yet exposed by this first C05 slice; their existing execution checks remain authoritative.
+
+[验证] Public permission/disclosure checks, actual Bun Worker call/cancellation transport, Agent scopes, compiled Text Desk consumer and controlled inference/configuration checks cover this path. Real Tauri, stored credentials and actual provider acceptance remain pending for concentrated validation.

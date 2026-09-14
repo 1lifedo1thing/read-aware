@@ -4,6 +4,7 @@ import type { PluginCallOptions } from "@read-aware/plugin-types";
 /** Final options argument positions shared by the Worker proxy and host RPC.
  * Transport metadata is not authority: the host still resolves the actor's method. */
 export const PLUGIN_CALL_OPTIONS = {
+  "services.session.operationAvailability": 1,
   "services.schedules.defer": 2,
   "services.schedules.cancelDeferred": 2,
   "domains.memory.queries.entities": 1,

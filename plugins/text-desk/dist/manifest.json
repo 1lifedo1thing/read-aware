@@ -1,7 +1,7 @@
 {
   "id": "text-desk",
   "name": "Text Desk",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "schemaVersion": 1,
   "description": "Search book text, browse references and images, control the native image viewer, export images, and manage text preparation.",
   "author": "ReadAware",
@@ -10,7 +10,7 @@
   "requires": {
     "domains": { "library": "^1.29.0", "reading": "^2.20.0" },
     "contributions": { "headerActions": "^1.0.0", "commands": "^1.0.0", "selectionActions": "^1.2.0" },
-    "services": { "plugins": "^1.6.0", "llm": "^1.6.0", "ui": "^1.13.0", "resources": "^1.2.0", "clipboard": "^1.1.0" },
+    "services": { "session": "^2.1.0", "plugins": "^1.6.0", "llm": "^1.6.0", "ui": "^1.13.0", "resources": "^1.2.0", "clipboard": "^1.1.0" },
     "schemas": { "views": "^1.9.0" }
   }
 }

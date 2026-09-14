@@ -39,6 +39,8 @@ import {
   canUseContribution,
   canUseHostService,
   domainGrantsFromPermissions,
+  normalizeOperationAvailability,
+  operationAvailability,
   normalizeEntityQuery,
   normalizeProfileInspectionQuery,
   type DomainEventType,
@@ -56,6 +58,7 @@ import { hostEnvironment } from "../../../platform/host-environment";
 import { hostWindow } from "../../../services/window";
 import { readerImage } from "../../../services/reader-image";
 import { readerImageOpen } from "../../../services/reader-image-open";
+import { checkOperationAvailability } from "../../../services/operation-availability";
 import { readBookImage } from "../../library/lib/book-images";
 import { openBookImageResource } from "../../../domain/library-book-images";
 import { hostSync } from "../../../services/sync";
@@ -910,6 +913,16 @@ export function buildPluginContext(
         release: id => { lifecycle.assertActive("services.resources.release"); return resources.release(id); },
       },
       session: {
+        operationAvailability: (input, options) => {
+          lifecycle.assertActive("services.session.operationAvailability");
+          const signal = callSignal(options);
+          signal.throwIfAborted();
+          const query = normalizeOperationAvailability(input);
+          if (!canUseHostService("llm", permissions)) return Promise.resolve(operationAvailability(query, [
+            { kind: "permission", state: "unavailable", reason: "service:llm-required" },
+          ]));
+          return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
+        },
         environment: async () => {
           lifecycle.assertActive("services.session.environment");
           return hostEnvironment.snapshot();
@@ -1745,7 +1758,7 @@ export function buildPluginContext(
   }
 
   if (canUseHostService("llm", permissions)) {
-    ctx.services.llm = llm ??= createPluginLlm(manifest.id, lifecycle, getAgentRuntime, undefined, (id, signal) => resourceModelImage(resources, id, signal), inferenceHistoryStorage(manifest.id));
+    ctx.services.llm = llm ??= createPluginLlm(manifest.id, lifecycle, getAgentRuntime, undefined, (id, signal) => resourceModelImage(resources, id, signal), inferenceHistoryStorage(manifest.id), { check: checkOperationAvailability });
   }
 
   if (canUseHostService("clipboard", permissions)) {

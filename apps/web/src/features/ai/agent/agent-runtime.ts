@@ -4,6 +4,7 @@
  */
 import {
   createAgentRuntime,
+  accountCredential,
   type AgentRuntime,
   type ThreadScope,
   threadScopeKey,
@@ -48,9 +49,10 @@ function routingTransform(routing: OpenRouterRoutingConfig | undefined) {
 
 export function getAgentRuntime(): AgentRuntime | null {
   const config = getAIConfig();
-  if (!config?.apiKey || !config.model.trim()) return null;
+  if (!config || !config.model.trim()) return null;
 
   const { account, models, thinking } = accountFromConfig(config);
+  if (!accountCredential(account).trim()) return null;
   const routing = config.provider === "openrouter" ? config.openRouterRouting : undefined;
 
   const key = JSON.stringify([account, models, thinking, routing ?? null]);

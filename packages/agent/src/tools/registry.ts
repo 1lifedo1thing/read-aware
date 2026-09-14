@@ -16,6 +16,7 @@ import { buildNavigationTools } from "./navigation-tools";
 import { buildReferenceTools } from "./reference-tools";
 import { buildSettingsTools } from "./settings-tools";
 import { buildEnvironmentTools } from "./environment-tools";
+import { buildOperationAvailabilityTools } from "./operation-availability-tools";
 import { buildCapabilityTool } from "./capability-tools";
 import { buildWindowTools } from "./window-tools";
 import { buildImageViewerTools } from "./image-viewer-tools";
@@ -51,6 +52,7 @@ export function buildAgentTools(
     ...(scope.kind === "global" ? [buildOnboardingTool(scope, deps)] : []),
     ...buildReadingAiTools(scope, deps),
     ...buildEnvironmentTools(deps),
+    ...buildOperationAvailabilityTools(deps),
     ...buildWindowTools(deps),
     ...buildImageViewerTools(scope, deps),
     ...buildBookImageTools(scope, deps, turnState),

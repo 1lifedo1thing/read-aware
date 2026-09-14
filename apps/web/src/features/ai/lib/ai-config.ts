@@ -159,13 +159,16 @@ function positiveInteger(value: unknown): number | undefined {
   return Math.floor(value);
 }
 
-function readStored(): StoredAIConfig | null {
+function readStored(strict = false): StoredAIConfig | null {
   try {
     const raw = localKV.getItem(CONFIG_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredAIConfig;
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    if (strict) throw new Error("Invalid stored AI configuration");
+    return null;
+  } catch (error) {
+    if (strict) throw error;
     return null;
   }
 }
@@ -230,9 +233,9 @@ export function getStoredProviderSettings(
 export const AI_CONFIG_KEY = "read-aware-ai-config";
 const CONFIG_KEY = AI_CONFIG_KEY;
 
-export function getAIConfig(): AIConfig | null {
+export function getAIConfig(options?: { migrateLegacy?: boolean; strict?: boolean }): AIConfig | null {
   try {
-    const parsed = readStored();
+    const parsed = readStored(options?.strict);
     if (!parsed?.provider) return null;
     const slot = keySlot(parsed.provider);
     let apiKey = getSecret(slot);
@@ -241,8 +244,10 @@ export function getAIConfig(): AIConfig | null {
       // this very blob, so it belongs to this provider's slot. Adopt once.
       const legacy = getSecret("ai-api-key");
       if (legacy) {
-        setSecret(slot, legacy);
-        deleteSecret("ai-api-key");
+        if (options?.migrateLegacy !== false) {
+          setSecret(slot, legacy);
+          deleteSecret("ai-api-key");
+        }
         apiKey = legacy;
       }
     }
@@ -255,7 +260,8 @@ export function getAIConfig(): AIConfig | null {
       apiKey,
       ...settings,
     };
-  } catch {
+  } catch (error) {
+    if (options?.strict) throw error;
     return null;
   }
 }

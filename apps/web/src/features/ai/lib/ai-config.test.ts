@@ -20,13 +20,30 @@ import {
   DEFAULT_MODELS,
   DEFAULT_THINKING_LEVEL,
   getStoredProviderSettings,
+  getAIConfig,
   SUBSCRIPTION_MODELS,
   saveAIConfig,
 } from "./ai-config";
-import { hydrateSecrets } from "../../../platform/secret-store";
+import { hydrateSecrets, getSecret, setSecret, deleteSecret } from "../../../platform/secret-store";
 
 beforeAll(() => hydrateSecrets());
 beforeEach(() => storage.clear());
+
+test("read-only prerequisites resolve legacy credentials without migrating and report malformed config", () => {
+  const legacy = getSecret("ai-api-key"), provider = getSecret("ai-api-key.openai");
+  try {
+    deleteSecret("ai-api-key.openai"); setSecret("ai-api-key", "legacy-fixture");
+    storage.set("read-aware-ai-config", JSON.stringify({ provider: "openai", model: "fixture" }));
+    expect(getAIConfig({ migrateLegacy: false, strict: true })?.apiKey).toBe("legacy-fixture");
+    expect(getSecret("ai-api-key")).toBe("legacy-fixture"); expect(getSecret("ai-api-key.openai")).toBe("");
+    storage.set("read-aware-ai-config", "{malformed");
+    expect(() => getAIConfig({ migrateLegacy: false, strict: true })).toThrow();
+    expect(getAIConfig()).toBeNull();
+  } finally {
+    if (legacy) setSecret("ai-api-key", legacy); else deleteSecret("ai-api-key");
+    if (provider) setSecret("ai-api-key.openai", provider); else deleteSecret("ai-api-key.openai");
+  }
+});
 
 describe("AI provider defaults", () => {
   test("links Fast to Smart and enables thinking for a new provider", () => {

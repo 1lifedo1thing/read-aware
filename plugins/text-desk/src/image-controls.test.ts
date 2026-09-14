@@ -91,10 +91,10 @@ test("no open image is an honest empty state and refresh explicitly discovers a 
 
 test("image and closed views publish with their reaction lease; user actions keep the root context", async () => {
   const f = fixture(), deliveries: unknown[] = [];
-  f.ctx.withEvent = delivery => {
+  f.ctx.withEvent = ((delivery: Parameters<PluginContext["withEvent"]>[0]) => {
     deliveries.push(delivery);
     return { services: { ui: { publishView: f.ctx.services.ui.publishView } } } as unknown as PluginContext;
-  };
+  }) as PluginContext["withEvent"];
   const view = await imageControls(f.ctx), sub = await view.live!.subscribe({ id: "causal-image" });
   try {
     const delivery = { reaction: { id: "host-lease", status: "ready" as const } };
@@ -154,7 +154,7 @@ test("compiled command exposes the image workflow with existing grants and retai
   await action(direct, "reset");
   expect(f.requests).toEqual([{ id: "viewer", action: "reset" }]);
   const manifest = await Bun.file(new URL("../dist/manifest.json", import.meta.url)).json();
-  expect(manifest.version).toBe("0.23.0");
+  expect(manifest.version).toBe("0.24.0");
   expect(manifest.requires.services.plugins).toBe("^1.6.0");
   expect(manifest.requires.schemas.views).toBe("^1.9.0");
   expect(manifest.requires.services.ui).toBe("^1.13.0");

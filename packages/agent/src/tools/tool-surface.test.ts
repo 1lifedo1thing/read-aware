@@ -115,6 +115,7 @@ const SURFACE_CASES: Record<string, Record<string, unknown>> = {
   release_resource_directory: { id: "surface-directory" },
   open_external_url: { url: "https://readaware.app/" },
   get_host_environment: {},
+  get_operation_availability: { operation: "llm.infer" },
   get_host_capabilities: {},
   get_app_window: {},
   get_reader_image: {},

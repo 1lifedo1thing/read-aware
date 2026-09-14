@@ -496,6 +496,7 @@ export interface RuntimeDeps {
   };
   readingContextPolicy?: import("./runtime/reading-context-policy").ReadingContextPolicy;
   environment: { snapshot(): Promise<import("@read-aware/core").HostEnvironmentSnapshot> };
+  operationAvailability?: import("@read-aware/core").OperationAvailabilityPort;
   window: import("@read-aware/core").HostWindowPort;
   conversationControl: {
     turnRequests(): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot[]>;

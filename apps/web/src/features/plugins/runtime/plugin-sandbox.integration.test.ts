@@ -45,6 +45,31 @@ async function command(scenario: string, fixture?: string) {
   return s;
 }
 
+test("real Worker queries operation prerequisites with cancellable call options", async () => {
+  for (const scenario of ["read", "cancel"]) {
+    const s = sandbox(scenario, "operation-availability-probe.ts", { shape: {
+      services: { session: { operationAvailability: "fn" } }, contributions: { commands: { register: "fn" } },
+    } });
+    const registration = await s.next(message => message.method === "contributions.commands.register");
+    const handle = (data(registration.args!) as { run: () => string }[])[0]!.run();
+    s.worker.postMessage({ t: "result", id: registration.id, ok: true, value: null, disposable: "registration" });
+    await s.next(message => message.t === "ready");
+    s.worker.postMessage({ t: "sync", patch: { phase: "active" } });
+    s.worker.postMessage({ t: "invoke", id: 901, handle, args: [] });
+    const query = await s.next(message => message.method === "services.session.operationAvailability");
+    expect(data(query.args!)).toEqual([{ operation: "llm.infer", model: "smart", images: true }, undefined]);
+    if (scenario === "cancel") {
+      await s.next(message => message.t === "cancel" && message.id === query.id);
+    } else s.worker.postMessage({ t: "result", id: query.id, ok: true, value: {
+      operation: "llm.infer", model: "smart", state: "unknown", remoteChecked: false,
+      conditions: [{ kind: "provider", state: "unknown", reason: "remote-health-not-checked" }],
+    } });
+    const result = resultData(await s.next(message => message.t === "result" && message.id === 901));
+    expect(result.ok).toBe(true);
+    expect(JSON.stringify(result.value)).toContain(scenario === "cancel" ? "plugin/cancelled" : "remote-health-not-checked");
+  }
+});
+
 test("real Worker preserves and snapshots explicit safe retry options across request flattening", async () => {
   const s = await command("network-retry", "network-retry-probe.ts");
   const call = await s.next(message => message.method === "services.network.fetch");

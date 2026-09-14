@@ -37,6 +37,27 @@ function fixture(capacity = new PluginInferenceSlots(), id = "sample") {
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
+test("inference rechecks after resource reads, and unknown remote health does not block dispatch", async () => {
+  const lifecycle = new PluginLifecycleController([]); lifecycle.promote();
+  let configured = true, calls = 0, runtimeReads = 0;
+  const image = Promise.withResolvers<import("@read-aware/core").ModelImageInput>();
+  const runtime = { ask: async () => { calls++; return "result"; }, askDetailed: async () => { calls++; return { value: "result", attempts: [] }; } } as Pick<AgentRuntime, "ask" | "askDetailed">;
+  const api = createPluginLlm("preflight", lifecycle, () => { runtimeReads++; return runtime; }, undefined,
+    () => image.promise, undefined, { check: async query => ({ operation: query.operation, model: query.model ?? "fast", remoteChecked: false,
+      state: configured ? "unknown" : "unconfigured", conditions: configured
+        ? [{ kind: "provider", state: "unknown", reason: "remote-health-not-checked" }]
+        : [{ kind: "account", state: "unconfigured", reason: "credential-missing", errorCode: "ai/not-configured" }] }) });
+  try {
+    const pending = api.ask({ prompt: "describe", images: [{ resourceId: "image" }] }); await tick();
+    configured = false;
+    image.resolve({ mimeType: "image/png", data: "iVBORw0KGgo=" });
+    await expect(pending).rejects.toMatchObject({ code: "ai/not-configured" });
+    expect(calls).toBe(0); expect(runtimeReads).toBe(0);
+    configured = true;
+    expect(await api.ask({ prompt: "try" })).toBe("result"); expect(calls).toBe(1); expect(runtimeReads).toBe(1);
+  } finally { lifecycle.stop(); await lifecycle.drainCleanups(); }
+});
+
 test("LLM policy, validation and pre-cancellation reject before inference", async () => {
   const f = fixture();
   expect(await f.api.policy()).toEqual({ defaultTimeoutMs: 60000, maxTimeoutMs: 110000, perPluginLimit: 2, appLimit: 8, maxOutputTokensLimit: 65536, maxImageCount: 4, maxImageBytes: 8 * 1024 * 1024, maxImageTotalBytes: 16 * 1024 * 1024, maxTotalOutputTokensLimit: 131072, maxOutputCharsLimit: 262144, maxInputChars: 262144 });
