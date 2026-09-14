@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { LOCALES, localizePath } from "../src/lib/i18n";
+import { CAPABILITIES } from "../src/lib/plugin-capabilities";
 
 const paths = [
   "/docs",
@@ -12,7 +13,7 @@ const paths = [
   "/docs/plugins/publishing",
 ];
 
-test("prerendered docs expose working section links, localized destinations and both live tools", async () => {
+test("prerendered docs expose localized links and the capability catalog before opening tools", async () => {
   for (const locale of LOCALES) {
     for (const path of paths) {
       const page = localizePath(path, locale);
@@ -65,8 +66,23 @@ test("prerendered docs expose working section links, localized destinations and 
       expect(html).not.toMatch(
         /READAWARE_(CAPABILITY_BROWSER|PERMISSION_PREVIEW)_SLOT/,
       );
-      if (path.endsWith("/capabilities"))
-        expect(slots).toEqual(["capability-browser", "permission-preview"]);
+      if (path.endsWith("/capabilities")) {
+        expect(slots).toEqual(["capability-browser"]);
+        expect(
+          links.some(
+            (href) =>
+              new URL(href, "https://readaware.app").searchParams.get(
+                "view",
+              ) === "manifest",
+          ),
+        ).toBe(true);
+        expect(
+          links.filter((href) =>
+            new URL(href, "https://readaware.app").searchParams.has("cap"),
+          ),
+        ).toHaveLength(CAPABILITIES.length);
+        expect(ids.has("capability-details")).toBe(false);
+      }
     }
   }
 });

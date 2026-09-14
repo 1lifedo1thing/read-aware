@@ -6,18 +6,19 @@ import {
   type PluginPermissionPreviewCopy,
 } from "../lib/plugin-manifest-preview";
 export type { PluginPermissionPreviewCopy } from "../lib/plugin-manifest-preview";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { ReactNode } from "react";
 import { JsonCodeEditor } from "./JsonCodeEditor";
 
 export function PluginPermissionPreview({
   copy,
-  sampleManifest,
+  source,
+  onChange,
 }: {
   copy: PluginPermissionPreviewCopy;
-  sampleManifest: string;
+  source: string;
+  onChange: (source: string) => void;
 }) {
-  const [source, setSource] = useState(sampleManifest);
   const parsed = useMemo(() => {
     try {
       return inspectManifest(JSON.parse(source), copy);
@@ -39,7 +40,7 @@ export function PluginPermissionPreview({
         <JsonCodeEditor
           label={copy.inputLabel}
           value={source}
-          onChange={setSource}
+          onChange={onChange}
         />
       </label>
 

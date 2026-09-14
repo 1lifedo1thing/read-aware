@@ -139,6 +139,7 @@ export const CAPABILITY_AUTHORITIES: CapabilityAuthority[] = [
   "settings-grant",
 ];
 export type ExplorerSearch = {
+  view?: "manifest";
   q?: string;
   family?: CapabilityFamily;
   authority?: CapabilityAuthority;
@@ -154,6 +155,7 @@ export function validateExplorerSearch(
       ? (value as T)
       : undefined;
   return {
+    view: input.view === "manifest" ? "manifest" : undefined,
     q:
       typeof input.q === "string" && input.q
         ? input.q.slice(0, 512)
@@ -218,4 +220,24 @@ export function capabilityManifest(
   if (entry.key === "services:network")
     fragment.networkAccess = { origins: ["https://api.example.com"] };
   return fragment;
+}
+
+export function groupCapabilityMethods(
+  entry: CapabilityEntry,
+  methods: CapabilityMethod[],
+) {
+  const groups = new Map<string, (CapabilityMethod & { name: string })[]>();
+  for (const method of methods) {
+    const relative = method.path.replace(
+      `ctx.${entry.family}.${entry.id}.`,
+      "",
+    );
+    const separator = relative.lastIndexOf(".");
+    const group = separator < 0 ? "" : relative.slice(0, separator);
+    const name = relative.slice(separator + 1);
+    const items = groups.get(group) ?? [];
+    items.push({ ...method, name });
+    groups.set(group, items);
+  }
+  return [...groups].map(([name, methods]) => ({ name, methods }));
 }

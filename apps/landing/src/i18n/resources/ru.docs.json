@@ -362,5 +362,38 @@
   "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"Research Notes\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^2.1.0\",\n      \"network\": \"^2.2.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"Refresh sources\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\",\n  \"networkAccess\": {\n    \"origins\": [\n      \"https://api.example.com\"\n    ]\n  }\n}",
   "pageNavigation": {
     "title": "На этой странице"
+  },
+  "explorer": {
+    "intro": "Найдите API и разрешения, необходимые вашему плагину.",
+    "browse": "Обзор возможностей",
+    "checkManifest": "Проверить manifest",
+    "versionNote": "API для разработки. Проверьте совместимость с установленным приложением.",
+    "filters": "Другие фильтры",
+    "back": "Назад к результатам",
+    "methodSearch": "Фильтр методов API…",
+    "noMethods": "Методы по этому запросу не найдены.",
+    "setupTitle": "Добавить в manifest",
+    "declaration": "Объявление manifest",
+    "apiGuide": "Руководство по API",
+    "buildGuide": "Создайте свой первый плагин",
+    "scope": "Разрешения и ограничения",
+    "clearSearch": "Очистить поиск",
+    "searchPlaceholder": "Поиск возможностей или методов API…",
+    "all": "Все",
+    "read": "Чтение",
+    "write": "Чтение и запись",
+    "manifestIntro": "Перед установкой плагина проверьте требования к версии и разрешения.",
+    "loadError": "Не удалось загрузить редактор manifest. Перезагрузите страницу и попробуйте снова.",
+    "reload": "Перезагрузить",
+    "detailTabs": "Сведения о возможности",
+    "configuration": "Конфигурация",
+    "topics": {
+      "reading": "Чтение",
+      "library": "Библиотека",
+      "intelligence": "ИИ и память",
+      "automation": "Автоматизация",
+      "interface": "Интерфейс",
+      "integration": "Интеграции"
+    }
   }
 }

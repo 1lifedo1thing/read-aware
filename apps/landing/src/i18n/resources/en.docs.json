@@ -362,5 +362,38 @@
   "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"Research Notes\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^2.1.0\",\n      \"network\": \"^2.2.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"Refresh sources\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\",\n  \"networkAccess\": {\n    \"origins\": [\n      \"https://api.example.com\"\n    ]\n  }\n}",
   "pageNavigation": {
     "title": "On this page"
+  },
+  "explorer": {
+    "intro": "Find the APIs and permissions your plugin needs.",
+    "browse": "Explore capabilities",
+    "checkManifest": "Check manifest",
+    "versionNote": "Development API. Check compatibility with your installed app.",
+    "filters": "More filters",
+    "back": "Back to results",
+    "methodSearch": "Filter API methods…",
+    "noMethods": "No methods match this search.",
+    "setupTitle": "Add to your manifest",
+    "declaration": "Manifest declaration",
+    "apiGuide": "API guide",
+    "buildGuide": "Build your first plugin",
+    "scope": "Permissions and limits",
+    "clearSearch": "Clear search",
+    "searchPlaceholder": "Search capabilities or API methods…",
+    "all": "All",
+    "read": "Read",
+    "write": "Read & write",
+    "manifestIntro": "Check version requirements and permissions before installing your plugin.",
+    "loadError": "The manifest editor could not load. Reload the page to try again.",
+    "reload": "Reload",
+    "detailTabs": "Capability details",
+    "configuration": "Configuration",
+    "topics": {
+      "reading": "Reading",
+      "library": "Library",
+      "intelligence": "AI & memory",
+      "automation": "Automation",
+      "interface": "Interface",
+      "integration": "Integrations"
+    }
   }
 }

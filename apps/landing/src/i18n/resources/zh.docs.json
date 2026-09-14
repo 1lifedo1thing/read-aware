@@ -261,7 +261,7 @@
     "methodsHint": "选取方法以查看其签名和来源。选用方法仍需要其特定授权。",
     "showAllMethods": "显示所有方法",
     "showFewerMethods": "显示较少方法",
-    "declarationOnly": "此能力在 manifest 或查看 schema 中声明为数据；没有 ctx 注册方法。",
+    "declarationOnly": "此能力以数据形式声明在 manifest 或视图 schema 中；没有 ctx 注册方法。",
     "manifestLabel": "起始 manifest 片段",
     "manifestHint": "将此片段合并到你的 manifest。加入所用方法要求的领域授权；没有额外基础权限不代表可以不受限制地访问。",
     "readAccess": "读取访问权",
@@ -274,7 +274,7 @@
     "catalogLabel": "开发目录",
     "catalogSummary": "{{capabilities}} 项能力 · {{methods}} 个 API 方法",
     "bundledOnly": "仅限内建插件",
-    "settingsHint": "示例授权使用 reading appearance.theme。请替换为功能所需的精确路径和操作。",
+    "settingsHint": "此示例授予 read appearance.theme 的权限。请将其替换为功能所需的确切路径和操作。",
     "networkHint": "将示例来源替换为实际允许的端点。权限和来源授权都必须具备。",
     "quickStartLabel": "尝试一项任务",
     "quickStarts": {
@@ -362,5 +362,38 @@
   "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"Research Notes\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^2.1.0\",\n      \"network\": \"^2.2.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"Refresh sources\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\",\n  \"networkAccess\": {\n    \"origins\": [\n      \"https://api.example.com\"\n    ]\n  }\n}",
   "pageNavigation": {
     "title": "本页内容"
+  },
+  "explorer": {
+    "intro": "查找插件所需的 API 和权限。",
+    "browse": "浏览能力",
+    "checkManifest": "检查 manifest",
+    "versionNote": "开发版 API。请检查与你已安装应用的兼容性。",
+    "filters": "更多筛选",
+    "back": "返回结果",
+    "methodSearch": "筛选 API 方法…",
+    "noMethods": "没有匹配此搜索的方法。",
+    "setupTitle": "添加到你的 manifest",
+    "declaration": "Manifest 声明",
+    "apiGuide": "API 指南",
+    "buildGuide": "构建你的第一个插件",
+    "scope": "权限与限制",
+    "clearSearch": "清除搜索",
+    "searchPlaceholder": "搜索能力或 API 方法…",
+    "all": "全部",
+    "read": "读取",
+    "write": "读写",
+    "manifestIntro": "安装插件前，请检查版本要求和权限。",
+    "loadError": "无法加载 manifest 编辑器。重新加载页面再试。",
+    "reload": "重新加载",
+    "detailTabs": "能力详情",
+    "configuration": "配置",
+    "topics": {
+      "reading": "阅读",
+      "library": "书库",
+      "intelligence": "AI 与记忆",
+      "automation": "自动化",
+      "interface": "界面",
+      "integration": "集成"
+    }
   }
 }

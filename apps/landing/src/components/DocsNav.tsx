@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { CaretDown } from "@phosphor-icons/react";
 import { useSiteCopy } from "../i18n/use-site-copy";
 import { localizePath, type DocsLocale } from "../lib/i18n";
 
@@ -33,38 +34,60 @@ const NAV_SECTIONS = [
  * The docs section navigation: a sticky sidebar on wide screens, a compact
  * row of sections above the article on narrow ones.
  */
-export function DocsNav({ locale }: { locale: DocsLocale }) {
+export function DocsNav({
+  locale,
+  compact = false,
+}: {
+  locale: DocsLocale;
+  compact?: boolean;
+}) {
   const copy = useSiteCopy("docsNav");
 
+  const navigation = (
+    <nav
+      aria-label={copy.ariaLabel}
+      className="flex flex-wrap gap-x-10 gap-y-5 md:flex-col md:gap-y-7"
+    >
+      {NAV_SECTIONS.map((section) => (
+        <div key={section.title}>
+          <div className="text-[0.75rem] uppercase tracking-[0.08em] text-fg-subtle">
+            {copy[section.title]}
+          </div>
+          <ul className="mt-2.5 flex flex-col gap-1.5 text-[0.9375rem]">
+            {section.items.map((item) => (
+              <li key={item.to}>
+                <Link
+                  to={localizePath(item.to, locale) as never}
+                  activeOptions={{ exact: "exact" in item && item.exact }}
+                  activeProps={{ className: "text-fg" }}
+                  inactiveProps={{ className: "text-fg-muted" }}
+                  className="transition-colors hover:text-fg"
+                >
+                  {copy.labels[item.label]}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
   return (
     <aside className="md:sticky md:top-8 md:self-start">
-      <nav
-        aria-label={copy.ariaLabel}
-        className="flex flex-wrap gap-x-10 gap-y-5 md:flex-col md:gap-y-7"
-      >
-        {NAV_SECTIONS.map((section) => (
-          <div key={section.title}>
-            <div className="text-[0.75rem] uppercase tracking-[0.08em] text-fg-subtle">
-              {copy[section.title]}
-            </div>
-            <ul className="mt-2.5 flex flex-col gap-1.5 text-[0.9375rem]">
-              {section.items.map((item) => (
-                <li key={item.to}>
-                  <Link
-                    to={localizePath(item.to, locale) as never}
-                    activeOptions={{ exact: "exact" in item && item.exact }}
-                    activeProps={{ className: "text-fg" }}
-                    inactiveProps={{ className: "text-fg-muted" }}
-                    className="transition-colors hover:text-fg"
-                  >
-                    {copy.labels[item.label]}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </nav>
+      {compact ? (
+        <>
+          <details className="explorer-mobile-docs md:hidden">
+            <summary>
+              {copy.ariaLabel}
+              <CaretDown size={15} aria-hidden="true" />
+            </summary>
+            {navigation}
+          </details>
+          <div className="hidden md:block">{navigation}</div>
+        </>
+      ) : (
+        navigation
+      )}
     </aside>
   );
 }

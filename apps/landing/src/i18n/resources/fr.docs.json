@@ -362,5 +362,38 @@
   "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"Research Notes\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^2.1.0\",\n      \"network\": \"^2.2.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"Refresh sources\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\",\n  \"networkAccess\": {\n    \"origins\": [\n      \"https://api.example.com\"\n    ]\n  }\n}",
   "pageNavigation": {
     "title": "Sur cette page"
+  },
+  "explorer": {
+    "intro": "Trouvez les API et les autorisations nécessaires à votre plugin.",
+    "browse": "Explorer les capacités",
+    "checkManifest": "Vérifier le manifest",
+    "versionNote": "API de développement. Vérifiez la compatibilité avec votre application installée.",
+    "filters": "Plus de filtres",
+    "back": "Retour aux résultats",
+    "methodSearch": "Filtrer les méthodes API…",
+    "noMethods": "Aucune méthode ne correspond à cette recherche.",
+    "setupTitle": "Ajouter à votre manifest",
+    "declaration": "Déclaration du manifest",
+    "apiGuide": "Guide de l'API",
+    "buildGuide": "Créer votre premier plugin",
+    "scope": "Autorisations et limites",
+    "clearSearch": "Effacer la recherche",
+    "searchPlaceholder": "Rechercher des capacités ou des méthodes API…",
+    "all": "Toutes",
+    "read": "Lecture",
+    "write": "Lecture et écriture",
+    "manifestIntro": "Vérifiez les exigences de version et les autorisations avant d'installer votre plugin.",
+    "loadError": "L'éditeur de manifest n'a pas pu être chargé. Rechargez la page pour réessayer.",
+    "reload": "Recharger",
+    "detailTabs": "Détails de la capacité",
+    "configuration": "Configuration",
+    "topics": {
+      "reading": "Lecture",
+      "library": "Bibliothèque",
+      "intelligence": "IA et mémoire",
+      "automation": "Automatisation",
+      "interface": "Interface",
+      "integration": "Intégrations"
+    }
   }
 }

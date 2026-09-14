@@ -1,4 +1,4 @@
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useRouterState } from "@tanstack/react-router";
 import { useDocumentLang } from "../hooks/useDocumentLang";
 import type { DocsLocale } from "../lib/i18n";
 import { DocsNav } from "./DocsNav";
@@ -8,14 +8,20 @@ import { SiteHeader } from "./SiteHeader";
 /** The docs shell, shared by every locale's /docs layout route. */
 export function DocsLayout({ locale }: { locale: DocsLocale }) {
   useDocumentLang(locale);
+  const explorer = useRouterState({
+    select: (state) =>
+      /\/docs\/plugins\/capabilities\/?$/.test(state.location.pathname),
+  });
 
   return (
     <div className="min-h-screen bg-paper text-fg">
       <div className="mx-auto max-w-7xl px-6">
         <SiteHeader locale={locale} />
-        <div className="pb-12 pt-6 sm:pt-8 md:grid md:grid-cols-[10.5rem_minmax(0,1fr)] md:gap-12">
-          <DocsNav locale={locale} />
-          <main className="mt-10 min-w-0 md:mt-0">
+        <div
+          className={`${explorer ? "explorer-shell " : ""}pb-12 pt-6 sm:pt-8 md:grid md:grid-cols-[10.5rem_minmax(0,1fr)] md:gap-12`}
+        >
+          <DocsNav locale={locale} compact={explorer} />
+          <main className={`${explorer ? "mt-6" : "mt-10"} min-w-0 md:mt-0`}>
             <Outlet />
           </main>
         </div>

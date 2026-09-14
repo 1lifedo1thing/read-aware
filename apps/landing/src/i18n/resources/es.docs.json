@@ -362,5 +362,38 @@
   "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"Research Notes\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^2.1.0\",\n      \"network\": \"^2.2.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"Refresh sources\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\",\n  \"networkAccess\": {\n    \"origins\": [\n      \"https://api.example.com\"\n    ]\n  }\n}",
   "pageNavigation": {
     "title": "En esta página"
+  },
+  "explorer": {
+    "intro": "Encuentra las API y los permisos que necesita tu plugin.",
+    "browse": "Explorar capacidades",
+    "checkManifest": "Comprobar el manifest",
+    "versionNote": "API de desarrollo. Comprueba la compatibilidad con tu aplicación instalada.",
+    "filters": "Más filtros",
+    "back": "Volver a los resultados",
+    "methodSearch": "Filtrar métodos de API…",
+    "noMethods": "Ningún método coincide con esta búsqueda.",
+    "setupTitle": "Añadir a tu manifest",
+    "declaration": "Declaración del manifest",
+    "apiGuide": "Guía de la API",
+    "buildGuide": "Crea tu primer plugin",
+    "scope": "Permisos y límites",
+    "clearSearch": "Borrar búsqueda",
+    "searchPlaceholder": "Buscar capacidades o métodos de API…",
+    "all": "Todos",
+    "read": "Lectura",
+    "write": "Lectura y escritura",
+    "manifestIntro": "Comprueba los requisitos de versión y los permisos antes de instalar tu plugin.",
+    "loadError": "No se ha podido cargar el editor de manifest. Recarga la página para volver a intentarlo.",
+    "reload": "Recargar",
+    "detailTabs": "Detalles de la capacidad",
+    "configuration": "Configuración",
+    "topics": {
+      "reading": "Lectura",
+      "library": "Biblioteca",
+      "intelligence": "IA y memoria",
+      "automation": "Automatización",
+      "interface": "Interfaz",
+      "integration": "Integraciones"
+    }
   }
 }

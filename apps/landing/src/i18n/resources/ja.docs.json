@@ -362,5 +362,38 @@
   "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"Research Notes\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^2.1.0\",\n      \"network\": \"^2.2.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"Refresh sources\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\",\n  \"networkAccess\": {\n    \"origins\": [\n      \"https://api.example.com\"\n    ]\n  }\n}",
   "pageNavigation": {
     "title": "このページ"
+  },
+  "explorer": {
+    "intro": "プラグインに必要なAPIと権限を見つけましょう。",
+    "browse": "機能を探す",
+    "checkManifest": "manifestを確認",
+    "versionNote": "開発版API。インストール済みアプリとの互換性を確認してください。",
+    "filters": "その他のフィルター",
+    "back": "結果に戻る",
+    "methodSearch": "APIメソッドを絞り込む…",
+    "noMethods": "一致するメソッドはありません。",
+    "setupTitle": "manifestに追加",
+    "declaration": "Manifest宣言",
+    "apiGuide": "APIガイド",
+    "buildGuide": "最初のプラグインを作る",
+    "scope": "権限と制限",
+    "clearSearch": "検索をクリア",
+    "searchPlaceholder": "機能またはAPIメソッドを検索…",
+    "all": "すべて",
+    "read": "読み取り",
+    "write": "読み書き",
+    "manifestIntro": "プラグインをインストールする前に、バージョン要件と権限を確認してください。",
+    "loadError": "manifestエディターを読み込めませんでした。ページを再読み込みしてお試しください。",
+    "reload": "再読み込み",
+    "detailTabs": "機能の詳細",
+    "configuration": "設定",
+    "topics": {
+      "reading": "読書",
+      "library": "ライブラリ",
+      "intelligence": "AIとメモリ",
+      "automation": "自動化",
+      "interface": "インターフェース",
+      "integration": "連携"
+    }
   }
 }

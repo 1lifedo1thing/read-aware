@@ -10,20 +10,20 @@
   /* One voice, no accent. The page is ink on paper, like the thing it's about;
      the only color comes from the app's own screenshots. Literata is a serif
      drawn for on-screen reading — the right face for a reading product. */
-  --color-paper: #f5f5f4;
+  --color-paper: #ffffff;
 
-  --color-border: rgb(38 36 32 / 0.14);
-  --color-border-strong: #d9d6d0;
+  --color-border: #e5e5e5;
+  --color-border-strong: #d6d6d6;
 
   --color-fg: #242220;
   --color-fg-muted: #56534d;
-  /* Lightest text tier that still clears WCAG AA: 4.82:1 on paper, 5.25:1 on
-     surface. Keep it under fg-muted (7:1) so the three-step hierarchy holds. */
+  /* The lightest text tier still clears WCAG AA on paper and surface.
+     Keep it under fg-muted so the three-step hierarchy holds. */
   --color-fg-subtle: #6f6c62;
   --color-inverse-fg: #f6f5f3;
-  --color-surface: #ffffff;
-  --color-fill: #eceae6;
-  --color-fill-strong: #ddd9d2;
+  --color-surface: #fafafa;
+  --color-fill: #f2f2f2;
+  --color-fill-strong: #e5e5e5;
 
   /* A single family across the whole page — headings, body, controls. */
   --font-serif: "Literata", ui-serif, Georgia, Cambria, "Times New Roman",

@@ -362,5 +362,38 @@
   "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"Research Notes\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^2.1.0\",\n      \"network\": \"^2.2.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"Refresh sources\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\",\n  \"networkAccess\": {\n    \"origins\": [\n      \"https://api.example.com\"\n    ]\n  }\n}",
   "pageNavigation": {
     "title": "Auf dieser Seite"
+  },
+  "explorer": {
+    "intro": "Finde die APIs und Berechtigungen, die dein Plugin benötigt.",
+    "browse": "Funktionen erkunden",
+    "checkManifest": "Manifest prüfen",
+    "versionNote": "Entwicklungs-API. Prüfe die Kompatibilität mit deiner installierten App.",
+    "filters": "Weitere Filter",
+    "back": "Zurück zu den Ergebnissen",
+    "methodSearch": "API-Methoden filtern…",
+    "noMethods": "Keine Methode entspricht dieser Suche.",
+    "setupTitle": "Zum Manifest hinzufügen",
+    "declaration": "Manifest-Deklaration",
+    "apiGuide": "API-Leitfaden",
+    "buildGuide": "Erstelle dein erstes Plugin",
+    "scope": "Berechtigungen und Grenzen",
+    "clearSearch": "Suche löschen",
+    "searchPlaceholder": "Funktionen oder API-Methoden suchen…",
+    "all": "Alle",
+    "read": "Lesen",
+    "write": "Lesen und schreiben",
+    "manifestIntro": "Prüfe Versionsanforderungen und Berechtigungen, bevor du dein Plugin installierst.",
+    "loadError": "Der Manifest-Editor konnte nicht geladen werden. Lade die Seite neu, um es erneut zu versuchen.",
+    "reload": "Neu laden",
+    "detailTabs": "Funktionsdetails",
+    "configuration": "Konfiguration",
+    "topics": {
+      "reading": "Lesen",
+      "library": "Bibliothek",
+      "intelligence": "KI und Gedächtnis",
+      "automation": "Automatisierung",
+      "interface": "Oberfläche",
+      "integration": "Integrationen"
+    }
   }
 }

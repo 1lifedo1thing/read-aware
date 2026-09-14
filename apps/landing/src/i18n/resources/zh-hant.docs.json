@@ -70,7 +70,7 @@
     "methodsHint": "選取方法以查看其簽章和來源。選用方法仍需要其特定授權。",
     "showAllMethods": "顯示所有方法",
     "showFewerMethods": "顯示較少方法",
-    "declarationOnly": "此能力在 manifest 或檢視 schema 中宣告為資料；沒有 ctx 註冊方法。",
+    "declarationOnly": "此能力以資料形式宣告在 manifest 或檢視 schema 中；沒有 ctx 註冊方法。",
     "manifestLabel": "起始 manifest 片段",
     "manifestHint": "將此片段合併到你的 manifest。加入所用方法要求的領域授權；沒有額外基礎權限不代表可以不受限制地存取。",
     "readAccess": "讀取存取權",
@@ -83,7 +83,7 @@
     "catalogLabel": "開發目錄",
     "catalogSummary": "{{capabilities}} 項能力 · {{methods}} 個 API 方法",
     "bundledOnly": "僅限內建外掛",
-    "settingsHint": "範例授權使用 reading appearance.theme。請替換為功能所需的精確路徑和操作。",
+    "settingsHint": "此範例授予 read appearance.theme 的權限。請將其替換為功能所需的確切路徑與操作。",
     "networkHint": "將範例來源替換為實際允許的端點。權限和來源授權都必須具備。",
     "quickStartLabel": "嘗試一項任務",
     "quickStarts": {
@@ -362,5 +362,38 @@
   "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"Research Notes\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^2.1.0\",\n      \"network\": \"^2.2.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"Refresh sources\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\",\n  \"networkAccess\": {\n    \"origins\": [\n      \"https://api.example.com\"\n    ]\n  }\n}",
   "pageNavigation": {
     "title": "本頁內容"
+  },
+  "explorer": {
+    "intro": "尋找外掛所需的 API 與權限。",
+    "browse": "瀏覽能力",
+    "checkManifest": "檢查 manifest",
+    "versionNote": "開發版 API。請檢查與你已安裝應用程式的相容性。",
+    "filters": "更多篩選",
+    "back": "返回結果",
+    "methodSearch": "篩選 API 方法…",
+    "noMethods": "沒有符合此搜尋的方法。",
+    "setupTitle": "新增至你的 manifest",
+    "declaration": "Manifest 宣告",
+    "apiGuide": "API 指南",
+    "buildGuide": "建構你的第一個外掛",
+    "scope": "權限與限制",
+    "clearSearch": "清除搜尋",
+    "searchPlaceholder": "搜尋能力或 API 方法…",
+    "all": "全部",
+    "read": "讀取",
+    "write": "讀寫",
+    "manifestIntro": "安裝外掛前，請檢查版本需求與權限。",
+    "loadError": "無法載入 manifest 編輯器。重新載入頁面再試。",
+    "reload": "重新載入",
+    "detailTabs": "能力詳細資料",
+    "configuration": "設定",
+    "topics": {
+      "reading": "閱讀",
+      "library": "書庫",
+      "intelligence": "AI 與記憶",
+      "automation": "自動化",
+      "interface": "介面",
+      "integration": "整合"
+    }
   }
 }

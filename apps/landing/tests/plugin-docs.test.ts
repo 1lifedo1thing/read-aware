@@ -7,6 +7,7 @@ import {
   CAPABILITIES,
   capabilityManifest,
   filterCapabilities,
+  groupCapabilityMethods,
   validateExplorerSearch,
   type CapabilityDescriptions,
 } from "../src/lib/plugin-capabilities";
@@ -127,6 +128,38 @@ test("method search and combined filters find current contracts and recover from
   expect(
     validateExplorerSearch({ cap: "services:invented" }).cap,
   ).toBeUndefined();
+  expect(validateExplorerSearch({ view: "manifest" }).view).toBe("manifest");
+  expect(validateExplorerSearch({ view: "unknown" }).view).toBeUndefined();
+});
+
+test("API groups preserve nested paths and filtered methods without losing overloads", () => {
+  const library = CAPABILITIES.find(
+    (entry) => entry.key === "domains:library",
+  )!;
+  const groups = groupCapabilityMethods(library, library.methods);
+  expect(
+    groups
+      .flatMap((group) => group.methods.map((method) => method.path))
+      .sort(),
+  ).toEqual(library.methods.map((method) => method.path).sort());
+  const method = library.methods.find((method) =>
+    method.path.endsWith("searchLocations"),
+  )!;
+  const filtered = groupCapabilityMethods(library, [method]);
+  expect(filtered).toHaveLength(1);
+  expect(filtered[0].name).toBe("queries.books");
+  expect(filtered[0].methods[0]).toEqual({
+    ...method,
+    name: "searchLocations",
+  });
+  const storage = CAPABILITIES.find(
+    (entry) => entry.key === "services:storage",
+  )!;
+  expect(
+    groupCapabilityMethods(storage, storage.methods).some((group) =>
+      group.name.includes("documents("),
+    ),
+  ).toBe(true);
 });
 
 test("manifest preview identifies incompatible contracts, authority gaps, and invalid network origins", () => {
