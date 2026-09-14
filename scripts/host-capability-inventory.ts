@@ -55,6 +55,7 @@ const agentMap = pairs([
   ["open_resource_external", "SYS12"],
   ["list_installed_plugins", "EXT11"],
   ["list_plugin_contributions", "EXT11 MORE06"],
+  ["open_change_cursor read_changes", "CON07 OPS05 SYS02"],
   ["start_durable_job get_durable_job list_durable_jobs control_durable_job", "MORE01 CON03 CON08"],
   ["preview_atomic_transaction commit_atomic_transaction preview_transaction_undo get_transaction_receipt", "CON08 CON02 CON03"],
   ["list_plugin_services", "MORE06 CON02 CON03"],
@@ -218,6 +219,7 @@ const pluginMap = pairs([
   ["services.ui.commands.list services.ui.commands.execute services.ui.commands.observe", "UI03"],
   ["services.network.fetch", "SYS06"], ["services.network.policy", "SYS07"], ["services.llm.ask", "AI06"], ["services.clipboard.writeText", "SYS08"],
   ["services.network.openStream", "SYS07"], ["services.network.readStream", "SYS07"], ["services.network.closeStream", "SYS07"],
+  ["services.changes.open services.changes.read", "CON07 OPS05 SYS02"],
   ["services.jobs.start services.jobs.get services.jobs.list services.jobs.control", "MORE01 CON03 CON08"],
   ["services.transactions.preview services.transactions.commit services.transactions.previewUndo services.transactions.receipt", "CON08 CON02 CON03"],
   ["services.session.environment services.session.observeEnvironment", "MORE03"],
@@ -247,7 +249,7 @@ const pluginMap = pairs([
 const catalogMap: Record<string, Record<string, string[]>> = {
   domains: { library:["LIB01"], reading:["STAT01","READ01"], annotations:["ANN01"], conversations:["AI01"], settings:["CFG01"], memory:["MEM01","MEM11"] },
   contributions: { uriHandlers:["SYS12"], selectionActions:["EXT01"], headerActions:["EXT02","MORE04"], contextActions:["MORE04"], commands:["UI03"], settingsOptions:["CFG09"], voiceProviders:["READ17"], contentProviders:["LIB14"], readerModes:["READ15"], agentTools:["AI05","AI10"], agentContextProviders:["AI11"], agentRetrievalProviders:["AI12"], memoryCandidateProviders:["MEM03"], themes:["EXT08"], fonts:["EXT08"], syncTransports:["OPS04"] },
-  services: { jobs:["MORE01","CON03","CON08"], transactions:["CON08","CON02","CON03"], storage:["SYS01","SYS02"], secrets:["SYS04"], ui:["EXT07","SYS10"], schedules:["MORE01"], session:["MORE03"], plugins:["EXT11"], maintenance:["SYS15","SYS16"], diagnostics:["OPS03","OPS11","SYS15"], logging:["SYS15"], resources:["SYS11","SYS13"], sync:["OPS01"], network:["SYS06"], llm:["AI06"], clipboard:["SYS08"] },
+  services: { changes:["CON07","OPS05","SYS02"], jobs:["MORE01","CON03","CON08"], transactions:["CON08","CON02","CON03"], storage:["SYS01","SYS02"], secrets:["SYS04"], ui:["EXT07","SYS10"], schedules:["MORE01"], session:["MORE03"], plugins:["EXT11"], maintenance:["SYS15","SYS16"], diagnostics:["OPS03","OPS11","SYS15"], logging:["SYS15"], resources:["SYS11","SYS13"], sync:["OPS01"], network:["SYS06"], llm:["AI06"], clipboard:["SYS08"] },
   schemas: { views:["EXT03","EXT04","EXT05","EXT06"], settings:["CFG09"], themes:["EXT08"] },
 };
 const nativeMap = pairs([
@@ -381,6 +383,7 @@ export function collectInventory(): Inventory[] {
   inventory.length = 0;
   const { deps } = createInMemoryDeps();
   const noJobExecution = async (): Promise<never> => { throw new Error("Inventory does not execute jobs"); };
+  deps.changes = () => ({ open: noJobExecution, read: noJobExecution });
   deps.jobs = () => ({ start: noJobExecution, get: noJobExecution, list: noJobExecution, control: noJobExecution, inspectPlan: noJobExecution });
   deps.transactions = () => ({
     preview: async () => { throw new Error("Inventory does not execute transactions"); },

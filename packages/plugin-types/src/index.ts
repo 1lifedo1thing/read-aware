@@ -2442,14 +2442,23 @@ export type PluginHostServices = {
     requestFlow(request: import("@read-aware/core").HostSyncFlowRequest, options?: PluginCallOptions): ReturnType<import("@read-aware/core").HostSyncPort["requestFlow"]>;
     observe(handler: (snapshot: import("@read-aware/core").HostSyncSnapshot) => unknown): PluginDisposable;
   };
-  /** Local semantic transactions. Preview does not execute; commit consumes the
-   * frozen preview once. Query the receipt after an unknown response before retrying. */
+  /** Persistent scoped reload hints, available under the existing read grants. */
+  changes: {
+    /** Open before loading a baseline. Persist the returned cursor only after
+     * processing each page. Expired cursors require a new baseline. Notices are
+     * conservative reload hints, not events or values; settings hints cover the
+     * authorized requested paths in a shared storage namespace. */
+    open(query: import("@read-aware/core").ChangesQuery, options?: PluginCallOptions): Promise<{ cursor: string }>;
+    read(query: import("@read-aware/core").ChangesQuery, cursor: string, limit?: number, options?: PluginCallOptions): Promise<import("@read-aware/core").ChangesPage>;
+  };
   jobs: {
     start(plan: import("@read-aware/core").DurableJobPlan, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
     get(id: string, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
     list(query?: { offset?: number; limit?: number }, options?: PluginCallOptions): Promise<{ jobs: import("@read-aware/core").DurableJobSnapshot[]; nextOffset: number | null }>;
     control(id: string, action: import("@read-aware/core").DurableJobControl, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
   };
+  /** Local semantic transactions. Preview does not execute; commit consumes the
+   * frozen preview once. Query the receipt after an unknown response before retrying. */
   transactions: {
     preview(operations: import("@read-aware/core").AtomicOperation[], options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicPreview>;
     commit(previewId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicReceipt>;

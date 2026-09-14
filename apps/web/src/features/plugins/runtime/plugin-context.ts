@@ -1,4 +1,5 @@
 import { createPluginJobs } from "./plugin-jobs";
+import { createPluginChanges } from "./plugin-changes";
 import { createPluginTransactions } from "./plugin-transactions";
 import { bookServiceStorage, denyUnscopedServiceData } from "./plugin-service-storage";
 import { pluginServices, type PluginServiceParticipant } from "./plugin-services";
@@ -429,6 +430,7 @@ export function buildPluginContext(
     const pending = perform(); lifecycle.trackCleanup(pending.then(() => {}, () => {})); return pending;
   };
   const settingsDomain = createSettingsDomain(operationActor, settingsAccess, permissions.has("service:network"));
+  const changes = createPluginChanges(manifest, objectAccess, lifecycle, operationActor, settingsDomain);
   const storagePrefix = pluginStoragePrefix(manifest.id);
   const track = (factory: () => PluginDisposable): PluginDisposable =>
     lifecycle.stage(factory);
@@ -880,6 +882,10 @@ export function buildPluginContext(
             return { dispose: () => { registration.dispose(); lifecycle.trackCleanup(pluginSchedules.drainWrites(manifest.id)); } };
           });
         },
+      },
+      changes: {
+        open: (query, options) => transactionCall(() => changes.open(query, callSignal(options))),
+        read: (query, cursor, limit, options) => transactionCall(() => changes.read(query, cursor, limit, callSignal(options))),
       },
       jobs: {
         start: (plan, options) => transactionCall(() => jobs().start(plan, callSignal(options))),

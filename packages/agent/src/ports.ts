@@ -497,6 +497,7 @@ export interface RuntimeDeps {
   readingContextPolicy?: import("./runtime/reading-context-policy").ReadingContextPolicy;
   environment: { snapshot(): Promise<import("@read-aware/core").HostEnvironmentSnapshot> };
   operationAvailability?: import("@read-aware/core").OperationAvailabilityPort;
+  changes?: (scope: import("./thread-scope").ThreadScope) => import("@read-aware/core").ChangesPort;
   jobs?: (scope: import("./thread-scope").ThreadScope) => import("@read-aware/core").DurableJobsPort & { inspectPlan(id: string): Promise<import("@read-aware/core").DurableJobPlan> };
   transactions?: (scope: import("./thread-scope").ThreadScope) => import("@read-aware/core").TransactionsPort & { inspectPreview(id: string): Promise<import("@read-aware/core").AtomicPreview | null> };
   pluginServices?: {

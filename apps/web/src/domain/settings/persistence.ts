@@ -14,6 +14,40 @@ import { CONTENT_TYPOGRAPHY_KEY } from "../../features/settings/lib/content-typo
 import { DEFAULT_COLOR_KEY } from "../../features/annotations/lib/annotation-prefs";
 import { CHANNEL_KV_KEY } from "../../features/update/lib/update-channel";
 import type { SettingsDraft } from "./catalog-runtime";
+import { AppError, type SettingsQueryTarget } from "@read-aware/core";
+import type { SettingsDomain } from "./domain";
+
+/** Validate against the caller's live catalog before resolving private storage
+ * namespaces. These keys must never be accepted from or returned to a caller. */
+export async function settingsChangeKeys(domain: SettingsDomain, paths: readonly string[], bookId?: string): Promise<string[]> {
+  const target: SettingsQueryTarget = bookId ? { kind: "book", bookId } : { kind: "global" };
+  const keys = new Set<string>();
+  for (const path of paths) {
+    await domain.queries.read(path, target);
+    let key: string | undefined;
+    if (path === "ai.connection.credentialConfigured") {
+      // Keychain mutations do not participate in the SQLite change transaction.
+      throw new AppError("changes/invalid-query", "Credential changes do not support persistent cursors");
+    }
+    if (path === "general.updateChannel") key = CHANNEL_KV_KEY;
+    else if (path.startsWith("general.")) key = GENERAL_SETTINGS_KEY;
+    else if (path.startsWith("appearance.contentTypography.")) key = CONTENT_TYPOGRAPHY_KEY;
+    else if (path.startsWith("appearance.")) key = APP_SETTINGS_KEY;
+    else if (path === "annotations.defaultColor") key = DEFAULT_COLOR_KEY;
+    else if (path.startsWith("shelf.")) key = SHELF_VIEW_KEY;
+    else if (path.startsWith("shortcuts.")) key = SHORTCUT_BINDINGS_KEY;
+    else if (path.startsWith("reading.")) {
+      key = READER_PREFERENCES_KEY;
+      if (bookId) keys.add(READER_OVERRIDES_KEY);
+    } else if (path.startsWith("ai.preferences.")) key = AI_PREFERENCES_KEY;
+    else if (path.startsWith("ai.connection.")) key = AI_CONFIG_KEY;
+    else if (path.startsWith("menus.")) key = MENU_CONFIG_KEY;
+    else if (/^plugins\.[^.]+\.[^.]+$/.test(path)) key = pluginSettingsKey(path.split(".")[1]!);
+    if (!key) throw new AppError("changes/invalid-query", "Setting has no persistent change source");
+    keys.add(key);
+  }
+  return [...keys].sort();
+}
 
 /** Only validated catalog edits reach this host-owned transaction. Secrets are never written here. */
 export function settingsDraftEntries(before: SettingsDraft, next: SettingsDraft, applyStartup = false): Map<string, string> {

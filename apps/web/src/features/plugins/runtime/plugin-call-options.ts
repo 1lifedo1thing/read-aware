@@ -4,6 +4,8 @@ import type { PluginCallOptions } from "@read-aware/plugin-types";
 /** Final options argument positions shared by the Worker proxy and host RPC.
  * Transport metadata is not authority: the host still resolves the actor's method. */
 export const PLUGIN_CALL_OPTIONS = {
+  "services.changes.open": 1,
+  "services.changes.read": 3,
   "services.jobs.start": 1,
   "services.jobs.get": 1,
   "services.jobs.list": 1,
