@@ -1,4 +1,5 @@
 const en = {
+  catalogReady: "Public catalog supported; no account credentials needed", catalogShared: "An active refresh will be shared", catalogIdle: "Ready to request a refresh", catalogUnsupported: "This provider has no public catalog", catalogPermission: "Model discovery and network permissions are required", catalogUnknown: "Remote availability has not been checked",
   flowPrerequisites: "Operation prerequisites", flowReady: "No active host request", flowDesktop: "Desktop app required", flowControls: "Native controls will be checked after navigation", flowConfirmation: "Your confirmation is still required",
   repair: "Repair local projections", "rebuilt-reload-required": "Projections rebuilt; reload required",
   repairReview: "The host previews differences and requires your confirmation. Repair replays the complete local event log and discards projection-only changes. Writes then pause until app reload. Cancelling this wait cannot undo a confirmed repair.",
@@ -28,6 +29,7 @@ const en = {
   verifyReview: "Checks event-log projections on this device only. This does not repair data or verify backups and other devices.",
 };
 const zh: typeof en = {
+  catalogReady: "支持公开目录，无需账号凭据", catalogShared: "将加入正在进行的刷新", catalogIdle: "可以请求刷新", catalogUnsupported: "该提供者没有公开目录", catalogPermission: "需要模型发现与网络权限", catalogUnknown: "尚未验证远端可用性",
   flowPrerequisites: "操作条件", flowReady: "当前没有占用的宿主请求", flowDesktop: "需要桌面应用", flowControls: "打开界面后检查原生控件", flowConfirmation: "仍需由你确认操作",
   repair: "修复本机投影", "rebuilt-reload-required": "投影已重建；需要重新载入",
   repairReview: "宿主将显示差异并要求确认。修复按完整事件日志重建本机投影，丢弃仅存在于投影的修改，之后暂停写入直至重新载入应用。取消等待不能撤销已确认的修复。",

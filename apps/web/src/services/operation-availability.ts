@@ -63,6 +63,11 @@ export function inspectInferenceAvailability(input: InferenceAvailabilityQuery, 
 export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal, context?: OperationAvailabilityContext): Promise<OperationAvailability> {
   const query = normalizeOperationAvailability(input);
   signal?.throwIfAborted();
+  if (query.operation === "settings.refreshModelCatalog") {
+    const { createSettingsDomain } = await import("../domain/settings/domain");
+    signal?.throwIfAborted();
+    return operationAvailability(query, createSettingsDomain("agent").queries.modelCatalogRefreshConditions(query.provider));
+  }
   if (query.operation === "ui.commands.execute") {
     const { trustedHostCommands } = await import("./host-command-runtime");
     signal?.throwIfAborted(); return trustedHostCommands("agent").check(query.command, signal);

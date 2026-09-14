@@ -966,6 +966,10 @@ export function buildPluginContext(
             ]));
             return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
           }
+          if (query.operation === "settings.refreshModelCatalog") {
+            return lifecycle.read("services.session.operationAvailability", async () => operationAvailability(query,
+              settingsDomain.queries.modelCatalogRefreshConditions(query.provider)), signal);
+          }
           if (query.operation === "ui.commands.execute") {
             if (!permissions.has("library:write") || !commandAvailability) return Promise.resolve(operationAvailability(query, [
               { kind: "permission", state: "unavailable", reason: "library:write-required" },

@@ -1,4 +1,4 @@
-import type { PluginContext, PluginView, PluginViewResult } from "@read-aware/plugin-types";
+import type { PluginAction, PluginContext, PluginView, PluginViewResult } from "@read-aware/plugin-types";
 import { failureCode } from "./operations";
 import { copy } from "./strings";
 
@@ -28,7 +28,7 @@ export function catalogViews(ctx: PluginContext, signal: AbortSignal) {
   const page = async (query: Query): Promise<PluginView> => {
     const first = { provider: query.provider, search: query.search };
     const reload = async (): Promise<PluginViewResult> => ({ view: await page(first), navigation: "replace" });
-    const common = [
+    const common: PluginAction[] = [
       { id: "refresh", label: t.refresh, icon: "cloud-arrow-up", run: async (): Promise<PluginViewResult> => {
         try {
           signal.throwIfAborted();
@@ -37,6 +37,18 @@ export function catalogViews(ctx: PluginContext, signal: AbortSignal) {
         } catch (error) {
           return { view: { kind: "detail", title: t.catalog, content: [{ kind: "error", code: failureCode(error) }], actions: common }, navigation: "replace" };
         }
+      } },
+      { id: "prerequisites", label: t.flowPrerequisites, run: async (): Promise<PluginViewResult> => {
+        const value = await ctx.services.session.operationAvailability({ operation: "settings.refreshModelCatalog", provider: query.provider }, { signal });
+        signal.throwIfAborted();
+        const reasons: Record<string, string> = { "public-catalog-supported": t.catalogReady, "catalog-refresh-shared": t.catalogShared,
+          "catalog-refresh-ready": t.catalogIdle, "catalog-provider-unsupported": t.catalogUnsupported,
+          "catalog-discovery-required": t.catalogPermission, "service:network-required": t.catalogPermission };
+        return { view: { kind: "detail", title: t.flowPrerequisites,
+          content: value.conditions.filter(item => item.reason !== "authorized").map(item => ({ kind: "text", text: reasons[item.reason] ?? t.catalogUnknown })),
+          actions: [ ...(value.state === "available" || value.state === "unknown" ? [common[0]!] : []),
+            { id: "back", label: t.back, run: reload } ],
+        } };
       } },
       { id: "reload", label: t.reload, icon: "arrows-clockwise", run: reload },
       { id: "filters", label: t.filters, icon: "magnifying-glass", run: () => ({ view: form(query.provider, query.search) }) },

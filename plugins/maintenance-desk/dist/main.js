@@ -1,5 +1,11 @@
 // src/strings.ts
 var en = {
+  catalogReady: "Public catalog supported; no account credentials needed",
+  catalogShared: "An active refresh will be shared",
+  catalogIdle: "Ready to request a refresh",
+  catalogUnsupported: "This provider has no public catalog",
+  catalogPermission: "Model discovery and network permissions are required",
+  catalogUnknown: "Remote availability has not been checked",
   flowPrerequisites: "Operation prerequisites",
   flowReady: "No active host request",
   flowDesktop: "Desktop app required",
@@ -82,6 +88,12 @@ var en = {
   verifyReview: "Checks event-log projections on this device only. This does not repair data or verify backups and other devices."
 };
 var zh = {
+  catalogReady: "支持公开目录，无需账号凭据",
+  catalogShared: "将加入正在进行的刷新",
+  catalogIdle: "可以请求刷新",
+  catalogUnsupported: "该提供者没有公开目录",
+  catalogPermission: "需要模型发现与网络权限",
+  catalogUnknown: "尚未验证远端可用性",
   flowPrerequisites: "操作条件",
   flowReady: "当前没有占用的宿主请求",
   flowDesktop: "需要桌面应用",
@@ -296,6 +308,27 @@ function catalogViews(ctx, signal) {
         } catch (error) {
           return { view: { kind: "detail", title: t.catalog, content: [{ kind: "error", code: failureCode(error) }], actions: common }, navigation: "replace" };
         }
+      } },
+      { id: "prerequisites", label: t.flowPrerequisites, run: async () => {
+        const value = await ctx.services.session.operationAvailability({ operation: "settings.refreshModelCatalog", provider: query.provider }, { signal });
+        signal.throwIfAborted();
+        const reasons = {
+          "public-catalog-supported": t.catalogReady,
+          "catalog-refresh-shared": t.catalogShared,
+          "catalog-refresh-ready": t.catalogIdle,
+          "catalog-provider-unsupported": t.catalogUnsupported,
+          "catalog-discovery-required": t.catalogPermission,
+          "service:network-required": t.catalogPermission
+        };
+        return { view: {
+          kind: "detail",
+          title: t.flowPrerequisites,
+          content: value.conditions.filter((item) => item.reason !== "authorized").map((item) => ({ kind: "text", text: reasons[item.reason] ?? t.catalogUnknown })),
+          actions: [
+            ...value.state === "available" || value.state === "unknown" ? [common[0]] : [],
+            { id: "back", label: t.back, run: reload }
+          ]
+        } };
       } },
       { id: "reload", label: t.reload, icon: "arrows-clockwise", run: reload },
       { id: "filters", label: t.filters, icon: "magnifying-glass", run: () => ({ view: form(query.provider, query.search) }) }

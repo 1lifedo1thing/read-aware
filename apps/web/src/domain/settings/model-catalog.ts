@@ -1,4 +1,4 @@
-import { AppError, errorCode, validateSettingsOptionsQuery, type ModelCatalogPage, type ModelCatalogQuery } from "@read-aware/core";
+import { AppError, errorCode, assertOperationConditions, type OperationCondition, validateSettingsOptionsQuery, type ModelCatalogPage, type ModelCatalogQuery } from "@read-aware/core";
 import type { CatalogState } from "@read-aware/agent";
 import { isCatalogProvider, modelCatalog } from "../../features/ai/lib/model-catalog";
 
@@ -36,9 +36,19 @@ export function queryModelCatalog(input: ModelCatalogQuery): ModelCatalogPage {
   };
 }
 
+export function modelCatalogRefreshConditions(provider: string): OperationCondition[] {
+  if (!isCatalogProvider(provider)) return [{ kind: "provider", state: "unavailable", reason: "catalog-provider-unsupported", errorCode: "settings/options-invalid" }];
+  return [
+    { kind: "provider", state: "satisfied", reason: "public-catalog-supported" },
+    { kind: "capacity", state: "satisfied", reason: modelCatalog.getSnapshot(provider).refreshing ? "catalog-refresh-shared" : "catalog-refresh-ready" },
+    { kind: "provider", state: "unknown", reason: "remote-health-not-checked" },
+  ];
+}
+
 export async function refreshModelCatalog(provider: string, signal?: AbortSignal): Promise<ModelCatalogPage> {
   const accepted = providerId(provider);
   signal?.throwIfAborted();
+  assertOperationConditions(modelCatalogRefreshConditions(accepted));
   await modelCatalog.refresh(accepted, true);
   signal?.throwIfAborted();
   const result = queryModelCatalog({ provider: accepted });

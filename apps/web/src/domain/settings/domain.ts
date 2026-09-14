@@ -20,7 +20,7 @@ import { AppError, validateSettingsOptionsQuery } from "@read-aware/core";
 import { listSystemFonts } from "../../features/settings/lib/system-fonts";
 import { desktopStartup } from "../../platform/desktop-startup";
 import { isFontSetting, systemFontOptions } from "./font-options";
-import { queryModelCatalog, refreshModelCatalog } from "./model-catalog";
+import { queryModelCatalog, refreshModelCatalog, modelCatalogRefreshConditions } from "./model-catalog";
 import { DynamicOptionsCache } from "./dynamic-options";
 import { pluginOptionSource } from "./plugin-option-source";
 import { onAppEvent } from "../../platform/app-events";
@@ -248,6 +248,7 @@ function enqueueSettingsChanges(origin: DomainActor, changes: SettingChange[], p
 
 export type SettingsDomain = {
   queries: {
+    modelCatalogRefreshConditions(provider: string): import("@read-aware/core").OperationCondition[];
     modelCatalog(query: import("@read-aware/core").ModelCatalogQuery): Promise<import("@read-aware/core").ModelCatalogPage>;
     snapshot(query?: SettingsQuery): Promise<SettingsSnapshot>;
     observe(query: SettingsQuery, handler: (observation: SettingsObservation) => unknown): () => void;
@@ -284,6 +285,12 @@ export function createSettingsDomain(
   };
   return {
     queries: {
+      modelCatalogRefreshConditions: provider => {
+        try { authorizeCatalog(); }
+        catch { return [{ kind: "permission", state: "unavailable", reason: "catalog-discovery-required", errorCode: "settings/options-forbidden" }]; }
+        if (!networkAllowed) return [{ kind: "permission", state: "unavailable", reason: "service:network-required", errorCode: "settings/options-forbidden" }];
+        return [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...modelCatalogRefreshConditions(provider)];
+      },
       modelCatalog: async query => { authorizeCatalog(); return queryModelCatalog(query); },
       snapshot: settledSnapshot,
       observe: (query, handler) => {

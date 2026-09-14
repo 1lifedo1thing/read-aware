@@ -22,6 +22,10 @@ test("cached model metadata is paged and path-authorized without private selecti
     expect(settings.commands.refreshModelCatalog).toBeUndefined();
     await expect(denied.context.domains.settings.queries.modelCatalog({ provider: "openai" })).rejects.toMatchObject({ code: "settings/options-forbidden" });
     await expect(denied.context.domains.settings.commands.refreshModelCatalog!("openai")).rejects.toMatchObject({ code: "settings/options-forbidden" });
+    const input = { operation: "settings.refreshModelCatalog", provider: "openai" } as const;
+    expect(await granted.context.services.session.operationAvailability(input)).toMatchObject({ state: "unavailable", conditions: [{ reason: "service:network-required" }] });
+    expect(await denied.context.services.session.operationAvailability(input)).toMatchObject({ state: "unavailable", conditions: [{ reason: "catalog-discovery-required" }] });
+    expect(snapshot).not.toHaveBeenCalled();
     const first = await settings.queries.modelCatalog({ provider: "openai", limit: 2 });
     expect(first.nextOffset).toBe(2); expect(first.total).toBe(3);
     expect(JSON.stringify(first)).not.toMatch(/PRIVATE|baseUrl|headers|cost/);
@@ -51,6 +55,13 @@ test("explicit refresh shares host work, returns final cache metadata, and rejec
   actor.lifecycle.promote();
   try {
     const run = actor.context.domains.settings.commands.refreshModelCatalog!;
+    const query = (provider = "openai") => actor.context.services.session.operationAvailability({ operation: "settings.refreshModelCatalog", provider });
+    expect(await query("custom")).toMatchObject({ state: "unavailable", conditions: [expect.anything(), { reason: "catalog-provider-unsupported", kind: "provider", state: "unavailable", errorCode: "settings/options-invalid" }] });
+    expect(await query()).toMatchObject({ state: "unknown", remoteChecked: false });
+    state = { ...state, refreshing: true };
+    expect((await query()).conditions).toContainEqual({ kind: "capacity", state: "satisfied", reason: "catalog-refresh-shared" });
+    expect(refresh).not.toHaveBeenCalled();
+
     const abort = new AbortController(); const waiting = run("openai", { signal: abort.signal });
     abort.abort(); await expect(waiting).rejects.toThrow();
     gate.resolve(); await Bun.sleep(0);

@@ -164,7 +164,16 @@ describe("catalog consumer", () => {
     const detail = await select(page, model.id);
     expect(JSON.stringify(detail)).toContain("100000");
     expect(JSON.stringify(detail)).toContain("image");
-    await action(page, "refresh").run();
+    const conditions = mock(async (query: Parameters<PluginContext["services"]["session"]["operationAvailability"]>[0]) => {
+      expect(query).toEqual({ operation: "settings.refreshModelCatalog", provider: "openai" });
+      return { operation: query.operation, state: "unknown" as const, remoteChecked: false as const,
+        conditions: [{ kind: "provider" as const, state: "unknown" as const, reason: "remote-health-not-checked" }] };
+    });
+    f.ctx.services.session.operationAvailability = conditions;
+    const prerequisites = view(await action(page, "prerequisites").run());
+    expect(JSON.stringify(prerequisites)).toContain("Remote availability has not been checked");
+    expect(f.refreshModelCatalog).not.toHaveBeenCalled();
+    await action(prerequisites, "refresh").run();
     expect(f.refreshModelCatalog).toHaveBeenCalledTimes(1);
     expect(f.modelCatalog.mock.calls[f.modelCatalog.mock.calls.length - 1]![0]).toEqual({ provider: "openai", search: "model", limit: 25 });
   });
