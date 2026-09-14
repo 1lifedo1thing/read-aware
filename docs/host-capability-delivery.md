@@ -7,6 +7,8 @@
 
 ## 最近交付与接续入口
 
+插件偏好接受后发布/重试已按键保留来源：Publication.record记录实际持久值及对应actor，flush冻结同批值和来源；失败重试沿用原来源，新写入另带自己的来源。accepted publisher把每键来源交给preference.changed，实际本机广播保持因果。既有净变更/删除/回滚/隔离/重试检查与持久KV→接受发布→广播来源检查通过；受影响类型通过。这仍是进程内边界，不冒充跨重启队列来源；凭据持久发布来源及真实Worker/Tauri仍待完成，完整C04/C05与总目标保持未完成。
+
 漫游写入/覆盖来源已补：KVWriteQueue的持久写监听传递实际mutation actor，普通偏好自动发布preference.changed及本机广播保留该来源。hydrate/refresh在入口捕获覆盖actor，远端普通KV与秘密值写入、删除和roaming-preferences-changed通知沿用；remote标志仍阻止回传，秘密值仅在密文槽落盘。修正旧注释为AES-GCM sealed app_kv。既有隔离检查覆盖失败回滚、远端不回传、本地未发布保护、秘密落盘/完成通知来源及普通偏好持久写到广播；受影响类型通过。覆盖来源只代表本机覆盖任务，不冒充远端原始写入者；秘密待发布队列跨重启来源、已接受插件偏好重试来源、真实Worker/Tauri及C04其余项仍待补。
 
 启动/迁移阶段注册句柄与存储来源已补：宿主专用registrationForActor校验本激活持有的句柄，再给状态更新/显式释放传入已签发actor；普通dispose消息仍释放回调资源。host按实际lifecycle.migrating选择启动上下文，迁移完成后恢复独立普通调用，显式reaction仍优先；restoreStorage/serviceExecution保持原隔离绑定。既有定向RPC检查已覆盖迁移来源、后续普通调用独立、恢复隔离存储及反应凭证权限/过期/重复拒绝；受影响类型通过。真实Worker/Tauri仍待集中验收，致命错误具体归因及其余C04/C05缺口继续，完整目标未完成。

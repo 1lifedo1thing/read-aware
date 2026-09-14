@@ -1,3 +1,4 @@
+import { causalActor, type DomainActor } from "./domain-actor";
 import { expect, test } from "bun:test";
 import { PluginPreferencePublication as Publication } from "./plugin-preference-publication";
 import { withPluginDataUpdate, withPluginDataWrites } from "./plugin-data-access";
@@ -45,9 +46,11 @@ test("unsafe recovery retains quarantine against publication, settings writes an
 
 test("accepted append failures retain final values, block stale overlays, and retry in order with later writes", async () => {
   const scope = Publication.begin("publish-retry", { settings: "1" });
-  Publication.record("read-aware-plugin.publish-retry.settings", "2");
+  const first = causalActor("plugin:first"), later = causalActor("plugin:later"), sources: DomainActor[] = [];
+  Publication.record("read-aware-plugin.publish-retry.settings", "2", first);
   const batches: unknown[] = [], errors: unknown[] = []; let fail = true; let finish!: () => void;
-  const publish = async (changes: ReadonlyMap<string, string | null>) => {
+  const publish = async (changes: ReadonlyMap<string, string | null>, actors: ReadonlyMap<string, DomainActor>) => {
+    sources.push(actors.get("read-aware-plugin.publish-retry.settings")!);
     batches.push([...changes]);
     if (fail) throw new Error("log unavailable");
     if (batches.length === 2) await new Promise<void>(resolve => { finish = resolve; });
@@ -58,7 +61,7 @@ test("accepted append failures retain final values, block stale overlays, and re
   await withPluginDataWrites(["publish-retry"], () => {});
   fail = false;
   const retry = Publication.flushAccepted(); await Bun.sleep(0);
-  Publication.record("read-aware-plugin.publish-retry.settings", "3");
+  Publication.record("read-aware-plugin.publish-retry.settings", "3", later);
   expect(batches).toHaveLength(2);
   finish(); await retry; await Publication.flushAccepted();
   expect(batches).toEqual([
@@ -67,6 +70,7 @@ test("accepted append failures retain final values, block stale overlays, and re
     [["read-aware-plugin.publish-retry.settings", "3"]],
   ]);
   expect(Publication.blocks("read-aware-plugin.publish-retry.settings")).toBe(false);
+  expect(sources).toEqual([first, first, later]);
 });
 
 test("every owned KV suffix stays inside the migration publication boundary", async () => {

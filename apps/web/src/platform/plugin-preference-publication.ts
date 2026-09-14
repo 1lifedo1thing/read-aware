@@ -1,13 +1,14 @@
+import { causalActor, type DomainActor } from "./domain-actor";
 import { AppError } from "@read-aware/core";
 
 /** In-process publication boundary for speculative plugin KV. The host owns
  * acceptance/rollback; this is deliberately not a crash recovery journal. */
 export class PluginPreferencePublication {
   private readonly baseline: Map<string, string>;
-  private readonly latest = new Map<string, string | null>();
+  private readonly latest = new Map<string, { value: string | null; source: DomainActor }>();
   private closed = false;
   private quarantined = false;
-  private publisher?: (changes: ReadonlyMap<string, string | null>) => Promise<void>;
+  private publisher?: (changes: ReadonlyMap<string, string | null>, sources: ReadonlyMap<string, DomainActor>) => Promise<void>;
   private report?: (error: unknown) => void;
   private publishing?: Promise<void>;
   private constructor(readonly pluginId: string, baseline: Record<string, string>) {
@@ -45,10 +46,10 @@ export class PluginPreferencePublication {
   }
 
   /** Capture exact durable receipts, never the optimistic mirror or a backfill read. */
-  static record(key: string, raw: string | null): boolean {
+  static record(key: string, raw: string | null, source: DomainActor = "system"): boolean {
     const owner = this.owner(key);
     if (!owner) return false;
-    owner.scope.latest.set(owner.suffix, raw);
+    owner.scope.latest.set(owner.suffix, { value: raw, source: causalActor(source) });
     if (owner.scope.publisher) void owner.scope.flush();
     return true;
   }
@@ -77,7 +78,7 @@ export class PluginPreferencePublication {
 
   /** Acceptance is final: publication failure retains only accepted values for
    * retry and never asks the host to roll its installed plugin back. */
-  accept(publish: (changes: ReadonlyMap<string, string | null>) => Promise<void>, report: (error: unknown) => void): Promise<void> {
+  accept(publish: (changes: ReadonlyMap<string, string | null>, sources: ReadonlyMap<string, DomainActor>) => Promise<void>, report: (error: unknown) => void): Promise<void> {
     if (this.closed) return Promise.resolve();
     if (this.quarantined) throw new AppError("plugin/recovery-required", "Unrecovered plugin data cannot be published");
     this.publisher ??= publish;
@@ -92,16 +93,19 @@ export class PluginPreferencePublication {
     let continuePublishing = false;
     const run = Promise.resolve().then(async () => {
       const changes = new Map<string, string | null>();
-      for (const [key, value] of this.latest) {
-        if ((this.baseline.get(key) ?? null) !== value) changes.set(`read-aware-plugin.${this.pluginId}.${key}`, value);
+      const sources = new Map<string, DomainActor>();
+      for (const [key, { value, source }] of this.latest) {
+        if ((this.baseline.get(key) ?? null) === value) continue;
+        const fullKey = `read-aware-plugin.${this.pluginId}.${key}`;
+        changes.set(fullKey, value); sources.set(fullKey, source);
       }
       if (!changes.size) { this.rollback(); return; }
-      await this.publisher!(changes);
+      await this.publisher!(changes, sources);
       for (const [key, value] of changes) {
         const suffix = key.slice(`read-aware-plugin.${this.pluginId}.`.length);
         if (value === null) this.baseline.delete(suffix); else this.baseline.set(suffix, value);
       }
-      continuePublishing = [...this.latest].some(([key, value]) => (this.baseline.get(key) ?? null) !== value);
+      continuePublishing = [...this.latest].some(([key, { value }]) => (this.baseline.get(key) ?? null) !== value);
       if (!continuePublishing) this.rollback();
     }).catch(error => { this.report?.(error); }).finally(() => {
       this.publishing = undefined;

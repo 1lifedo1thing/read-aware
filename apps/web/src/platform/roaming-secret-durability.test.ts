@@ -158,12 +158,20 @@ if (process.env.ROAMING_SECRET_DURABILITY === "1") {
     const { localKV } = await import("./local-store");
     const { onDomainEventBroadcast } = await import("./domain-events");
     const origin = causalActor("plugin:roaming-proof"), observed: object[] = [];
-    const stop = onDomainEventBroadcast(event => { if (event.type === "preference.changed" && event.payload.key === "read-aware-app-settings") observed.push(event); });
+    const stop = onDomainEventBroadcast(event => { if (event.type === "preference.changed" && ["read-aware-app-settings", "read-aware-plugin.accepted-source.value"].includes(event.payload.key)) observed.push(event); });
     try {
       await localKV.setItemAsync("read-aware-app-settings", JSON.stringify({ theme: "dark" }), origin);
       await tick();
       expect(observed).toHaveLength(1);
       expect(eventCause(observed[0]!)).toBe(actorCause(origin));
+      const { PluginPreferencePublication } = await import("./plugin-preference-publication");
+      const scope = PluginPreferencePublication.begin("accepted-source", {}), acceptedOrigin = causalActor("plugin:accepted-source");
+      try {
+        await localKV.setItemAsync("read-aware-plugin.accepted-source.value", "3", acceptedOrigin);
+        await roaming.acceptPluginPreferencePublication(scope);
+        expect(observed).toHaveLength(2);
+        expect(eventCause(observed[1]!)).toBe(actorCause(acceptedOrigin));
+      } finally { scope.rollback(); }
     } finally { stop(); }
   });
 } else {

@@ -204,11 +204,11 @@ export function publishRoamingPreference(key: RoamingPreferenceKey, value: unkno
  * failed append stays in this process's publication scope for a later save or
  * refresh to retry; remote overlays cannot replace it with an older projection. */
 export function acceptPluginPreferencePublication(scope: PluginPreferencePublication): Promise<void> {
-  return scope.accept(async changes => {
+  return scope.accept(async (changes, sources) => {
     const events: import("./domain-events").DomainEventDraft[] = [];
     for (const [key, raw] of changes) {
       if (!roamingPolicyFor(key)) continue;
-      try { events.push({ type: "preference.changed", payload: { key, value: raw === null ? null : JSON.parse(raw) } }); }
+      try { events.push({ type: "preference.changed", origin: sources.get(key), payload: { key, value: raw === null ? null : JSON.parse(raw) } }); }
       catch { /* Non-JSON plugin KV is outside the existing roaming contract. */ }
     }
     if (events.length && isTauri()) await commitDomainEvents(...events);
@@ -227,7 +227,7 @@ export function acceptPluginPreferencePublication(scope: PluginPreferencePublica
 onLocalKVWrite((key, raw, origin, actor) => {
   if (origin === "remote" || !isTauri()) return;
   if (!roamingPolicyFor(key)) return;
-  if (PluginPreferencePublication.record(key, raw)) return;
+  if (PluginPreferencePublication.record(key, raw, actor)) return;
   if (raw === null) {
     publishRoamingPreference(key, null, actor);
     return;
