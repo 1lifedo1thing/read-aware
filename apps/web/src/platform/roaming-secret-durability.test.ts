@@ -47,6 +47,7 @@ if (process.env.ROAMING_SECRET_DURABILITY === "1") {
   } } });
   const secrets = await import("./secret-store");
   const roaming = await import("./roaming-preferences");
+  const { causalActor, actorCause, eventCause } = await import("./domain-actor");
   const { saveAIConfig } = await import("../features/ai/lib/ai-config");
   const { onAppEvent } = await import("./app-events");
   const { toBase64, fromBase64, sealSecret, openSecret } = await import("./sync-envelope");
@@ -83,16 +84,21 @@ if (process.env.ROAMING_SECRET_DURABILITY === "1") {
     secrets.deleteSecret(slot); await tick(); pending.shift()!.resolve(); await tick();
     expect(decoded()).toEqual(["synthetic-first", null]);
 
-    const changed: string[][] = [];
-    const stop = onAppEvent("roaming-preferences-changed", event => changed.push(event.keys));
+    const changed: string[][] = [], sources: object[] = [], commits: object[] = [];
+    const origin = causalActor("system");
+    const stopCommit = secrets.onSecretCommit((_key, _source, commit) => commits.push(commit));
+    const stop = onAppEvent("roaming-preferences-changed", event => { changed.push(event.keys); sources.push(event); });
     rows = [{ key: `secret:${slot}`, valueJson: JSON.stringify({ sealed: sealSecret(key, slot, "synthetic-remote") }) }];
     let finished = false;
     const refresh = roaming.refreshRoamingPreferences().then(() => { finished = true; });
     await tick(); expect(finished).toBe(false); expect(changed).toEqual([]);
     pending.shift()!.reject({ code: "fs/permission-denied" }); await refresh;
     expect(changed).toEqual([]); expect(secrets.getSecret(slot)).toBe("");
-    const recovery = roaming.refreshRoamingPreferences(); await tick(); pending.shift()!.resolve(); await recovery;
+    const recovery = roaming.refreshRoamingPreferences(origin); await tick(); pending.shift()!.resolve(); await recovery;
     expect(changed).toEqual([[`secret:${slot}`]]);
+    expect(eventCause(sources.at(-1)!)).toBe(actorCause(origin));
+    expect(eventCause(commits.at(-1)!)).toBe(actorCause(origin));
+    stopCommit();
     expect(decoded()).toEqual(["synthetic-first", null]);
     expect(disk.get(slot)).toBe("synthetic-remote"); stop();
 
@@ -148,6 +154,18 @@ if (process.env.ROAMING_SECRET_DURABILITY === "1") {
       expect(pending).toHaveLength(0);
     }
   });
+  test("durable preference publication keeps the originating operation in its broadcast", async () => {
+    const { localKV } = await import("./local-store");
+    const { onDomainEventBroadcast } = await import("./domain-events");
+    const origin = causalActor("plugin:roaming-proof"), observed: object[] = [];
+    const stop = onDomainEventBroadcast(event => { if (event.type === "preference.changed" && event.payload.key === "read-aware-app-settings") observed.push(event); });
+    try {
+      await localKV.setItemAsync("read-aware-app-settings", JSON.stringify({ theme: "dark" }), origin);
+      await tick();
+      expect(observed).toHaveLength(1);
+      expect(eventCause(observed[0]!)).toBe(actorCause(origin));
+    } finally { stop(); }
+  });
 } else {
   test("isolated credential publication durability", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], {
@@ -155,6 +173,8 @@ if (process.env.ROAMING_SECRET_DURABILITY === "1") {
     });
     const output = await new Response(child.stderr).text();
     expect(await child.exited, output).toBe(0);
-    expect(output).toContain("3 pass");
+    expect(output).toContain("4 pass");
   }, 30_000);
+
+
 }

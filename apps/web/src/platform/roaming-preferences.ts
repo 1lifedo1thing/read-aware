@@ -21,6 +21,7 @@
  */
 import { flushRestoredCredentialPublications } from "./restored-credential-publication";
 import { PluginPreferencePublication } from "./plugin-preference-publication";
+import { causalActor, type DomainActor } from "./domain-actor";
 import { errorCode } from "@read-aware/core";
 import { waitForPluginDataUpdates, withPluginDataWrites } from "./plugin-data-access";
 import { invoke } from "./ipc";
@@ -111,7 +112,7 @@ export type RoamingPreferenceKey = string;
 // so the value is sealed with that same master key BEFORE the event is
 // committed (`preference.changed` with key `secret:<slot>` and value
 // `{sealed}` / null for deletion), and the overlay decrypts it straight into
-// the OS-backed secret store — never into a queryable table.
+// the device secret store (AES-GCM sealed app_kv); plaintext is never logged.
 
 const SECRET_EVENT_PREFIX = "secret:";
 
@@ -149,7 +150,7 @@ export function republishRoamingSecrets(): Promise<void> {
 }
 
 /** Sealed projection row → this device's secret store. True if it moved. */
-async function overlaySecret(slot: string, valueJson: string): Promise<boolean> {
+async function overlaySecret(slot: string, valueJson: string, origin: DomainActor): Promise<boolean> {
   return afterSecretWrites(async () => {
     if (!isRoamingSecretSlot(slot)) return false;
     try {
@@ -159,14 +160,14 @@ async function overlaySecret(slot: string, valueJson: string): Promise<boolean> 
       const typedSlot = slot as SecretKey;
       if (parsed === null) {
         if (!getSecret(typedSlot)) return false;
-        await deleteSecretAsync(typedSlot, "remote");
+        await deleteSecretAsync(typedSlot, "remote", origin);
         return true;
       }
       const sealed = (parsed as { sealed?: unknown }).sealed;
       if (typeof sealed !== "string") return false;
       const value = openSecret(key, slot, sealed);
       if (getSecret(typedSlot) === value) return false;
-      await setSecretAsync(typedSlot, value, "remote");
+      await setSecretAsync(typedSlot, value, "remote", origin);
       return true;
     } catch (error) {
       // Bad ciphertext preserves the old value; a failed write rolls back in
@@ -182,7 +183,8 @@ async function overlaySecret(slot: string, valueJson: string): Promise<boolean> 
  * caller just made is the device's truth either way, and a dropped event is
  * healed by the next save of the same namespace (whole-object payloads).
  */
-export function publishRoamingPreference(key: RoamingPreferenceKey, value: unknown): void {
+export function publishRoamingPreference(key: RoamingPreferenceKey, value: unknown, origin: DomainActor = "system"): void {
+  origin = causalActor(origin);
   if (!isTauri() || PluginPreferencePublication.blocks(key)) return;
   const strip = roamingPolicyFor(key)?.stripOnPublish;
   let published = value;
@@ -191,7 +193,7 @@ export function publishRoamingPreference(key: RoamingPreferenceKey, value: unkno
     for (const field of strip) delete clone[field];
     published = clone;
   }
-  void commitDomainEvents({ type: "preference.changed", payload: { key, value: published } }).catch(
+  void commitDomainEvents({ type: "preference.changed", origin, payload: { key, value: published } }).catch(
     (error) => {
       log.error(`failed to log ${key} change`, error);
     },
@@ -222,16 +224,16 @@ export function acceptPluginPreferencePublication(scope: PluginPreferencePublica
 // tags writes with their origin before persistence — without
 // that, every pull would echo its own contents straight back into the log.
 
-onLocalKVWrite((key, raw, origin) => {
+onLocalKVWrite((key, raw, origin, actor) => {
   if (origin === "remote" || !isTauri()) return;
   if (!roamingPolicyFor(key)) return;
   if (PluginPreferencePublication.record(key, raw)) return;
   if (raw === null) {
-    publishRoamingPreference(key, null);
+    publishRoamingPreference(key, null, actor);
     return;
   }
   try {
-    publishRoamingPreference(key, JSON.parse(raw));
+    publishRoamingPreference(key, JSON.parse(raw), actor);
   } catch {
     // Non-JSON KV values are not part of the roaming contract.
   }
@@ -283,12 +285,12 @@ function canonical(json: string | null): string | null {
 }
 
 /** Projection → KV (and sealed rows → the secret store). Returns moved keys. */
-async function overlayRows(rows: PreferenceRow[]): Promise<string[]> {
+async function overlayRows(rows: PreferenceRow[], origin: DomainActor): Promise<string[]> {
   await afterSecretWrites(() => {});
   const changed: string[] = [];
   for (const row of rows) {
     if (row.key.startsWith(SECRET_EVENT_PREFIX)) {
-      if (await overlaySecret(row.key.slice(SECRET_EVENT_PREFIX.length), row.valueJson)) {
+      if (await overlaySecret(row.key.slice(SECRET_EVENT_PREFIX.length), row.valueJson, origin)) {
         changed.push(row.key);
       }
       continue;
@@ -298,7 +300,7 @@ async function overlayRows(rows: PreferenceRow[]): Promise<string[]> {
     // A roamed deletion (value null) clears the local cache.
     if (row.valueJson === "null") {
       if (localKV.getItem(row.key) !== null) {
-        localKV.removeItem(row.key, "remote");
+        localKV.removeItem(row.key, "remote", origin);
         changed.push(row.key);
       }
       continue;
@@ -306,7 +308,7 @@ async function overlayRows(rows: PreferenceRow[]): Promise<string[]> {
     const current = localKV.getItem(row.key);
     const next = mergeForDevice(row.valueJson, current, policy.deviceLocalFields);
     if (next === null || canonical(next) === canonical(current)) continue;
-    localKV.setItem(row.key, next, "remote");
+    localKV.setItem(row.key, next, "remote", origin);
     changed.push(row.key);
   }
   return changed;
@@ -315,7 +317,7 @@ async function overlayRows(rows: PreferenceRow[]): Promise<string[]> {
 /** A concurrent plugin migration must not consume a remote settings save into
  * its rollback baseline halfway through. Retry from the current projection once
  * the update settles, and keep admission until queued remote KV writes settle. */
-async function loadAndOverlayRows(): Promise<{ rows: PreferenceRow[]; changed: string[] }> {
+async function loadAndOverlayRows(origin: DomainActor): Promise<{ rows: PreferenceRow[]; changed: string[] }> {
   while (true) {
     await PluginPreferencePublication.flushAccepted();
     await flushRestoredCredentialPublications();
@@ -326,7 +328,7 @@ async function loadAndOverlayRows(): Promise<{ rows: PreferenceRow[]; changed: s
     try {
       return await withPluginDataWrites(ids, async () => {
         let failed = false;
-        try { return { rows, changed: await overlayRows(eligible) }; }
+        try { return { rows, changed: await overlayRows(eligible, origin) }; }
         catch (error) { failed = true; throw error; }
         finally {
           // Even a later overlay failure must drain every earlier native write.
@@ -382,10 +384,11 @@ function reconcileUnpublished(rows: PreferenceRow[]): void {
  * graph that seeds settings atoms synchronously (see main.tsx ordering).
  * Overlay first (remote rows win), then backfill what the log has never seen.
  */
-export async function hydrateRoamingPreferences(): Promise<void> {
+export async function hydrateRoamingPreferences(origin: DomainActor = "system"): Promise<void> {
+  origin = causalActor(origin);
   if (!isTauri()) return;
   try {
-    const { rows } = await loadAndOverlayRows();
+    const { rows } = await loadAndOverlayRows(origin);
     reconcileUnpublished(rows);
   } catch (error) {
     log.error("boot overlay failed; using device-local values", error);
@@ -398,13 +401,14 @@ export async function hydrateRoamingPreferences(): Promise<void> {
  * on a build older than this one). Called by the sync scheduler after a
  * merge lands remote events.
  */
-export async function refreshRoamingPreferences(): Promise<void> {
+export async function refreshRoamingPreferences(origin: DomainActor = "system"): Promise<void> {
+  origin = causalActor(origin);
   if (!isTauri()) return;
   try {
-    const { rows, changed } = await loadAndOverlayRows();
+    const { rows, changed } = await loadAndOverlayRows(origin);
     reconcileUnpublished(rows);
     if (changed.length > 0) {
-      emitAppEvent("roaming-preferences-changed", { keys: changed });
+      emitAppEvent("roaming-preferences-changed", { keys: changed }, origin);
     }
   } catch (error) {
     log.error("post-pull refresh failed", error);

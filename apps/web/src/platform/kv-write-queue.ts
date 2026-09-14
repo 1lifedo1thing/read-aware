@@ -27,7 +27,7 @@ export class KVWriteQueue {
     read(key: string): string | null;
     mirror(key: string, value: string | null, origin: DomainActor): void;
     persist(key: string, value: string | null, origin: KVWriteOrigin): Promise<void>;
-    committed(key: string, value: string | null, origin: KVWriteOrigin): void;
+    committed(key: string, value: string | null, origin: KVWriteOrigin, actor: DomainActor): void;
     settled?(commit: KVCommit): void;
     failed(key: string, error: unknown, owner: KVFailureOwner): void;
   }) {}
@@ -78,7 +78,7 @@ export class KVWriteQueue {
       try {
         await persist();
         for (const { state, value } of entries) state.durable = value;
-        if (origin) for (const { key, value } of entries) this.deps.committed(key, value, origin);
+        if (origin) for (const { key, value } of entries) this.deps.committed(key, value, origin, cause);
       } catch (error) {
         failure = { error };
         throw error;

@@ -5,6 +5,10 @@
 旧范围裁决不能用来缩减本次目标。只提供经过授权的语义操作，不开放原始 SQL、
 文件系统、DOM、密钥或伪造历史。实现接通后集中运行真实桌面组合验收。
 
+## 本批漫游来源交付
+
+漫游写入/覆盖来源已补：KVWriteQueue的持久写监听传递实际mutation actor，普通偏好自动发布preference.changed及本机广播保留该来源。hydrate/refresh在入口捕获覆盖actor，远端普通KV与秘密值写入、删除和roaming-preferences-changed通知沿用；remote标志仍阻止回传，秘密值仅在密文槽落盘。修正旧注释为AES-GCM sealed app_kv。既有隔离检查覆盖失败回滚、远端不回传、本地未发布保护、秘密落盘/完成通知来源及普通偏好持久写到广播；受影响类型通过。覆盖来源只代表本机覆盖任务，不冒充远端原始写入者；秘密待发布队列跨重启来源、已接受插件偏好重试来源、真实Worker/Tauri及C04其余项仍待补。
+
 ## 本批启动句柄及迁移来源交付
 
 启动/迁移阶段注册句柄与存储来源已补：宿主专用registrationForActor校验本激活持有的句柄，再给状态更新/显式释放传入已签发actor；普通dispose消息仍释放回调资源。host按实际lifecycle.migrating选择启动上下文，迁移完成后恢复独立普通调用，显式reaction仍优先；restoreStorage/serviceExecution保持原隔离绑定。既有定向RPC检查已覆盖迁移来源、后续普通调用独立、恢复隔离存储及反应凭证权限/过期/重复拒绝；受影响类型通过。真实Worker/Tauri仍待集中验收，致命错误具体归因及其余C04/C05缺口继续，完整目标未完成。

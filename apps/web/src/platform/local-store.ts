@@ -54,15 +54,15 @@ let hydrated = false;
  * be pure policy instead of a publish call hand-planted in every save
  * function. Listeners must never write KV synchronously (recursion).
  */
-type KVWriteListener = (key: string, value: string | null, origin: KVWriteOrigin) => void;
+type KVWriteListener = (key: string, value: string | null, origin: KVWriteOrigin, actor: DomainActor) => void;
 const writeListeners = new Set<KVWriteListener>();
 export function onLocalKVWrite(listener: KVWriteListener): () => void {
   writeListeners.add(listener);
   return () => writeListeners.delete(listener);
 }
-function notifyWrite(key: string, value: string | null, origin: KVWriteOrigin): void {
+function notifyWrite(key: string, value: string | null, origin: KVWriteOrigin, actor: DomainActor): void {
   for (const listener of [...writeListeners]) {
-    try { listener(key, value, origin); } catch (error) { log.error("KV commit observer failed", error); }
+    try { listener(key, value, origin, actor); } catch (error) { log.error("KV commit observer failed", error); }
   }
 }
 
