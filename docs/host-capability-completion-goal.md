@@ -27,6 +27,15 @@
 
 ## 当前交接
 
+- C04设置目录来源：settings observation现在直接订阅已签发来源的字体/主题/命令/菜单动作/
+  阅读模式注册表数组，不再把shortcutEnvironment等派生对象的变化改为新系统来源。
+  当前阅读模式选择增加宿主私有来源封装；模式控制器通知带入actor，清除选择保留阅读会话来源，
+  旧owner清理不能覆盖新owner。设置仍走原授权目录读取，公共快照不增加宿主来源对象。
+  真实注册表→设置观察的定向检查验证命令变化及选择/清除同因果、同规则反馈拒绝；
+  Web/desktop类型通过，日志 `/tmp/readaware-catalog-source-types.log`、`/tmp/readaware-catalog-source-check.log`。
+  阅读模式替换/外部偏好及卸载使用既有检查，日志 `/tmp/readaware-catalog-mode-check.log`。
+  installedPluginsAtom的安装/Worker错误自动来源、其余观察及原生不确定来源仍保留，Tauri集中验收待执行。
+
 - C04 macOS窗口输入来源：新增原生window_input_revision，仅返回main窗口可用性及单调输入序号，
   AppKit本地鼠标/拖拽/键盘/触控事件使序号前移；惯性滚动不作新输入。不收集键码、坐标或文本。
   安装失败和其他平台返回未知，不以固定零值冒充原生输入证据。监视器与既有wheel-phase一致按app生命周期持有。

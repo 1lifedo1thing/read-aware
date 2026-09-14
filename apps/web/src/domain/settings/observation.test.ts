@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { AppError, type SettingsObservation, type SettingsSnapshot } from "@read-aware/core";
 import { SettingsObservationHub } from "./observation";
-import { eventCause, reactionActor, stampEventCause } from "../../platform/domain-actor";
+import { actorCause, causalActor, eventCause, reactionActor, stampEventCause } from "../../platform/domain-actor";
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 const snapshot = (value = "light", revision = 0): SettingsSnapshot => ({ revision, target: { kind: "global" }, overrides: [],
@@ -57,4 +57,26 @@ test("observers are bounded and disposal suppresses in-flight reads", async () =
   for (const stop of stops) { stop(); stop(); }
   release(snapshot()); await tick(); expect(calls).toBe(0);
   const stop = hub.observe(async () => snapshot(), () => { calls++; }); await tick(); expect(calls).toBe(1); stop();
+});
+
+test("settings catalog invalidation retains contribution and selected-mode causes", async () => {
+  const { initializeSettingsObservation, settingsObservation } = await import("./observation-sources");
+  const { registerCommandContribution, pluginCommandsAtom, setActiveReaderMode, releaseActiveReaderMode, activeReaderModeSourceAtom } = await import("../../features/plugins/state/plugin-store");
+  const { getDefaultStore } = await import("jotai");
+  const store = getDefaultStore(), owner = {};
+  const source = reactionActor("plugin:catalog", "catalog-follow", actorCause(causalActor("user"))!);
+  const seen: SettingsObservation[] = [];
+  initializeSettingsObservation();
+  const stop = settingsObservation.observe(async () => snapshot(`${store.get(pluginCommandsAtom).length}:${store.get(activeReaderModeSourceAtom).value?.key ?? "none"}`), value => { seen.push(value); });
+  await tick();
+  const registration = registerCommandContribution({ id: "follow", key: "catalog:follow", pluginId: "catalog", pluginName: "Catalog", title: "Follow", run: () => {} }, source);
+  try {
+    await tick();
+    expect(eventCause(seen.at(-1)!)).toBe(actorCause(source));
+    expect(() => reactionActor("plugin:catalog", "catalog-follow", eventCause(seen.at(-1)!)!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
+    setActiveReaderMode(owner, "catalog:mode", source); await tick();
+    expect(eventCause(seen.at(-1)!)).toBe(actorCause(source));
+    releaseActiveReaderMode(owner, source); await tick();
+    expect(eventCause(seen.at(-1)!)).toBe(actorCause(source));
+  } finally { stop(); registration.dispose(); releaseActiveReaderMode(owner); }
 });

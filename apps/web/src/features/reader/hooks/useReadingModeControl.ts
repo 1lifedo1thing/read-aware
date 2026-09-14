@@ -63,10 +63,10 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
     controller.environment(descriptors, supported, origin, selectionOrigin);
   }, [controller, descriptors, modes, request.modeKey, selected, supported]);
   useEffect(() => {
-    const publish = () => setActiveReaderMode(controller, controller.requested().modeKey);
+    const publish = (origin?: DomainActor) => setActiveReaderMode(controller, controller.requested().modeKey, origin ?? controller.requested().origin);
     publish();
     const off = controller.observe(publish);
-    return () => { off(); releaseActiveReaderMode(controller); };
+    return () => { off(); releaseActiveReaderMode(controller, actorFromEvent(readingRuntime.snapshot())); };
   }, [controller]);
 
   useEffect(() => onLocalKVCommit(commit => {

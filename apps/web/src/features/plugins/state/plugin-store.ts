@@ -7,6 +7,7 @@
  * reactively, which is what makes enable/disable instant.
  */
 import { atom, getDefaultStore, type Getter, type Setter } from "jotai";
+import { causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { AppError } from "@read-aware/core";
 import { localKV } from "../../../platform/local-store";
 import { observePluginCallbackOwners, releasePluginCallbacks } from "../runtime/plugin-callback-wire";
@@ -33,7 +34,6 @@ import type {
   RegisteredMemoryCandidateProvider,
   PluginBookAccess,
 } from "../lib/plugin-types";
-import type { DomainActor } from "../../../platform/domain-actor";
 import { createContributionRegistry } from "./contribution-registry";
 import { createInteractiveContributionRegistry } from "./interactive-contribution-registry";
 
@@ -263,16 +263,18 @@ export function getRegisteredMemoryCandidateProviders(): RegisteredMemoryCandida
 }
 
 /** A mounted reader owns its selection; stale cleanup must not clear a newer book. */
-const activeReaderModeAtom = atom<{ owner: object; key: string | null } | null>(null);
-export function setActiveReaderMode(owner: object, key: string | null): void {
-  const current = store.get(activeReaderModeAtom);
-  if (current?.owner !== owner || current.key !== key) store.set(activeReaderModeAtom, { owner, key });
+const activeReaderModeAtom = atom<{ value: { owner: object; key: string | null } | null }>(stampEventCause({ value: null }));
+/** Host-only selection envelope, including the cause of clearing a selection. */
+export const activeReaderModeSourceAtom = activeReaderModeAtom;
+export function setActiveReaderMode(owner: object, key: string | null, origin: DomainActor = "system"): void {
+  const current = store.get(activeReaderModeAtom).value;
+  if (current?.owner !== owner || current.key !== key) store.set(activeReaderModeAtom, stampEventCause({ value: { owner, key } }, causalActor(origin)));
 }
-export function releaseActiveReaderMode(owner: object): void {
-  if (store.get(activeReaderModeAtom)?.owner === owner) store.set(activeReaderModeAtom, null);
+export function releaseActiveReaderMode(owner: object, origin: DomainActor = "system"): void {
+  if (store.get(activeReaderModeAtom).value?.owner === owner) store.set(activeReaderModeAtom, stampEventCause({ value: null }, causalActor(origin)));
 }
 export const textUnitReaderModeAtom = atom((get) => {
-  const selection = get(activeReaderModeAtom);
+  const selection = get(activeReaderModeAtom).value;
   return get(readerModesAtom).find(mode => mode.kind === "text-unit-navigator" && (!selection || mode.key === selection.key)) ?? null;
 });
 

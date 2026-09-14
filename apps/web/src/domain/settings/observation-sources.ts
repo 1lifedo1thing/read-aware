@@ -1,4 +1,4 @@
-import { getDefaultStore } from "jotai";
+import { getDefaultStore, type Atom } from "jotai";
 import { afterLocalKVWrites, hasPendingLocalKVWrites, onLocalKVCommit } from "../../platform/local-store";
 import { afterSecretWrites, onSecretCommit } from "../../platform/secret-store";
 import { createLogger } from "../../platform/logger";
@@ -14,8 +14,7 @@ import { READER_OVERRIDES_KEY } from "../../features/settings/lib/reader-overrid
 import { CONTENT_TYPOGRAPHY_KEY } from "../../features/settings/lib/content-typography";
 import { DEFAULT_COLOR_KEY } from "../../features/annotations/lib/annotation-prefs";
 import { CHANNEL_KV_KEY } from "../../features/update/lib/update-channel";
-import { headerActionsAtom, installedPluginsAtom, pluginFontsAtom, pluginThemesAtom, selectionActionsAtom, textUnitReaderModeAtom } from "../../features/plugins/state/plugin-store";
-import { shortcutEnvironmentAtom } from "../../features/settings/state/shortcut-state";
+import { headerActionsAtom, installedPluginsAtom, pluginFontsAtom, pluginThemesAtom, selectionActionsAtom, readerModesAtom, pluginCommandsAtom, activeReaderModeSourceAtom } from "../../features/plugins/state/plugin-store";
 import { SettingsObservationHub } from "./observation";
 import { copyEventCause } from "../../platform/domain-actor";
 
@@ -35,8 +34,11 @@ export function initializeSettingsObservation(): void {
     if (key === "ai-api-key" || key.startsWith("ai-api-key.")) settingsObservation.invalidate(copyEventCause(commit, { source: commit.source, origin: commit.origin }));
   });
   const store = getDefaultStore();
-  for (const atom of [installedPluginsAtom, pluginFontsAtom, pluginThemesAtom, headerActionsAtom, selectionActionsAtom, textUnitReaderModeAtom, shortcutEnvironmentAtom]) {
-    store.sub(atom, () => settingsObservation.invalidate({ source: "catalog", origin: null }));
+  const sources: Atom<object>[] = [installedPluginsAtom, pluginFontsAtom, pluginThemesAtom, headerActionsAtom, selectionActionsAtom, readerModesAtom, pluginCommandsAtom, activeReaderModeSourceAtom];
+  for (const atom of sources) {
+    // Subscribe to the stamped producer, not a derived catalog object which
+    // has lost provenance. The settings read still uses its normal selectors.
+    store.sub(atom, () => settingsObservation.invalidate(copyEventCause(store.get(atom), { source: "catalog", origin: null })));
   }
 }
 
