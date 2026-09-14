@@ -4,7 +4,7 @@
 use super::{credential_crypto as crypto, local_event_guard, DataDir, Db, EventRow};
 use crate::error::CommandError;
 use rusqlite::{Connection, Transaction, TransactionBehavior};
-use std::{collections::BTreeSet, path::Path};
+use std::{collections::{BTreeSet, BTreeMap}, path::Path};
 use tauri::Manager;
 
 fn valid(slot: &str) -> bool {
@@ -17,10 +17,14 @@ fn invalid() -> CommandError {
     )
 }
 pub(crate) fn enqueue(tx: &Transaction<'_>, slot: &str) -> Result<(), CommandError> {
+    enqueue_with_source(tx, slot, None)
+}
+pub(crate) fn enqueue_with_source(tx: &Transaction<'_>, slot: &str, source: Option<&serde_json::Value>) -> Result<(), CommandError> {
+    if let Some(source) = source { super::durable_jobs::validate_source(source).map_err(|_| invalid())?; }
     if !valid(slot) {
         return Err(invalid());
     }
-    tx.execute("INSERT INTO restored_credential_publications(slot,created_at) VALUES (?1,strftime('%Y-%m-%dT%H:%M:%fZ','now')) ON CONFLICT(slot) DO NOTHING", [slot])?;
+    tx.execute("INSERT INTO restored_credential_publications(slot,created_at,source_json) VALUES (?1,strftime('%Y-%m-%dT%H:%M:%fZ','now'),?2) ON CONFLICT(slot) DO UPDATE SET source_json=excluded.source_json", rusqlite::params![slot, source.map(serde_json::Value::to_string)])?;
     Ok(())
 }
 pub(crate) fn contains(conn: &Connection, slot: &str) -> Result<bool, CommandError> {
@@ -45,7 +49,7 @@ pub(crate) fn enqueue_current(conn: &mut Connection, only_unpublished: bool) -> 
         let rows = query.query_map([only_unpublished], |row| row.get::<_, String>(0))?.collect::<Result<Vec<_>, _>>()?;
         rows
     };
-    for slot in slots { enqueue(&tx, &slot)?; }
+    for slot in slots { if !contains(&tx, &slot)? { enqueue(&tx, &slot)?; } }
     tx.commit()?; Ok(())
 }
 #[tauri::command]
@@ -59,6 +63,7 @@ pub async fn restored_credentials_enqueue_current(app: tauri::AppHandle, only_un
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PublicationReport {
     pub events: Vec<EventRow>,
+    pub sources: BTreeMap<String, serde_json::Value>,
     pub awaiting_connection: bool,
 }
 pub(crate) fn publish(
@@ -93,11 +98,13 @@ pub(crate) fn publish(
     let Some(master) = crypto::master(&tx, root)? else {
         return Ok(PublicationReport {
             events: vec![],
+            sources: BTreeMap::new(),
             awaiting_connection: true,
         });
     };
     let mut published = Vec::new();
-    let mut plaintext_bytes = 0usize;
+    let mut sources = BTreeMap::new();
+    let mut payload_bytes = 0usize;
     for event in &mut events {
         let key = event.aggregate_id.as_ref().unwrap();
         let slot = key.strip_prefix("secret:").unwrap();
@@ -119,15 +126,19 @@ pub(crate) fn publish(
                 _ => error,
             }
         })?;
+        let source_json: Option<String> = tx.query_row("SELECT source_json FROM restored_credential_publications WHERE slot=?1", [slot], |row| row.get(0))?;
+        let source = source_json.map(|raw| serde_json::from_str::<serde_json::Value>(&raw).map_err(|_| invalid())).transpose()?;
+        if let Some(value) = &source { super::durable_jobs::validate_source(value).map_err(|_| invalid())?; }
         let local = crypto::local(&tx, root, slot)?;
-        let size = local.as_ref().map_or(0, |value| value.len());
-        // Keep the returned ciphertext batch bounded too, not just each value.
+        let size = local.as_ref().map_or(0, |value| value.len())
+            + source.as_ref().map_or(0, |value| value.to_string().len());
+        // Bound source metadata together with the returned ciphertext batch.
         // One oversized-but-valid value runs alone; remaining markers stay for
         // the next host iteration instead of being skipped or acknowledged.
-        if !published.is_empty() && plaintext_bytes + size > 16 * 1024 * 1024 {
+        if !published.is_empty() && payload_bytes + size > 16 * 1024 * 1024 {
             break;
         }
-        plaintext_bytes += size;
+        payload_bytes += size;
         let value = match local {
             Some(value) if !value.is_empty() => {
                 serde_json::json!({"sealed":crypto::seal(&master, slot, &value)?})
@@ -142,11 +153,13 @@ pub(crate) fn publish(
             "DELETE FROM restored_credential_publications WHERE slot=?1",
             [slot],
         )?;
+        if let Some(source) = source { sources.insert(event.id.clone(), source); }
         published.push(event.clone());
     }
     tx.commit()?;
     Ok(PublicationReport {
         events: published,
+        sources,
         awaiting_connection: false,
     })
 }

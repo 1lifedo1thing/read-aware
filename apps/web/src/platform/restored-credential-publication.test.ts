@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 
 if (process.env.RESTORED_CREDENTIAL_PROOF === "1") {
+  const restoredSource = { version: 1, root: "durable-origin", paths: [{ root: "durable-origin", steps: ["rule:plugin:credential:publish"] }] };
   const pending = new Set<string>();
   const commands: string[] = [];
   const published: unknown[] = [];
@@ -32,12 +33,13 @@ if (process.env.RESTORED_CREDENTIAL_PROOF === "1") {
         }
         const events = args.events.map((event: any) => ({ ...event, payload: { key: event.payload.key, value: null } }));
         events.forEach((event: any) => pending.delete(event.payload.key.slice("secret:".length)));
-        return { events, awaitingConnection: false };
+        return { events, sources: Object.fromEntries(events.map((event: any) => [event.id, restoredSource])), awaitingConnection: false };
       }
       return undefined;
     },
   } } });
   const secrets = await import("./secret-store");
+  const { eventCause, reactionActor } = await import("./domain-actor");
   const { flushRestoredCredentialPublications: flush } = await import("./restored-credential-publication");
   const { onDomainEventBroadcast } = await import("./domain-events");
   onDomainEventBroadcast(event => published.push(event));
@@ -56,6 +58,8 @@ if (process.env.RESTORED_CREDENTIAL_PROOF === "1") {
     holdMaster = false; masterWrite!(); await write; await first;
     expect(publishCount).toBe(1); expect(pending.size).toBe(0);
     expect(published).toHaveLength(1);
+    expect(eventCause(published[0] as object)?.root).toBe("durable-origin");
+    expect(() => reactionActor("plugin:credential", "rule:plugin:credential:publish", eventCause(published[0] as object)!)).toThrow();
     expect(requestedValues).toEqual([null]); // Native code owns actual sealing.
   });
   test("failed native publication retains its markers and never broadcasts; a later call retries", async () => {

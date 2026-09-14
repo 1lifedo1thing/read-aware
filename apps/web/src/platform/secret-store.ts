@@ -21,7 +21,7 @@ import { isTauri } from "./environment";
 import { createLogger } from "./logger";
 import { KVWriteQueue, type KVCommit, type KVWriteOrigin } from "./kv-write-queue";
 
-import { actorOrigin, causalActor, copyEventCause, stampEventCause, type DomainActor } from "./domain-actor";
+import { saveActorSource, actorOrigin, causalActor, copyEventCause, stampEventCause, type DomainActor } from "./domain-actor";
 
 const log = createLogger("secrets");
 
@@ -69,9 +69,9 @@ function notifyCommit(key: SecretKey, source: KVWriteOrigin, commit: SecretCommi
 const writes = new KVWriteQueue({
   read: key => snapshot.get(key as SecretKey) ?? null,
   mirror: (key, value) => { if (value === null) snapshot.delete(key as SecretKey); else snapshot.set(key as SecretKey, value); },
-  persist: (key, value, origin) => value === null
-    ? invoke("secret_delete", { key, roam: origin === "local" })
-    : invoke("secret_set", { key, value, roam: origin === "local" }),
+  persist: (key, value, origin, actor) => value === null
+    ? invoke("secret_delete", { key, roam: origin === "local", source: origin === "local" ? saveActorSource(actor) : null })
+    : invoke("secret_set", { key, value, roam: origin === "local", source: origin === "local" ? saveActorSource(actor) : null }),
   committed: (key, value, source) => {
     if (source !== "local") return;
     for (const listener of [...writeListeners]) {

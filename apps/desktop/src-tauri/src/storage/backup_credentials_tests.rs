@@ -369,7 +369,7 @@ fn backup_credentials_preserves_a_pending_deletion_with_no_local_or_roaming_row(
     let mut target = db(root.path());
     let input = source(|conn, _| {
         conn.execute(
-            "INSERT INTO restored_credential_publications VALUES ('ai-api-key.deleted','now')",
+            "INSERT INTO restored_credential_publications(slot,created_at) VALUES ('ai-api-key.deleted','now')",
             [],
         )
         .unwrap();

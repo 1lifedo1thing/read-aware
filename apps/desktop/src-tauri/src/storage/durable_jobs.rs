@@ -32,18 +32,18 @@ pub async fn durable_job_get(owner: String, id: String, app: tauri::AppHandle) -
 pub(crate) fn durable_job_create_inner(conn: &mut Connection, owner: &str, id: &str, plan: Value) -> Result<DurableJobRecord, CommandError> {
     durable_job_create_with_source_inner(conn, owner, id, plan, None)
 }
-fn validate_source(source: &Value) -> Result<(), CommandError> {
-    let text = |value: &Value, max: usize| value.as_str().is_some_and(|s| !s.is_empty() && s.len() <= max && !s.chars().any(char::is_control));
+pub(crate) fn validate_source(source: &Value) -> Result<(), CommandError> {
+    let text = |value: &Value, max: usize| value.as_str().is_some_and(|s| !s.is_empty() && s.encode_utf16().count() <= max && !s.chars().any(char::is_control));
     let object = source.as_object().ok_or_else(|| invalid("Invalid job source"))?;
     let paths = source["paths"].as_array().ok_or_else(|| invalid("Invalid job source paths"))?;
     if object.keys().any(|key| !["version","root","paths"].contains(&key.as_str())) || source["version"] != 1
-        || !text(&source["root"],512) || paths.is_empty() || paths.len()>32 || source.to_string().len()>1024*1024 { return Err(invalid("Invalid job source")); }
+        || !text(&source["root"],128) || paths.is_empty() || paths.len()>32 || source.to_string().len()>1024*1024 { return Err(invalid("Invalid job source")); }
     let mut roots = std::collections::HashSet::new();
     for path in paths {
         let object = path.as_object().ok_or_else(|| invalid("Invalid job source branch"))?;
         let steps = path["steps"].as_array().ok_or_else(|| invalid("Invalid job source steps"))?;
-        if object.keys().any(|key| !["root","steps"].contains(&key.as_str())) || !text(&path["root"],512)
-            || !roots.insert(path["root"].as_str().unwrap()) || steps.len()>32 || steps.iter().any(|step| !text(step,2048)) { return Err(invalid("Invalid job source branch")); }
+        if object.keys().any(|key| !["root","steps"].contains(&key.as_str())) || !text(&path["root"],128)
+            || !roots.insert(path["root"].as_str().unwrap()) || steps.len()>32 || steps.iter().any(|step| !text(step,512)) { return Err(invalid("Invalid job source branch")); }
     }
     Ok(())
 }

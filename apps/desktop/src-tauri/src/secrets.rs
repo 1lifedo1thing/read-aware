@@ -172,16 +172,19 @@ fn decrypt_with_cipher(packed: &str, cipher: impl FnOnce() -> Result<Aes256Gcm, 
 
 // ─── Commands ────────────────────────────────────────────────────────────────
 
-fn set_inner(app: &tauri::AppHandle, key: &str, value: &str, roam: bool) -> Result<(), CommandError> {
+fn set_inner(app: &tauri::AppHandle, key: &str, value: &str, roam: bool, source: Option<&serde_json::Value>) -> Result<(), CommandError> {
     let sealed = encrypt(&app.state::<DataDir>().0, value)?;
     let db = app.state::<Db>();
     let mut conn = db.0.lock()?;
-    write_sealed(&mut conn, key, Some(&sealed), roam)
+    write_sealed_with_source(&mut conn, key, Some(&sealed), roam, source)
 }
 
 /// The encrypted value/deletion and publication obligation commit together.
 /// Remote projection overlays cannot replace a newer unpublished local choice.
 pub(crate) fn write_sealed(conn: &mut rusqlite::Connection, key: &str, sealed: Option<&str>, roam: bool) -> Result<(), CommandError> {
+    write_sealed_with_source(conn, key, sealed, roam, None)
+}
+pub(crate) fn write_sealed_with_source(conn: &mut rusqlite::Connection, key: &str, sealed: Option<&str>, roam: bool, source: Option<&serde_json::Value>) -> Result<(), CommandError> {
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     if !roam && crate::storage::restored_credentials::contains(&tx, key)? {
         return Err(CommandError::new("ui/superseded", "Credential has a pending local publication"));
@@ -195,7 +198,7 @@ pub(crate) fn write_sealed(conn: &mut rusqlite::Connection, key: &str, sealed: O
     )?; } else {
         tx.execute("DELETE FROM app_kv WHERE key=?1", [format!("{KV_PREFIX}{key}")])?;
     }
-    if roam && key.starts_with("ai-api-key") { crate::storage::restored_credentials::enqueue(&tx, key)?; }
+    if roam && key.starts_with("ai-api-key") { crate::storage::restored_credentials::enqueue_with_source(&tx, key, source)?; }
     tx.commit()?;
     Ok(())
 }
@@ -217,15 +220,15 @@ fn get_inner(app: &tauri::AppHandle, key: &str) -> Result<Option<String>, Comman
     }
 }
 
-fn delete_inner(app: &tauri::AppHandle, key: &str, roam: bool) -> Result<(), CommandError> {
+fn delete_inner(app: &tauri::AppHandle, key: &str, roam: bool, source: Option<&serde_json::Value>) -> Result<(), CommandError> {
     let db = app.state::<Db>();
     let mut conn = db.0.lock()?;
-    write_sealed(&mut conn, key, None, roam)
+    write_sealed_with_source(&mut conn, key, None, roam, source)
 }
 
 #[tauri::command]
-pub async fn secret_set(app: tauri::AppHandle, key: String, value: String, roam: Option<bool>) -> Result<(), CommandError> {
-    tauri::async_runtime::spawn_blocking(move || set_inner(&app, &key, &value, roam.unwrap_or(true)))
+pub async fn secret_set(app: tauri::AppHandle, key: String, value: String, roam: Option<bool>, source: Option<serde_json::Value>) -> Result<(), CommandError> {
+    tauri::async_runtime::spawn_blocking(move || set_inner(&app, &key, &value, roam.unwrap_or(true), source.as_ref()))
         .await
         .map_err(|e| format!("secret_set task failed: {e}"))?
 }
@@ -238,8 +241,8 @@ pub async fn secret_get(app: tauri::AppHandle, key: String) -> Result<Option<Str
 }
 
 #[tauri::command]
-pub async fn secret_delete(app: tauri::AppHandle, key: String, roam: Option<bool>) -> Result<(), CommandError> {
-    tauri::async_runtime::spawn_blocking(move || delete_inner(&app, &key, roam.unwrap_or(true)))
+pub async fn secret_delete(app: tauri::AppHandle, key: String, roam: Option<bool>, source: Option<serde_json::Value>) -> Result<(), CommandError> {
+    tauri::async_runtime::spawn_blocking(move || delete_inner(&app, &key, roam.unwrap_or(true), source.as_ref()))
         .await
         .map_err(|e| format!("secret_delete task failed: {e}"))?
 }

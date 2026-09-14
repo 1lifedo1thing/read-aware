@@ -99,6 +99,13 @@ pub(super) fn table(name: &str) -> Result<RowPolicy, CommandError> {
         | "sync_cursors"
         | "event_sync_state"
         | "blob_sync_state"
+        // Execution receipts, jobs and capability cursors belong to this device.
+        // A backup must not import another device's pending actions or authority.
+        | "atomic_receipts"
+        | "durable_jobs"
+        | "capability_change_state"
+        | "capability_changes"
+        | "capability_change_cursors"
         | "restored_credential_publications"
         | "book_import_cleanup" => PreserveDevice,
         "identity_consolidation_work" | "identity_consolidation_pages" => ReviewRuntimeHistory,
