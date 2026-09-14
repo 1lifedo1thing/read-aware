@@ -253,3 +253,15 @@ pub async fn book_digest_commit(
     })
     .await
 }
+
+/// Host checkpoint reconciliation checks an immutable event, never an old projection.
+#[tauri::command]
+pub async fn book_digest_receipt(event: EventRow, app: tauri::AppHandle) -> Result<bool, CommandError> {
+    if event.event_type != "book.chapterDigested" || event.id.is_empty() || event.id.len() > 128 || event.payload.to_string().len() > 128 * 1024 { return Err(invalid()); }
+    crate::storage::blocking("book_digest_receipt", move || {
+        let db = tauri::Manager::state::<Db>(&app); let conn = db.0.lock()?;
+        let raw: Option<String> = conn.query_row("SELECT payload_json FROM domain_events WHERE id=?1 AND type='book.chapterDigested' AND aggregate_type='book' AND aggregate_id=?2",
+            params![event.id, event.aggregate_id], |row| row.get(0)).optional()?;
+        Ok(raw.map(|value| serde_json::from_str::<Value>(&value)).transpose()?.as_ref() == Some(&event.payload))
+    }).await
+}

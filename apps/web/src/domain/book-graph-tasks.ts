@@ -2,7 +2,7 @@ import { classifyBookIfUnclassified } from "./book-classification";
 import type { DomainActor } from "../platform/domain-actor";
 import { createBookMemoryPort } from "../features/ai/agent/ports/book-memory-port";
 import { createBookTextPort } from "../features/ai/agent/ports/book-text-port";
-import { BookGraphTaskOwner } from "@read-aware/agent";
+import { BookGraphTaskOwner, type BookMemoryPort } from "@read-aware/agent";
 import { AppError } from "@read-aware/core";
 import { getBookRecord } from "../features/library/lib/library-db";
 import { getPersistedBookText } from "../features/library/lib/book-text-store";
@@ -19,14 +19,27 @@ async function resolveBoundary(bookId: string): Promise<number | undefined> {
   return boundary.kind === "all" ? chapters?.length : boundary.kind === "before" ? boundary.chapterIndex : undefined;
 }
 
-export function createBookGraphTasks(lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void) {
+export type DurableGraphExecution = {
+  targets?: number[];
+  preparedDigest?: import("@read-aware/agent").BookGraphTaskExecution["preparedDigest"];
+  onPlan(chapters: number[]): Promise<void>;
+  saveDigest: BookMemoryPort["saveDigest"];
+};
+export function createBookGraphTasks(lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, durable?: DurableGraphExecution) {
   const owner = new BookGraphTaskOwner<DomainActor>(async (input, actor) => {
     // Lazy runtime access avoids constructing a second Agent or a registry import cycle.
     const { getAgentRuntime } = await import("../features/ai/agent/agent-runtime");
     input.signal.throwIfAborted();
     const runtime = getAgentRuntime();
     if (!runtime) throw new AppError("ai/not-configured", "Graph tasks require a configured model");
-    return runtime.runBookGraphTask({ ...input, bookMemory: createBookMemoryPort(actor), bookText: createBookTextPort(actor),
+    const memory = createBookMemoryPort(actor);
+    return runtime.runBookGraphTask({ ...input,
+      ...(durable ? { targets: durable.targets, preparedDigest: durable.preparedDigest, onPlan: async (chapters: number[]) => {
+        const boundary = await resolveBoundary(input.bookId);
+        if (durable.targets?.some(index => boundary === undefined || index >= boundary)) throw new AppError("memory/conflict", "Saved graph plan exceeds the current reading boundary");
+        await durable.onPlan(chapters); await input.onPlan(chapters);
+      } } : {}),
+      bookMemory: durable ? { ...memory, saveDigest: durable.saveDigest } : memory, bookText: createBookTextPort(actor),
       classifyBookIfUnclassified: (bookId, flavor, signal) => classifyBookIfUnclassified(bookId, flavor, signal, actor),
       resolveBoundary: () => resolveBoundary(input.bookId) });
   }, (message, error) => log.warn(message, error), lifetime);

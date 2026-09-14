@@ -25,7 +25,8 @@ export interface DigestMissingChaptersInput {
   onProgress?: (digested: number) => void;
   rebuild?: boolean;
   targets?: readonly number[];
-  onPlan?: (chapters: number[]) => void;
+  preparedDigest?(chapter: number): Promise<{ digest: import("@read-aware/core").ChapterDigest; revision: string } | undefined>;
+  onPlan?: (chapters: number[]) => void | Promise<void>;
   onChapterAttempted?: (chapter: number) => void;
   onChapterCommitted?: (chapter: number) => void;
   onReport?: (report: DigestReport) => void;
@@ -56,7 +57,8 @@ export async function digestMissingChapters(input: DigestMissingChaptersInput): 
   // Retry order puts unattempted work before prior empty/failed chapters, so a small limit cannot starve the tail.
   const targets = input.targets ? [...new Set(input.targets)] : Array.from({ length: ceiling }, (_, index) => index);
   for (const index of targets) if (index < ceiling && (input.rebuild || !current.has(index))) missing.push(index);
-  input.onPlan?.([...missing]);
+  await input.onPlan?.([...missing]);
+  input.signal?.throwIfAborted();
   const selected = missing.slice(0, max);
   const report: DigestReport = { status: missing.length ? "partial" : "complete", eligible: ceiling, attempted: 0, digested: 0,
     remaining: missing.length, emptyChapters: [], failures: [], ...(missing.length > max ? { reason: "chapter-limit" as const } : {}) };
@@ -86,7 +88,8 @@ export async function digestMissingChapters(input: DigestMissingChaptersInput): 
         if (!text.trim()) { report.emptyChapters.push(index); continue; }
         await input.checkChapter?.(index);
         input.signal?.throwIfAborted();
-        const digest = await extractChapterDigest({ complete: input.complete, model: input.model, chapterIndex: index,
+        const prepared = await input.preparedDigest?.(index);
+        const digest = prepared?.digest ?? await extractChapterDigest({ complete: input.complete, model: input.model, chapterIndex: index,
           chapterHref: chapter?.hrefs?.[0] ?? toc[index]?.hrefs?.[0], chapterTitle: chapter?.title ?? toc[index]?.title, chapterText: text, flavor, signal: input.signal,
           // A repaired early chapter must not inherit names/aliases revealed later.
           knownCharacters: mergeCharacterRegistry([...current.values()].filter(d => d.chapterIndex < index && d.contentVersion === snapshot.contentVersion)),
@@ -97,7 +100,7 @@ export async function digestMissingChapters(input: DigestMissingChaptersInput): 
         await input.checkChapter?.(index);
         input.signal?.throwIfAborted();
         if (snapshot.contentVersion) digest.contentVersion = snapshot.contentVersion;
-        await input.bookMemory.saveDigest(input.bookId, digest, snapshot.revision, input.signal);
+        await input.bookMemory.saveDigest(input.bookId, digest, prepared?.revision ?? snapshot.revision, input.signal);
         current.set(index, digest); report.digested++; report.remaining--;
         input.onChapterCommitted?.(index);
       } catch (error) {

@@ -162,3 +162,21 @@ test("digest input and model output budgets fail explicitly before persistence",
   await extractChapterDigest(base); expect(calls).toBe(1);
   await expect(extractChapterDigest({ ...base, complete: async () => fauxAssistantMessage("x".repeat(32001)) })).rejects.toMatchObject({ code: "memory/output-budget-exceeded" });
 });
+
+test("saved graph plan precedes execution and prepared output avoids a second model call", async () => {
+  const { deps } = fixture(), entered = deferred(), persisted = deferred();
+  const snapshot = await deps.bookMemory.inspectDigest("b", 0);
+  const digest = await extractChapterDigest({ model, chapterIndex: 0, chapterText: "Text", knownCharacters: [], complete: async () => reply() });
+  if (!snapshot || !digest) throw Error("Missing fixture");
+  let restored = false;
+  const work = digestMissingChapters({ ...deps, bookId: "b", model, beforeChapterIndex: 1, rebuild: true,
+    onPlan: async chapters => { expect(chapters).toEqual([0]); entered.resolve(); await persisted.promise; },
+    preparedDigest: async () => { restored = true; return { digest, revision: snapshot.revision }; },
+    complete: async () => { throw Error("Prepared output must not be regenerated"); },
+  });
+  await entered.promise;
+  expect(restored).toBe(false); expect(await deps.bookMemory.listDigests("b")).toHaveLength(0);
+  persisted.resolve();
+  expect(await work).toMatchObject({ status: "complete", digested: 1 });
+  expect(restored).toBe(true);
+});

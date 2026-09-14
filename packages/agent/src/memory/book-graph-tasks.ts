@@ -5,9 +5,10 @@ export interface BookGraphTaskExecution {
   rebuild: boolean;
   maxChapters: number;
   targets?: readonly number[];
+  preparedDigest?(chapter: number): Promise<{ digest: import("@read-aware/core").ChapterDigest; revision: string } | undefined>;
   signal: AbortSignal;
   onStarted(): void;
-  onPlan(chapters: number[]): void;
+  onPlan(chapters: number[]): void | Promise<void>;
   onChapterAttempted(chapter: number): void;
   onChapterCommitted(chapter: number): void;
   onReport(report: DigestReport): void;

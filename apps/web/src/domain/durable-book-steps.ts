@@ -1,3 +1,4 @@
+import { getDigestContentVersion, prepareDurableDigestWrite, commitDurableDigestWrite, durableDigestReceipt, type DurableDigestWrite } from "./book-digest";
 import { AppError, type DurableJobStep, type BookTextTaskSnapshot, type BookGraphTaskSnapshot } from "@read-aware/core";
 import type { DurableJobAttempt } from "../platform/durable-jobs";
 import type { DomainActor } from "../platform/domain-actor";
@@ -6,7 +7,8 @@ import { createBookTextTaskOwner, getBookTextSnapshot } from "../features/librar
 import { createBookGraphTasks } from "./book-graph-tasks";
 
 type BookStep = Exclude<DurableJobStep, { kind: "transaction" }>;
-type Data = { kind: BookStep["kind"]; bookId: string; taskId?: string; terminal?: BookTextTaskSnapshot | BookGraphTaskSnapshot };
+type GraphCheckpoint = { contentVersion: string; targets: number[]; completed: number[]; writes: Record<string, DurableDigestWrite> };
+type Data = { graph?: GraphCheckpoint; kind: BookStep["kind"]; bookId: string; taskId?: string; terminal?: BookTextTaskSnapshot | BookGraphTaskSnapshot };
 const attention = (code = "jobs/outcome-unknown", settled = false) => ({ status: "needs-attention" as const, code, settled });
 const complete = (receipt: unknown) => ({ status: "complete" as const, receipt });
 const bookStep = (step: DurableJobStep): BookStep => {
@@ -31,7 +33,8 @@ export function durableBookSteps(actor: DomainActor, acquire: (bookId: string, s
     async execute(input: DurableJobStep, attempt: DurableJobAttempt, signal: AbortSignal, checkpoint: (data: unknown) => Promise<void>) {
       const step = bookStep(input), data = checkpointData(step, attempt);
       const access = await acquire(step.bookId, signal);
-      const combined = AbortSignal.any([signal, access.signal]);
+      const cancellation = new AbortController();
+      const combined = AbortSignal.any([signal, access.signal, cancellation.signal]);
       const assert = () => { combined.throwIfAborted(); if (!access.isAllowed()) throw new AppError("plugin/object-access-denied", "Book task grant expired"); };
       try {
         assert();
@@ -53,15 +56,41 @@ export function durableBookSteps(actor: DomainActor, acquire: (bookId: string, s
             owner.dispose(); await owner.drain();
           }
         }
-        const owner = createBookGraphTasks();
+        let saved = structuredClone(data), updates = Promise.resolve();
+        const update = (change: (current: Data) => Data) => {
+          const work = updates.then(async () => { const next = change(saved); await checkpoint(next); saved = next; });
+          updates = work;
+          return work.catch(error => { cancellation.abort(error); throw error; });
+        };
+        const owner = createBookGraphTasks(undefined, undefined, {
+          targets: saved.graph?.targets.filter(index => !saved.graph!.completed.includes(index)),
+          preparedDigest: async chapter => {
+            const write = saved.graph?.writes[chapter];
+            return write ? { digest: structuredClone(write.digest), revision: write.expectedRevision } : undefined;
+          },
+          onPlan: async chapters => {
+            const contentVersion = await getDigestContentVersion(step.bookId, combined);
+            if (saved.graph && saved.graph.contentVersion !== contentVersion) throw new AppError("memory/conflict", "Graph source changed since checkpoint");
+            await update(current => ({ ...current, graph: current.graph ?? { contentVersion, targets: chapters, completed: [], writes: {} } }));
+          },
+          saveDigest: async (bookId, digest, revision, writeSignal) => {
+            assert();
+            if (!saved.graph || saved.graph.contentVersion !== digest.contentVersion) throw new AppError("memory/conflict", "Graph checkpoint source changed");
+            const write = saved.graph.writes[digest.chapterIndex] ?? await prepareDurableDigestWrite(bookId, digest, revision, writeSignal, actor);
+            await update(current => ({ ...current, graph: { ...current.graph!, writes: { ...current.graph!.writes, [digest.chapterIndex]: write } } }));
+            await commitDurableDigestWrite(write, writeSignal, actor);
+            await update(current => { const graph = structuredClone(current.graph!); delete graph.writes[digest.chapterIndex];
+              graph.completed = [...new Set([...graph.completed, digest.chapterIndex])]; return { ...current, graph }; });
+          },
+        });
         let taskId: string | undefined;
         try {
           const started = await owner.start(step.bookId, step.mode, step.options, combined, actor);
           taskId = started.taskId;
-          await checkpoint({ ...data, taskId });
+          await update(current => ({ ...current, taskId }));
           await owner.whenSettled(step.bookId, taskId);
           const terminal = await owner.get(step.bookId, taskId);
-          await checkpoint({ ...data, taskId, terminal });
+          await update(current => ({ ...current, taskId, terminal }));
           if (terminal.status === "completed") return complete(terminal);
           return attention(terminal.errorCode ?? "jobs/step-incomplete", true);
         } finally {
@@ -78,11 +107,23 @@ export function durableBookSteps(actor: DomainActor, acquire: (bookId: string, s
         assert();
         if (data.terminal?.status === "completed") return complete(data.terminal);
         if (step.kind === "book.graph") {
-          // Only a known-ended catch-up pass may be explicitly continued.
-          // Rebuild target recovery needs a persisted chapter plan, not an old digest.
-          return explicitResume && step.mode === "catch-up" && data.terminal
-            ? { status: "ready" as const, data: { kind: step.kind, bookId: step.bookId } }
-            : attention("jobs/outcome-unknown", !!data.terminal);
+          if (data.graph) {
+            if (await getDigestContentVersion(step.bookId, signal) !== data.graph.contentVersion) return attention("memory/conflict", !!data.terminal);
+            const next = structuredClone(data);
+            for (const [index, write] of Object.entries(next.graph!.writes)) {
+              if (await durableDigestReceipt(write)) {
+                delete next.graph!.writes[index]; next.graph!.completed = [...new Set([...next.graph!.completed, Number(index)])];
+              }
+              assert();
+            }
+            // A known partial result requires explicit continuation. A crashed
+            // pass uses its persisted targets and conditional generated writes.
+            if (data.terminal && !explicitResume) return attention("jobs/step-incomplete", true);
+            delete next.terminal;
+            return { status: "ready" as const, data: next };
+          }
+          if (explicitResume && data.terminal) return { status: "ready" as const, data: { kind: step.kind, bookId: step.bookId } };
+          return attention("jobs/outcome-unknown", !!data.terminal);
         }
         if (data.taskId) {
           const owner = createBookTextTaskOwner(undefined, actor);

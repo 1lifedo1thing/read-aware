@@ -246,7 +246,7 @@ export class AgentRuntime {
       deps: operation.protect({ ...this.options.deps, bookMemory: input.bookMemory ?? this.options.deps.bookMemory,
         bookText: input.bookText ?? this.options.deps.bookText,
         library: { ...this.options.deps.library, classifyBookIfUnclassified: input.classifyBookIfUnclassified ?? this.options.deps.library.classifyBookIfUnclassified } }), complete: operation.complete(this.completeFns.fast), model: this.resolveModel("fast"),
-      bookId: input.bookId, rebuild: input.rebuild, targets: input.targets, maxChapters: input.maxChapters, concurrency: 2, signal: operation.signal,
+      bookId: input.bookId, rebuild: input.rebuild, targets: input.targets, preparedDigest: input.preparedDigest, maxChapters: input.maxChapters, concurrency: 2, signal: operation.signal,
       onStarted: input.onStarted, onPlan: input.onPlan, onChapterAttempted: input.onChapterAttempted, onChapterCommitted: input.onChapterCommitted, onReport: input.onReport,
       resolveBoundary: operation.guard(input.resolveBoundary),
       checkChapter: operation.guard(async index => {

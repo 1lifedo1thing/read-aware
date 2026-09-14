@@ -415,7 +415,7 @@
 - Capability services：16 个。
 - Capability schemas：3 个。
 - Settings path：73 个。
-- Native command：238 个。
+- Native command：239 个。
 - Native plugin：12 个。
 - Menu placement：16 个。
 - Shortcut：19 个。
@@ -1307,6 +1307,7 @@
 | `storage::book_classification_commit` | [MEM09](#MEM09) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::book_digest_inspect` | [MEM10](#MEM10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::book_digest_commit` | [MEM10](#MEM10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::book_digest_receipt` | [MEM10](#MEM10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::memory_create` | [MEM02](#MEM02) [MEM04](#MEM04) [MEM05](#MEM05) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::memories_snapshot` | [MEM02](#MEM02) [MEM04](#MEM04) [MEM05](#MEM05) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::memory_maintenance_commit` | [MEM02](#MEM02) [MEM04](#MEM04) [MEM05](#MEM05) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |

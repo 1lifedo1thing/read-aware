@@ -54,3 +54,31 @@ export async function saveBookDigest(bookId: string, digest: ChapterDigest, expe
     broadcastDomainEventDrafts([draft]);
   });
 }
+
+/** Host-private prepared write, stored before native dispatch by durable jobs. */
+export type DurableDigestWrite = { bookId: string; digest: ChapterDigest; expectedRevision: string; event: Awaited<ReturnType<typeof mintEventRows>>[number] };
+export async function prepareDurableDigestWrite(bookId: string, digest: ChapterDigest, expectedRevision: string, signal: AbortSignal | undefined, origin: DomainActor): Promise<DurableDigestWrite> {
+  validateTarget(bookId, digest.chapterIndex); assertLive(signal);
+  const copy = structuredClone(digest);
+  if (!copy.contentVersion || await getDigestContentVersion(bookId, signal) !== copy.contentVersion) throw new AppError("memory/conflict", "Digest source changed before preparation");
+  const [event] = await mintEventRows([{ type: "book.chapterDigested", origin, payload: { ...copy, bookId, flavor: copy.flavor ?? "narrative" } }]);
+  assertLive(signal);
+  return { bookId, digest: copy, expectedRevision, event: event! };
+}
+export async function durableDigestReceipt(write: DurableDigestWrite): Promise<boolean> {
+  return invoke("book_digest_receipt", { event: write.event });
+}
+export async function commitDurableDigestWrite(write: DurableDigestWrite, signal: AbortSignal | undefined, origin: DomainActor): Promise<void> {
+  const copy = structuredClone(write);
+  if (await durableDigestReceipt(copy)) return;
+  await runDomainWrite(async () => {
+    assertLive(signal);
+    if (await getDigestContentVersion(copy.bookId, signal) !== copy.digest.contentVersion) throw new AppError("memory/conflict", "Digest source changed before commit");
+    try { await invoke("book_digest_commit", { event: copy.event, expectedRevision: copy.expectedRevision }); }
+    catch (error) {
+      // A concurrent retry or a lost reply may have committed this exact event.
+      if (!await durableDigestReceipt(copy)) throw error;
+    }
+    broadcastDomainEventDrafts([{ type: "book.chapterDigested", origin, payload: { ...copy.digest, bookId: copy.bookId, flavor: copy.digest.flavor ?? "narrative" } }]);
+  });
+}

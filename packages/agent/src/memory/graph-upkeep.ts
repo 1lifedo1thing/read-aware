@@ -30,8 +30,9 @@ export interface DigestBookTickInput {
   onProgress?: (digested: number) => void;
   rebuild?: boolean;
   targets?: readonly number[];
+  preparedDigest?(chapter: number): Promise<{ digest: import("@read-aware/core").ChapterDigest; revision: string } | undefined>;
   onStarted?: () => void;
-  onPlan?: (chapters: number[]) => void;
+  onPlan?: (chapters: number[]) => void | Promise<void>;
   onChapterAttempted?: (chapter: number) => void;
   onChapterCommitted?: (chapter: number) => void;
   onReport?: (report: DigestReport) => void;
@@ -149,7 +150,7 @@ async function digestBookTickExclusive(input: DigestBookTickInput): Promise<Dige
     signal: input.signal,
     log: deps.log,
     onProgress: input.onProgress,
-    rebuild: input.rebuild, targets: input.targets, onPlan: input.onPlan, onChapterAttempted: input.onChapterAttempted, onChapterCommitted: input.onChapterCommitted,
+    rebuild: input.rebuild, targets: input.targets, preparedDigest: input.preparedDigest, onPlan: input.onPlan, onChapterAttempted: input.onChapterAttempted, onChapterCommitted: input.onChapterCommitted,
     onReport: input.onReport, checkChapter: input.checkChapter,
   });
   if (!narrativity) { report.status = "partial"; report.reason = "classification-pending"; }

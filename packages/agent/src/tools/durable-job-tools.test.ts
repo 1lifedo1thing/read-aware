@@ -25,5 +25,5 @@ test("saved jobs dispatch only the approved cloned plan; declined resume stays s
   approve = false;
   await tools.find(tool => tool.name === "control_durable_job")!.execute("resume", { id: "saved", action: "resume" });
   expect(controls).toHaveLength(0);
-  expect(shown.at(-1)).toMatchObject({ action: "resume", id: "saved", plan: { title: "Stored plan" } });
+  expect(shown[shown.length - 1]).toMatchObject({ action: "resume", id: "saved", plan: { title: "Stored plan" } });
 });
