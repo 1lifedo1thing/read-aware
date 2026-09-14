@@ -957,6 +957,7 @@ pub fn run() {
             storage::append_events,
             storage::commit_events,
             storage::atomic_commit,
+            storage::atomic_receipt_get,
             storage::atomic_aggregate_revisions,
             storage::virtual_books::virtual_book_create,
             storage::virtual_books::virtual_book_prune,

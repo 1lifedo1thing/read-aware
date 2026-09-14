@@ -16,7 +16,7 @@ import { CHANNEL_KV_KEY } from "../../features/update/lib/update-channel";
 import type { SettingsDraft } from "./catalog-runtime";
 
 /** Only validated catalog edits reach this host-owned transaction. Secrets are never written here. */
-export function commitSettingsDraft(before: SettingsDraft, next: SettingsDraft, origin: DomainActor, applyStartup = false): Promise<void> {
+export function settingsDraftEntries(before: SettingsDraft, next: SettingsDraft, applyStartup = false): Map<string, string> {
   const entries = new Map<string, string>();
   const record = (key: string, previous: unknown, value: unknown) => {
     const encoded = JSON.stringify(value);
@@ -41,6 +41,10 @@ export function commitSettingsDraft(before: SettingsDraft, next: SettingsDraft, 
   for (const [pluginId, values] of Object.entries(next.pluginSettings.values)) {
     record(pluginSettingsKey(pluginId), before.pluginSettings.values[pluginId], values);
   }
-  // Domain commands return the exact failure to their UI, Agent or Worker owner.
-  return setLocalKVBatch(entries, origin, "local", "caller");
+  return entries;
+}
+
+/** Domain commands return the exact failure to their UI, Agent or Worker owner. */
+export function commitSettingsDraft(before: SettingsDraft, next: SettingsDraft, origin: DomainActor, applyStartup = false): Promise<void> {
+  return setLocalKVBatch(settingsDraftEntries(before, next, applyStartup), origin, "local", "caller");
 }

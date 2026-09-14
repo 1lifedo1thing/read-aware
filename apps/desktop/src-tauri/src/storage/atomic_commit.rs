@@ -4,35 +4,44 @@ use super::*;
 use rusqlite::OptionalExtension;
 use sha2::{Digest, Sha256};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AtomicAggregateGuard {
     pub aggregate_type: String,
     pub aggregate_id: String,
     pub revision: String,
 }
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AtomicSettingChange {
     pub key: String,
     pub expected: Option<String>,
     pub value: Option<String>,
 }
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AtomicDocumentChanges {
     pub plugin_id: String,
     pub changes: Vec<PluginDocumentMutation>,
 }
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AtomicCommitInput {
+    pub journal: Option<AtomicJournal>,
     pub guards: Vec<AtomicAggregateGuard>,
     pub events: Vec<EventRow>,
     pub settings: Vec<AtomicSettingChange>,
     pub documents: Vec<AtomicDocumentChanges>,
 }
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AtomicJournal {
+    pub id: String,
+    pub owner: String,
+    /// Host-owned semantic plan, inverse bytes and authorization targets.
+    pub metadata: Value,
+}
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "kebab-case")]
 pub enum AtomicCommitResult {
     Conflict { domain: String, index: usize },
@@ -54,6 +63,14 @@ pub(crate) fn atomic_aggregate_revision(conn: &Connection, kind: &str, id: &str)
 }
 
 pub(crate) fn atomic_commit_inner(conn: &mut Connection, input: AtomicCommitInput) -> Result<AtomicCommitResult, CommandError> {
+    let encoded = serde_json::to_vec(&input)?;
+    if encoded.len() > 8 * 1024 * 1024 { return Err(invalid("Transaction exceeds 8 MiB")); }
+    let request_hash = format!("{:x}", Sha256::digest(&encoded));
+    if let Some(journal) = &input.journal {
+        if journal.id.is_empty() || journal.id.len() > 128 || journal.owner.is_empty() || journal.owner.len() > 512 {
+            return Err(invalid("Invalid transaction identity"));
+        }
+    }
     let total = input.events.len() + input.settings.len() + input.documents.iter().map(|group| group.changes.len()).sum::<usize>();
     if total == 0 || total > 100 || input.guards.len() > 100 { return Err(invalid("Expected 1..100 operations")); }
     let bytes = input.events.iter().map(|event| event.payload.to_string().len()).sum::<usize>()
@@ -94,6 +111,16 @@ pub(crate) fn atomic_commit_inner(conn: &mut Connection, input: AtomicCommitInpu
         if !owners.insert(&group.plugin_id) { return Err(invalid("Duplicate document owner")); }
     }
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+    if let Some(journal) = &input.journal {
+        let previous: Option<(String, String)> = tx.query_row("SELECT request_hash, receipt_json FROM atomic_receipts WHERE owner=?1 AND id=?2",
+            params![journal.owner, journal.id], |row| Ok((row.get(0)?, row.get(1)?))).optional()?;
+        if let Some((hash, receipt)) = previous {
+            if hash != request_hash { return Err(invalid("Transaction identity was already used for different operations")); }
+            return Ok(serde_json::from_str(&receipt)?);
+        }
+        let used: i64 = tx.query_row("SELECT COALESCE(sum(length(metadata_json)+length(receipt_json)),0) FROM atomic_receipts WHERE owner=?1", [&journal.owner], |row| row.get(0))?;
+        if used + encoded.len() as i64 > 64 * 1024 * 1024 { return Err(CommandError::new("transaction/quota-exceeded", "Transaction receipt storage is full")); }
+    }
     if super::events::projections_stale_conn(&tx)? { return Err(CommandError::new("transaction/conflict", "Projections require rebuilding")); }
     for (index, guard) in input.guards.iter().enumerate() {
         if atomic_aggregate_revision(&tx, &guard.aggregate_type, &guard.aggregate_id)? != guard.revision {
@@ -120,8 +147,17 @@ pub(crate) fn atomic_commit_inner(conn: &mut Connection, input: AtomicCommitInpu
         }
         documents.push(result);
     }
+    let result = AtomicCommitResult::Applied { events, documents };
+    if let Some(journal) = input.journal {
+        let revisions = input.guards.iter().map(|guard| Ok(serde_json::json!({
+            "aggregateType": guard.aggregate_type, "aggregateId": guard.aggregate_id,
+            "revision": atomic_aggregate_revision(&tx, &guard.aggregate_type, &guard.aggregate_id)?
+        }))).collect::<Result<Vec<Value>, CommandError>>()?;
+        tx.execute("INSERT INTO atomic_receipts (owner,id,request_hash,metadata_json,receipt_json,revisions_json) VALUES (?1,?2,?3,?4,?5,?6)",
+            params![journal.owner, journal.id, request_hash, journal.metadata.to_string(), serde_json::to_string(&result)?, serde_json::to_string(&revisions)?])?;
+    }
     tx.commit()?;
-    Ok(AtomicCommitResult::Applied { events, documents })
+    Ok(result)
 }
 
 #[tauri::command]
@@ -149,3 +185,18 @@ pub async fn atomic_aggregate_revisions(aggregates: Vec<(String, String)>, app: 
 #[cfg(test)]
 #[path = "atomic_commit_tests.rs"]
 mod tests;
+
+#[tauri::command]
+pub async fn atomic_receipt_get(owner: String, id: String, app: tauri::AppHandle) -> Result<Option<Value>, CommandError> {
+    if owner.is_empty() || owner.len() > 512 || id.is_empty() || id.len() > 128 { return Err(invalid("Invalid transaction identity")); }
+    crate::storage::blocking("atomic_receipt_get", move || {
+        let db = tauri::Manager::state::<Db>(&app);
+        let conn = db.0.lock()?;
+        let stored: Option<(String, String, String)> = conn.query_row("SELECT metadata_json,receipt_json,revisions_json FROM atomic_receipts WHERE owner=?1 AND id=?2",
+            params![owner,id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?))).optional()?;
+        stored.map(|(metadata,receipt,revisions)| Ok(serde_json::json!({
+            "id":id, "metadata":serde_json::from_str::<Value>(&metadata)?,
+            "receipt":serde_json::from_str::<Value>(&receipt)?, "revisions":serde_json::from_str::<Value>(&revisions)?
+        }))).transpose()
+    }).await
+}

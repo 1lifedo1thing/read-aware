@@ -209,7 +209,7 @@ export function broadcastDomainEventDrafts(drafts: DomainEventDraft[]): void {
   broadcastDomainEvents(drafts);
 }
 
-function broadcastDomainEvents(drafts: DomainEventDraft[]): void {
+export function broadcastDomainEvents(drafts: DomainEventDraft[]): void {
   for (const draft of drafts) actorCause(draft.origin);
   if (domainListeners.size === 0) return;
   const now = new Date().toISOString();
@@ -303,4 +303,10 @@ export async function listEventAggregateIds(types: DomainEventType[]): Promise<S
   if (!isTauri()) return new Set();
   const ids = await invoke<string[]>("list_event_aggregate_ids", { types });
   return new Set(ids);
+}
+
+/** Host transaction compiler; callers never supply event IDs or HLC stamps. */
+export async function prepareAtomicEventRows(drafts: DomainEventDraft[]) {
+  const { deviceId } = await getDeviceInfo();
+  return drafts.map(draft => toEventRow(draft, deviceId));
 }

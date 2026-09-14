@@ -77,3 +77,5 @@ export * from "./plugin-assets";
 export * from "./model-image";
 export * from "./operation-availability";
 export * from "./plugin-services";
+
+export * from "./transactions";

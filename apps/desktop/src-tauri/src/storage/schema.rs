@@ -779,6 +779,11 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
         CREATE TRIGGER trg_import_cleanup_committed AFTER INSERT ON books BEGIN
             DELETE FROM book_import_cleanup WHERE book_id=new.id;
         END;"),
+    (46, "atomic_receipts", "CREATE TABLE atomic_receipts (
+        owner TEXT NOT NULL, id TEXT NOT NULL, request_hash TEXT NOT NULL,
+        metadata_json TEXT NOT NULL, receipt_json TEXT NOT NULL, revisions_json TEXT NOT NULL,
+        PRIMARY KEY(owner,id)
+    );"),
 ];
 
 /// Rebuild the annotation FTS index from the table. Required after any VACUUM

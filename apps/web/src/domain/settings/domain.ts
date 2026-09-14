@@ -51,7 +51,8 @@ import {
 } from "../../features/plugins/state/plugin-store";
 import { getAIConfig } from "../../features/ai/lib/ai-config";
 import { withPluginDataWrites } from "../../platform/plugin-data-access";
-import { commitSettingsDraft } from "./persistence";
+import { commitSettingsDraft, settingsDraftEntries } from "./persistence";
+import { localKV } from "../../platform/local-store";
 import { afterSettingsWrites, initializeSettingsObservation, settingsObservation } from "./observation-sources";
 import { getDefaultMarkColor } from "../../features/annotations/lib/annotation-prefs";
 import { getUpdateChannel } from "../../features/update/lib/update-channel";
@@ -201,11 +202,19 @@ async function applySettingsChanges(
 
 async function commitResult(origin: DomainActor, before: SettingsDraft, result: { draft: SettingsDraft; changed: SettingChange[] }, query?: SettingsQuery): Promise<SettingsUpdateResult> {
   await commitSettingsDraft(before, result.draft, origin, result.changed.some(change => change.path === "general.launchAtStartup"));
-  if (result.changed.length > 0) {
+  publishSettingsChanges(origin, result.changed);
+  return {
+    changed: result.changed,
+    settings: { ...settingsSnapshotFromDraft(result.draft, query), revision: settingsObservation.revision },
+  };
+}
+
+export function publishSettingsChanges(origin: DomainActor, changed: SettingChange[]): void {
+  if (changed.length > 0) {
     const event: SettingsChangedEvent = stampEventCause({
       type: "settings.changed",
       origin: actorOrigin(origin),
-      changes: result.changed,
+      changes: changed,
     }, origin);
     for (const listener of [...listeners]) {
       try {
@@ -218,10 +227,6 @@ async function commitResult(origin: DomainActor, before: SettingsDraft, result: 
       }
     }
   }
-  return {
-    changed: result.changed,
-    settings: { ...settingsSnapshotFromDraft(result.draft, query), revision: settingsObservation.revision },
-  };
 }
 
 // Read each patch from the settled predecessor, not from a failed optimistic
@@ -374,4 +379,35 @@ export function createSettingsDomain(
       },
     },
   };
+}
+
+/** Host-only planning. The returned KV bytes never enter the public capability. */
+export async function prepareAtomicSettings(origin: DomainActor, changes: SettingChange[], access?: SettingsAccessPolicy) {
+  const accepted = structuredClone(changes);
+  const policy = actorPolicy(origin, access);
+  for (const change of accepted) {
+    if (!canAccess(policy, "write", change.path)) throw new AppError("settings/forbidden", "Setting is not writable");
+    if (["general.launchAtStartup", "general.fileAssociations"].includes(change.path)) {
+      throw new AppError("transaction/invalid-operation", "System side effects cannot join an atomic transaction");
+    }
+  }
+  await updateTail;
+  return afterSettingsWrites(() => {
+    const before = readDraft();
+    const result = applySettingChangesToDraft(before, accepted);
+    const entries = settingsDraftEntries(before, result.draft);
+    const beforeValues = result.changed.flatMap(change => {
+      const targets = change.target?.kind === "all-books"
+        ? [{ kind: "global" as const }, ...Object.keys(before.readerOverrides).map(bookId => ({ kind: "book" as const, bookId }))]
+        : [change.target ?? { kind: "global" as const }];
+      return targets.map(target => {
+        const descriptor = settingsSnapshotFromDraft(before, { target }).settings.find(item => item.path === change.path);
+        if (!descriptor) throw new AppError("transaction/invalid-operation", "Setting cannot be restored");
+        return { path: change.path, target, value: descriptor.value } as SettingChange;
+      });
+    });
+    return { changed: result.changed, beforeValues,
+      entries: [...entries].map(([key, value]) => ({ key, expected: localKV.getItem(key), value })),
+    };
+  });
 }

@@ -52,7 +52,7 @@ struct DocumentCursor {
     id: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "kebab-case")]
 pub enum PluginDocumentPageResult {
     StaleCursor,
@@ -152,7 +152,7 @@ pub(crate) fn plugin_docs_page_inner(
     Ok(PluginDocumentPageResult::Ready { items, next_cursor })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginDocumentMutation {
     pub collection: String,
@@ -162,7 +162,7 @@ pub struct PluginDocumentMutation {
     pub operation: PluginDocumentOperation,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum PluginDocumentOperation {
     #[serde(rename_all = "camelCase")]
@@ -171,7 +171,7 @@ pub enum PluginDocumentOperation {
     Check,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginDocumentReceipt {
     collection: String,
@@ -179,7 +179,7 @@ pub struct PluginDocumentReceipt {
     revision: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "kebab-case")]
 pub enum PluginDocumentCommitResult {
     Conflict { index: usize },
