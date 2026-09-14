@@ -12,7 +12,7 @@ export const softwareUpdater = new SoftwareUpdateController({
   version: readCurrentAppVersion, check: findSoftwareUpdate, install: installSoftwareUpdate,
 }, (message, error) => log.error(message, error));
 
-const unsubscribe = subscribeUpdateChannel(() => softwareUpdater.channelChanged());
+const unsubscribe = subscribeUpdateChannel(origin => softwareUpdater.channelChanged(origin));
 const installerOpened = () => softwareUpdater.installerOpened();
 if (typeof window !== "undefined") window.addEventListener("ra-android-installer-opened", installerOpened);
 if (import.meta.hot) import.meta.hot.dispose(() => {

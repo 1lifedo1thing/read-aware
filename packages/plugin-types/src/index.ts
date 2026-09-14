@@ -2396,7 +2396,7 @@ export type PluginHostServices = {
      * No passwords, bytes or paths; the final receipt does not identify the chosen format. */
     requestBackup(action: import("@read-aware/core").BackupAction, options?: PluginCallOptions): Promise<import("@read-aware/core").BackupReceipt>;
     snapshot(): Promise<import("@read-aware/core").HostMaintenanceSnapshot>;
-    observe(handler: (snapshot: import("@read-aware/core").HostMaintenanceSnapshot) => unknown): PluginDisposable;
+    observe(handler: PluginObservationHandler<import("@read-aware/core").HostMaintenanceSnapshot>, options?: { ruleId?: string }): PluginDisposable;
     /** Reveals the host's controls only; export/send/install still require native user actions. */
     /** Maintenance 1.4 adds data-location: shows the directory in host UI, never returns its path or opens the file manager.
      * Also reveals updates/diagnostics/plugins/backup-import/backup-export/delete-data/ai-connection.

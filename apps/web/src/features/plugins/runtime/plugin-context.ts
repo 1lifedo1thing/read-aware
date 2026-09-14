@@ -933,10 +933,10 @@ export function buildPluginContext(
         requestBackup: (action, options) => lifecycle.read("services.maintenance.requestBackup",
           signal => hostMaintenance.requestBackup(action, signal), callSignal(options)),
         snapshot: async () => { lifecycle.assertActive("services.maintenance.snapshot"); return hostMaintenance.snapshot(); },
-        observe: handler => track(() => ({ dispose: hostMaintenance.observe(handler) })),
+        observe: handler => track(() => ({ dispose: hostMaintenance.observe(handler, operationActor) })),
         openSettings: surface => { lifecycle.assertActive("services.maintenance.openSettings"); return hostMaintenance.openSettings(surface, lifecycle.signal); },
         ...(canUseHostService("network", permissions) ? {
-          checkForUpdates: () => { lifecycle.assertActive("services.maintenance.checkForUpdates"); return hostMaintenance.checkForUpdates(lifecycle.signal); },
+          checkForUpdates: () => { lifecycle.assertActive("services.maintenance.checkForUpdates"); return hostMaintenance.checkForUpdates(lifecycle.signal, operationActor); },
         } : {}),
       },
       resources: {

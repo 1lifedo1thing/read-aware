@@ -1,3 +1,5 @@
+import { observeSnapshot } from "../domain/snapshot-observation";
+import { causalActor, copyEventCause, type DomainActor } from "../platform/domain-actor";
 import { AppError, HOST_MAINTENANCE_SURFACES, type HostMaintenancePort, type HostMaintenanceSnapshot, type HostMaintenanceSurface, type WorkspaceSettingsSection } from "@read-aware/core";
 
 export function maintenanceSection(surface: HostMaintenanceSurface): WorkspaceSettingsSection {
@@ -12,8 +14,8 @@ type Adapter = {
   requestConnectionTest?: HostMaintenancePort["requestConnectionTest"];
   requestBackup?: HostMaintenancePort["requestBackup"];
   snapshot(): HostMaintenanceSnapshot;
-  check(signal?: AbortSignal): Promise<HostMaintenanceSnapshot>;
-  subscribe(handler: () => void): () => void;
+  check(signal?: AbortSignal, origin?: DomainActor): Promise<HostMaintenanceSnapshot>;
+  subscribe(handler: (source: object) => void): () => void;
   navigate(section: WorkspaceSettingsSection, signal?: AbortSignal): Promise<unknown>;
 };
 
@@ -34,7 +36,7 @@ export class HostMaintenanceService implements HostMaintenancePort {
     if (!this.adapter.requestBackup) throw new AppError("ui/unavailable", "Backup controls are unavailable");
     return this.adapter.requestBackup(action, signal);
   }
-  checkForUpdates(signal?: AbortSignal) { return this.adapter.check(signal); }
+  checkForUpdates(signal?: AbortSignal, origin: DomainActor = "user") { return this.adapter.check(signal, causalActor(origin)); }
 
   /** Host mount registration, never included in the Worker/Agent port. */
   bindSurface(surface: HostMaintenanceSurface, reveal: () => void): () => void {
@@ -58,23 +60,14 @@ export class HostMaintenanceService implements HostMaintenancePort {
     reveal();
   }
 
-  observe(handler: (value: HostMaintenanceSnapshot) => unknown): () => void {
+  observe(handler: (value: HostMaintenanceSnapshot) => unknown, origin?: DomainActor): () => void {
     if (this.observerCount >= 64) throw new AppError("ui/observer-limit", "Too many maintenance observers");
-    let stopped = false, running = false, dirty = false;
-    const notify = async () => {
-      dirty = true;
-      if (running || stopped) return;
-      running = true;
-      try {
-        do {
-          dirty = false;
-          try { await handler(this.adapter.snapshot()); } catch (error) { this.report(error); }
-        } while (dirty && !stopped);
-      } finally { running = false; }
-    };
-    const off = this.adapter.subscribe(() => { void notify(); });
     this.observerCount++;
-    void notify();
-    return () => { if (!stopped) { stopped = true; this.observerCount--; off(); } };
+    try {
+      const off = observeSnapshot(() => this.adapter.snapshot(), notify => this.adapter.subscribe(notify),
+        (value, source) => handler(copyEventCause(source, value)), this.report, origin);
+      let stopped = false;
+      return () => { if (!stopped) { stopped = true; this.observerCount--; off(); } };
+    } catch (error) { this.observerCount--; throw error; }
   }
 }

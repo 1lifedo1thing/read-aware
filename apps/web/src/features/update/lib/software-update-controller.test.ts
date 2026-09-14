@@ -1,3 +1,4 @@
+import { actorCause, causalActor, eventCause } from "../../../platform/domain-actor";
 import { expect, test } from "bun:test";
 import type { HostUpdateState } from "@read-aware/core";
 import { SoftwareUpdateController } from "./software-update-controller";
@@ -19,13 +20,15 @@ test("native and external checks share one flight; cancelled caller does not can
   let checks = 0;
   f.adapter.check = () => { checks++; return release.promise; };
   const abort = new AbortController();
-  const a = f.controller.checkForUpdates(abort.signal), b = f.controller.checkForUpdates();
+  const origin = causalActor("plugin:update");
+  const a = f.controller.checkForUpdates(abort.signal, origin), b = f.controller.checkForUpdates();
   await Bun.sleep(0);
   expect(checks).toBe(1); expect(f.controller.snapshot().phase).toBe("checking");
   const cancelled = a.then(() => null, error => error); abort.abort();
   release.resolve({ currentVersion: "1.0.0", version: "1.1.0" });
   expect(await cancelled).toBeInstanceOf(Error);
   expect(await b).toMatchObject({ phase: "available", checkedChannel: "stable", availableVersion: "1.1.0" });
+  expect(eventCause(f.controller.snapshot())).toEqual(actorCause(origin));
   const before = checks;
   await expect(f.controller.checkForUpdates(abort.signal)).rejects.toThrow();
   expect(checks).toBe(before);

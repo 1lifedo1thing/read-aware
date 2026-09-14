@@ -41,7 +41,7 @@ export const HOST_SERVICE_CATALOG = {
   transactions: { version: "1.0.0", permission: null },
   session: { version: "2.11.0", permission: null },
   plugins: { version: "1.10.0", permission: null },
-  maintenance: { version: "1.4.0", permission: null },
+  maintenance: { version: "1.5.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
   logging: { version: "1.0.0", permission: null },
   resources: { version: "1.5.0", permission: null },

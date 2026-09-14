@@ -1,3 +1,4 @@
+import { actorCause, causalActor, eventCause, stampEventCause } from "../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { HOST_MAINTENANCE_SURFACES, type HostMaintenanceSnapshot, type WorkspaceSettingsSection } from "@read-aware/core";
 import { HostMaintenanceService } from "./maintenance-controller";
@@ -5,11 +6,11 @@ import { HostMaintenanceService } from "./maintenance-controller";
 function fixture() {
   const state: HostMaintenanceSnapshot = { phase: "idle", supported: true, channel: "stable", checkedChannel: null,
     currentVersion: "1.0", availableVersion: null, progress: null, errorStage: null };
-  const listeners = new Set<() => void>(), errors: unknown[] = [];
+  const listeners = new Set<(source: object) => void>(), errors: unknown[] = [];
   const adapter = { snapshot: () => ({ ...state }), check: async () => ({ ...state }), navigate: async (_section: WorkspaceSettingsSection, _signal?: AbortSignal) => {},
-    subscribe: (handler: () => void) => { listeners.add(handler); return () => { listeners.delete(handler); }; } };
+    subscribe: (handler: (source: object) => void) => { listeners.add(handler); return () => { listeners.delete(handler); }; } };
   const service = new HostMaintenanceService(adapter, error => errors.push(error));
-  return { state, listeners, errors, adapter, service, notify: () => { for (const h of listeners) h(); } };
+  return { state, listeners, errors, adapter, service, notify: (source = stampEventCause({})) => { for (const h of listeners) h(source); } };
 }
 
 test("maintenance opens only mounted host controls after navigation; no export, send or install authority", async () => {
@@ -28,10 +29,12 @@ test("maintenance opens only mounted host controls after navigation; no export, 
 
 test("maintenance observation is initial, coalesced, serial and released with no payload mutation", async () => {
   const f = fixture(), release = Promise.withResolvers<void>(), seen: string[] = [];
-  const off = f.service.observe(async state => { seen.push(state.phase); state.currentVersion = "tampered"; if (seen.length === 1) await release.promise; });
-  f.state.phase = "checking"; f.notify(); f.state.phase = "available"; f.notify();
+  const origin = causalActor("plugin:maintenance"), source = stampEventCause({}, origin);
+  const causes: unknown[] = [];
+  const off = f.service.observe(async state => { causes.push(eventCause(state)); seen.push(state.phase); state.currentVersion = "tampered"; if (seen.length === 1) await release.promise; });
+  f.state.phase = "checking"; f.notify(source); f.state.phase = "available"; f.notify(source);
   expect(seen).toEqual(["idle"]); expect((await f.service.snapshot()).currentVersion).toBe("1.0");
-  release.resolve(); await Bun.sleep(0); expect(seen).toEqual(["idle", "available"]);
+  release.resolve(); await Bun.sleep(0); expect(seen).toEqual(["idle", "available"]); expect(causes[1]).toEqual(actorCause(origin));
   off(); off(); expect(f.listeners.size).toBe(0); f.notify(); expect(seen).toHaveLength(2);
   const failing = f.service.observe(() => { throw Error("callback"); });
   await Bun.sleep(0); expect(f.errors).toHaveLength(1); failing();

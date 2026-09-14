@@ -7,7 +7,7 @@ type Snapshot = Awaited<ReturnType<PluginContext["services"]["maintenance"]["sna
 export function updateViews(ctx: PluginContext, signal: AbortSignal) {
   const t = adminCopy(ctx.locale), maintenance = ctx.services.maintenance;
   const show = (snapshot: Snapshot): PluginView => liveView(ctx, signal, snapshot,
-    handler => maintenance.observe(handler), render);
+    handler => maintenance.observe(handler, { ruleId: "updates-live" }), render);
   const render = (snapshot: Snapshot): PluginView => {
     const busy = ["checking", "downloading", "installing"].includes(snapshot.phase);
     return { kind: "detail", title: t.updates, content: [

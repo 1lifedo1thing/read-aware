@@ -566,7 +566,7 @@ function pluginDirectory(ctx, signal) {
 // src/updates.ts
 function updateViews(ctx, signal) {
   const t = adminCopy(ctx.locale), maintenance = ctx.services.maintenance;
-  const show = (snapshot) => liveView(ctx, signal, snapshot, (handler) => maintenance.observe(handler), render);
+  const show = (snapshot) => liveView(ctx, signal, snapshot, (handler) => maintenance.observe(handler, { ruleId: "updates-live" }), render);
   const render = (snapshot) => {
     const busy = ["checking", "downloading", "installing"].includes(snapshot.phase);
     return { kind: "detail", title: t.updates, content: [

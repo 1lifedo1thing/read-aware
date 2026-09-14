@@ -1,3 +1,4 @@
+import type { DomainActor } from "../../../platform/domain-actor";
 /**
  * The update channel preference: Stable follows GitHub's `releases/latest`
  * (never a pre-release); Beta follows the semver-largest release INCLUDING
@@ -16,8 +17,8 @@ export function getUpdateChannel(): UpdateChannel {
   return localKV.getItem(CHANNEL_KV_KEY) === "beta" ? "beta" : "stable";
 }
 
-export function subscribeUpdateChannel(onChange: () => void): () => void {
-  return onLocalKVChange(key => { if (key === CHANNEL_KV_KEY) onChange(); });
+export function subscribeUpdateChannel(onChange: (origin: DomainActor) => void): () => void {
+  return onLocalKVChange((key, _value, origin) => { if (key === CHANNEL_KV_KEY) onChange(origin); });
 }
 
 export function setUpdateChannel(channel: UpdateChannel): void {

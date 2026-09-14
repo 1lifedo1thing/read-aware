@@ -1,3 +1,4 @@
+import { stampEventCause } from "../platform/domain-actor";
 import { getDefaultStore } from "jotai";
 import { softwareUpdateAtom } from "../features/update/state/software-update";
 import { softwareUpdater } from "../features/update/lib/software-update-runtime";
@@ -53,9 +54,11 @@ export const hostMaintenance = new HostMaintenanceService({
   requestConnectionTest: signal => hostConnectionTestFlows.request({ action: "test" }, signal),
   requestBackup: (action, signal) => hostBackupFlows.request({ action }, signal),
   snapshot: () => softwareUpdater.snapshot(),
-  check: signal => softwareUpdater.checkForUpdates(signal),
+  check: (signal, origin) => softwareUpdater.checkForUpdates(signal, origin),
   subscribe: handler => {
-    const state = getDefaultStore().sub(softwareUpdateAtom, handler), channel = subscribeUpdateChannel(handler);
+    const store = getDefaultStore();
+    const state = store.sub(softwareUpdateAtom, () => handler(store.get(softwareUpdateAtom))),
+      channel = subscribeUpdateChannel(origin => handler(stampEventCause({}, origin)));
     return () => { state(); channel(); };
   },
   navigate: (section, signal) => workspace.navigate({ surface: "settings", section }, undefined, signal),

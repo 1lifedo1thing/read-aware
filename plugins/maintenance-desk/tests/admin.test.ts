@@ -22,7 +22,7 @@ async function select(current: PluginView, id: string) {
 }
 function fixture() {
   let directoryHandler!: Parameters<Directory["observe"]>[1], contributionHandler!: Parameters<Directory["observeContributions"]>[1];
-  let updateHandler!: (snapshot: Snapshot) => void;
+  let updateHandler!: Parameters<PluginContext["services"]["maintenance"]["observe"]>[0];
   let command!: PluginCommand;
   const entry = { id: "jumper", name: "Jumper", version: "0.4.0", enabled: true, builtin: false, activationFailed: true };
   const page: Page = { plugins: [entry], total: 41, offset: 0, nextOffset: 40 };
@@ -50,7 +50,7 @@ function fixture() {
   return { ctx, page, contributions, state, list, readContributions, snapshot, checkForUpdates, openSettings, publishView,
     disposeDirectory, disposeContributions, disposeUpdates, command: () => command,
     directoryChanged: (value: Page, delivery?: PluginReactionEvent) => directoryHandler(value, delivery), contributionsChanged: (value: Contributions, delivery?: PluginReactionEvent) => contributionHandler(value, delivery),
-    updateChanged: (value: Snapshot) => updateHandler(value) };
+    updateChanged: (value: Snapshot, delivery?: PluginReactionEvent) => updateHandler(value, delivery) };
 }
 
 test("directory, metadata and contribution identities compose without mutating installed plugins", async () => {
@@ -135,6 +135,12 @@ test("contribution-driven rendering uses the bound context while later user acti
       await f.directoryChanged(f.page, { reaction: { id: "cycle", status: "cycle" } });
       expect(publish).toHaveBeenCalledTimes(2);
     } finally { directorySubscription.dispose(); }
+    const updates = await select(desk.home(), "updates"), updateSubscription = await updates.live!.subscribe({ id: "causal-update" });
+    try {
+      await f.updateChanged(f.state, delivery); expect(publish).toHaveBeenCalledTimes(3);
+      await f.updateChanged(f.state, { reaction: { id: "cycle", status: "cycle" } });
+      expect(publish).toHaveBeenCalledTimes(3);
+    } finally { updateSubscription.dispose(); }
   } finally { subscription.dispose(); desk.dispose(); }
 });
 
