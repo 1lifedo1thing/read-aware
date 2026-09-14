@@ -1,7 +1,7 @@
-import { type DomainActor } from "../platform/domain-actor";
+import { stampEventCause, type DomainActor } from "../platform/domain-actor";
 import type { HostCommandId, HostCommandObservation, HostCommandSnapshot } from "@read-aware/core";
 import { createSettingsDomain, type SettingsDomain } from "../domain/settings/domain";
-import { i18n } from "../i18n/instance";
+import { i18n, localeActor } from "../i18n";
 import { createHostCommands } from "./host-commands";
 import { workspace } from "./workspace";
 import { readingRuntime } from "../domain/reading-runtime";
@@ -26,18 +26,19 @@ export function actorHostCommands(settings: SettingsDomain, canReadWorkspace: bo
     openBook: (bookId, signal) => readingRuntime.navigate({ bookId }, signal, origin) });
   return { ...commands, observe: (handler: (state: HostCommandObservation) => unknown,
     read: (signal: AbortSignal) => Promise<HostCommandSnapshot> = commands.list,
-    observeExtra?: (invalidate: () => void) => () => void) => observers.observe(read, invalidate => {
+    observeExtra?: (invalidate: (source?: object) => void) => () => void) => observers.observe(read, invalidate => {
     const releases: (() => void)[] = [];
     const release = () => { for (const dispose of releases.splice(0).reverse()) dispose(); };
     try {
-      if (canReadWorkspace) releases.push(workspace.observe({ limit: 1 }, invalidate));
+      if (canReadWorkspace) releases.push(workspace.observe({ limit: 1 }, (_state, source) => invalidate(source), undefined, origin));
       releases.push(settings.queries.observe({ section: "shelf" }, invalidate));
       if (observeExtra) releases.push(observeExtra(invalidate));
-      i18n.on("languageChanged", invalidate);
-      releases.push(() => { i18n.off("languageChanged", invalidate); });
+      const localeChanged = () => invalidate(stampEventCause({}, localeActor()));
+      i18n.on("languageChanged", localeChanged);
+      releases.push(() => { i18n.off("languageChanged", localeChanged); });
       return release;
     } catch (error) { release(); throw error; }
-  }, handler) };
+  }, handler, origin) };
 }
 export function trustedHostCommands(origin: DomainActor) {
   return actorHostCommands(createSettingsDomain(origin), true, true, true, origin);

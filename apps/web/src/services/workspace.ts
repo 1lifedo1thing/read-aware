@@ -1,3 +1,4 @@
+import { observeSnapshot } from "../domain/snapshot-observation";
 import { causalActor, copyEventCause, eventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import { AppError, normalizeWorkspaceQuery, normalizeWorkspaceTarget, type WorkspaceQuery, type WorkspaceReceipt, type WorkspaceSnapshot, type WorkspaceTarget } from "@read-aware/core";
 import { createLogger } from "../platform/logger";
@@ -30,7 +31,7 @@ export class WorkspaceService {
   private pending?: Pending;
   private revision = 0;
   private token = 0;
-  private observers = new Set<() => void>();
+  private observers = new Set<(source: object) => void>();
 
   constructor(private readonly report: (error: unknown) => void, private readonly deadlineMs = 10_000) {}
 
@@ -47,32 +48,20 @@ export class WorkspaceService {
       total: ids.length, bookIds: page, nextCursor: remaining.length > page.length ? page.at(-1)! : null } });
   }
 
-  observe(query: WorkspaceQuery, handler: (value: WorkspaceSnapshot | null) => unknown,
-    project?: (view: WorkspaceView) => WorkspaceView): () => void {
+  observe(query: WorkspaceQuery, handler: (value: WorkspaceSnapshot | null, source: object) => unknown,
+    project?: (view: WorkspaceView) => WorkspaceView, origin: DomainActor = "system"): () => void {
     const accepted = normalizeWorkspaceQuery(query);
     if (this.observers.size >= 64) throw new AppError("ui/observer-limit", "Too many workspace observers");
-    let disposed = false, running = false, dirty = false;
-    const deliver = async () => {
-      if (disposed) return;
-      dirty = true;
-      if (running) return;
-      running = true;
-      try {
-        do {
-          dirty = false;
-          try { await handler(this.binding ? this.snapshot(accepted, project) : null); } catch (error) { this.report(error); }
-        } while (dirty && !disposed);
-      } finally { running = false; }
-    };
-    const notify = () => { void deliver(); };
-    this.observers.add(notify); notify();
-    return () => { disposed = true; this.observers.delete(notify); };
+    return observeSnapshot(() => this.binding ? this.snapshot(accepted, project) : null, notify => {
+      this.observers.add(notify);
+      return () => { this.observers.delete(notify); };
+    }, handler, this.report, origin);
   }
 
   bind(adapter: Adapter, initial: WorkspaceView) {
     this.cancel(new AppError("ui/superseded", "Workspace owner changed"));
     const binding: Binding = { adapter, view: eventCause(initial) ? copyEventCause(initial, structuredClone(initial)) : stampEventCause(structuredClone(initial), "system"), token: 0, acknowledgements: new Map() };
-    this.binding = binding; this.changed();
+    this.binding = binding; this.changed(binding.view);
     return {
       publish: (view: WorkspaceView, token: number) => {
         if (this.binding !== binding) return;
@@ -81,11 +70,11 @@ export class WorkspaceService {
           : copyEventCause(binding.view, structuredClone(view)); binding.token = token;
         if (changed) this.revision++;
         this.complete();
-        if (changed) this.notify();
+        if (changed) this.notify(binding.view);
       },
-      dispose: () => {
+      dispose: (origin: DomainActor = "system") => {
         if (this.binding !== binding) return;
-        this.binding = undefined; this.cancel(new AppError("ui/superseded", "Workspace owner retired")); this.changed();
+        this.binding = undefined; this.cancel(new AppError("ui/superseded", "Workspace owner retired")); this.changed(stampEventCause({}, causalActor(origin)));
       },
     };
   }
@@ -139,8 +128,8 @@ export class WorkspaceService {
     const pending = this.pending; this.pending = undefined;
     if (pending) { pending.cleanup(); pending.controller.abort(error); pending.reject(error); }
   }
-  private notify(): void { for (const notify of [...this.observers]) notify(); }
-  private changed(): void { this.revision++; this.notify(); }
+  private notify(source: object): void { for (const notify of [...this.observers]) notify(source); }
+  private changed(source: object): void { this.revision++; this.notify(source); }
 }
 
 const log = createLogger("workspace");

@@ -1,3 +1,4 @@
+import { actorCause, causalActor, eventCause, stampEventCause } from "../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { AppError, type HostCommandObservation, type HostCommandSnapshot } from "@read-aware/core";
 import { HostCommandObservers } from "./host-command-observers";
@@ -9,7 +10,7 @@ test("command observations discard stale reads, coalesce slow handlers and recov
   const errors: unknown[] = [], hub = new HostCommandObservers(error => errors.push(error));
   const reads: { resolve(value: HostCommandSnapshot): void; reject(error: unknown): void; signal: AbortSignal }[] = [];
   const seen: HostCommandObservation[] = [];
-  let invalidate!: () => void, releaseHandler!: () => void, released = 0;
+  let invalidate!: (source?: object) => void, releaseHandler!: () => void, released = 0;
   const dispose = hub.observe(signal => new Promise((resolve, reject) => reads.push({ signal, resolve, reject })),
     notify => { invalidate = notify; return () => { released++; }; }, async state => {
       seen.push(state); if (seen.length === 1) await new Promise<void>(resolve => { releaseHandler = resolve; });
@@ -17,11 +18,14 @@ test("command observations discard stale reads, coalesce slow handlers and recov
   invalidate(); reads.shift()!.resolve(snapshot(1)); await tick();
   expect(seen).toEqual([]); expect(reads).toHaveLength(1);
   reads.shift()!.resolve(snapshot(2)); await tick(); expect(seen).toHaveLength(1);
-  invalidate(); invalidate(); expect(reads).toHaveLength(0);
+  const actor = causalActor("plugin:commands"), source = stampEventCause({}, actor);
+  invalidate(source); invalidate(source); expect(reads).toHaveLength(0);
   releaseHandler(); await tick(); expect(reads).toHaveLength(1);
   reads.shift()!.reject(new AppError("db/locked", "private failure")); await tick();
   expect(seen[1]).toEqual({ revision: 2, status: "error", code: "db/locked" });
-  invalidate(); reads.shift()!.resolve(snapshot(3)); await tick();
+  expect(eventCause(seen[1]!)).toBe(actorCause(actor));
+  invalidate(source); reads.shift()!.resolve(snapshot(3)); await tick();
+  expect(eventCause(seen[2]!)).toBe(actorCause(actor));
   expect(seen[2]).toEqual({ revision: 3, status: "ready", snapshot: snapshot(3) });
   invalidate(); reads.shift()!.resolve(snapshot(3)); await tick(); expect(seen).toHaveLength(3);
   invalidate(); const late = reads.shift()!; dispose(); dispose();

@@ -100,11 +100,14 @@ test("replacement, lifecycle cancellation, timeout and detach settle held operat
   }
 });
 test("observer backpressure coalesces changes, isolates failure and ends without late delivery", async () => {
-  const f = fixture(), seen: (WorkspaceSnapshot | null)[] = []; let release!: () => void;
-  const off = f.service.observe({}, async state => { seen.push(state); await new Promise<void>(resolve => { release = resolve; }); });
+  const f = fixture(), seen: (WorkspaceSnapshot | null)[] = [], sources: object[] = []; let release!: () => void;
+  const off = f.service.observe({}, async (state, source) => { seen.push(state); sources.push(source); await new Promise<void>(resolve => { release = resolve; }); });
   for (let n = 0; n < 20; n++) { f.view.search.query = String(n); f.publish(); }
   expect(seen.length).toBe(1); release(); await tick(); expect(seen.length).toBe(2); expect(seen[1]?.search.query).toBe("19");
-  off(); release(); f.binding.dispose(); await tick(); expect(seen.length).toBe(2);
+  const retirement = causalActor("plugin:retirement");
+  f.binding.dispose(retirement); release(); await tick();
+  expect(seen[2]).toBeNull(); expect(eventCause(sources[2]!)).toBe(actorCause(retirement));
+  off(); release(); await tick(); expect(seen.length).toBe(3);
   const bad = f.service.observe({}, () => { throw new Error("observer"); }); await tick(); expect(f.errors.length).toBe(1); bad();
 });
 test("observation cap and cloned normalized input prevent unbounded resources and caller mutation", () => {
