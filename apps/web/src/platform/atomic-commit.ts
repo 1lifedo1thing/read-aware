@@ -30,6 +30,17 @@ export type AtomicHostPlan = {
   journal: { id: string; owner: string; metadata: unknown };
 };
 
+/** Persisted only in host-owned job checkpoints. Event identities are minted
+ * once, so a lost native reply can be retried with byte-identical input. */
+export type FrozenAtomicHostPlan = {
+  plan: AtomicHostPlan;
+  events: Awaited<ReturnType<typeof prepareAtomicEventRows>>;
+};
+export async function freezeAtomicHostPlan(plan: AtomicHostPlan, actor: DomainActor): Promise<FrozenAtomicHostPlan> {
+  const frozen = structuredClone({ ...plan, events: plan.events.map(({ origin: _, ...event }) => event) });
+  return { plan: frozen, events: await prepareAtomicEventRows(frozen.events.map(event => ({ ...event, origin: actor })) as DomainEventDraft[]) };
+}
+
 export function atomicAggregateRevisions(aggregates: { aggregateType: string; aggregateId: string }[]): Promise<string[]> {
   if (!isTauri()) return Promise.reject(new AppError("plugin/unavailable", "Atomic transactions require desktop"));
   return invoke("atomic_aggregate_revisions", { aggregates: aggregates.map(item => [item.aggregateType, item.aggregateId]) });
@@ -41,6 +52,7 @@ export function atomicReceipt(owner: string, id: string): Promise<AtomicJournalR
 
 export async function commitAtomicHostPlan(plan: AtomicHostPlan, actor: DomainActor, options: {
   signal?: AbortSignal;
+  frozenEvents?: FrozenAtomicHostPlan["events"];
   assertAuthorized(): void | Promise<void>;
   /** Publish semantic settings/document notifications only after known success. */
   committed(receipt: AtomicCommitReceipt): void;
@@ -53,7 +65,7 @@ export async function commitAtomicHostPlan(plan: AtomicHostPlan, actor: DomainAc
     ...frozen.settings.flatMap(entry => /^read-aware-plugin\.([a-z0-9-]+)\.settings$/.exec(entry.key)?.[1] ?? [])])];
   return withPluginDataWrites(owners, () => runDomainWrite(async () => {
     await options.assertAuthorized();
-    const events = await prepareAtomicEventRows(drafts);
+    const events = options.frozenEvents ? structuredClone(options.frozenEvents) : await prepareAtomicEventRows(drafts);
     let receipt: AtomicCommitReceipt | undefined;
     const persist = async () => {
       options.signal?.throwIfAborted(); await options.assertAuthorized(); options.signal?.throwIfAborted();

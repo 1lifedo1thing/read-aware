@@ -1,7 +1,7 @@
 import { AppError, normalizeAtomicOperations, type AtomicOperation, type AtomicPreview, type AtomicReceipt, type TransactionsPort, type SettingsAccessPolicy, type SettingChange } from "@read-aware/core";
 import type { DomainActor } from "../platform/domain-actor";
 import type { DomainEventDraft } from "../platform/domain-events";
-import { atomicAggregateRevisions, atomicReceipt, commitAtomicHostPlan, type AtomicHostPlan, type AtomicDocumentBytes } from "../platform/atomic-commit";
+import { atomicAggregateRevisions, atomicReceipt, commitAtomicHostPlan, freezeAtomicHostPlan, type FrozenAtomicHostPlan, type AtomicHostPlan, type AtomicDocumentBytes } from "../platform/atomic-commit";
 import { bookMetadataPatch } from "../features/library/lib/book-metadata-patch";
 import { getBookRecord } from "../features/library/lib/library-db";
 import { pluginDocsGet } from "../features/plugins/runtime/plugin-backend";
@@ -121,6 +121,54 @@ export class TransactionSession implements TransactionsPort {
       }));
       return { id, committed: true, ...(metadata.undoOf ? { undoOf: metadata.undoOf } : {}) };
     } finally { prepared.authority.dispose(); this.owner.releasePreview?.(); if (!this.plans.size) this.owner.onIdle?.(); }
+  }
+  /** Host-only job preparation. No raw checkpoint is exposed on the public port. */
+  async prepareDurable(input: AtomicOperation[], dispatchId: string, signal?: AbortSignal): Promise<FrozenAtomicHostPlan> {
+    const view = await this.preview(input, signal);
+    try {
+      const prepared = this.plans.get(view.id);
+      if (!prepared) throw new AppError("transaction/preview-expired", "Preview expired");
+      await prepared.authority.assert(); signal?.throwIfAborted();
+      const plan = structuredClone(prepared.plan);
+      plan.journal.id = dispatchId;
+      const frozen = await freezeAtomicHostPlan(plan, this.owner.actor);
+      await prepared.authority.assert(); signal?.throwIfAborted();
+      return frozen;
+    } finally { this.retire(view.id); }
+  }
+  /** Only a host checkpoint loader may call this, after owner-bound retrieval.
+   * Current grants are reacquired; the persisted version guards remain final. */
+  async commitDurable(frozen: FrozenAtomicHostPlan, signal?: AbortSignal): Promise<AtomicReceipt> {
+    const { plan, events } = structuredClone(frozen);
+    if (plan.journal.owner !== this.owner.owner || plan.documents.some(group => group.pluginId !== this.owner.pluginId)) {
+      throw new AppError("plugin/permission-denied", "Checkpoint belongs to another owner");
+    }
+    const metadata = plan.journal.metadata as Metadata;
+    if (metadata.version !== 1) throw new AppError("transaction/invalid-operation", "Unsupported checkpoint version");
+    const operations = normalizeAtomicOperations(metadata.operations);
+    const authority = await this.owner.acquire(operations, signal);
+    try {
+      await authority.assert(); signal?.throwIfAborted();
+      for (const [index, operation] of operations.entries()) {
+        if (!operation.kind.startsWith("document.")) continue;
+        const old = metadata.before[index] as { bookId?: string | null } | null;
+        if (old) await this.owner.assertDocumentBook(old.bookId ?? null);
+        if (operation.kind === "document.put") await this.owner.assertDocumentBook(operation.bookId);
+      }
+      // A receipt is authoritative even if settings changed after the commit.
+      const prior = await atomicReceipt(this.owner.owner, plan.journal.id);
+      if (prior) {
+        await authority.assert();
+        return { id: plan.journal.id, committed: true };
+      }
+      const settings = metadata.settingsChanges.length ? await prepareAtomicSettings(this.owner.actor, metadata.settingsChanges, this.owner.settingsAccess) : undefined;
+      await this.owner.withDocumentWrite(plan.documents.flatMap(group => group.changes.filter(change => change.kind !== "check")), () => commitAtomicHostPlan(plan, this.owner.actor, {
+        signal, frozenEvents: events,
+        assertAuthorized: async () => { await authority.assert(); if (settings) assertAtomicSettingsRevision(settings.revision); },
+        committed: () => publishSettingsChanges(this.owner.actor, metadata.settingsChanges),
+      }));
+      return { id: plan.journal.id, committed: true };
+    } finally { authority.dispose(); }
   }
   async receipt(id: string, signal?: AbortSignal): Promise<AtomicReceipt | null> {
     signal?.throwIfAborted();
