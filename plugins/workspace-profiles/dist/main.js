@@ -507,16 +507,16 @@ async function windowView(ctx) {
   };
   return { ...render(), live: { subscribe(channel) {
     let active = true, revision = 0;
-    const subscription = window.observe(async (value) => {
-      if (!active)
+    const subscription = window.observe(async (value, delivery) => {
+      if (!active || delivery?.reaction?.status === "cycle")
         return;
       if (value.status === "ready") {
         snapshot = value.snapshot;
         error = undefined;
       } else
         error = value.code;
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: render() });
-    });
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: render() });
+    }, { ruleId: "window-live" });
     return { dispose() {
       if (!active)
         return;

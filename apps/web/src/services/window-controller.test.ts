@@ -144,8 +144,9 @@ test("queued cancellation prevents dispatch, native failures do not poison later
 
 test("observation coalesces slow callbacks, reports read failures and removes the last native watcher", async () => {
   const f = fixture(), values: HostWindowObservation[] = [], held = Promise.withResolvers<void>();
-  const stop = f.service.observe(async value => { values.push(value); if (values.length === 1) await held.promise; });
-  await tick(); f.state.maximized = true;
+  const origin = causalActor("plugin:window-observer");
+  const stop = f.service.observe(async value => { values.push(value); if (values.length === 1) await held.promise; }, origin);
+  await tick(); expect(eventCause(values[0]!)).toBe(actorCause(origin)); f.state.maximized = true;
   for (let i = 0; i < 20; i++) f.changed();
   await tick(); expect(values).toHaveLength(1);
   held.resolve(); await tick();
@@ -153,6 +154,7 @@ test("observation coalesces slow callbacks, reports read failures and removes th
   f.adapter.read = async () => { throw new AppError("ipc/unknown", "private native details"); };
   f.changed(); await tick();
   expect(values.at(-1)).toEqual({ status: "error", code: "ipc/unknown" });
+  expect(eventCause(values.at(-1)!)).toBeDefined();
   f.adapter.read = async () => ({ ...f.state });
   f.changed(); await tick(); expect(values.at(-1)?.status).toBe("ready");
   stop(); stop(); expect(f.stops).toBe(1);

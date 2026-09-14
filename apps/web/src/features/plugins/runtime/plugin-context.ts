@@ -839,7 +839,7 @@ export function buildPluginContext(
             lifecycle.assertActive("services.ui.window.snapshot");
             return lifecycle.read("services.ui.window.snapshot", () => hostWindow.snapshot(lifecycle.signal));
           },
-          observe: handler => track(() => ({ dispose: hostWindow.observe(handler) })),
+          observe: handler => track(() => ({ dispose: hostWindow.observe(handler, operationActor) })),
           control: request => {
             lifecycle.assertActive("services.ui.window.control");
             return lifecycle.read("services.ui.window.control", () => hostWindow.control(request, lifecycle.signal, operationActor));

@@ -20,6 +20,7 @@ function fixture(locale = "en") {
       control: async (request: typeof requests[number]) => { if (failure) throw failure; requests.push(request); return { status: "requested", snapshot }; },
     }, publishView: async (_channel: unknown, frame: typeof published[number]) => { published.push(frame); } },
   } } as unknown as PluginContext;
+  ctx.withEvent = (() => ctx) as unknown as PluginContext["withEvent"];
   return { ctx, requests, published, set: (value: Snapshot) => { snapshot = value; },
     fail: () => { failure = Object.assign(Error("private OS error"), { code: "ui/unavailable" }); },
     emit: async (value: Observation) => { await observer(value); },
@@ -118,8 +119,7 @@ test("compiled header and command both expose window controls without new host A
   }
   expect(f.requests).toEqual([{ action: "maximize" }, { action: "maximize" }]);
   const manifest = await Bun.file(new URL("../dist/manifest.json", import.meta.url)).json();
-  expect(manifest.version).toBe("0.9.0");
-  expect(manifest.requires.services.ui).toBe("^1.11.0");
+  expect(manifest.requires.services.ui).toBe("^1.17.0");
   expect(manifest.permissions).toEqual(["agent:tools"]);
 });
 

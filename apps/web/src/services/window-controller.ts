@@ -1,6 +1,6 @@
 import { AppError, assertOperationConditions, type OperationCondition, errorCode, normalizeHostWindowRequest, type HostWindowObservation,
   type HostWindowPort, type HostWindowRequest, type HostWindowSnapshot, type HostWindowState } from "@read-aware/core";
-import { causalActor, copyEventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
+import { ObservationCauses, causalActor, copyEventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
 
 export type WindowViewport = { width: number; height: number };
 
@@ -31,7 +31,7 @@ export class HostWindowService implements HostWindowPort {
   private layoutCommand?: { revision: number; origin: DomainActor };
   private layoutReading?: { revision: number; work: Promise<WindowViewport | null> };
   private reading?: Promise<HostWindowSnapshot>;
-  private listeners = new Set<() => void>();
+  private listeners = new Set<(source?: object) => void>();
   private stopWatch?: () => void;
   private watchGeneration = 0;
 
@@ -168,16 +168,19 @@ export class HostWindowService implements HostWindowPort {
         const snapshot = await this.read(origin);
         signal?.throwIfAborted();
         return { status: "requested" as const, snapshot };
-      } finally { this.notify(); }
+      } finally { this.notify(stampEventCause({}, origin)); }
     });
   }
 
-  private notify = () => { for (const listener of this.listeners) listener(); };
+  private notify = (source?: object) => { for (const listener of this.listeners) listener(source); };
 
-  observe(handler: (value: HostWindowObservation) => unknown): () => void {
+  observe(handler: (value: HostWindowObservation) => unknown, origin: DomainActor = "system"): () => void {
     if (typeof handler !== "function") throw new AppError("ui/invalid-target", "Expected window observer");
     if (this.listeners.size >= 64) throw new AppError("ui/observer-limit", "Too many window observers");
     let stopped = false, running = false, dirty = false, last = "";
+    const causes = new ObservationCauses();
+    causes.add(stampEventCause({}, causalActor(origin)));
+    let retained: object | undefined;
     const deliver = async () => {
       dirty = true;
       if (running || stopped) return;
@@ -188,19 +191,25 @@ export class HostWindowService implements HostWindowPort {
           let value: HostWindowObservation;
           try { const snapshot = await this.snapshot(); value = copyEventCause(snapshot, { status: "ready", snapshot }); }
           catch (error) { this.report(error); value = { status: "error", code: errorCode(error) ?? "ipc/unknown" }; }
+          if (stopped) return;
+          if (dirty) continue;
           const key = JSON.stringify(value);
+          // Native polling is not a new root. Use the observed state's source
+          // after the initial subscription, retaining failed delivery causes.
+          if (last && value.status === "ready") causes.add(value);
+          const event = causes.take(value, retained);
+          retained = value.status === "error" ? copyEventCause(event, {}) : undefined;
           if (!stopped && key !== last) {
-            last = key;
-            try { await handler(value); } catch (error) { this.report(error); }
+            try { await handler(event); last = key; } catch (error) { retained = copyEventCause(event, {}); this.report(error); }
           }
         } while (dirty && !stopped);
       } finally { running = false; }
     };
-    const notify = () => { void deliver(); };
+    const notify = (source?: object) => { if (source) causes.add(source); void deliver(); };
     this.listeners.add(notify);
     if (this.listeners.size === 1 && this.adapter.supported()) {
       const generation = ++this.watchGeneration;
-      void this.adapter.watch(this.notify).then(stop => {
+      void this.adapter.watch(() => this.notify()).then(stop => {
         if (generation !== this.watchGeneration || !this.listeners.size) stop();
         else { this.stopWatch = stop; this.notify(); }
       }).catch(error => this.report(error));
