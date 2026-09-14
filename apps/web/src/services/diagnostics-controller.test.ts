@@ -45,6 +45,7 @@ test("call cancellation releases the waiter, not the shared native operation; ev
   const controller = new AbortController();
   const origin = causalActor("plugin:diagnostics");
   const cancelled = service.verifyProjections(controller.signal, origin);
+  expect(service.verificationConditions()).toContainEqual(expect.objectContaining({ reason: "projection-verification-shared", state: "satisfied" }));
   const sibling = service.verifyProjections();
   controller.abort(new Error("cancel waiter"));
   await expect(cancelled).rejects.toThrow("cancel waiter");
@@ -66,6 +67,8 @@ test("unsupported and pre-aborted calls do not dispatch; incomplete logs and fai
   let calls = 0, supported = false;
   const failure = new AppError("sync/log-incomplete", "backfill pending");
   const service = new HostDiagnosticsService({ requestReport, supported: () => supported, verify: async () => { calls++; throw failure; } }, error => errors.push(error));
+  expect(service.verificationConditions()).toContainEqual(expect.objectContaining({ reason: "projection-verification-unsupported", state: "unavailable" }));
+  expect(calls).toBe(0);
   expect(() => service.verifyProjections()).toThrow();
   supported = true;
   expect(() => service.verifyProjections(AbortSignal.abort())).toThrow();

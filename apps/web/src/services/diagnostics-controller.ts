@@ -1,5 +1,5 @@
 import { causalActor, copyEventCause, eventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
-import { AppError, type HostDiagnosticsPort, type ProjectionVerification } from "@read-aware/core";
+import { AppError, type OperationCondition, type HostDiagnosticsPort, type ProjectionVerification } from "@read-aware/core";
 
 type Adapter = { supported(): boolean; verify(origin?: DomainActor): Promise<unknown>; requestReport(action: Parameters<HostDiagnosticsPort["requestReport"]>[0], signal?: AbortSignal, origin?: DomainActor): ReturnType<HostDiagnosticsPort["requestReport"]>;
   requestProjectionRepair?(signal?: AbortSignal, origin?: DomainActor): ReturnType<HostDiagnosticsPort["requestProjectionRepair"]> };
@@ -58,9 +58,16 @@ export class HostDiagnosticsService implements HostDiagnosticsPort {
     }
   }
 
+  verificationConditions(): OperationCondition[] {
+    if (!this.adapter.supported()) return [{ kind: "provider", state: "unavailable", reason: "projection-verification-unsupported", errorCode: "ui/unavailable" }];
+    return [{ kind: "capacity", state: "satisfied", reason: this.active ? "projection-verification-shared" : "projection-verification-ready" },
+      { kind: "object", state: "unknown", reason: "projection-log-completeness-not-checked" }];
+  }
+
   verifyProjections(signal?: AbortSignal, origin: DomainActor = "user"): Promise<ProjectionVerification> {
     signal?.throwIfAborted();
-    if (!this.adapter.supported()) throw new AppError("ui/unavailable", "Projection verification requires desktop");
+    const blocked = this.verificationConditions().find(value => value.state === "unavailable");
+    if (blocked) throw new AppError("ui/unavailable", blocked.reason);
     if (!this.active) {
       origin = causalActor(origin);
       this.active = Promise.resolve().then(() => this.adapter.verify(origin)).then(value => {

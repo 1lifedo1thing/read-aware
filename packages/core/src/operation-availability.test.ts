@@ -13,9 +13,9 @@ test("availability rejects arbitrary operations and distinguishes missing prereq
 });
 
 test("reading availability requires an explicit bounded target and the exact operation's fields", () => {
-  const query = { operation: "reading.playback", bookId: "book", sessionId: "session", action: "stop" };
+  const query = { operation: "reading.playback", bookId: "book", sessionId: "session", action: "stop" } as const;
   expect(normalizeOperationAvailability(query)).toEqual(query);
-  const mode = { operation: "reading.mode.configure", bookId: "book", active: true, selectModeKey: "mode", unitId: "sentence" };
+  const mode = { operation: "reading.mode.configure", bookId: "book", active: true, selectModeKey: "mode", unitId: "sentence" } as const;
   expect(normalizeOperationAvailability(mode)).toEqual(mode);
   for (const input of [{ ...query, bookId: undefined }, { ...query, action: "pause" }, { ...query, model: "fast" },
     { ...query, bookId: " " }, { ...query, sessionId: "x".repeat(513) }, { ...mode, active: undefined },
@@ -24,7 +24,7 @@ test("reading availability requires an explicit bounded target and the exact ope
 });
 
 test("text preparation discovery uses actual admission defaults and rejects malformed options", () => {
-  const input = { operation: "library.text.prepare", bookId: "book" };
+  const input = { operation: "library.text.prepare", bookId: "book" } as const;
   expect(normalizeOperationAvailability(input)).toEqual({ ...input, rebuild: false, priority: "normal", timeoutMs: 1800000 });
   for (const patch of [{ bookId: "" }, { bookId: "x".repeat(257) }, { sessionId: "session" }, { priority: "urgent" },
     { rebuild: 1 }, { timeoutMs: null }, { timeoutMs: 999 }, { timeoutMs: 7200001 }, { timeoutMs: 1000.5 }]) {

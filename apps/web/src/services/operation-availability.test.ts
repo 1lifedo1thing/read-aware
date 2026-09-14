@@ -177,11 +177,13 @@ test("current-book text query and real task admission share scope fences through
   } finally { readingRuntime.closed(); client.lifecycle.stop(); await client.lifecycle.drainCleanups(); for (const spy of spies) spy.mockRestore(); }
 });
 
-test("update prerequisites hide native state from plugins without network permission", async () => {
+test("maintenance prerequisites hide native state from plugins without required permissions", async () => {
   const client = buildPluginContext({ id: "update-read", name: "Read", version: "1", schemaVersion: 1, requires: {}, permissions: [] }, "1", []);
   client.lifecycle.promote();
   try {
     expect((await client.context.services.session.operationAvailability({ operation: "maintenance.checkForUpdates" })).conditions)
       .toEqual([{ kind: "permission", state: "unavailable", reason: "service:network-required" }]);
+    expect((await client.context.services.session.operationAvailability({ operation: "diagnostics.verifyProjections" })).conditions)
+      .toEqual([{ kind: "permission", state: "unavailable", reason: "service:diagnostics-required" }]);
   } finally { client.lifecycle.stop(); await client.lifecycle.drainCleanups(); }
 });

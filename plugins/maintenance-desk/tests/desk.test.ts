@@ -46,7 +46,7 @@ function fixture() {
     locale: "en", domains: { settings: { queries: { modelCatalog }, commands: { refreshModelCatalog } } },
     contributions: { headerActions: { register: (value: PluginHeaderAction) => { header = value; } },
       commands: { register: (value: PluginCommand) => { command = value; } } },
-    services: { maintenance: { requestConnectionTest, requestBackup }, diagnostics: { requestReport, verifyProjections, requestProjectionRepair },
+    services: { session: { operationAvailability: async () => ({ state: "unknown", conditions: [{ state: "unknown", reason: "projection-log-completeness-not-checked" }] }) }, maintenance: { requestConnectionTest, requestBackup }, diagnostics: { requestReport, verifyProjections, requestProjectionRepair },
       ui: { publishView }, logging: { write: mock(async () => ({ status: "accepted" })) } },
   } as unknown as PluginContext;
   return { ctx, connection, backup, report, verification, requestConnectionTest, requestBackup, requestReport, verifyProjections, requestProjectionRepair,
@@ -96,6 +96,9 @@ describe("public API composition", () => {
   test("projection check stays in a live view, reports drift counts, and never repairs", async () => {
     const f = fixture(); plugin.activate(f.ctx);
     const review = await select(view(await f.command().run()), "verify");
+    const prerequisites = view(await action(review, "prerequisites").run());
+    expect(JSON.stringify(prerequisites)).toContain("Log completeness will be checked during verification");
+    expect(f.verifyProjections).not.toHaveBeenCalled();
     const history = view(await action(review, "continue").run());
     const subscription = await history.live!.subscribe({ id: "verification" });
     f.verification.resolve({ consistent: false, eventsReplayed: 123, driftedTables: 1, onlyLiveRows: 2, onlyReplayedRows: 3 });

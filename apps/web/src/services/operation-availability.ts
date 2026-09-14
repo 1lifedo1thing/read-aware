@@ -76,6 +76,11 @@ export async function checkOperationAvailability(input: OperationAvailabilityQue
   if (query.operation === "window.control") {
     return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...await hostWindow.conditions(query.request, signal)]);
   }
+  if (query.operation === "diagnostics.verifyProjections") {
+    const { hostDiagnostics } = await import("./diagnostics");
+    signal?.throwIfAborted();
+    return operationAvailability(query, [condition("permission", "satisfied", "authorized"), ...hostDiagnostics.verificationConditions()]);
+  }
   if (query.operation === "maintenance.checkForUpdates") {
     const { softwareUpdater } = await import("../features/update/lib/software-update-runtime");
     signal?.throwIfAborted();

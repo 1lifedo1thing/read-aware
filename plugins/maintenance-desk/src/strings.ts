@@ -23,6 +23,7 @@ const en = {
   backupReview: "Choose a complete encrypted archive or a legacy library backup in the host settings. The host explains each format's contents and handles the password and file selection. Backup data can include personal information.",
   importReview: "Complete archives require a password, restore choices and confirmation, then an app reload. Legacy library imports merge records and can partially apply before failure. Cancelling this wait cannot undo committed changes; restarting can discard this session's result.",
   reportReview: "Diagnostic reports may contain personal data. The host provides the report preview and final export or send confirmation. A sent receipt does not mean a developer has reviewed it.",
+  verifyPrerequisites: "Verification prerequisites", verifyReady: "Native verification is available", verifyShared: "Joins the active verification", verifyUnsupported: "Native verification is unavailable", verifyPermission: "Diagnostics permission required", verifyUnknown: "Log completeness will be checked during verification",
   verifyReview: "Checks event-log projections on this device only. This does not repair data or verify backups and other devices.",
 };
 const zh: typeof en = {
@@ -50,6 +51,7 @@ const zh: typeof en = {
   backupReview: "在宿主设置中选择完整加密归档或旧版书库备份。宿主会说明各格式包含的内容，并处理密码与文件选择。备份可能包含个人资料。",
   importReview: "完整归档需输入密码、选择恢复内容并确认，完成后重新载入应用。旧版书库导入会合并记录，可能在部分写入后失败。取消等待不能撤销已提交的修改；重启可能丢失本次会话的结果记录。",
   reportReview: "诊断报告可能含个人数据，由宿主提供报告预览与最终导出或发送确认。发送回执不代表开发者已处理。",
+  verifyPrerequisites: "投影校验条件", verifyReady: "可以发起原生校验", verifyShared: "加入正在进行的校验", verifyUnsupported: "原生校验不可用", verifyPermission: "需要诊断权限", verifyUnknown: "日志完整性将在执行时检查",
   verifyReview: "仅校验本设备的事件日志投影，不修复数据，也不验证备份或其他设备。",
 };
 export const copy = (locale: string) => locale.startsWith("zh") ? zh : en;

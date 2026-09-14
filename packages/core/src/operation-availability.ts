@@ -20,7 +20,7 @@ export type WindowAvailabilityQuery = { operation: "window.control"; request: Ho
 export type ExportAvailabilityQuery = { operation: "ui.exportFile" } & HostExportDescription;
 export type HostIOAvailabilityQuery = ExportAvailabilityQuery | { operation: "clipboard.writeText"; text: string } | { operation: "ui.openExternal"; url: string };
 export type SyncAvailabilityQuery = { operation: "sync.now" };
-export type UpdateAvailabilityQuery = { operation: "maintenance.checkForUpdates" };
+export type UpdateAvailabilityQuery = { operation: "maintenance.checkForUpdates" } | { operation: "diagnostics.verifyProjections" };
 export type PluginServiceAvailabilityQuery = { operation: "plugins.callService"; serviceCall: PluginServiceCall };
 export type HostCommandAvailabilityQuery = { operation: "ui.commands.execute"; command: HostCommandRequest };
 export type OperationAvailabilityQuery = UpdateAvailabilityQuery | HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
@@ -75,7 +75,7 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
     if (Object.keys(raw).some(key => !["operation", "request"].includes(key))) throw invalid();
     return { operation: raw.operation, request: normalizeHostWindowRequest(raw.request as HostWindowRequest) };
   }
-  if (raw.operation === "sync.now" || raw.operation === "maintenance.checkForUpdates") {
+  if (raw.operation === "sync.now" || raw.operation === "maintenance.checkForUpdates" || raw.operation === "diagnostics.verifyProjections") {
     if (Object.keys(raw).some(key => key !== "operation")) throw invalid();
     return { operation: raw.operation };
   }
