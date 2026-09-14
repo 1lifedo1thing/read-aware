@@ -7,6 +7,9 @@ import { accountFromConfig } from "../features/ai/agent/account";
 import { afterLocalKVWrites } from "../platform/local-store";
 import { afterSecretWrites } from "../platform/secret-store";
 import { createLogger } from "../platform/logger";
+import type { BookTextTaskOwner } from "../features/library/lib/book-text-tasks";
+
+export type OperationAvailabilityContext = { textPreparation?: Pick<BookTextTaskOwner, "conditions"> };
 
 const log = createLogger("operation-availability");
 const condition = (kind: OperationCondition["kind"], state: OperationCondition["state"], reason: string, errorCode?: string): OperationCondition =>
@@ -53,9 +56,24 @@ export function inspectInferenceAvailability(input: InferenceAvailabilityQuery, 
   return operationAvailability(query, conditions);
 }
 
-export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal): Promise<OperationAvailability> {
+export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal, context?: OperationAvailabilityContext): Promise<OperationAvailability> {
   const query = normalizeOperationAvailability(input);
   signal?.throwIfAborted();
+  if (query.operation === "library.text.prepare") {
+    const { operation: _operation, bookId, ...options } = query;
+    try {
+      const conditions = await context?.textPreparation?.conditions(bookId, options, signal);
+      signal?.throwIfAborted();
+      return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...(conditions ?? [
+        condition("capacity", "unknown", "text-task-owner-unavailable"),
+      ])]);
+    } catch (error) {
+      signal?.throwIfAborted();
+      log.warn("Cannot read text preparation prerequisites", error);
+      const missing = errorCode(error) === "library/book-not-found";
+      return operationAvailability(query, [condition("object", missing ? "unavailable" : "unknown", missing ? "book-not-found" : "text-prerequisites-read-failed", errorCode(error) ?? "ipc/unknown")]);
+    }
+  }
   if (query.operation !== "llm.infer") {
     try {
       const result = readingRuntime.operationAvailability(query);

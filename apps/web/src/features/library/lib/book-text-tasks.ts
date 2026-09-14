@@ -1,11 +1,12 @@
-import { AppError, errorCode, type BookTextPriority, type BookTextPrepareOptions, type BookTextTaskSnapshot } from "@read-aware/core";
+import { AppError, errorCode, assertOperationConditions, normalizeBookTextPrepareOptions, type OperationCondition, type BookTextPriority, type BookTextPrepareOptions, type BookTextTaskSnapshot } from "@read-aware/core";
+import type { ResourceAccess } from "../../../services/resource-access";
 import type { BookTextTaskHistory } from "./book-text-task-history";
 import type { BookTextRepository } from "./book-text-repository";
 import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 
 type Listener = (state: BookTextTaskSnapshot) => void | Promise<void>;
 type Observer = { send(state: BookTextTaskSnapshot): void; stop(): void };
-type Task = { source: { origin: DomainActor; cancellationOrigin?: DomainActor }; admitted: boolean; lastHistoryRevision?: number; timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
+type Task = { releaseAccess?: () => void; source: { origin: DomainActor; cancellationOrigin?: DomainActor }; admitted: boolean; lastHistoryRevision?: number; timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
 const active = (state: BookTextTaskSnapshot) => state.status === "queued" || state.status === "running" || state.status === "paused";
 const cancelled = () => new AppError("library/text-cancelled", "This text preparation request was cancelled");
 
@@ -13,7 +14,7 @@ const cancelled = () => new AppError("library/text-cancelled", "This text prepar
 export class BookTextTaskOwner {
   private readonly tasks = new Map<string, Task>();
   private stopped = false;
-  constructor(private readonly repository: Pick<BookTextRepository, "snapshot" | "prepare">,
+  constructor(private readonly repository: Pick<BookTextRepository, "snapshot" | "prepare"> & Partial<Pick<BookTextRepository, "preparationConditions">>,
     private readonly warn: (message: string, error: unknown) => void,
     lifetime?: AbortSignal, private readonly history?: BookTextTaskHistory) {
     if (lifetime?.aborted) this.dispose();
@@ -21,6 +22,23 @@ export class BookTextTaskOwner {
   }
 
   private assertLive() { if (this.stopped) throw cancelled(); }
+  private capacityConditions(): OperationCondition[] {
+    // Querying must not expire tasks, persist history, or dispatch callbacks.
+    const full = [...this.tasks.values()].filter(task => active(task.state) && Date.now() < Date.parse(task.state.deadlineAt)).length >= 16;
+    return [{ kind: "capacity", state: full ? "unavailable" : "satisfied", reason: full ? "text-task-limit" : "text-task-capacity",
+      ...(full ? { errorCode: "library/text-task-limit" } : {}) }];
+  }
+
+  async conditions(bookId: string, options: BookTextPrepareOptions = {}, signal?: AbortSignal): Promise<OperationCondition[]> {
+    const request = normalizeBookTextPrepareOptions(options);
+    this.assertLive(); signal?.throwIfAborted();
+    const capacity = this.capacityConditions();
+    if (capacity[0]!.state === "unavailable") return capacity;
+    const conditions = await this.repository.preparationConditions?.(bookId, request.rebuild, signal)
+      ?? [{ kind: "provider" as const, state: "unknown" as const, reason: "text-prerequisites-unavailable" }];
+    this.assertLive(); signal?.throwIfAborted();
+    return [...this.capacityConditions(), ...conditions];
+  }
   private lookup(bookId: string, taskId: string): Task {
     this.assertLive();
     const task = this.tasks.get(taskId);
@@ -31,7 +49,7 @@ export class BookTextTaskOwner {
   private publish(task: Task, change: Partial<Pick<BookTextTaskSnapshot, "status" | "textState" | "errorCode" | "priority" | "waitReason">>) {
     if (!active(task.state)) return;
     task.state = { ...task.state, ...change, revision: task.state.revision + 1, updatedAt: new Date().toISOString() };
-    if (!active(task.state)) { clearTimeout(task.timer); task.timer = undefined; }
+    if (!active(task.state)) { clearTimeout(task.timer); task.timer = undefined; task.releaseAccess?.(); task.releaseAccess = undefined; }
     if (change.status !== undefined || change.priority !== undefined) this.record(task);
     for (const observer of task.observers) observer.send(task.state);
   }
@@ -83,37 +101,49 @@ export class BookTextTaskOwner {
     if (typeof task.timer === "object" && "unref" in task.timer) task.timer.unref();
   }
 
-  async start(bookId: string, options: BookTextPrepareOptions = {}, origin: DomainActor = "system"): Promise<BookTextTaskSnapshot> {
+  async start(bookId: string, options: BookTextPrepareOptions = {}, origin: DomainActor = "system", access?: ResourceAccess): Promise<BookTextTaskSnapshot> {
+    try { return await this.startAuthorized(bookId, options, origin, access); }
+    catch (error) { access?.dispose(); throw error; }
+  }
+
+  private async startAuthorized(bookId: string, options: BookTextPrepareOptions, origin: DomainActor, access?: ResourceAccess): Promise<BookTextTaskSnapshot> {
     const actor = causalActor(origin);
-    this.assertLive();
-    if (!options || typeof options !== "object" || Array.isArray(options)
-      || Object.keys(options).some(key => !["rebuild", "priority", "timeoutMs"].includes(key)) || options.rebuild !== undefined && typeof options.rebuild !== "boolean"
-      || options.priority !== undefined && options.priority !== "normal" && options.priority !== "background") {
-      throw new AppError("library/invalid-input", "Invalid text preparation options");
-    }
-    const timeoutMs = options.timeoutMs === undefined ? 30 * 60_000 : options.timeoutMs;
-    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 2 * 60 * 60_000) {
-      throw new AppError("library/invalid-input", "Text timeout must be 1000..7200000 milliseconds");
-    }
-    const request = { rebuild: options.rebuild, priority: options.priority ?? "normal", timeoutMs };
+    const check = () => {
+      this.assertLive(); access?.signal.throwIfAborted();
+      if (access && !access.isAllowed()) throw new AppError("plugin/object-access-denied", "Text task authorization expired");
+    };
+    check();
+    const request = normalizeBookTextPrepareOptions(options);
+    if (this.repository.preparationConditions) assertOperationConditions(await this.conditions(bookId, request, access?.signal));
+    check();
     const state = await this.repository.snapshot(bookId);
-    this.assertLive();
+    check();
     for (const task of this.tasks.values()) this.expire(task);
-    if ([...this.tasks.values()].filter(task => active(task.state)).length >= 16) throw new AppError("library/text-task-limit", "Too many active text requests for this actor");
+    assertOperationConditions(this.capacityConditions());
     // Retain at most 64 handles. Eviction closes observers of oldest terminal requests.
     for (const [id, task] of this.tasks) {
       if (this.tasks.size < 64) break;
       if (!active(task.state)) { for (const observer of task.observers) observer.stop(); this.tasks.delete(id); }
     }
+    // Expiring an older task can synchronously notify a consumer that changes
+    // the reader. Recheck before adding this request or writing its history.
+    check();
     const now = new Date().toISOString(), deadlineAt = new Date(Date.parse(now) + request.timeoutMs).toISOString();
-    const task: Task = { source: { origin: actor }, admitted: false, controller: new AbortController(), rebuildPending: request.rebuild === true, observers: new Set(), state: {
+    const task: Task = { source: { origin: actor }, admitted: false, controller: new AbortController(), rebuildPending: request.rebuild, observers: new Set(), state: {
       taskId: crypto.randomUUID(), bookId, mode: request.rebuild ? "rebuild" : "prepare", revision: 0,
       status: "queued", priority: request.priority, timeoutMs: request.timeoutMs, deadlineAt, waitReason: null, createdAt: now, updatedAt: now, textState: state,
     } };
     this.tasks.set(task.state.taskId, task);
+    if (access) {
+      const abort = () => { if (!this.stopped) this.cancel(bookId, task.state.taskId); };
+      task.releaseAccess = () => { access.signal.removeEventListener("abort", abort); access.dispose(); };
+      access.signal.addEventListener("abort", abort, { once: true });
+    }
     try { await this.history?.record(task.state); }
-    catch (error) { this.tasks.delete(task.state.taskId); throw error; }
-    this.assertLive(); this.expire(task); task.admitted = true;
+    catch (error) { task.releaseAccess?.(); this.tasks.delete(task.state.taskId); throw error; }
+    // A scope change while the initial history write drains cancels this lease.
+    // Its accepted metadata remains truthful; extraction has not been dispatched.
+    check(); this.expire(task); task.admitted = true;
     if (active(task.state)) {
       this.scheduleDeadline(task);
       if (task.state.status === "queued") void this.run(task);

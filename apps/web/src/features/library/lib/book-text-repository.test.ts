@@ -347,3 +347,35 @@ test("virtual content uses the same durable index and validates generation chang
   h.source({ format: "virtual", contentVersion: "virtual:sha256:a", revision: "provider-3" }); gate.resolve(prose);
   expect(await pending).toMatchObject({ code: "reader/stale-location" }); expect(await h.repo.persisted("book")).toBeNull();
 });
+
+test("preparation conditions never parse or change text, and actual rebuild admission rechecks busy sources", async () => {
+  const entered = deferred(), gate = deferred<string>();
+  const h = harness(makeBook([async () => { entered.resolve(); return gate.promise; }]));
+  expect(await h.repo.preparationConditions("book", true)).toContainEqual(expect.objectContaining({ reason: "source-version-known" }));
+  expect(h.parses()).toBe(0); expect(h.saved()).toBeNull(); expect(h.sourceReads.every(fetch => !fetch)).toBe(true);
+  const working = h.repo.prepare("book"); await entered.promise;
+  expect(await h.repo.preparationConditions("book", true)).toContainEqual(expect.objectContaining({ reason: "text-rebuild-busy" }));
+  await expect(h.repo.prepare("book", { rebuild: true })).rejects.toMatchObject({ code: "library/text-busy" });
+  gate.resolve(prose); await working;
+  h.source({ format: "virtual", contentVersion: null, available: true, revision: "registered" });
+  expect(await h.repo.preparationConditions("book")).toContainEqual(expect.objectContaining({ state: "unknown", reason: "book-content-load-not-checked" }));
+  h.source({ format: "virtual", contentVersion: null, available: false, revision: "removed" });
+  await expect(h.repo.prepare("book")).rejects.toMatchObject({ code: "library/content-unavailable" });
+  expect(h.parses()).toBe(1);
+});
+
+test("missing local source checks retrieval conditions without retrieval, and retires changed or cancelled reads", async () => {
+  const gate = Promise.withResolvers<void>(); let wait = false, version: string | null = null, sourceReads = 0, fetched = 0;
+  const repo = new BookTextRepository({
+    source: async (_id, fetch) => { sourceReads++; if (fetch) fetched++; return { format: "epub", contentVersion: version }; },
+    retrievalConditions: async () => { if (wait) await gate.promise; return [{ kind: "account", state: "unconfigured", reason: "source-sync-credentials-missing", errorCode: "library/content-unavailable" }]; },
+    read: async () => { throw Error("must not read extracted text"); }, write: async () => { throw Error("must not write"); }, remove: async () => {},
+    content: async () => { throw Error("must not parse"); }, yieldToReader: async () => {}, warn() {}, changed() {},
+  });
+  expect(await repo.preparationConditions("book")).toContainEqual(expect.objectContaining({ reason: "source-sync-credentials-missing" }));
+  await expect(repo.prepare("book")).rejects.toMatchObject({ code: "library/content-unavailable" }); expect(fetched).toBe(0);
+  wait = true; const pending = repo.preparationConditions("book"); await Bun.sleep(0); version = "changed"; gate.resolve();
+  await expect(pending).rejects.toMatchObject({ code: "reader/stale-location" });
+  const abort = new AbortController(); abort.abort(new Error("retired")); const before = sourceReads;
+  await expect(repo.preparationConditions("book", false, abort.signal)).rejects.toThrow("retired"); expect(sourceReads).toBe(before);
+});

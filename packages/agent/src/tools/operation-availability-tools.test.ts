@@ -39,3 +39,16 @@ test("Agent reading condition queries keep book scope and forward exact action/s
   expect(calls[1]).toEqual(mode);
   await expect(tool.execute("invalid", { ...query, model: "fast" })).rejects.toMatchObject({ code: "plugin/invalid-argument" });
 });
+
+test("Agent text prerequisites use explicit books, actual normalized options and scope before host inspection", async () => {
+  const { deps } = createInMemoryDeps(); const calls: unknown[] = [];
+  deps.operationAvailability = { check: async input => { calls.push(input); return operationAvailability(normalizeOperationAvailability(input), [{ kind: "provider", state: "unknown", reason: "source-download-not-checked" }]); } };
+  const book = buildOperationAvailabilityTools(deps, { kind: "book", bookId: "book" })[0]!;
+  const input = { operation: "library.text.prepare", bookId: "foreign", rebuild: true };
+  expect(JSON.stringify((await book.execute("denied", input)).content)).toContain("book-scope-required"); expect(calls).toHaveLength(0);
+  const result = await book.execute("allowed", { ...input, bookId: "book" });
+  expect(JSON.stringify(result.content)).toContain("source-download-not-checked");
+  expect(calls[0]).toEqual({ operation: input.operation, bookId: "book", rebuild: true, priority: "normal", timeoutMs: 1800000 });
+  await buildOperationAvailabilityTools(deps, { kind: "global", threadId: "global" })[0]!.execute("global", input);
+  expect(calls[1]).toMatchObject(input);
+});

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
 import { AppError, type BookTextSnapshot, type BookTextTaskSnapshot } from "@read-aware/core";
 import { BookTextTaskOwner } from "./book-text-tasks";
 import { causalActor } from "../../../platform/domain-actor";
@@ -246,4 +246,68 @@ test("pause and resume found by listing cannot bypass the durable admission rece
     expect(parses).toBe(resume ? 1 : 0);
     expect(owner.get("book", task.taskId).status).toBe(resume ? "completed" : "paused"); owner.dispose();
   }
+});
+
+test("condition queries share capacity and source checks without task/history side effects", async () => {
+  let prepares = 0, writes = 0, sourceReads = 0;
+  const owner = new BookTextTaskOwner({ snapshot: async book => state(book), prepare: async () => { prepares++; return new Promise(() => {}); },
+    preparationConditions: async () => { sourceReads++; return [{ kind: "provider", state: "unknown", reason: "not-loaded" }]; },
+  }, () => {}, undefined, { record: async () => { writes++; } } as never);
+  try {
+    const available = await owner.conditions("book");
+    expect(available).toContainEqual({ kind: "capacity", state: "satisfied", reason: "text-task-capacity" });
+    expect(owner.list("book")).toEqual([]); expect(prepares).toBe(0); expect(writes).toBe(0);
+    for (let i = 0; i < 16; i++) await owner.start("book");
+    const before = { writes, sourceReads };
+    expect(await owner.conditions("book")).toEqual([{ kind: "capacity", state: "unavailable", reason: "text-task-limit", errorCode: "library/text-task-limit" }]);
+    await expect(owner.start("book")).rejects.toMatchObject({ code: "library/text-task-limit" });
+    expect({ writes, sourceReads }).toEqual(before); expect(prepares).toBe(16);
+  } finally { owner.dispose(); }
+});
+
+test("scope cancellation before admission or during initial history never starts extraction; live scopes release at terminal state", async () => {
+  for (const phase of ["source", "snapshot", "history", "running", "paused", "completed"] as const) {
+    const gate = Promise.withResolvers<void>(), work = Promise.withResolvers<ReturnType<typeof state>>();
+    const abort = new AbortController(); let prepares = 0, releases = 0, disposed = false;
+    const access = { signal: abort.signal, isAllowed: () => !disposed && !abort.signal.aborted,
+      dispose: () => { if (!disposed) { disposed = true; releases++; } } };
+    const owner = new BookTextTaskOwner({
+      preparationConditions: async () => { if (phase === "source") await gate.promise; return []; },
+      snapshot: async () => { if (phase === "snapshot") await gate.promise; return state(); },
+      prepare: async (_book, options) => { prepares++; options?.signal?.addEventListener("abort", () => work.reject(options.signal!.reason), { once: true }); return work.promise; },
+    }, () => {}, undefined, { record: async () => { if (phase === "history") await gate.promise; } } as never);
+    try {
+      const start = owner.start("book", {}, "plugin:scoped", access);
+      await Bun.sleep(0);
+      if (["source", "snapshot", "history"].includes(phase)) {
+        abort.abort(new AppError("plugin/object-access-denied", "Reader changed")); gate.resolve();
+        await expect(start).rejects.toMatchObject({ code: "plugin/object-access-denied" }); expect(prepares).toBe(0);
+        expect(owner.list("book").every(task => task.status === "cancelled")).toBe(true);
+      } else {
+        const task = await start; expect(prepares).toBe(1);
+        if (phase === "completed") { work.resolve(state("book", "ready")); await Bun.sleep(0); }
+        if (phase === "paused") owner.pause("book", task.taskId);
+        if (phase !== "completed") expect(releases).toBe(0);
+        abort.abort(new AppError("plugin/object-access-denied", "Reader changed")); await Bun.sleep(0);
+        expect(owner.get("book", task.taskId).status).toBe(phase === "completed" ? "completed" : "cancelled");
+      }
+      expect(releases).toBe(1);
+    } finally { gate.resolve(); owner.dispose(); }
+  }
+});
+
+
+test("expiry notifications cannot admit a new scoped task after the consumer changes books", async () => {
+  const before = Date.now(), clock = spyOn(Date, "now").mockReturnValue(before);
+  const abort = new AbortController(); const written: string[] = [];
+  const owner = new BookTextTaskOwner({ snapshot: async book => state(book), prepare: async () => new Promise(() => {}) }, () => {}, undefined,
+    { record: async (task: BookTextTaskSnapshot) => { written.push(task.bookId); } } as never);
+  try {
+    const old = await owner.start("old", { timeoutMs: 1000 });
+    owner.observe("old", old.taskId, task => { if (task.status === "failed") abort.abort(new AppError("plugin/object-access-denied", "Reader changed")); });
+    clock.mockReturnValue(before + 2000);
+    await expect(owner.start("new", {}, "plugin:scoped", { signal: abort.signal, isAllowed: () => !abort.signal.aborted, dispose() {} }))
+      .rejects.toMatchObject({ code: "plugin/object-access-denied" });
+    expect(written).not.toContain("new"); expect(owner.list("new")).toEqual([]);
+  } finally { clock.mockRestore(); owner.dispose(); }
 });

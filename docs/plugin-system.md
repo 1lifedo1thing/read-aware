@@ -5564,7 +5564,7 @@ The current host services are:
 | `secrets` | plugin-scoped credential slots | built in |
 | `ui` | host toast and save/export flow | built in |
 | `schedules` | 1.1: bind, list, observe, pause/resume and run declared tasks | built in, own schedules only |
-| `session` | 2.2: environment snapshot/observation and authorized inference/reading operation prerequisites; reading state requires the reading domain | built in |
+| `session` | 2.3: environment snapshot/observation and authorized inference/reading/text-preparation operation prerequisites; reading state requires the reading domain | built in |
 | `plugins` | 1.1: installed metadata and registered contribution identity discovery/observation | built in |
 | `maintenance` | 1.0: updater snapshot/observation, release check and native maintenance controls | built in; check requires `service:network` |
 | `diagnostics` | 1.1: verification counts and host-confirmed export/send outcomes | `service:diagnostics` |
@@ -7136,7 +7136,7 @@ This is neither durable delivery nor exactly-once execution. Full queues drop
 additional links without invoking plugins. OS/Worker/dialog integration remains
 pending concentrated acceptance; these limits are not a system-wide URI sandbox.
 
-### Operation prerequisites (Session 2.2)
+### Operation prerequisites (Session 2.3)
 
 [代码] `services.session.operationAvailability({ operation: "llm.infer", model: "fast" | "smart", images?: boolean }, options?)` reads settled local configuration without executing inference, migrating credentials or probing the provider. Missing `service:llm` returns only the permission condition. Authorized callers receive condition states for account configuration, model selection, endpoint validity and image input; no credential, model ID or endpoint address is returned. Invalid input rejects; failed configuration reads return unknown with a stable error code. Remote health remains unknown, even with a cached catalog or an online hint.
 
@@ -7147,3 +7147,10 @@ pending concentrated acceptance; these limits are not a system-wide URI sandbox.
 [代码] Session2.2 also accepts `reading.playback` with `bookId`, optional `sessionId`, and `action: start|stop`, or `reading.mode.configure` with the same target and `active/modeKey/selectModeKey/unitId`. Plugin queries require reading:write and object authorization before inspecting the target; the book Agent cannot query other books. An inactive target reveals no current-book/provider details. Actual bound controllers supply the same local conditions used by start/configure, including live system voice presence, selected mode/unit and format. Registration or voice presence never verifies provider execution/audio output; unknown permits an attempt. Stop/deactivation remain possible without start prerequisites. No content, synthesis or segmentation is read or executed by the query.
 
 [消费者/验证] Text Desk0.25's reading conditions page exposes mode/start/stop actions with the inspected book/session guard; refreshing never silently retargets another book. Controlled source changes after a query are rejected at execution, current-book queries retire on scope changes, and adapter read failures remain unknown. Actual React binding, Bun Worker transport, Agent scopes and compiled consumer have local evidence; Tauri/audio/provider acceptance remains pending.
+
+
+[代码] Session2.3 accepts `library.text.prepare` with `bookId`, optional `rebuild`, `priority` and `timeoutMs` (same defaults/bounds as prepareText). Plugin discovery first requires library:write and the book grant. The host queries the actual caller's task owner for capacity and the shared text repository for source/rebuild prerequisites. It never parses, downloads, opens a provider/transport, or writes task history. Missing local sources check the same local sync admission used by actual downloads; valid registration/configuration still leaves execution unknown. An absent book is unavailable; source/configuration read failures are unknown with sanitized codes. Start and extraction recheck current conditions; discovery reserves no capacity.
+
+[代码] Library1.31 also supports current-book task start, priority, pause, resume and cancel. A host-owned fence spans initial reads/history admission and remains attached through running/paused states; a book/session change cancels that request and prevents new extraction. Terminal states release the observer. Other leases and already dispatched I/O can drain. Host access objects are not accepted from Worker arguments; plugin retirement still owns cleanup. This is not cross-restart task recovery.
+
+[消费者/验证] Text Desk0.26 exposes preparation and rebuild prerequisites from book details. Refresh/actions keep the inspected book; unknown permits an attempt and known missing conditions hide execution. Rebuild still requires its confirmation form. Controlled repository/task/source/download admission, public permission/scope cancellation, Agent and compiled consumer checks cover the new path. Actual Bun Worker covers the query shape/cancellation; it is not Tauri/SQLite/download/provider acceptance, which remains pending.

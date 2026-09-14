@@ -42,7 +42,7 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
   let writeJournal = false;
   let refreshDownloadToken: (() => Promise<void>) | undefined;
   const downloads: string[] = [];
-  spyOn(engineModule, "createSyncEngine").mockReturnValue({
+  const engineFactory = spyOn(engineModule, "createSyncEngine").mockReturnValue({
     async syncOnce() {
       cycles++; order.push("cycle"); await cycleGate;
       if (writeJournal) {
@@ -67,6 +67,32 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
   await secrets.setSecretAsync("sync.session", "synthetic-session");
   await secrets.setSecretAsync("sync.master-key", toBase64(new Uint8Array(32).fill(11)));
   await kv.localKV.setItemAsync("read-aware-sync-relay-url", '"http://localhost:8787"');
+
+  test("source discovery shares download admission without opening engines or transport sessions", async () => {
+    const { registerSyncTransport, transportAccountId } = await import("./transport-registry");
+    const oldAccount = profile.remoteAccountId, oldEnabled = profile.syncEnabled;
+    let opens = 0;
+    const count = downloads.length, engines = engineFactory.mock.calls.length;
+    const dispose = registerSyncTransport("prerequisites", { id: "source", label: "Source", open: async () => { opens++; throw Error("must not open"); } });
+    try {
+      profile.syncEnabled = false;
+      expect(await scheduler.getRemoteBlobFetchConditions()).toContainEqual(expect.objectContaining({ reason: "source-sync-disabled" }));
+      expect(await scheduler.fetchRemoteBlob("denied")).toEqual({ outcome: "unavailable", reason: "sync-off" });
+      profile.syncEnabled = true;
+      await secrets.deleteSecretAsync("sync.session");
+      expect(await scheduler.getRemoteBlobFetchConditions()).toContainEqual(expect.objectContaining({ reason: "source-sync-credentials-missing" }));
+      profile.remoteAccountId = transportAccountId("plugin:prerequisites:source", "private-endpoint");
+      const ready = await scheduler.getRemoteBlobFetchConditions();
+      expect(ready).toContainEqual({ kind: "provider", state: "unknown", reason: "source-download-not-checked" });
+      expect(JSON.stringify(ready)).not.toContain("private-endpoint"); expect(opens).toBe(0);
+      await dispose();
+      expect(await scheduler.getRemoteBlobFetchConditions()).toContainEqual(expect.objectContaining({ reason: "source-transport-unavailable" }));
+      expect(await scheduler.fetchRemoteBlob("retired")).toEqual({ outcome: "unavailable", reason: "not-connected" });
+      expect(downloads).toHaveLength(count); expect(engineFactory.mock.calls).toHaveLength(engines);
+      const abort = new AbortController(); abort.abort(new Error("retired"));
+      await expect(scheduler.getRemoteBlobFetchConditions(abort.signal)).rejects.toThrow("retired");
+    } finally { await dispose(); profile.remoteAccountId = oldAccount; profile.syncEnabled = oldEnabled; await secrets.setSecretAsync("sync.session", "synthetic-session"); }
+  });
 
   test("real export waits for the cycle overlay, admits its own missing source download and defers new sync producers", async () => {
     refreshDownloadToken = () => withPluginRuntimeDataWrite(() => secrets.setPluginSecret("download-token", "refresh", "synthetic"));
@@ -183,6 +209,6 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
       env: { ...process.env, SYNC_BACKUP_PROOF: "1" }, stdout: "ignore", stderr: "pipe",
     });
     const output = await new Response(child.stderr).text();
-    expect(await child.exited, output).toBe(0); expect(output).toContain("6 pass");
+    expect(await child.exited, output).toBe(0); expect(output).toContain("7 pass");
   }, 30_000);
 }

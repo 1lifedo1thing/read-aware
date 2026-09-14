@@ -46,7 +46,7 @@ async function command(scenario: string, fixture?: string) {
 }
 
 test("real Worker queries operation prerequisites with cancellable call options", async () => {
-  for (const scenario of ["read", "cancel", "reading"]) {
+  for (const scenario of ["read", "cancel", "reading", "text", "text-cancel"]) {
     const s = sandbox(scenario, "operation-availability-probe.ts", { shape: {
       services: { session: { operationAvailability: "fn" } }, contributions: { commands: { register: "fn" } },
     } });
@@ -59,16 +59,17 @@ test("real Worker queries operation prerequisites with cancellable call options"
     const query = await s.next(message => message.method === "services.session.operationAvailability");
     expect(data(query.args!)).toEqual([scenario === "reading"
       ? { operation: "reading.playback", bookId: "book", sessionId: "session", action: "start" }
+      : scenario.startsWith("text") ? { operation: "library.text.prepare", bookId: "book", rebuild: true, priority: "background", timeoutMs: 2000 }
       : { operation: "llm.infer", model: "smart", images: true }, undefined]);
-    if (scenario === "cancel") {
+    if (scenario.includes("cancel")) {
       await s.next(message => message.t === "cancel" && message.id === query.id);
     } else s.worker.postMessage({ t: "result", id: query.id, ok: true, value: {
-      operation: scenario === "reading" ? "reading.playback" : "llm.infer", state: "unknown", remoteChecked: false,
+      operation: scenario === "reading" ? "reading.playback" : scenario === "text" ? "library.text.prepare" : "llm.infer", state: "unknown", remoteChecked: false,
       conditions: [{ kind: "provider", state: "unknown", reason: "remote-health-not-checked" }],
     } });
     const result = resultData(await s.next(message => message.t === "result" && message.id === 901));
     expect(result.ok).toBe(true);
-    expect(JSON.stringify(result.value)).toContain(scenario === "cancel" ? "plugin/cancelled" : "remote-health-not-checked");
+    expect(JSON.stringify(result.value)).toContain(scenario.includes("cancel") ? "plugin/cancelled" : "remote-health-not-checked");
   }
 });
 

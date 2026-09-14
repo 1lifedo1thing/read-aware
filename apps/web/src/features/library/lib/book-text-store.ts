@@ -12,6 +12,7 @@ import { getBookRecord, getStoredBookFile } from "./library-db";
 import { BookTextRepository } from "./book-text-repository";
 import { getVirtualTextSource, forgetVirtualTextSource } from "./virtual-text-source";
 import { BookTextTaskOwner } from "./book-text-tasks";
+import { getRemoteBlobFetchConditions } from "../../../platform/sync/sync-scheduler";
 export type { ExtractedChapter } from "./book-text-record";
 
 const log = createLogger("book-text");
@@ -26,6 +27,7 @@ const yieldToUi = (() => {
 })();
 
 const repository = new BookTextRepository({
+  retrievalConditions: getRemoteBlobFetchConditions,
   source: async (bookId, fetchMissing) => {
     const book = await getBookRecord(bookId);
     if (!book) throw new AppError("library/book-not-found", "Book is not in the library");

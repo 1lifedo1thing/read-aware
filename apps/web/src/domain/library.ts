@@ -129,7 +129,7 @@ export type LibraryQueries = {
 
 export type LibraryCommands = {
   books: {
-    prepareText(bookId: string, options?: BookTextPrepareOptions): Promise<BookTextTaskSnapshot>;
+    prepareText(bookId: string, options?: BookTextPrepareOptions, access?: import("../services/resource-access").ResourceAccess): Promise<BookTextTaskSnapshot>;
     retryEnrichment(bookId: string, signal?: AbortSignal): Promise<import("@read-aware/core").BookEnrichmentReceipt>;
     mergeDuplicates(input: import("@read-aware/core").BookMergeRequest, signal?: AbortSignal): Promise<import("@read-aware/core").BookMergeReceipt>;
     setTextTaskPriority(bookId: string, taskId: string, priority: import("@read-aware/core").BookTextPriority): Promise<BookTextTaskSnapshot>;
@@ -169,6 +169,9 @@ export type LibraryDomain = {
 };
 
 const agentTextTasks = createBookTextTaskOwner(undefined, "agent");
+/** Host composition only; uses the same Agent task owner as actual preparation. */
+export const agentTextPreparationConditions = (bookId: string, options: BookTextPrepareOptions, signal?: AbortSignal) =>
+  agentTextTasks.conditions(bookId, options, signal);
 
 export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void, owners: DomainActorOwners = {}): LibraryDomain {
   const textTasks = owners.textTasks ??= actorOrigin(origin) === "agent" ? agentTextTasks : createBookTextTaskOwner(lifetime, origin, trackCleanup);
@@ -223,7 +226,7 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
 
   const commands: LibraryCommands = {
     books: {
-      prepareText: (bookId, options) => textTasks.start(bookId, options, origin),
+      prepareText: (bookId, options, access) => textTasks.start(bookId, options, origin, access),
       mergeDuplicates: (input, signal) => mergeDuplicateBooks(input, origin, signal ?? lifetime),
       retryEnrichment: (bookId, signal) => retryBookEnrichment(bookId, origin, signal ?? lifetime),
       setTextTaskPriority: async (bookId, taskId, priority) => textTasks.setPriority(bookId, taskId, priority),

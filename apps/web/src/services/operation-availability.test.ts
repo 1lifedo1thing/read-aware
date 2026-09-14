@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, spyOn, test } from "bun:test";
-import { assertOperationAvailable } from "@read-aware/core";
+import { AppError, assertOperationAvailable } from "@read-aware/core";
 import { inspectInferenceAvailability, checkOperationAvailability } from "./operation-availability";
 import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
 import type { AIConfig } from "../features/ai/lib/ai-config";
@@ -99,4 +99,63 @@ test("public plugin query gates disclosure before reading configuration and dist
     expect(() => allowed.context.services.session.operationAvailability(input, { signal: abort.signal })).toThrow("retired");
   } finally { read.mockRestore(); for (const runtime of [denied, allowed]) { runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); } }
   expect(() => allowed.context.services.session.operationAvailability(input)).toThrow();
+});
+
+
+test("text prerequisites authorize before source reads, use the real owner, and sanitize lookup failures", async () => {
+  const { BookTextRepository } = await import("../features/library/lib/book-text-repository");
+  const inspect = spyOn(BookTextRepository.prototype, "preparationConditions").mockResolvedValue([{ kind: "provider", state: "unknown", reason: "source-download-not-checked" }]);
+  const prepare = spyOn(BookTextRepository.prototype, "prepare");
+  const clients = [
+    buildPluginContext({ id: "no-text-write", name: "Read", version: "1", schemaVersion: 1, requires: {}, permissions: ["library:read"] }, "1", []),
+    buildPluginContext({ id: "text-writer", name: "Write", version: "1", schemaVersion: 1, requires: {}, permissions: ["library:write"] }, "1", [], { mode: "book", bookId: "book" }),
+  ];
+  clients.forEach(client => client.lifecycle.promote());
+  const input = { operation: "library.text.prepare" as const, bookId: "book", rebuild: true };
+  try {
+    expect((await clients[0]!.context.services.session.operationAvailability(input)).conditions).toEqual([{ kind: "permission", state: "unavailable", reason: "library:write-required" }]);
+    expect((await clients[1]!.context.services.session.operationAvailability({ ...input, bookId: "foreign" })).conditions[0]!.reason).toBe("book-scope-required");
+    expect(inspect).not.toHaveBeenCalled();
+    const query = clients[1]!.context.services.session.operationAvailability;
+    expect((await query(input)).conditions).toContainEqual({ kind: "capacity", state: "satisfied", reason: "text-task-capacity" });
+    expect(inspect.mock.calls[0]!.slice(0, 2)).toEqual(["book", true]); expect(prepare).not.toHaveBeenCalled();
+    inspect.mockRejectedValue(new AppError("library/book-not-found", "private book"));
+    expect((await query(input)).conditions).toContainEqual(expect.objectContaining({ kind: "object", state: "unavailable", reason: "book-not-found" }));
+    inspect.mockRejectedValue(new Error("PRIVATE_SOURCE_FAILURE"));
+    const failure = await query(input); expect(failure.state).toBe("unknown"); expect(JSON.stringify(failure)).not.toContain("PRIVATE");
+    expect((await checkOperationAvailability(input)).state).toBe("unknown");
+  } finally { inspect.mockRestore(); prepare.mockRestore(); for (const client of clients) { client.lifecycle.stop(); await client.lifecycle.drainCleanups(); } }
+});
+
+test("current-book text query and real task admission share scope fences through pause/resume and terminal cleanup", async () => {
+  const { BookTextRepository } = await import("../features/library/lib/book-text-repository");
+  const { BookTextTaskHistory } = await import("../features/library/lib/book-text-task-history");
+  const state = { bookId: "book", contentVersion: "v", status: "unprepared" as const, text: "unknown" as const, chapterCount: 0, progress: null };
+  let gate: Promise<void> | undefined; const entered = Promise.withResolvers<void>(); const signals: AbortSignal[] = [];
+  const spies = [
+    spyOn(BookTextRepository.prototype, "preparationConditions").mockImplementation(async () => { if (gate) { entered.resolve(); await gate; } return [{ kind: "provider", state: "unknown", reason: "not-loaded" }]; }),
+    spyOn(BookTextRepository.prototype, "snapshot").mockResolvedValue(state),
+    spyOn(BookTextTaskHistory.prototype, "record").mockResolvedValue(),
+    spyOn(BookTextRepository.prototype, "prepare").mockImplementation(async (_book, options) => new Promise((_resolve, reject) => {
+      const signal = options!.signal!; signals.push(signal); signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+    })),
+  ];
+  readingRuntime.begin("book");
+  const client = buildPluginContext({ id: "current-text", name: "Text", version: "1", schemaVersion: 1, requires: {}, permissions: ["library:write"] }, "1", [], { mode: "current" });
+  client.lifecycle.promote();
+  try {
+    const input = { operation: "library.text.prepare" as const, bookId: "book" };
+    expect((await client.context.services.session.operationAvailability(input)).state).toBe("unknown");
+    const commands = client.context.domains.library!.commands!.books;
+    const task = await commands.prepareText("book"); expect(task.status).toBe("running");
+    expect((await commands.pauseTextTask("book", task.taskId)).status).toBe("paused"); expect(signals[0]!.aborted).toBe(true);
+    expect((await commands.resumeTextTask("book", task.taskId)).status).toBe("running"); expect(signals[1]!.aborted).toBe(false);
+    readingRuntime.begin("foreign"); expect(signals[1]!.aborted).toBe(true);
+    await expect(commands.prepareText("book")).rejects.toMatchObject({ code: "plugin/object-access-denied" });
+    readingRuntime.begin("book");
+    expect((await client.context.domains.library!.queries.books.getTextTask("book", task.taskId))!.status).toBe("cancelled");
+    const wait = Promise.withResolvers<void>(); gate = wait.promise;
+    const pending = commands.prepareText("book"); await entered.promise; readingRuntime.begin("foreign"); wait.resolve();
+    await expect(pending).rejects.toMatchObject({ code: "plugin/object-access-denied" }); expect(signals).toHaveLength(2);
+  } finally { readingRuntime.closed(); client.lifecycle.stop(); await client.lifecycle.drainCleanups(); for (const spy of spies) spy.mockRestore(); }
 });

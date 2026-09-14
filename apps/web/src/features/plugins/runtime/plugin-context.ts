@@ -919,14 +919,15 @@ export function buildPluginContext(
           signal.throwIfAborted();
           const query = normalizeOperationAvailability(input);
           if (query.operation !== "llm.infer") {
-            if (!permissions.has("reading:write")) return Promise.resolve(operationAvailability(query, [
-              { kind: "permission", state: "unavailable", reason: "reading:write-required" },
+            const permission = query.operation === "library.text.prepare" ? "library:write" : "reading:write";
+            if (!permissions.has(permission)) return Promise.resolve(operationAvailability(query, [
+              { kind: "permission", state: "unavailable", reason: `${permission}-required` },
             ]));
             try { objectAccess.assertBook(query.bookId, "services.session.operationAvailability"); }
             catch { return Promise.resolve(operationAvailability(query, [
               { kind: "permission", state: "unavailable", reason: "book-scope-required", errorCode: "plugin/object-access-denied" },
             ])); }
-            return scopedRead(query.bookId, "services.session.operationAvailability", signal => checkOperationAvailability(query, signal), options);
+            return scopedRead(query.bookId, "services.session.operationAvailability", signal => checkOperationAvailability(query, signal, { textPreparation: owners.textTasks }), options);
           }
           if (!canUseHostService("llm", permissions)) return Promise.resolve(operationAvailability(query, [
             { kind: "permission", state: "unavailable", reason: "service:llm-required" },
@@ -1208,7 +1209,7 @@ export function buildPluginContext(
     if (library.commands) {
       const commands = {
         books: {
-          prepareText: library.commands.books.prepareText,
+          prepareText: (bookId: string, options?: import("@read-aware/core").BookTextPrepareOptions) => library.commands!.books.prepareText(bookId, options),
           retryEnrichment: (bookId: string) => library.commands!.books.retryEnrichment(bookId, lifecycle.signal),
           mergeDuplicates: (input: import("@read-aware/core").BookMergeRequest) => library.commands!.books.mergeDuplicates(input, lifecycle.signal),
           setTextTaskPriority: library.commands.books.setTextTaskPriority,
@@ -1286,13 +1287,28 @@ export function buildPluginContext(
         };
         ctx.domains.library.commands = {
           books: {
-            prepareText: (bookId, options) => scopedCommand(bookId, "library.commands.books.prepareText", () => rawBooks.prepareText(bookId, options), undefined, false, verifyTask("library.commands.books.prepareText")),
+            prepareText: async (bookId, options) => {
+              const operation = "library.commands.books.prepareText";
+              lifecycle.assertActive(operation);
+              const fence = await objectAccess.beginBook(bookId, operation);
+              const cancel = new AbortController();
+              const signal = AbortSignal.any([lifecycle.signal, cancel.signal, ...(fence.signal ? [fence.signal] : [])]);
+              let disposed = false;
+              const access = { signal, isAllowed: () => !disposed && !signal.aborted,
+                dispose: () => { if (!disposed) { disposed = true; fence.dispose(); } } };
+              try {
+                const task = await rawBooks.prepareText(bookId, options, access);
+                verifyTask(operation)(task);
+                await fence.assertUnchanged({ retain: true });
+                return task;
+              } catch (error) { cancel.abort(error); access.dispose(); throw error; }
+            },
             retryEnrichment: (bookId) => scopedCommand(bookId, "library.commands.books.retryEnrichment", signal => rawBooks.retryEnrichment(bookId, signal), undefined, true, value => objectAccess.assertReturnedBook(value.snapshot.bookId, "library.commands.books.retryEnrichment")),
             mergeDuplicates: denyPluginBookOperation("library.commands.books.mergeDuplicates"),
-            setTextTaskPriority: (bookId, taskId, priority) => scopedCommand(bookId, "library.commands.books.setTextTaskPriority", () => rawBooks.setTextTaskPriority(bookId, taskId, priority), undefined, false, verifyTask("library.commands.books.setTextTaskPriority")),
-            pauseTextTask: (bookId, taskId) => scopedCommand(bookId, "library.commands.books.pauseTextTask", () => rawBooks.pauseTextTask(bookId, taskId), undefined, false, verifyTask("library.commands.books.pauseTextTask")),
-            resumeTextTask: (bookId, taskId) => scopedCommand(bookId, "library.commands.books.resumeTextTask", () => rawBooks.resumeTextTask(bookId, taskId), undefined, false, verifyTask("library.commands.books.resumeTextTask")),
-            cancelTextTask: (bookId, taskId) => scopedCommand(bookId, "library.commands.books.cancelTextTask", () => rawBooks.cancelTextTask(bookId, taskId), undefined, false, verifyTask("library.commands.books.cancelTextTask")),
+            setTextTaskPriority: (bookId, taskId, priority) => scopedCommand(bookId, "library.commands.books.setTextTaskPriority", () => rawBooks.setTextTaskPriority(bookId, taskId, priority), undefined, true, verifyTask("library.commands.books.setTextTaskPriority")),
+            pauseTextTask: (bookId, taskId) => scopedCommand(bookId, "library.commands.books.pauseTextTask", () => rawBooks.pauseTextTask(bookId, taskId), undefined, true, verifyTask("library.commands.books.pauseTextTask")),
+            resumeTextTask: (bookId, taskId) => scopedCommand(bookId, "library.commands.books.resumeTextTask", () => rawBooks.resumeTextTask(bookId, taskId), undefined, true, verifyTask("library.commands.books.resumeTextTask")),
+            cancelTextTask: (bookId, taskId) => scopedCommand(bookId, "library.commands.books.cancelTextTask", () => rawBooks.cancelTextTask(bookId, taskId), undefined, true, verifyTask("library.commands.books.cancelTextTask")),
             importBook: denyPluginBookOperation("library.commands.books.importBook"),
             importResource: denyPluginBookOperation("library.commands.books.importResource"),
             startImport: denyPluginBookOperation("library.commands.books.startImport"),

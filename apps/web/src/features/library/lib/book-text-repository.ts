@@ -1,4 +1,4 @@
-import { AppError, errorCode, type BookTextPriority, type BookTextWaitReason, type BookTextSnapshot } from "@read-aware/core";
+import { AppError, errorCode, assertOperationConditions, type OperationCondition, type BookTextPriority, type BookTextWaitReason, type BookTextSnapshot } from "@read-aware/core";
 import type { FoliateBook } from "../../reader/lib/foliate-engine";
 import { extractBookText } from "./book-text-extraction";
 import { parseBookTextRecord, snapshotFromText, textComplete, type BookTextRecord, type ExtractedChapter } from "./book-text-record";
@@ -8,6 +8,7 @@ import { actorFromEvent, causalActor, mergeEventCauses, stampEventCause, type Do
 
 export type TextSource = { contentVersion: string | null; format: string; revision?: string; available?: boolean };
 export type BookTextDependencies = {
+  retrievalConditions?(signal?: AbortSignal): Promise<OperationCondition[]>;
   source(bookId: string, fetchMissing: boolean): Promise<TextSource>;
   read(bookId: string): Promise<unknown>;
   write(record: BookTextRecord): Promise<void>;
@@ -51,7 +52,7 @@ export class BookTextRepository {
   private async record(bookId: string, version: string): Promise<BookTextRecord | null> {
     return parseBookTextRecord(await this.deps.read(bookId), bookId, version);
   }
-  private async checkSource(bookId: string, version: string, signal?: AbortSignal, revision?: string): Promise<void> {
+  private async checkSource(bookId: string, version: string | null, signal?: AbortSignal, revision?: string): Promise<void> {
     signal?.throwIfAborted();
     const source = await this.source(bookId);
     if (source.contentVersion !== version || source.revision !== revision) throw new AppError("reader/stale-location", "Text source changed during extraction");
@@ -107,6 +108,30 @@ export class BookTextRepository {
     return result.state;
   }
 
+  private preparationSourceConditions(source: TextSource, rebuild: boolean, busy: boolean): OperationCondition[] {
+    if (rebuild && busy) return [{ kind: "capacity", state: "unavailable", reason: "text-rebuild-busy", errorCode: "library/text-busy" }];
+    if (source.format === "virtual" && !source.available && !source.contentVersion) return [
+      { kind: "provider", state: "unavailable", reason: "book-content-provider-unavailable", errorCode: "library/content-unavailable" },
+    ];
+    return [{ kind: "object", state: source.contentVersion ? "satisfied" : "unknown", reason: source.contentVersion ? "source-version-known" : "source-content-not-loaded" },
+      { kind: "provider", state: "unknown", reason: source.format === "virtual" ? "book-content-load-not-checked" : "text-extraction-not-checked" }];
+  }
+
+  /** No parser/provider invocation or missing-file retrieval. */
+  async preparationConditions(bookId: string, rebuild = false, signal?: AbortSignal): Promise<OperationCondition[]> {
+    signal?.throwIfAborted();
+    const source = await this.source(bookId);
+    signal?.throwIfAborted();
+    const job = this.jobs.get(bookId);
+    const busy = !!job && job.version === source.contentVersion && job.sourceRevision === source.revision;
+    const conditions = this.preparationSourceConditions(source, rebuild, busy);
+    if (!source.contentVersion && source.format !== "virtual") conditions.push(...(await this.deps.retrievalConditions?.(signal)
+      ?? [{ kind: "provider" as const, state: "unknown" as const, reason: "source-retrieval-prerequisites-unavailable" }]));
+    await this.checkSource(bookId, source.contentVersion, signal, source.revision);
+    signal?.throwIfAborted();
+    return conditions;
+  }
+
   private notify(job: Job): void {
     for (const notify of job.consumers.values()) {
       try { notify.progress?.(structuredClone(job.snapshot)); }
@@ -155,6 +180,7 @@ export class BookTextRepository {
   private async request(bookId: string, waitForPdf: boolean, options: TextPreparationOptions): Promise<PreparedText> {
     options = { ...options, origin: causalActor(options.origin ?? "system") };
     options.signal?.throwIfAborted();
+    assertOperationConditions(await this.preparationConditions(bookId, options.rebuild, options.signal));
     const source = await this.source(bookId, true);
     options.signal?.throwIfAborted();
     const version = source.contentVersion;
@@ -167,7 +193,7 @@ export class BookTextRepository {
       job.controller.abort(new AppError("reader/stale-location", "Text source changed"));
       job = undefined;
     }
-    if (options.rebuild && job) throw new AppError("library/text-busy", "An extraction is already owned by active consumers");
+    assertOperationConditions(this.preparationSourceConditions(source, options.rebuild === true, !!job));
     if (!job && !options.rebuild && prior && textComplete(prior)) {
       this.failures.delete(bookId);
       return { chapters: prior.chapters, state: snapshotFromText(prior) };

@@ -1485,7 +1485,9 @@ export type PluginLibraryDomain = {
   };
   commands?: {
     books: {
-      /** Starts an actor-owned background request. A receipt is not completion. */
+      /** Library 1.31: starts an actor-owned background request. A receipt is not completion.
+       * Current-book grants fence admission and the lease through pause/resume;
+       * switching books cancels only this request, without undoing accepted writes. */
       prepareText(bookId: string, options?: import("@read-aware/core").BookTextPrepareOptions): Promise<import("@read-aware/core").BookTextTaskSnapshot>;
       /** Retry unchecked covers and missing/filename-derived metadata using the shared queue, without forcing replacement or download. */
       retryEnrichment(bookId: string): Promise<import("@read-aware/core").BookEnrichmentReceipt>;
@@ -2434,7 +2436,7 @@ export type PluginHostServices = {
     observe(handler: (snapshot: import("@read-aware/core").HostSyncSnapshot) => unknown): PluginDisposable;
   };
   session: {
-    /** Session 2.2: inspect inference and book-targeted playback/mode prerequisites without executing
+    /** Session 2.3: inspect inference, book-targeted playback/mode and text preparation prerequisites without executing
      * or probing. Missing permission returns only the permission condition.
      * Unknown remote health is not a local refusal or a success guarantee. */
     operationAvailability(query: import("@read-aware/core").OperationAvailabilityQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").OperationAvailability>;

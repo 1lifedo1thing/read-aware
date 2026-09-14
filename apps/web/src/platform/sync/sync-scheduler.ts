@@ -12,6 +12,7 @@ import { flushRestoredCredentialPublications } from "../restored-credential-publ
 import {
   AppError,
   ERR_SYNC_NETWORK,
+  type OperationCondition,
 } from "@read-aware/core";
 import { invoke } from "../ipc";
 import { isTauri } from "../environment";
@@ -24,7 +25,7 @@ import { durableWrites } from "../write-settlement";
 import { SyncWorkGate } from "./sync-work-gate";
 import { createLogger } from "../logger";
 import { refreshRoamingPreferences, republishRoamingSecrets } from "../roaming-preferences";
-import { deleteSecretAsync, getSecret, setSecretAsync } from "../secret-store";
+import { afterSecretWrites, deleteSecretAsync, getSecret, setSecretAsync } from "../secret-store";
 import { fromBase64 } from "../sync-envelope";
 import { classifySyncError } from "./classify-sync-error";
 import { clearReauthNoticeDismissal } from "./reauth-notice";
@@ -363,16 +364,35 @@ export function fetchRemoteBlob(key: string): Promise<RemoteBlobFetch> {
   return syncWork.run(() => fetchAcceptedRemoteBlob(key));
 }
 
-async function fetchAcceptedRemoteBlob(key: string): Promise<RemoteBlobFetch> {
-  if (!isTauri()) return { outcome: "unavailable", reason: "not-tauri" };
+/** Read-only local admission used both by discovery and the accepted download.
+ * Never resolves an engine, opens a transport, probes, or returns credentials. */
+async function remoteBlobAdmission(): Promise<{ reason?: "not-tauri" | "sync-off" | "not-connected"; conditions: OperationCondition[] }> {
+  const blocked = (reason: "not-tauri" | "sync-off" | "not-connected", kind: OperationCondition["kind"], detail: string) => ({
+    reason, conditions: [{ kind, state: reason === "not-tauri" ? "unavailable" as const : "unconfigured" as const, reason: detail, errorCode: "library/content-unavailable" }],
+  });
+  if (!isTauri()) return blocked("not-tauri", "provider", "desktop-required");
   const profile = await getSyncProfile();
-  if (!profile.syncEnabled) return { outcome: "unavailable", reason: "sync-off" };
+  if (!profile.syncEnabled) return blocked("sync-off", "provider", "source-sync-disabled");
   // A transport connection has no relay session — the master key plus the
   // profile binding are its whole credential set.
-  const viaTransport = parseTransportAccountId(profile.remoteAccountId) !== null;
-  if (!getSecret("sync.master-key") || (!viaTransport && !getSecret("sync.session"))) {
-    return { outcome: "unavailable", reason: "not-connected" };
-  }
+  const connection = parseTransportAccountId(profile.remoteAccountId);
+  const credentials = await afterSecretWrites(() => !!getSecret("sync.master-key") && (!!connection || !!getSecret("sync.session")));
+  if (!credentials) return blocked("not-connected", "account", "source-sync-credentials-missing");
+  if (connection && !findSyncTransport(connection.ref)) return blocked("not-connected", "provider", "source-transport-unavailable");
+  return { conditions: [{ kind: "account", state: "satisfied", reason: "source-sync-credentials-present" },
+    { kind: "provider", state: "unknown", reason: "source-download-not-checked" }] };
+}
+
+export async function getRemoteBlobFetchConditions(signal?: AbortSignal): Promise<OperationCondition[]> {
+  signal?.throwIfAborted();
+  const result = await remoteBlobAdmission();
+  signal?.throwIfAborted();
+  return result.conditions;
+}
+
+async function fetchAcceptedRemoteBlob(key: string): Promise<RemoteBlobFetch> {
+  const admission = await remoteBlobAdmission();
+  if (admission.reason) return { outcome: "unavailable", reason: admission.reason };
   // Surface the download like any sync activity: the indicator ring narrates
   // "syncing <book> n/m" while parts stream in, then yields to the prior state.
   const restoreState = status.state === "syncing" ? null : status.state;

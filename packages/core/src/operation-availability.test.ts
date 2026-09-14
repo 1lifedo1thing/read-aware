@@ -22,3 +22,14 @@ test("reading availability requires an explicit bounded target and the exact ope
     { ...mode, images: false }, { ...mode, modeKey: 3 }]) expect(() => normalizeOperationAvailability(input)).toThrow();
   expect(operationAvailability(normalizeOperationAvailability(query), [])).not.toHaveProperty("model");
 });
+
+test("text preparation discovery uses actual admission defaults and rejects malformed options", () => {
+  const input = { operation: "library.text.prepare", bookId: "book" };
+  expect(normalizeOperationAvailability(input)).toEqual({ ...input, rebuild: false, priority: "normal", timeoutMs: 1800000 });
+  for (const patch of [{ bookId: "" }, { bookId: "x".repeat(257) }, { sessionId: "session" }, { priority: "urgent" },
+    { rebuild: 1 }, { timeoutMs: null }, { timeoutMs: 999 }, { timeoutMs: 7200001 }, { timeoutMs: 1000.5 }]) {
+    expect(() => normalizeOperationAvailability({ ...input, ...patch })).toThrow();
+  }
+  const blocked = operationAvailability(normalizeOperationAvailability(input), [{ kind: "capacity", state: "unavailable", reason: "text-task-limit", errorCode: "library/text-task-limit" }]);
+  expect(() => assertOperationAvailable(blocked)).toThrow(expect.objectContaining({ code: "library/text-task-limit" }));
+});

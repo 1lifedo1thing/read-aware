@@ -38,6 +38,7 @@ import { inspectBookClassification, changeBookClassification } from "../../../..
 import { agentBookGraphTasks } from "../../../../domain/book-graph-tasks";
 import { identityConsolidationPort } from "../../../../domain/identity-consolidation";
 import { readingAiActions } from "../../../../services/reading-ai-runtime";
+import { agentTextPreparationConditions } from "../../../../domain/library";
 
 export { GLOBAL_CONVERSATION_ID } from "./conversation-port";
 
@@ -61,7 +62,7 @@ export function buildRuntimeDeps(): RuntimeDeps {
     memoryManagement: { inspect: inspectMemory, mutate: (input, signal) => mutateMemory(input, "agent", signal) },
     hostCommands: trustedHostCommands("agent"),
     environment: { snapshot: async () => hostEnvironment.snapshot() },
-    operationAvailability: { check: checkOperationAvailability },
+    operationAvailability: { check: (query, signal) => checkOperationAvailability(query, signal, { textPreparation: { conditions: agentTextPreparationConditions } }) },
     window: { snapshot: signal => hostWindow.snapshot(signal),
       control: (request, signal) => hostWindow.control(request, signal, "agent") },
     workspace: { snapshot: async query => workspace.snapshot(query), navigate: (target, revision, signal) => workspace.navigate(target, revision, signal, true) },

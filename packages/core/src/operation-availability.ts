@@ -1,5 +1,6 @@
 import { AppError } from "./errors";
 import type { ReadingModeConfiguration } from "./reading-session";
+import { normalizeBookTextPrepareOptions, type BookTextPrepareOptions } from "./book-text";
 
 /** Semantic operation conditions, not a promise of remote success. More
  * operation kinds share this contract as their authoritative checks are wired. */
@@ -8,11 +9,12 @@ export type ReadingOperationQuery = { bookId: string; sessionId?: string } & (
   | { operation: "reading.playback"; action: "start" | "stop" }
   | ({ operation: "reading.mode.configure" } & ReadingModeConfiguration)
 );
-export type OperationAvailabilityQuery = InferenceAvailabilityQuery | ReadingOperationQuery;
-export type NormalizedOperationAvailabilityQuery = Required<InferenceAvailabilityQuery> | ReadingOperationQuery;
+export type BookTextAvailabilityQuery = { operation: "library.text.prepare"; bookId: string } & BookTextPrepareOptions;
+export type OperationAvailabilityQuery = InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery;
+export type NormalizedOperationAvailabilityQuery = Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery>;
 export type OperationConditionState = "satisfied" | "unconfigured" | "unavailable" | "unknown";
 export type OperationCondition = {
-  kind: "permission" | "account" | "model" | "endpoint" | "provider" | "input" | "object" | "reader";
+  kind: "permission" | "account" | "model" | "endpoint" | "provider" | "input" | "object" | "reader" | "capacity";
   state: OperationConditionState;
   reason: string;
   errorCode?: string;
@@ -31,6 +33,12 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
   const invalid = () => new AppError("plugin/invalid-argument", "Invalid operation availability query");
   if (!input || typeof input !== "object" || Array.isArray(input)) throw invalid();
   const raw = input as Record<string, unknown>;
+  if (raw.operation === "library.text.prepare") {
+    if (Object.keys(raw).some(key => !["operation", "bookId", "rebuild", "priority", "timeoutMs"].includes(key))
+      || typeof raw.bookId !== "string" || !raw.bookId.trim() || raw.bookId.length > 256) throw invalid();
+    const { operation, bookId, ...options } = raw;
+    return { operation, bookId, ...normalizeBookTextPrepareOptions(options as BookTextPrepareOptions) };
+  }
   if (raw.operation === "reading.playback" || raw.operation === "reading.mode.configure") {
     const fields = raw.operation === "reading.playback" ? ["action"] : ["active", "modeKey", "selectModeKey", "unitId"];
     if (Object.keys(raw).some(key => !["operation", "bookId", "sessionId", ...fields].includes(key))) throw invalid();

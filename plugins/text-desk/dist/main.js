@@ -1,6 +1,11 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  preparationPrerequisites: ["Text preparation prerequisites", "正文准备条件", "正文準備條件", "本文準備の条件", "Условия подготовки текста", "Conditions de préparation du texte", "Voraussetzungen der Textaufbereitung", "Requisitos de preparación del texto"],
+  rebuildPrerequisites: ["Text rebuild prerequisites", "正文重建条件", "正文重建條件", "本文再構築の条件", "Условия перестроения текста", "Conditions de reconstruction du texte", "Voraussetzungen des Textneuaufbaus", "Requisitos de reconstrucción del texto"],
+  preparationPrerequisitesNote: ["Checks the source and request capacity without loading content or downloading. Unknown conditions are verified when you run the operation.", "检查书籍源和任务容量，不加载正文或下载文件。未知条件会在执行操作时确认。", "檢查書籍來源與工作容量，不載入正文或下載檔案。未知條件會在執行操作時確認。", "本文の読み込みやダウンロードをせずに、書籍の元データとタスク容量を確認します。不明な条件は操作時に確認されます。", "Проверяет источник и ёмкость задач без загрузки содержимого. Неизвестные условия проверяются при выполнении.", "Vérifie la source et la capacité des tâches sans charger de contenu ni télécharger. Les conditions inconnues sont vérifiées à l’exécution.", "Prüft Quelle und Auftragskapazität ohne Inhalte zu laden oder herunterzuladen. Unbekannte Bedingungen werden bei der Ausführung geprüft.", "Comprueba la fuente y la capacidad de tareas sin cargar contenido ni descargar. Las condiciones desconocidas se verifican al ejecutar."],
+  sourceProvider: ["Content or download provider", "内容或下载提供者", "內容或下載提供者", "コンテンツ・ダウンロード提供元", "Провайдер содержимого или загрузки", "Fournisseur de contenu ou de téléchargement", "Inhalts- oder Downloadanbieter", "Proveedor de contenido o descarga"],
+  availability_capacity: ["Request capacity", "任务容量", "工作容量", "タスク容量", "Ёмкость задач", "Capacité des tâches", "Auftragskapazität", "Capacidad de tareas"],
   readingAvailability: ["Reading prerequisites", "阅读操作条件", "閱讀操作條件", "読書操作の利用条件", "Условия чтения", "Conditions de lecture", "Lesevoraussetzungen", "Requisitos de lectura"],
   readingAvailabilityNote: ["Checks this reading session. Voice presence and mode registration do not verify audio output or provider execution.", "检查本次阅读会话。语音可用或模式已注册，不代表已经验证播放或提供者执行成功。", "檢查本次閱讀工作階段。語音可用或模式已註冊，不代表已驗證播放或提供者執行成功。", "現在の読書セッションを確認します。音声やモードの存在は、再生や実行の成功を保証しません。", "Проверяет текущий сеанс. Наличие голоса или режима не подтверждает успешное воспроизведение или выполнение.", "Vérifie cette session. La présence d’une voix ou d’un mode ne confirme pas la réussite de la lecture ou du fournisseur.", "Prüft diese Lesesitzung. Vorhandene Stimmen oder Modi bestätigen noch keine erfolgreiche Wiedergabe oder Ausführung.", "Comprueba esta sesión. La presencia de voz o modo no confirma la reproducción ni la ejecución del proveedor."],
   enableReadingMode: ["Enable reading mode", "启用阅读模式", "啟用閱讀模式", "読書モードを有効化", "Включить режим чтения", "Activer le mode de lecture", "Lesemodus aktivieren", "Activar modo de lectura"],
@@ -661,7 +666,7 @@ var PARAMETERLESS_HOST_COMMAND_IDS = [
 var HOST_COMMAND_IDS = [...PARAMETERLESS_HOST_COMMAND_IDS, "open-book", "open-collection"];
 // ../../packages/core/src/domains.ts
 var DOMAIN_CATALOG = {
-  library: { version: "1.30.0", pluginAccess: ["read", "write"] },
+  library: { version: "1.31.0", pluginAccess: ["read", "write"] },
   reading: { version: "2.21.0", pluginAccess: ["read", "write"] },
   annotations: { version: "2.2.0", pluginAccess: ["read", "write"] },
   conversations: { version: "1.5.0", pluginAccess: ["read", "write"] },
@@ -694,7 +699,7 @@ var HOST_SERVICE_CATALOG = {
   secrets: { version: "1.0.0", permission: null },
   ui: { version: "1.15.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
-  session: { version: "2.2.0", permission: null },
+  session: { version: "2.3.0", permission: null },
   plugins: { version: "1.7.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
@@ -1438,6 +1443,30 @@ async function contentSections(ctx, bookId, title, kind, contentVersion, offsets
   };
 }
 
+// src/preparation-availability.ts
+async function preparationAvailability(ctx, bookId, title, rebuild = false) {
+  const result = await ctx.services.session.operationAvailability({ operation: "library.text.prepare", bookId, rebuild });
+  const blocked = result.conditions.some((condition) => condition.state === "unavailable" || condition.state === "unconfigured");
+  return { kind: "detail", title, content: [
+    { kind: "heading", text: tr(ctx.locale, rebuild ? "rebuildPrerequisites" : "preparationPrerequisites") },
+    { kind: "text", text: tr(ctx.locale, "preparationPrerequisitesNote") },
+    { kind: "keyValue", rows: result.conditions.map((condition) => ({
+      label: tr(ctx.locale, condition.kind === "provider" ? "sourceProvider" : `availability_${condition.kind}`),
+      value: tr(ctx.locale, `availability_${condition.state}`)
+    })) },
+    ...result.conditions.filter((condition) => condition.errorCode).map((condition) => ({ kind: "error", code: condition.errorCode }))
+  ], actions: [
+    ...!blocked && ctx.domains.library?.commands ? [{
+      id: "execute",
+      label: tr(ctx.locale, rebuild ? "rebuild" : "prepare"),
+      icon: "play",
+      run: () => rebuild ? { view: rebuildForm(ctx, bookId, title) } : startRequest(ctx, bookId, title)
+    }] : [],
+    { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await preparationAvailability(ctx, bookId, title, rebuild), navigation: "replace" }) },
+    { id: "switch", label: tr(ctx.locale, rebuild ? "preparationPrerequisites" : "rebuildPrerequisites"), run: async () => ({ view: await preparationAvailability(ctx, bookId, title, !rebuild), navigation: "replace" }) }
+  ] };
+}
+
 // src/views.ts
 async function textDetail(ctx, bookId, title) {
   const state = await ctx.domains.library.queries.books.getTextState(bookId);
@@ -1449,6 +1478,7 @@ async function textDetail(ctx, bookId, title) {
   if (state.progress)
     rows.push({ label: tr(ctx.locale, "sections"), value: `${state.progress.completed} / ${state.progress.total}` }, { label: tr(ctx.locale, "failed"), value: String(state.progress.failed) }, { label: tr(ctx.locale, "unsupportedSections"), value: String(state.progress.unsupported) });
   return { kind: "detail", title, content: [{ kind: "keyValue", rows }], actions: [
+    { id: "preparation-prerequisites", label: tr(ctx.locale, "preparationPrerequisites"), run: async () => ({ view: await preparationAvailability(ctx, bookId, title) }) },
     { id: "search", label: tr(ctx.locale, "searchBook"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx, bookId) }) },
     { id: "find-passage", label: tr(ctx.locale, "findPassage"), icon: "magnifying-glass", run: () => ({ view: rangeSearchForm(ctx, bookId) }) },
     { id: "references", label: tr(ctx.locale, "references"), icon: "link", run: async () => ({ view: await contentSections(ctx, bookId, title, "references") }) },
