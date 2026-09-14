@@ -7,6 +7,8 @@ import { ScrollArea } from "./ScrollArea";
 
 /** Viewport-fixed coordinates for the portaled listbox. */
 type MenuPosition = {
+  /** Preserve scoped typography when rendering under document.body. */
+  fontFamily: string;
   left: number;
   width: number;
   maxHeight: number;
@@ -123,7 +125,10 @@ export function Select({
     const placeBelow = spaceBelow >= menuCap || spaceBelow >= spaceAbove;
     const maxHeight = Math.max(96, Math.min(menuCap, placeBelow ? spaceBelow : spaceAbove));
     const offset = placeBelow ? rect.bottom + gap : window.innerHeight - rect.top + gap;
-    setPosition({ left: rect.left, width: rect.width, maxHeight, placeBelow, offset });
+    setPosition({
+      left: rect.left, width: rect.width, maxHeight, placeBelow, offset,
+      fontFamily: getComputedStyle(button).fontFamily,
+    });
   }, [setPosition]);
 
   useLayoutEffect(() => {
@@ -213,7 +218,11 @@ export function Select({
             hasError ? `${id}-error` : helperText ? `${id}-helper` : undefined
           }
           disabled={disabled}
-          onClick={() => !disabled && setOpen((o) => !o)}
+          onClick={() => {
+            if (disabled) return;
+            if (!open) setActiveIndex(options.findIndex((option) => option.value === currentValue));
+            setOpen((value) => !value);
+          }}
           onKeyDown={handleKeyDown}
           className={cn(
             "flex w-full items-center justify-between bg-transparent text-left font-sans text-base outline-none",
@@ -257,6 +266,7 @@ export function Select({
               data-ui-portal=""
               style={{
                 position: "fixed",
+                fontFamily: position.fontFamily,
                 ...(position.placeBelow
                   ? { top: position.offset }
                   : { bottom: position.offset }),

@@ -1,7 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { CaretDown } from "@phosphor-icons/react";
+import { Popover, buttonClassName } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
-import { RELEASES_URL, type PlatformDownload, type PlatformId } from "../lib/releases";
+import {
+  RELEASES_URL,
+  type PlatformDownload,
+  type PlatformId,
+} from "../lib/releases";
 
 export type DownloadStrings = {
   comingSoon: string;
@@ -35,26 +40,6 @@ export function DownloadMenu({
   strings = DEFAULT_STRINGS,
 }: DownloadMenuProps) {
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
   const detected = platform
     ? downloads.find((download) => download.id === platform)
     : undefined;
@@ -63,81 +48,74 @@ export function DownloadMenu({
       ? { name: detected.name, url: detected.primary.url }
       : null;
 
-  const solid =
-    "inline-flex h-11 items-center bg-fg text-base text-inverse-fg transition-colors hover:bg-fg/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fg/25";
-
   return (
-    <div ref={rootRef} className="relative inline-flex">
-      <div className="inline-flex overflow-hidden rounded-md">
-        {direct ? (
-          <a href={direct.url} className={cn(solid, "px-5")}>
-            {strings.downloadFor(direct.name)}
-          </a>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setOpen((value) => !value)}
-            aria-haspopup="menu"
-            aria-expanded={open}
-            className={cn(solid, "px-5")}
-          >
-            {strings.download}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          aria-label={strings.choosePlatform}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          className={cn(solid, "border-l border-inverse-fg/20 px-2.5")}
+    <div className="inline-flex items-stretch">
+      {direct && (
+        <a
+          href={direct.url}
+          className={buttonClassName({ size: "lg", className: "rounded-l-md" })}
         >
-          <CaretDown
-            size={14}
-            weight="bold"
-            aria-hidden="true"
-            className={cn("transition-transform", open && "rotate-180")}
-          />
-        </button>
-      </div>
+          {strings.downloadFor(direct.name)}
+        </a>
+      )}
+      <Popover
+        open={open}
+        onOpenChange={setOpen}
+        align={direct ? "right" : "left"}
+        triggerLabel={direct ? strings.choosePlatform : strings.download}
+        triggerClassName={buttonClassName({
+          size: "lg",
+          className: direct
+            ? "rounded-r-md border-l border-inverse-fg/20 px-2.5"
+            : "rounded-md",
+        })}
+        panelClassName="w-64 p-1"
+        trigger={
+          <>
+            {!direct && strings.download}
+            <CaretDown
+              size={14}
+              weight="bold"
+              aria-hidden="true"
+              className={cn("transition-transform", open && "rotate-180")}
+            />
+          </>
+        }
+      >
+        {downloads.map((download) => {
+          const href = download.primary?.url ?? RELEASES_URL;
 
-      {open && (
-        <div
-          role="menu"
-          className="absolute left-0 top-[calc(100%+0.5rem)] z-30 w-64 rounded-md border border-border-strong bg-surface p-1 shadow-[0_10px_30px_-12px_rgba(38,36,32,0.28)]"
-        >
-          {downloads.map((download) => {
-            const href = download.primary?.url ?? RELEASES_URL;
-
-            if (download.comingSoon) {
-              return (
-                <div
-                  key={download.id}
-                  className="flex items-baseline justify-between px-3 py-2 text-fg-subtle"
-                >
-                  <span className="text-[0.9375rem]">{download.name}</span>
-                  <span className="text-[0.8125rem] italic">{strings.comingSoon}</span>
-                </div>
-              );
-            }
-
+          if (download.comingSoon) {
             return (
-              <a
+              <div
                 key={download.id}
-                href={href}
-                role="menuitem"
-                onClick={() => setOpen(false)}
-                className="flex items-baseline justify-between rounded px-3 py-2 transition-colors hover:bg-fill"
+                className="flex items-baseline justify-between px-3 py-2 text-fg-subtle"
               >
                 <span className="text-[0.9375rem]">{download.name}</span>
-                <span className="text-[0.8125rem] text-fg-subtle">
-                  {download.primary ? download.primary.url.split(".").pop() : "web"}
+                <span className="text-[0.8125rem] italic">
+                  {strings.comingSoon}
                 </span>
-              </a>
+              </div>
             );
-          })}
-        </div>
-      )}
+          }
+
+          return (
+            <a
+              key={download.id}
+              href={href}
+              onClick={() => setOpen(false)}
+              className="flex items-baseline justify-between rounded px-3 py-2 transition-colors hover:bg-fill"
+            >
+              <span className="text-[0.9375rem]">{download.name}</span>
+              <span className="text-[0.8125rem] text-fg-subtle">
+                {download.primary
+                  ? download.primary.url.split(".").pop()
+                  : "web"}
+              </span>
+            </a>
+          );
+        })}
+      </Popover>
     </div>
   );
 }

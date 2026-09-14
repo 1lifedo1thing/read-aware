@@ -1,3 +1,4 @@
+import { Select } from "@read-aware/ui";
 import { useEffect, useState } from "react";
 import {
   fetchRun,
@@ -27,12 +28,18 @@ function ScenarioDefinition({ scenario }: { scenario: CatalogScenario }) {
         <p>{scenario.description}</p>
         {turns.map((turn, index) => (
           <div className="my-2 grid gap-0.5" key={index}>
-            <span className="text-[10px] text-[var(--subtle)]">第 {index + 1} 轮</span>
-            <strong className="font-medium text-[var(--fg)]">{turn.text}</strong>
+            <span className="text-[10px] text-[var(--subtle)]">
+              第 {index + 1} 轮
+            </span>
+            <strong className="font-medium text-[var(--fg)]">
+              {turn.text}
+            </strong>
           </div>
         ))}
         <details>
-          <summary className="cursor-pointer text-[11px] text-[var(--subtle)]">断言与种子数据</summary>
+          <summary className="cursor-pointer text-[11px] text-[var(--subtle)]">
+            断言与种子数据
+          </summary>
           <pre className="max-h-[360px] overflow-auto">
             {JSON.stringify(
               {
@@ -81,19 +88,27 @@ export function SuitePage({
       return;
     }
     setError(null);
-    fetchRun(selectedRunId).then(setDetail).catch((cause) => setError(String(cause)));
+    fetchRun(selectedRunId)
+      .then(setDetail)
+      .catch((cause) => setError(String(cause)));
   }, [selectedRunId]);
 
   useEffect(() => {
     if (!tick || !selectedRunId) return;
-    fetchRun(selectedRunId).then(setDetail).catch(() => {});
+    fetchRun(selectedRunId)
+      .then(setDetail)
+      .catch(() => {});
   }, [selectedRunId, tick]);
 
-  if (!suite) return <div className="py-6 text-[var(--fail)]">unknown suite: {suiteId}</div>;
+  if (!suite)
+    return (
+      <div className="py-6 text-[var(--fail)]">unknown suite: {suiteId}</div>
+    );
 
   const selectedRun = history.find((run) => run.runId === selectedRunId);
   const refOf = (scenarioId: string) =>
-    suite.scenarios.find((scenario) => scenario.id === scenarioId)?.ref ?? suite.code;
+    suite.scenarios.find((scenario) => scenario.id === scenarioId)?.ref ??
+    suite.code;
   const scenarioOf = (scenarioId: string) =>
     suite.scenarios.find((scenario) => scenario.id === scenarioId);
 
@@ -102,30 +117,30 @@ export function SuitePage({
       <header className="mb-4 flex items-start justify-between gap-6 max-md:grid">
         <div>
           <h1 className="m-0 text-2xl font-semibold tracking-normal">
-            <span className={`${refChipClass} align-middle text-sm`}>{suite.code}</span>{" "}
+            <span className={`${refChipClass} align-middle text-sm`}>
+              {suite.code}
+            </span>{" "}
             {suite.displayName}
           </h1>
           <p className="mt-1 text-[13px] text-[var(--muted)]">
-            <span className="mr-2 font-mono text-[11px] text-[var(--subtle)]">{suite.id}</span>
+            <span className="mr-2 font-mono text-[11px] text-[var(--subtle)]">
+              {suite.id}
+            </span>
             {suite.description}
           </p>
         </div>
         {history.length > 0 && (
-          <label className="grid shrink-0 gap-1 text-[11px] text-[var(--muted)] max-md:w-full">
-            <span>评测运行</span>
-            <select
-              className="max-w-[310px] rounded-[5px] border border-[var(--border)] bg-[var(--bg)] py-1.5 pr-7 pl-2.5 text-xs text-[var(--fg)] max-md:w-full max-md:max-w-none"
-              value={selectedRunId}
-              onChange={(event) => setSelectedRunId(event.target.value)}
-            >
-              {history.map((run, index) => (
-                <option key={run.runId} value={run.runId}>
-                  {index === 0 ? "最新 · " : ""}
-                  {run.generatedAt?.slice(0, 16).replace("T", " ") ?? run.runId} · {run.passed ?? 0}/{run.runs ?? 0}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="评测运行"
+            variant="outlined"
+            className="w-[310px] max-w-full shrink-0 max-md:w-full"
+            value={selectedRunId}
+            onChange={setSelectedRunId}
+            options={history.map((run, index) => ({
+              value: run.runId,
+              label: `${index === 0 ? "最新 · " : ""}${run.generatedAt?.slice(0, 16).replace("T", " ") ?? run.runId} · ${run.passed ?? 0}/${run.runs ?? 0}`,
+            }))}
+          />
         )}
       </header>
 
@@ -140,7 +155,9 @@ export function SuitePage({
           >
             机器 {selectedRun.passed ?? 0}/{selectedRun.runs ?? 0}
           </span>
-          <span>{selectedRun.provider}:{selectedRun.model}</span>
+          <span>
+            {selectedRun.provider}:{selectedRun.model}
+          </span>
           <span>{selectedRun.thinkingLevel}</span>
         </div>
       )}
@@ -162,7 +179,10 @@ export function SuitePage({
               current
                 ? {
                     ...current,
-                    humanReviews: { ...(current.humanReviews ?? {}), [review.targetId]: review },
+                    humanReviews: {
+                      ...(current.humanReviews ?? {}),
+                      [review.targetId]: review,
+                    },
                   }
                 : current,
             )
@@ -171,7 +191,9 @@ export function SuitePage({
             setDetail((current) => {
               if (!current) return current;
               const sessions = [...(current.manualSessions ?? [])];
-              const index = sessions.findIndex((entry) => entry.id === session.id);
+              const index = sessions.findIndex(
+                (entry) => entry.id === session.id,
+              );
               if (index >= 0) sessions[index] = session;
               else sessions.unshift(session);
               return { ...current, manualSessions: sessions };
@@ -184,7 +206,8 @@ export function SuitePage({
         <div className="my-6 border-y border-[var(--border)] py-5">
           <strong>这个套件还没有模型回答</strong>
           <p className="mt-1 text-[var(--muted)]">
-            `bun run eval:agent {suite.id}` 跑完后，问题、回答和评分会直接出现在这里。
+            `bun run eval:agent {suite.id}`
+            跑完后，问题、回答和评分会直接出现在这里。
           </p>
         </div>
       )}

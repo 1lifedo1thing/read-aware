@@ -10,6 +10,8 @@ type ChoiceOption<T extends string> = {
 type ChoiceGroupProps<T extends string> = {
   /** Optional eyebrow label above the choices. */
   label?: string;
+  /** Accessible name when the visible legend is omitted. */
+  ariaLabel?: string;
   value: T;
   options: ChoiceOption<T>[];
   disabled?: boolean;
@@ -25,6 +27,7 @@ type ChoiceGroupProps<T extends string> = {
  */
 export function ChoiceGroup<T extends string>({
   label,
+  ariaLabel,
   value,
   options,
   disabled = false,
@@ -34,7 +37,13 @@ export function ChoiceGroup<T extends string>({
 }: ChoiceGroupProps<T>) {
   const id = useId();
   return (
-    <fieldset disabled={disabled} className={cn("min-w-0 disabled:opacity-50", className)} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined}>
+    <fieldset
+      aria-label={ariaLabel}
+      disabled={disabled}
+      className={cn("min-w-0 disabled:opacity-50", className)}
+      aria-invalid={error ? true : undefined}
+      aria-describedby={error ? `${id}-error` : undefined}
+    >
       {label && (
         <legend className="mb-2 font-sans text-[13px] font-medium text-fg-muted">
           {label}
@@ -50,7 +59,7 @@ export function ChoiceGroup<T extends string>({
               aria-pressed={active}
               onClick={() => onChange(option.value)}
               className={cn(
-                "group/choice relative inline-flex items-center gap-1.5 pb-1.5 font-sans text-sm transition-colors",
+                "group/choice relative inline-flex items-center gap-1.5 pb-1.5 font-sans text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg",
                 active ? "text-fg" : "text-fg-subtle hover:text-fg-muted",
                 // Hairline underline that only renders under the active choice.
                 "after:absolute after:inset-x-0 after:bottom-0 after:h-px after:rounded-full after:transition-colors",

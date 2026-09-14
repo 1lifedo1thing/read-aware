@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, MagnifyingGlass } from "@phosphor-icons/react";
+import { Check } from "@phosphor-icons/react";
+import { SearchField } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
 import { useTranslation } from "../../../i18n";
 import { buildCommands, type CommandContext, type CommandItem } from "../lib/build-commands";
@@ -117,15 +118,14 @@ export function CommandPalette({ isOpen, onClose, ctx, extraItems, workspaceToke
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-          <MagnifyingGlass size={20} weight="regular" className="text-fg-subtle" />
-          <input
+          <SearchField
             ref={inputRef}
-            type="text"
+            label={t("search.placeholder")}
             value={query}
             maxLength={4096}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t("search.placeholder")}
-            className="flex-1 bg-transparent text-base text-fg outline-none placeholder:text-fg-subtle"
+            className="w-full"
           />
         </div>
 

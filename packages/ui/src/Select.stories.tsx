@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useLocalAtom } from "./lib/useLocalAtom";
+import { expect, userEvent, within } from "storybook/test";
 import { Select } from "./Select";
 
 const sampleOptions = [
@@ -97,5 +98,18 @@ export const Disabled: Story = {
     options: sampleOptions,
     defaultValue: "date",
     disabled: true,
+  },
+};
+
+/** Pointer opening and keyboard opening start on the same selected option. */
+export const KeyboardAfterPointerOpen: Story = {
+  args: { label: "Sort by", options: sampleOptions, defaultValue: "date" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole("combobox", { name: "Sort by" });
+    await userEvent.click(trigger);
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    await expect(trigger).toHaveTextContent("Title");
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
   },
 };

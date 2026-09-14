@@ -1,6 +1,23 @@
 @import "tailwindcss";
+@source "../../../ui/src";
+
+/* Map the viewer's existing palette onto the shared component theme. */
+@theme inline {
+  --color-paper: var(--bg);
+  --color-surface: var(--surface);
+  --color-fill: var(--surface);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--muted);
+  --color-fg-subtle: var(--subtle);
+  --color-inverse-fg: var(--bg);
+  --color-border: var(--border);
+  --color-border-strong: var(--subtle);
+  --font-sans:
+    -apple-system, "SF Pro Text", "Segoe UI", Inter, Roboto, sans-serif;
+}
 
 :root {
+  --ra-main-surface-color: var(--bg);
   --bg: #ffffff;
   --fg: #171717;
   --muted: #666666;
@@ -47,7 +64,13 @@
     margin: 0;
     background: var(--bg);
     color: var(--fg);
-    font: 14px/1.6 -apple-system, "SF Pro Text", "Segoe UI", Inter, Roboto, sans-serif;
+    font:
+      14px/1.6 -apple-system,
+      "SF Pro Text",
+      "Segoe UI",
+      Inter,
+      Roboto,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -58,10 +81,6 @@
     font: inherit;
   }
 
-  button:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  textarea:focus-visible,
   a:focus-visible,
   [role="link"]:focus-visible {
     outline: 2px solid var(--accent);

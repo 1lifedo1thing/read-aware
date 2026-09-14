@@ -26,16 +26,17 @@
   --color-fill-strong: #e5e5e5;
 
   /* A single family across the whole page — headings, body, controls. */
-  --font-serif: "Literata", ui-serif, Georgia, Cambria, "Times New Roman",
-    Times, serif;
-  --font-sans: "Literata", ui-serif, Georgia, Cambria, "Times New Roman", Times,
-    serif;
+  --font-serif:
+    "Literata", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-sans:
+    "Literata", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --leading-body: 1.75;
 }
 
 :root {
+  --ra-main-surface-color: var(--color-paper);
   color-scheme: light;
   background-color: var(--color-paper);
   color: var(--color-fg);
@@ -107,8 +108,10 @@ body {
   font-family: var(--font-serif);
 }
 
-button {
-  font: inherit;
+@layer base {
+  button {
+    font: inherit;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

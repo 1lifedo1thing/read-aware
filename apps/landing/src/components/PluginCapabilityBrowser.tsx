@@ -18,7 +18,16 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
-import { IconButton, Kbd, TextField } from "@read-aware/ui";
+import {
+  Button,
+  ChoiceGroup,
+  IconButton,
+  Kbd,
+  Select,
+  Tabs,
+  TextField,
+} from "@read-aware/ui";
+import { useMediaQuery } from "@read-aware/ui/media";
 import type { DocsResource } from "../i18n";
 import {
   useCapabilityDetail,
@@ -40,6 +49,7 @@ import {
   type CapabilityDescriptions,
   type CapabilityEntry,
   type CapabilityFamily,
+  type CapabilityTopic,
 } from "../lib/plugin-capabilities";
 import { CodeBlock } from "./CodeBlock";
 
@@ -126,29 +136,20 @@ export function PluginCapabilityBrowser({
             />
           </div>
           <div className="explorer-topic-bar">
-            <div
-              className="explorer-topics"
-              role="group"
-              aria-label={copy.topicLabel}
-            >
-              <button
-                type="button"
-                aria-pressed={!search.topic}
-                onClick={() => update({ topic: undefined })}
-              >
-                {copy.explorer.all}
-              </button>
-              {CAPABILITY_TOPICS.map((topic) => (
-                <button
-                  type="button"
-                  key={topic}
-                  aria-pressed={search.topic === topic}
-                  onClick={() => update({ topic })}
-                >
-                  {copy.explorer.topics[topic]}
-                </button>
-              ))}
-            </div>
+            <ChoiceGroup
+              ariaLabel={copy.topicLabel}
+              value={search.topic ?? ""}
+              onChange={(topic) =>
+                update({ topic: (topic as CapabilityTopic) || undefined })
+              }
+              options={[
+                { value: "", label: copy.explorer.all },
+                ...CAPABILITY_TOPICS.map((topic) => ({
+                  value: topic,
+                  label: copy.explorer.topics[topic],
+                })),
+              ]}
+            />
             <details className="explorer-filters">
               <summary>
                 <SlidersHorizontal size={16} aria-hidden="true" />
@@ -156,45 +157,41 @@ export function PluginCapabilityBrowser({
                 {extraFilters ? <span>{extraFilters}</span> : null}
               </summary>
               <div className="explorer-filter-fields">
-                <label>
-                  {copy.familyLabel}
-                  <select
-                    value={search.family ?? ""}
-                    onChange={(event) =>
-                      update({
-                        family:
-                          (event.target.value as CapabilityFamily) || undefined,
-                      })
-                    }
-                  >
-                    <option value="">{copy.allFamilies}</option>
-                    {CAPABILITY_FAMILIES.map((family) => (
-                      <option key={family} value={family}>
-                        {copy.familyNames[family]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  {copy.authorityLabel}
-                  <select
-                    value={search.authority ?? ""}
-                    onChange={(event) =>
-                      update({
-                        authority:
-                          (event.target.value as CapabilityAuthority) ||
-                          undefined,
-                      })
-                    }
-                  >
-                    <option value="">{copy.allAuthorities}</option>
-                    {CAPABILITY_AUTHORITIES.map((authority) => (
-                      <option key={authority} value={authority}>
-                        {copy.authorityNames[authority]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <Select
+                  label={copy.familyLabel}
+                  variant="outlined"
+                  value={search.family ?? ""}
+                  onChange={(family) =>
+                    update({
+                      family: (family as CapabilityFamily) || undefined,
+                    })
+                  }
+                  options={[
+                    { value: "", label: copy.allFamilies },
+                    ...CAPABILITY_FAMILIES.map((family) => ({
+                      value: family,
+                      label: copy.familyNames[family],
+                    })),
+                  ]}
+                />
+                <Select
+                  label={copy.authorityLabel}
+                  variant="outlined"
+                  value={search.authority ?? ""}
+                  onChange={(authority) =>
+                    update({
+                      authority:
+                        (authority as CapabilityAuthority) || undefined,
+                    })
+                  }
+                  options={[
+                    { value: "", label: copy.allAuthorities },
+                    ...CAPABILITY_AUTHORITIES.map((authority) => ({
+                      value: authority,
+                      label: copy.authorityNames[authority],
+                    })),
+                  ]}
+                />
               </div>
             </details>
           </div>
@@ -205,14 +202,10 @@ export function PluginCapabilityBrowser({
                 : copy.catalogSummary(CAPABILITIES.length, API_METHOD_COUNT)}
             </p>
             {search.q || search.topic || extraFilters ? (
-              <button
-                type="button"
-                className="explorer-text-button"
-                onClick={reset}
-              >
+              <Button type="button" variant="link" size="sm" onClick={reset}>
                 {copy.clearFilters}
                 <X size={13} aria-hidden="true" />
-              </button>
+              </Button>
             ) : (
               <span>{copy.catalogLabel}</span>
             )}
@@ -266,10 +259,10 @@ export function PluginCapabilityBrowser({
             <div className="explorer-empty">
               <MagnifyingGlass size={30} aria-hidden="true" />
               <p>{copy.noResults}</p>
-              <button type="button" className="explorer-button" onClick={reset}>
+              <Button type="button" variant="outline" onClick={reset}>
                 {copy.clearFilters}
                 <ArrowRight size={15} aria-hidden="true" />
-              </button>
+              </Button>
             </div>
           )}
         </>
@@ -302,25 +295,162 @@ function CapabilityDetail({
   const { status, copyLink } = useCapabilityLink(entry.key);
   const description = copy.descriptions[entry.key];
   const groups = groupCapabilityMethods(entry, methods);
+  const narrow = useMediaQuery("(max-width: 1023px)");
+  const methodsPanel = (
+    <section
+      className="capability-methods"
+      id="capability-methods"
+      aria-label={copy.methodsLabel}
+    >
+      <h3>
+        {copy.methodsLabel}
+        <span>{entry.methods.length}</span>
+      </h3>
+      {entry.methods.length ? (
+        <>
+          <TextField
+            className="method-search"
+            label=""
+            variant="outlined"
+            type="search"
+            aria-label={copy.explorer.methodSearch}
+            placeholder={copy.explorer.methodSearch}
+            value={methodQuery}
+            leadingIcon={<MagnifyingGlass size={16} aria-hidden="true" />}
+            trailingAction={
+              methodQuery ? (
+                <IconButton
+                  size="sm"
+                  label={copy.explorer.clearSearch}
+                  icon={<X size={16} aria-hidden="true" />}
+                  onClick={() => setMethodQuery("")}
+                />
+              ) : undefined
+            }
+            onChange={(event) => setMethodQuery(event.target.value)}
+          />
+          {groups.length ? (
+            groups.map((group) => (
+              <div className="method-group" key={group.name}>
+                {group.name ? <h4>{group.name}</h4> : null}
+                {group.methods.map((method) => (
+                  <details
+                    className="method-row"
+                    key={method.path}
+                    open={methods.length === 1 && Boolean(methodQuery)}
+                  >
+                    <summary>
+                      <span>
+                        {method.name}
+                        <span className="method-parens">(…)</span>
+                      </span>
+                      <CaretDown size={15} aria-hidden="true" />
+                    </summary>
+                    <div className="method-expanded">
+                      <code className="method-full-path">{method.path}</code>
+                      {method.signatures.map((signature) => (
+                        <CodeBlock
+                          key={signature}
+                          language="typescript"
+                          code={signature}
+                        />
+                      ))}
+                      <a
+                        href={`https://github.com/ahpxex/read-aware/blob/main/${method.source}#L${method.line}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {copy.sourceLabel}
+                        <ArrowUpRight size={13} aria-hidden="true" />
+                      </a>
+                    </div>
+                  </details>
+                ))}
+              </div>
+            ))
+          ) : (
+            <div className="method-empty">
+              <p>{copy.explorer.noMethods}</p>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={() => setMethodQuery("")}
+              >
+                {copy.explorer.clearSearch}
+              </Button>
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="declaration-note">{copy.declarationOnly}</p>
+      )}
+    </section>
+  );
+  const setupPanel = (
+    <aside
+      className="capability-setup"
+      id="capability-configuration"
+      aria-label={copy.explorer.setupTitle}
+    >
+      <h3>{copy.explorer.setupTitle}</h3>
+      {entry.family === "domains" && entry.permissions.length ? (
+        <ChoiceGroup
+          className="mb-4"
+          ariaLabel={copy.accessLabel}
+          value={access}
+          onChange={setAccess}
+          options={[
+            { value: "read", label: copy.explorer.read },
+            { value: "write", label: copy.explorer.write },
+          ]}
+        />
+      ) : null}
+      <CodeBlock
+        code={JSON.stringify(capabilityManifest(entry, access), null, 2)}
+        language="json"
+      />
+      <p className="setup-hint">{copy.manifestHint}</p>
+      {entry.key === "domains:settings" || entry.key === "services:network" ? (
+        <p className="setup-hint">
+          {entry.key === "domains:settings"
+            ? copy.settingsHint
+            : copy.networkHint}
+        </p>
+      ) : null}
+      <details className="capability-scope">
+        <summary>
+          {copy.explorer.scope}
+          <CaretDown size={14} aria-hidden="true" />
+        </summary>
+        <dl>
+          <dt>{copy.permissionLabel}</dt>
+          <dd className="scope-permissions">
+            {entry.authority === "settings-grant"
+              ? "settingsAccess"
+              : entry.permissions.join(" / ") || copy.permissionFree}
+          </dd>
+          <dt>{copy.hostOwnsLabel}</dt>
+          <dd>{description.hostOwns}</dd>
+        </dl>
+      </details>
+    </aside>
+  );
   return (
     <div className="capability-detail" id="capability-details">
       <div className="capability-detail-nav">
-        <button type="button" className="explorer-text-button" onClick={back}>
+        <Button type="button" variant="link" size="sm" onClick={back}>
           <ArrowLeft size={16} aria-hidden="true" />
           {copy.explorer.back}
-        </button>
-        <button
-          type="button"
-          className="explorer-text-button"
-          onClick={copyLink}
-        >
+        </Button>
+        <Button type="button" variant="link" size="sm" onClick={copyLink}>
           {status === "copied" ? (
             <Check size={15} aria-hidden="true" />
           ) : (
             <LinkSimple size={15} aria-hidden="true" />
           )}
           {status === "copied" ? copy.copiedLabel : copy.shareLabel}
-        </button>
+        </Button>
       </div>
       {status === "failed" ? <p role="alert">{copy.copyFailed}</p> : null}
       <header className="capability-detail-heading">
@@ -334,181 +464,27 @@ function CapabilityDetail({
         </h2>
         <p>{description.purpose}</p>
       </header>
-      <div
-        className="detail-mobile-tabs"
-        role="group"
-        aria-label={copy.explorer.detailTabs}
-      >
-        <button
-          type="button"
-          aria-pressed={section === "methods"}
-          aria-controls="capability-methods"
-          onClick={() => setSection("methods")}
-        >
-          {copy.methodsLabel}
-          <span className="detail-method-count">{entry.methods.length}</span>
-        </button>
-        <button
-          type="button"
-          aria-pressed={section === "configuration"}
-          aria-controls="capability-configuration"
-          onClick={() => setSection("configuration")}
-        >
-          {copy.explorer.configuration}
-        </button>
-      </div>
-      <div className="capability-detail-columns">
-        <section
-          className="capability-methods"
-          id="capability-methods"
-          data-active={section === "methods"}
-          aria-label={copy.methodsLabel}
-        >
-          <h3>
-            {copy.methodsLabel}
-            <span>{entry.methods.length}</span>
-          </h3>
-          {entry.methods.length ? (
-            <>
-              <TextField
-                className="method-search"
-                label=""
-                variant="outlined"
-                type="search"
-                aria-label={copy.explorer.methodSearch}
-                placeholder={copy.explorer.methodSearch}
-                value={methodQuery}
-                leadingIcon={<MagnifyingGlass size={16} aria-hidden="true" />}
-                trailingAction={
-                  methodQuery ? (
-                    <IconButton
-                      size="sm"
-                      label={copy.explorer.clearSearch}
-                      icon={<X size={16} aria-hidden="true" />}
-                      onClick={() => setMethodQuery("")}
-                    />
-                  ) : undefined
-                }
-                onChange={(event) => setMethodQuery(event.target.value)}
-              />
-              {groups.length ? (
-                groups.map((group) => (
-                  <div className="method-group" key={group.name}>
-                    {group.name ? <h4>{group.name}</h4> : null}
-                    {group.methods.map((method) => (
-                      <details
-                        className="method-row"
-                        key={method.path}
-                        open={methods.length === 1 && Boolean(methodQuery)}
-                      >
-                        <summary>
-                          <span>
-                            {method.name}
-                            <span className="method-parens">(…)</span>
-                          </span>
-                          <CaretDown size={15} aria-hidden="true" />
-                        </summary>
-                        <div className="method-expanded">
-                          <code className="method-full-path">
-                            {method.path}
-                          </code>
-                          {method.signatures.map((signature) => (
-                            <CodeBlock
-                              key={signature}
-                              language="typescript"
-                              code={signature}
-                            />
-                          ))}
-                          <a
-                            href={`https://github.com/ahpxex/read-aware/blob/main/${method.source}#L${method.line}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {copy.sourceLabel}
-                            <ArrowUpRight size={13} aria-hidden="true" />
-                          </a>
-                        </div>
-                      </details>
-                    ))}
-                  </div>
-                ))
-              ) : (
-                <div className="method-empty">
-                  <p>{copy.explorer.noMethods}</p>
-                  <button
-                    type="button"
-                    className="explorer-text-button"
-                    onClick={() => setMethodQuery("")}
-                  >
-                    {copy.explorer.clearSearch}
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="declaration-note">{copy.declarationOnly}</p>
-          )}
-        </section>
-        <aside
-          className="capability-setup"
-          id="capability-configuration"
-          data-active={section === "configuration"}
-          aria-label={copy.explorer.setupTitle}
-        >
-          <h3>{copy.explorer.setupTitle}</h3>
-          {entry.family === "domains" && entry.permissions.length ? (
-            <div
-              className="access-switch"
-              role="group"
-              aria-label={copy.accessLabel}
-            >
-              <button
-                type="button"
-                aria-pressed={access === "read"}
-                onClick={() => setAccess("read")}
-              >
-                {copy.explorer.read}
-              </button>
-              <button
-                type="button"
-                aria-pressed={access === "write"}
-                onClick={() => setAccess("write")}
-              >
-                {copy.explorer.write}
-              </button>
-            </div>
-          ) : null}
-          <CodeBlock
-            code={JSON.stringify(capabilityManifest(entry, access), null, 2)}
-            language="json"
-          />
-          <p className="setup-hint">{copy.manifestHint}</p>
-          {entry.key === "domains:settings" ||
-          entry.key === "services:network" ? (
-            <p className="setup-hint">
-              {entry.key === "domains:settings"
-                ? copy.settingsHint
-                : copy.networkHint}
-            </p>
-          ) : null}
-          <details className="capability-scope">
-            <summary>
-              {copy.explorer.scope}
-              <CaretDown size={14} aria-hidden="true" />
-            </summary>
-            <dl>
-              <dt>{copy.permissionLabel}</dt>
-              <dd className="scope-permissions">
-                {entry.authority === "settings-grant"
-                  ? "settingsAccess"
-                  : entry.permissions.join(" / ") || copy.permissionFree}
-              </dd>
-              <dt>{copy.hostOwnsLabel}</dt>
-              <dd>{description.hostOwns}</dd>
-            </dl>
-          </details>
-        </aside>
-      </div>
+      {narrow ? (
+        <Tabs
+          ariaLabel={copy.explorer.detailTabs}
+          activeIndex={section === "methods" ? 0 : 1}
+          onActiveIndexChange={(index) =>
+            setSection(index === 0 ? "methods" : "configuration")
+          }
+          items={[
+            {
+              label: `${copy.methodsLabel} (${entry.methods.length})`,
+              content: methodsPanel,
+            },
+            { label: copy.explorer.configuration, content: setupPanel },
+          ]}
+        />
+      ) : (
+        <div className="capability-detail-columns">
+          {methodsPanel}
+          {setupPanel}
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@
  */
 import { Check, DotsThreeVertical } from "@phosphor-icons/react";
 import { useState, type ReactNode } from "react";
-import { Popover } from "@read-aware/ui";
+import { Button, Popover } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
 import { useTranslation } from "../../../i18n";
 
@@ -74,44 +74,33 @@ export function MenuOverflow({
         {entries.map((entry) => (
           <li key={entry.id}>
             {entry.node ? (
-              // Reads exactly like an action row; the widget's real trigger is
-              // hidden inside and clicked through, its popover anchoring here.
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    const host = event.currentTarget.nextElementSibling;
-                    host?.querySelector("button")?.click();
-                  }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-fg transition-colors hover:bg-fg/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg"
-                >
+              // Keep the widget's real trigger visible and keyboard reachable.
+              // Some widgets contain multiple actions (e.g. reader modes), so
+              // relaying a click to their first DOM button loses behavior.
+              <div className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5">
+                <span className="flex min-w-0 items-center gap-2 text-sm text-fg">
                   <span className="text-fg-muted">{entry.icon}</span>
-                  <span className="min-w-0 flex-1 truncate">{entry.label}</span>
-                </button>
-                <span className="absolute right-1 top-full [&>div>button]:hidden [&>div>span]:hidden">
-                  {entry.node}
+                  <span className="truncate">{entry.label}</span>
                 </span>
+                <div className="shrink-0">{entry.node}</div>
               </div>
             ) : (
-            <button
-              type="button"
-              disabled={entry.disabled}
-              aria-pressed={entry.checked}
-              onClick={() => {
-                setOpen(false);
-                entry.run?.();
-              }}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-fg transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg",
-                entry.disabled
-                  ? "cursor-default opacity-50"
-                  : "hover:bg-fg/5",
-              )}
-            >
-              <span className="text-fg-muted">{entry.icon}</span>
-              <span className="min-w-0 flex-1 truncate">{entry.label}</span>
-              {entry.checked && <Check size={16} aria-hidden="true" className="shrink-0" />}
-            </button>
+              <Button
+                type="button"
+                disabled={entry.disabled}
+                aria-pressed={entry.checked}
+                onClick={() => {
+                  setOpen(false);
+                  entry.run?.();
+                }}
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start rounded-md px-2 text-left"
+              >
+                <span className="text-fg-muted">{entry.icon}</span>
+                <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+                {entry.checked && <Check size={16} aria-hidden="true" className="shrink-0" />}
+              </Button>
             )}
           </li>
         ))}

@@ -9,7 +9,7 @@ import {
   Trash,
 } from "@phosphor-icons/react";
 import { Popover } from "@read-aware/ui";
-import { userEvent, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import { MenuOverflow, type MenuOverflowEntry } from "./MenuOverflow";
 
 const icon = (Glyph: typeof Plus) => <Glyph size={16} weight="regular" aria-hidden="true" />;
@@ -30,7 +30,8 @@ const widget: MenuOverflowEntry = {
     <Popover
       align="right"
       triggerLabel="View options"
-      trigger={<span>View options</span>}
+      trigger={<SlidersHorizontal size={16} aria-hidden="true" />}
+      triggerClassName="h-8 w-8 items-center justify-center"
       panelClassName="w-48 p-3"
     >
       <span className="text-sm text-fg-muted">Grid / list, sort order…</span>
@@ -93,7 +94,16 @@ export const WithDisabledEntry: Story = {
  */
 export const WithWidgetRow: Story = {
   args: { entries: [actions[0], widget, actions[3]] },
-  play: Open.play,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "More" }));
+    const trigger = canvas.getByRole("button", { name: "View options" });
+    await userEvent.tab();
+    await userEvent.tab();
+    await expect(trigger).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await expect(canvas.getByText("Grid / list, sort order…")).toBeVisible();
+  },
 };
 
 /** A long list scrolls inside the panel — action lists cap their height. */

@@ -1,3 +1,4 @@
+import { Button, Checkbox, TextArea } from "@read-aware/ui";
 import { useState } from "react";
 import { askManualSession, createManualSession, type RunRecord } from "../api";
 import type { ManualReviewSession, ManualReviewTurn } from "../reviews";
@@ -15,7 +16,8 @@ export function ManualSessionPanel({
 }) {
   const matching = sessions.filter(
     (session) =>
-      session.scenarioId === record.scenarioId && session.variantId === record.variantId,
+      session.scenarioId === record.scenarioId &&
+      session.variantId === record.variantId,
   );
   const active = matching.find((session) => session.active);
   const hasSelection = (record.output?.turns ?? []).some(
@@ -32,15 +34,19 @@ export function ManualSessionPanel({
     setSending(true);
     setError(null);
     try {
-      let session = forceNew || !active
-        ? await createManualSession(runId, {
-            scenarioId: record.scenarioId,
-            variantId: record.variantId,
-            inheritSelection,
-          })
-        : active;
-      if (!matching.some((entry) => entry.id === session.id)) onSessionChange(session);
-      const turn: ManualReviewTurn = await askManualSession(session.id, { question: text });
+      let session =
+        forceNew || !active
+          ? await createManualSession(runId, {
+              scenarioId: record.scenarioId,
+              variantId: record.variantId,
+              inheritSelection,
+            })
+          : active;
+      if (!matching.some((entry) => entry.id === session.id))
+        onSessionChange(session);
+      const turn: ManualReviewTurn = await askManualSession(session.id, {
+        question: text,
+      });
       session = { ...session, active: true, turns: [...session.turns, turn] };
       onSessionChange(session);
       setQuestion("");
@@ -59,47 +65,50 @@ export function ManualSessionPanel({
           {active ? `当前会话 ${active.turns.length} 轮` : "建立新的人工样本"}
         </span>
         {active && (
-          <button
+          <Button
             type="button"
-            className="ml-auto border-0 bg-transparent text-[11px] text-[var(--accent)] disabled:cursor-default disabled:opacity-40"
+            variant="link"
+            size="sm"
+            className="ml-auto"
             onClick={() => void send(true)}
             disabled={!question.trim() || sending}
           >
             新会话
-          </button>
+          </Button>
         )}
       </div>
       {hasSelection && (
-        <label className="mb-2 flex items-center gap-2 text-xs text-[var(--muted)]">
-          <input
-            type="checkbox"
-            className="accent-[var(--accent)]"
-            checked={inheritSelection}
-            onChange={(event) => setInheritSelection(event.target.checked)}
-          />
-          <span>带上原选区</span>
-        </label>
+        <Checkbox
+          className="mb-2"
+          label="带上原选区"
+          checked={inheritSelection}
+          onChange={(event) => setInheritSelection(event.target.checked)}
+        />
       )}
-      <textarea
-        className="w-full resize-y rounded-[5px] border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[var(--fg)] placeholder:text-[var(--subtle)] focus:border-[var(--accent)] focus:outline-none"
+      <TextArea
+        label="问题"
+        variant="outlined"
         rows={2}
         value={question}
         placeholder="在相同书籍、阅读位置和种子状态下提一个真实问题"
         onChange={(event) => setQuestion(event.target.value)}
         onKeyDown={(event) => {
-          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") void send(false);
+          if ((event.metaKey || event.ctrlKey) && event.key === "Enter")
+            void send(false);
         }}
       />
-      {error && <div className="mt-2 text-[11px] text-[var(--fail)]">{error}</div>}
+      {error && (
+        <div className="mt-2 text-[11px] text-[var(--fail)]">{error}</div>
+      )}
       <div className="mt-2 flex justify-end">
-        <button
+        <Button
           type="button"
-          className="rounded-[5px] border border-[var(--fg)] bg-[var(--fg)] px-3 py-1.5 text-xs text-[var(--bg)] disabled:cursor-default disabled:opacity-40"
+          size="sm"
           disabled={!question.trim() || sending}
           onClick={() => void send(false)}
         >
           {sending ? "模型回答中…" : active ? "发送追问" : "提问"}
-        </button>
+        </Button>
       </div>
     </section>
   );
