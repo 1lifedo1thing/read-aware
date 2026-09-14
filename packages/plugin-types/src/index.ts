@@ -1552,7 +1552,7 @@ export type PluginLibraryDomain = {
     /** Library 1.32: serial reaction deliveries retain task and history-write sources. */
     observeTextTask(bookId: string, taskId: string, handler: PluginObservationHandler<import("@read-aware/core").BookTextTaskSnapshot>, options?: { ruleId?: string }): PluginDisposable;
     /** Initial snapshot and coalesced monotonic revisions, including terminal failures. */
-    observeImportTask(taskId: string, handler: (snapshot: import("@read-aware/core").BookImportTaskSnapshot) => void | Promise<void>): PluginDisposable;
+    observeImportTask(taskId: string, handler: PluginObservationHandler<import("@read-aware/core").BookImportTaskSnapshot>, options?: { ruleId?: string }): PluginDisposable;
     observeEnrichment(bookId: string, handler: PluginObservationHandler<import("@read-aware/core").BookEnrichmentObservation>, options?: { ruleId?: string }): PluginDisposable;
     observeContentState(bookId: string, handler: PluginObservationHandler<import("@read-aware/core").BookContentObservation>, options?: { ruleId?: string }): PluginDisposable;
     /** Initial and coalesced reload hints, including remote projection changes.

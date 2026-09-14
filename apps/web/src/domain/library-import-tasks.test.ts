@@ -1,3 +1,4 @@
+import { actorOrigin } from "../platform/domain-actor";
 import { afterEach, expect, spyOn, test } from "bun:test";
 import { ResourceOwner, type ResourceAdapter } from "../services/resource-owner";
 import { createBookImportTasks } from "./library-import-tasks";
@@ -49,7 +50,8 @@ test("resource task milestones follow native staging and commit; cancellation ca
     finish.resolve(); await f.tasks.drain(); await released;
     expect(f.tasks.get(task.taskId)).toMatchObject({ phase: "completed", cancelRequested: true, receipt: { status: "imported", book: { id: f.book.id } } });
     expect(phases).toContain("staging"); expect(phases.at(-1)).toBe("completed");
-    expect(f.commit.mock.calls[0][0]).toMatchObject({ type: "book.imported", origin: "plugin:import-test" });
+    expect(f.commit.mock.calls[0][0]).toMatchObject({ type: "book.imported" });
+    expect(actorOrigin(f.commit.mock.calls[0][0].origin!)).toBe("plugin:import-test");
     expect(f.released).toBe(true);
   } finally { finish.resolve(); await f.resources.dispose(); await f.tasks.drain(); }
 });

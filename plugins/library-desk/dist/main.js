@@ -200,6 +200,11 @@ async function workspaceView(ctx, selected) {
 
 // src/assets-strings.ts
 var en2 = {
+  preparing: "Preparing",
+  staging: "Staging",
+  committing: "Saving",
+  cancelled: "Cancelled",
+  cancel: "Cancel import",
   privateCovers: "Saved covers",
   noPrivateCovers: "No saved covers",
   keepPrivate: "Keep a private copy",
@@ -250,6 +255,11 @@ var en2 = {
   skipped: "Skipped"
 };
 var zh = {
+  preparing: "准备中",
+  staging: "暂存中",
+  committing: "保存中",
+  cancelled: "已取消",
+  cancel: "取消导入",
   privateCovers: "已保存封面",
   noPrivateCovers: "暂无已保存封面",
   keepPrivate: "保留私有副本",
@@ -470,6 +480,34 @@ async function bookAssets(ctx, selected) {
   } } };
 }
 
+// src/import-task.ts
+function importTask(ctx, initial, resourceId) {
+  const library = ctx.domains.library, t = assetStrings(ctx.locale);
+  let task = initial;
+  const view = () => ({
+    kind: "detail",
+    title: task.receipt?.book.title ?? task.sourceName,
+    content: task.receipt ? [{ kind: "text", text: task.receipt.status === "duplicate" ? t.duplicate : t.imported }] : [{ kind: "text", text: t[task.phase] }, ...task.errorCode ? [{ kind: "error", code: task.errorCode }] : []],
+    actions: task.receipt ? [{ id: "details", label: t.details, icon: "book-open", run: async () => ({ view: await bookAssets(ctx, task.receipt.book) }) }] : [
+      { id: "refresh", label: t.refresh, run: async () => ({ view: importTask(ctx, await library.queries.books.getImportTask(task.taskId)), navigation: "replace" }) },
+      ...task.cancellable && !task.cancelRequested ? [{ id: "cancel", label: t.cancel, run: async () => ({ view: importTask(ctx, await library.commands.books.cancelImportTask(task.taskId)), navigation: "replace" }) }] : []
+    ]
+  });
+  return { ...view(), onClose: resourceId ? () => ctx.services.resources.release(resourceId) : undefined, live: { subscribe(channel) {
+    let disposed = false, revision = 0;
+    const subscription = library.events.observeImportTask(task.taskId, async (snapshot, delivery) => {
+      if (disposed || delivery?.reaction?.status === "cycle")
+        return;
+      task = snapshot;
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: view() });
+    }, { ruleId: "import-task-live" });
+    return { dispose() {
+      disposed = true;
+      subscription.dispose();
+    } };
+  } } };
+}
+
 // src/import-book.ts
 async function importBook(ctx) {
   const library = ctx.domains.library, resources = ctx.services.resources;
@@ -482,7 +520,7 @@ async function importBook(ctx) {
 }
 async function inspectImportResource(ctx, resource) {
   const library = ctx.domains.library, resources = ctx.services.resources, t = assetStrings(ctx.locale);
-  let inspection;
+  let inspection, transferred = false;
   try {
     inspection = await library.queries.books.inspectResource(resource.id);
   } catch (error) {
@@ -499,14 +537,10 @@ async function inspectImportResource(ctx, resource) {
     ] },
     ...inspection.errorCode ? [{ kind: "error", code: inspection.errorCode }] : []
   ], actions: inspection.status === "parsed" ? [{ id: "import", label: t.confirmImport, icon: "plus", run: async () => {
-    const receipt = await library.commands.books.importResource(resource.id);
-    return { view: {
-      kind: "detail",
-      title: receipt.book.title,
-      content: [{ kind: "text", text: receipt.status === "duplicate" ? t.duplicate : t.imported }],
-      actions: [{ id: "details", label: t.details, icon: "book-open", run: async () => ({ view: await bookAssets(ctx, receipt.book) }) }]
-    }, navigation: "replace" };
-  } }] : [], onClose: () => resources.release(resource.id) } };
+    const task = await library.commands.books.startImport({ kind: "resource", resourceId: resource.id });
+    transferred = true;
+    return { view: importTask(ctx, task, resource.id), navigation: "replace" };
+  } }] : [], onClose: () => transferred ? undefined : resources.release(resource.id) } };
 }
 
 // src/directory.ts

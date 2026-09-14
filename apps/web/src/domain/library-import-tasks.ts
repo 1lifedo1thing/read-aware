@@ -1,4 +1,4 @@
-import type { DomainActor } from "../platform/domain-actor";
+import { causalActor, type DomainActor } from "../platform/domain-actor";
 import { AppError, type BookImportRequest } from "@read-aware/core";
 import { BookImportTaskOwner } from "../features/library/lib/book-import-tasks";
 import { importBook } from "../features/library/lib/book-import";
@@ -19,6 +19,7 @@ export function createBookImportTasks(resources: ResourceOwner, origin: DomainAc
   if (!signal.aborted && trackCleanup) signal.addEventListener("abort", () => trackCleanup(owner.drain()), { once: true });
   return {
     async start(input: BookImportRequest, callerSignal?: AbortSignal, actor: DomainActor = origin) {
+      actor = causalActor(actor);
       callerSignal?.throwIfAborted(); signal.throwIfAborted();
       if (!input || typeof input !== "object" || Array.isArray(input)) throw new AppError("ui/invalid-target", "Invalid import request");
       if (input.kind === "resource") {
@@ -26,7 +27,7 @@ export function createBookImportTasks(resources: ResourceOwner, origin: DomainAc
         const id = input.resourceId, ref = await resources.stat(id, callerSignal);
         if (ref.state !== "ready" || ref.source === "context") throw new AppError("ui/invalid-target", "Import requires a sealed book resource");
         callerSignal?.throwIfAborted(); signal.throwIfAborted();
-        return owner.start(ref.name, (taskSignal, progress) => importResourceBook(resources, id, actor, taskSignal, progress));
+        return owner.start(ref.name, (taskSignal, progress) => importResourceBook(resources, id, actor, taskSignal, progress), actor);
       }
       if (input.kind !== "file" || Object.keys(input).some(key => !["kind", "fileName", "data"].includes(key))
         || !(input.data instanceof ArrayBuffer || input.data instanceof Uint8Array)
@@ -39,11 +40,11 @@ export function createBookImportTasks(resources: ResourceOwner, origin: DomainAc
         const outcome = await importBook({ kind: "file", file }, { t: i18n.getFixedT(null, "shelf"), knownBooks, origin: actor, signal: taskSignal, onProgress: progress });
         emitAppEvent("library-changed", {}, actor);
         return { status: outcome.status, book: toBookSummary(outcome.book) };
-      });
+      }, actor);
     },
-    get: (id: string) => owner.get(id), list: () => owner.list(), cancel: (id: string) => owner.cancel(id),
+    get: (id: string) => owner.get(id), list: () => owner.list(), cancel: (id: string, actor: DomainActor = origin) => owner.cancel(id, actor),
     wait: (id: string, waitMs?: number, callerSignal?: AbortSignal) => owner.wait(id, waitMs, callerSignal),
-    observe: (id: string, handler: Parameters<BookImportTaskOwner["observe"]>[1]) => owner.observe(id, handler),
+    observe: (id: string, handler: Parameters<BookImportTaskOwner["observe"]>[1], actor: DomainActor = origin) => owner.observe(id, handler, actor),
     drain: () => owner.drain(),
   };
 }

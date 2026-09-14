@@ -1,4 +1,5 @@
 const en = {
+  preparing: "Preparing", staging: "Staging", committing: "Saving", cancelled: "Cancelled", cancel: "Cancel import",
   privateCovers: "Saved covers", noPrivateCovers: "No saved covers", keepPrivate: "Keep a private copy",
   privatePolicy: "Local to Library Desk; included in full backups and deleted when this plugin is uninstalled.",
   removePrivate: "Delete saved copy", removePrivateReview: "Delete this saved copy? The book and its original cover will remain.",
@@ -14,6 +15,7 @@ const en = {
   idle: "Idle", queued: "Queued", running: "Running", completed: "Completed", skipped: "Skipped",
 };
 const zh: typeof en = {
+  preparing: "准备中", staging: "暂存中", committing: "保存中", cancelled: "已取消", cancel: "取消导入",
   privateCovers: "已保存封面", noPrivateCovers: "暂无已保存封面", keepPrivate: "保留私有副本",
   privatePolicy: "保存在 Library Desk 的本机私有数据中，包含在完整备份内；卸载此插件时删除。",
   removePrivate: "删除保存的副本", removePrivateReview: "删除此副本？书籍及其原始封面会保留。",

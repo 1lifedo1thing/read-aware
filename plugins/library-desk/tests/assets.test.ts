@@ -1,3 +1,4 @@
+import { importTask } from "../src/import-task";
 import { expect, test } from "bun:test";
 import type { PluginContext, PluginDetailView, PluginLibraryDomain, PluginListView, PluginModule, PluginView, PluginViewContent } from "@read-aware/plugin-types";
 import { bookAssets } from "../src/book-assets";
@@ -28,6 +29,8 @@ function fixture() {
     }; },
   };
   const write = {
+    startImport: async (input: { resourceId: string }) => ({ taskId: "import", sourceName: "Alpha.epub", phase: "completed", revision: 1,
+      createdAt: "now", updatedAt: "now", cancellable: false, cancelRequested: false, errorCode: null, receipt: await write.importResource(input.resourceId) }),
     importResource: async (id: string) => { calls.push(["import", id]); return { status: "imported", book }; },
     retryEnrichment: async (id: string) => { calls.push(["retry", id]); snapshot = { ...snapshot, job: { ...snapshot.job, phase: "queued" } }; return { status: "queued", snapshot }; },
   };
@@ -115,13 +118,15 @@ test("local missing metadata can request enrichment, but queued does not mean co
   expect(JSON.stringify(next.content)).toContain("Queued");
 });
 
-test("import inspects first, requires an explicit action, shows a commit receipt and releases the picked reference on replacement", async () => {
+test("import inspects first, requires an explicit action, shows a commit receipt and transfers the picked reference to the task view", async () => {
   const f = fixture(), review = (await importBook(f.ctx))!.view!;
   expect(f.calls).toEqual([["pick", { multiple: false, extensions: ["epub"] }], ["inspect", "owned"]]);
   const imported = await action(review, "import").run();
   expect(imported!.navigation).toBe("replace");
   expect((imported!.view as PluginDetailView).content).toEqual([{ kind: "text", text: "Imported" }]);
   await review.onClose!({ reason: "replaced" });
+  expect(f.calls.some(call => call[0] === "release")).toBe(false);
+  await imported!.view!.onClose!({ reason: "closed" });
   expect(f.calls.slice(-2)).toEqual([["import", "owned"], ["release", "owned"]]);
   expect((await action(imported!.view!, "details").run())!.view!.title).toBe("Alpha");
 });
@@ -187,4 +192,24 @@ test("compiled header entry reaches selected-book assets and the import review t
   expect(action(review, "import")).toBeDefined();
   await review.onClose!({ reason: "closed" });
   subscription.dispose();
+});
+
+
+test("import task view publishes progress through reactions and retires cancellation after staging", async () => {
+  const f = fixture();
+  type Task = Awaited<ReturnType<PluginLibraryDomain["queries"]["books"]["getImportTask"]>>;
+  let observer!: Parameters<PluginLibraryDomain["events"]["observeImportTask"]>[1], stopped = false, reactions = 0;
+  const task: Task = { taskId: "task", sourceName: "Book.epub", phase: "queued", revision: 0, createdAt: "now", updatedAt: "now", cancellable: true, cancelRequested: false, receipt: null, errorCode: null };
+  f.ctx.domains.library!.events.observeImportTask = (_id, handler, options) => { expect(options?.ruleId).toBe("import-task-live"); observer = handler; return { dispose() { stopped = true; } }; };
+  f.ctx.withEvent = (() => { reactions++; return f.ctx; }) as unknown as PluginContext["withEvent"];
+  const view = importTask(f.ctx, task, f.resource.id), subscription = await view.live!.subscribe({ id: "import" });
+  expect(action(view, "cancel")).toBeDefined();
+  await observer({ ...task, phase: "staging", cancellable: false }, { reaction: { id: "progress", status: "ready" } });
+  expect(action(f.updates[0]!, "cancel")).toBeUndefined();
+  await observer({ ...task, phase: "failed", errorCode: "db/locked", cancellable: false }, { reaction: { id: "failure", status: "ready" } });
+  expect((f.updates[1]! as PluginDetailView).content).toContainEqual({ kind: "error", code: "db/locked" });
+  await observer(task, { reaction: { id: "cycle", status: "cycle" } });
+  subscription.dispose(); await observer(task, { reaction: { id: "late", status: "ready" } });
+  await view.onClose!({ reason: "closed" });
+  expect(reactions).toBe(2); expect(stopped).toBe(true); expect(f.calls[f.calls.length - 1]).toEqual(["release", "owned"]);
 });

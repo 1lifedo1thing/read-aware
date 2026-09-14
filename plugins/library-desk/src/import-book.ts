@@ -1,6 +1,6 @@
 import type { PluginContext, PluginViewResult } from "@read-aware/plugin-types";
 import { assetStrings } from "./assets-strings";
-import { bookAssets } from "./book-assets";
+import { importTask } from "./import-task";
 
 export async function importBook(ctx: PluginContext): Promise<PluginViewResult> {
   const library = ctx.domains.library!, resources = ctx.services.resources;
@@ -13,7 +13,7 @@ export async function importBook(ctx: PluginContext): Promise<PluginViewResult> 
 
 export async function inspectImportResource(ctx: PluginContext, resource: Awaited<ReturnType<PluginContext["services"]["resources"]["stat"]>>): Promise<PluginViewResult> {
   const library = ctx.domains.library!, resources = ctx.services.resources, t = assetStrings(ctx.locale);
-  let inspection;
+  let inspection, transferred = false;
   try { inspection = await library.queries.books.inspectResource(resource.id); }
   catch (error) { await resources.release(resource.id); throw error; }
   return { view: { kind: "detail", title: t.import, content: [
@@ -25,11 +25,8 @@ export async function inspectImportResource(ctx: PluginContext, resource: Awaite
     ] },
     ...(inspection.errorCode ? [{ kind: "error" as const, code: inspection.errorCode }] : []),
   ], actions: inspection.status === "parsed" ? [{ id: "import", label: t.confirmImport, icon: "plus", run: async () => {
-    const receipt = await library.commands!.books.importResource(resource.id);
-    // Once import commits, a detail-query failure must not invite another import.
-    return { view: { kind: "detail", title: receipt.book.title,
-      content: [{ kind: "text", text: receipt.status === "duplicate" ? t.duplicate : t.imported }],
-      actions: [{ id: "details", label: t.details, icon: "book-open", run: async () => ({ view: await bookAssets(ctx, receipt.book) }) }],
-    }, navigation: "replace" };
-  } }] : [], onClose: () => resources.release(resource.id) } };
+    const task = await library.commands!.books.startImport({ kind: "resource", resourceId: resource.id });
+    transferred = true;
+    return { view: importTask(ctx, task, resource.id), navigation: "replace" };
+  } }] : [], onClose: () => transferred ? undefined : resources.release(resource.id) } };
 }

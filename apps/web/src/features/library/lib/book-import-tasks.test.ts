@@ -1,3 +1,4 @@
+import { actorFromEvent, causalActor, saveActorSource } from "../../../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { AppError, type BookImportReceipt, type BookImportTaskSnapshot } from "@read-aware/core";
 import { BookImportTaskOwner } from "./book-import-tasks";
@@ -15,14 +16,16 @@ test.each(["completed", "failed"])("accepted imports retain their %s result afte
     if (phase === "failed") throw new AppError("db/locked", "Native failure after acceptance");
     return receipt;
   };
-  const first = owner.start("book.txt", execute), second = owner.start("other.txt", execute);
+  const startedBy = causalActor("plugin:import"), cancelledBy = causalActor("user");
+  const first = owner.start("book.txt", execute, startedBy), second = owner.start("other.txt", execute);
   try {
     expect(first.phase).toBe("queued"); await tick();
-    expect(owner.cancel(first.taskId)).toMatchObject({ phase: "staging", cancellable: false, cancelRequested: true });
+    expect(owner.cancel(first.taskId, cancelledBy)).toMatchObject({ phase: "staging", cancellable: false, cancelRequested: true });
     owner.cancel(second.taskId); expect(received.aborted).toBe(true);
     expect(() => owner.start("third.txt", execute)).toThrow("capacity");
     gate.resolve(); await owner.drain();
     const result = owner.get(first.taskId);
+    expect(saveActorSource(actorFromEvent(result)).paths).toEqual([...saveActorSource(startedBy).paths, ...saveActorSource(cancelledBy).paths]);
     expect(result).toMatchObject({ phase, cancelRequested: true, cancellable: false,
       errorCode: phase === "failed" ? "db/locked" : null, receipt: phase === "failed" ? null : receipt });
     if (result.receipt) result.receipt.book.title = "Forged";
