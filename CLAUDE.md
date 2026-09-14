@@ -64,7 +64,7 @@ Read only the references needed for the current change. Paths are repo-relative.
 | Product UI and component conventions | [UI conventions](docs/agent-guidance/ui.md) |
 | Error handling and IPC | [Error contract](docs/agent-guidance/errors.md); keep stable codes, localized user messages, logged raw errors, honest retries and visible read/write failures |
 | Plugin boundaries | [Plugin system](docs/plugin-system.md) |
-| Host/Agent/plugin capability delivery | [Delivery workflow](.agents/skills/capability-delivery/SKILL.md), then affected rows in `docs/host-capability-matrix.data.ts` and `docs/host-capability-model.data.ts`; search the [ledger](docs/host-capability-delivery.md) for relevant prior evidence. Generated MD/HTML are outputs |
+| Host/Agent/plugin capability delivery | [Delivery workflow](.agents/skills/capability-delivery/SKILL.md), then the finite [acceptance list](docs/host-capability-acceptance.md) and affected rows in `docs/host-capability-matrix.data.ts` / `docs/host-capability-model.data.ts`; use the compact [evidence index](docs/host-capability-delivery.md) for prior proof. Generated MD/HTML are outputs |
 | Agent behavior evals | `.agents/skills/evals/SKILL.md` |
 | Authorized release work | `.agents/skills/publishing/SKILL.md` |
 | Historical migrations | [Historical implementation notes](docs/agent-guidance/implementation-history.md); not current status |

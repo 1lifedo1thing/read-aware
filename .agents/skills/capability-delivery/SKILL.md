@@ -14,9 +14,12 @@ description: "按用户指定阶段推进 ReadAware 宿主、Agent、插件能�
   矩阵数据源是 `docs/host-capability-matrix.data.ts`，模型是
   `docs/host-capability-model.data.ts`；账本和第三段清单均按行 ID 查找，
   不因新回合或上下文压缩从头重做全量审计。
+- 当前 C01–C09 集中验收以 `docs/host-capability-acceptance.md` 为唯一执行清单；
+  `partial`、历史 goal 或未列名的“其他来源/其他操作”不会自动增加范围。
 - 长任务在 `docs/host-capability-delivery.md` 顶部维护一条简短交接：当前范围与
   阶段、具体剩余调用断点、已通过检查及其对应改动、下一步实施动作。新记录替换
-  这条交接，详细证据放历史记录。压缩后先恢复它，不重新回答已经处理的旧问题。
+  这条交接；稳定证据放 `docs/evidence/`，过程细节留在 Git 历史，不追加逐 commit
+  日记或临时日志路径。压缩后先恢复交接，不重新回答已经处理的旧问题。
 - 用户要求全部补齐时，保持全部约定范围；按共享领域成批只是实施顺序，完成一批
   不能结束整项任务。goal 的创建、修改和结束遵循工具规则，不自动创建后续 goal。
 - 对当前批次明确“谁能完成什么操作、还缺哪段调用链、怎样判定接通”。优先使用
