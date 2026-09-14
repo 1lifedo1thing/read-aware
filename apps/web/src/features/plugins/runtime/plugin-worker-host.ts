@@ -226,8 +226,9 @@ export function startPluginWorker(
   // Select per admitted call, never alter the retained Worker context. Later
   // user callbacks must not inherit the startup source. Isolated service and
   // restore contexts already have their own authority and storage bindings.
-  const activationContext = options.serviceExecution || options.restoreStorage ? ctx
-    : runtime.contextForActor(actorFromEvent(stampEventCause({}, causalActor(options.activationOrigin ?? "system")), `plugin:${manifest.id}`));
+  const activationActor = options.serviceExecution || options.restoreStorage ? undefined
+    : actorFromEvent(stampEventCause({}, causalActor(options.activationOrigin ?? "system")), `plugin:${manifest.id}`);
+  const activationContext = activationActor ? runtime.contextForActor(activationActor) : ctx;
   if (!options.serviceExecution && !options.restoreStorage && manifest.services?.length) {
     runtime.lifecycle.stage(() => pluginServices.register(runtime.serviceParticipant, async execution => {
       const child = await startPluginWorker(execution.manifest, appVersion, [], {
@@ -357,6 +358,7 @@ export function startPluginWorker(
 
   return new Promise<SandboxedPlugin>((resolve, reject) => {
     let startupSettled = false;
+    const ordinarySource = () => !startupSettled || runtime.lifecycle.phase === "migrating" ? activationActor : undefined;
     let handshaken = false;
     const failRuntime = (reason: string) => {
       const starting = !startupSettled;
@@ -536,6 +538,12 @@ export function startPluginWorker(
           const disposable = heldDisposables.get(message.handle);
           heldDisposables.delete(message.handle);
           try {
+            const source = ordinarySource();
+            if (source && disposable?.contribution) await runtime.registrationForActor(disposable.contribution, source).dispose();
+          } catch (error) {
+            log.error(`source-aware dispose from "${manifest.id}" failed`, error);
+          }
+          try {
             disposable?.dispose();
           } catch (error) {
             log.error(`dispose from "${manifest.id}" failed`, error);
@@ -552,6 +560,7 @@ export function startPluginWorker(
           return;
 
         case "call": {
+          const source = ordinarySource();
           if (incomingCalls.has(message.id)) return;
           if (incomingCalls.size >= 256) {
             releaseCallbacks(message.args);
@@ -592,6 +601,8 @@ export function startPluginWorker(
                   return runtime.context.withEvent({ reaction: message.reaction }, registration.contribution as PluginActionRegistration)
                     .updateState(state as Parameters<PluginActionRegistration["updateState"]>[0]);
                 }
+                if (source && registration.contribution) return runtime.registrationForActor(registration.contribution as PluginActionRegistration, source)
+                  .updateState(state as Parameters<PluginActionRegistration["updateState"]>[0]);
                 return registration.updateState(state as Parameters<PluginActionRegistration["updateState"]>[0]);
               }
               : message.method === "$registration.dispose" ? async (...params: unknown[]) => {
@@ -602,6 +613,7 @@ export function startPluginWorker(
                 if (!registration) return;
                 if (!registration.contribution) throw new AppError("plugin/invalid-cause", "Handle is not a contribution registration");
                 if (message.reaction) await runtime.context.withEvent({ reaction: message.reaction }, registration.contribution).dispose();
+                else if (source) await runtime.registrationForActor(registration.contribution, source).dispose();
                 // Release callback ownership after successful source-aware retirement.
                 heldDisposables.delete(handle);
                 registration.dispose();
@@ -617,7 +629,7 @@ export function startPluginWorker(
                 if (!bound) throw new AppError("plugin/unavailable", `"${message.method}" is not granted to plugin "${manifest.id}"`);
                 return bound(...args);
               })
-              : resolve(startupSettled ? ctx : activationContext);
+              : resolve(source ? activationContext : ctx);
             if (!method) throw new AppError("plugin/unavailable", `"${message.method}" is not granted to plugin "${manifest.id}"`);
             const callbackLease = callbackBudget.acquire(message.args);
             releaseArguments = () => { callbackLease.dispose(); releaseCallbacks(message.args); };

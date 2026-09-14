@@ -43,6 +43,16 @@ export class PluginContributionReactions {
     return handle;
   }
 
+  /** Host-only startup/migration dispatch; never accepts a Worker-supplied actor. */
+  withSource<T extends PluginDisposable>(registration: T, source: DomainActor): PluginEventRegistration<T> {
+    const operations = registration && this.handles.get(registration);
+    if (!operations) throw new AppError("plugin/invalid-cause", "Contribution registration belongs to another activation");
+    const actor = causalActor(source);
+    return { dispose: async () => operations.dispose(actor),
+      ...(operations.updateState ? { updateState: (state: PluginActionState) => operations.updateState!(state, actor) } : {}),
+    } as PluginEventRegistration<T>;
+  }
+
   bind<T extends PluginDisposable>(event: PluginReactionEvent | undefined, registration: T): PluginEventRegistration<T> {
     const token = event?.reaction!;
     this.reactions.actor(token);

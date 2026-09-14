@@ -178,6 +178,7 @@ export type PluginContextRuntime = {
   lifecycle: PluginLifecycleController;
   reactions: PluginEventReactions;
   contextForActor(actor: DomainActor): PluginContext;
+  registrationForActor<T extends PluginDisposable>(registration: T, actor: DomainActor): import("@read-aware/plugin-types").PluginEventRegistration<T>;
   serviceParticipant: PluginServiceParticipant;
 };
 
@@ -1874,5 +1875,5 @@ export function buildPluginContext(
   if (typeof operationActor === "object") contexts.set(operationActor, ctx);
   return ctx;
   };
-  return { context: contextForActor(serviceInvocation?.origin ?? selfOrigin), lifecycle, reactions, contextForActor, serviceParticipant: serviceParticipant(serviceInvocation?.origin ?? selfOrigin) };
+  return { context: contextForActor(serviceInvocation?.origin ?? selfOrigin), lifecycle, reactions, contextForActor, registrationForActor: (registration, actor) => contributionHandles.withSource(registration, actor), serviceParticipant: serviceParticipant(serviceInvocation?.origin ?? selfOrigin) };
 }

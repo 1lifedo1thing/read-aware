@@ -986,18 +986,28 @@ test("restore Worker uses private committed storage before RPC acknowledgement a
 });
 
 
-test("startup registrations retain their initiating cause without relabelling later ordinary calls", async () => {
+test("startup and migration calls retain their initiating cause without relabelling later ordinary calls", async () => {
   const origin = causalActor("user");
+  const writes = spyOn(localKV, "setItemAsync").mockResolvedValue();
+  const entries = spyOn(localKV, "entries").mockReturnValue({});
   FaultWorker.beforeReady = worker => worker.deliver({ t: "call", id: 1901, method: "contributions.commands.register",
     args: worker.callbacks.encode([{ id: "startup-cause", title: "Startup", run: () => {} }]) });
   let fixture: Awaited<ReturnType<typeof hostFixture>> | undefined;
   try {
-    fixture = await hostFixture([], true, undefined, { activationOrigin: origin });
+    fixture = await hostFixture([], false, undefined, { activationOrigin: origin });
+    const migration = fixture.runtime.migrate({ fromVersion: 1, toVersion: 2, direction: "upgrade" });
+    const request = fixture.worker.sent.find(message => message.t === "migrate")!;
+    await fixture.worker.deliver({ t: "call", id: 1903, method: "services.storage.set", args: fixture.worker.callbacks.encode(["schema-data", "migrated"]) });
+    expect(fixture.worker.sent.find(message => message.t === "result" && message.id === 1903)).toMatchObject({ ok: true });
+    expect(actorCause(writes.mock.calls.at(-1)![2]!)).toBe(actorCause(origin));
+    await fixture.worker.deliver({ t: "migrated", id: request.id, ok: true });
+    await migration;
+    fixture.runtime.promote();
     expect(fixture.worker.sent.find(message => message.t === "result" && message.id === 1901)).toMatchObject({ ok: true });
     expect(eventCause(getDefaultStore().get(pluginCommandsAtom))).toBe(actorCause(origin));
     await fixture.worker.deliver({ t: "call", id: 1902, method: "contributions.commands.register",
       args: fixture.worker.callbacks.encode([{ id: "later-cause", title: "Later", run: () => {} }]) });
     expect(fixture.worker.sent.find(message => message.t === "result" && message.id === 1902)).toMatchObject({ ok: true });
     expect(eventCause(getDefaultStore().get(pluginCommandsAtom))!.root).not.toBe(actorCause(origin)!.root);
-  } finally { FaultWorker.beforeReady = undefined; await fixture?.close(); }
+  } finally { FaultWorker.beforeReady = undefined; await fixture?.close(); writes.mockRestore(); entries.mockRestore(); }
 });
