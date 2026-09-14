@@ -1,3 +1,4 @@
+import { observeSnapshot } from "./snapshot-observation";
 import { actorFromEvent, copyEventCause, causalActor, type DomainActor } from "../platform/domain-actor";
 import { AppError, normalizeConversationTarget, type ConversationTarget, type ConversationRuntimeSnapshot } from "@read-aware/core";
 import { getDefaultStore } from "jotai";
@@ -17,13 +18,22 @@ store.sub(activeGlobalThreadSourceAtom, () => conversationRuntime.changed(actorF
 export function conversationSnapshot(): ConversationRuntimeSnapshot {
   return copyEventCause(conversationRuntime.provenance(), { revision: conversationRuntime.revision, selectedGlobalThreadId: store.get(activeGlobalThreadAtom), sessions: conversationRuntime.snapshot() });
 }
-export function observeConversations(handler: (value: ConversationRuntimeSnapshot) => unknown) {
-  const publish = () => {
-    try { Promise.resolve(handler(conversationSnapshot())).catch(error => log.warn("Conversation observer failed", error)); }
-    catch (error) { log.warn("Conversation observer failed", error); }
-  };
-  const off = conversationRuntime.observe(publish); publish(); return off;
+let observers = 0;
+export function observeConversations(handler: (value: ConversationRuntimeSnapshot, source: object) => unknown, origin: DomainActor = "system", lifetime?: AbortSignal) {
+  lifetime?.throwIfAborted();
+  if (typeof handler !== "function") throw new AppError("ui/invalid-target", "Expected conversation observer");
+  if (observers >= 64) throw new AppError("ui/observer-limit", "Too many conversation observers");
+  observers++;
+  let stopped = false, off: () => void;
+  try { off = observeSnapshot(conversationSnapshot, notify => conversationRuntime.observe(notify), handler,
+    error => log.warn("Conversation observer failed", error), origin); }
+  catch (error) { observers--; throw error; }
+  const stop = () => { if (stopped) return; stopped = true; observers--; off(); lifetime?.removeEventListener("abort", stop); };
+  lifetime?.addEventListener("abort", stop, { once: true });
+  if (lifetime?.aborted) stop();
+  return stop;
 }
+
 export function conversationCommands(origin: DomainActor) {
   const validate = async (input: ConversationTarget, signal?: AbortSignal) => {
     const target = normalizeConversationTarget(input); signal?.throwIfAborted();

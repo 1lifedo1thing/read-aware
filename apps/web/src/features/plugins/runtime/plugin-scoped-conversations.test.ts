@@ -1,3 +1,4 @@
+import { stampEventCause } from "../../../platform/domain-actor";
 import { expect, test } from "bun:test";
 import type { ConversationRuntimeSnapshot, DomainEventType } from "@read-aware/core";
 import type { PluginBookAccess, PluginConversationRuntimeSnapshot } from "@read-aware/plugin-types";
@@ -22,7 +23,7 @@ function fixture(grant: PluginBookAccess = { mode: "current" }) {
     { kind: "global", id: "thread-private", sessionId: "global-session", loading: false, streaming: false, messageCount: 100 },
   ] };
   raw.queries.runtime = async () => snapshot;
-  raw.events.observeRuntime = handler => { runtimeListeners.add(handler); handler(snapshot); return () => { runtimeListeners.delete(handler); }; };
+  raw.events.observeRuntime = handler => { runtimeListeners.add(handler); handler(stampEventCause({ ...snapshot })); return () => { runtimeListeners.delete(handler); }; };
   const requests = new ConversationTurnRequests(() => {}), sends: string[] = [];
   const unbind = ["a", "b"].map(id => requests.bind({ kind: "book", id }, {
     state: () => ({ loading: false, ready: true, generation: snapshot, canRetry: true }),
@@ -33,7 +34,7 @@ function fixture(grant: PluginBookAccess = { mode: "current" }) {
   raw.commands.cancelTurnRequest = async id => requests.cancel("plugin:conversation-proof", id);
   const api = scopePluginConversations(raw, policy, lifecycle, reader, "plugin:conversation-proof");
   return { api, raw, requests, sends, readers, snapshot, lifecycle,
-    changed: async () => { for (const handler of [...runtimeListeners]) await handler(snapshot); },
+    changed: async () => { for (const handler of [...runtimeListeners]) await handler(stampEventCause({ ...snapshot })); },
     switchBook: (bookId: string | null, sessionId = `${bookId}1`) => {
       current = { bookId, sessionId }; for (const handler of [...readers]) handler();
     }, close: async () => { unbind.forEach(stop => stop()); lifecycle.stop(); await lifecycle.drainCleanups(); } };
@@ -74,8 +75,8 @@ test("runtime snapshots and revisions reveal only the authorized book, including
     const initial = await f.api.queries.runtime();
     f.snapshot.revision += 100; f.snapshot.selectedGlobalThreadId = "thread-another"; f.snapshot.sessions[2]!.messageCount++;
     await f.changed(); expect(seen).toHaveLength(1); expect((await f.api.queries.runtime()).revision).toBe(initial.revision);
-    f.switchBook("b"); expect(seen.at(-1)?.sessions.map(value => value.id)).toEqual(["b"]);
-    f.switchBook(null); expect(seen.at(-1)?.sessions).toEqual([]); expect((await f.api.queries.runtime()).selectedGlobalThreadId).toBeNull();
+    f.switchBook("b"); await new Promise(resolve => setTimeout(resolve, 0)); expect(seen.at(-1)?.sessions.map(value => value.id)).toEqual(["b"]);
+    f.switchBook(null); await new Promise(resolve => setTimeout(resolve, 0)); expect(seen.at(-1)?.sessions).toEqual([]); expect((await f.api.queries.runtime()).selectedGlobalThreadId).toBeNull();
     subscription.dispose(); const count = seen.length; await f.changed(); expect(seen).toHaveLength(count);
   } finally { subscription.dispose(); await f.close(); }
 });

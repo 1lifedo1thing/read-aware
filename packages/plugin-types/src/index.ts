@@ -1715,7 +1715,8 @@ export type PluginConversationsDomain = {
   };
   events: { subscribe: DomainSubscribe<ConversationDomainEventType>;
     observeInvalidation(handler: PluginObservationHandler<import("@read-aware/core").ProjectionInvalidation>): PluginDisposable;
-    observeRuntime(handler: (snapshot: PluginConversationRuntimeSnapshot) => unknown): PluginDisposable };
+    /** Conversations 1.6: serial reaction deliveries, with an optional stable rule ID. */
+    observeRuntime(handler: PluginObservationHandler<PluginConversationRuntimeSnapshot>, options?: { ruleId?: string }): PluginDisposable };
 };
 
 export type PluginSettingsDomain = {

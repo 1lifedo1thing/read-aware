@@ -68,9 +68,9 @@ export async function conversationControls(ctx: PluginContext, input: Conversati
   const initial = await domain.queries.runtime();
   return { ...render(initial), live: { subscribe(channel) {
     let disposed = false, revision = 0;
-    const subscription = domain.events.observeRuntime(async state => {
-      if (!disposed) await ctx.services.ui.publishView(channel, { revision: ++revision, view: render(state) });
-    });
+    const subscription = domain.events.observeRuntime(async (state, delivery) => {
+      if (!disposed && delivery?.reaction?.status !== "cycle") await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: render(state) });
+    }, { ruleId: "conversation-live" });
     return { dispose() { disposed = true; subscription.dispose(); } };
   } } };
 }

@@ -46,7 +46,7 @@ export type ConversationsDomain = {
   commands: ReturnType<typeof conversationCommands>;
   events: {
     observeInvalidation(handler: (event: import("@read-aware/core").ProjectionInvalidation) => unknown): () => void;
-    observeRuntime(handler: (snapshot: import("@read-aware/core").ConversationRuntimeSnapshot) => unknown): () => void;
+    observeRuntime(handler: (snapshot: import("@read-aware/core").ConversationRuntimeSnapshot, source?: object) => unknown): () => void;
     subscribe: DomainEventSubscribe<(typeof CONVERSATION_EVENTS)[number]>;
   };
 };
@@ -71,6 +71,6 @@ export function createConversationsDomain(origin: DomainActor, lifetime?: AbortS
       getThread: async (threadId) => toMessages(await loadConversation(String(threadId))),
     },
     commands: conversationCommands(origin),
-    events: { observeInvalidation: handler => observeConversationInvalidation(handler, lifetime, origin), subscribe: domainSubscribe(CONVERSATION_EVENTS, actorOrigin(origin)), observeRuntime: observeConversations },
+    events: { observeInvalidation: handler => observeConversationInvalidation(handler, lifetime, origin), subscribe: domainSubscribe(CONVERSATION_EVENTS, actorOrigin(origin)), observeRuntime: handler => observeConversations(handler, origin, lifetime) },
   };
 }

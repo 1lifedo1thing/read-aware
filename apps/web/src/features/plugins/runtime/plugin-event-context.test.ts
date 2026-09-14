@@ -304,3 +304,26 @@ test("workspace reactions survive await and retain their cycle on retirement nul
     expect(statuses.at(-1)).toBe("null:cycle"); subscription.dispose();
   } finally { binding.dispose(); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); }
 });
+
+
+test("conversation runtime stop feedback retains the public reaction across await", async () => {
+  const { conversationRuntime } = await import("../../../domain/conversation-control");
+  const target = { kind: "global" as const, id: "thread-reaction-proof" };
+  const binding = conversationRuntime.bind(target);
+  const runtime = buildPluginContext({ id: "conversation-reaction", name: "Conversation", version: "1", schemaVersion: 1, requires: {}, permissions: ["conversations:write"] }, "1", []);
+  const statuses: string[] = [], failures: unknown[] = [];
+  let retained: PluginContext | undefined;
+  try {
+    runtime.lifecycle.promote();
+    const off = runtime.context.domains.conversations!.events.observeRuntime(async (_snapshot, delivery) => {
+      statuses.push(delivery!.reaction!.status);
+      if (delivery?.reaction?.status === "cycle") return;
+      try { retained = runtime.context.withEvent(delivery); await Promise.resolve(); await retained.domains.conversations!.commands!.stop(target); }
+      catch (error) { failures.push(error); }
+    }, { ruleId: "stop-follow" });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(failures).toEqual([]); expect(statuses).toEqual(["ready", "cycle"]);
+    expect(() => retained!.domains.conversations!.queries.runtime()).toThrow(expect.objectContaining({ code: "plugin/invalid-cause" }));
+    off.dispose();
+  } finally { binding.dispose(); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); }
+});

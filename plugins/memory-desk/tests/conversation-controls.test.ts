@@ -30,6 +30,7 @@ function fixture(selectedTarget: ConversationTarget = target) {
       clear: async (t: typeof target) => { writes.push({ clear: t }); return { target: t, status: "completed" }; },
     }, events: { observeRuntime: (next: typeof handler) => { handler = next; return { dispose() { disposed++; } }; } },
   } }, services: { ui: { publishView: async (_channel: unknown, update: { view: PluginView }) => { frames.push(update.view); } } } } as unknown as PluginContext;
+  ctx.withEvent = (() => ctx) as unknown as PluginContext["withEvent"];
   return { ctx, runtime, requests, writes, frames, update: () => handler(runtime), disposeCount: () => disposed,
     counts: () => ({ sends, drafts, retries }), cleanup: unbind };
 }

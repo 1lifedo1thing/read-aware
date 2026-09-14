@@ -1,3 +1,4 @@
+import { observeSnapshot } from "../../../domain/snapshot-observation";
 import { actorOrigin, copyEventCause, eventCause, ObservationCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { AppError, normalizeConversationTarget, normalizeConversationTurnRequest,
   type ConversationRuntimeSnapshot, type ConversationTarget, type ProjectionInvalidation } from "@read-aware/core";
@@ -49,7 +50,7 @@ export function scopePluginConversations(domain: NonNullable<ActorDomainView["co
     const bookId = book(), sessions = snapshot.sessions.filter(session => session.kind === "book" && session.id === bookId);
     const key = JSON.stringify([bookId, policy.grant.mode === "current" ? reader.current().sessionId : null, sessions]);
     if (key !== state.projectedKey) { state.projectedKey = key; state.revision++; }
-    return { revision: state.revision, selectedGlobalThreadId: null, sessions: structuredClone(sessions) };
+    return copyEventCause(snapshot, { revision: state.revision, selectedGlobalThreadId: null, sessions: structuredClone(sessions) });
   };
   const queries: PluginConversationsDomain["queries"] = {
     listThreads: () => denied("listThreads"), getThread: () => denied("getThread"),
@@ -91,20 +92,20 @@ export function scopePluginConversations(domain: NonNullable<ActorDomainView["co
     observeRuntime(handler) {
       if (typeof handler !== "function") throw new AppError("ui/invalid-target", "Expected a conversation runtime callback");
       return lifecycle.stage(() => {
-        let stopped = false, seen = -1, latest: ConversationRuntimeSnapshot | undefined;
-        const publish = () => {
-          if (stopped || lifecycle.signal.aborted || !latest) return;
-          const state = project(latest);
-          if (seen === state.revision) return;
-          seen = state.revision;
-          return handler(state);
-        };
-        const offRuntime = domain.events.observeRuntime(snapshot => { latest = snapshot; return publish(); });
-        const offReader = reader.observe(() => {
-          try { Promise.resolve(publish()).catch(error => log.warn("Conversation scope observer failed", error)); }
-          catch (error) { log.warn("Conversation scope observer failed", error); }
-        });
-        return { dispose: () => { stopped = true; offRuntime(); offReader(); } };
+        let seen = -1, latest: ConversationRuntimeSnapshot | undefined;
+        return { dispose: observeSnapshot(() => project(latest ?? { sessions: [] }), notify => {
+          const offRuntime = domain.events.observeRuntime((snapshot, source) => {
+            latest = snapshot; notify(source ?? snapshot);
+          });
+          try {
+            const offReader = reader.observe(source => notify(source ?? stampEventCause({}, "system")));
+            return () => { offRuntime(); offReader(); };
+          } catch (error) { offRuntime(); throw error; }
+        }, async (snapshot, source) => {
+          if (lifecycle.signal.aborted || snapshot.revision === seen) return;
+          await handler(snapshot, source);
+          seen = snapshot.revision;
+        }, error => log.warn("Conversation scope observer failed", error), origin) };
       });
     },
     // These hints contain no object, transcript or global thread identities.
