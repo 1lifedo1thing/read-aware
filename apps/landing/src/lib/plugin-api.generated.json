@@ -1,0 +1,2299 @@
+{
+  "domains:library": [
+    {
+      "path": "ctx.domains.library.commands.books.addVirtualBook",
+      "signatures": [
+        "(input: { providerId: string; key: string; title: string; author?: string; }): Promise<PluginBook>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1532
+    },
+    {
+      "path": "ctx.domains.library.commands.books.cancelImportTask",
+      "signatures": [
+        "(taskId: string): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1524
+    },
+    {
+      "path": "ctx.domains.library.commands.books.cancelTextTask",
+      "signatures": [
+        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1509
+    },
+    {
+      "path": "ctx.domains.library.commands.books.editMetadata",
+      "signatures": [
+        "(bookId: string, patch: { title?: string; author?: string; }): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1525
+    },
+    {
+      "path": "ctx.domains.library.commands.books.importBook",
+      "signatures": [
+        "(input: { fileName: string; data: ArrayBuffer | Uint8Array; }, options?: PluginCallOptions): Promise<PluginBook>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1510
+    },
+    {
+      "path": "ctx.domains.library.commands.books.importResource",
+      "signatures": [
+        "(id: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImportReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1517
+    },
+    {
+      "path": "ctx.domains.library.commands.books.invalidateVirtualBook",
+      "signatures": [
+        "(input: { providerId: string; key: string; }): Promise<{ bookId: string; revision: string; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1541
+    },
+    {
+      "path": "ctx.domains.library.commands.books.mergeDuplicates",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookMergeRequest): Promise<import(\"@read-aware/core\").BookMergeReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1502
+    },
+    {
+      "path": "ctx.domains.library.commands.books.pauseTextTask",
+      "signatures": [
+        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1505
+    },
+    {
+      "path": "ctx.domains.library.commands.books.prepareText",
+      "signatures": [
+        "(bookId: string, options?: import(\"@read-aware/core\").BookTextPrepareOptions): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1498
+    },
+    {
+      "path": "ctx.domains.library.commands.books.remove",
+      "signatures": [
+        "(bookId: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1527
+    },
+    {
+      "path": "ctx.domains.library.commands.books.removeMany",
+      "signatures": [
+        "(bookIds: string[]): Promise<import(\"@read-aware/core\").BookRemovalReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1529
+    },
+    {
+      "path": "ctx.domains.library.commands.books.removeVirtualBook",
+      "signatures": [
+        "(input: { providerId: string; key: string; expectedBookId?: string; }): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1538
+    },
+    {
+      "path": "ctx.domains.library.commands.books.resumeTextTask",
+      "signatures": [
+        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1507
+    },
+    {
+      "path": "ctx.domains.library.commands.books.retryEnrichment",
+      "signatures": [
+        "(bookId: string): Promise<import(\"@read-aware/core\").BookEnrichmentReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1500
+    },
+    {
+      "path": "ctx.domains.library.commands.books.retryRemovalCleanup",
+      "signatures": [
+        "(bookIds: string[]): Promise<import(\"@read-aware/core\").BookFileReleaseReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1531
+    },
+    {
+      "path": "ctx.domains.library.commands.books.setStarred",
+      "signatures": [
+        "(bookId: string, starred: boolean): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1526
+    },
+    {
+      "path": "ctx.domains.library.commands.books.setTextTaskPriority",
+      "signatures": [
+        "(bookId: string, taskId: string, priority: import(\"@read-aware/core\").BookTextPriority): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1504
+    },
+    {
+      "path": "ctx.domains.library.commands.books.startImport",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookImportRequest, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1523
+    },
+    {
+      "path": "ctx.domains.library.commands.collections.assignBooks",
+      "signatures": [
+        "(bookIds: string[], collectionId: string | null): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1547
+    },
+    {
+      "path": "ctx.domains.library.commands.collections.create",
+      "signatures": [
+        "(name: string): Promise<PluginCollection>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1544
+    },
+    {
+      "path": "ctx.domains.library.commands.collections.remove",
+      "signatures": [
+        "(collectionId: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1546
+    },
+    {
+      "path": "ctx.domains.library.commands.collections.rename",
+      "signatures": [
+        "(collectionId: string, name: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1545
+    },
+    {
+      "path": "ctx.domains.library.events.observeContentState",
+      "signatures": [
+        "(bookId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookContentObservation>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1557
+    },
+    {
+      "path": "ctx.domains.library.events.observeEnrichment",
+      "signatures": [
+        "(bookId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookEnrichmentObservation>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1556
+    },
+    {
+      "path": "ctx.domains.library.events.observeImportTask",
+      "signatures": [
+        "(taskId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookImportTaskSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1555
+    },
+    {
+      "path": "ctx.domains.library.events.observeInvalidation",
+      "signatures": [
+        "(handler: PluginObservationHandler<import(\"@read-aware/core\").ProjectionInvalidation>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1560
+    },
+    {
+      "path": "ctx.domains.library.events.observeTextTask",
+      "signatures": [
+        "(bookId: string, taskId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookTextTaskSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1553
+    },
+    {
+      "path": "ctx.domains.library.events.subscribe",
+      "signatures": [
+        "<K extends LibraryDomainEventType>(event: K, handler: (event: PluginDomainEvent<K>) => void, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1551
+    },
+    {
+      "path": "ctx.domains.library.queries.books.get",
+      "signatures": [
+        "(bookId: string): Promise<PluginBook | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1455
+    },
+    {
+      "path": "ctx.domains.library.queries.books.getChapterText",
+      "signatures": [
+        "(bookId: string, chapterIndex: number): Promise<string | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1471
+    },
+    {
+      "path": "ctx.domains.library.queries.books.getContentState",
+      "signatures": [
+        "(bookId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookContentState>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1462
+    },
+    {
+      "path": "ctx.domains.library.queries.books.getEnrichment",
+      "signatures": [
+        "(bookId: string): Promise<import(\"@read-aware/core\").BookEnrichmentSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1460
+    },
+    {
+      "path": "ctx.domains.library.queries.books.getImportTask",
+      "signatures": [
+        "(taskId: string, waitMs?: number, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1469
+    },
+    {
+      "path": "ctx.domains.library.queries.books.getNavigationToc",
+      "signatures": [
+        "(bookId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookNavigationToc>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1472
+    },
+    {
+      "path": "ctx.domains.library.queries.books.getTextState",
+      "signatures": [
+        "(bookId: string): Promise<import(\"@read-aware/core\").BookTextSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1458
+    },
+    {
+      "path": "ctx.domains.library.queries.books.getTextTask",
+      "signatures": [
+        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1464
+    },
+    {
+      "path": "ctx.domains.library.queries.books.getToc",
+      "signatures": [
+        "(bookId: string): Promise<PluginChapterRef[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1456
+    },
+    {
+      "path": "ctx.domains.library.queries.books.inspectResource",
+      "signatures": [
+        "(id: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookInspection>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1447
+    },
+    {
+      "path": "ctx.domains.library.queries.books.list",
+      "signatures": [
+        "(): Promise<PluginBook[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1443
+    },
+    {
+      "path": "ctx.domains.library.queries.books.listDuplicates",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").DuplicateBookQuery): Promise<import(\"@read-aware/core\").DuplicateBookPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1449
+    },
+    {
+      "path": "ctx.domains.library.queries.books.listFormats",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").BookFormatCapability[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1445
+    },
+    {
+      "path": "ctx.domains.library.queries.books.listImages",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookImagesQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImagesPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1480
+    },
+    {
+      "path": "ctx.domains.library.queries.books.listImportTasks",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1470
+    },
+    {
+      "path": "ctx.domains.library.queries.books.listNavigationTargets",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookNavigationTargetsQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookNavigationTargetsPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1474
+    },
+    {
+      "path": "ctx.domains.library.queries.books.listReferences",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookReferencesQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookReferencesPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1478
+    },
+    {
+      "path": "ctx.domains.library.queries.books.listRemovalCleanup",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").BookRemovalCleanupQuery): Promise<import(\"@read-aware/core\").BookRemovalCleanupPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1454
+    },
+    {
+      "path": "ctx.domains.library.queries.books.listTextTaskHistory",
+      "signatures": [
+        "(bookId: string, query?: import(\"@read-aware/core\").BookTextTaskHistoryQuery): Promise<import(\"@read-aware/core\").BookTextTaskHistoryPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1463
+    },
+    {
+      "path": "ctx.domains.library.queries.books.listTextTasks",
+      "signatures": [
+        "(bookId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1465
+    },
+    {
+      "path": "ctx.domains.library.queries.books.openImageResource",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookImageQuery): Promise<import(\"@read-aware/core\").BookImageResource>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1482
+    },
+    {
+      "path": "ctx.domains.library.queries.books.previewMerge",
+      "signatures": [
+        "(bookId: string): Promise<import(\"@read-aware/core\").BookMergePreview | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1450
+    },
+    {
+      "path": "ctx.domains.library.queries.books.readRange",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookRangeQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookRangePage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1476
+    },
+    {
+      "path": "ctx.domains.library.queries.books.readReference",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookReferenceQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookReferencePreview>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1484
+    },
+    {
+      "path": "ctx.domains.library.queries.books.resolveId",
+      "signatures": [
+        "(bookId: string): Promise<string | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1452
+    },
+    {
+      "path": "ctx.domains.library.queries.books.searchLocations",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookLocationSearch, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookLocationSearchPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1475
+    },
+    {
+      "path": "ctx.domains.library.queries.books.searchText",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookTextSearch, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookTextHit[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1486
+    },
+    {
+      "path": "ctx.domains.library.queries.collections.booksIn",
+      "signatures": [
+        "(collectionId: string): Promise<string[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1490
+    },
+    {
+      "path": "ctx.domains.library.queries.collections.list",
+      "signatures": [
+        "(): Promise<PluginCollection[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1489
+    }
+  ],
+  "domains:reading": [
+    {
+      "path": "ctx.domains.reading.commands.back",
+      "signatures": [
+        "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1596
+    },
+    {
+      "path": "ctx.domains.reading.commands.clearSelection",
+      "signatures": [
+        "(expectedId: string, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingSelectionReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1590
+    },
+    {
+      "path": "ctx.domains.reading.commands.close",
+      "signatures": [
+        "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1602
+    },
+    {
+      "path": "ctx.domains.reading.commands.configureMode",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").ReadingModeConfiguration, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingModeReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1608
+    },
+    {
+      "path": "ctx.domains.reading.commands.controlPlayback",
+      "signatures": [
+        "(action: \"start\" | \"stop\", guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingPlaybackReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1604
+    },
+    {
+      "path": "ctx.domains.reading.commands.forward",
+      "signatures": [
+        "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1597
+    },
+    {
+      "path": "ctx.domains.reading.commands.goTo",
+      "signatures": [
+        "(target: import(\"@read-aware/core\").ReadingTarget, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1595
+    },
+    {
+      "path": "ctx.domains.reading.commands.openBook",
+      "signatures": [
+        "(bookId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1594
+    },
+    {
+      "path": "ctx.domains.reading.commands.putEmphasis",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").ReadingEmphasisWrite, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingEmphasisReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1585
+    },
+    {
+      "path": "ctx.domains.reading.commands.reload",
+      "signatures": [
+        "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1601
+    },
+    {
+      "path": "ctx.domains.reading.commands.removeEmphasis",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").ReadingEmphasisRef, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingEmphasisRemoval>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1586
+    },
+    {
+      "path": "ctx.domains.reading.commands.returnToMode",
+      "signatures": [
+        "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1610
+    },
+    {
+      "path": "ctx.domains.reading.commands.selectRange",
+      "signatures": [
+        "(range: import(\"@read-aware/core\").BookTextRange, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingSelectionReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1588
+    },
+    {
+      "path": "ctx.domains.reading.commands.setControls",
+      "signatures": [
+        "(visible: boolean, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingControlsReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1592
+    },
+    {
+      "path": "ctx.domains.reading.commands.setFinished",
+      "signatures": [
+        "(bookId: string, finished: boolean): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1593
+    },
+    {
+      "path": "ctx.domains.reading.commands.step",
+      "signatures": [
+        "(direction: import(\"@read-aware/core\").ReadingStep, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1599
+    },
+    {
+      "path": "ctx.domains.reading.commands.stepMode",
+      "signatures": [
+        "(direction: \"next\" | \"previous\", guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingModeStepReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1612
+    },
+    {
+      "path": "ctx.domains.reading.events.observeEmphasis",
+      "signatures": [
+        "(handler: (snapshot: import(\"@read-aware/core\").ReadingEmphasisSnapshot[], delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1619
+    },
+    {
+      "path": "ctx.domains.reading.events.observeSession",
+      "signatures": [
+        "(handler: (snapshot: import(\"@read-aware/core\").ReadingSessionSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1618
+    },
+    {
+      "path": "ctx.domains.reading.events.observeTime",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").ReadingTimeQuery, handler: (event: import(\"@read-aware/core\").ReadingTimeObservation, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1623
+    },
+    {
+      "path": "ctx.domains.reading.events.subscribe",
+      "signatures": [
+        "<K extends \"book.opened\" | \"book.finished\" | \"book.progressed\" | \"book.timeRecorded\" | \"book.sessionRecorded\">(event: K, handler: (event: PluginDomainEvent<K>) => void, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1615
+    },
+    {
+      "path": "ctx.domains.reading.queries.emphasis",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").ReadingEmphasisSnapshot[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1572
+    },
+    {
+      "path": "ctx.domains.reading.queries.session",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").ReadingSessionSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1573
+    },
+    {
+      "path": "ctx.domains.reading.queries.stats.forBook",
+      "signatures": [
+        "(bookId: string): Promise<PluginBookStats | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1578
+    },
+    {
+      "path": "ctx.domains.reading.queries.stats.insights",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").ReadingInsightsQuery): Promise<import(\"@read-aware/core\").ReadingInsights>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1577
+    },
+    {
+      "path": "ctx.domains.reading.queries.stats.list",
+      "signatures": [
+        "(): Promise<PluginBookStats[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1579
+    },
+    {
+      "path": "ctx.domains.reading.queries.stats.overview",
+      "signatures": [
+        "(): Promise<PluginStatsOverview>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1580
+    },
+    {
+      "path": "ctx.domains.reading.queries.stats.time",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").ReadingTimeQuery): Promise<import(\"@read-aware/core\").ReadingTimeSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1576
+    }
+  ],
+  "domains:annotations": [
+    {
+      "path": "ctx.domains.annotations.commands.applyChanges",
+      "signatures": [
+        "(changes: import(\"@read-aware/core\").AnnotationMutation[]): Promise<import(\"@read-aware/core\").AnnotationCommitResult>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1651
+    },
+    {
+      "path": "ctx.domains.annotations.commands.createHighlight",
+      "signatures": [
+        "(input: { range?: import(\"@read-aware/core\").BookTextRange; bookId: string; text: string; anchor?: string | null; chapterHref?: string | null; color?: HighlightColor; style?: HighlightStyle; }): Promise<PluginHighlight>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1653
+    },
+    {
+      "path": "ctx.domains.annotations.commands.createNote",
+      "signatures": [
+        "(input: { range?: import(\"@read-aware/core\").BookTextRange; bookId: string; body: string; quotedText?: string; anchor?: string | null; chapterHref?: string | null; }): Promise<PluginNote>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1662
+    },
+    {
+      "path": "ctx.domains.annotations.events.observe",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").AnnotationObservationQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").AnnotationObservation>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1674
+    },
+    {
+      "path": "ctx.domains.annotations.events.subscribe",
+      "signatures": [
+        "<K extends AnnotationDomainEventType>(event: K, handler: (event: PluginDomainEvent<K>) => void, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1672
+    },
+    {
+      "path": "ctx.domains.annotations.queries.get",
+      "signatures": [
+        "(annotationId: string): Promise<PluginAnnotation | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1641
+    },
+    {
+      "path": "ctx.domains.annotations.queries.inspect",
+      "signatures": [
+        "(annotationId: string): Promise<import(\"@read-aware/core\").AnnotationSnapshot | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1637
+    },
+    {
+      "path": "ctx.domains.annotations.queries.list",
+      "signatures": [
+        "(filter?: { bookId?: string; kind?: \"highlight\" | \"note\" | \"ask\"; query?: string; }): Promise<PluginAnnotation[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1642
+    },
+    {
+      "path": "ctx.domains.annotations.queries.page",
+      "signatures": [
+        "(input?: import(\"@read-aware/core\").AnnotationPageQuery): Promise<import(\"@read-aware/core\").AnnotationPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1639
+    }
+  ],
+  "domains:conversations": [
+    {
+      "path": "ctx.domains.conversations.commands.cancelTurnRequest",
+      "signatures": [
+        "(id: string): Promise<import(\"@read-aware/core\").ConversationTurnRequestSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1708
+    },
+    {
+      "path": "ctx.domains.conversations.commands.clear",
+      "signatures": [
+        "(target: import(\"@read-aware/core\").ConversationTarget): Promise<import(\"@read-aware/core\").ConversationControlReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1715
+    },
+    {
+      "path": "ctx.domains.conversations.commands.createThread",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").ConversationControlReceipt & { draft: true; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1710
+    },
+    {
+      "path": "ctx.domains.conversations.commands.requestTurn",
+      "signatures": [
+        "(request: import(\"@read-aware/core\").ConversationTurnRequest): Promise<import(\"@read-aware/core\").ConversationTurnRequestSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1707
+    },
+    {
+      "path": "ctx.domains.conversations.commands.selectThread",
+      "signatures": [
+        "(threadId: string): Promise<import(\"@read-aware/core\").ConversationControlReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1711
+    },
+    {
+      "path": "ctx.domains.conversations.commands.stop",
+      "signatures": [
+        "(target: import(\"@read-aware/core\").ConversationTarget): Promise<import(\"@read-aware/core\").ConversationControlReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1713
+    },
+    {
+      "path": "ctx.domains.conversations.events.observeInvalidation",
+      "signatures": [
+        "(handler: PluginObservationHandler<import(\"@read-aware/core\").ProjectionInvalidation>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1718
+    },
+    {
+      "path": "ctx.domains.conversations.events.observeRuntime",
+      "signatures": [
+        "(handler: PluginObservationHandler<PluginConversationRuntimeSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1720
+    },
+    {
+      "path": "ctx.domains.conversations.events.subscribe",
+      "signatures": [
+        "<K extends ConversationDomainEventType>(event: K, handler: (event: PluginDomainEvent<K>) => void, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1717
+    },
+    {
+      "path": "ctx.domains.conversations.queries.getBookThread",
+      "signatures": [
+        "(bookId: string): Promise<PluginChatMessage[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1701
+    },
+    {
+      "path": "ctx.domains.conversations.queries.getInsights",
+      "signatures": [
+        "(target: import(\"@read-aware/core\").ConversationTarget): Promise<string | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1697
+    },
+    {
+      "path": "ctx.domains.conversations.queries.getThread",
+      "signatures": [
+        "(threadId: string): Promise<PluginChatMessage[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1703
+    },
+    {
+      "path": "ctx.domains.conversations.queries.listThreads",
+      "signatures": [
+        "(): Promise<PluginThreadSummary[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1702
+    },
+    {
+      "path": "ctx.domains.conversations.queries.runtime",
+      "signatures": [
+        "(): Promise<PluginConversationRuntimeSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1700
+    },
+    {
+      "path": "ctx.domains.conversations.queries.turnRequests",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").ConversationTurnRequestSnapshot[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1699
+    }
+  ],
+  "domains:settings": [
+    {
+      "path": "ctx.domains.settings.commands.refreshModelCatalog",
+      "signatures": [
+        "(provider: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ModelCatalogPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1749
+    },
+    {
+      "path": "ctx.domains.settings.commands.resetReading",
+      "signatures": [
+        "(request: import(\"@read-aware/core\").ReadingSettingsReset): Promise<SettingsUpdateResult>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1753
+    },
+    {
+      "path": "ctx.domains.settings.commands.update",
+      "signatures": [
+        "(changes: SettingChange[]): Promise<SettingsUpdateResult>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1750
+    },
+    {
+      "path": "ctx.domains.settings.events.subscribe",
+      "signatures": [
+        "(handler: (event: SettingsChangedEvent & PluginReactionEvent) => void, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1756
+    },
+    {
+      "path": "ctx.domains.settings.queries.discover",
+      "signatures": [
+        "(query?: SettingsQuery): Promise<SettingCatalogEntry[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1731
+    },
+    {
+      "path": "ctx.domains.settings.queries.modelCatalog",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").ModelCatalogQuery): Promise<import(\"@read-aware/core\").ModelCatalogPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1726
+    },
+    {
+      "path": "ctx.domains.settings.queries.observe",
+      "signatures": [
+        "(query: SettingsQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").SettingsObservation>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1730
+    },
+    {
+      "path": "ctx.domains.settings.queries.options",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").SettingsOptionsQuery): Promise<import(\"@read-aware/core\").SettingsOptionsPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1744
+    },
+    {
+      "path": "ctx.domains.settings.queries.read",
+      "signatures": [
+        "(path: string, target?: SettingsQueryTarget): Promise<SettingReadResult>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1745
+    },
+    {
+      "path": "ctx.domains.settings.queries.snapshot",
+      "signatures": [
+        "(query?: SettingsQuery): Promise<import(\"@read-aware/core\").SettingsSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1728
+    }
+  ],
+  "domains:memory": [
+    {
+      "path": "ctx.domains.memory.commands.cancelGraphTask",
+      "signatures": [
+        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1839
+    },
+    {
+      "path": "ctx.domains.memory.commands.classify",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").BookClassificationChange): Promise<import(\"@read-aware/core\").BookClassificationReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1837
+    },
+    {
+      "path": "ctx.domains.memory.commands.completeOnboarding",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").OnboardingChange, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").OnboardingReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1835
+    },
+    {
+      "path": "ctx.domains.memory.commands.context.capture",
+      "signatures": [
+        "(selector: import(\"@read-aware/core\").ContextBundleSelector, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ContextBundleCaptureReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1827
+    },
+    {
+      "path": "ctx.domains.memory.commands.decideEntity",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").EntityDecision, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").EntityDecisionReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1820
+    },
+    {
+      "path": "ctx.domains.memory.commands.mutate",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").MemoryMutation): Promise<import(\"@read-aware/core\").MemoryMutationReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1836
+    },
+    {
+      "path": "ctx.domains.memory.commands.retryGraphTask",
+      "signatures": [
+        "(bookId: string, taskId: string, options?: import(\"@read-aware/core\").BookGraphTaskOptions): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1840
+    },
+    {
+      "path": "ctx.domains.memory.commands.startGraphTask",
+      "signatures": [
+        "(bookId: string, mode: \"catch-up\" | \"rebuild\", options?: import(\"@read-aware/core\").BookGraphTaskOptions): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1838
+    },
+    {
+      "path": "ctx.domains.memory.commands.updateProfile",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").UserProfileChange): Promise<import(\"@read-aware/core\").UserProfileReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1831
+    },
+    {
+      "path": "ctx.domains.memory.events.observe",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").MemoryObservationQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").MemoryObservation>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1845
+    },
+    {
+      "path": "ctx.domains.memory.queries.bookGraph",
+      "signatures": [
+        "(bookId: string, query?: import(\"@read-aware/core\").BookGraphQuery): Promise<import(\"@read-aware/core\").BookGraphResult>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1813
+    },
+    {
+      "path": "ctx.domains.memory.queries.classification",
+      "signatures": [
+        "(bookId: string): Promise<import(\"@read-aware/core\").BookClassificationSnapshot | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1807
+    },
+    {
+      "path": "ctx.domains.memory.queries.context.export",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").ContextBundleReadQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ResourceRef>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1791
+    },
+    {
+      "path": "ctx.domains.memory.queries.context.history",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").ContextBundleHistoryQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ContextBundleHistoryPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1789
+    },
+    {
+      "path": "ctx.domains.memory.queries.context.read",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").ContextBundleReadQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ContextBundle | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1790
+    },
+    {
+      "path": "ctx.domains.memory.queries.entities",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").EntityQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").EntityPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1803
+    },
+    {
+      "path": "ctx.domains.memory.queries.getGraphTask",
+      "signatures": [
+        "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1808
+    },
+    {
+      "path": "ctx.domains.memory.queries.inspect",
+      "signatures": [
+        "(id: string): Promise<import(\"@read-aware/core\").MemorySnapshot | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1806
+    },
+    {
+      "path": "ctx.domains.memory.queries.listGraphTasks",
+      "signatures": [
+        "(bookId: string): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1809
+    },
+    {
+      "path": "ctx.domains.memory.queries.page",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").MemoryPageQuery): Promise<import(\"@read-aware/core\").MemoryPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1811
+    },
+    {
+      "path": "ctx.domains.memory.queries.profile",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").UserProfileQuery): Promise<import(\"@read-aware/core\").UserProfilePage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1805
+    },
+    {
+      "path": "ctx.domains.memory.queries.profileContext",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").ProfileInspectionQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ProfileInspectionPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1800
+    },
+    {
+      "path": "ctx.domains.memory.queries.search",
+      "signatures": [
+        "(input: import(\"@read-aware/core\").MemoryQuery): Promise<import(\"@read-aware/core\").MemoryRecord[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1810
+    }
+  ],
+  "contributions:uriHandlers": [
+    {
+      "path": "ctx.contributions.uriHandlers.register",
+      "signatures": [
+        "(handler: PluginUriHandler): PluginActionRegistration"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2179
+    }
+  ],
+  "contributions:selectionActions": [
+    {
+      "path": "ctx.contributions.selectionActions.register",
+      "signatures": [
+        "(action: PluginSelectionAction): PluginActionRegistration"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2182
+    }
+  ],
+  "contributions:headerActions": [
+    {
+      "path": "ctx.contributions.headerActions.register",
+      "signatures": [
+        "(action: PluginHeaderAction): PluginActionRegistration"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2185
+    }
+  ],
+  "contributions:contextActions": [
+    {
+      "path": "ctx.contributions.contextActions.register",
+      "signatures": [
+        "(action: PluginContextAction): PluginActionRegistration"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2188
+    }
+  ],
+  "contributions:commands": [
+    {
+      "path": "ctx.contributions.commands.register",
+      "signatures": [
+        "(command: PluginCommand): PluginActionRegistration"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2191
+    }
+  ],
+  "contributions:settingsOptions": [
+    {
+      "path": "ctx.contributions.settingsOptions.register",
+      "signatures": [
+        "(fieldId: string, provider: (values: PluginFormValues) => PluginSelectOption[] | Promise<PluginSelectOption[]>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2194
+    }
+  ],
+  "contributions:voiceProviders": [
+    {
+      "path": "ctx.contributions.voiceProviders.register",
+      "signatures": [
+        "(provider: PluginVoiceProvider): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2202
+    }
+  ],
+  "contributions:contentProviders": [
+    {
+      "path": "ctx.contributions.contentProviders.register",
+      "signatures": [
+        "(provider: { id: string; load(key: string): Promise<PluginBookContent>; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2205
+    }
+  ],
+  "contributions:readerModes": [
+    {
+      "path": "ctx.contributions.readerModes.register",
+      "signatures": [
+        "(mode: PluginReaderMode): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2211
+    }
+  ],
+  "contributions:agentTools": [
+    {
+      "path": "ctx.contributions.agentTools.register",
+      "signatures": [
+        "(tool: PluginToolDefinition): PluginActionRegistration"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2214
+    }
+  ],
+  "contributions:agentContextProviders": [
+    {
+      "path": "ctx.contributions.agentContextProviders.register",
+      "signatures": [
+        "(provider: PluginAgentContextProvider): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2217
+    }
+  ],
+  "contributions:agentRetrievalProviders": [
+    {
+      "path": "ctx.contributions.agentRetrievalProviders.register",
+      "signatures": [
+        "(provider: PluginAgentRetrievalProvider): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2220
+    }
+  ],
+  "contributions:memoryCandidateProviders": [
+    {
+      "path": "ctx.contributions.memoryCandidateProviders.register",
+      "signatures": [
+        "(provider: PluginMemoryCandidateProvider): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2223
+    }
+  ],
+  "contributions:themes": [],
+  "contributions:fonts": [],
+  "contributions:syncTransports": [
+    {
+      "path": "ctx.contributions.syncTransports.register",
+      "signatures": [
+        "(transport: PluginSyncTransport): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2226
+    }
+  ],
+  "services:storage": [
+    {
+      "path": "ctx.services.storage.applyDocuments",
+      "signatures": [
+        "(changes: PluginDocumentChange[]): Promise<PluginDocumentCommit>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1897
+    },
+    {
+      "path": "ctx.services.storage.collection",
+      "signatures": [
+        "(name: string): PluginDocumentCollection"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1893
+    },
+    {
+      "path": "ctx.services.storage.documents(collection).delete",
+      "signatures": [
+        "(id: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1998
+    },
+    {
+      "path": "ctx.services.storage.documents(collection).get",
+      "signatures": [
+        "<T = unknown>(id: string): Promise<PluginDocument<T> | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1997
+    },
+    {
+      "path": "ctx.services.storage.documents(collection).list",
+      "signatures": [
+        "<T = unknown>(filter?: { bookId?: string; limit?: number; oldestFirst?: boolean; }): Promise<PluginDocument<T>[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2000
+    },
+    {
+      "path": "ctx.services.storage.documents(collection).page",
+      "signatures": [
+        "<T = unknown>(filter?: PluginDocumentPageFilter): Promise<PluginDocumentPage<T>>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2008
+    },
+    {
+      "path": "ctx.services.storage.documents(collection).put",
+      "signatures": [
+        "(id: string, data: unknown, options?: { bookId?: string; anchor?: string; }): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1996
+    },
+    {
+      "path": "ctx.services.storage.flush",
+      "signatures": [
+        "(): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1885
+    },
+    {
+      "path": "ctx.services.storage.get",
+      "signatures": [
+        "<T = unknown>(key: string): T | null"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1877
+    },
+    {
+      "path": "ctx.services.storage.getDurable",
+      "signatures": [
+        "<T = unknown>(key: string): Promise<T | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1880
+    },
+    {
+      "path": "ctx.services.storage.observeDocuments",
+      "signatures": [
+        "<T = unknown>(query: PluginDocumentObservationQuery, handler: PluginObservationHandler<PluginDocumentObservation<T>>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1902
+    },
+    {
+      "path": "ctx.services.storage.onChange",
+      "signatures": [
+        "(handler: PluginObservationHandler<{ kind: \"changed\"; }>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1912
+    },
+    {
+      "path": "ctx.services.storage.policy",
+      "signatures": [
+        "(): Promise<PluginStoragePolicy>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1876
+    },
+    {
+      "path": "ctx.services.storage.remove",
+      "signatures": [
+        "(key: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1883
+    },
+    {
+      "path": "ctx.services.storage.set",
+      "signatures": [
+        "(key: string, value: unknown): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 1882
+    }
+  ],
+  "services:secrets": [
+    {
+      "path": "ctx.services.secrets.get",
+      "signatures": [
+        "(key: string): Promise<string | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2295
+    },
+    {
+      "path": "ctx.services.secrets.remove",
+      "signatures": [
+        "(key: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2297
+    },
+    {
+      "path": "ctx.services.secrets.set",
+      "signatures": [
+        "(key: string, value: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2296
+    }
+  ],
+  "services:ui": [
+    {
+      "path": "ctx.services.ui.commands.execute",
+      "signatures": [
+        "(request: import(\"@read-aware/core\").HostCommandRequest): Promise<import(\"@read-aware/core\").HostCommandReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2313
+    },
+    {
+      "path": "ctx.services.ui.commands.list",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").HostCommandSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2309
+    },
+    {
+      "path": "ctx.services.ui.commands.observe",
+      "signatures": [
+        "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostCommandObservation>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2311
+    },
+    {
+      "path": "ctx.services.ui.exportFile",
+      "signatures": [
+        "(file: PluginExportFile): Promise<boolean>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2328
+    },
+    {
+      "path": "ctx.services.ui.openExternal",
+      "signatures": [
+        "(url: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2330
+    },
+    {
+      "path": "ctx.services.ui.publishView",
+      "signatures": [
+        "(channel: PluginViewChannel, update: PluginViewUpdate): Promise<PluginViewUpdateReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2333
+    },
+    {
+      "path": "ctx.services.ui.reader.closeReferencePreview",
+      "signatures": [
+        "(id: string): Promise<import(\"@read-aware/core\").ReaderReferenceCloseReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2359
+    },
+    {
+      "path": "ctx.services.ui.reader.focus",
+      "signatures": [
+        "(target: import(\"@read-aware/core\").ReaderFocusTarget, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderFocusReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2355
+    },
+    {
+      "path": "ctx.services.ui.reader.image.control",
+      "signatures": [
+        "(request: import(\"@read-aware/core\").ReaderImageRequest): Promise<import(\"@read-aware/core\").ReaderImageReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2342
+    },
+    {
+      "path": "ctx.services.ui.reader.image.observe",
+      "signatures": [
+        "(handler: PluginObservationHandler<import(\"@read-aware/core\").ReaderImageSnapshot | null>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2340
+    },
+    {
+      "path": "ctx.services.ui.reader.image.open",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").BookImageQuery, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderImageOpenReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2344
+    },
+    {
+      "path": "ctx.services.ui.reader.image.snapshot",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").ReaderImageSnapshot | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2338
+    },
+    {
+      "path": "ctx.services.ui.reader.observe",
+      "signatures": [
+        "(handler: PluginObservationHandler<import(\"@read-aware/core\").ReaderPanelsSnapshot | null>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2348
+    },
+    {
+      "path": "ctx.services.ui.reader.previewReference",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").BookReferenceQuery, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderReferencePreviewReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2357
+    },
+    {
+      "path": "ctx.services.ui.reader.setPanel",
+      "signatures": [
+        "(panel: import(\"@read-aware/core\").ReaderPanel, open: boolean, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderPanelReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2350
+    },
+    {
+      "path": "ctx.services.ui.reader.setWidth",
+      "signatures": [
+        "(panel: import(\"@read-aware/core\").ResizableReaderPanel, width: number, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderPanelReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2352
+    },
+    {
+      "path": "ctx.services.ui.reader.snapshot",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").ReaderPanelsSnapshot | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2346
+    },
+    {
+      "path": "ctx.services.ui.showToast",
+      "signatures": [
+        "(message: PluginToast): void"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2327
+    },
+    {
+      "path": "ctx.services.ui.window.control",
+      "signatures": [
+        "(request: import(\"@read-aware/core\").HostWindowRequest): Promise<import(\"@read-aware/core\").HostWindowReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2305
+    },
+    {
+      "path": "ctx.services.ui.window.observe",
+      "signatures": [
+        "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostWindowObservation>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2304
+    },
+    {
+      "path": "ctx.services.ui.window.snapshot",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").HostWindowSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2302
+    },
+    {
+      "path": "ctx.services.ui.workspace.navigate",
+      "signatures": [
+        "(target: import(\"@read-aware/core\").WorkspaceTarget, expectedRevision?: number): Promise<import(\"@read-aware/core\").WorkspaceReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2325
+    },
+    {
+      "path": "ctx.services.ui.workspace.observe",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").WorkspaceQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").WorkspaceSnapshot | null>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2323
+    },
+    {
+      "path": "ctx.services.ui.workspace.snapshot",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").WorkspaceQuery): Promise<import(\"@read-aware/core\").WorkspaceSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2321
+    }
+  ],
+  "services:schedules": [
+    {
+      "path": "ctx.services.schedules.bind",
+      "signatures": [
+        "(scheduleId: string, run: (context: import(\"@read-aware/core\").PluginScheduleRun, delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2363
+    },
+    {
+      "path": "ctx.services.schedules.cancelDeferred",
+      "signatures": [
+        "(id: string, requestId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginDeferredReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2370
+    },
+    {
+      "path": "ctx.services.schedules.control",
+      "signatures": [
+        "(id: string, action: \"pause\" | \"resume\" | \"run\"): Promise<import(\"@read-aware/core\").PluginScheduleReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2375
+    },
+    {
+      "path": "ctx.services.schedules.defer",
+      "signatures": [
+        "(id: string, input: import(\"@read-aware/core\").PluginDeferredRequest, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginDeferredReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2368
+    },
+    {
+      "path": "ctx.services.schedules.list",
+      "signatures": [
+        "(query?: Omit<import(\"@read-aware/core\").PluginScheduleQuery, \"pluginId\">): Promise<import(\"@read-aware/core\").PluginSchedulePage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2372
+    },
+    {
+      "path": "ctx.services.schedules.observe",
+      "signatures": [
+        "(query: Omit<import(\"@read-aware/core\").PluginScheduleQuery, \"pluginId\">, handler: PluginObservationHandler<import(\"@read-aware/core\").PluginSchedulePage>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2373
+    }
+  ],
+  "services:jobs": [
+    {
+      "path": "ctx.services.jobs.control",
+      "signatures": [
+        "(id: string, action: import(\"@read-aware/core\").DurableJobControl, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DurableJobSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2476
+    },
+    {
+      "path": "ctx.services.jobs.get",
+      "signatures": [
+        "(id: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DurableJobSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2474
+    },
+    {
+      "path": "ctx.services.jobs.list",
+      "signatures": [
+        "(query?: { offset?: number; limit?: number; }, options?: PluginCallOptions): Promise<{ jobs: import(\"@read-aware/core\").DurableJobSnapshot[]; nextOffset: number | null; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2475
+    },
+    {
+      "path": "ctx.services.jobs.start",
+      "signatures": [
+        "(plan: import(\"@read-aware/core\").DurableJobPlan, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DurableJobSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2473
+    }
+  ],
+  "services:changes": [
+    {
+      "path": "ctx.services.changes.open",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").ChangesQuery, options?: PluginCallOptions): Promise<{ cursor: string; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2466
+    },
+    {
+      "path": "ctx.services.changes.read",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").ChangesQuery, cursor: string, limit?: number, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ChangesPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2467
+    }
+  ],
+  "services:transactions": [
+    {
+      "path": "ctx.services.transactions.commit",
+      "signatures": [
+        "(previewId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2482
+    },
+    {
+      "path": "ctx.services.transactions.preview",
+      "signatures": [
+        "(operations: import(\"@read-aware/core\").AtomicOperation[], options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicPreview>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2481
+    },
+    {
+      "path": "ctx.services.transactions.previewUndo",
+      "signatures": [
+        "(receiptId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicPreview>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2483
+    },
+    {
+      "path": "ctx.services.transactions.receipt",
+      "signatures": [
+        "(receiptId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicReceipt | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2484
+    }
+  ],
+  "services:session": [
+    {
+      "path": "ctx.services.session.environment",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").HostEnvironmentSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2492
+    },
+    {
+      "path": "ctx.services.session.observeEnvironment",
+      "signatures": [
+        "(handler: (snapshot: import(\"@read-aware/core\").HostEnvironmentSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2495
+    },
+    {
+      "path": "ctx.services.session.operationAvailability",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").OperationAvailabilityQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").OperationAvailability>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2490
+    }
+  ],
+  "services:plugins": [
+    {
+      "path": "ctx.services.plugins.callService",
+      "signatures": [
+        "(request: import(\"@read-aware/core\").PluginServiceCall, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginServiceReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2382
+    },
+    {
+      "path": "ctx.services.plugins.contributions",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").PluginContributionQuery): Promise<import(\"@read-aware/core\").PluginContributionPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2385
+    },
+    {
+      "path": "ctx.services.plugins.list",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").PluginDirectoryQuery): Promise<import(\"@read-aware/core\").PluginDirectoryPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2388
+    },
+    {
+      "path": "ctx.services.plugins.listServices",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").PluginServiceQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginServicePage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2379
+    },
+    {
+      "path": "ctx.services.plugins.observe",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").PluginDirectoryQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").PluginDirectoryPage>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2390
+    },
+    {
+      "path": "ctx.services.plugins.observeContributions",
+      "signatures": [
+        "(query: import(\"@read-aware/core\").PluginContributionQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").PluginContributionPage>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2386
+    }
+  ],
+  "services:maintenance": [
+    {
+      "path": "ctx.services.maintenance.checkForUpdates",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").HostMaintenanceSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2408
+    },
+    {
+      "path": "ctx.services.maintenance.observe",
+      "signatures": [
+        "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostMaintenanceSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2401
+    },
+    {
+      "path": "ctx.services.maintenance.openSettings",
+      "signatures": [
+        "(surface: import(\"@read-aware/core\").HostMaintenanceSurface): ReturnType<import(\"@read-aware/core\").HostMaintenancePort[\"openSettings\"]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2406
+    },
+    {
+      "path": "ctx.services.maintenance.requestBackup",
+      "signatures": [
+        "(action: import(\"@read-aware/core\").BackupAction, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BackupReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2399
+    },
+    {
+      "path": "ctx.services.maintenance.requestConnectionTest",
+      "signatures": [
+        "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ConnectionTestReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2394
+    },
+    {
+      "path": "ctx.services.maintenance.snapshot",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").HostMaintenanceSnapshot>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2400
+    }
+  ],
+  "services:diagnostics": [
+    {
+      "path": "ctx.services.diagnostics.requestProjectionRepair",
+      "signatures": [
+        "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ProjectionRepairReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2413
+    },
+    {
+      "path": "ctx.services.diagnostics.requestReport",
+      "signatures": [
+        "(action: import(\"@read-aware/core\").DiagnosticsReportAction, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DiagnosticsReportReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2414
+    },
+    {
+      "path": "ctx.services.diagnostics.verifyProjections",
+      "signatures": [
+        "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ProjectionVerification>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2415
+    }
+  ],
+  "services:logging": [
+    {
+      "path": "ctx.services.logging.policy",
+      "signatures": [
+        "(): Promise<{ levels: PluginLogEntry[\"level\"][]; maxEntryChars: number; maxFields: number; perPluginLimit: number; appLimit: number; windowMs: number; delivery: \"best-effort\"; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2250
+    },
+    {
+      "path": "ctx.services.logging.write",
+      "signatures": [
+        "(entry: PluginLogEntry): Promise<PluginLogReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2249
+    }
+  ],
+  "services:resources": [
+    {
+      "path": "ctx.services.resources.append",
+      "signatures": [
+        "(id: string, offset: number, data: Uint8Array | ArrayBuffer): Promise<import(\"@read-aware/core\").ResourceRef>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2442
+    },
+    {
+      "path": "ctx.services.resources.assets.delete",
+      "signatures": [
+        "(key: string, expectedRevision: string, options?: PluginCallOptions): Promise<{ deleted: true; cleanupPending: boolean; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2432
+    },
+    {
+      "path": "ctx.services.resources.assets.get",
+      "signatures": [
+        "(key: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAsset | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2429
+    },
+    {
+      "path": "ctx.services.resources.assets.list",
+      "signatures": [
+        "(query?: import(\"@read-aware/core\").PluginAssetQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAssetPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2428
+    },
+    {
+      "path": "ctx.services.resources.assets.open",
+      "signatures": [
+        "(key: string, expectedRevision: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ResourceRef>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2431
+    },
+    {
+      "path": "ctx.services.resources.assets.policy",
+      "signatures": [
+        "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAssetPolicy>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2427
+    },
+    {
+      "path": "ctx.services.resources.assets.store",
+      "signatures": [
+        "(resourceId: string, input: import(\"@read-aware/core\").PluginAssetWrite, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAssetReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2430
+    },
+    {
+      "path": "ctx.services.resources.commit",
+      "signatures": [
+        "(id: string): Promise<import(\"@read-aware/core\").ResourceRef>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2443
+    },
+    {
+      "path": "ctx.services.resources.create",
+      "signatures": [
+        "(options: import(\"@read-aware/core\").ResourceCreateOptions): Promise<import(\"@read-aware/core\").ResourceRef>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2439
+    },
+    {
+      "path": "ctx.services.resources.listDirectory",
+      "signatures": [
+        "(id: string, query?: import(\"@read-aware/core\").ResourceDirectoryQuery): Promise<import(\"@read-aware/core\").ResourceDirectoryPage>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2421
+    },
+    {
+      "path": "ctx.services.resources.openAssociated",
+      "signatures": [
+        "(id: string, options?: PluginCallOptions): Promise<{ opened: boolean; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2447
+    },
+    {
+      "path": "ctx.services.resources.openBook",
+      "signatures": [
+        "(bookId: string): Promise<import(\"@read-aware/core\").ResourceRef | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2436
+    },
+    {
+      "path": "ctx.services.resources.openCover",
+      "signatures": [
+        "(bookId: string): Promise<import(\"@read-aware/core\").ResourceRef | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2438
+    },
+    {
+      "path": "ctx.services.resources.openDirectoryFile",
+      "signatures": [
+        "(id: string, relativePath: string): Promise<import(\"@read-aware/core\").ResourceRef>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2422
+    },
+    {
+      "path": "ctx.services.resources.pick",
+      "signatures": [
+        "(options?: import(\"@read-aware/core\").ResourcePickOptions): Promise<{ cancelled: boolean; resources: import(\"@read-aware/core\").ResourceRef[]; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2434
+    },
+    {
+      "path": "ctx.services.resources.pickDirectory",
+      "signatures": [
+        "(): Promise<{ cancelled: boolean; directory: import(\"@read-aware/core\").ResourceDirectoryRef | null; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2420
+    },
+    {
+      "path": "ctx.services.resources.read",
+      "signatures": [
+        "(id: string, offset: number, length: number): Promise<import(\"@read-aware/core\").ResourceChunk>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2441
+    },
+    {
+      "path": "ctx.services.resources.release",
+      "signatures": [
+        "(id: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2449
+    },
+    {
+      "path": "ctx.services.resources.releaseDirectory",
+      "signatures": [
+        "(id: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2423
+    },
+    {
+      "path": "ctx.services.resources.save",
+      "signatures": [
+        "(id: string, filename?: string): Promise<{ saved: boolean; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2444
+    },
+    {
+      "path": "ctx.services.resources.stat",
+      "signatures": [
+        "(id: string): Promise<import(\"@read-aware/core\").ResourceRef>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2440
+    }
+  ],
+  "services:sync": [
+    {
+      "path": "ctx.services.sync.account",
+      "signatures": [
+        "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"account\"]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2454
+    },
+    {
+      "path": "ctx.services.sync.backlog",
+      "signatures": [
+        "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"backlog\"]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2453
+    },
+    {
+      "path": "ctx.services.sync.connectionOptions",
+      "signatures": [
+        "(): Promise<{ ref: string; label: string; }[]>"
+      ],
+      "source": "packages/core/src/host-sync.ts",
+      "line": 37
+    },
+    {
+      "path": "ctx.services.sync.observe",
+      "signatures": [
+        "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostSyncSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2458
+    },
+    {
+      "path": "ctx.services.sync.openSettings",
+      "signatures": [
+        "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"openSettings\"]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2456
+    },
+    {
+      "path": "ctx.services.sync.requestFlow",
+      "signatures": [
+        "(request: import(\"@read-aware/core\").HostSyncFlowRequest, options?: PluginCallOptions): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"requestFlow\"]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2457
+    },
+    {
+      "path": "ctx.services.sync.requestSync",
+      "signatures": [
+        "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"requestSync\"]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2455
+    },
+    {
+      "path": "ctx.services.sync.snapshot",
+      "signatures": [
+        "(): Promise<HostSyncSnapshot>"
+      ],
+      "source": "packages/core/src/host-sync.ts",
+      "line": 28
+    }
+  ],
+  "services:network": [
+    {
+      "path": "ctx.services.network.closeStream",
+      "signatures": [
+        "(id: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2541
+    },
+    {
+      "path": "ctx.services.network.fetch",
+      "signatures": [
+        "(input: string | URL | Request, init?: RequestInit, options?: { retry?: \"none\" | \"safe\"; }): Promise<Response>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2526
+    },
+    {
+      "path": "ctx.services.network.openStream",
+      "signatures": [
+        "(input: string | URL | Request, init?: RequestInit, options?: { retry?: \"none\" | \"safe\"; }): Promise<PluginNetworkStream>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2534
+    },
+    {
+      "path": "ctx.services.network.policy",
+      "signatures": [
+        "(): Promise<PluginNetworkAccess & { maxRedirects: number; maxBodyBytes: number; timeoutMs: number; maxStreamBytes: number; maxChunkBytes: number; maxConcurrentRequests: number; maxHostConcurrentRequests: number; cumulative: { windowMs: number; maxOwnerRequests: number; maxHostRequests: number; maxOwnerBytes: number; maxHostBytes: number; maxOwners: number; }; retry: { maxRetries: number; baseDelayMs: number; maxDelayMs: number; statuses: readonly number[]; }; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2500
+    },
+    {
+      "path": "ctx.services.network.readStream",
+      "signatures": [
+        "(id: string, offset: number, maxBytes?: number): Promise<PluginNetworkChunk>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2538
+    }
+  ],
+  "services:llm": [
+    {
+      "path": "ctx.services.llm.ask",
+      "signatures": [
+        "(input: PluginInferenceInput & { schema?: never; onText?: (delta: string) => void; }): Promise<string>",
+        "(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never; }): Promise<unknown>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2546
+    },
+    {
+      "path": "ctx.services.llm.askDetailed",
+      "signatures": [
+        "(input: PluginInferenceInput & { schema?: never; onText?: (delta: string) => void; }): Promise<import(\"@read-aware/core\").InferenceResult<string>>",
+        "(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never; }): Promise<import(\"@read-aware/core\").InferenceResult>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2550
+    },
+    {
+      "path": "ctx.services.llm.cancelRequest",
+      "signatures": [
+        "(requestId: string): Promise<import(\"@read-aware/core\").InferenceRequestReceipt | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2563
+    },
+    {
+      "path": "ctx.services.llm.getRequest",
+      "signatures": [
+        "(requestId: string): Promise<import(\"@read-aware/core\").InferenceRequestReceipt | null>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2559
+    },
+    {
+      "path": "ctx.services.llm.listRequests",
+      "signatures": [
+        "(): Promise<import(\"@read-aware/core\").InferenceRequestReceipt[]>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2560
+    },
+    {
+      "path": "ctx.services.llm.policy",
+      "signatures": [
+        "(): Promise<{ defaultTimeoutMs: number; maxTimeoutMs: number; perPluginLimit: number; appLimit: number; maxOutputTokensLimit: number; maxImageCount: number; maxImageBytes: number; maxImageTotalBytes: number; maxTotalOutputTokensLimit: number; maxOutputCharsLimit: number; maxInputChars: number; }>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2545
+    }
+  ],
+  "services:clipboard": [
+    {
+      "path": "ctx.services.clipboard.writeImage",
+      "signatures": [
+        "(resourceId: string): Promise<import(\"@read-aware/core\").ResourceImageReceipt>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2568
+    },
+    {
+      "path": "ctx.services.clipboard.writeText",
+      "signatures": [
+        "(text: string): Promise<void>"
+      ],
+      "source": "packages/plugin-types/src/index.ts",
+      "line": 2566
+    }
+  ],
+  "schemas:views": [],
+  "schemas:settings": [],
+  "schemas:themes": []
+}

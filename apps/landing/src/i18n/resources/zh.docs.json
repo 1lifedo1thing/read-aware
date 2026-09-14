@@ -7,50 +7,50 @@
     },
     "overview": {
       "metaTitle": "文档 — ReadAware",
-      "metaDescription": "如何安装 ReadAware、开始阅读，以及用插件扩展这款应用。",
-      "body": "# 文档\n\nReadAware 是一款 AI 原生阅读应用：用同一个阅读器打开 EPUB、MOBI、AZW3、FB2、CBZ、CBR、TXT、HTML 和 PDF，并在你的书籍、高亮与对话之间持续构建记忆。它免费、本地优先，使用你自己的 AI 密钥。\n\n## 从这里开始\n\n- [下载安装](/zh/docs/install)——macOS、Windows、Linux 和 Android 的安装包，以及当操作系统提示应用未签名时该怎么办。\n- [快速上手](/zh/docs/getting-started)——导入书籍、阅读与标注、连接 AI 提供方，并了解你的数据存放在哪里。\n\n## 扩展应用\n\n- [插件系统](/zh/docs/plugins)——插件能做什么，以及信任模型如何运作。\n- [API 参考](/zh/docs/plugins/api)——完整的插件编写契约：manifest、生命周期、权限、贡献点与视图。\n- [发布上架](/zh/docs/plugins/publishing)——如何把你的插件上架到应用内的插件市场。\n\n## 更多去处\n\n这款应用在 [GitHub](https://github.com/ahpxex/read-aware) 上公开开发。有疑问、想报告 bug，或想展示你做出的东西，欢迎加入 [Discord](https://discord.gg/whDrKXwHWU) 或提交 issue。"
+      "metaDescription": "阅读、标注、使用 AI、保护你的书库，并使用目前的开发 API 建立 ReadAware 桌面插件。",
+      "body": "# 文档\n\nReadAware 将书籍、标注、对话和阅读记忆整合在本地优先的桌面应用中。阅读与整理书库不需要 AI 帐号；需要助理时，再连接自己的模型服务商或可用的 ReadAware AI 方案。\n\n## 开始阅读\n\n- [下载与安装](/docs/install) — 选择桌面包并了解更新方式。\n- [开始使用](/docs/getting-started) — 导入书籍、调整阅读器、标注、使用 AI 并保护数据。\n\n## 使用 ReadAware 构建\n\n插件可以导航书籍、处理标注与记忆、扩充助理，并组合宿主服务。先从任务开始，再寻找支持它的公开接口约定。\n\n- [插件系统](/docs/plugins) — 领域、贡献、服务与信任边界。\n- [建立插件](/docs/plugins/develop) — 可运作的小型插件与桌面开发循环。\n- [能力浏览器](/docs/plugins/capabilities) — 搜索能力与 API 方法、查看权限并复制 manifest 片段。\n- [API 参考](/docs/plugins/api) — 范围、生命周期、状态变更、资源、背景工作与组合方式。\n- [发布](/docs/plugins/publishing) — 封装、审核并提交插件。\n\n## 文档与应用版本\n\n插件参考页面描述目前的开发接口约定。最新发布的应用可能提供较早版本的能力。请查看能力浏览器与已安装应用的 `ctx.capabilities`，并在 `manifest.json` 中声明插件实际需要的版本。\n\n下载与版本说明维护于 [GitHub Releases](https://github.com/ahpxex/read-aware/releases/latest)。如需支持，请使用 [GitHub issues](https://github.com/ahpxex/read-aware/issues) 或 [Discord](https://discord.gg/whDrKXwHWU)。"
     },
     "install": {
-      "metaTitle": "下载安装 — ReadAware 文档",
-      "metaDescription": "在 macOS、Windows、Linux、Android 或 iOS 上安装 ReadAware，包括未签名构建首次启动的注意事项。",
-      "body": "# 下载安装\n\nReadAware 是免费的。每个版本都会发布 macOS、Windows、Linux 和 Android 的安装包；当前版本为 v0.5.4。所有版本，无论新旧，都在 [GitHub releases 页面](https://github.com/ahpxex/read-aware/releases/latest)。\n\n## 下载\n\n- **macOS** — [Download .dmg (Apple Silicon)](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-macos-arm64.dmg) · [Intel .dmg](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-macos-x64.dmg)\n- **Windows** — [Download installer](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64-setup.exe) · [.msi](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64.msi) · [Portable .zip](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64-portable.zip)\n- **Linux** — [Download .AppImage](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.AppImage) · [.deb](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.deb) · [.rpm](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.rpm)\n- **Android** — [Download .apk](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-android-arm64.apk)\n\n## macOS\n\n下载适用于你的 Mac 的 `.dmg` 文件 —— M 系列机型选 Apple Silicon 版本，旧款机型选 Intel 版本 —— 打开后将 ReadAware 拖入“应用程序”即可。\n\n安装包已使用 Developer ID 签名并经 Apple 公证，因此 ReadAware 首次启动即可像其他应用一样正常打开。如果你安装过 0.5.2 之前的版本，并曾手动清除过其隔离标志，也无需撤销任何操作 —— 直接替换“应用程序”中的 ReadAware 即可。\n\n## Windows\n\n下载并运行安装程序（`-setup.exe`）。由于构建尚未做代码签名，Microsoft Defender SmartScreen 可能会拦截；选择**更多信息**，再点**仍要运行**。\n\n另有 `.msi` 包可用于受管安装；便携版 `.zip` 无需安装任何东西——解压后直接运行 `ReadAware.exe`。\n\n## Linux\n\n`.AppImage` 在大多数发行版上无需安装即可运行——赋予可执行权限后启动：\n\n```bash\nchmod +x ReadAware-*-linux-x64.AppImage\n./ReadAware-*-linux-x64.AppImage\n```\n\nAppImage 依赖 FUSE；如果发行版没有预装（部分极简或非常新的发行版），请先安装发行版的 `libfuse2` 软件包。也提供原生软件包：\n\n```bash\n# Debian / Ubuntu\nsudo apt install ./ReadAware-*-linux-x64.deb\n\n# Fedora / RHEL\nsudo dnf install ./ReadAware-*-linux-x64.rpm\n```\n\n## Android\n\n在设备上下载 `.apk`（arm64）并打开。APK 已签名；但因为它不是来自应用商店，首次安装时 Android 仍会要求你允许来自浏览器或文件管理器的安装。\n\n## iOS\n\nReadAware 尚未上架 App Store。最简单的方式是加入公开的 TestFlight 测试：先从 App Store 安装 TestFlight，再在 iPhone 或 iPad 上打开[邀请链接](https://testflight.apple.com/join/Za2HV7kF)。此外每个版本也会在 [releases 页面](https://github.com/ahpxex/read-aware/releases/latest)提供未签名的 `.ipa` 用于侧载：AltStore、SideStore、Sideloadly 等工具会用你自己的 Apple ID 重新签名并安装到设备上。这条路径面向已经熟悉侧载的用户；商店版本会在之后到来。\n\n## 保持更新\n\n桌面应用会自行更新：检查新版本、在后台下载更新，并在重启时应用。更新包经过加密签名，并用内置于应用中的密钥校验，与操作系统的代码签名相互独立。Android 也会检查新版本，并引导你安装已签名的 APK；在 iOS 上，目前请从 releases 页面手动安装新版本。\n\n「设置 → 关于」提供两种更新通道：**稳定版**（默认）和**测试版**。测试版会即时收到新出现的预发布版本，待稳定版追上后自动切回稳定版。更新落地后，一个小弹窗会介绍这次更新了什么——更新日志以你的语言直接在应用内展示。关掉它对这个版本就是永久关闭；也可以在「设置 → 通用」里完全关掉这个弹窗。"
+      "metaTitle": "下载与安装 — ReadAware 文档",
+      "metaDescription": "在 macOS、Windows 或 Linux 上安装 ReadAware、选择合适的包，并查看版本说明与更新频道。",
+      "body": "# 下载与安装\n\n本指南涵盖 ReadAware 桌面版在 macOS、Windows 和 Linux 上的安装。请在下方选择包，或查看[最新版本](https://github.com/ahpxex/read-aware/releases/latest)的资产与需求。下载链接指向最新稳定版本；开发 API 文件可能比该版本更新。\n\n## macOS\n\n- [Apple Silicon .dmg](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-macos-arm64.dmg)\n- [Intel .dmg](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-macos-x64.dmg)\n\n开启磁盘映像文件，将 ReadAware 拖入「应用」。M 系列 Mac 请使用 Apple Silicon，Intel Mac 请使用 Intel 版本。发布流程会签署并公证 macOS 包。若 macOS 回报下载文件损坏或无法验证，请从官方发布页重新下载，并先查看该版本说明，再变更安全性设置。\n\n## Windows\n\n- [Windows x64 安装程式](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64-setup.exe)\n- [MSI 包](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64.msi)\n- [便携版 ZIP](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64-portable.zip)\n\n执行安装程式，或解压缩便携版压缩包后开启 ReadAware。Windows 构建版本目前没有操作系统代码签署。若出现 SmartScreen，先确认文件来自官方发布页；信任下载内容后，可选择**更多信息 → 仍要执行**。\n\n## Linux\n\n- [AppImage](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.AppImage)\n- [Debian / Ubuntu 包](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.deb)\n- [RPM 包](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.rpm)\n\n将下载的 AppImage 设为可执行后开启。稳定别名文件名可使用：\n\n```bash\nchmod +x ReadAware-linux-x64.AppImage\n./ReadAware-linux-x64.AppImage\n```\n\nAppImage 可能需要发行版的 FUSE 兼容包。若无法启动，请使用相符的原生包并查看版本需求。\n\n## 更新\n\n「设置 → 关于」包含更新检查与 Stable / Beta 频道选择。自动检查可在「设置 → 一般」控制。请依应用的更新提示操作；安装可能需要重新启动。桌面更新器签名与操作系统代码签署彼此独立。\n\n切换版本或尝试开发构建版本前请保留备份。[开始使用](/docs/getting-started)说明备份与同步。\n\n## 其他发布产物\n\n部分已发布版本包含移动设备产物。其可用性和说明以特定版本说明为准；本文件的桌面插件接口约定不代表支持移动设备或功能对等。\n\n## 下一步\n\n[导入第一本书](/docs/getting-started)，或针对已安装的应用[建立插件](/docs/plugins/develop)。"
     },
     "gettingStarted": {
-      "metaTitle": "快速上手 — ReadAware 文档",
-      "metaDescription": "导入书籍、阅读与标注、连接 AI 提供方，并了解你的数据存放在哪里。",
-      "body": "# 快速上手\n\nReadAware 直接打开你自己的文件，并把它学到的一切留在你的设备上。本页带你走过最初一小时：导入书籍、阅读与标注，以及（可选地）连接 AI。\n\n## 添加书籍\n\n在书架上导入文件——或者完全跳过按钮：把书籍文件拖到窗口任意位置即可导入；也可以把 ReadAware 设为书籍格式的默认应用，在文件管理器里双击文件，书会直接在阅读器中打开，并顺便加入书架。ReadAware 直接读取 **EPUB、MOBI、AZW3、FB2、CBZ、CBR、TXT、HTML 和 PDF**——没有转换步骤，也没有云端上传。你导入的文件就是你保留的文件；高亮、笔记和阅读位置都附着在原文之上。\n\n受 DRM 保护的文件无法打开——从加密书店买来的书仍然是锁着的。如果格式在支持之列却打不开，几乎总是这个原因。\n\n## 阅读\n\n每种格式都在同一个阅读器里打开，用同一套控件。阅读器的外观设置中提供三种阅读模式：\n\n- **连续滚动**——默认模式；全书连成一栏流动。\n- **单页**——一次一页，像纸书一样翻动。\n- **双页**——宽屏上呈现书本式的对页。\n\n阅读位置按书保存；目录始终在阅读器顶栏，一次点击即可打开。\n\n同一处外观设置也管排版：字体、字号、字重、行距、段距、页边距和页面配色。对齐方式默认是**遵从原书**——书自己的样式表要求什么就是什么；如果你希望处处一致，也可以强制左对齐或两端对齐。\n\n固定版式书籍——PDF 和漫画——是别人排好的一页页图像，里面没有排版可改，这些设置因此隐去。页面配色仍然生效：浅色会在绘制时染纸，墨色和照片与印刷时一致；深色则把整页重绘为双色调，让文字保持可读。把**页面渲染**设为**保持原样**，可以让某本书保留原有色彩——按书记住，留给色彩本身就是内容的画册和摄影集。\n\n## 朗读\n\n任何一本书都可以朗读。朗读搭在你阅读时用的逐句／逐段导航之上——启动导航，再按下导航条上的播放，书就会一个单元一个单元地推进，正在朗读的文字会被标出。\n\n开箱即用时它用你设备自带的语音，不需要密钥，也不需要联网。启用一个语音插件——内置的**TTS Voices**插件，或是其他任何一个——这个启用动作本身就是「改用该引擎朗读」的选择；具体用哪个声音，在那个插件自己的设置里配置，和它的提供方、自定义端点在一起。没有另一个需要同步的语音选择器。\n\n## 标注\n\n选中任意一段文字，一个安静的操作菜单随即出现：\n\n- **高亮**——有几种颜色可选，也可以只用下划线。\n- **笔记**——把你自己的话附在这段文字上。\n- **查词**——内置词典会结合词语所在的句子来解释它，而不只给出抽象释义，并把它存入你的词汇表。（使用你配置的 AI。）\n\n你标记的一切都按书收集，并汇入应用的记忆——标注不是归档，而是助手会去阅读的材料。\n\n## 连接 AI\n\nAI 可选且需要联网。在设置 → AI 中配置自己的 API Key，或使用 Pro、Max 订阅中的内置 AI。阅读、批注和书架无需 AI。自带 Key 无需 ReadAware AI 订阅，但服务商可能收取调用费用。\n\n1.  打开“设置 → AI”。\n2.  选择一个提供方——OpenAI、Anthropic、Google、OpenRouter、DeepSeek、xAI、Groq、Mistral、Moonshot、Z.ai，或通过**自定义**接入任何 OpenAI 兼容端点。\n3.  粘贴你的 API 密钥并选择模型。\n\n使用自带 Key 时：ReadAware 区分 **Smart** 模型（对话与综合）和 **Fast** 模型（查词、摘要、记忆维护）；每个提供方都预填了合理的默认值。你的密钥存储在你的设备上，请求直接发往你的提供方——中间没有 ReadAware 的服务器。\n\n## 提问\n\n每本书都有一个持续存在的对话——阅读时打开对话面板，就这段文字、这一章或整本书提问。在**上下文**页面，你可以跨整个书架交谈，线程数量不限。\n\n助手基于你的阅读来工作：你的高亮、笔记、既往对话，以及它长期维护的一份记忆——记录你读过什么、在意什么。这份记忆和其他一切一样，都在本地构建和存储。\n\n## 快捷操作\n\n命令面板（macOS 上 `Cmd K`，其他平台 `Ctrl K`——可在设置中重新绑定）可以触达每一个操作：打开书籍、切换视图、运行插件命令。\n\n## 跨设备同步\n\nReadAware 完全可以离线使用，同步则严格是可选的。当你希望书库出现在多台设备上时，打开「设置 → 数据与同步」，使用 Google 或 GitHub 账号登录，然后设置一个加密口令。所有参与同步的内容——书籍、阅读进度、高亮、笔记、AI 对话、封面——都使用由该口令派生的密钥进行端到端加密，因此中继存储的永远只有密文。请妥善保管这个口令：没有它，新设备将无法解密你的数据，我们也无法。\n\n你的偏好设置也会一路随行。主题、排版、AI 提供方设置和 API 密钥都会随账号漫游，新装的应用在登录后不到一分钟就会变得和你自己的设备一样。「数据与同步」中按书籍划分的面板会准确显示哪些内容已到达云端；当书库超出免费额度时，也可以通过付费方案提升配额。\n\n## 你的数据存放在哪里\n\n代码以 AGPL-3.0 开源。书库与记忆保存在本地，可选同步采用端到端加密。AI 功能会把相关上下文发送给你选择的模型服务商。 AI 可选且需要联网。在设置 → AI 中配置自己的 API Key，或使用 Pro、Max 订阅中的内置 AI。阅读、批注和书架无需 AI。自带 Key 无需 ReadAware AI 订阅，但服务商可能收取调用费用。\n\n同步在工作时保持安静：进度只在「设置 → 数据与同步」里，主窗口只在出问题时才开口——一个安静的错误提示，可以静音一天。\n\n[方案与价格](/zh/pricing/) · [隐私政策](/zh/privacy/)"
+      "metaTitle": "开始使用 — ReadAware 文档",
+      "metaDescription": "导入并阅读书籍、使用标注和 AI、了解阅读记忆，并在同步与加密备份之间作出选择。",
+      "body": "# 开始使用\n\n从一本书开始。AI、同步和插件可以在需要时再设置。\n\n## 导入书籍\n\n使用书库的导入功能，或将支持的文件拖入应用。ReadAware 使用单一阅读引擎处理 EPUB、MOBI、AZW3、FB2、PDF，以及支持的文字和漫画格式。副文件名不保证个别文件一定可读。受 DRM 保护的书籍不受支持；ReadAware 不会移除 DRM，也不会把原始书籍转换成其他格式。\n\n导入的书籍位于本地书库。使用搜索、最爱和集合整理书籍；开启书籍时会恢复存储的阅读位置。\n\n## 让阅读器更舒适\n\n开启阅读器外观控制项，调整字体、间距、边界、页面颜色和版面。可重排书籍支持卷动与分页版面。PDF 和漫画页面有自己的固定版面控制项；字体设置无法重新排版嵌在页面影像中的文字。\n\n使用目录、书籍搜索和导航历史移动。精确来源位置与撷取文字搜索用途不同：搜索预览在导航前可能需要进一步查询来源。\n\n## 标注与提问\n\n选取段落即可加上荧光标示、笔记，或使用解释、查询、翻译等可用阅读动作。AI 动作使用你选择的模型设置和隐私设置；没有 AI，笔记与荧光标示仍然有用。\n\n每本书都有持久对话。开启聊天面板询问阅读内容；全域上下文页面支持跨书库的独立对话。长期记忆跨对话共用，建立另一个讨论串不会建立另一个记忆库。\n\nReadAware 为每轮组合相关阅读上下文、笔记和记忆。记忆功能包含阅读目标、个人数据、书籍摘要和实体关系。生成内容可能不完整或错误，请检查并使用可用的修正与遗忘控制项。\n\n## 连接模型\n\n开启「设置 → AI」，选择服务商或兼容端点，输入 API 金钥并选择模型。Smart 模型处理较复杂的对话与综合，Fast 模型处理较轻量的工作；服务商目录与连线测试可协助检查设置。\n\nAI 需要可用的服务商连线。BYOK 使用你选定的服务商，可能产生其费用；可用的 ReadAware AI 订阅也是选项；详见[方案](/pricing)。一般本地阅读与标注不需要任何一项。\n\n启用自动工作前，请检查阅读上下文和自动记忆设置。相关书籍摘录与其他选定上下文可能离开装置供推论使用，即使书库和记忆存储在本地。详见[隐私政策](/privacy)。\n\n## 聆听与扩充\n\n朗读取决于阅读器模式、可读文字和可用语音服务商。系统语音与语音插件有不同的网络和设置需求；没有可用文字的扫描页面不保证能朗读。\n\n在「设置 → 插件」启用需要的工具并检查权限。插件可以加入阅读动作、命令、主题、内容来源和助理工具；可用性取决于包及应用支持的接口约定。[了解插件运作方式](/docs/plugins)。\n\n命令面板在 macOS 使用 `Cmd K`、其他平台使用 `Ctrl K` 开启；快捷键可在设置中变更。\n\n## 同步与备份\n\n两者解决不同问题：\n\n- **同步**在装置间传送加密事件和文件。在「数据与同步」设置帐号或可用传输，并妥善保存加密通关密语。同步不保证每个装置本地设置、私有插件文件或暂时工作都会移动。\n- **备份**建立用于复原的加密封存。当前开发构建版本提供完整封存和旧版仅书库格式。完整复原会检查封存、要求通关密语和选项，并透过宿主复原流程合并支持数据；仅书库封存不包含完整应用状态。\n\n请查看已安装版本提供的选项。备份内容、成功存储，以及能否复原是不同事项；迁移或降级前请保留已知可用的副本。\n\n## 寻找数据与诊断问题\n\n本地数据目录、同步状态、备份动作和诊断功能都在设置中。读取失败时，适当情况下应显示可重试错误；存储失败不代表变更成功。回报问题时，请附上应用版本、操作系统、重现步骤及检查过的诊断汇出。\n\n[下载与安装](/docs/install) · [插件系统](/docs/plugins) · [隐私](/privacy)"
     },
     "pluginsOverview": {
-      "metaTitle": "ReadAware 插件系统：扩展能力、宿主服务与权限边界",
-      "metaDescription": "了解 ReadAware 插件如何为阅读器添加词典、朗读、主题和订阅源，如何声明能力、使用宿主服务与 UI，并在沙箱和权限边界内运行；附开发、API 和发布文档。",
-      "body": "# 插件系统\n\nReadAware 插件可以处理阅读数据、添加原生动作和提供方、扩展阅读助手，并向宿主请求受限服务。已安装的软件包会动态加载；应用无需为每个插件 ID 单独添加开关。\n\n## 一个模型，三类能力\n\n每个可执行的插件能力都属于以下三种形态之一。选择正确的形态，是编写插件时的第一项决策。\n\n| 类别 | 适用场景 | 示例 |\n|----|----|----|\n| **领域** | ReadAware 已经拥有该状态或行为。 | 书库、阅读、标注、对话、设置 |\n| **贡献** | 插件提供新的选择或实现。 | 动作、命令、声音、内容、主题、助手提供方 |\n| **服务** | 宿主必须执行受限的外部操作。 | 存储、密钥、定时任务、网络、LLM、剪贴板 |\n\n声明式视图、设置和主题 schema 与这些类别并列。它们描述由宿主渲染的数据，并不会授予另一种授权来源。\n\n## 设置属于一个领域\n\n外观是设置中的一个分区，而不是单独的插件 API。改变所选主题的插件请求的是诸如 `appearance.theme` 的精确设置路径。提供新主题的插件使用 `themes` 贡献。选择和提供是刻意分开的权限。\n\n## 插件可以添加什么\n\n- 选区动作和顶栏动作、命令面板命令，以及由宿主渲染的视图。\n- 声音、虚拟书内容提供方、阅读模式、主题和字体。\n- 助手工具、每轮上下文、可搜索的私有来源，以及记忆候选。\n- 插件设置、动态选项、周期性工作、存储和加密密钥。\n- 在获授权的产品领域中读取数据、执行命令并订阅已提交的事件。\n\n在[能力浏览器](/zh/docs/plugins/capabilities)中查看完整的版本化清单。它也会预览 `manifest.json` 所请求的权限。\n\n## 原生 UI，源于构造\n\n插件不会挂载 React、HTML、CSS、iframe 或任意 DOM。它们返回经过校验的视图数据和回调；ReadAware 负责布局、导航、无障碍、主题兼容性、加载状态和清理。新的视觉自由度只能通过受限 schema 或真正的宿主贡献点加入，而不是通过通用 webview 逃生口。\n\n## 信任边界\n\n每个插件都运行在自己的模块 Worker 中。它没有 DOM、Tauri、SQLite、文件系统或进程句柄，环境网络和浏览器持久化 API 也已禁用。宿主调用跨越消息边界，并根据插件的 actor 作用域能力视图解析。\n\n这会限制意外越权和直接越权，但安装仍然是软件信任决策。在代码运行前，ReadAware 会展示语义权限和精确的设置授权。能力要求会单独检查：权限回答“它可以做这件事吗？”，版本要求回答“它能正确使用这份契约吗？”\n\n## 激活和更新都是事务性的\n\n`activate()` 是读取并声明的阶段。在宿主排空调用并完成 Worker 健康检查之前，注册内容都不可见；写入、密钥、网络、LLM、剪贴板、UI 效果和导航都会被阻止。持久数据变化稍后通过仅限存储的 `migrate()` 执行。只有健康且完成迁移的候选版本才会晋升。\n\n更新会对文件、插件 KV、文档集合和已提交的 schema 元数据做快照。激活或迁移失败时，会恢复之前的文件和数据，并在需要时重新启动之前的运行时。\n\n## 当前生态\n\n当前发布的插件都是内置的官方插件：Dictionary、Editorial Themes、RSS Reader、Sentence Reader、TTS Voices 和 Theme Schedule。公开的 [readaware-plugins 仓库](https://github.com/ahpxex/readaware-plugins) 包含编写模板、公开声明、校验和市场注册表。没有需要保留的旧版第三方 API；当前契约就是基线。\n\n## 开始构建\n\n按照[构建插件](/zh/docs/plugins/develop)完成本地循环，实现时参考[API 参考](/zh/docs/plugins/api)，提交市场变更前阅读[发布插件](/zh/docs/plugins/publishing)。"
+      "metaTitle": "插件系统 — ReadAware 文档",
+      "metaDescription": "了解 ReadAware 插件领域、贡献、服务、物件授权、宿主渲染 UI，以及目前的开发接口约定。",
+      "body": "# 插件系统\n\nReadAware 插件整合了桌面宿主所暴露的能力。它们可以处理书籍、阅读状态、注记、对话与记忆；新增动作与提供者；并使用受限的宿主服务。\n\n本参考文件依循开发源码。在建立或发布前，请比对能力需求与您安装的应用版本。\n\n## 选择能力家族\n\n| 家族 | 用途 | 示例 |\n| --- | --- | --- |\n| **领域（Domains）** | ReadAware 所拥有的数据与行为 | 书库、阅读、注记、对话、设置、记忆 |\n| **贡献（Contributions）** | 新的动作、选项或提供者实作 | 指令、情境动作、语音、内容来源、助理工具、主题 |\n| **服务（Services）** | 宿主作业与插件专属设施 | 资源、网络、推论、存储、调度、工作、事务 |\n| **结构描述（Schemas）** | 宿主呈现或解读的数据 | 视图、设置表单、主题 |\n\n使用[能力探索器](/docs/plugins/capabilities)搜索实际方法、了解边界，并建立清单。API 参考文件说明[家族如何组合](/docs/plugins/api)。\n\n## 从用户的任务出发\n\n- **寻找与导航：** 使用书库来源搜索与范围读取，再搭配目前工作阶段保护机制进行阅读导航。\n- **收集与查看注记：** 查询或观察注记；条件式变更可保留较新的编辑。\n- **处理阅读记忆：** 使用记忆查询与授权指令处理记忆、分类、设置档、实体、图谱与情境包。\n- **辅助对话：** 读取授权的对话纪录与摘要，提出回合内容供宿主核准，或注册助理工具。\n- **自动化工作流程：** 结合调度、限定范围的变更游标、支持的持久化工作与本机事务。\n- **引入外部内容：** 使用以来源为范围的网络访问、内容提供者与密封资源，而非文件系统或浏览器的逃逸管道。\n\n## 权限、版本与对象授权\n\n以下是分开的检查：\n\n1. `requires` 声明兼容的能力版本。\n2. `permissions`、`settingsAccess` 与 `networkAccess` 声明授权范围。\n3. 用户的书籍授权将执行者限制为全部书籍、目前书籍或指定书籍。\n4. 生命周期与目前执行环境条件决定特定操作目前是否可用。\n\n无权限的服务仍可能因特定方法而需要另一个领域授权。成功的可用性查询仅是提示，并非绕过执行检查的许可。\n\n## 宿主呈现的界面\n\n插件返回结构化视图与回调。ReadAware 负责呈现、焦点、导航、加载与错误状态、主题与清理。视图可包含清单、表单、详细版面与受限区块，并透过公开的视图接口约定提供即时更新。\n\n插件不得挂载 React、任意 HTML、CSS、iframe 或 DOM。如需新的 UI 行为，请使用受支持的贡献点。\n\n## 隔离与生命周期\n\n每个插件在模块 Worker 中执行。它不会直接取得 Tauri、SQLite、文件系统、程序或 DOM 的访问权。网络与存储使用由宿主中介的环境。\n\n启动阶段会注册项目并允许受支持的读取；商业写入与外部副作用从启用的处理器开始。私有数据迁移仅以存储权限执行。候选版本取代目前执行环境之前，失败的启动或迁移会先复原。\n\n安装仍是软体信任的决策。请审查包源码、请求的授权范围、网络目的地与数据处理方式。\n\n## 从第一方插件学习\n\n源码树包含可运作的示例，例如 Jumper、Text Desk、Annotation Desk、Memory Desk、Listening Desk 与 Maintenance Desk，以及随附的插件。源码示例不保证每个包都会随每个版本发布。\n\n[建立插件](/docs/plugins/develop) · [API 参考文件](/docs/plugins/api) · [发布](/docs/plugins/publishing)"
     },
     "pluginsDevelop": {
-      "metaTitle": "构建插件 — ReadAware 文档",
-      "metaDescription": "使用公开的 TypeScript 模板创建、校验、安装、迁移并测试 ReadAware 插件。",
-      "body": "# 构建插件\n\n从公开的 TypeScript 模板开始，声明最小的能力集合，并在 ReadAware 桌面应用中运行构建后的软件包。宿主负责生命周期、权限、展示和回滚；插件负责自己的行为和私有数据。\n\n## 前置条件\n\n- ReadAware 桌面应用，并能访问“设置 → 插件”。\n- [Bun](https://bun.sh)，用于运行仓库脚本。\n- [readaware-plugins 仓库](https://github.com/ahpxex/readaware-plugins)的检出版本或 fork。\n\n## 创建软件包\n\n1.  将 `template/` 复制到 `plugins/<your-plugin-id>/`。\n2.  保持文件夹名、manifest 的 `id` 和运行时命名空间完全一致。\n3.  编辑 `manifest.json` 和 `src/main.ts`。\n4.  删除不使用的模板贡献，并移除对应权限。\n5.  构建 ReadAware 将要加载的自包含 `main.js`。\n\n```bash\nbun run build\nbun run typecheck\nbun test\nbun run validate\n```\n\n## 先设计 manifest，再实现\n\n按以下顺序检查 manifest：\n\n1.  **身份**：稳定 ID、名称、软件包版本、作者和最低应用版本。\n2.  **数据**：正整数 `schemaVersion` 和迁移路径。\n3.  **兼容性**：为每个使用的 API 和 schema 在 `requires` 中写入 semver 范围。\n4.  **授权**：语义 `permissions` 和精确的 `settingsAccess` 授权。\n5.  **声明**：设置、定时任务、主题、字体和入口模块。\n\n安装前使用[能力浏览器和权限预览](/zh/docs/plugins/capabilities)。要求是兼容性声明，不是用户授权；即使能力不需要权限，只要插件依赖其契约，也必须写入 `requires`。\n\n## 选择正确的能力\n\n1.  ReadAware 拥有某种状态或行为时，使用**领域**。\n2.  提供选择、动作或提供方时，使用**贡献**。\n3.  需要受限的宿主操作时，使用**服务**。\n4.  插件存储只用于插件拥有的数据。\n5.  现有形态都不合适时，请求新的类型化宿主能力。\n\n不要把书籍、进度、标注、设置或记忆复制到插件存储。影子状态会绕过产品不变量、已提交事件、投影重建、同步语义和助手上下文。\n\n## 让激活保持声明式\n\n在 `activate(ctx)` 期间检查环境，并注册动作、命令、提供方、订阅和定时任务。不要执行业务写入或外部工作。宿主会一直暂存每项注册，直到激活 RPC 完成且 Worker 回复健康检查。\n\n晋升后，从已注册的处理器启动运行时工作。如果处理器返回 promise，让宿主展示加载和失败状态。只有在可选的 `deactivate()` 必须关闭外部资源时，才保留这些资源的引用；宿主注册和订阅会自动释放。\n\n## 明确给私有数据做版本控制\n\n`schemaVersion` 为插件 KV 和文档集合版本控制；它独立于软件包版本。只有私有数据形态改变时才修改它。在 schema 提交后，为每个支持的升级和降级导出 `migrate(storageCtx, change)`。\n\n- 迁移只能接收存储：不能使用领域、设置、密钥、网络、UI、LLM 或贡献。\n- 让每次转换都具备确定性和幂等性。\n- 测试部分写入后发生失败的情况；宿主必须精确恢复 KV、文档、文件和 schema 元数据。\n- 不要用软件包版本检查替代数据 schema。\n\n## 安装工作文件夹\n\n1.  运行构建和检查。\n2.  打开 ReadAware → 设置 → 插件 → 安装插件。\n3.  选择构建出的插件文件夹并检查同意摘要。\n4.  在桌面应用中运行真实功能。\n5.  重新构建并安装，以测试更新。\n\n普通浏览器无法验证插件安装、Worker IPC、SQLite 持久化、原始书籍访问、阅读器集成或回滚。请测试用于发布的 Tauri 应用。\n\n## 测试生命周期，而不只是成功路径\n\n- 全新安装、启用、停用，以及不重启应用再次启用。\n- 使用真实数据完成成功更新和降级。\n- 激活超时、处理器拒绝、迁移失败和精确回滚。\n- 卸载清理：不残留动作、监听器、定时任务、提供方或 Worker。\n- 更新期间移除权限和扩展权限。\n- 长标签、空状态、键盘导航和所有宿主主题。\n\n## 了解当前限制\n\nReadAware 打开期间，定时任务至少按声明的频率运行，过期时会在启动时补跑。它们不是持久任务：应用关闭时不会执行，没有持久队列、重试/退避契约或崩溃恢复保证。\n\nUI 只在现有的类型化贡献点可用。缺少挂载位置时，需要宿主拥有的贡献点和消费者；不会为了走捷径添加任意 HTML 或通用原生 invoke API。\n\n## 下一步\n\n把[API 参考](/zh/docs/plugins/api)放在编辑器旁边，然后在准备注册表 pull request 前阅读[发布插件](/zh/docs/plugins/publishing)。"
+      "metaTitle": "建立插件 — ReadAware 文档",
+      "metaDescription": "建立小型 ReadAware 命令、声明兼容的能力与权限，然后在桌面应用中测试包。",
+      "body": "# 建立插件\n\n从一个实用的动作开始。在新增功能的过程中，持续让兼容性、权限与运行时行为保持可见。\n\n## 取得模板与类型\n\n[公开插件仓库](https://github.com/ahpxex/readaware-plugins)包含模板、声明、登录与包检查。若涉及尚未发布的 API，请与[目前源码接口约定](https://github.com/ahpxex/read-aware/blob/main/packages/plugin-types/src/index.ts)比对，并使用相符的开发版构建。最新发布的应用可能比这份文件还旧。\n\n仓库脚本使用 Bun。将 `template/` 复制到 `plugins/<your-plugin-id>/`，并让目录名称与清单 ID 保持一致。\n\n## 最精简的指令\n\n这个示例在启用期间注册一个指令，并且只有在用户执行它时才产生界面效果。\n\n```json\n{\n  \"id\": \"hello-reader\",\n  \"name\": \"Hello Reader\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"main\": \"main.js\",\n  \"requires\": {\n    \"contributions\": { \"commands\": \"^1.1.0\" },\n    \"services\": { \"ui\": \"^1.17.0\" }\n  }\n}\n```\n\n```typescript\nexport default {\n  activate(ctx) {\n    ctx.contributions.commands.register({\n      id: \"hello\",\n      title: \"Say hello\",\n      run: () => ctx.services.ui.showToast(\"Hello, reader!\"),\n    });\n  },\n};\n```\n\n将入口模块编译为独立的 `main.js`。上述清单刻意要求目前文件记载的版本；请在检查并测试那些接口约定之后，才使用较旧的版本范围。\n\n## 加入最小且实用的权限\n\n使用 [Explorer](/docs/plugins/capabilities) 寻找方法，并复制其起始的清单片段。片段会声明一项能力；请补齐该操作所需的授权。\n\n- 读取书库数据需要 `library:read`；变更数据则需要 `library:write`。\n- 设置使用精确的 `settingsAccess` 路径与操作。\n- 任意 HTTP 需要 `service:network` 以及允许的 `networkAccess.origins`。\n- 位于无需权限的界面服务中的阅读相关方法，仍可能需要 `reading:read` 或 `reading:write`。\n- 书籍授权是透过宿主同意而选定，并透过 `ctx.grants.book` 暴露；清单无法自行取得另一本书的访问权。\n\n检查 `ctx.capabilities`，并处理缺少的选用命名空间。将 ReadAware 持有的数据保留在其领域中；插件存储空间仅用于你自己的纪录、设置与检查点。\n\n## 处理观察与取消\n\n不再需要时，请释放句柄（handle）。对于支持的调用，请传入 `AbortSignal` 并等待实际结果。取消并不会还原已发生的写入或远端副作用。\n\n自动反应使用 `ctx.withEvent(delivery)` 来处理后续工作，包括在 `await` 之后。接口约定要求时，请为因果订阅提供稳定的 `ruleId`。用户发起的动作使用原始启用上下文。这能让宿主侦测回圈，而不会把独立的动作混为一谈。\n\n## 在本机构建与安装\n\n遵循 checkout 的包脚本。在公开插件仓库中，一般检查如下：\n\n```bash\nbun run build\nbun run typecheck\nbun test\nbun run validate\n```\n\n开启 ReadAware → 设置 → 插件 → 安装插件，选取构建后的文件夹，并查看同意摘要。在桌面应用中实际使用该功能。重新构建并重新安装以确认更新。\n\n## 为私有数据设置版本\n\n`schemaVersion` 与包版本相互独立。当存储的 KV 或文件结构改变时，请透过 `migrate(storageCtx, change)` 提供支持的升级与降级转换。\n\n迁移只会取得存储专属的权限。除了成功案例，也请测试失败的转换：先前的包与已提交的数据必须保持可用。一般代码更新请避免加入不必要的结构变更。\n\n## 测试你的功能所用的边界\n\n检查其实际的 Worker/Tauri 行为、权限与书籍范围拒绝、取消、禁用／重新启用，以及失败复原。若是界面插件，请涵盖键盘导航、长文字与狭窄窗口。若是变更数据的插件，请涵盖并行编辑，以及在需要持久化的情况下重新启动。\n\n调度只会在应用开启时执行；持久性工作仅支持宿主的类型化计划。两者都不是一般的背景程序或任意代码工作的执行器。[API 参考](/docs/plugins/api)说明了这些限制。\n\n## 发布\n\n一旦构建后的包能搭配其声明的最低接口约定正常运作，请遵循[发布](/docs/plugins/publishing)的说明。"
     },
     "pluginsCapabilities": {
-      "metaTitle": "插件能力 — ReadAware 文档",
-      "metaDescription": "浏览每个版本化的 ReadAware 插件能力，并预览插件 manifest 请求的授权。",
-      "body": "# 能力浏览器\n\n设计插件前，搜索完整的公开目录。每项能力都独立版本化；每项依赖都必须写入 manifest 的 `requires` 部分。\n\nREADAWARE_CAPABILITY_BROWSER_SLOT\n\n## 如何阅读目录\n\n- **权限**表示调用时需要的权限或精确设置授权。\n- **无**表示不需要额外的安装权限，并不代表存在未记录的环境能力。\n- **宿主负责**标记插件无法替换或绕过的边界。\n- 每条能力旁的版本直接来自宿主的规范能力目录。\n\n`readerModes` 在特权阅读器契约确定前仍仅限内置插件。manifest 只能写入目录中的能力；宿主仍会根据 actor、权限、版本和生命周期阶段过滤可见的运行时视图。\n\n## 权限预览\n\n粘贴 manifest，将用户授权与兼容性及运行声明分开。它反映安装同意的含义，但不能替代仓库校验器，也不能证明插件可以激活。\n\nREADAWARE_PERMISSION_PREVIEW_SLOT\n\n## 安装对话框实际授予什么\n\n语义 `permissions` 和精确的 `settingsAccess` 条目授予权限。正式的同意对话框会用直白的语言展示二者。能力要求、定时任务、schema 版本、主题和字体可作为审核上下文，但不会被悄悄重新标记为权限。\n\n此预览刻意保持本地且无状态。下一步开发工具是在应用内提供 actor 视图和生命周期检查器，使用相同的运行时目录，并显示更新时的权限差异和能力不可用的确切原因。"
+      "metaTitle": "能力浏览器 — ReadAware 文档",
+      "metaDescription": "搜索目前的 ReadAware 插件目录与 API 方法，依任务或授权筛选，并查看 manifest 要求。",
+      "body": "# 能力浏览器\n\n先从你想实现的功能出发。搜索任务、能力、权限或具体的 API 方法，再按主题、能力类别和授权方式筛选。选择一项能力，就能查看方法、使用限制，并复制 manifest 配置片段。\n\n这里的目录跟随**开发源码**更新，可能比最新下载版本更早提供新接口。版本来自宿主能力目录，方法来自公开的 TypeScript 接口。实际能调用什么，还要看已安装应用的 `ctx.capabilities`、书籍授权和运行时检查。\n\nREADAWARE_CAPABILITY_BROWSER_SLOT\n\n## 正确理解权限\n\n能力版本用于声明兼容性要求，权限用于授权访问。书籍范围、精确的设置路径、网络来源、生命周期和方法自身的检查，还会进一步限制访问范围。\n\n**无需额外权限**指的是该能力的基础授权。它不会免除某个方法所需的其他业务域权限，也不会跳过宿主确认。`readerModes` 仍仅供内置插件使用。声明式主题和字体通过 manifest 提供。\n\n## Manifest 预览\n\n粘贴 manifest，一起查看权限、设置授权、网络来源和版本要求。检查在本地运行，依据上方的开发目录；它不能证明插件能安装、能在运行时使用，或兼容旧版应用。\n\nREADAWARE_PERMISSION_PREVIEW_SLOT\n\n## 继续开发\n\n[构建插件](/docs/plugins/develop)提供可运行的起点；[API 参考](/docs/plugins/api)说明作用范围、生命周期、观察、任务和事务语义。[发布](/docs/plugins/publishing)前，请在匹配的应用版本中验证。\n"
     },
     "pluginsApi": {
       "metaTitle": "插件 API 参考 — ReadAware 文档",
-      "metaDescription": "当前 ReadAware 插件契约：manifest、能力、领域、贡献、服务、声明式 UI、生命周期和迁移。",
-      "body": "# 插件 API 参考\n\n插件是一个包含 `manifest.json`和已构建 ES 模块的文件夹。完整的公开 TypeScript 契约以 `types/plugin-api.d.ts` in the [readaware-plugins 仓库](https://github.com/ahpxex/readaware-plugins)发布。本页说明各部分如何配合。\n\n## 软件包结构\n\n```tree\nmy-plugin/\n  manifest.json\n  main.js\n  src/main.ts       # 推荐提交以供审核\n  assets/           # 可选，市场安装时需明确列出\n```\n\n`main.js` 默认导出一个生命周期对象。ReadAware 在专用模块 Worker 中运行它，并向`activate`提供 actor 作用域的上下文。\n\n```typescript\nexport default {\n  activate(ctx) {\n    // 检查并注册。此阶段会阻止副作用。\n  },\n  migrate(storageCtx, change) {\n    // 可选：转换插件私有 KV 和文档。\n  },\n  deactivate() {\n    // 可选：释放插件自己的外部资源。\n  },\n};\n```\n\n## Manifest 清单\n\n```json\n{\n  \"id\": \"theme-schedule\",\n  \"name\": \"主题计划\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"minAppVersion\": \"0.3.0\",\n  \"requires\": {\n    \"domains\": { \"settings\": \"^1.0.0\" },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"settingsOptions\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^1.0.0\",\n      \"schedules\": \"^1.0.0\",\n      \"ui\": \"^1.0.0\"\n    },\n    \"schemas\": { \"settings\": \"^1.0.0\" }\n  },\n  \"settingsAccess\": {\n    \"discover\": [\"appearance.theme\", \"reading.theme\"],\n    \"write\": [\"appearance.theme\", \"reading.theme\"]\n  },\n  \"main\": \"main.js\"\n}\n```\n\n| 字段 | 契约 |\n|----|----|\n| `id` | 小写字母、数字和连字符，最长 64 个字符。它是永久命名空间，且必须与文件夹名一致。 |\n| `name`, `version` | 面向用户的名称和软件包版本。 |\n| `schemaVersion` | 插件私有 KV 和文档数据所需的正整数。独立于软件包版本。 |\n| `requires` | 按领域、贡献、服务和 schema 分组的能力 ID 到 semver 范围的必填映射。 |\n| `permissions` | 可选的语义授权请求，需经用户同意。未知值会导致校验失败。 |\n| `settingsAccess` | 可选的 discover/read/write 授权，用于精确设置路径或明确的 `section.*` 分组。 |\n| `minAppVersion` | 可选的最低应用版本。软件包依赖新发布能力时使用。 |\n| `settings` | 可选的由宿主渲染的插件设置字段。 |\n| `schedules` | 可选的周期任务，在绑定处理器前声明。 |\n| `themes`, `fonts` | 可选的声明式主题和字体贡献；需要 `ui:themes`. |\n| `main` | 相对于文件夹的入口模块；默认为 `main.js`. |\n\n使用[能力浏览器](/zh/docs/plugins/capabilities) 查看完整清单和权限词汇。要求始终是兼容性声明，绝不会授予权限。\n\n## 运行时上下文\n\n| 命名空间                       | 包含                                    |\n|--------------------------------|-----------------------------------------|\n| `ctx.manifest`                 | 经过校验的只读 manifest。               |\n| `ctx.appVersion`, `ctx.locale` | 宿主版本和当前 UI 区域设置。            |\n| `ctx.lifecycle.phase`          | `activating`, `migrating`, 或 `active`. |\n| `ctx.capabilities`             | 仅对此插件 actor 可见的能力版本。       |\n| `ctx.domains`                  | 已授予的 ReadAware 状态和行为。         |\n| `ctx.contributions`            | 插件可以向其中提供实现的注册表。        |\n| `ctx.services`                 | 受限的宿主操作和插件私有基础设施。      |\n\n未获授权时，受权限控制的命名空间不会出现。每次 Worker 调用也会在宿主侧授权；隐藏方法不是唯一检查。注册会返回可释放对象，激活失败或插件停用时按相反顺序回收。\n\n## 领域\n\n领域公开 `queries`，可选 `commands`，以及已提交的 `events.subscribe`。命令使用与 ReadAware 相同的事件溯源写入路径，并归属于 `plugin:<id>`. 写入权限包含读取权限。\n\n| 领域 | 查询和命令 | 权限 |\n|----|----|----|\n| `library` | 书籍、元数据、原始章节文本、目录、集合；导入、编辑、加星、移除、虚拟书籍和集合命令。 | `library:read` / `library:write` |\n| `reading` | 按书籍和汇总的阅读统计；标记完成、打开书籍并导航到 CFI 或 href。 | `reading:read` / `reading:write` |\n| `annotations` | 筛选高亮、笔记和被动提问轨迹；创建、编辑、重新着色并移除高亮或笔记。 | `annotations:read` / `annotations:write` |\n| `conversations` | 读取书籍线程、列出全局线程并读取线程。写入仍由聊天运行时负责。 | `conversations:read` |\n| `settings` | 发现获准的目录条目、读取解析后的值、更新受支持的目标并订阅已提交的变更。 | 精确 `settingsAccess` grants |\n\n没有 `shelf` 或 `appearance` 领域。 书库数据和当前阅读行为彼此分离。外观是设置中的一个分区。\n\n### 设置访问\n\n`discover`、`read` 和 `write`彼此独立。尽可能授予精确路径；仅在功能确实需要整个分区时，才使用例如 `appearance.*`。更新会经过目录校验、目标策略、持久化和提交后效果。\n\n```typescript\nconst entries = await ctx.domains.settings.queries.discover({\n  section: \"appearance\",\n});\n\nawait ctx.domains.settings.commands.update([\n  {\n    path: \"appearance.theme\",\n    value: \"dark\",\n    target: { kind: \"global\" },\n  },\n]);\n```\n\n## 贡献\n\n| 注册表 | 插件提供 | 权限 |\n|----|----|----|\n| `selectionActions` | 选区动作及返回提示或宿主渲染视图的处理器。 | 无 |\n| `headerActions` | 阅读器或书库动作、位置元数据和视图回调。 | 无 |\n| `commands` | 命令元数据和处理器。 | 无 |\n| `settingsOptions` | 一个已声明插件字段的动态选项。 | 无 |\n| `voiceProviders` | 声音列表和编码音频合成。 | 无 |\n| `contentProviders` | 虚拟书籍键的章节。 | 无 |\n| `readerModes` | 受限阅读器分段模式；目前仅限内置插件。 | `reader:modes` |\n| `agentTools` | 工具 schema、用户可读标签、描述和执行器。 | `agent:tools` |\n| `agentContextProviders` | 受限的当前轮次参考区块。 | `agent:context` |\n| `agentRetrievalProviders` | 来自插件数据的搜索结果。 | `agent:retrieval` |\n| `memoryCandidateProviders` | 可能持久化的事实、偏好、洞察或摘要。 | `agent:memory` |\n| `themes`, `fonts` | manifest 声明的语义主题和字体数据。 | `ui:themes` |\n| `syncTransports` | 同步后端会话：把密封事件批次、密封 blob 与 meta 对象存到插件选择的远端。 | `sync:transport` |\n\n每个贡献 ID 都按插件划分命名空间，每次注册都有归属且可检查，过期的可释放对象不能移除较新的替代项。新的贡献类型仍需宿主有意提供消费者；之后任何兼容插件都能注册，无需在应用中逐一列出。\n\n### 助手扩展边界\n\n- **上下文提供方**运行一轮。宿主添加来源、限制大小，并将输出序列化为不可信参考数据。\n- **检索提供方**成为命名空间工具，带有宿主拥有的 `query`/`limit` schema 和裁剪后的结果。\n- **记忆候选提供方**在一轮之后提出受限候选；宿主校验范围、去重并执行任何持久写入。\n\n插件永远不会收到 Memory 端口，不能注入系统规则，也不能直接写入长期记忆。\n\n### 同步传输\n\n`syncTransports` 注册提供另一种同步后端——一个由应用同步引擎推送和拉取的远端邮筒（第一方 WebDAV Sync 插件就是这样对接 WebDAV 的）。边界画在密文：引擎在插件看到任何数据之前就完成密封，传输层搬运的只是不透明信封及其路由字段（事件 id、HLC 时间戳），永远看不到事件类型、书籍字节或密钥。契约是「哑存储」——每设备稠密的事件批次、引擎信封格式的 blob 对象、以及用于「首写者胜」密钥材料的 create-only meta 对象。排序、游标、合并、口令仪式与调度全部留在宿主侧；连接传输后端与 ReadAware 账号互斥。失败时抛出携带稳定 `sync/*` 错误码的 Error 来分类；未带码的错误按瞬时失败处理并指数退避重试。\n## 宿主服务\n\n| 服务 | 契约 | 权限 |\n|----|----|----|\n| `storage` | 命名空间 KV、文档集合和外部变更通知。 | 无 |\n| `secrets` | 命名空间加密凭据槽。 | 无 |\n| `ui` | 宿主提示和保存/导出流程。 | 无 |\n| `schedules` | 将处理器绑定到 manifest 声明的频率。 | 无 |\n| `session` | 订阅受限的阅读会话事实。 | 无 |\n| `network` | 宿主中介的 HTTP。 | `service:network` |\n| `llm` | 使用用户配置进行一次性文本或 JSON schema 约束的模型调用。 | `service:llm` |\n| `clipboard` | 向系统剪贴板写入文本。 | `service:clipboard` |\n\n### 存储\n\n使用 KV 存储小型设置和检查点。使用命名文档集合保存具有稳定 ID 且可选包含 `bookId`/`anchor`来源信息的插件记录。来源信息是索引而非所有权；引用书籍被删除后文档仍可保留。卸载会清空文档集合，但保留 KV、密钥槽和已提交的 schema 元数据，以便重新安装和迁移。\n\n### 定时任务\n\nmanifest 声明 `{ id, label, everyMinutes }`，激活通过`ctx.services.schedules.bind`绑定处理器。最短频率为 15 分钟。应用打开时至少按此频率运行，逾期会在启动后补跑，任务不会重叠。这不是持久后台任务，也不保证精确时间。\n\n## 声明式 UI 和设置\n\n插件返回版本化的视图数据，而不是可执行 UI。视图语法包括 markdown、可搜索列表、表单、详情布局、词典结果和受限区块树。处理器可以保留界面、显示提示、打开或替换视图、重置导航、关闭界面或返回字段错误。宿主负责 promise 的加载和失败状态。\n\nManifest 设置使用宿主控件支持文本、文本域、数字、时间、选择、选项、复选框、开关和密钥字段。条件字段使用 `visibleWhen`；动态选择使用已注册的 `settingsOptions` 提供方。密钥字段直接写入加密密钥槽，永远不会进入普通设置对象或助手可见目录。\n\n## 主题和字体\n\n主题插件在 manifest 中声明语义数据。应用主题覆盖固定的宿主令牌词汇；阅读器主题提供所需的六色页面调色板和可选排版默认值。宿主校验值、生成 CSS、加载获批准的本地字体文件，并在用户选择前不应用任何内容。\n\n提供选项需要 `ui:themes`。选择主题需要精确的设置写入授权，例如 `appearance.theme` 或 `reading.theme`。二者并不相互推导。\n\n## 生命周期阶段\n\n1.  **激活中：** 可使用查询和插件私有读取；注册会暂存；副作用被阻止。\n2.  **迁移中：** 只能使用插件 KV 和文档集合。\n3.  **已激活：** 已晋升的处理器可以使用获准的领域、贡献和服务。\n\n宿主会排空激活 RPC、检查 Worker 健康状态、运行数据迁移，然后在一个明确的时点晋升全部暂存项。激活失败会释放暂存工作，不替换当前运行时。\n\n## Worker 环境\n\n没有 React、Jotai、DOM、WebView、Tauri、SQLite、文件系统或进程访问。环境中的 `fetch`、WebSocket、EventSource、XMLHttpRequest、BroadcastChannel、IndexedDB 和 Cache Storage 均已禁用。网络、持久化和所有宿主交互都必须使用类型化上下文。\n\n## 兼容性和稳定性\n\n领域、贡献、服务和声明式 schema 各自拥有独立的语义版本。未知 ID、无效 semver 范围、无法访问的必需能力和不兼容的宿主版本都会阻止激活。兼容的新增内容提升所属能力的版本，而不是一个全局插件 API 编号。\n\n当前生态是官方插件，因此当前由注册表支持的契约就是基线。不要依赖早期的 `shelf`, `appearance` 或注册表之前的形态。"
+      "metaDescription": "目前的 ReadAware 开发 API：六个领域、贡献、宿主服务、权限、书籍范围、观察、工作和事务。",
+      "body": "# 插件 API 参考\n\n本页说明目前的开发接口约定。「能力总览」([Capabilities Explorer](/docs/plugins/capabilities))列出即时目录、确切的方法名称、签名与源码声明。已发布的应用或公开模板可能使用较旧版本；请将你的 `requires` 范围对应到已测试的宿主。\n\n## 包与 manifest\n\n插件包含 `manifest.json` 与一个自包含的 ES 模块，通常是 `main.js`。请将源码与所需资源与包一起保留以供审查。\n\n| 栏位 | 说明 |\n| --- | --- |\n| `id`, `name`, `version` | 稳定命名空间、显示名称与包版本。ID 须与文件夹名称相符。 |\n| `schemaVersion` | 插件私有数据结构的正整数版本；与包版本无关。 |\n| `requires` | 能力 ID 与 semver 范围，分组为 `domains`、`contributions`、`services` 与 `schemas`。 |\n| `permissions` | 语义权限，例如 `library:read` 或 `service:llm`。 |\n| `settingsAccess` | 针对确切路径或明确的区段群组，分别授予 `discover`、`read` 与 `write` 权限。 |\n| `networkAccess` | Network 2.x 允许的 HTTP(S) 来源；需与 `service:network` 同时声明。 |\n| `minAppVersion` | 选用的应用最低版本门槛，在能力需求之外额外设置。 |\n| `main` | 相对的入口模块；预设为 `main.js`。 |\n| `settings`, `schedules`, `themes`, `fonts` | 由宿主解读的声明。 |\n| `services` | 供跨插件调用的版本化、类型化模块服务汇出。 |\n\n没有任何 manifest 栏位会授予任意的文件系统、SQL、DOM 或原生 IPC 访问权。\n\n## 上下文与对象范围\n\n宿主会调用 `activate(ctx)`，并提供 `ctx.domains`、`ctx.contributions`、`ctx.services`，以及 manifest、locale、应用版本、生命周期阶段、能力版本与不可变的书籍授权。\n\n`ctx.grants.book` 的值为 `all`、`current` 或指定的 `book`。宿主透过同意流程选取。读取、记忆、对话、指令与资源在调用与回调之间都会维持该范围。目前的书籍变更可能使未完成的读取、句柄、提案与观察结果失效。\n\n领域写入权限包含读取权限。设置授予仍依操作个别独立。受权限控管的命名空间或方法可能不存在；宿主仍会在每次调用时执行检查。使用 `ctx.services.session.operationAvailability(...)` 进行支持的预先检查查询，且在取得肯定结果后仍须处理执行失败的情况。\n\n## 领域\n\n| 领域 | 提供的功能 | 限制 |\n| --- | --- | --- |\n| `library` | 书籍与收藏、目录、精确位置搜索、范围、参考与图片、导入、文字任务、中继数据、重复合并与移除。 | 来源版本、书籍范围、受限读取、参与者拥有的任务，以及独立的文件清理回执。 |\n| `reading` | 工作阶段快照、导航、选取、播放与模式控制、进度、阅读时间与洞察。 | 目前工作阶段保护、已定案与待处理状态、供应商可用性与取消。 |\n| `annotations` | 页面、检查与观察；建立划线或笔记；条件式编辑/删除批次。 | 使用用户决定前的修订版本。撷取的范围也需要 Library 访问权。 |\n| `conversations` | 授权的对话纪录、存储的摘要、运行时与轮替要求状态；线程控制与提议的轮替。 | 宿主核准后才会开始提议的轮替。全域线程操作需要全部书籍的访问权。插件不会取代聊天运行时。 |\n| `settings` | 目录探索、解析后快照、选项、模型中继数据、观察、更新与阅读重设。 | 确切路径、目标政策，以及外部供应商工作的额外授权。 |\n| `memory` | 搜索与页面、检查、修正/遗忘、个人数据、实体、分类、图表与任务、内容封存。 | 书籍授权与条件式修订。全域身分/个人数据操作需要全部书籍的访问权；产生内容也需要模型授权。 |\n\n### 来源文字与导航\n\n使用 `library.queries.books.searchLocations` 取得可导航的来源比对结果，使用 `readRange` 取得受限的来源文字。请保留返回的来源版本与位置。衍生的 `searchText` 命中结果仅供预览，不可互换作为导航锚点。明确的文字准备会返回一个任务，必须观察其进度与结果。\n\n### 条件式写入\n\n在显示编辑前检查目前对象并保留其修订版本。针对该修订版本送出条件式变更。若发生冲突，请重新读取并让用户决定；静默取代预期的修订版本会覆盖其他变更。\n\n`annotations.commands.applyChanges`、记忆变更、私有文件提交与事务预览各自有其类型化接口约定。一般指令不会自动成为可复原或分散式事务。\n\n### 观察与反应\n\n使用授权的观察取得目前状态，使用已提交的订阅取得事件。序号可以排序传递项目，但它不是数据库游标或条件式写入的修订版本。失败的观察必须能与空结果区分。\n\n使用 `ctx.withEvent(delivery)` 进行自动的后续工作，并在需要时于因果订阅上使用稳定的规则 ID。透过非同步调用维持绑定的内容。宿主会拒绝因果回圈与已过期的传递；独立的用户动作使用原始内容。\n\n## 贡献\n\n| 贡献 | 插件提供的内容 |\n| --- | --- |\n| `selectionActions`, `headerActions`, `contextActions`, `commands`, `uriHandlers` | 在类型化的宿主界面上的动作、指令面板指令与命名空间 URI 处理。 |\n| `settingsOptions` | 已声明插件设置的动态选项。 |\n| `voiceProviders`, `contentProviders`, `readerModes` | 语音合成、虚拟书籍内容与内建的阅读器分段模式。 |\n| `agentTools`, `agentContextProviders`, `agentRetrievalProviders` | 工具、受限的每轮内容，以及可搜索的插件自有来源。 |\n| `memoryCandidateProviders` | 供宿主验证与接受的候选记忆。 |\n| `themes`, `fonts` | manifest 声明的外观选项。 |\n| `syncTransports` | 不透明加密同步信封与元数据对象的存储。 |\n\n动作可以在支持的地方更新其拥有的可见/启用/勾选状态。注册与可释放资源属于单次启用。返回视图不会授予回调额外的领域授权。\n\n记忆候选与直接的 Memory 指令是不同路径：候选会经过宿主接受，而直接指令需要对应的 Memory 授权与修订版本。两者都不允许注入系统规则或取代核心代理程式。\n\n## 宿主服务\n\n| 服务 | 用途 | 主要限制 |\n| --- | --- | --- |\n| `storage` | 私有 KV、文件集合、条件式提交、页面、观察与使用政策。 | 插件命名空间与配额；过期的游标需要重新取得基准。 |\n| `resources` | 用户挑选的文件/目录、密封的位元组句柄、汇出、图片与私有二进位资源。 | 没有环境隐含路径。句柄有拥有者、限制与生命周期。 |\n| `secrets` | 插件私有的加密凭据插槽。 | 无法访问其他插件的密码。 |\n| `network` | 来源范围的 HTTP、受限的缓冲请求与串流。 | 每次重新导向都会检查；不会自动重送任意的写入。 |\n| `llm` | 文字或结构化推论、串流、图片资源、请求回执与预算。 | 用户设置、隐私规则、取消与宿主/供应商限制。 |\n| `clipboard` | 写入文字或密封的图片。 | 明确权限与支持的资源类型。 |\n| `ui` | 视图、提示消息、原生存储/开启流程、工作区与指令导航、阅读器面板与窗口。 | 方法特定的领域授权与宿主拥有的呈现。 |\n| `session` | 非敏感的环境中继数据与操作可用性。 | 没有旧的阅读工作阶段订阅；请使用 Reading 领域。 |\n| `schedules` | 声明的周期性处理函数与拥有的延迟要求。 | 工作只在应用开启时执行；时间并非精确。 |\n| `jobs` | 支持的持久性计划、检查点、观察与控制。 | 类型化的宿主操作，而非任意的 JavaScript 执行。 |\n| `changes` | 限范围的持久性变更游标。 | 重新整理提示，而非原始事件记录或历史值。 |\n| `transactions` | 预览、提交、回执查询与条件式复原预览。 | 受支持的本机操作与原始授权；未知结果需要查询回执。 |\n| `plugins` | 检查注册、观察变更、探索与调用类型化的插件服务。 | 调用端/被调用端授权交集、范围、版本与隔离的服务执行。 |\n| `maintenance` | 状态与宿主拥有的备份、连线测试与更新流程。 | 宿主保留凭据、文件对话框与重大确认。 |\n| `sync` | 授权的同步状态、积压与宿主管理的帐户或同步流程。 | 没有加密金钥或原始帐户凭据。 |\n| `diagnostics`, `logging` | 经审查的诊断汇出与受限的结构化开发者事件。 | 没有任意内容、密码或透过日志 API 的自动回报。 |\n\n### 网络与推论\n\nNetwork 2.x 需要同时具备语义权限与明确的来源：\n\n```json\n{\n  \"requires\": { \"services\": { \"network\": \"^2.2.0\" } },\n  \"permissions\": [\"service:network\"],\n  \"networkAccess\": { \"origins\": [\"https://api.example.com\"] }\n}\n```\n\n将示例来源取代为你实际使用的端点。来源包含 scheme、主机与连接埠；它们不是 URL 路径或子网域万用字元。重新导向必须维持在授权范围内。串流调用端在完成后关闭其拥有的串流。选择性的安全重试仅限于回应送达前的受支持读取要求；取消不会复原远端副作用。\n\n对于推论，使用 `readingContext` 取得书籍内容，以便宿主套用隐私与范围规则。使用密封的资源 ID 作为支持的图片。请求中继数据与输出预算有助于控制工作量；它们不是帐单明细，也不保证供应商合规。\n\n### 背景工作与事务\n\n使用 schedule 安排处理函数的调用，使用拥有的延迟要求在应用运行时间安排稍后的工作，并仅在类型化计划支持该操作时使用持久性 job。重新启动后的复原可能需要人工介入，而非盲目重复不确定的外部结果。\n\n事务结合受支持的设置、私有文件与领域操作，并在原始授权下执行。预览会冻结提议的工作；提交会消耗该预览。在未知回应之后，先查询回执再重试。复原是条件式的，要求状态仍与先前结果相符。\n\n### 跨插件服务\n\n在提供者 manifest 中声明服务 ID、版本、范围、所需权限与输入/输出结构描述，并在模块的 `services` 对象中汇出其处理函数。透过 Plugins 服务探索并调用它。宿主会以交集后的授权执行全新的隔离服务环境；它不会为了该调用而启用提供者的一般 UI 运行时。代理程式发起的调用仍保留其核准要求。\n\n## 视图、设置、主题与字体\n\n插件返回声明式视图数据。宿主会呈现清单、表单、markdown、详细信息与支持的区块版面。使用类型明确的视图结果和实时视图更新；保持加载、冲突、空白与错误状态可区分。插件代码无法使用 React、DOM、iframe 或任意 CSS。\n\n设置栏位由宿主呈现。密码栏位会写入加密的密码插槽，不会成为一般表单值或模型可见的设置。提供主题或字体需要 `ui:themes`；选取主题或字体会使用对应的 Settings 写入授权。\n\n## 生命周期与兼容性\n\n1. **启用中：** 支持的读取与注册；分阶段的贡献尚未可见。\n2. **迁移中：** 仅限私有存储空间，在提交变更的结构描述之前。\n3. **启用完成：** 升级的处理函数可以使用授予的能力。\n\n宿主会在启用与任何迁移成功后进行健康检查并升级候选版本。失败时会还原先前的包与数据。卸载会释放注册、回调与拥有的资源；持久性数据遵循其独立的保留接口约定。在目前的开发阶段，解除安装会移除私有文件集合与二进位资源，但保留定义的 KV/密码/结构描述状态以供重新安装。\n\n独立声明每个使用的能力与结构描述。版本号码证明接口约定兼容性，而非每个操作系统、供应商或失败案例都已通过端对端验收。请验证你实际发布的桌面工作流程。\n\n[建立插件](/docs/plugins/develop) · [能力总览](/docs/plugins/capabilities) · [发布](/docs/plugins/publishing)"
     },
     "pluginsPublishing": {
       "metaTitle": "发布插件 — ReadAware 文档",
-      "metaDescription": "准备、校验、审核并向公开市场仓库提交 ReadAware 插件。",
-      "body": "# 发布插件\n\n市场软件包存放在公开的 [readaware-plugins 仓库](https://github.com/ahpxex/readaware-plugins)中，并通过审核进入。当前目录由官方插件组成；这套流程也是未来接受外部提交时的契约。\n\n## 准备可审核的软件包\n\n推荐使用 TypeScript。让 `src/` 与构建出的自包含 `main.js` 并列，方便审核者比较源代码和产物。提交每一项运行时资源。不要加载远程代码，不要把行为藏在生成的 blob 中，也不要依赖软件包之外的文件。\n\n```tree\nplugins/my-plugin/\n  manifest.json\n  main.js\n  package.json\n  tsconfig.json\n  src/main.ts\n  assets/…\n```\n\n## 运行仓库检查\n\n```bash\nbun run build\nbun run typecheck\nbun test\nbun run validate\n```\n\n校验会检查注册表与 manifest 的一致性、ID、版本、能力要求、权限、声明文件和软件包形态。这些检查是必要条件而非充分条件：提交前还要在 ReadAware 桌面应用中运行构建出的文件夹。\n\n## 提交\n\n1.  Fork 公开仓库。\n2.  将模板复制到 `plugins/<plugin-id>/`，并保持文件夹名等于 manifest ID。\n3.  加入软件包和所有必需的运行时资源。\n4.  在 `registry.json` 中加入匹配且按 ID 排序的条目。\n5.  运行根目录的四项检查，并从构建出的文件夹测试本地安装。\n6.  发起 pull request，说明行为、私有数据、外部服务，以及每项权限和设置授权的理由。\n\n## 审核清单\n\n- 功能使用现有最窄的领域、贡献和服务能力。\n- `requires` 为每个使用的契约写出有依据的 semver 范围。\n- 权限和 `settingsAccess` 与实际运行时调用一致，不包含推测性的授权。\n- `activate()` 注册行为，但不执行任何业务或外部副作用。\n- 插件私有数据拥有稳定 schema，每次版本转换都有经过测试的迁移。\n- 用面向用户的语言说明网络端点、LLM 使用、凭据、定时任务和数据保留。\n- 宿主渲染的视图支持键盘导航、长文本、空数据以及浅色和深色主题。\n- 源代码可读、生成产物可复现，且不存在分析、跟踪、混淆或远程代码加载。\n\n[权限预览](/zh/docs/plugins/capabilities)适合作为提交前检查。仓库校验和人工审核仍是正式检查。\n\n## 更新和数据迁移\n\n同时提升 `manifest.json` 和 `registry.json` 中的软件包版本。只有私有 KV 或文档形态变化时才提升 `schemaVersion`，并在同一候选版本中提供相应的 `migrate()`。\n\n使用真实数据测试更新和有意降级。ReadAware 会暂存并健康检查候选版本、快照插件文件和数据、暂停旧运行时以迁移，并只在成功后晋升。更新失败必须让之前的软件包和数据仍可使用。\n\n## 权限变化\n\n把新增授权当作产品变更，而不是 manifest 杂务。说明原来的权限集合为何不足、哪些用户数据或外部操作变得可访问，以及用户拒绝时会发生什么。移除代码不再使用的权限。\n\n## 当前的分发信任\n\nWorker 隔离和能力强制执行会减少越权，但安装仍然是信任决策。在开放广泛的第三方市场前，ReadAware 仍需要发布者身份、确定性打包、签名和完整性校验、审核来源、撤销机制、权限差异审核和安全响应路径。\n\n这些控制上线前，合并的仓库条目只能是审核证据，并不能从数学上保证任意恶意代码安全。\n\n## 发起 pull request 前\n\n重新阅读[构建插件](/zh/docs/plugins/develop)，在[能力工具](/zh/docs/plugins/capabilities)中比较最终 manifest，并确认软件包遵循当前[API 契约](/zh/docs/plugins/api)，而不是旧的 `shelf` 或 `appearance` 示例。"
+      "metaDescription": "准备 ReadAware 插件供审核，验证应用与能力要求，并提交可重现的源码与执行阶段资源。",
+      "body": "# 发布插件\n\n[公开插件存储库](https://github.com/ahpxex/readaware-plugins) 承载市场包并透过拉取请求接受变更。准备提交时，请依照其目前的贡献说明与验证器操作。\n\n## 配合您支持的应用\n\n开发目录可能领先最新发布的应用。请同时核对公开声明与目标应用。需要新功能的包必须等待兼容的宿主发布，或明确锁定相符的开发版本；仅变更 `minAppVersion` 并不会建立缺少的 API。\n\n使用 [功能总览](/docs/plugins/capabilities) 检查方法与版本，然后声明您实际测试过的最小兼容集合。\n\n## 让包可受审查\n\n提交 `manifest.json`、可读的源码、构建后的独立 `main.js`，以及所需的运行时资源。保持文件夹名称与清单 ID 相同。请勿加载远端可执行代码，或依赖包之外的文件。\n\n```tree\nplugins/my-plugin/\n  manifest.json\n  main.js\n  package.json\n  tsconfig.json\n  src/main.ts\n  assets/\n```\n\n## 检查行为与权限\n\n- 说明功能、其入口，以及每个权限的必要原因。\n- 声明确切的 Settings 授权与所需的网络来源。说明哪些数据会传送至外部服务。\n- 测试书籍范围、缺少权限、取消、禁用/重新启用，以及实际的桌面 UI。\n- 保持启用为声明式，迁移仅限存储。\n- 检查私有数据保留、配额，以及作用中资源的清理。\n- 对于更新，请以真实数据演练现有安装，包括失败的迁移与复原。\n\n本机清单预览有助于找出兼容性与权限错误。它不能取代存储库验证器、桌面测试或审查。\n\n## 构建并提交\n\n遵循签出存储库中的脚本。公开存储库的包检查如下：\n\n```bash\nbun run build\nbun run typecheck\nbun test\nbun run validate\n```\n\n依照存储库目前的结构与排序，加入相符的注册表项目。开启拉取请求，说明最终行为、测试过的应用与功能版本、私有数据、外部服务及权限变更。附上可重现的验证步骤。\n\n## 更新\n\n在清单与注册表中递增包版本。仅在私有数据结构变更时变更 `schemaVersion`，并在同一个包中附上其迁移。要求更多权限时，需要清楚的说明与可用的拒绝途径。\n\n签署、发布者身分、包完整性、审查来源追溯与撤销是各自独立的发布考量。请说明实际适用于包的控管措施；仅靠 Worker 隔离并不能保证任意代码的安全。\n\n[建立插件](/docs/plugins/develop) · [API 参考](/docs/plugins/api)"
     }
   },
   "capabilityBrowser": {
     "searchLabel": "搜索能力",
-    "searchPlaceholder": "ID、权限或用途",
+    "searchPlaceholder": "任务、能力、权限或 API 方法",
     "familyLabel": "能力类别",
-    "authorityLabel": "权限类型",
+    "authorityLabel": "授权类型",
     "allFamilies": "所有类别",
     "allAuthorities": "所有授权",
     "familyNames": {
@@ -66,7 +66,7 @@
     },
     "permissionFree": "无",
     "versionLabel": "v",
-    "permissionLabel": "权限",
+    "permissionLabel": "授权",
     "capabilityLabel": "能力",
     "purposeLabel": "插件可以",
     "hostOwnsLabel": "宿主负责",
@@ -76,138 +76,225 @@
     "noResults": "没有能力符合这些筛选条件。",
     "descriptions": {
       "domains__library": {
-        "purpose": "读取书籍、文件、元数据、目录、集合，以及导入或移除书库项目。",
-        "hostOwns": "书库不变量、事件溯源写入、文件和投影。"
+        "purpose": "查看书籍、来源文字、目录、精确位置、范围、图片与集合；导入、整理并管理文字工作。",
+        "hostOwns": "来源版本、书籍范围、文件所有权、事件溯源写入与工作回执。"
       },
       "domains__reading": {
-        "purpose": "查看当前会话，并导航、更新位置、进度和阅读时间。",
-        "hostOwns": "阅读器生命周期、进度语义和已提交事件。"
+        "purpose": "观察阅读工作阶段、导航与选取文字、控制播放与模式，并查询进度、时间与洞察。",
+        "hostOwns": "目前工作阶段防护、阅读器生命周期、稳定状态、服务商与完成语义。"
       },
       "domains__annotations": {
-        "purpose": "通过规范命令读取或更改高亮和笔记。",
-        "hostOwns": "校验、归属、持久化和事件顺序。"
+        "purpose": "分页、查看并观察荧光标示与笔记；建立标注，或套用经版本检查的编辑与删除。",
+        "hostOwns": "撷取来源验证、条件式版本、归属与原子化持久存储。"
       },
       "domains__conversations": {
-        "purpose": "读取书籍和全局线程摘要。",
-        "hostOwns": "对话写入、提示词组装和记忆。"
+        "purpose": "读取经授权的对话记录、摘要与执行时状态；提出回合、管理讨论串，并使用核准的停止或清除控制项。",
+        "hostOwns": "宿主核准与生成、书籍授权、全域讨论串边界与由 actor 拥有的请求。"
       },
       "domains__settings": {
-        "purpose": "发现、读取、更新并订阅明确授权的设置路径。",
-        "hostOwns": "目录、目标、校验、持久化和变更效果。"
+        "purpose": "探索精确设置路径与选项、读取稳定快照、观察变更并更新支持的目标。",
+        "hostOwns": "路径授权、密钥排除、目标验证、持久性与效果；服务商工作可能需要网络授权。"
+      },
+      "domains__memory": {
+        "purpose": "搜索、分页、查看与修正记忆；处理个人数据、实体、分类、图谱与版本化上下文包。",
+        "hostOwns": "书籍与全域范围、条件式写入、防剧透边界、生成授权与不可变的上下文版本。"
+      },
+      "contributions__uriHandlers": {
+        "purpose": "透过已注册的动作处理具命名空间的 ReadAware URI 调用。",
+        "hostOwns": "URI 路由、验证、同意与处理常式生命周期；不得接管任意 scheme。"
       },
       "contributions__selectionActions": {
-        "purpose": "向选区和标注菜单添加命令。",
-        "hostOwns": "菜单位置、调用界面、加载和无障碍。"
+        "purpose": "为撷取的选取内容、标注或导航器输入加入动作。",
+        "hostOwns": "选单位置、撷取上下文、调用状态与既有领域授权。"
       },
       "contributions__headerActions": {
-        "purpose": "添加阅读器或书库工具栏动作，并显示由宿主渲染的视图。",
-        "hostOwns": "位置、导航、弹出层、页面和焦点。"
+        "purpose": "使用宿主渲染查看加入阅读器、书库或代理程式标题列动作。",
+        "hostOwns": "位置、焦点、查看导航、载入与清理。"
+      },
+      "contributions__contextActions": {
+        "purpose": "为支持的书籍或集合上下文界面加入具类型的动作。",
+        "hostOwns": "目标身分、支持界面、调用与目前授权。"
       },
       "contributions__commands": {
-        "purpose": "添加显式的命令面板命令。",
-        "hostOwns": "注册表、面板、快捷键和结果展示。"
+        "purpose": "加入具命名空间的命令面板动作并更新其拥有的状态。",
+        "hostOwns": "注册表所有权、快捷键、可用性与结果呈现。"
       },
       "contributions__settingsOptions": {
-        "purpose": "为一个已声明的插件设置解析动态选项。",
-        "hostOwns": "表单渲染、备用输入和值校验。"
+        "purpose": "为已声明的插件设置解析动态选项。",
+        "hostOwns": "表单呈现、已存储的非密钥值、受限结果与验证。"
       },
       "contributions__voiceProviders": {
-        "purpose": "列出声音并合成用于朗读的编码音频。",
-        "hostOwns": "播放、节奏、预取、高亮和回退。"
+        "purpose": "提供朗读用的语音选项与编码音讯。",
+        "hostOwns": "播放、速度、预先撷取、标示与取消。"
       },
       "contributions__contentProviders": {
-        "purpose": "为 RSS 等虚拟书籍加载章节。",
-        "hostOwns": "书库绑定、阅读模型、导航和展示。"
+        "purpose": "为存储的来源等虚拟书籍提供章节。",
+        "hostOwns": "书库系结、来源失效、阅读状态与导航。"
       },
       "contributions__readerModes": {
-        "purpose": "提供受限的句子或段落分段。目前仅限内置插件。",
-        "hostOwns": "阅读器控件、生命周期、渲染和导航。"
+        "purpose": "在内建插件中提供受限的句子或段落分段。",
+        "hostOwns": "阅读器呈现、生命周期、导航与特权模式准入。"
       },
       "contributions__agentTools": {
-        "purpose": "注册阅读助手可以调用的命名空间工具。",
-        "hostOwns": "编排、工具可见性、审批和对话界面。"
+        "purpose": "注册阅读助理可以探索与调用的具命名空间工具。",
+        "hostOwns": "工具可见性、核准、书籍范围、编排与对话记录界面。"
       },
       "contributions__agentContextProviders": {
-        "purpose": "为当前用户轮次返回受限的参考区块。",
-        "hostOwns": "来源、裁剪、提示词位置和生命周期。"
+        "purpose": "提供受限的每轮参考区块与声明的阅读意图来源。",
+        "hostOwns": "来源、持久来源规则、裁切、位置与生命周期。"
       },
       "contributions__agentRetrievalProviders": {
-        "purpose": "将可搜索的插件来源公开为命名空间助手工具。",
-        "hostOwns": "查询 schema、限制、结果裁剪和工具描述。"
+        "purpose": "向助理公开可搜索的插件拥有来源。",
+        "hostOwns": "查询 schema、结果限制、裁切与命名空间工具探索。"
       },
       "contributions__memoryCandidateProviders": {
-        "purpose": "在一轮对话后提出事实、偏好、洞察或摘要。",
-        "hostOwns": "范围检查、去重、接纳和持久记忆写入。"
+        "purpose": "提出供记忆接纳的事实、偏好、洞察或摘要。",
+        "hostOwns": "范围验证、去重、接纳与持久写入。"
       },
       "contributions__themes": {
-        "purpose": "提供语义化应用和阅读器主题数据。",
-        "hostOwns": "校验、CSS 生成、选择和应用。"
+        "purpose": "在 manifest 中声明语义化应用与阅读器主题选项。",
+        "hostOwns": "权杖验证、CSS 产生，以及只在选取后套用。"
       },
       "contributions__fonts": {
-        "purpose": "提供获批准的字体元数据和内置字体资源。",
-        "hostOwns": "文件校验、加载、选择器条目和当前选择。"
+        "purpose": "声明字体中继数据与封装的字体资产。",
+        "hostOwns": "资产验证、载入、选择器项目与目前选取。"
       },
       "contributions__syncTransports": {
-        "purpose": "提供同步后端：把密封的事件批次、密封 blob 和密钥材料 meta 对象搬运到插件选择的远端。",
-        "hostOwns": "加密、事件日志、游标、合并、口令仪式与同步调度。"
+        "purpose": "在外部远端存储与取回不透明的加密事件、blob 与金钥材料中继物件。",
+        "hostOwns": "加密、金钥、游标、合并、调度与通关密语流程。"
       },
       "services__storage": {
-        "purpose": "使用插件作用域的 KV 和文档集合。",
-        "hostOwns": "命名空间隔离、持久化、快照和变更事件。"
+        "purpose": "使用私有 KV 与文件集合、页面、观察、条件式提交及配额政策。",
+        "hostOwns": "命名空间隔离、版本检查、快照与保留规则。"
       },
       "services__secrets": {
-        "purpose": "在插件作用域的密钥槽中存取凭据。",
-        "hostOwns": "加密、不披露和命名空间隔离。"
+        "purpose": "在插件私有加密槽中读写凭据。",
+        "hostOwns": "加密与命名空间隔离；不能访问其他插件或应用凭据。"
       },
       "services__ui": {
-        "purpose": "显示宿主提示，或打开宿主保存/导出流程。",
-        "hostOwns": "展示、路径选择和平台集成。"
+        "purpose": "发布查看、显示提示、存储或开启资源、导航工作区与命令，并控制支持的阅读器面板与窗口。",
+        "hostOwns": "具类型界面、逐方法领域授权、宿主确认、焦点与生命周期。"
       },
       "services__schedules": {
-        "purpose": "将工作绑定到 manifest 声明的周期任务。",
-        "hostOwns": "频率、启动补跑、防止重叠和释放。"
+        "purpose": "系结声明的周期处理常式、查看与控制调度，并管理拥有的延迟请求。",
+        "hostOwns": "应用开启时执行、时间、所有权、合并与取消语义。"
+      },
+      "services__jobs": {
+        "purpose": "启动、查看与控制由支持宿主操作组成的持久计划。",
+        "hostOwns": "检查点、重新启动复原、原始授权与不确定结果处理；不支持任意代码工作。"
+      },
+      "services__changes": {
+        "purpose": "开启并读取可跨重新启动持久保存的范围变更游标。",
+        "hostOwns": "依授权筛选的重新载入提示、游标到期与还原失效；不提供原始事件值。"
+      },
+      "services__transactions": {
+        "purpose": "预览并提交支持的本地变更、查看回执与预览条件式复原。",
+        "hostOwns": "原子性、冻结预览、版本检查，以及原始领域与设置授权。"
       },
       "services__session": {
-        "purpose": "订阅当前阅读会话的受限事实。",
-        "hostOwns": "事件来源、载荷边界和订阅生命周期。"
+        "purpose": "读取环境中继数据并检查支持操作的可用性。",
+        "hostOwns": "不提供阅读工作阶段订阅或私有帐号状态；执行时一律重新检查条件。"
+      },
+      "services__plugins": {
+        "purpose": "查看已安装插件与注册项、观察变更，以及探索或调用具类型的插件服务。",
+        "hostOwns": "启用身分、调用方与被调用方授权交集、书籍范围与服务隔离。"
+      },
+      "services__maintenance": {
+        "purpose": "查看维护状态并进入宿主拥有的备份、连线测试、更新或设置流程。",
+        "hostOwns": "凭据、确认、复原、原生对话框与实际完成回执。"
+      },
+      "services__diagnostics": {
+        "purpose": "要求支持的诊断汇出或回报流程。",
+        "hostOwns": "权限、使用者查看、遮蔽与原生传送；不得静默上传任意数据。"
+      },
+      "services__logging": {
+        "purpose": "写入受限的结构化开发者事件并查看记录政策。",
+        "hostOwns": "速率限制与栏位词汇；不得写入任意使用者文字、密钥、路径或堆叠追踪。"
+      },
+      "services__resources": {
+        "purpose": "选取文件与目录、读取或建立封装资源、汇出数据并存储私有二进位资产。",
+        "hostOwns": "不透明所有权、大小与生命周期限制、书籍授权、原生确认与清理。"
+      },
+      "services__sync": {
+        "purpose": "观察同步状态与待处理伫列、要求同步并进入宿主管理的帐号或连线流程。",
+        "hostOwns": "加密金钥、凭据、敏感界面与传输生命周期。"
       },
       "services__network": {
-        "purpose": "通过原生宿主客户端发出 HTTP 请求。",
-        "hostOwns": "权限强制、传输和响应桥接。"
+        "purpose": "发出具来源范围的 HTTP 请求或读取受限串流，并选用安全重试。",
+        "hostOwns": "来源与重新导向检查、配额、期限、取消，以及不会默默重播写入。"
       },
       "services__llm": {
-        "purpose": "进行受限的一次性文本或结构化模型调用。",
-        "hostOwns": "提供方配置、凭据、schema 处理和限制。"
+        "purpose": "要求文字、结构化或串流推论、使用封装图片资源，并追踪请求中继数据与预算。",
+        "hostOwns": "使用者模型设置、隐私筛选、范围、取消与服务商限制。"
       },
       "services__clipboard": {
-        "purpose": "向系统剪贴板写入文本。",
-        "hostOwns": "平台调用和权限强制。"
+        "purpose": "将文字或支持的封装图片写入系统剪贴簿。",
+        "hostOwns": "权限、资源所有权、宿主图片解码与操作系统传送。"
       },
       "schemas__views": {
-        "purpose": "返回 markdown、列表、表单、详情和受限区块树。",
-        "hostOwns": "组件、HTML 安全、布局、无障碍和导航。"
+        "purpose": "描述宿主渲染的清单、表单、详细数据、markdown 与支持的区块版面。",
+        "hostOwns": "schema 验证、呈现、焦点、载入状态与回呼。"
       },
       "schemas__settings": {
-        "purpose": "声明由宿主渲染的插件设置字段。",
-        "hostOwns": "表单行为、校验、存储路由和密钥处理。"
+        "purpose": "声明具类型的插件设置、条件栏位与动态选项参照。",
+        "hostOwns": "控制呈现、值验证与密钥分离。"
       },
       "schemas__themes": {
-        "purpose": "声明语义主题令牌和内置字体元数据。",
-        "hostOwns": "语法校验、生成 CSS、加载和选择。"
+        "purpose": "描述语义化应用与阅读器调色盘。",
+        "hostOwns": "宿主权杖词汇、安全值与选取；主题授权仍需要 ui:themes。"
       }
+    },
+    "topicLabel": "主题",
+    "allTopics": "所有主题",
+    "topicNames": {
+      "reading": "阅读与导航",
+      "library": "书库与标注",
+      "intelligence": "AI 与记忆",
+      "automation": "自动化与工作流程",
+      "interface": "界面与设置",
+      "integration": "文件与整合"
+    },
+    "clearFilters": "清除筛选条件",
+    "browseLabel": "浏览能力",
+    "detailsLabel": "能力详情",
+    "methodsLabel": "公开 API 方法",
+    "methodsHint": "选取方法以查看其签名和来源。选用方法仍需要其特定授权。",
+    "showAllMethods": "显示所有方法",
+    "showFewerMethods": "显示较少方法",
+    "declarationOnly": "此能力在 manifest 或查看 schema 中声明为数据；没有 ctx 注册方法。",
+    "manifestLabel": "起始 manifest 片段",
+    "manifestHint": "将此片段合并到你的 manifest。加入所用方法要求的领域授权；没有额外基础权限不代表可以不受限制地访问。",
+    "readAccess": "读取访问权",
+    "writeAccess": "读取与写入访问权",
+    "accessLabel": "此片段的领域访问权",
+    "sourceLabel": "查看来源声明",
+    "shareLabel": "复制链接",
+    "copiedLabel": "已复制",
+    "copyFailed": "无法复制。请选取文字，或手动复制此页面的网址。",
+    "catalogLabel": "开发目录",
+    "catalogSummary": "{{capabilities}} 项能力 · {{methods}} 个 API 方法",
+    "bundledOnly": "仅限内建插件",
+    "settingsHint": "示例授权使用 reading appearance.theme。请替换为功能所需的精确路径和操作。",
+    "networkHint": "将示例来源替换为实际允许的端点。权限和来源授权都必须具备。",
+    "quickStartLabel": "尝试一项任务",
+    "quickStarts": {
+      "search": "查找书中文字",
+      "memory": "读取和修正记忆",
+      "jobs": "恢复后台任务",
+      "network": "获取外部内容"
     }
   },
   "permissionPreview": {
     "inputLabel": "manifest.json",
     "inputHint": "只在此页面解析，不会上传任何内容。",
-    "previewLabel": "审核预览",
+    "previewLabel": "配置检查",
     "noAuthority": "此 manifest 未请求语义权限或设置授权。",
-    "invalidJson": "请输入有效的 JSON 对象。",
+    "invalidJson": "请输入有效的 JSON 物件。",
     "issuesTitle": "审核备注",
-    "permissionsTitle": "用户授权 · 语义权限",
-    "settingsTitle": "用户授权 · 精确设置授权",
+    "permissionsTitle": "使用者授权 · 语义权限",
+    "settingsTitle": "使用者授权 · 精确设置授权",
     "requirementsTitle": "兼容性 · 不是权限",
-    "declarationsTitle": "运行声明 · 不是权限",
+    "declarationsTitle": "执行声明 · 不是权限",
     "none": "未声明",
     "schemaVersion": "私有数据 schema",
     "schedules": "{{count}} 个周期任务",
@@ -216,35 +303,40 @@
     "themes": "{{count}} 个主题",
     "themes_one": "{{count}} 个主题",
     "themes_other": "{{count}} 个主题",
-    "fonts": "{{count}} 个内置字体声明",
-    "fonts_one": "{{count}} 个内置字体声明",
-    "fonts_other": "{{count}} 个内置字体声明",
+    "fonts": "{{count}} 个内建字体声明",
+    "fonts_one": "{{count}} 个内建字体声明",
+    "fonts_other": "{{count}} 个内建字体声明",
     "unknownPermission": "未知权限：{{value}}",
-    "missingField": "缺少必需字段：{{value}}",
+    "missingField": "缺少必要栏位：{{value}}",
     "invalidSchemaVersion": "schemaVersion 必须是正整数。",
-    "invalidPermissions": "permissions 必须是数组。",
-    "invalidSettingsAccess": "settingsAccess 必须是对象。",
+    "invalidPermissions": "permissions 必须是阵列。",
+    "invalidSettingsAccess": "settingsAccess 必须是物件。",
     "unknownSettingsOperation": "未知设置操作：{{value}}",
     "invalidSettingsGrant": "{{value}} 必须包含精确路径或 section.* 分组。",
-    "sectionGrantWarning": "{{value}} 授予整个设置分区；请尽可能使用精确路径。",
+    "sectionGrantWarning": "{{value}} 授予整个设置分类；请尽可能使用精确路径。",
     "permissionDescriptions": {
       "library__read": "读取书籍、原文、元数据、目录和集合。",
       "library__write": "更改书库；写入包含读取。",
-      "reading__read": "读取当前会话、位置、进度和阅读时间。",
+      "reading__read": "读取目前会话、位置、进度和阅读时间。",
       "reading__write": "导航并更改阅读状态；写入包含读取。",
-      "annotations__read": "读取高亮和笔记。",
-      "annotations__write": "创建、编辑和移除标注；写入包含读取。",
-      "conversations__read": "读取书籍和全局对话摘要。",
-      "reader__modes": "注册引导式阅读模式；目前仅限内置插件。",
-      "agent__tools": "注册阅读助手可以调用的工具。",
-      "agent__context": "向一轮对话添加受限的非可信参考区块。",
-      "agent__retrieval": "向助手公开可搜索的插件来源。",
+      "annotations__read": "读取反白和笔记。",
+      "annotations__write": "建立、编辑和移除标注；写入包含读取。",
+      "conversations__read": "读取书籍和全域对话摘要。",
+      "reader__modes": "注册引导式阅读模式；目前仅限内建插件。",
+      "agent__tools": "注册阅读助理可以调用的工具。",
+      "agent__context": "向一轮对话加入受限的非可信参考区块。",
+      "agent__retrieval": "向助理公开可搜索的插件来源。",
       "agent__memory": "提出由宿主审核的持久记忆候选。",
-      "ui__themes": "提供应用主题、阅读器主题和内置字体。",
-      "sync__transport": "提供同步后端，把端到端加密的同步数据存储到插件选择的服务器。",
+      "ui__themes": "提供应用主题、阅读器主题和内建字体。",
+      "sync__transport": "提供同步后端，把端对端加密的同步数据存储到插件选择的服务器。",
       "service__network": "发出由宿主中介的网络请求。",
-      "service__llm": "使用已配置的模型进行受限的一次性调用。",
-      "service__clipboard": "向系统剪贴板写入文本。"
+      "service__llm": "使用已设置的模型进行受限的一次性调用。",
+      "service__clipboard": "向系统剪贴簿写入文字。",
+      "conversations__write": "提出对话操作，并使用允许的讨论串、停止和清除控制项；仍受宿主核准和书籍范围限制。",
+      "memory__read": "读取经授权的记忆、个人数据、实体、图谱和上下文封存。",
+      "memory__write": "套用经授权的记忆变更并启动支持的记忆工作，但仍受版本、范围和额外生成授权限制。",
+      "service__diagnostics": "进入支持的宿主诊断汇出和回报流程，并由使用者查看。",
+      "service__sync": "查看同步状态，并要求支持的宿主管理同步或帐号流程。"
     },
     "operationLabels": {
       "discover": "发现",
@@ -256,7 +348,19 @@
       "contributions": "贡献",
       "services": "服务",
       "schemas": "Schema"
-    }
+    },
+    "networkTitle": "允许的网络来源",
+    "invalidNetworkAccess": "networkAccess.origins 必须包含精确的 HTTP(S) 来源，或单一的 \"*\"。",
+    "missingNetworkAccess": "service:network 也需要明确且非空的 networkAccess.origins 授权。",
+    "invalidRequires": "requires 必须是由已知能力类别和 semver 范围组成的物件。",
+    "unknownRequirement": "未知能力：{{value}}。",
+    "incompatibleRequirement": "不兼容的要求：{{value}}。",
+    "missingPermission": "缺少必要授权：{{value}}。",
+    "allOriginsWarning": "已允许所有 HTTP(S) 来源。请优先使用插件实际需要的精确来源。",
+    "catalogNotice": "兼容性是根据开发目录检查，而不是你已安装的应用。执行时范围、确认和方法专属权限仍然适用。"
   },
-  "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"研究笔记\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^1.0.0\",\n      \"network\": \"^1.0.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"刷新来源\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\"\n}"
+  "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"Research Notes\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^2.1.0\",\n      \"network\": \"^2.2.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"Refresh sources\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\",\n  \"networkAccess\": {\n    \"origins\": [\n      \"https://api.example.com\"\n    ]\n  }\n}",
+  "pageNavigation": {
+    "title": "本页内容"
+  }
 }

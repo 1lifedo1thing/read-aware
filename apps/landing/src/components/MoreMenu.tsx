@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { ArrowUpRight, CaretDown, Check } from "@phosphor-icons/react";
 import { cn } from "@read-aware/ui/cn";
 import { useSiteCopy } from "../i18n/use-site-copy";
@@ -35,7 +35,11 @@ import { CONTACT_EMAIL, DISCORD_URL } from "../lib/site";
  * before the click.
  */
 /** Blog mirrors exist only in the three-language subset; pricing and changelog are every locale. */
-function moreTo(locale: Locale): { blog: string; pricing: string; changelog: string } {
+function moreTo(locale: Locale): {
+  blog: string;
+  pricing: string;
+  changelog: string;
+} {
   return {
     blog: isBlogLocale(locale) ? localizePath("/blog", locale) : "/blog",
     pricing: localizePath("/pricing", locale),
@@ -53,6 +57,14 @@ export function MoreMenu({
   locale?: Locale;
   pathname: string;
 }) {
+  const explorerQuery = useRouterState({
+    select: (state) =>
+      state.location.pathname
+        .replace(/\/$/, "")
+        .endsWith("/docs/plugins/capabilities")
+        ? state.location.searchStr
+        : "",
+  });
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const strings = useSiteCopy("chrome");
@@ -162,7 +174,7 @@ export function MoreMenu({
               {pageLocales.map((target) => (
                 <a
                   key={target}
-                  href={localizePath(pathname, target)}
+                  href={`${localizePath(pathname, target)}${explorerQuery}`}
                   role="menuitem"
                   lang={LOCALE_LANG[target]}
                   onClick={() => {
@@ -179,7 +191,12 @@ export function MoreMenu({
                 >
                   <span>{LOCALE_LABEL[target]}</span>
                   {target === locale && (
-                    <Check size={14} weight="bold" aria-hidden="true" className="shrink-0" />
+                    <Check
+                      size={14}
+                      weight="bold"
+                      aria-hidden="true"
+                      className="shrink-0"
+                    />
                   )}
                 </a>
               ))}

@@ -11,7 +11,7 @@ export function DocsLayout({ locale }: { locale: DocsLocale }) {
 
   return (
     <div className="min-h-screen bg-paper text-fg">
-      <div className="mx-auto max-w-4xl px-6">
+      <div className="mx-auto max-w-7xl px-6">
         <SiteHeader locale={locale} />
         <div className="pb-12 pt-6 sm:pt-8 md:grid md:grid-cols-[10.5rem_minmax(0,1fr)] md:gap-12">
           <DocsNav locale={locale} />

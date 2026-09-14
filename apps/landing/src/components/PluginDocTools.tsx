@@ -17,7 +17,10 @@ function capabilityDescriptions(
   descriptions: BrowserResource["descriptions"],
 ): PluginCapabilityBrowserCopy["descriptions"] {
   return Object.fromEntries(
-    Object.entries(descriptions).map(([key, value]) => [key.replace("__", ":"), value]),
+    Object.entries(descriptions).map(([key, value]) => [
+      key.replace("__", ":"),
+      value,
+    ]),
   ) as PluginCapabilityBrowserCopy["descriptions"];
 }
 
@@ -25,7 +28,10 @@ function permissionDescriptions(
   descriptions: PreviewResource["permissionDescriptions"],
 ): PluginPermissionPreviewCopy["permissionDescriptions"] {
   return Object.fromEntries(
-    Object.entries(descriptions).map(([key, value]) => [key.replace("__", ":"), value]),
+    Object.entries(descriptions).map(([key, value]) => [
+      key.replace("__", ":"),
+      value,
+    ]),
   ) as PluginPermissionPreviewCopy["permissionDescriptions"];
 }
 
@@ -41,6 +47,8 @@ export function CapabilityBrowserSlot() {
       ...resource,
       descriptions: capabilityDescriptions(resource.descriptions),
       result: (count: number) => t("capabilityBrowser.result", { count }),
+      catalogSummary: (capabilities: number, methods: number) =>
+        t("capabilityBrowser.catalogSummary", { capabilities, methods }),
     } satisfies PluginCapabilityBrowserCopy;
   }, [i18n, t]);
 
@@ -57,13 +65,22 @@ export function PermissionPreviewSlot() {
     ) as PreviewResource;
     return {
       ...resource,
-      permissionDescriptions: permissionDescriptions(resource.permissionDescriptions),
+      permissionDescriptions: permissionDescriptions(
+        resource.permissionDescriptions,
+      ),
       schedules: (count: number) => t("permissionPreview.schedules", { count }),
       themes: (count: number) => t("permissionPreview.themes", { count }),
       fonts: (count: number) => t("permissionPreview.fonts", { count }),
+      unknownRequirement: (value: string) =>
+        t("permissionPreview.unknownRequirement", { value }),
+      incompatibleRequirement: (value: string) =>
+        t("permissionPreview.incompatibleRequirement", { value }),
+      missingPermission: (value: string) =>
+        t("permissionPreview.missingPermission", { value }),
       unknownPermission: (value: string) =>
         t("permissionPreview.unknownPermission", { value }),
-      missingField: (value: string) => t("permissionPreview.missingField", { value }),
+      missingField: (value: string) =>
+        t("permissionPreview.missingField", { value }),
       unknownSettingsOperation: (value: string) =>
         t("permissionPreview.unknownSettingsOperation", { value }),
       invalidSettingsGrant: (value: string) =>
@@ -74,5 +91,7 @@ export function PermissionPreviewSlot() {
   }, [i18n, t]);
   const sampleManifest = t("sampleManifest");
 
-  return <PluginPermissionPreview copy={copy} sampleManifest={sampleManifest} />;
+  return (
+    <PluginPermissionPreview copy={copy} sampleManifest={sampleManifest} />
+  );
 }

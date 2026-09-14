@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && bun scripts/prerender.mjs && tsc --noEmit",
+    "build": "bun run docs:check && vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && bun scripts/prerender.mjs && tsc --noEmit",
     "deploy": "bun run build && wrangler deploy",
     "preview": "vite preview",
     "preview:worker": "bun run build && wrangler dev",
     "typecheck": "tsc --noEmit",
-    "test:static": "bun test tests"
+    "test:static": "bun test tests",
+    "docs:generate": "bun scripts/plugin-reference.ts",
+    "docs:check": "bun scripts/plugin-reference.ts --check && bun test tests/plugin-docs.test.ts"
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.2",
@@ -32,6 +34,7 @@
     "react-i18next": "^17.0.12",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "semver": "^7.8.5",
     "shiki": "^4.4.3"
   },
   "devDependencies": {
@@ -40,6 +43,7 @@
     "@types/node": "^24.6.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "@types/semver": "^7.8.0",
     "@vitejs/plugin-react": "^4.6.0",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.8.3",

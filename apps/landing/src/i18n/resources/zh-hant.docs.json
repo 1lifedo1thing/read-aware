@@ -7,52 +7,91 @@
     },
     "overview": {
       "metaTitle": "文件 — ReadAware",
-      "metaDescription": "如何安裝 ReadAware、開始閱讀，以及用外掛擴充這款應用程式。",
-      "body": "# 文件\n\nReadAware 是一款 AI 原生閱讀應用程式：用同一個閱讀器開啟 EPUB、MOBI、AZW3、FB2、CBZ、CBR、TXT、HTML 和 PDF，並在你的書籍、螢光標示與對話之間持續建構記憶。它免費、本地優先，使用你自己的 AI 金鑰。\n\n## 從這裡開始\n\n- [下載安裝](/zh-hant/docs/install)——macOS、Windows、Linux 和 Android 的安裝套件，以及當作業系統提示應用程式未簽署時該怎麼辦。\n- [快速上手](/zh-hant/docs/getting-started)——匯入書籍、閱讀與標註、連接 AI 供應商，並了解你的資料存放在哪裡。\n\n## 擴充應用程式\n\n- [外掛系統](/zh-hant/docs/plugins)——外掛能做什麼，以及信任模型如何運作。\n- [API 參考](/zh-hant/docs/plugins/api)——完整的外掛編寫契約：manifest、生命週期、權限、貢獻點與檢視。\n- [發佈上架](/zh-hant/docs/plugins/publishing)——如何把你的外掛上架到應用程式內的外掛市集。\n\n## 更多去處\n\n這款應用程式在 [GitHub](https://github.com/ahpxex/read-aware) 上公開開發。有疑問、想回報 bug，或想展示你做出的東西，歡迎加入 [Discord](https://discord.gg/whDrKXwHWU) 或提交 issue。"
+      "metaDescription": "閱讀、標註、使用 AI、保護你的書庫，並使用目前的開發 API 建立 ReadAware 桌面外掛。",
+      "body": "# 文件\n\nReadAware 將書籍、標註、對話和閱讀記憶整合在本地優先的桌面應用程式中。閱讀與整理書庫不需要 AI 帳號；需要助理時，再連接自己的模型服務商或可用的 ReadAware AI 方案。\n\n## 開始閱讀\n\n- [下載與安裝](/docs/install) — 選擇桌面套件並了解更新方式。\n- [開始使用](/docs/getting-started) — 匯入書籍、調整閱讀器、標註、使用 AI 並保護資料。\n\n## 使用 ReadAware 建置\n\n外掛可以導覽書籍、處理標註與記憶、擴充助理，並組合宿主服務。先從任務開始，再尋找支援它的公開契約。\n\n- [外掛系統](/docs/plugins) — 領域、貢獻、服務與信任邊界。\n- [建立外掛](/docs/plugins/develop) — 可運作的小型外掛與桌面開發循環。\n- [能力瀏覽器](/docs/plugins/capabilities) — 搜尋能力與 API 方法、檢視權限並複製 manifest 片段。\n- [API 參考](/docs/plugins/api) — 範圍、生命週期、狀態變更、資源、背景工作與組合方式。\n- [發佈](/docs/plugins/publishing) — 封裝、審核並提交外掛。\n\n## 文件與應用程式版本\n\n外掛參考頁面描述目前的開發契約。最新發佈的應用程式可能提供較早版本的能力。請查看能力瀏覽器與已安裝應用程式的 `ctx.capabilities`，並在 `manifest.json` 中宣告外掛實際需要的版本。\n\n下載與版本說明維護於 [GitHub Releases](https://github.com/ahpxex/read-aware/releases/latest)。如需支援，請使用 [GitHub issues](https://github.com/ahpxex/read-aware/issues) 或 [Discord](https://discord.gg/whDrKXwHWU)。"
     },
     "install": {
-      "metaTitle": "下載安裝 — ReadAware 文件",
-      "metaDescription": "在 macOS、Windows、Linux、Android 或 iOS 上安裝 ReadAware，包括未簽署組建首次啟動的注意事項。",
-      "body": "# 下載安裝\n\nReadAware 是免費的。每個版本都會發佈 macOS、Windows、Linux 和 Android 的安裝套件；目前版本為 v0.5.4。所有版本，無論新舊，都在 [GitHub releases 頁面](https://github.com/ahpxex/read-aware/releases/latest)。\n\n## 下載\n\n- **macOS** — [Download .dmg (Apple Silicon)](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-macos-arm64.dmg) · [Intel .dmg](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-macos-x64.dmg)\n- **Windows** — [Download installer](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64-setup.exe) · [.msi](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64.msi) · [Portable .zip](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64-portable.zip)\n- **Linux** — [Download .AppImage](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.AppImage) · [.deb](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.deb) · [.rpm](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.rpm)\n- **Android** — [Download .apk](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-android-arm64.apk)\n\n## macOS\n\n下載適用於你 Mac 的 `.dmg`——M 系列機器請選 Apple Silicon 版，較舊機型請選 Intel 版——開啟後將 ReadAware 拖入「應用程式」。\n\n安裝包皆以 Developer ID 簽署並經 Apple 公證，因此 ReadAware 首次啟動時能像其他 App 一樣直接開啟。若你先前安裝過 0.5.2 之前的版本，並曾手動清除過隔離標記，也無需任何補救——直接替換「應用程式」中的 App 即可。\n\n## Windows\n\n下載並執行安裝程式（`-setup.exe`）。由於組建尚未做程式碼簽署，Microsoft Defender SmartScreen 可能會攔截；選擇**更多資訊**，再點**仍要執行**。\n\n另有 `.msi` 套件可用於受管理的安裝；可攜版 `.zip` 無需安裝任何東西——解壓縮後直接執行 `ReadAware.exe`。\n\n## Linux\n\n`.AppImage` 在大多數發行版上無需安裝即可執行——賦予可執行權限後啟動：\n\n```bash\nchmod +x ReadAware-*-linux-x64.AppImage\n./ReadAware-*-linux-x64.AppImage\n```\n\nAppImage 依賴 FUSE；如果發行版沒有預先安裝（部分極簡或非常新的發行版），請先安裝發行版的 `libfuse2` 套件。也提供原生套件：\n\n```bash\n# Debian / Ubuntu\nsudo apt install ./ReadAware-*-linux-x64.deb\n\n# Fedora / RHEL\nsudo dnf install ./ReadAware-*-linux-x64.rpm\n```\n\n## Android\n\n在裝置上下載 `.apk`（arm64）並開啟。APK 已簽署；但因為它不是來自應用程式商店，首次安裝時 Android 仍會要求你允許來自瀏覽器或檔案管理器的安裝。\n\n## iOS\n\nReadAware 尚未上架 App Store。最簡單的方式是加入公開的 TestFlight 測試：先從 App Store 安裝 TestFlight，再在 iPhone 或 iPad 上開啟[邀請連結](https://testflight.apple.com/join/Za2HV7kF)。此外每個版本也會在 [releases 頁面](https://github.com/ahpxex/read-aware/releases/latest)提供未簽署的 `.ipa` 用於側載：AltStore、SideStore、Sideloadly 等工具會用你自己的 Apple ID 重新簽署並安裝到裝置上。這條路徑面向已經熟悉側載的使用者；商店版本會在之後到來。\n\n## 保持更新\n\n桌面應用程式會自行更新：檢查新版本、在背景下載更新，並在重新啟動時套用。更新套件經過加密簽署，並用內建於應用程式中的金鑰校驗，與作業系統的程式碼簽署相互獨立。Android 也會檢查新版本，並引導你安裝已簽署的 APK；在 iOS 上，目前請從 releases 頁面手動安裝新版本。\n\n「設定 → 關於」提供兩種更新頻道：**Stable**（預設）與 **Beta**——後者會收到陸續出現的預先版本，待穩定版追上後自動帶你回到 Stable。更新落地後，一個小視窗會介紹這次更新了什麼——更新日誌以你的語言直接在應用程式內展示。關掉它對這個版本就是永久關閉；也可以在「設定 → 一般」裡完全關掉這個視窗。"
+      "metaTitle": "下載與安裝 — ReadAware 文件",
+      "metaDescription": "在 macOS、Windows 或 Linux 上安裝 ReadAware、選擇合適的套件，並查看版本說明與更新頻道。",
+      "body": "# 下載與安裝\n\n本指南涵蓋 ReadAware 桌面版在 macOS、Windows 和 Linux 上的安裝。請在下方選擇套件，或查看[最新版本](https://github.com/ahpxex/read-aware/releases/latest)的資產與需求。下載連結指向最新穩定版本；開發 API 文件可能比該版本更新。\n\n## macOS\n\n- [Apple Silicon .dmg](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-macos-arm64.dmg)\n- [Intel .dmg](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-macos-x64.dmg)\n\n開啟磁碟映像檔，將 ReadAware 拖入「應用程式」。M 系列 Mac 請使用 Apple Silicon，Intel Mac 請使用 Intel 版本。發佈流程會簽署並公證 macOS 套件。若 macOS 回報下載檔案損壞或無法驗證，請從官方發佈頁重新下載，並先查看該版本說明，再變更安全性設定。\n\n## Windows\n\n- [Windows x64 安裝程式](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64-setup.exe)\n- [MSI 套件](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64.msi)\n- [可攜式 ZIP](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-windows-x64-portable.zip)\n\n執行安裝程式，或解壓縮可攜式封存檔後開啟 ReadAware。Windows 組建目前沒有作業系統程式碼簽署。若出現 SmartScreen，先確認檔案來自官方發佈頁；信任下載內容後，可選擇**更多資訊 → 仍要執行**。\n\n## Linux\n\n- [AppImage](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.AppImage)\n- [Debian / Ubuntu 套件](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.deb)\n- [RPM 套件](https://github.com/ahpxex/read-aware/releases/latest/download/ReadAware-linux-x64.rpm)\n\n將下載的 AppImage 設為可執行後開啟。穩定別名檔名可使用：\n\n```bash\nchmod +x ReadAware-linux-x64.AppImage\n./ReadAware-linux-x64.AppImage\n```\n\nAppImage 可能需要發行版的 FUSE 相容套件。若無法啟動，請使用相符的原生套件並查看版本需求。\n\n## 更新\n\n「設定 → 關於」包含更新檢查與 Stable / Beta 頻道選擇。自動檢查可在「設定 → 一般」控制。請依應用程式的更新提示操作；安裝可能需要重新啟動。桌面更新器簽章與作業系統程式碼簽署彼此獨立。\n\n切換版本或嘗試開發組建前請保留備份。[開始使用](/docs/getting-started)說明備份與同步。\n\n## 其他發佈產物\n\n部分已發佈版本包含行動裝置產物。其可用性和說明以特定版本說明為準；本文件的桌面外掛契約不代表支援行動裝置或功能對等。\n\n## 下一步\n\n[匯入第一本書](/docs/getting-started)，或針對已安裝的應用程式[建立外掛](/docs/plugins/develop)。"
     },
     "gettingStarted": {
-      "metaTitle": "快速上手 — ReadAware 文件",
-      "metaDescription": "匯入書籍、閱讀與標註、連接 AI 供應商，並了解你的資料存放在哪裡。",
-      "body": "# 快速上手\n\nReadAware 直接開啟你自己的檔案，並把它學到的一切留在你的裝置上。本頁帶你走過最初一小時：匯入書籍、閱讀與標註，以及（可選地）連接 AI。\n\n## 添加書籍\n\n在書架上匯入檔案——或者完全跳過按鈕：把書籍檔案拖到視窗任意位置即可匯入；也可以把 ReadAware 設為書籍格式的預設應用程式，在檔案管理器裡雙擊檔案，書會直接在閱讀器中開啟，並順便加入書架。ReadAware 直接讀取 **EPUB、MOBI、AZW3、FB2、CBZ、CBR、TXT、HTML 和 PDF**——沒有轉換步驟，也沒有雲端上傳。你匯入的檔案就是你保留的檔案；螢光標示、筆記和閱讀位置都附著在原文之上。\n\n受 DRM 保護的檔案無法開啟——從加密書店買來的書仍然是鎖著的。如果格式在支援之列卻打不開，幾乎總是這個原因。\n\n## 閱讀\n\n每種格式都在同一個閱讀器裡開啟，用同一套控制項。閱讀器的外觀設定中提供三種閱讀模式：\n\n- **連續捲動**——預設模式；全書連成一欄流動。\n- **單頁**——一次一頁，像紙書一樣翻動。\n- **雙頁**——寬螢幕上呈現書本式的對頁。\n\n閱讀位置按書儲存；目錄始終在閱讀器頂欄，一次點按即可開啟。\n\n同一處外觀設定也管排版：字體、字級、字重、行距、段距、頁邊距和頁面顏色。對齊方式預設是**遵從原書**——書自己的樣式表要求什麼就是什麼；如果你希望處處一致，也可以強制靠左對齊或左右對齊。\n\n固定版式書籍——PDF 和漫畫——是別人排好的一頁頁影像，裡面沒有排版可改，這些設定因此隱去。頁面顏色仍然生效：淺色會在繪製時染紙，墨色和照片與印刷時一致；深色則把整頁重繪為雙色調，讓文字保持可讀。把**頁面算繪**設為**保持原樣**，可以讓某本書保留原有色彩——按書記住，留給色彩本身就是內容的畫冊和攝影集。\n\n## 朗讀\n\n任何一本書都可以朗讀。朗讀搭在你閱讀時用的逐句／逐段導覽之上——啟動導覽，再按下導覽列上的播放，書就會一個單元一個單元地推進，正在朗讀的文字會被標示。\n\n開箱即用時它用你裝置內建的語音，不需要金鑰，也不需要連網。啟用一個語音外掛——內建的**TTS Voices**外掛，或是其他任何一個——這個啟用動作本身就是「改用該引擎朗讀」的選擇；具體用哪個聲音，在那個外掛自己的設定裡設定，和它的供應商、自訂端點在一起。沒有另一個需要同步的語音選擇器。\n\n## 標註\n\n選取任意一段文字，一個安靜的操作選單隨即出現：\n\n- **螢光標示**——有幾種顏色可選，也可以只用底線。\n- **筆記**——把你自己的話附在這段文字上。\n- **查詢**——內建字典會結合詞語所在的句子來解釋它，而不只給出抽象釋義，並把它存入你的詞彙表。（使用你設定的 AI。）\n\n你標記的一切都按書收集，並匯入應用程式的記憶——標註不是歸檔，而是助理會去閱讀的材料。\n\n## 連接 AI\n\nAI 可選且需要網路。在設定 → AI 中配置自己的 API Key，或使用 Pro、Max 訂閱中的內建 AI。閱讀、註記和書架無需 AI。自備 Key 無需 ReadAware AI 訂閱，但服務商可能收取使用費。\n\n1.  開啟「設定 → AI」。\n2.  選擇一個供應商——OpenAI、Anthropic、Google、OpenRouter、DeepSeek、xAI、Groq、Mistral、Moonshot、Z.ai，或透過**自訂**接入任何 OpenAI 相容端點。\n3.  貼上你的 API 金鑰並選擇模型。\n\n使用自備 Key 時：ReadAware 區分 **Smart** 模型（對話與綜合）和 **Fast** 模型（查詢、摘要、記憶維護）；每個供應商都預填了合理的預設值。你的金鑰儲存在你的裝置上，請求直接傳送至你的供應商——中間沒有 ReadAware 的伺服器。\n\n## 提問\n\n每本書都有一個持續存在的對話——閱讀時開啟聊天面板，就這段文字、這一章或整本書提問。在**上下文**頁面，你可以跨整個書架交談，討論串數量不限。\n\n助理基於你的閱讀來工作：你的螢光標示、筆記、既往對話，以及它長期維護的一份記憶——記錄你讀過什麼、在意什麼。這份記憶和其他一切一樣，都在本機建構和儲存。\n\n## 快捷操作\n\n命令面板（macOS 上 `Cmd K`，其他平台 `Ctrl K`——可在設定中重新設定）可以觸達每一個操作：開啟書籍、切換檢視、執行外掛命令。\n\n## 跨裝置同步\n\nReadAware 可以完全離線使用，同步則完全是可選的。當你想讓書庫出現在多台裝置上時，請開啟「設定 → 資料與同步」，以 Google 或 GitHub 帳號登入，再設定一組加密通關密語。所有會同步的內容——書籍、閱讀進度、標註、筆記、AI 對話、書封——都以由該通關密語衍生的金鑰進行端對端加密，因此中繼儲存的永遠只是密文。請妥善保管這組通關密語：沒有它，新裝置無法解密你的資料，我們也無法。\n\n你的偏好設定也會跟著走。主題、字體排印、AI 供應商設定與 API 金鑰都隨帳號漫遊，因此全新安裝的應用程式，在登入後不到一分鐘就處處是你熟悉的樣子。「資料與同步」裡的逐書面板會明確顯示哪些內容已送達雲端，而當書庫成長超出免費方案的額度時，可以透過付費方案提高額度。\n\n## 你的資料存放在哪裡\n\n程式碼以 AGPL-3.0 開源。書庫與記憶儲存在本機，可選同步採用端對端加密。AI 功能會把相關上下文傳送給你選擇的模型服務商。 AI 可選且需要網路。在設定 → AI 中配置自己的 API Key，或使用 Pro、Max 訂閱中的內建 AI。閱讀、註記和書架無需 AI。自備 Key 無需 ReadAware AI 訂閱，但服務商可能收取使用費。\n\n同步在工作時保持安靜：進度只在「設定 → 資料與同步」裡，主視窗只在出問題時才開口——一個安靜的錯誤提示，可以靜音一天。\n\n[方案與價格](/zh-hant/pricing/) · [隱私政策](/zh-hant/privacy/)"
+      "metaTitle": "開始使用 — ReadAware 文件",
+      "metaDescription": "匯入並閱讀書籍、使用標註和 AI、了解閱讀記憶，並在同步與加密備份之間作出選擇。",
+      "body": "# 開始使用\n\n從一本書開始。AI、同步和外掛可以在需要時再設定。\n\n## 匯入書籍\n\n使用書庫的匯入功能，或將支援的檔案拖入應用程式。ReadAware 使用單一閱讀引擎處理 EPUB、MOBI、AZW3、FB2、PDF，以及支援的文字和漫畫格式。副檔名不保證個別檔案一定可讀。受 DRM 保護的書籍不受支援；ReadAware 不會移除 DRM，也不會把原始書籍轉換成其他格式。\n\n匯入的書籍位於本地書庫。使用搜尋、最愛和集合整理書籍；開啟書籍時會恢復儲存的閱讀位置。\n\n## 讓閱讀器更舒適\n\n開啟閱讀器外觀控制項，調整字體、間距、邊界、頁面顏色和版面。可重排書籍支援捲動與分頁版面。PDF 和漫畫頁面有自己的固定版面控制項；字體設定無法重新排版嵌在頁面影像中的文字。\n\n使用目錄、書籍搜尋和導覽歷史移動。精確來源位置與擷取文字搜尋用途不同：搜尋預覽在導覽前可能需要進一步查詢來源。\n\n## 標註與提問\n\n選取段落即可加上螢光標示、筆記，或使用解釋、查詢、翻譯等可用閱讀動作。AI 動作使用你選擇的模型設定和隱私設定；沒有 AI，筆記與螢光標示仍然有用。\n\n每本書都有持久對話。開啟聊天面板詢問閱讀內容；全域上下文頁面支援跨書庫的獨立對話。長期記憶跨對話共用，建立另一個討論串不會建立另一個記憶庫。\n\nReadAware 為每輪組合相關閱讀上下文、筆記和記憶。記憶功能包含閱讀目標、個人檔案、書籍摘要和實體關係。生成內容可能不完整或錯誤，請檢查並使用可用的修正與遺忘控制項。\n\n## 連接模型\n\n開啟「設定 → AI」，選擇服務商或相容端點，輸入 API 金鑰並選擇模型。Smart 模型處理較複雜的對話與綜合，Fast 模型處理較輕量的工作；服務商目錄與連線測試可協助檢查設定。\n\nAI 需要可用的服務商連線。BYOK 使用你選定的服務商，可能產生其費用；可用的 ReadAware AI 訂閱也是選項；詳見[方案](/pricing)。一般本地閱讀與標註不需要任何一項。\n\n啟用自動工作前，請檢查閱讀上下文和自動記憶設定。相關書籍摘錄與其他選定上下文可能離開裝置供推論使用，即使書庫和記憶儲存在本地。詳見[隱私政策](/privacy)。\n\n## 聆聽與擴充\n\n朗讀取決於閱讀器模式、可讀文字和可用語音服務商。系統語音與語音外掛有不同的網路和設定需求；沒有可用文字的掃描頁面不保證能朗讀。\n\n在「設定 → 外掛」啟用需要的工具並檢查權限。外掛可以加入閱讀動作、命令、主題、內容來源和助理工具；可用性取決於套件及應用程式支援的契約。[了解外掛運作方式](/docs/plugins)。\n\n命令面板在 macOS 使用 `Cmd K`、其他平台使用 `Ctrl K` 開啟；快捷鍵可在設定中變更。\n\n## 同步與備份\n\n兩者解決不同問題：\n\n- **同步**在裝置間傳送加密事件和檔案。在「資料與同步」設定帳號或可用傳輸，並妥善保存加密通關密語。同步不保證每個裝置本地設定、私有外掛檔案或暫時工作都會移動。\n- **備份**建立用於復原的加密封存。當前開發組建提供完整封存和舊版僅書庫格式。完整復原會檢查封存、要求通關密語和選項，並透過宿主復原流程合併支援資料；僅書庫封存不包含完整應用程式狀態。\n\n請查看已安裝版本提供的選項。備份內容、成功儲存，以及能否復原是不同事項；遷移或降級前請保留已知可用的副本。\n\n## 尋找資料與診斷問題\n\n本地資料目錄、同步狀態、備份動作和診斷功能都在設定中。讀取失敗時，適當情況下應顯示可重試錯誤；儲存失敗不代表變更成功。回報問題時，請附上應用程式版本、作業系統、重現步驟及檢查過的診斷匯出。\n\n[下載與安裝](/docs/install) · [外掛系統](/docs/plugins) · [隱私](/privacy)"
     },
     "pluginsOverview": {
       "metaTitle": "外掛系統 — ReadAware 文件",
-      "metaDescription": "ReadAware 外掛如何擴充產品領域、貢獻新能力、使用宿主服務，並處於明確的信任邊界內。",
-      "body": "# 外掛系統\n\nReadAware 外掛可以處理閱讀資料、加入原生動作和供應商、擴充閱讀助理，並向宿主請求受限服務。已安裝的套件會動態載入；應用程式不必為每個外掛 ID 個別加入開關。\n\n## 一個模型，三類能力\n\n每個可執行的外掛能力都屬於以下三種形態之一。選擇正確的形態，是撰寫外掛時的第一項決策。\n\n| 類別 | 適用情境 | 範例 |\n|----|----|----|\n| **領域** | ReadAware 已經擁有該狀態或行為。 | 書庫、閱讀、標註、對話、設定 |\n| **貢獻** | 外掛提供新的選擇或實作。 | 動作、命令、聲音、內容、主題、助理供應商 |\n| **服務** | 宿主必須執行受限的外部操作。 | 儲存、金鑰、排程任務、網路、LLM、剪貼簿 |\n\n宣告式檢視、設定和主題 schema 與這些類別並列。它們描述由宿主算繪的資料，並不會授予另一種授權來源。\n\n## 設定屬於一個領域\n\n外觀是設定中的一個分類，而非獨立的外掛 API。改變所選主題的外掛請求的是例如 `appearance.theme` 的精確設定路徑。提供新主題的外掛使用 `themes` 貢獻。選擇和提供是刻意分開的權限。\n\n## 外掛可以加入什麼\n\n- 選取動作和頂欄動作、命令面板命令，以及由宿主算繪的檢視。\n- 聲音、虛擬書籍內容供應商、閱讀模式、主題和字型。\n- 助理工具、每輪上下文、可搜尋的私有來源，以及記憶候選。\n- 外掛設定、動態選項、週期性工作、儲存和加密金鑰。\n- 在獲授權的產品領域中讀取資料、執行命令並訂閱已提交的事件。\n\n在[能力瀏覽器](/zh-hant/docs/plugins/capabilities)中查看完整的版本化清單。它也會預覽 `manifest.json` 所請求的權限。\n\n## 原生 UI，源於構造\n\n外掛不會掛載 React、HTML、CSS、iframe 或任意 DOM。它們回傳經過驗證的檢視資料和回呼；ReadAware 負責版面、導覽、無障礙、主題相容性、載入狀態和清理。新的視覺自由度只能透過受限 schema 或真正的宿主貢獻點加入，而非透過通用 webview 逃生口。\n\n## 信任邊界\n\n每個外掛都執行在自己的模組 Worker 中。它無法存取 DOM、Tauri、SQLite、檔案系統或作業系統處理程序，環境網路和瀏覽器持久性 API 也已停用。宿主呼叫跨越訊息邊界，並根據外掛的 actor 範圍能力檢視解析。\n\n這會限制意外越權和直接越權，但安裝仍然是軟體信任決策。在程式碼執行前，ReadAware 會呈現語意權限和精確的設定授權。能力要求會獨立檢查：權限回答「它可以做這件事嗎？」，版本要求回答「它能正確使用這份契約嗎？」\n\n## 啟用和更新都是交易性的\n\n`activate()` 是讀取並宣告的階段。在宿主排空呼叫並完成 Worker 健康檢查之前，註冊內容都不可見；寫入、金鑰、網路、LLM、剪貼簿、UI 效果和導覽都會被阻止。持久資料變化稍後透過僅限儲存的 `migrate()` 執行。只有健康且完成遷移的候選版本才會晉升。\n\n更新會對檔案、外掛 KV、文件集合和已提交的 schema 中繼資料做快照。啟用或遷移失敗時，會恢復之前的檔案和資料，並在需要時重新啟動之前的執行階段。\n\n## 目前生態系\n\n目前發佈的外掛都是內建的官方外掛：Dictionary、Editorial Themes、RSS Reader、Sentence Reader、TTS Voices 和 Theme Schedule。公開的 [readaware-plugins 儲存庫](https://github.com/ahpxex/readaware-plugins) 包含撰寫範本、公開宣告、驗證和市集註冊表。沒有需要保留的舊版第三方 API；目前契約就是基線。\n\n## 開始建置\n\n按照[建置外掛](/zh-hant/docs/plugins/develop)完成本機循環，實作時參考[API 參考](/zh-hant/docs/plugins/api)，提交市集變更前閱讀[發佈外掛](/zh-hant/docs/plugins/publishing)。"
+      "metaDescription": "了解 ReadAware 外掛領域、貢獻、服務、物件授權、宿主算繪 UI，以及目前的開發契約。",
+      "body": "# 外掛系統\n\nReadAware 外掛整合了桌面主程式所暴露的能力。它們可以處理書籍、閱讀狀態、註記、對話與記憶；新增動作與提供者；並使用受限的主程式服務。\n\n本參考文件依循開發原始碼。在建立或發布前，請比對能力需求與您安裝的應用程式版本。\n\n## 選擇能力家族\n\n| 家族 | 用途 | 範例 |\n| --- | --- | --- |\n| **領域（Domains）** | ReadAware 所擁有的資料與行為 | 書庫、閱讀、註記、對話、設定、記憶 |\n| **貢獻（Contributions）** | 新的動作、選項或提供者實作 | 指令、情境動作、語音、內容來源、助理工具、主題 |\n| **服務（Services）** | 主程式作業與外掛專屬設施 | 資源、網路、推論、儲存、排程、工作、交易 |\n| **結構描述（Schemas）** | 主程式呈現或解讀的資料 | 檢視、設定表單、主題 |\n\n使用[能力探索器](/docs/plugins/capabilities)搜尋實際方法、了解邊界，並建立資訊清單。API 參考文件說明[家族如何組合](/docs/plugins/api)。\n\n## 從使用者的任務出發\n\n- **尋找與導覽：** 使用書庫來源搜尋與範圍讀取，再搭配目前工作階段保護機制進行閱讀導覽。\n- **收集與檢視註記：** 查詢或觀察註記；條件式變更可保留較新的編輯。\n- **處理閱讀記憶：** 使用記憶查詢與授權指令處理記憶、分類、設定檔、實體、圖譜與情境套件。\n- **輔助對話：** 讀取授權的對話紀錄與摘要，提出回合內容供主程式核准，或註冊助理工具。\n- **自動化工作流程：** 結合排程、限定範圍的變更游標、支援的持久化工作與本機交易。\n- **引入外部內容：** 使用以來源為範圍的網路存取、內容提供者與密封資源，而非檔案系統或瀏覽器的逃逸管道。\n\n## 權限、版本與物件授權\n\n以下是分開的檢查：\n\n1. `requires` 宣告相容的能力版本。\n2. `permissions`、`settingsAccess` 與 `networkAccess` 宣告授權範圍。\n3. 使用者的書籍授權將執行者限制為全部書籍、目前書籍或指定書籍。\n4. 生命週期與目前執行環境條件決定特定操作目前是否可用。\n\n無權限的服務仍可能因特定方法而需要另一個領域授權。成功的可用性查詢僅是提示，並非繞過執行檢查的許可。\n\n## 主程式呈現的介面\n\n外掛回傳結構化檢視與回呼。ReadAware 負責呈現、焦點、導覽、載入與錯誤狀態、主題與清理。檢視可包含清單、表單、詳細版面與受限區塊，並透過公開檢視契約提供即時更新。\n\n外掛不得掛載 React、任意 HTML、CSS、iframe 或 DOM。如需新的 UI 行為，請使用受支援的貢獻點。\n\n## 隔離與生命週期\n\n每個外掛在模組 Worker 中執行。它不會直接取得 Tauri、SQLite、檔案系統、程序或 DOM 的存取權。網路與儲存使用由主程式中介的環境。\n\n啟動階段會註冊項目並允許受支援的讀取；商業寫入與外部副作用從啟用的處理器開始。私有資料遷移僅以儲存權限執行。候選版本取代目前執行環境之前，失敗的啟動或遷移會先復原。\n\n安裝仍是軟體信任的決策。請審查套件原始碼、請求的授權範圍、網路目的地與資料處理方式。\n\n## 從第一方外掛學習\n\n原始碼樹包含可運作的範例，例如 Jumper、Text Desk、Annotation Desk、Memory Desk、Listening Desk 與 Maintenance Desk，以及隨附的外掛。原始碼範例不保證每個套件都會隨每個版本發布。\n\n[建立外掛](/docs/plugins/develop) · [API 參考文件](/docs/plugins/api) · [發布](/docs/plugins/publishing)"
     },
     "pluginsDevelop": {
-      "metaTitle": "建置外掛 — ReadAware 文件",
-      "metaDescription": "使用公開的 TypeScript 範本建立、驗證、安裝、遷移並測試 ReadAware 外掛。",
-      "body": "# 建置外掛\n\n從公開的 TypeScript 範本開始，宣告最小的能力集合，並在 ReadAware 桌面應用程式中執行建置後的套件。宿主負責生命週期、權限、呈現和回復；外掛負責自己的行為和私有資料。\n\n## 前置條件\n\n- ReadAware 桌面應用程式，並可存取「設定 → 外掛」。\n- [Bun](https://bun.sh)，用於執行儲存庫指令碼。\n- [readaware-plugins 儲存庫](https://github.com/ahpxex/readaware-plugins)的複本或 fork。\n\n## 建立套件\n\n1.  將 `template/` 複製到 `plugins/<your-plugin-id>/`。\n2.  保持資料夾名稱、manifest 的 `id` 和執行階段命名空間完全一致。\n3.  編輯 `manifest.json` 和 `src/main.ts`。\n4.  刪除不使用的範本貢獻，並移除對應權限。\n5.  建置 ReadAware 將載入的自包含 `main.js`。\n\n```bash\nbun run build\nbun run typecheck\nbun test\nbun run validate\n```\n\n## 先設計 manifest，再實作\n\n依照以下順序檢查 manifest：\n\n1.  **身分**：穩定 ID、名稱、套件版本、作者和最低應用程式版本。\n2.  **資料**：正整數 `schemaVersion` 和遷移路徑。\n3.  **相容性**：為每個使用的 API 和 schema 在 `requires` 中寫入 semver 範圍。\n4.  **授權**：語意 `permissions` 和精確的 `settingsAccess` 授權。\n5.  **宣告**：設定、排程任務、主題、字型和進入模組。\n\n安裝前使用[能力瀏覽器和權限預覽](/zh-hant/docs/plugins/capabilities)。要求是相容性宣告，不是使用者授權；即使能力不需要權限，只要外掛依賴其契約，也必須寫入 `requires`。\n\n## 選擇正確的能力\n\n1.  ReadAware 擁有某種狀態或行為時，使用**領域**。\n2.  提供選擇、動作或供應商時，使用**貢獻**。\n3.  需要受限的宿主操作時，使用**服務**。\n4.  外掛儲存只用於外掛擁有的資料。\n5.  現有形態都不合適時，請求新的型別化宿主能力。\n\n不要把書籍、進度、標註、設定或記憶複製到外掛儲存。影子狀態會繞過產品不變條件、已提交事件、投影重建、同步語意和助理上下文。\n\n## 讓啟用保持宣告式\n\n在 `activate(ctx)` 期間檢查環境，並註冊動作、命令、供應商、訂閱和排程任務。不要執行業務寫入或外部工作。宿主會一直暫存每項註冊，直到啟用 RPC 完成且 Worker 回覆健康檢查。\n\n晉升後，從已註冊的處理常式啟動執行階段工作。如果處理常式回傳 promise，讓宿主顯示載入和失敗狀態。只有在可選的 `deactivate()` 必須關閉外部資源時，才保留這些資源的參照；宿主註冊和訂閱會自動釋放。\n\n## 明確為私有資料建立版本\n\n`schemaVersion` 為外掛 KV 和文件集合建立版本；它獨立於套件版本。只有私有資料形態改變時才修改它。在 schema 提交後，為每個支援的升級和降級匯出 `migrate(storageCtx, change)`。\n\n- 遷移只能接收儲存：不能使用領域、設定、金鑰、網路、UI、LLM 或貢獻。\n- 讓每次轉換都具備確定性和冪等性。\n- 測試部分寫入後發生失敗的情況；宿主必須精確恢復 KV、文件、檔案和 schema 中繼資料。\n- 不要用套件版本檢查取代資料 schema。\n\n## 安裝工作資料夾\n\n1.  執行建置和檢查。\n2.  開啟 ReadAware → 設定 → 外掛 → 安裝外掛。\n3.  選擇建置出的外掛資料夾並檢查同意摘要。\n4.  在桌面應用程式中執行實際功能。\n5.  重新建置並安裝，以測試更新。\n\n一般瀏覽器無法驗證外掛安裝、Worker IPC、SQLite 持久性、原始書籍存取、閱讀器整合或回復。請測試用於發佈的 Tauri 應用程式。\n\n## 測試生命週期，而不只是成功路徑\n\n- 全新安裝、啟用、停用，以及不重新啟動應用程式再次啟用。\n- 使用真實資料完成成功更新和降級。\n- 啟用逾時、處理常式拒絕、遷移失敗和精確回復。\n- 解除安裝清理：不殘留動作、監聽器、排程、供應商或 Worker。\n- 更新期間移除權限和擴充權限。\n- 長標籤、空狀態、鍵盤導覽和所有宿主主題。\n\n## 了解目前限制\n\nReadAware 開啟期間，排程任務至少按宣告的頻率執行，逾期時會在啟動時補執行。它們不是持久任務：應用程式關閉時不會執行，沒有持久佇列、重試／退避契約或當機恢復保證。\n\nUI 只在現有的型別化貢獻點可用。缺少掛載位置時，需要宿主持有的貢獻點和消費者；不會為了走捷徑加入任意 HTML 或通用原生 invoke API。\n\n## 下一步\n\n把[API 參考](/zh-hant/docs/plugins/api)放在編輯器旁邊，然後在準備註冊表 pull request 前閱讀[發佈外掛](/zh-hant/docs/plugins/publishing)。"
+      "metaTitle": "建立外掛 — ReadAware 文件",
+      "metaDescription": "建立小型 ReadAware 命令、宣告相容的能力與權限，然後在桌面應用程式中測試套件。",
+      "body": "# 建立外掛程式\n\n從一個實用的動作開始。在新增功能的過程中，持續讓相容性、權限與執行期行為保持可見。\n\n## 取得範本與型別\n\n[公開外掛程式存放庫](https://github.com/ahpxex/readaware-plugins)包含範本、宣告、登錄與套件檢查。若涉及尚未發布的 API，請與[目前原始碼契約](https://github.com/ahpxex/read-aware/blob/main/packages/plugin-types/src/index.ts)比對，並使用相符的開發版建置。最新發布的應用程式可能比這份文件還舊。\n\n存放庫腳本使用 Bun。將 `template/` 複製到 `plugins/<your-plugin-id>/`，並讓目錄名稱與資訊清單 ID 保持一致。\n\n## 最精簡的指令\n\n這個範例在啟用期間註冊一個指令，並且只有在使用者執行它時才產生介面效果。\n\n```json\n{\n  \"id\": \"hello-reader\",\n  \"name\": \"Hello Reader\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"main\": \"main.js\",\n  \"requires\": {\n    \"contributions\": { \"commands\": \"^1.1.0\" },\n    \"services\": { \"ui\": \"^1.17.0\" }\n  }\n}\n```\n\n```typescript\nexport default {\n  activate(ctx) {\n    ctx.contributions.commands.register({\n      id: \"hello\",\n      title: \"Say hello\",\n      run: () => ctx.services.ui.showToast(\"Hello, reader!\"),\n    });\n  },\n};\n```\n\n將進入點模組編譯為自足的 `main.js`。上述資訊清單刻意要求目前文件記載的版本；請在檢查並測試那些契約之後，才使用較舊的版本範圍。\n\n## 加入最小且實用的權限\n\n使用 [Explorer](/docs/plugins/capabilities) 尋找方法，並複製其起始的資訊清單片段。片段會宣告一項能力；請補齊該操作所需的授權。\n\n- 讀取書庫資料需要 `library:read`；變更資料則需要 `library:write`。\n- 設定使用精確的 `settingsAccess` 路徑與操作。\n- 任意 HTTP 需要 `service:network` 以及允許的 `networkAccess.origins`。\n- 位於無需權限的介面服務中的閱讀相關方法，仍可能需要 `reading:read` 或 `reading:write`。\n- 書籍授權是透過主程式同意而選定，並透過 `ctx.grants.book` 暴露；資訊清單無法自行取得另一本書的存取權。\n\n檢查 `ctx.capabilities`，並處理缺少的選用命名空間。將 ReadAware 持有的資料保留在其領域中；外掛程式儲存空間僅用於你自己的紀錄、設定與檢查點。\n\n## 處理觀察與取消\n\n不再需要時，請釋放控制代碼（handle）。對於支援的呼叫，請傳入 `AbortSignal` 並等待實際結果。取消並不會還原已發生的寫入或遠端副作用。\n\n自動反應使用 `ctx.withEvent(delivery)` 來處理後續工作，包括在 `await` 之後。契約要求時，請為因果訂閱提供穩定的 `ruleId`。使用者發起的動作使用原始啟用上下文。這能讓主程式偵測迴圈，而不會把獨立的動作混為一談。\n\n## 在本機建置與安裝\n\n遵循 checkout 的套件腳本。在公開外掛程式存放庫中，一般檢查如下：\n\n```bash\nbun run build\nbun run typecheck\nbun test\nbun run validate\n```\n\n開啟 ReadAware → 設定 → 外掛程式 → 安裝外掛程式，選取建置後的資料夾，並檢視同意摘要。在桌面應用程式中實際使用該功能。重新建置並重新安裝以確認更新。\n\n## 為私有資料設定版本\n\n`schemaVersion` 與套件版本相互獨立。當儲存的 KV 或文件結構改變時，請透過 `migrate(storageCtx, change)` 提供支援的升級與降級轉換。\n\n遷移只會取得儲存專屬的權限。除了成功案例，也請測試失敗的轉換：先前的套件與已提交的資料必須保持可用。一般程式碼更新請避免加入不必要的結構變更。\n\n## 測試你的功能所用的邊界\n\n檢查其實際的 Worker/Tauri 行為、權限與書籍範圍拒絕、取消、停用／重新啟用，以及失敗復原。若是介面外掛程式，請涵蓋鍵盤導覽、長文字與狹窄視窗。若是變更資料的外掛程式，請涵蓋並行編輯，以及在需要持久化的情況下重新啟動。\n\n排程只會在應用程式開啟時執行；持久性工作僅支援主程式的型別化計畫。兩者都不是一般的背景程序或任意程式碼工作的執行器。[API 參考](/docs/plugins/api)說明了這些限制。\n\n## 發布\n\n一旦建置後的套件能搭配其宣告的最低契約正常運作，請遵循[發布](/docs/plugins/publishing)的說明。"
     },
     "pluginsCapabilities": {
       "metaTitle": "外掛能力 — ReadAware 文件",
-      "metaDescription": "瀏覽每個版本化的 ReadAware 外掛能力，並預覽外掛 manifest 請求的授權。",
-      "body": "# 能力瀏覽器\n\n設計外掛前，搜尋完整的公開目錄。每項能力都獨立版本化；每項依賴都必須寫入 manifest 的 `requires` 部分。\n\nREADAWARE_CAPABILITY_BROWSER_SLOT\n\n## 如何閱讀目錄\n\n- **授權**表示呼叫時需要的權限或精確設定授權。\n- **無**表示不需要額外的安裝權限，並不代表存在未記錄的環境能力。\n- **宿主負責**標記外掛無法替換或繞過的邊界。\n- 每項能力旁的版本直接來自宿主的標準能力目錄。\n\n`readerModes` 在特權閱讀器契約確定前仍僅限內建外掛。manifest 只能指名目錄中的能力；宿主仍會根據 actor、權限、版本和生命週期階段篩選可見的執行時檢視。\n\n## 權限預覽\n\n貼上 manifest，將使用者授權與相容性及執行宣告分開。它反映安裝同意的意義，但不能替代儲存庫驗證器，也不能證明外掛可以啟用。\n\nREADAWARE_PERMISSION_PREVIEW_SLOT\n\n## 安裝對話框實際授予什麼\n\n語意 `permissions` 和精確的 `settingsAccess` 項目授予權限。正式的同意對話框會用直白的語言呈現二者。能力要求、排程任務、schema 版本、主題和字型可作為審核上下文，但不會被悄悄重新標記為權限。\n\n此預覽刻意保持本機且無狀態。下一步開發工具是在應用程式內提供 actor 檢視和生命週期檢查器，使用相同的執行時目錄，並顯示更新時的權限差異和能力無法使用的確切原因。"
+      "metaDescription": "搜尋目前的 ReadAware 外掛目錄與 API 方法，依任務或授權篩選，並檢視 manifest 要求。",
+      "body": "# 能力探索器\n\n尋找你想要建置內容的合約。搜尋任務、能力、權限或確切的 API 方法；依主題、能力類別或授權方式篩選。開啟條目以查看其方法、邊界，以及可複製的 manifest 片段。\n\n目錄遵循**開發來源**，可能比最新下載版本還新。版本來自主機目錄，方法來自公開的 TypeScript 合約。你安裝的應用程式之 `ctx.capabilities`、書籍授權與執行時期檢查，會決定你實際可呼叫的內容。\n\nREADAWARE_CAPABILITY_BROWSER_SLOT\n\n## 正確解讀權限\n\n能力版本是相容性需求。權限授權存取。書籍授權、確切的設定路徑、網路來源、生命週期與方法專屬檢查，會進一步縮限該存取範圍。\n\n**無額外權限**描述該能力的基礎授權。它不會從方法中移除其他領域的權限，也不會繞過主機確認。`readerModes` 仍僅限內建。宣告式主題與字型透過 manifest 提供。\n\n## Manifest 預覽\n\n貼上你的 manifest，即可一併檢查權限、設定授權、網路來源與版本需求。此檢查會針對上方顯示的目錄在本機執行。它無法證明安裝、執行時期可用性或與舊版應用程式的相容性。\n\nREADAWARE_PERMISSION_PREVIEW_SLOT\n\n## 繼續建置\n\n使用[建置外掛程式](/docs/plugins/develop)取得可運作的起點，並參考[API 參考](/docs/plugins/api)了解範圍、生命週期、觀察、工作與交易語意。在[發布](/docs/plugins/publishing)前，請檢查相符的應用程式建置。"
     },
     "pluginsApi": {
       "metaTitle": "外掛 API 參考 — ReadAware 文件",
-      "metaDescription": "目前 ReadAware 外掛契約：manifest、能力、領域、貢獻、服務、宣告式 UI、生命週期和遷移。",
-      "body": "# 外掛 API 參考\n\n外掛是一個包含 `manifest.json`和已建置 ES 模組的資料夾。完整的公開 TypeScript 契約以 `types/plugin-api.d.ts` in the [readaware-plugins 儲存庫](https://github.com/ahpxex/readaware-plugins)發佈。本頁說明各部分如何配合。\n\n## 套件結構\n\n```tree\nmy-plugin/\n  manifest.json\n  main.js\n  src/main.ts       # 推薦提交以供審核\n  assets/           # 可選，市集安裝時需明確列出\n```\n\n`main.js` 預設匯出一個生命週期物件。ReadAware 在專用模組 Worker 中執行它，並向`activate`提供具 actor 範圍的上下文。\n\n```typescript\nexport default {\n  activate(ctx) {\n    // 檢查並註冊。此階段會阻止副作用。\n  },\n  migrate(storageCtx, change) {\n    // 可選：轉換外掛私有 KV 和文件。\n  },\n  deactivate() {\n    // 可選：釋放外掛自己的外部資源。\n  },\n};\n```\n\n## Manifest 清單\n\n```json\n{\n  \"id\": \"theme-schedule\",\n  \"name\": \"主題排程\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"minAppVersion\": \"0.3.0\",\n  \"requires\": {\n    \"domains\": { \"settings\": \"^1.0.0\" },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"settingsOptions\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^1.0.0\",\n      \"schedules\": \"^1.0.0\",\n      \"ui\": \"^1.0.0\"\n    },\n    \"schemas\": { \"settings\": \"^1.0.0\" }\n  },\n  \"settingsAccess\": {\n    \"discover\": [\"appearance.theme\", \"reading.theme\"],\n    \"write\": [\"appearance.theme\", \"reading.theme\"]\n  },\n  \"main\": \"main.js\"\n}\n```\n\n| 欄位 | 契約 |\n|----|----|\n| `id` | 小寫字母、數字和連字元，最長 64 個字元。它是永久命名空間，且必須與資料夾名一致。 |\n| `name`, `version` | 面向使用者的名稱和套件版本。 |\n| `schemaVersion` | 外掛私有 KV 和文件資料所需的正整數。獨立於套件版本。 |\n| `requires` | 按領域、貢獻、服務和 schema 群組的能力 ID 到 semver 範圍的必填對映。 |\n| `permissions` | 可選的語意權限請求，需經使用者同意。未知值會導致驗證失敗。 |\n| `settingsAccess` | 可選的 discover/read/write 授權，用於精確設定路徑或明確的 `section.*` 群組。 |\n| `minAppVersion` | 可選的最低應用程式版本。套件相依新發佈能力時使用。 |\n| `settings` | 可選的由宿主算繪的外掛設定欄位。 |\n| `schedules` | 可選的週期任務，在綁定處理常式前宣告。 |\n| `themes`, `fonts` | 可選的宣告式主題和字型貢獻；需要 `ui:themes`. |\n| `main` | 相對於資料夾的進入點模組；預設為 `main.js`. |\n\n使用[能力瀏覽器](/zh-hant/docs/plugins/capabilities) 查看完整清單和權限詞彙。要求始終是相容性宣告，絕不會授予權限。\n\n## 執行時上下文\n\n| 命名空間                       | 包含                                    |\n|--------------------------------|-----------------------------------------|\n| `ctx.manifest`                 | 經過驗證的唯讀 manifest。               |\n| `ctx.appVersion`, `ctx.locale` | 宿主版本和目前 UI 區域設定。            |\n| `ctx.lifecycle.phase`          | `activating`, `migrating`, 或 `active`. |\n| `ctx.capabilities`             | 僅對此外掛 actor 可見的能力版本。       |\n| `ctx.domains`                  | 已授予的 ReadAware 狀態和行為。         |\n| `ctx.contributions`            | 外掛可以向其中提供實作的註冊表。        |\n| `ctx.services`                 | 受限的宿主操作和外掛私有基礎設施。      |\n\n未獲授權時，受權限控制的命名空間不會出現。每次 Worker 呼叫也會在宿主側授權；隱藏方法不是唯一檢查。註冊會回傳可釋放物件，啟用失敗或外掛停用時按相反順序回收。\n\n## 領域\n\n領域提供 `queries`、可選的 `commands`，以及已提交的 `events.subscribe`。命令使用與 ReadAware 相同的事件溯源寫入路徑，並歸屬於 `plugin:<id>`. 寫入權限包含讀取權限。\n\n| 領域 | 查詢和命令 | 授權 |\n|----|----|----|\n| `library` | 書籍、元資料、原始章節文字、目錄、集合；匯入、編輯、加星、移除、虛擬書籍和集合命令。 | `library:read` / `library:write` |\n| `reading` | 按書籍和匯總的閱讀統計；標記完成、開啟書籍並導覽到 CFI 或 href。 | `reading:read` / `reading:write` |\n| `annotations` | 篩選反白、筆記和被動提問軌跡；建立、編輯、重新著色並移除反白或筆記。 | `annotations:read` / `annotations:write` |\n| `conversations` | 讀取書籍執行緒、列出全域執行緒並讀取執行緒。寫入仍由聊天執行時負責。 | `conversations:read` |\n| `settings` | 發現獲准的目錄項目、讀取解析後的值、更新受支援的目標並訂閱已提交的變更。 | 精確 `settingsAccess` grants |\n\n沒有 `shelf` 或 `appearance` 領域。 書庫資料和目前閱讀行為彼此分離。外觀是設定中的一個分類。\n\n### 設定存取\n\n`discover`、`read` 和 `write`彼此獨立。盡可能授予精確路徑；僅在功能確實需要整個分類時，才使用例如 `appearance.*`。更新會經過目錄驗證、目標策略、持久性和提交後效果。\n\n```typescript\nconst entries = await ctx.domains.settings.queries.discover({\n  section: \"appearance\",\n});\n\nawait ctx.domains.settings.commands.update([\n  {\n    path: \"appearance.theme\",\n    value: \"dark\",\n    target: { kind: \"global\" },\n  },\n]);\n```\n\n## 貢獻\n\n| 註冊表 | 外掛提供 | 權限 |\n|----|----|----|\n| `selectionActions` | 選區動作及回傳提示或宿主算繪檢視的處理常式。 | 無 |\n| `headerActions` | 閱讀器或書庫動作、位置元資料和檢視回呼。 | 無 |\n| `commands` | 命令元資料和處理常式。 | 無 |\n| `settingsOptions` | 一個已宣告外掛欄位的動態選項。 | 無 |\n| `voiceProviders` | 聲音清單和編碼音頻合成。 | 無 |\n| `contentProviders` | 虛擬書籍鍵的章節。 | 無 |\n| `readerModes` | 受限閱讀器分段模式；目前僅限內建外掛。 | `reader:modes` |\n| `agentTools` | 工具 schema、使用者可讀標籤、描述和執行器。 | `agent:tools` |\n| `agentContextProviders` | 受限的目前輪次參考區塊。 | `agent:context` |\n| `agentRetrievalProviders` | 來自外掛資料的搜尋結果。 | `agent:retrieval` |\n| `memoryCandidateProviders` | 可能持久性的事實、偏好、洞察或摘要。 | `agent:memory` |\n| `themes`, `fonts` | manifest 宣告的語意主題和字型資料。 | `ui:themes` |\n| `syncTransports` | 同步後端工作階段：把密封事件批次、密封 blob 與 meta 物件存到外掛選擇的遠端。 | `sync:transport` |\n\n每個貢獻 ID 都按外掛劃分命名空間，每次註冊都有歸屬且可檢查，過期的可釋放物件不能移除較新的替代項。新的貢獻類型仍需宿主有意提供消費者；之後任何相容外掛都能註冊，無需在應用程式中逐一列出。\n\n### 助理擴充邊界\n\n- **上下文提供者**執行一輪。宿主添加來源、限制大小，並將輸出序列化為不受信任參考資料。\n- **檢索提供者**成為命名空間工具，帶有宿主擁有的 `query`/`limit` schema 和裁切後的結果。\n- **記憶候選提供者**在一輪之後提出受限候選；宿主驗證範圍、去重並執行任何持久寫入。\n\n外掛永遠不會收到 Memory 連接埠，不能注入系統規則，也不能直接寫入長期記憶。\n\n### 同步傳輸\n\n`syncTransports` 註冊提供另一種同步後端——一個由應用同步引擎推送和拉取的遠端郵筒（第一方 WebDAV Sync 外掛就是這樣對接 WebDAV 的）。邊界畫在密文：引擎在外掛看到任何資料之前就完成密封，傳輸層搬運的只是不透明信封及其路由欄位（事件 id、HLC 時間戳），永遠看不到事件類型、書籍位元組或金鑰。契約是「啞儲存」——每裝置稠密的事件批次、引擎信封格式的 blob 物件、以及用於「首寫者勝」金鑰材料的 create-only meta 物件。排序、游標、合併、口令儀式與排程全部留在宿主側；連接傳輸後端與 ReadAware 帳號互斥。失敗時拋出攜帶穩定 `sync/*` 錯誤碼的 Error 來分類；未帶碼的錯誤按暫時性失敗處理並指數退避重試。\n## 宿主服務\n\n| 服務 | 契約 | 權限 |\n|----|----|----|\n| `storage` | 命名空間 KV、文件集合和外部變更通知。 | 無 |\n| `secrets` | 命名空間加密憑證槽。 | 無 |\n| `ui` | 宿主提示和儲存/匯出流程。 | 無 |\n| `schedules` | 將處理常式綁定到 manifest 宣告的頻率。 | 無 |\n| `session` | 訂閱受限的閱讀會話事實。 | 無 |\n| `network` | 宿主中介的 HTTP。 | `service:network` |\n| `llm` | 使用使用者設定進行一次性文字或 JSON schema 約束的模型呼叫。 | `service:llm` |\n| `clipboard` | 向系統剪貼板寫入文字。 | `service:clipboard` |\n\n### 儲存\n\n使用 KV 儲存小型設定和檢查點。使用命名文件集合儲存具有穩定 ID 且可選包含 `bookId`/`anchor`來源資訊的外掛記錄。來源資訊是索引而非所有權；引用書籍被刪除後檔案仍可保留。解除安裝會清空文件集合，但保留 KV、金鑰槽和已提交的 schema 元資料，以便重新安裝和遷移。\n\n### 排程任務\n\nmanifest 宣告 `{ id, label, everyMinutes }`，啟用透過`ctx.services.schedules.bind`綁定處理常式。最短頻率為 15 分鐘。應用程式開啟時至少按此頻率執行，逾時會在啟動後補跑，任務不會重疊。這不是持久背景工作，也不保證精確時間。\n\n## 宣告式 UI 和設定\n\n外掛回傳版本化的檢視資料，而非可執行 UI。檢視語法包括 markdown、可搜尋清單、表單、詳細版面、字典結果和受限區塊樹。處理常式可以保留介面、顯示提示、開啟或取代檢視、重置導覽、關閉介面或回傳欄位錯誤。宿主負責 promise 的載入和失敗狀態。\n\nManifest 設定使用宿主控制項支援文字、文字域、數字、時間、選取、選項、核取方塊、切換開關和金鑰欄位。條件欄位使用 `visibleWhen`；動態選取使用已註冊的 `settingsOptions` 提供方。金鑰欄位直接寫入加密金鑰槽，永遠不會進入一般設定物件或助理可見目錄。\n\n## 主題和字型\n\n主題外掛在 manifest 中宣告語意資料。應用程式主題覆蓋固定的宿主權杖詞匯；閱讀器主題提供所需的六色頁面調色盤和可選排版預設值。宿主驗證值、產生 CSS、載入獲核准的本機字型檔案，並在使用者選取前不套用任何內容。\n\n提供選項需要 `ui:themes`。選取主題需要精確的設定寫入授權，例如 `appearance.theme` 或 `reading.theme`。二者並不相互推導。\n\n## 生命週期階段\n\n1.  **啟用中：** 可使用查詢和外掛私有讀取；註冊會暫存；副作用被阻止。\n2.  **遷移中：** 只能使用外掛 KV 和文件集合。\n3.  **已啟用：** 已晉升的處理常式可以使用獲准的領域、貢獻和服務。\n\n宿主會排空啟用 RPC、檢查 Worker 健康狀態、執行資料遷移，然後在一個明確的時點晉升全部暫存項。啟用失敗會釋放暫存工作，不取代目前執行時。\n\n## Worker 環境\n\n無法存取 React、Jotai、DOM、WebView、Tauri、SQLite、檔案系統或作業系統處理程序。環境中的 `fetch`、WebSocket、EventSource、XMLHttpRequest、BroadcastChannel、IndexedDB 和 Cache Storage 均已停用。網路、持久性和所有宿主互動都必須使用型別化上下文。\n\n## 相容性和穩定性\n\n領域、貢獻、服務和宣告式 schema 各自擁有獨立的語意版本。未知 ID、無效 semver 範圍、無法存取的必要能力和不相容的宿主版本都會阻止啟用。相容的新增內容提升所屬能力的版本，而非一個全域外掛 API 編號。\n\n目前生態是官方外掛，因此目前由註冊表支援的契約就是基線。不要相依早期的 `shelf`, `appearance` 或註冊表之前的形態。"
+      "metaDescription": "目前的 ReadAware 開發 API：六個領域、貢獻、宿主服務、權限、書籍範圍、觀察、工作和交易。",
+      "body": "# 外掛程式 API 參考\n\n本頁說明目前的開發合約。「能力總覽」([Capabilities Explorer](/docs/plugins/capabilities))列出即時目錄、確切的方法名稱、簽章與原始碼宣告。已發布的應用程式或公開範本可能使用較舊版本；請將你的 `requires` 範圍對應到已測試的主控端。\n\n## 套件與 manifest\n\n外掛程式包含 `manifest.json` 與一個自包含的 ES 模組，通常是 `main.js`。請將原始碼與所需資源與套件一起保留以供審查。\n\n| 欄位 | 說明 |\n| --- | --- |\n| `id`, `name`, `version` | 穩定命名空間、顯示名稱與套件版本。ID 須與資料夾名稱相符。 |\n| `schemaVersion` | 外掛程式私有資料結構的正整數版本；與套件版本無關。 |\n| `requires` | 能力 ID 與 semver 範圍，分組為 `domains`、`contributions`、`services` 與 `schemas`。 |\n| `permissions` | 語意權限，例如 `library:read` 或 `service:llm`。 |\n| `settingsAccess` | 針對確切路徑或明確的區段群組，分別授予 `discover`、`read` 與 `write` 權限。 |\n| `networkAccess` | Network 2.x 允許的 HTTP(S) 來源；需與 `service:network` 同時宣告。 |\n| `minAppVersion` | 選用的應用程式最低版本門檻，在能力需求之外額外設定。 |\n| `main` | 相對的進入點模組；預設為 `main.js`。 |\n| `settings`, `schedules`, `themes`, `fonts` | 由主控端解讀的宣告。 |\n| `services` | 供跨外掛程式呼叫的版本化、型別化模組服務匯出。 |\n\n沒有任何 manifest 欄位會授予任意的檔案系統、SQL、DOM 或原生 IPC 存取權。\n\n## 內容與物件範圍\n\n主控端會呼叫 `activate(ctx)`，並提供 `ctx.domains`、`ctx.contributions`、`ctx.services`，以及 manifest、locale、應用程式版本、生命週期階段、能力版本與不可變的書籍授權。\n\n`ctx.grants.book` 的值為 `all`、`current` 或指定的 `book`。主控端透過同意流程選取。讀取、記憶、對話、指令與資源在呼叫與回呼之間都會維持該範圍。目前的書籍變更可能使未完成的讀取、控制代碼、提案與觀察結果失效。\n\n領域寫入權限包含讀取權限。設定授予仍依操作個別獨立。受權限控管的命名空間或方法可能不存在；主控端仍會在每次呼叫時執行檢查。使用 `ctx.services.session.operationAvailability(...)` 進行支援的預先檢查查詢，且在取得肯定結果後仍須處理執行失敗的情況。\n\n## 領域\n\n| 領域 | 提供的功能 | 限制 |\n| --- | --- | --- |\n| `library` | 書籍與收藏、目錄、精確位置搜尋、範圍、參考與圖片、匯入、文字任務、中繼資料、重複合併與移除。 | 來源版本、書籍範圍、受限讀取、參與者擁有的任務，以及獨立的檔案清理收據。 |\n| `reading` | 工作階段快照、導覽、選取、播放與模式控制、進度、閱讀時間與洞察。 | 目前工作階段保護、已定案與待處理狀態、供應商可用性與取消。 |\n| `annotations` | 頁面、檢查與觀察；建立劃線或筆記；條件式編輯/刪除批次。 | 使用使用者決定前的修訂版本。擷取的範圍也需要 Library 存取權。 |\n| `conversations` | 授權的對話紀錄、儲存的摘要、執行期與輪替要求狀態；執行緒控制與提議的輪替。 | 主控端核准後才會開始提議的輪替。全域執行緒操作需要全部書籍的存取權。外掛程式不會取代聊天執行期。 |\n| `settings` | 目錄探索、解析後快照、選項、模型中繼資料、觀察、更新與閱讀重設。 | 確切路徑、目標政策，以及外部供應商工作的額外授權。 |\n| `memory` | 搜尋與頁面、檢查、修正/遺忘、個人資料、實體、分類、圖表與任務、內容封存。 | 書籍授權與條件式修訂。全域身分/個人資料操作需要全部書籍的存取權；產生內容也需要模型授權。 |\n\n### 來源文字與導覽\n\n使用 `library.queries.books.searchLocations` 取得可導覽的來源比對結果，使用 `readRange` 取得受限的來源文字。請保留回傳的來源版本與位置。衍生的 `searchText` 命中結果僅供預覽，不可互換作為導覽錨點。明確的文字準備會回傳一個任務，必須觀察其進度與結果。\n\n### 條件式寫入\n\n在顯示編輯前檢查目前物件並保留其修訂版本。針對該修訂版本送出條件式變更。若發生衝突，請重新讀取並讓使用者決定；靜默取代預期的修訂版本會覆蓋其他變更。\n\n`annotations.commands.applyChanges`、記憶變更、私有文件提交與交易預覽各自有其型別化合約。一般指令不會自動成為可復原或分散式交易。\n\n### 觀察與反應\n\n使用授權的觀察取得目前狀態，使用已提交的訂閱取得事件。序號可以排序傳遞項目，但它不是資料庫游標或條件式寫入的修訂版本。失敗的觀察必須能與空結果區分。\n\n使用 `ctx.withEvent(delivery)` 進行自動的後續工作，並在需要時於因果訂閱上使用穩定的規則 ID。透過非同步呼叫維持綁定的內容。主控端會拒絕因果迴圈與已過期的傳遞；獨立的使用者動作使用原始內容。\n\n## 貢獻\n\n| 貢獻 | 外掛程式提供的內容 |\n| --- | --- |\n| `selectionActions`, `headerActions`, `contextActions`, `commands`, `uriHandlers` | 在型別化的主控端介面上的動作、指令面板指令與命名空間 URI 處理。 |\n| `settingsOptions` | 已宣告外掛程式設定的動態選項。 |\n| `voiceProviders`, `contentProviders`, `readerModes` | 語音合成、虛擬書籍內容與內建的閱讀器分段模式。 |\n| `agentTools`, `agentContextProviders`, `agentRetrievalProviders` | 工具、受限的每輪內容，以及可搜尋的外掛程式自有來源。 |\n| `memoryCandidateProviders` | 供主控端驗證與接受的候選記憶。 |\n| `themes`, `fonts` | manifest 宣告的外觀選項。 |\n| `syncTransports` | 不透明加密同步信封與中繼物件的儲存。 |\n\n動作可以在支援的地方更新其擁有的可見/啟用/勾選狀態。註冊與可釋放資源屬於單次啟用。回傳檢視不會授予回呼額外的領域授權。\n\n記憶候選與直接的 Memory 指令是不同路徑：候選會經過主控端接受，而直接指令需要對應的 Memory 授權與修訂版本。兩者都不允許注入系統規則或取代核心代理程式。\n\n## 主控端服務\n\n| 服務 | 用途 | 主要限制 |\n| --- | --- | --- |\n| `storage` | 私有 KV、文件集合、條件式提交、頁面、觀察與使用政策。 | 外掛程式命名空間與配額；過期的游標需要重新取得基準。 |\n| `resources` | 使用者挑選的檔案/目錄、密封的位元組控制代碼、匯出、圖片與私有二進位資源。 | 沒有環境隱含路徑。控制代碼有擁有者、限制與生命週期。 |\n| `secrets` | 外掛程式私有的加密憑證插槽。 | 無法存取其他外掛程式的密碼。 |\n| `network` | 來源範圍的 HTTP、受限的緩衝請求與串流。 | 每次重新導向都會檢查；不會自動重送任意的寫入。 |\n| `llm` | 文字或結構化推論、串流、圖片資源、請求回執與預算。 | 使用者設定、隱私規則、取消與主控端/供應商限制。 |\n| `clipboard` | 寫入文字或密封的圖片。 | 明確權限與支援的資源型別。 |\n| `ui` | 檢視、toast、原生儲存/開啟流程、工作區與指令導覽、閱讀器面板與視窗。 | 方法特定的領域授權與主控端擁有的呈現。 |\n| `session` | 非敏感的環境中繼資料與操作可用性。 | 沒有舊的閱讀工作階段訂閱；請使用 Reading 領域。 |\n| `schedules` | 宣告的週期性處理常式與擁有的延遲要求。 | 工作只在應用程式開啟時執行；時間並非精確。 |\n| `jobs` | 支援的持久性計畫、檢查點、觀察與控制。 | 型別化的主控端操作，而非任意的 JavaScript 執行。 |\n| `changes` | 限範圍的持久性變更游標。 | 重新整理提示，而非原始事件記錄或歷史值。 |\n| `transactions` | 預覽、提交、回執查詢與條件式復原預覽。 | 受支援的本機操作與原始授權；未知結果需要查詢回執。 |\n| `plugins` | 檢查註冊、觀察變更、探索與呼叫型別化的外掛程式服務。 | 呼叫端/被呼叫端授權交集、範圍、版本與隔離的服務執行。 |\n| `maintenance` | 狀態與主控端擁有的備份、連線測試與更新流程。 | 主控端保留憑證、檔案對話框與重大確認。 |\n| `sync` | 授權的同步狀態、積壓與主控端管理的帳戶或同步流程。 | 沒有加密金鑰或原始帳戶憑證。 |\n| `diagnostics`, `logging` | 經審查的診斷匯出與受限的結構化開發者事件。 | 沒有任意內容、密碼或透過日誌 API 的自動回報。 |\n\n### 網路與推論\n\nNetwork 2.x 需要同時具備語意權限與明確的來源：\n\n```json\n{\n  \"requires\": { \"services\": { \"network\": \"^2.2.0\" } },\n  \"permissions\": [\"service:network\"],\n  \"networkAccess\": { \"origins\": [\"https://api.example.com\"] }\n}\n```\n\n將範例來源取代為你實際使用的端點。來源包含 scheme、主機與連接埠；它們不是 URL 路徑或子網域萬用字元。重新導向必須維持在授權範圍內。串流呼叫端在完成後關閉其擁有的串流。選擇性的安全重試僅限於回應送達前的受支援讀取要求；取消不會復原遠端副作用。\n\n對於推論，使用 `readingContext` 取得書籍內容，以便主控端套用隱私與範圍規則。使用密封的資源 ID 作為支援的圖片。請求中繼資料與輸出預算有助於控制工作量；它們不是帳單明細，也不保證供應商合規。\n\n### 背景工作與交易\n\n使用 schedule 安排處理常式的呼叫，使用擁有的延遲要求在應用程式執行期間安排稍後的工作，並僅在型別化計畫支援該操作時使用持久性 job。重新啟動後的復原可能需要人工介入，而非盲目重複不確定的外部結果。\n\n交易結合受支援的設定、私有文件與領域操作，並在原始授權下執行。預覽會凍結提議的工作；提交會消耗該預覽。在未知回應之後，先查詢回執再重試。復原是條件式的，要求狀態仍與先前結果相符。\n\n### 跨外掛程式服務\n\n在提供者 manifest 中宣告服務 ID、版本、範圍、所需權限與輸入/輸出結構描述，並在模組的 `services` 物件中匯出其處理常式。透過 Plugins 服務探索並呼叫它。主控端會以交集後的授權執行全新的隔離服務環境；它不會為了該呼叫而啟用提供者的一般 UI 執行期。代理程式發起的呼叫仍保留其核准要求。\n\n## 檢視、設定、主題與字型\n\n外掛程式回傳宣告式的檢視資料。主控端會呈現清單、表單、markdown、詳細資訊與支援的區塊版面。使用型別化的檢視結果與即時檢視更新；保持載入、衝突、空白與錯誤狀態可區分。外掛程式程式碼無法使用 React、DOM、iframe 或任意 CSS。\n\n設定欄位由主控端呈現。密碼欄位會寫入加密的密碼插槽，不會成為一般表單值或模型可見的設定。提供主題或字型需要 `ui:themes`；選取主題或字型會使用對應的 Settings 寫入授權。\n\n## 生命週期與相容性\n\n1. **啟用中：** 支援的讀取與註冊；分階段的貢獻尚未可見。\n2. **遷移中：** 僅限私有儲存空間，在提交變更的結構描述之前。\n3. **啟用完成：** 升級的處理常式可以使用授予的能力。\n\n主控端會在啟用與任何遷移成功後進行健康檢查並升級候選版本。失敗時會還原先前的套件與資料。卸載會釋放註冊、回呼與擁有的資源；持久性資料遵循其獨立的保留合約。在目前的開發階段，解除安裝會移除私有文件集合與二進位資源，但保留定義的 KV/密碼/結構描述狀態以供重新安裝。\n\n獨立宣告每個使用的能力與結構描述。版本號碼證明合約相容性，而非每個作業系統、供應商或失敗案例都已通過端對端驗收。請驗證你實際發佈的桌面工作流程。\n\n[建立外掛程式](/docs/plugins/develop) · [能力總覽](/docs/plugins/capabilities) · [發布](/docs/plugins/publishing)"
     },
     "pluginsPublishing": {
       "metaTitle": "發佈外掛 — ReadAware 文件",
-      "metaDescription": "準備、驗證、審核並向公開市集儲存庫提交 ReadAware 外掛。",
-      "body": "# 發佈外掛\n\n市集套件存放在公開的 [readaware-plugins 儲存庫](https://github.com/ahpxex/readaware-plugins)中，並透過審核進入。目前目錄由官方外掛組成；這套流程也是未來接受外部提交時的契約。\n\n## 準備可審核的套件\n\n推薦使用 TypeScript。讓 `src/` 與建置出的自包含 `main.js` 並列，方便審核者比較原始碼和產物。提交每一項執行階段資源。不要載入遠端程式碼，不要把行為藏在產生的 blob 中，也不要依賴套件之外的檔案。\n\n```tree\nplugins/my-plugin/\n  manifest.json\n  main.js\n  package.json\n  tsconfig.json\n  src/main.ts\n  assets/…\n```\n\n## 執行儲存庫檢查\n\n```bash\nbun run build\nbun run typecheck\nbun test\nbun run validate\n```\n\n驗證會檢查註冊表與 manifest 的一致性、ID、版本、能力要求、權限、宣告檔案和套件形態。這些檢查是必要條件而非充分條件：提交前還要在 ReadAware 桌面應用程式中執行建置出的資料夾。\n\n## 提交\n\n1.  Fork 公開儲存庫。\n2.  將範本複製到 `plugins/<plugin-id>/`，並保持資料夾名等於 manifest ID。\n3.  加入套件和所有必要的執行階段資源。\n4.  在 `registry.json` 中加入匹配且按 ID 排序的項目。\n5.  執行根目錄的四項檢查，並從建置出的資料夾測試本機安裝。\n6.  發起 pull request，說明行為、私有資料、外部服務，以及每項權限和設定授權的理由。\n\n## 審核清單\n\n- 功能使用現有最窄的領域、貢獻和服務能力。\n- `requires` 為每個使用的契約寫出有依據的 semver 範圍。\n- 權限和 `settingsAccess` 與實際執行階段呼叫一致，不包含推測性的授權。\n- `activate()` 註冊行為，但不執行任何業務或外部副作用。\n- 外掛私有資料擁有穩定 schema，每次版本轉換都有經過測試的遷移。\n- 用面向使用者的語言說明網路端點、LLM 使用、憑證、排程任務和資料保留。\n- 宿主算繪的檢視支援鍵盤導覽、長文字、空資料以及淺色和深色主題。\n- 原始碼可讀、產生產物可複現，且不存在分析、追蹤、混淆或遠端程式碼載入。\n\n[權限預覽](/zh-hant/docs/plugins/capabilities)適合作為提交前檢查。儲存庫驗證和人工審核仍是正式檢查。\n\n## 更新和資料遷移\n\n同時提升 `manifest.json` 和 `registry.json` 中的套件版本。只有私有 KV 或資料形態變化時才提升 `schemaVersion`，並在同一候選版本中提供相應的 `migrate()`。\n\n使用真實資料測試更新和刻意降級。ReadAware 會暫存並健康檢查候選版本、快照外掛檔案和資料、暫停舊執行階段以遷移，並只在成功後晉升。更新失敗必須讓之前的套件和資料仍可使用。\n\n## 權限變化\n\n把新增授權當作產品變更，而非 manifest 雜務。說明原本的權限集合為何不足、哪些使用者資料或外部操作變得可存取，以及使用者拒絕時會發生什麼。移除程式碼不再使用的權限。\n\n## 目前的散佈信任\n\nWorker 隔離和能力強制執行會減少越權，但安裝仍然是信任決策。在開放廣泛的第三方市集前，ReadAware 仍需要發佈者身分、確定性打包、簽名和完整性驗證、審核來源、撤銷機制、權限差異審核和安全回應路徑。\n\n這些控制上線前，合併的儲存庫項目只能是審核證據，並不能從數學上保證任意惡意程式碼安全。\n\n## 發起 pull request 前\n\n重新閱讀[建置外掛](/zh-hant/docs/plugins/develop)，在[能力工具](/zh-hant/docs/plugins/capabilities)中比較最終 manifest，並確認套件遵循目前[API 契約](/zh-hant/docs/plugins/api)，而非舊的 `shelf` 或 `appearance` 範例。"
+      "metaDescription": "準備 ReadAware 外掛供審核，驗證應用程式與能力要求，並提交可重現的原始碼與執行階段資源。",
+      "body": "# 發布外掛程式\n\n[公開外掛程式儲存庫](https://github.com/ahpxex/readaware-plugins) 承載市場套件並透過合併請求接受變更。準備提交時，請依照其目前的貢獻說明與驗證器操作。\n\n## 配合您支援的應用程式\n\n開發目錄可能領先最新發布的應用程式。請同時核對公開宣告與目標應用程式。需要新功能的套件必須等待相容的主程式發布，或明確鎖定相符的開發版本；僅變更 `minAppVersion` 並不會建立缺少的 API。\n\n使用 [功能總覽](/docs/plugins/capabilities) 檢查方法與版本，然後宣告您實際測試過的最小相容集合。\n\n## 讓套件可受審查\n\n提交 `manifest.json`、可讀的原始碼、建置後的獨立 `main.js`，以及所需的執行時期資源。保持資料夾名稱與清單 ID 相同。請勿載入遠端可執行程式碼，或依賴套件之外的檔案。\n\n```tree\nplugins/my-plugin/\n  manifest.json\n  main.js\n  package.json\n  tsconfig.json\n  src/main.ts\n  assets/\n```\n\n## 檢查行為與權限\n\n- 說明功能、其進入點，以及每個權限的必要原因。\n- 宣告確切的 Settings 授權與所需的網路來源。說明哪些資料會傳送至外部服務。\n- 測試書籍範圍、缺少權限、取消、停用/重新啟用，以及實際的桌面 UI。\n- 保持啟用為宣告式，遷移僅限儲存。\n- 檢查私人資料保留、配額，以及作用中資源的清理。\n- 對於更新，請以真實資料演練現有安裝，包括失敗的遷移與復原。\n\n本機清單預覽有助於找出相容性與權限錯誤。它不能取代儲存庫驗證器、桌面測試或審查。\n\n## 建置並提交\n\n遵循簽出儲存庫中的腳本。公開儲存庫的套件檢查如下：\n\n```bash\nbun run build\nbun run typecheck\nbun test\nbun run validate\n```\n\n依照儲存庫目前的結構與排序，加入相符的註冊表項目。開啟合併請求，說明最終行為、測試過的應用程式與功能版本、私人資料、外部服務及權限變更。附上可重現的驗證步驟。\n\n## 更新\n\n在清單與註冊表中遞增套件版本。僅在私人資料結構變更時變更 `schemaVersion`，並在同一個套件中附上其遷移。要求更多權限時，需要清楚的說明與可用的拒絕途徑。\n\n簽署、發布者身分、套件完整性、審查來源追溯與撤銷是各自獨立的發布考量。請說明實際適用於套件的控管措施；僅靠 Worker 隔離並不能保證任意程式碼的安全。\n\n[建立外掛程式](/docs/plugins/develop) · [API 參考](/docs/plugins/api)"
     }
   },
   "capabilityBrowser": {
     "searchLabel": "搜尋能力",
-    "searchPlaceholder": "ID、權限或用途",
+    "searchPlaceholder": "任務、能力、權限或 API 方法",
     "familyLabel": "能力類別",
     "authorityLabel": "授權類型",
     "allFamilies": "所有類別",
     "allAuthorities": "所有授權",
+    "allTopics": "所有主題",
+    "topicLabel": "主題",
+    "topicNames": {
+      "reading": "閱讀與導覽",
+      "library": "書庫與標註",
+      "intelligence": "AI 與記憶",
+      "automation": "自動化與工作流程",
+      "interface": "介面與設定",
+      "integration": "檔案與整合"
+    },
+    "clearFilters": "清除篩選條件",
+    "browseLabel": "瀏覽能力",
+    "detailsLabel": "能力詳細資料",
+    "methodsLabel": "公開 API 方法",
+    "methodsHint": "選取方法以查看其簽章和來源。選用方法仍需要其特定授權。",
+    "showAllMethods": "顯示所有方法",
+    "showFewerMethods": "顯示較少方法",
+    "declarationOnly": "此能力在 manifest 或檢視 schema 中宣告為資料；沒有 ctx 註冊方法。",
+    "manifestLabel": "起始 manifest 片段",
+    "manifestHint": "將此片段合併到你的 manifest。加入所用方法要求的領域授權；沒有額外基礎權限不代表可以不受限制地存取。",
+    "readAccess": "讀取存取權",
+    "writeAccess": "讀取與寫入存取權",
+    "accessLabel": "此片段的領域存取權",
+    "sourceLabel": "檢視來源宣告",
+    "shareLabel": "複製連結",
+    "copiedLabel": "已複製",
+    "copyFailed": "無法複製。請選取文字，或手動複製此頁面的網址。",
+    "catalogLabel": "開發目錄",
+    "catalogSummary": "{{capabilities}} 項能力 · {{methods}} 個 API 方法",
+    "bundledOnly": "僅限內建外掛",
+    "settingsHint": "範例授權使用 reading appearance.theme。請替換為功能所需的精確路徑和操作。",
+    "networkHint": "將範例來源替換為實際允許的端點。權限和來源授權都必須具備。",
+    "quickStartLabel": "嘗試一項任務",
+    "quickStarts": {
+      "search": "在書籍中尋找文字",
+      "memory": "讀取並修正記憶",
+      "jobs": "恢復背景工作",
+      "network": "擷取外部內容"
+    },
     "familyNames": {
       "domains": "領域",
       "contributions": "貢獻",
@@ -76,124 +115,172 @@
     "noResults": "沒有能力符合這些篩選條件。",
     "descriptions": {
       "domains__library": {
-        "purpose": "讀取書籍、檔案、元資料、目錄、集合，以及匯入或移除書庫項目。",
-        "hostOwns": "書庫不變條件、事件溯源寫入、檔案和投影。"
+        "purpose": "檢視書籍、來源文字、目錄、精確位置、範圍、圖片與集合；匯入、整理並管理文字工作。",
+        "hostOwns": "來源版本、書籍範圍、檔案所有權、事件溯源寫入與工作收據。"
       },
       "domains__reading": {
-        "purpose": "檢視目前會話，並導覽、更新位置、進度和閱讀時間。",
-        "hostOwns": "閱讀器生命週期、進度語意和已提交事件。"
+        "purpose": "觀察閱讀工作階段、導覽與選取文字、控制播放與模式，並查詢進度、時間與洞察。",
+        "hostOwns": "目前工作階段防護、閱讀器生命週期、穩定狀態、服務商與完成語意。"
       },
       "domains__annotations": {
-        "purpose": "透過標準命令讀取或更改反白和筆記。",
-        "hostOwns": "驗證、歸屬、持久性和事件順序。"
+        "purpose": "分頁、檢視並觀察螢光標示與筆記；建立標註，或套用經版本檢查的編輯與刪除。",
+        "hostOwns": "擷取來源驗證、條件式版本、歸屬與原子化持久儲存。"
       },
       "domains__conversations": {
-        "purpose": "讀取書籍和全域執行緒摘要。",
-        "hostOwns": "對話寫入、提示語組裝和記憶。"
+        "purpose": "讀取經授權的逐字稿、摘要與執行時狀態；提出回合、管理討論串，並使用核准的停止或清除控制項。",
+        "hostOwns": "宿主核准與生成、書籍授權、全域討論串邊界與由 actor 擁有的請求。"
       },
       "domains__settings": {
-        "purpose": "發現、讀取、更新並訂閱明確授權的設定路徑。",
-        "hostOwns": "目錄、目標、驗證、持久性和變更效果。"
+        "purpose": "探索精確設定路徑與選項、讀取穩定快照、觀察變更並更新支援的目標。",
+        "hostOwns": "路徑授權、密鑰排除、目標驗證、持久性與效果；服務商工作可能需要網路授權。"
+      },
+      "domains__memory": {
+        "purpose": "搜尋、分頁、檢視與修正記憶；處理個人檔案、實體、分類、圖譜與版本化上下文套件。",
+        "hostOwns": "書籍與全域範圍、條件式寫入、防劇透邊界、生成授權與不可變的上下文版本。"
+      },
+      "contributions__uriHandlers": {
+        "purpose": "透過已註冊的動作處理具命名空間的 ReadAware URI 呼叫。",
+        "hostOwns": "URI 路由、驗證、同意與處理常式生命週期；不得接管任意 scheme。"
+      },
+      "contributions__contextActions": {
+        "purpose": "為支援的書籍或集合上下文介面加入具型別的動作。",
+        "hostOwns": "目標身分、支援介面、呼叫與目前授權。"
       },
       "contributions__selectionActions": {
-        "purpose": "向選取區和標註選單加入命令。",
-        "hostOwns": "選單位置、呼叫介面、載入和無障礙。"
+        "purpose": "為擷取的選取內容、標註或導覽器輸入加入動作。",
+        "hostOwns": "選單位置、擷取上下文、呼叫狀態與既有領域授權。"
       },
       "contributions__headerActions": {
-        "purpose": "加入閱讀器或書庫工具列動作，並顯示由宿主算繪的檢視。",
-        "hostOwns": "位置、導覽、彈出層、頁面和焦點。"
+        "purpose": "使用宿主算繪檢視加入閱讀器、書庫或代理程式標題列動作。",
+        "hostOwns": "位置、焦點、檢視導覽、載入與清理。"
       },
       "contributions__commands": {
-        "purpose": "加入顯式的命令面板命令。",
-        "hostOwns": "註冊表、面板、快速鍵和結果呈現。"
+        "purpose": "加入具命名空間的命令面板動作並更新其擁有的狀態。",
+        "hostOwns": "註冊表所有權、快捷鍵、可用性與結果呈現。"
       },
       "contributions__settingsOptions": {
-        "purpose": "為一個已宣告的外掛設定解析動態選項。",
-        "hostOwns": "表單算繪、備用輸入和數值驗證。"
+        "purpose": "為已宣告的外掛設定解析動態選項。",
+        "hostOwns": "表單呈現、已儲存的非密鑰值、受限結果與驗證。"
       },
       "contributions__voiceProviders": {
-        "purpose": "列出聲音並合成用於朗讀的編碼音訊。",
-        "hostOwns": "播放、節奏、預先擷取、反白和備援。"
+        "purpose": "提供朗讀用的語音選項與編碼音訊。",
+        "hostOwns": "播放、速度、預先擷取、標示與取消。"
       },
       "contributions__contentProviders": {
-        "purpose": "為 RSS 等虛擬書籍載入章節。",
-        "hostOwns": "書庫繫結、閱讀模型、導覽和呈現。"
+        "purpose": "為儲存的來源等虛擬書籍提供章節。",
+        "hostOwns": "書庫繫結、來源失效、閱讀狀態與導覽。"
       },
       "contributions__readerModes": {
-        "purpose": "提供受限的句子或段落分段。目前僅限內建外掛。",
-        "hostOwns": "閱讀器控制項、生命週期、算繪和導覽。"
+        "purpose": "在內建外掛中提供受限的句子或段落分段。",
+        "hostOwns": "閱讀器呈現、生命週期、導覽與特權模式准入。"
       },
       "contributions__agentTools": {
-        "purpose": "註冊閱讀助理可以呼叫的命名空間工具。",
-        "hostOwns": "編排、工具可見性、核准和對話介面。"
+        "purpose": "註冊閱讀助理可以探索與呼叫的具命名空間工具。",
+        "hostOwns": "工具可見性、核准、書籍範圍、編排與逐字稿介面。"
       },
       "contributions__agentContextProviders": {
-        "purpose": "為目前使用者輪次回傳受限的參考區塊。",
-        "hostOwns": "來源、裁切、提示語位置和生命週期。"
+        "purpose": "提供受限的每輪參考區塊與宣告的閱讀意圖來源。",
+        "hostOwns": "來源、持久來源規則、裁切、位置與生命週期。"
       },
       "contributions__agentRetrievalProviders": {
-        "purpose": "將可搜尋的外掛來源公開為命名空間助理工具。",
-        "hostOwns": "查詢 schema、限制、結果裁切和工具描述。"
+        "purpose": "向助理公開可搜尋的外掛擁有來源。",
+        "hostOwns": "查詢 schema、結果限制、裁切與命名空間工具探索。"
       },
       "contributions__memoryCandidateProviders": {
-        "purpose": "在一輪對話後提出事實、偏好、洞察或摘要。",
-        "hostOwns": "範圍檢查、去重、接納和持久記憶寫入。"
+        "purpose": "提出供記憶接納的事實、偏好、洞察或摘要。",
+        "hostOwns": "範圍驗證、去重、接納與持久寫入。"
       },
       "contributions__themes": {
-        "purpose": "提供語意化應用程式和閱讀器主題資料。",
-        "hostOwns": "驗證、CSS 產生、選取和套用。"
+        "purpose": "在 manifest 中宣告語意化應用程式與閱讀器主題選項。",
+        "hostOwns": "權杖驗證、CSS 產生，以及只在選取後套用。"
       },
       "contributions__fonts": {
-        "purpose": "提供獲核准的字型元資料和內建字型資源。",
-        "hostOwns": "檔案驗證、載入、選取器項目和目前選取。"
+        "purpose": "宣告字型中繼資料與封裝的字型資產。",
+        "hostOwns": "資產驗證、載入、選擇器項目與目前選取。"
       },
       "contributions__syncTransports": {
-        "purpose": "提供同步後端：把密封的事件批次、密封 blob 和金鑰材料 meta 物件搬運到外掛選擇的遠端。",
-        "hostOwns": "加密、事件日誌、游標、合併、口令儀式與同步排程。"
+        "purpose": "在外部遠端儲存與取回不透明的加密事件、blob 與金鑰材料中繼物件。",
+        "hostOwns": "加密、金鑰、游標、合併、排程與通關密語流程。"
       },
       "services__storage": {
-        "purpose": "使用外掛專屬範圍的 KV 和文件集合。",
-        "hostOwns": "命名空間隔離、持久性、快照和變更事件。"
+        "purpose": "使用私有 KV 與文件集合、頁面、觀察、條件式提交及配額政策。",
+        "hostOwns": "命名空間隔離、版本檢查、快照與保留規則。"
       },
       "services__secrets": {
-        "purpose": "在外掛專屬範圍的金鑰槽中存取憑證。",
-        "hostOwns": "加密、不揭露和命名空間隔離。"
+        "purpose": "在外掛私有加密槽中讀寫憑證。",
+        "hostOwns": "加密與命名空間隔離；不能存取其他外掛或應用程式憑證。"
       },
       "services__ui": {
-        "purpose": "顯示宿主提示，或開啟宿主儲存/匯出流程。",
-        "hostOwns": "呈現、路徑選取和平台整合。"
+        "purpose": "發佈檢視、顯示提示、儲存或開啟資源、導覽工作區與命令，並控制支援的閱讀器面板與視窗。",
+        "hostOwns": "具型別介面、逐方法領域授權、宿主確認、焦點與生命週期。"
       },
       "services__schedules": {
-        "purpose": "將工作繫結到 manifest 宣告的週期任務。",
-        "hostOwns": "頻率、啟動時補執行、防止重疊和釋放。"
+        "purpose": "繫結宣告的週期處理常式、檢視與控制排程，並管理擁有的延遲請求。",
+        "hostOwns": "應用程式開啟時執行、時間、所有權、合併與取消語意。"
       },
       "services__session": {
-        "purpose": "訂閱目前閱讀會話的受限事實。",
-        "hostOwns": "事件來源、資料範圍和訂閱生命週期。"
+        "purpose": "讀取環境中繼資料並檢查支援操作的可用性。",
+        "hostOwns": "不提供閱讀工作階段訂閱或私有帳號狀態；執行時一律重新檢查條件。"
       },
       "services__network": {
-        "purpose": "透過原生宿主客戶端發出 HTTP 請求。",
-        "hostOwns": "權限強制、傳輸和回應橋接。"
+        "purpose": "發出具來源範圍的 HTTP 請求或讀取受限串流，並選用安全重試。",
+        "hostOwns": "來源與重新導向檢查、配額、期限、取消，以及不會默默重播寫入。"
       },
       "services__llm": {
-        "purpose": "進行受限的一次性文字或結構化模型呼叫。",
-        "hostOwns": "供應商設定、憑證、schema 處理和限制。"
+        "purpose": "要求文字、結構化或串流推論、使用封裝圖片資源，並追蹤請求中繼資料與預算。",
+        "hostOwns": "使用者模型設定、隱私篩選、範圍、取消與服務商限制。"
       },
       "services__clipboard": {
-        "purpose": "向系統剪貼簿寫入文字。",
-        "hostOwns": "平台呼叫和權限強制。"
+        "purpose": "將文字或支援的封裝圖片寫入系統剪貼簿。",
+        "hostOwns": "權限、資源所有權、宿主圖片解碼與作業系統傳送。"
+      },
+      "services__changes": {
+        "purpose": "開啟並讀取可跨重新啟動持久保存的範圍變更游標。",
+        "hostOwns": "依授權篩選的重新載入提示、游標到期與還原失效；不提供原始事件值。"
+      },
+      "services__jobs": {
+        "purpose": "啟動、檢視與控制由支援宿主操作組成的持久計畫。",
+        "hostOwns": "檢查點、重新啟動復原、原始授權與不確定結果處理；不支援任意程式碼工作。"
+      },
+      "services__transactions": {
+        "purpose": "預覽並提交支援的本地變更、檢視收據與預覽條件式復原。",
+        "hostOwns": "原子性、凍結預覽、版本檢查，以及原始領域與設定授權。"
+      },
+      "services__plugins": {
+        "purpose": "檢視已安裝外掛與註冊項、觀察變更，以及探索或呼叫具型別的外掛服務。",
+        "hostOwns": "啟用身分、呼叫方與被呼叫方授權交集、書籍範圍與服務隔離。"
+      },
+      "services__maintenance": {
+        "purpose": "檢視維護狀態並進入宿主擁有的備份、連線測試、更新或設定流程。",
+        "hostOwns": "憑證、確認、復原、原生對話框與實際完成收據。"
+      },
+      "services__diagnostics": {
+        "purpose": "要求支援的診斷匯出或回報流程。",
+        "hostOwns": "權限、使用者檢視、遮蔽與原生傳送；不得靜默上傳任意資料。"
+      },
+      "services__logging": {
+        "purpose": "寫入受限的結構化開發者事件並檢視記錄政策。",
+        "hostOwns": "速率限制與欄位詞彙；不得寫入任意使用者文字、密鑰、路徑或堆疊追蹤。"
+      },
+      "services__resources": {
+        "purpose": "選取檔案與目錄、讀取或建立封裝資源、匯出資料並儲存私有二進位資產。",
+        "hostOwns": "不透明所有權、大小與生命週期限制、書籍授權、原生確認與清理。"
+      },
+      "services__sync": {
+        "purpose": "觀察同步狀態與待處理佇列、要求同步並進入宿主管理的帳號或連線流程。",
+        "hostOwns": "加密金鑰、憑證、敏感介面與傳輸生命週期。"
       },
       "schemas__views": {
-        "purpose": "回傳 markdown、清單、表單、詳情和受限區塊樹。",
-        "hostOwns": "元件、HTML 安全、版面、無障礙和導覽。"
+        "purpose": "描述宿主算繪的清單、表單、詳細資料、markdown 與支援的區塊版面。",
+        "hostOwns": "schema 驗證、呈現、焦點、載入狀態與回呼。"
       },
       "schemas__settings": {
-        "purpose": "宣告由宿主算繪的外掛設定欄位。",
-        "hostOwns": "表單行為、驗證、儲存路由和金鑰處理。"
+        "purpose": "宣告具型別的外掛設定、條件欄位與動態選項參照。",
+        "hostOwns": "控制呈現、值驗證與密鑰分離。"
       },
       "schemas__themes": {
-        "purpose": "宣告語意主題權杖和內建字型元資料。",
-        "hostOwns": "語法驗證、產生 CSS、載入和選取。"
+        "purpose": "描述語意化應用程式與閱讀器調色盤。",
+        "hostOwns": "宿主權杖詞彙、安全值與選取；主題授權仍需要 ui:themes。"
       }
     }
   },
@@ -244,7 +331,12 @@
       "sync__transport": "提供同步後端，把端對端加密的同步資料儲存到外掛選擇的伺服器。",
       "service__network": "發出由宿主中介的網路請求。",
       "service__llm": "使用已設定的模型進行受限的一次性呼叫。",
-      "service__clipboard": "向系統剪貼簿寫入文字。"
+      "service__clipboard": "向系統剪貼簿寫入文字。",
+      "conversations__write": "提出對話操作，並使用允許的討論串、停止和清除控制項；仍受宿主核准和書籍範圍限制。",
+      "memory__read": "讀取經授權的記憶、個人檔案、實體、圖譜和上下文封存。",
+      "memory__write": "套用經授權的記憶變更並啟動支援的記憶工作，但仍受版本、範圍和額外生成授權限制。",
+      "service__diagnostics": "進入支援的宿主診斷匯出和回報流程，並由使用者檢視。",
+      "service__sync": "檢視同步狀態，並要求支援的宿主管理同步或帳號流程。"
     },
     "operationLabels": {
       "discover": "發現",
@@ -256,7 +348,19 @@
       "contributions": "貢獻",
       "services": "服務",
       "schemas": "Schema"
-    }
+    },
+    "networkTitle": "允許的網路來源",
+    "invalidNetworkAccess": "networkAccess.origins 必須包含精確的 HTTP(S) 來源，或單一的 \"*\"。",
+    "missingNetworkAccess": "service:network 也需要明確且非空的 networkAccess.origins 授權。",
+    "invalidRequires": "requires 必須是由已知能力類別和 semver 範圍組成的物件。",
+    "unknownRequirement": "未知能力：{{value}}。",
+    "incompatibleRequirement": "不相容的要求：{{value}}。",
+    "missingPermission": "缺少必要授權：{{value}}。",
+    "allOriginsWarning": "已允許所有 HTTP(S) 來源。請優先使用外掛實際需要的精確來源。",
+    "catalogNotice": "相容性是根據開發目錄檢查，而不是你已安裝的應用程式。執行時範圍、確認和方法專屬權限仍然適用。"
   },
-  "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"研究筆記\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^1.0.0\",\n      \"network\": \"^1.0.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"重新整理來源\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\"\n}"
+  "sampleManifest": "{\n  \"id\": \"research-notes\",\n  \"name\": \"Research Notes\",\n  \"version\": \"0.1.0\",\n  \"schemaVersion\": 1,\n  \"requires\": {\n    \"domains\": {\n      \"annotations\": \"^2.0.0\",\n      \"settings\": \"^1.0.0\"\n    },\n    \"contributions\": {\n      \"commands\": \"^1.0.0\",\n      \"agentRetrievalProviders\": \"^1.0.0\"\n    },\n    \"services\": {\n      \"storage\": \"^2.0.0\",\n      \"schedules\": \"^2.1.0\",\n      \"network\": \"^2.2.0\"\n    },\n    \"schemas\": {\n      \"settings\": \"^1.0.0\"\n    }\n  },\n  \"permissions\": [\n    \"annotations:read\",\n    \"agent:retrieval\",\n    \"service:network\"\n  ],\n  \"settingsAccess\": {\n    \"discover\": [\n      \"appearance.theme\"\n    ],\n    \"read\": [\n      \"appearance.theme\"\n    ]\n  },\n  \"schedules\": [\n    {\n      \"id\": \"refresh\",\n      \"label\": \"Refresh sources\",\n      \"everyMinutes\": 60\n    }\n  ],\n  \"main\": \"main.js\",\n  \"networkAccess\": {\n    \"origins\": [\n      \"https://api.example.com\"\n    ]\n  }\n}",
+  "pageNavigation": {
+    "title": "本頁內容"
+  }
 }
