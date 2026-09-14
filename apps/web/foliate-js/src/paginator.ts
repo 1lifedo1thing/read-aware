@@ -3,6 +3,7 @@ import { uncollapse, getVisibleRange, selectionIsBackward, setSelectionTo, getBa
 import type { Anchor, Book, BookSection, MaybePromise, ResolvedNavigation, ResourceTransformDetail } from './book.js'
 
 import type { Overlayer } from './overlayer.js'
+import { RendererResizeObserver } from './resize-observer.js'
 
 import type { Content, LoadDetail, RelocateDetail, RelocateReason, NativeInputBridge } from './renderer.js'
 
@@ -72,7 +73,7 @@ export class Paginator extends HTMLElement {
         'max-inline-size', 'max-block-size', 'max-column-count',
     ]
     #root = this.attachShadow({ mode: 'closed' })
-    #observer = new ResizeObserver(() => this.render())
+    #observer = new RendererResizeObserver(() => this.inputBridge, () => this.#anchorContext, () => this.#navigation, context => this.render(context))
     #top: HTMLElement
     #background: HTMLElement
     #container: HTMLElement

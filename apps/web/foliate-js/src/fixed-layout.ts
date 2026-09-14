@@ -2,6 +2,7 @@ import type { Anchor, Book, BookSection, MaybePromise, PageColors, PageSource, R
 import { anchorElement, anchorRange, anchorValue, isRange } from './navigation.js'
 import type { Overlayer } from './overlayer.js'
 import type { Content, RelocateReason, NativeInputBridge } from './renderer.js'
+import { RendererResizeObserver } from './resize-observer.js'
 import { getViewport, parseViewport, type Dimensions } from './viewport.js'
 
 // READAWARE: rendering budgets, canvas-memory driven. A PDF page rastered at
@@ -75,7 +76,7 @@ export class FixedLayout extends HTMLElement {
 
     static observedAttributes = ['zoom', 'flow', 'max-column-count']
     #root = this.attachShadow({ mode: 'closed' })
-    #observer = new ResizeObserver(() => this.#onResize())
+    #observer = new RendererResizeObserver(() => this.inputBridge, () => this.#positionContext, () => this.#navigation, context => this.#onResize(context))
     #spreads: FixedSpread[] = []
     #index = -1
     #displayedIndex = -1
@@ -921,18 +922,19 @@ export class FixedLayout extends HTMLElement {
         this.#reportLocation(reason, null, context)
         await this.#ensureStackFrame(clamped, context)
     }
-    #onResize() {
+    #onResize(context = this.#positionContext) {
+        this.#positionContext = context
         if (this.scrolled && this.#stack) {
             // Keep the reading position anchored while every slot resizes.
             const entry = this.#stack[this.#stackCurrent]
             const offset = entry
                 ? (this.scrollTop - entry.top) / Math.max(1, entry.pixelHeight)
                 : 0
-            this.#layoutStack()
+            this.#layoutStack(context)
             if (entry) this.#setStackScroll(entry.top + offset * entry.pixelHeight, this.#positionContext)
             return
         }
-        this.#render()
+        this.#render(this.#side, context)
     }
     #clearFrameCache() {
         this.#navigation++
@@ -1237,7 +1239,8 @@ export class FixedLayout extends HTMLElement {
             .flatMap(({ doc, index, overlayer }) => doc ? [{ doc, index, overlayer }] : [])
     }
     destroy() {
-        this.#observer.unobserve(this)
+        this.#observer.disconnect()
+        this.inputBridge = undefined
         this.removeEventListener('scroll', this.#onStackScroll)
         this.#clearFrameCache()
     }
