@@ -1,5 +1,5 @@
 -- User-initiated diagnostic reports: one metadata row per upload, for listing
--- (wrangler d1 execute — see docs/diagnostics.md) and per-IP throttling. The
+-- (wrangler d1 execute — see docs/development/diagnostics.md) and per-IP throttling. The
 -- payload itself lives in R2 under _reports/<id>.json. The app only ever
 -- sends a report when the user explicitly asks it to.
 CREATE TABLE diagnostic_reports (

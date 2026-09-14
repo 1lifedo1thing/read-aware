@@ -53,7 +53,7 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
         "library_annotation_projections",
         // v1-runtime tables. Typed columns for everything the app queries/sorts.
         // Pragmatic deviations from the normalized event-sourced target
-        // (docs/sqlite-schema.sql), documented so the drift is intentional:
+        // (docs/archive/designs/sqlite-schema.sql), documented so the drift is intentional:
         //   - `books` is denormalized: progress (as JSON) and collection_id live
         //     inline instead of in reading_positions / book_collection_memberships,
         //     mirroring the interim LibraryBook shape for a zero-risk swap.
@@ -106,7 +106,7 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
         3,
         "domain_events_blob_registry_outbox",
         // Cloud-readiness pass. Brings the live database up to the target
-        // sync-infrastructure shape (docs/sqlite-schema.sql):
+        // sync-infrastructure shape (docs/archive/designs/sqlite-schema.sql):
         //   - `domain_events` replaces the bare `events` table (full envelope:
         //     schema_version, aggregate, actor, created_at vs ingested_at).
         //     Existing rows (none in practice — the old log had no producers)
@@ -188,7 +188,7 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
         "annotations_fts_index",
         // [local index] Full-text search over annotations (highlights, notes,
         // asks) — the retrieval half of "FTS + structured signals" (no vector
-        // store; docs/agent-architecture.md §4).
+        // store; docs/architecture/agent-architecture.md).
         //
         // CJK handling: fts5's unicode61 tokenizer does not segment CJK (a han
         // run becomes ONE token) and trigram needs >= 3 chars per query — but
@@ -238,7 +238,7 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
     (
         5,
         "memories_projection",
-        // Agent long-term memory (docs/data-model.md §5.2), replacing the
+        // Agent long-term memory (docs/architecture/data-model.md), replacing the
         // webview-IndexedDB interim store. Pragmatic v1 of the documented
         // shape: today's runtime signals only (importance/evidence/pinned/
         // status); confidence, recency_at, superseded_by and memory_evidence
@@ -262,7 +262,7 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
     (
         6,
         "ai_chat_projections",
-        // AI 对话转录（docs/sqlite-schema.sql 的 ai_conversations/ai_messages），
+        // AI 对话转录（docs/archive/designs/sqlite-schema.sql 的 ai_conversations/ai_messages），
         // 替代 app_kv 里一个 key 装整个 conversations map 的 JSON。务实 v1，
         // 偏差有意为之：
         //   - id 即今天的存储 id（bookId 或 "__global__"），不设 book_id 列/FK
@@ -308,7 +308,7 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
     (
         9,
         "vocabulary_reading_time_projections",
-        // 生词本与阅读时长的 SQLite 投影（docs/sqlite-schema.sql）：
+        // 生词本与阅读时长的 SQLite 投影（docs/archive/designs/sqlite-schema.sql）：
         // 替代 app_kv 里的 read-aware-vocabulary / read-aware-reading-stats
         // JSON blob。两者的事件（vocabulary.*、book.timeRecorded）已在
         // 日志双写；这些表是可重放的读模型。
@@ -380,8 +380,8 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
     (
         12,
         "sync_profile_and_cursors",
-        // [device-local] 同步引擎的本机运行状态（docs/sync-engine.md §7.5，
-        // 表形状照 docs/sqlite-schema.sql）。sync_profile 单行：账号连接与
+        // [device-local] 同步引擎的本机运行状态（docs/architecture/sync-engine.md，
+        // 表形状照 docs/archive/designs/sqlite-schema.sql）。sync_profile 单行：账号连接与
         // E2E 密钥引用（encryption_key_ref 指向 secrets.rs 条目，不存密钥
         // 材料）；sync_cursors 按 feed 记"拉到哪了"——remote_cursor 是中继的
         // server_seq，HLC 三列是已合并的最新事件戳。sync_devices（非对称
@@ -651,7 +651,7 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
     (
         27,
         "reading_sessions",
-        // Reading is modelled as SESSIONS (docs/sync-engine.md §13.2): one
+        // Reading is modelled as SESSIONS (docs/architecture/sync-engine.md): one
         // `book.sessionRecorded` event per closed (book, day, hour) bucket
         // carries both the time read and the position reached. The
         // device-local scratch pad `reading_sessions_pending` replaces

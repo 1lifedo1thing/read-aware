@@ -1,4 +1,4 @@
--- Published projection checkpoints (docs/sync-engine.md §13). One row per
+-- Published projection checkpoints (docs/architecture/sync-engine.md). One row per
 -- (account, client schema version): the `snapshot:` blob a device cut from a
 -- mailbox-exact log, and the mailbox frontier it covers. The relay reads
 -- nothing inside the blob — it stores a key and some integers so a new device

@@ -13,7 +13,7 @@ current code. Paths below are relative to the repository root.
   - **Data + retrieval: local** (on-device store + SQLite FTS; no vector store — see Storage Responsibilities)
   - **LLM inference: remote** (BYO API key or a thin proxy; no local model required)
 - Frontend: a `React + TypeScript` SPA, shipped **only** inside the `Tauri` desktop app (desktop-only)
-- On-device storage: `SQLite` only (source of truth + FTS retrieval). **No embeddings / vector store in the default architecture** (decided 2026-07-02, see `docs/agent-architecture.md` §4)
+- On-device storage: `SQLite` only (source of truth + FTS retrieval). **No embeddings / vector store in the default architecture** (decided 2026-07-02, see `docs/architecture/agent-architecture.md`)
 - Remote backend: sync + relay only (see Storage Responsibilities)
 
 ### Agent Model
@@ -37,7 +37,7 @@ current code. Paths below are relative to the repository root.
   - long-term user memory — local projection
   - book / highlight / note memory — local projection
   - exportable context bundles — local projection
-- Everything above `raw events` is a **local projection rebuilt from the event log** — projections are recomputed on-device, never synced directly. This is enforced, not aspirational: `storage/apply.rs` is the only writer of a projection row, and `rebuild_projections` can reproduce every one of them from the log. One thing is deliberately NOT derived and is excluded from the check: chat presentation state (`parts_json`, `error`). Covers are fully derived: `book.coverExtracted` projects `books.cover_status`/`cover_blob_key` (the verdict — `ready` with a synced `cover:` blob, or `none`), the bytes live in the device-local blob registry, and the shelf paints them through the `rablob://` scheme rather than any data-URL column
+- Event-derived business state is rebuilt on-device from the event log rather than synced as independent projection rows. Shared application rules live in `storage/apply.rs`; native committers must append events and update projections in one transaction. Device-local configuration, chat presentation state, task execution state and historical data without events have separate preservation rules. See [the current data model](../architecture/data-model.md) and [full backup](../features/full-backup.md); do not generalize projection rebuild to every SQLite row. Covers use `book.coverExtracted` for the verdict and blob identity, with bytes served from the local file registry.
 - Design the **write / consolidation pipeline** as explicitly as retrieval; it is the harder half:
   - promotion from raw events into long-term memory (summarization / consolidation)
   - conflict resolution when new information contradicts old memory

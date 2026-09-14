@@ -2,7 +2,7 @@
  * Settings → Menus: arrange the customizable surfaces (primary navigation,
  * shelf header, reader header, selection menu) by dragging items between
  * Shown and the overflow menu — core and plugin items alike
- * (docs/plugin-system.md §7).
+ * (docs/plugins/plugin-system.md §7).
  */
 import { useTranslation } from "../../../i18n";
 import { MenuSurfaceEditor } from "../../menus/components/MenuSurfaceEditor";

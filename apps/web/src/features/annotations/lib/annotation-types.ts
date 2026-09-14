@@ -8,7 +8,7 @@
  * a passage in as an attachment rather than creating an annotation here.
  * - Asks: passive traces of that conversation — every question asked in a book
  *   thread leaves one, anchored at the selection or the reading position
- *   (docs/agent-architecture.md §7). Written by the agent runtime, not the user.
+ *   (docs/architecture/agent-architecture.md). Written by the agent runtime, not the user.
  */
 
 export type AnnotationType = "highlight" | "note" | "ask";

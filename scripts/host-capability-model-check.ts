@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { HOST_CAPABILITY_CATALOG } from "../packages/core/src/capabilities";
-import { baselineCoverage, groups, sources } from "../docs/host-capability-matrix.data";
-import { evidence, scenarioCoverage, scenarios, units, type Unit } from "../docs/host-capability-model.data";
+import { baselineCoverage, groups, sources } from "../docs/capabilities/host-capability-matrix.data";
+import { evidence, scenarioCoverage, scenarios, units, type Unit } from "../docs/capabilities/host-capability-model.data";
 
 export function validateModel(model: Unit[] = units) {
   const rows = groups.flatMap(g => g.rows);

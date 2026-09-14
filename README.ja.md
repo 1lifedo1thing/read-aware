@@ -172,11 +172,13 @@ ReadAware アプリ
 | `plugins/` | ファーストパーティプラグイン：辞書、読み上げボイス、テーマ、RSS、文単位リーダー、Jumper、読書目標、ワークスペースプロファイル、WebDAV 同期、そして注釈 / ライブラリ / 記憶 / テキスト / リスニング / メンテナンスの各デスク |
 
 アーキテクチャの決定と目標データ契約は
-[`docs/agent-architecture.md`](docs/agent-architecture.md) と
-[`docs/data-model.md`](docs/data-model.md) にあります。プラグイン API
+[`docs/architecture/agent-architecture.md`](docs/architecture/agent-architecture.md) と
+[`docs/architecture/data-model.md`](docs/architecture/data-model.md) にあります。プラグイン API
 リファレンスと公開ガイドは
 [readaware.app/ja/docs/plugins](https://readaware.app/ja/docs/plugins) に
 あります。
+
+現在の仕様、検証記録、過去の設計は [文書一覧](docs/README.md) から参照できます。
 
 ## リリース
 

@@ -3,7 +3,7 @@
  * （初始低置信、强化 +证据+置信、检索按 pinned/importance/recency 排序）。
  * 每个意图点双写记忆域事件（事件先行、投影随后，origin "agent"）——
  * memories 投影因此可从日志重放，写决策本身成为可同步事实
- * （docs/data-model.md：consolidation as events）。
+ * （docs/architecture/data-model.md：consolidation as events）。
  */
 import { type MemoryPort, type MemoryRecord } from "@read-aware/agent";
 import { normalizeMemoryPageQuery, normalizeMemoryQuery } from "@read-aware/core";

@@ -2,7 +2,7 @@
  * Sync relay wire protocol — the contract between the desktop client
  * (apps/web/src/platform/sync*) and the relay Worker (apps/relay).
  *
- * The relay is a numbered ciphertext mailbox (docs/sync-engine.md §3): it
+ * The relay is a numbered ciphertext mailbox (docs/architecture/sync-engine.md): it
  * stores sealed envelopes, assigns each a per-account monotonically increasing
  * `server_seq`, and feeds them back in that order. Nothing here describes
  * event CONTENT — that is the point.
@@ -176,7 +176,7 @@ export const BLOB_HEAD_PARTS_HEADER = "x-ra-blob-parts";
 // ── /v1/snapshots ────────────────────────────────────────────────────────────
 
 /**
- * A published projection checkpoint (docs/sync-engine.md §13): a `snapshot:`
+ * A published projection checkpoint (docs/architecture/sync-engine.md): a `snapshot:`
  * blob the account's devices cut from a mailbox-exact log, plus the numbers a
  * bootstrapping device needs to trust it. One per (account, schemaVersion);
  * the relay understands none of the file — it stores ciphertext and

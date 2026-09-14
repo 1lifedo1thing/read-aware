@@ -1,6 +1,6 @@
 //! Plugin file management + the `raplugin://` protocol.
 //!
-//! Plugins live under `<app_data>/plugins/<id>/` (docs/plugin-system.md §3).
+//! Plugins live under `<app_data>/plugins/<id>/` (docs/plugins/plugin-system.md §3).
 //! This module is deliberately dumb: it moves folders and serves bytes. All
 //! manifest semantics (permissions, activation) live web-side; the only
 //! validation here is what filesystem safety requires (id shape, path

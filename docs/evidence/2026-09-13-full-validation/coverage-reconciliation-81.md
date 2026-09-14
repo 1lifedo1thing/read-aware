@@ -1,7 +1,7 @@
 # 第81项：8行已有证据对账（只读）
 
 2026-09-13。范围固定为 AI07、AI08、AI10、AI11、AI12、ANN06、ANN07、CON01。
-依据[矩阵](../../host-capability-matrix.data.ts)、[模型](../../host-capability-model.data.ts)、
+依据[矩阵](../../capabilities/host-capability-matrix.data.ts)、[模型](../../capabilities/host-capability-model.data.ts)、
 [本轮记录](./README.md)和下列原始记录核对；没有运行新模型、桌面探针或测试，
 没有改共享账本/覆盖清单。当前清单的“待验”不能解释为零证据；本报告也不关闭整行。
 第81项是证据对账编号，不是新增桌面验收流程。

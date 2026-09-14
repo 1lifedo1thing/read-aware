@@ -70,7 +70,7 @@ export const topNavs = ["shelf", "agent", "stats"] as const;
 
 /**
  * The active top-level surface. Beyond the fixed three, a plugin page occupies
- * this state as `plugin:<contributionKey>` (docs/plugin-system.md §5 — a page
+ * this state as `plugin:<contributionKey>` (docs/plugins/plugin-system.md §5 — a page
  * is a pushed view with the header's back affordance, not a route).
  */
 export type TopNav = (typeof topNavs)[number] | `plugin:${string}`;

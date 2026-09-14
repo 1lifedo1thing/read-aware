@@ -218,7 +218,7 @@ export interface BlobStore {
  * automatic). Metadata rows make listing and per-IP throttling queryable; the
  * payload itself is an opaque JSON document in blob storage. Reports are
  * write-only through the HTTP surface: the operator reads them with wrangler
- * (docs/diagnostics.md), so a scraped endpoint can leak nothing.
+ * (docs/development/diagnostics.md), so a scraped endpoint can leak nothing.
  */
 export type DiagnosticReportMeta = {
   id: string;
@@ -282,7 +282,7 @@ export type RelayConfig = {
   /** Per single blob — the FREE-tier baseline (paid tiers: `quotasForTier`). */
   maxBlobBytes: number;
   /** Per free-tier account, total. THE bill guard — an open-source client base
-   * must never be able to run the operator's R2 bill up (docs/sync-engine.md
+   * must never be able to run the operator's R2 bill up (docs/architecture/sync-engine.md
    * §11). Paid tiers read their own numbers from `quotasForTier`. */
   maxAccountBlobBytes: number;
   /** Per free-tier account, total events in the mailbox. Same guard for DO

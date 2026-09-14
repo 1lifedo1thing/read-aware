@@ -1,6 +1,6 @@
 /**
  * Stripe billing over plain fetch + WebCrypto — the relay stays
- * dependency-free. Three surfaces (docs/sync-engine.md §11):
+ * dependency-free. Three surfaces (docs/architecture/sync-engine.md):
  *
  * - checkout: mint a Stripe Checkout session for a plan. Prices are looked
  *   up by namespaced lookup_key (readaware_sync_monthly /

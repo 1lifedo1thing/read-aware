@@ -1,10 +1,10 @@
 /**
- * E2E envelope for the sync relay (docs/sync-engine.md §6).
+ * E2E envelope for the sync relay (docs/architecture/sync-engine.md).
  *
  * The relay stores ciphertext only. The encrypted envelope covers EVERYTHING
  * that describes behavior — event type, aggregate, payload, timestamps —
  * because plaintext event types alone would hand the relay a complete timeline
- * of reading activity (docs/data-model.md §9). The clear fields are exactly
+ * of reading activity (docs/architecture/data-model.md). The clear fields are exactly
  * what routing needs: the event `id` (idempotency key) and the HLC stamp
  * (merge ordering, and the receiver must advance its clock BEFORE decrypting).
  *

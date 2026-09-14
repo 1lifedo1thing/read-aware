@@ -1,8 +1,8 @@
 # ReadAware 插件能力完备基线
 
-人读版：[能力地图与裁决](./plugin-capability-baseline.html)。现行 API 手册：[plugin-system.md](./plugin-system.md)。双端覆盖：[宿主 × Agent × 插件大表](./host-capability-matrix.html)（[完整事实与库存](./host-capability-matrix.md)）。
+人读版：[能力地图与裁决](./plugin-capability-baseline.html)。现行 API 手册：[plugin-system.md](../../plugins/plugin-system.md)。双端覆盖：[宿主 × Agent × 插件大表](../../capabilities/host-capability-matrix.html)（[完整事实与库存](../../capabilities/host-capability-matrix.md)）。
 
-**统一目标入口（2026-09-08）：** [宿主能力统一模型](./host-capability-model.md)（[人读版](./host-capability-model.html)）按原有三类能力收敛责任与两端接入，完整保留本文 129 个验收项和 32 个场景。旧条目中的“必须建设”应结合新模型的限制列理解，不强制通用耐久任务、事件重放、全局事务或任意 UI/RPC。GAP01–GAP18 仍未关闭。
+**统一目标入口（2026-09-08）：** [宿主能力统一模型](../../capabilities/host-capability-model.md)（[人读版](../../capabilities/host-capability-model.html)）按原有三类能力收敛责任与两端接入，完整保留本文 129 个验收项和 32 个场景。旧条目中的“必须建设”应结合新模型的限制列理解，不强制通用耐久任务、事件重放、全局事务或任意 UI/RPC。GAP01–GAP18 仍未关闭。
 
 - 状态：**两轮插件契约审计已记录；目标契约待实现、待验收。不是“全部宿主能力都已覆盖”。**
 - 最后核验日期：2026-09-08（本轮补统一模型指引；旧验收项状态未重判）。
@@ -13,7 +13,7 @@
 
 ## 1. 承诺的精确定义
 
-**第三轮交叉核查：** 本文 E/P/M/B 主要评价插件契约，不是 Agent 与插件双端覆盖。[能力矩阵](./host-capability-matrix.md)第三轮记录 212 行及 521 个库存条目；2026-09-08 补为 215 行及 526 个库存条目（源码插件和编译内置清单分开），全部关联本文 129 个验收项。发现包含 10 个只有保存值、未找到效果消费者的设置，以及备份范围、画像与工具接线差异。因此此前“审计完成”只能指当轮盘点结束，不能作为全能力实现或未来绝不再漏项的证明。
+**第三轮交叉核查：** 本文 E/P/M/B 主要评价插件契约，不是 Agent 与插件双端覆盖。[能力矩阵](../../capabilities/host-capability-matrix.md)第三轮记录 212 行及 521 个库存条目；2026-09-08 补为 215 行及 526 个库存条目（源码插件和编译内置清单分开），全部关联本文 129 个验收项。发现包含 10 个只有保存值、未找到效果消费者的设置，以及备份范围、画像与工具接线差异。因此此前“审计完成”只能指当轮盘点结束，不能作为全能力实现或未来绝不再漏项的证明。
 
 **[设计] 基线通过验收后，使用本基线允许的对象、操作、挂载点和声明式交互来编写新插件，只改插件，不改宿主。**
 
@@ -83,37 +83,37 @@ flowchart TB
 
 | 编号 | 当前源码及核验对象 |
 | --- | --- |
-| S01 | [plugin-types](../packages/plugin-types/src/index.ts)：全部公开域、服务、贡献、视图、事件类型 |
-| S02 | [capabilities](../packages/core/src/capabilities.ts)、[domains](../packages/core/src/domains.ts)、[registry](../apps/web/src/domain/registry.ts)：分类、版本、授权与领域工厂 |
-| S03 | [plugin-context](../apps/web/src/features/plugins/runtime/plugin-context.ts)：实际提供给 Worker 的接口及人工适配 |
-| S04 | [library domain](../apps/web/src/domain/library.ts)、[read-models](../packages/core/src/read-models.ts)：目录去掉 hrefs，书库命令与读模型 |
-| S05 | [reading domain](../apps/web/src/domain/reading.ts)、[reader session](../apps/web/src/features/reader/hooks/useReaderSession.ts)、[共享导航控制器](../apps/web/src/domain/reading-session-controller.ts)：v2 将真实完成与会话状态收回宿主 |
-| S06 | [FoliateReaderView](../apps/web/src/features/reader/components/FoliateReaderView.tsx)、[view](../apps/web/foliate-js/src/view.ts)、[history](../apps/web/foliate-js/src/history.ts)、[book-search](../apps/web/foliate-js/src/book-search.ts)：精确定位、搜索、选择、历史 |
-| S07 | [book-text-store](../apps/web/src/features/library/lib/book-text-store.ts)、[book-text-port](../apps/web/src/features/ai/agent/ports/book-text-port.ts)：抽取、正文状态、Agent 搜索与 hrefs |
-| S08 | [annotations domain](../apps/web/src/domain/annotations.ts)、[annotation-db](../apps/web/src/features/annotations/lib/annotation-db.ts)：标注、笔记、ask 的读写边界 |
-| S09 | [conversations domain](../apps/web/src/domain/conversations.ts)、[conversation-store](../apps/web/src/features/ai/lib/conversation-store.ts)、[agent workspace](../apps/web/src/features/agent/components/AgentWorkspace.tsx)：会话只读面与宿主对话 |
-| S10 | [settings catalog](../apps/web/src/domain/settings/catalog.ts)、[settings domain](../apps/web/src/domain/settings/domain.ts)、[settings types](../packages/core/src/settings.ts)：路径目录、目标、授权、原子批量修改 |
-| S11 | [reader settings](../apps/web/src/features/settings/lib/reader-settings.ts)、[shortcut settings](../apps/web/src/features/settings/lib/shortcuts.ts)、[shelf view](../apps/web/src/features/shelf/lib/shelf-view.ts)：宿主设置集合 |
-| S12 | [command builder](../apps/web/src/features/command/lib/build-commands.tsx)、[menu registry](../apps/web/src/features/menus/lib/menu-registry.tsx)、[panel intent](../apps/web/src/features/reader/state/panel-intent.ts)、[Agent header](../apps/web/src/features/agent/hooks/useAgentHeaderActions.tsx)：实际 UI 操作与挂载 |
-| S13 | [view normalizer](../apps/web/src/features/plugins/lib/plugin-view.ts)、[view renderer](../apps/web/src/features/plugins/components/PluginViewRenderer.tsx)、[list body](../apps/web/src/features/plugins/components/PluginListViewBody.tsx)、[form body](../apps/web/src/features/plugins/components/PluginFormViewBody.tsx)：声明式交互与校验 |
-| S14 | [UI package](../packages/ui/src/index.ts)、[header cluster](../apps/web/src/features/plugins/components/PluginHeaderCluster.tsx)：组件与宿主容器 |
-| S15 | [text-unit navigator](../apps/web/src/features/reader/hooks/useTextUnitNavigator.ts)、[read aloud](../apps/web/src/features/reader/hooks/useReadAloud.ts)、[voice resolution](../apps/web/src/features/reader/lib/read-aloud-voice.ts)：分段模式、语音与播放控制 |
-| S16 | [agent runtime](../apps/web/src/features/ai/agent/agent-runtime.ts)、[plugin tools](../apps/web/src/features/plugins/runtime/plugin-tools.ts)、[extension context](../packages/agent/src/runtime/extension-context.ts)：推理与 Agent 扩展消费 |
-| S17 | [memory port](../apps/web/src/features/ai/agent/ports/memory-port.ts)、[book memory port](../apps/web/src/features/ai/agent/ports/book-memory-port.ts)、[profile port](../apps/web/src/features/ai/agent/ports/profile-port.ts)：记忆、摘要、画像当前实现 |
-| S18 | [worker host](../apps/web/src/features/plugins/runtime/plugin-worker-host.ts)、[sandbox](../apps/web/src/features/plugins/runtime/plugin-sandbox.worker.ts)：RPC、缓冲网络响应、调用与资源生命周期 |
-| S19 | [plugin backend](../apps/web/src/features/plugins/runtime/plugin-backend.ts)、[plugins.rs](../apps/desktop/src-tauri/src/plugins.rs)：文档存储、安装、资产和版本候选 |
-| S20 | [domain events](../apps/web/src/domain/events.ts)、[app events](../apps/web/src/platform/app-events.ts)、[core events](../packages/core/src/events.ts)：观察范围与新旧事件 |
-| S21 | [scheduler](../apps/web/src/features/plugins/runtime/plugin-scheduler.ts)、[lifecycle](../apps/web/src/features/plugins/runtime/plugin-lifecycle.ts)、[update transaction](../apps/web/src/features/plugins/runtime/plugin-update-transaction.ts)：调度、激活屏障、迁移和回滚 |
-| S22 | [sync engine](../apps/web/src/platform/sync/sync-engine.ts)、[transport registry](../apps/web/src/platform/sync/transport-registry.ts)、[transport feed](../apps/web/src/platform/sync/transport-feed.ts)：宿主同步与密文传输扩展 |
-| S23 | [export file](../apps/web/src/platform/export-file.ts)、[pick book files](../apps/web/src/features/library/lib/pick-book-files.ts)、[blob store](../apps/web/src/platform/blob-store.ts)、[HTTP client](../apps/web/src/platform/http-client.ts)、[external link](../apps/web/src/platform/external-link.ts)：受控文件、网络和外部打开 |
-| S24 | [backup](../apps/web/src/features/settings/lib/backup-io.ts)、[diagnostics](../apps/web/src/features/settings/lib/diagnostics.ts)、[delete all](../apps/web/src/features/settings/lib/delete-all-data.ts)、[update feature](../apps/web/src/features/update)：高风险宿主流程 |
-| S25 | [Rust entry](../apps/desktop/src-tauri/src/lib.rs)、[storage](../apps/desktop/src-tauri/src/storage)、[errors](../packages/core/src/errors.ts)：底层能力与不可直接公开的权力 |
-| S26 | [registry tests](../apps/web/src/domain/registry.test.ts)、[worker tests](../apps/web/src/features/plugins/runtime/plugin-worker-host.test.ts)、[capability tests](../apps/web/src/features/plugins/runtime/plugin-capabilities.test.ts)：当前验证覆盖边界 |
-| S27 | [plugin host](../apps/web/src/features/plugins/runtime/plugin-host.ts)、[update tests](../apps/web/src/features/plugins/runtime/plugin-update-transaction.test.ts)：快照时机、旧实例停写、恢复分支 |
-| S28 | [local store](../apps/web/src/platform/local-store.ts)、[plugin settings](../apps/web/src/features/plugins/lib/plugin-settings.ts)：KV 乐观镜像、落盘失败和插件通知 |
-| S29 | [domain broadcast](../apps/web/src/platform/domain-events.ts)、[sync store](../apps/web/src/platform/sync/sync-store.ts)、[sync scheduler](../apps/web/src/platform/sync/sync-scheduler.ts)：本地广播与远端投影刷新是不同通路 |
-| S30 | [transport registry](../apps/web/src/platform/sync/transport-registry.ts)、[transport feed](../apps/web/src/platform/sync/transport-feed.ts)：动态传输会话和注销 |
-| S31 | [Tauri configuration](../apps/desktop/src-tauri/tauri.conf.json)、[capabilities](../apps/desktop/src-tauri/capabilities)：沙箱之外还必须核验的实际平台边界 |
+| S01 | [plugin-types](../../../packages/plugin-types/src/index.ts)：全部公开域、服务、贡献、视图、事件类型 |
+| S02 | [capabilities](../../../packages/core/src/capabilities.ts)、[domains](../../../packages/core/src/domains.ts)、[registry](../../../apps/web/src/domain/registry.ts)：分类、版本、授权与领域工厂 |
+| S03 | [plugin-context](../../../apps/web/src/features/plugins/runtime/plugin-context.ts)：实际提供给 Worker 的接口及人工适配 |
+| S04 | [library domain](../../../apps/web/src/domain/library.ts)、[read-models](../../../packages/core/src/read-models.ts)：目录去掉 hrefs，书库命令与读模型 |
+| S05 | [reading domain](../../../apps/web/src/domain/reading.ts)、[reader session](../../../apps/web/src/features/reader/hooks/useReaderSession.ts)、[共享导航控制器](../../../apps/web/src/domain/reading-session-controller.ts)：v2 将真实完成与会话状态收回宿主 |
+| S06 | [FoliateReaderView](../../../apps/web/src/features/reader/components/FoliateReaderView.tsx)、[view](../../../apps/web/foliate-js/src/view.ts)、[history](../../../apps/web/foliate-js/src/history.ts)、[book-search](../../../apps/web/foliate-js/src/book-search.ts)：精确定位、搜索、选择、历史 |
+| S07 | [book-text-store](../../../apps/web/src/features/library/lib/book-text-store.ts)、[book-text-port](../../../apps/web/src/features/ai/agent/ports/book-text-port.ts)：抽取、正文状态、Agent 搜索与 hrefs |
+| S08 | [annotations domain](../../../apps/web/src/domain/annotations.ts)、[annotation-db](../../../apps/web/src/features/annotations/lib/annotation-db.ts)：标注、笔记、ask 的读写边界 |
+| S09 | [conversations domain](../../../apps/web/src/domain/conversations.ts)、[conversation-store](../../../apps/web/src/features/ai/lib/conversation-store.ts)、[agent workspace](../../../apps/web/src/features/agent/components/AgentWorkspace.tsx)：会话只读面与宿主对话 |
+| S10 | [settings catalog](../../../apps/web/src/domain/settings/catalog.ts)、[settings domain](../../../apps/web/src/domain/settings/domain.ts)、[settings types](../../../packages/core/src/settings.ts)：路径目录、目标、授权、原子批量修改 |
+| S11 | [reader settings](../../../apps/web/src/features/settings/lib/reader-settings.ts)、[shortcut settings](../../../apps/web/src/features/settings/lib/shortcuts.ts)、[shelf view](../../../apps/web/src/features/shelf/lib/shelf-view.ts)：宿主设置集合 |
+| S12 | [command builder](../../../apps/web/src/features/command/lib/build-commands.tsx)、[menu registry](../../../apps/web/src/features/menus/lib/menu-registry.tsx)、[panel intent](../../../apps/web/src/features/reader/state/panel-intent.ts)、[Agent header](../../../apps/web/src/features/agent/hooks/useAgentHeaderActions.tsx)：实际 UI 操作与挂载 |
+| S13 | [view normalizer](../../../apps/web/src/features/plugins/lib/plugin-view.ts)、[view renderer](../../../apps/web/src/features/plugins/components/PluginViewRenderer.tsx)、[list body](../../../apps/web/src/features/plugins/components/PluginListViewBody.tsx)、[form body](../../../apps/web/src/features/plugins/components/PluginFormViewBody.tsx)：声明式交互与校验 |
+| S14 | [UI package](../../../packages/ui/src/index.ts)、[header cluster](../../../apps/web/src/features/plugins/components/PluginHeaderCluster.tsx)：组件与宿主容器 |
+| S15 | [text-unit navigator](../../../apps/web/src/features/reader/hooks/useTextUnitNavigator.ts)、[read aloud](../../../apps/web/src/features/reader/hooks/useReadAloud.ts)、[voice resolution](../../../apps/web/src/features/reader/lib/read-aloud-voice.ts)：分段模式、语音与播放控制 |
+| S16 | [agent runtime](../../../apps/web/src/features/ai/agent/agent-runtime.ts)、[plugin tools](../../../apps/web/src/features/plugins/runtime/plugin-tools.ts)、[extension context](../../../packages/agent/src/runtime/extension-context.ts)：推理与 Agent 扩展消费 |
+| S17 | [memory port](../../../apps/web/src/features/ai/agent/ports/memory-port.ts)、[book memory port](../../../apps/web/src/features/ai/agent/ports/book-memory-port.ts)、[profile port](../../../apps/web/src/features/ai/agent/ports/profile-port.ts)：记忆、摘要、画像当前实现 |
+| S18 | [worker host](../../../apps/web/src/features/plugins/runtime/plugin-worker-host.ts)、[sandbox](../../../apps/web/src/features/plugins/runtime/plugin-sandbox.worker.ts)：RPC、缓冲网络响应、调用与资源生命周期 |
+| S19 | [plugin backend](../../../apps/web/src/features/plugins/runtime/plugin-backend.ts)、[plugins.rs](../../../apps/desktop/src-tauri/src/plugins.rs)：文档存储、安装、资产和版本候选 |
+| S20 | [domain events](../../../apps/web/src/domain/events.ts)、[app events](../../../apps/web/src/platform/app-events.ts)、[core events](../../../packages/core/src/events.ts)：观察范围与新旧事件 |
+| S21 | [scheduler](../../../apps/web/src/features/plugins/runtime/plugin-scheduler.ts)、[lifecycle](../../../apps/web/src/features/plugins/runtime/plugin-lifecycle.ts)、[update transaction](../../../apps/web/src/features/plugins/runtime/plugin-update-transaction.ts)：调度、激活屏障、迁移和回滚 |
+| S22 | [sync engine](../../../apps/web/src/platform/sync/sync-engine.ts)、[transport registry](../../../apps/web/src/platform/sync/transport-registry.ts)、[transport feed](../../../apps/web/src/platform/sync/transport-feed.ts)：宿主同步与密文传输扩展 |
+| S23 | [export file](../../../apps/web/src/platform/export-file.ts)、[pick book files](../../../apps/web/src/features/library/lib/pick-book-files.ts)、[blob store](../../../apps/web/src/platform/blob-store.ts)、[HTTP client](../../../apps/web/src/platform/http-client.ts)、[external link](../../../apps/web/src/platform/external-link.ts)：受控文件、网络和外部打开 |
+| S24 | [backup](../../../apps/web/src/features/settings/lib/backup-io.ts)、[diagnostics](../../../apps/web/src/features/settings/lib/diagnostics.ts)、[delete all](../../../apps/web/src/features/settings/lib/delete-all-data.ts)、[update feature](../../../apps/web/src/features/update)：高风险宿主流程 |
+| S25 | [Rust entry](../../../apps/desktop/src-tauri/src/lib.rs)、[storage](../../../apps/desktop/src-tauri/src/storage)、[errors](../../../packages/core/src/errors.ts)：底层能力与不可直接公开的权力 |
+| S26 | [registry tests](../../../apps/web/src/domain/registry.test.ts)、[worker tests](../../../apps/web/src/features/plugins/runtime/plugin-worker-host.test.ts)、[capability tests](../../../apps/web/src/features/plugins/runtime/plugin-capabilities.test.ts)：当前验证覆盖边界 |
+| S27 | [plugin host](../../../apps/web/src/features/plugins/runtime/plugin-host.ts)、[update tests](../../../apps/web/src/features/plugins/runtime/plugin-update-transaction.test.ts)：快照时机、旧实例停写、恢复分支 |
+| S28 | [local store](../../../apps/web/src/platform/local-store.ts)、[plugin settings](../../../apps/web/src/features/plugins/lib/plugin-settings.ts)：KV 乐观镜像、落盘失败和插件通知 |
+| S29 | [domain broadcast](../../../apps/web/src/platform/domain-events.ts)、[sync store](../../../apps/web/src/platform/sync/sync-store.ts)、[sync scheduler](../../../apps/web/src/platform/sync/sync-scheduler.ts)：本地广播与远端投影刷新是不同通路 |
+| S30 | [transport registry](../../../apps/web/src/platform/sync/transport-registry.ts)、[transport feed](../../../apps/web/src/platform/sync/transport-feed.ts)：动态传输会话和注销 |
+| S31 | [Tauri configuration](../../../apps/desktop/src-tauri/tauri.conf.json)、[capabilities](../../../apps/desktop/src-tauri/capabilities)：沙箱之外还必须核验的实际平台边界 |
 
 ## 4. 完整能力清单
 

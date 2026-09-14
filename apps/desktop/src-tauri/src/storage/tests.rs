@@ -1644,7 +1644,7 @@ fn an_event_behind_the_frontier_replays_instead_of_clobbering() {
 
 #[test]
 fn two_devices_converge_regardless_of_merge_path() {
-    // The phase-1 acceptance property (docs/sync-engine.md §10): two devices
+    // The phase-1 acceptance property (docs/architecture/sync-engine.md): two devices
     // diverge from a shared history, cross-feed each other's logs, and every
     // projection table ends byte-identical — one side via the incremental
     // fast path, the other via the replay fallback.
@@ -1745,7 +1745,7 @@ fn two_devices_converge_regardless_of_merge_path() {
 
 #[test]
 fn replaying_an_import_materializes_the_blob_manifest() {
-    // New-device bootstrap (docs/data-model.md §9): replaying the log must
+    // New-device bootstrap (docs/architecture/data-model.md): replaying the log must
     // leave `blob_objects` rows behind for every referenced blob, or the shelf
     // renders books whose bytes can never be fetched.
     let mut conn = migrated_conn();
@@ -3145,7 +3145,7 @@ fn re_registering_identical_bytes_never_re_enqueues_an_upload() {
 /// Stress: a million-event log on disk. Ignored by default — run with
 /// `RA_STRESS_EVENTS=1000000 cargo test --lib stress_ -- --ignored --nocapture`.
 /// Prints wall-clock for the paths that scale with the log, so the numbers
-/// docs/sync-engine.md §13 quotes can be re-measured.
+/// docs/architecture/sync-engine.md quotes can be re-measured.
 #[test]
 #[ignore]
 fn stress_million_event_log() {

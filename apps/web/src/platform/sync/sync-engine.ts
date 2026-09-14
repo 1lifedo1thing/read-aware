@@ -6,7 +6,7 @@
  * cadence. That split is what lets the whole engine run under bun:test with
  * two fake devices talking through an in-memory relay.
  *
- * Merge pipeline (docs/sync-engine.md §3): pull page → observe every HLC stamp
+ * Merge pipeline (docs/architecture/sync-engine.md): pull page → observe every HLC stamp
  * (clock first — an event must never be applied by a clock that hasn't seen
  * its stamp) → decrypt → `apply_remote_events` (skips the outbox; replays when
  * events land behind the frontier) → advance the cursor. A multi-page backlog
@@ -14,7 +14,7 @@
  * one replay instead of one per page (§11 攒页重放). Push and pull never
  * conflict-resolve anything: projections are a pure function of the log.
  *
- * Around that core, one cycle also (docs/sync-engine.md §13):
+ * Around that core, one cycle also (docs/architecture/sync-engine.md):
  *  - bootstraps an EMPTY device from the account's published checkpoint
  *    instead of replaying the whole mailbox, then backfills the pre-frontier
  *    log in bounded slices at the end of every cycle;

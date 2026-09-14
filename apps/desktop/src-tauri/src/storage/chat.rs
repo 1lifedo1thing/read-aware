@@ -220,7 +220,7 @@ pub async fn ai_chat_list(
 }
 
 /// Clear = delete the messages, keep the conversation row with a `cleared_at`
-/// tombstone (cross-device clear semantics per docs/sqlite-schema.sql).
+/// tombstone (cross-device clear semantics per docs/archive/designs/sqlite-schema.sql).
 #[tauri::command]
 pub async fn ai_chat_clear(
     conversation_id: String,

@@ -8,9 +8,9 @@
 // the tables away and replay the log to reproduce them. Blob BYTES live on the
 // filesystem under
 // `<app_data>/blobs/`; SQLite holds only the `blob_objects` registry (key,
-// kind, sha256, size, storage_uri) — see docs/sqlite-schema.sql.
+// kind, sha256, size, storage_uri) — see docs/archive/designs/sqlite-schema.sql.
 //
-// Retrieval is FTS + structured signals per docs/agent-architecture.md §4 —
+// Retrieval is FTS + structured signals per docs/architecture/agent-architecture.md —
 // there is no vector store in the default architecture.
 
 pub mod apply;

@@ -10,7 +10,7 @@ import { DEFAULT_GENERAL_SETTINGS } from "../apps/web/src/features/settings/lib/
 import { DEFAULT_AI_PREFERENCES } from "../apps/web/src/features/settings/lib/ai-preferences";
 import { DEFAULT_READER_SETTINGS } from "../apps/web/src/features/settings/lib/reader-settings";
 import { DEFAULT_CONTENT_TYPOGRAPHY } from "../apps/web/src/features/settings/lib/content-typography";
-import { groups, settingPathId, staticSettingPaths, readOnlySettings } from "../docs/host-capability-matrix.data";
+import { groups, settingPathId, staticSettingPaths, readOnlySettings } from "../docs/capabilities/host-capability-matrix.data";
 
 const ts = createRequire(new URL("../apps/web/package.json", import.meta.url))("typescript") as typeof import("../apps/web/node_modules/typescript");
 const ids = new Set(groups.flatMap(g => g.rows.map(r => r.id)));
@@ -357,7 +357,7 @@ function stringProperties(node: import("../apps/web/node_modules/typescript").No
 function methodPaths(value: object, prefix = ""): string[] {
   return Object.entries(value).flatMap(([key, entry]) => typeof entry === "function" ? [prefix + key] : entry && typeof entry === "object" && !Array.isArray(entry) ? methodPaths(entry, `${prefix}${key}.`) : []);
 }
-export function assertUniqueSourceKeys(source = readFileSync(new URL("../docs/host-capability-matrix.data.ts", import.meta.url), "utf8")): void {
+export function assertUniqueSourceKeys(source = readFileSync(new URL("../docs/capabilities/host-capability-matrix.data.ts", import.meta.url), "utf8")): void {
   const file = ts.createSourceFile("matrix.ts", source, ts.ScriptTarget.Latest, true);
   let found = false;
   const visit = (node: import("../apps/web/node_modules/typescript").Node) => {

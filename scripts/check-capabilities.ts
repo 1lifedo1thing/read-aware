@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 
 /** Separate processes keep module mocks and browser globals out of sibling suites. */
 export const capabilityChecks = [
+  { name: "Documentation links", args: ["scripts/check-docs.ts"] },
   { name: "Prepare generated Foliate runtime", args: ["run", "--filter", "@read-aware/web", "build:foliate"] },
   { name: "Matrix source and generated evidence", args: ["scripts/build-host-capability-matrix.ts", "--check"] },
   { name: "Ownership model and generated evidence", args: ["scripts/build-host-capability-model.ts", "--check"] },

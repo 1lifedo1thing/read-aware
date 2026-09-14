@@ -35,10 +35,10 @@
 > work).
 >
 > **Single source of truth for the schema is
-> [`docs/sqlite-schema.sql`](./sqlite-schema.sql)** — the exact, field-level DDL
+> [`docs/sqlite-schema.sql`](sqlite-schema.sql)** — the exact, field-level DDL
 > with per-column comments. The **event catalog's source of truth is
-> [`packages/core/src/events.ts`](../packages/core/src/events.ts)**, and the
-> domain types are [`packages/core/src/entities.ts`](../packages/core/src/entities.ts).
+> [`packages/core/src/events.ts`](../../../packages/core/src/events.ts)**, and the
+> domain types are [`packages/core/src/entities.ts`](../../../packages/core/src/entities.ts).
 > **This document is conceptual prose only** — it deliberately contains no
 > `CREATE TABLE` DDL, so it can never drift from the `.sql`. When the two
 > disagree, the `.sql` (for tables) and `events.ts` (for events) win.
@@ -351,7 +351,7 @@ validates returned shapes/scope and withholds late cancelled results. These toke
 do not authorize historical disclosure; public actor policy is still required.
 Authorized queries, resource export and user-facing consumers are not wired yet;
 MEM13 remains partial. See
-[context-bundles](./context-bundles.md) for the contract and closing conditions.
+[context-bundles](../../architecture/context-bundles.md) for the contract and closing conditions.
 
 ### 5.4 Blob registry
 

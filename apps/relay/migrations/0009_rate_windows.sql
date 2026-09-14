@@ -1,4 +1,4 @@
--- Code-level rate limiting (docs/sync-engine.md §4): fixed windows, counted
+-- Code-level rate limiting (docs/architecture/sync-engine.md): fixed windows, counted
 -- atomically by an upsert-increment keyed on (bucket, subject_hash, window).
 -- Subjects are SHA-256 hashes (email, account id, or client IP), so the table
 -- does not store raw identifiers. An hourly Cron Trigger drops windows older

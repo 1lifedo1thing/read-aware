@@ -1,6 +1,6 @@
 /**
  * 记忆的产品侧存储：SQLite `memories` 表（storage.rs 迁移 v5，
- * docs/data-model.md §5.2 的 v1）。无浏览器降级 —— agent 只在桌面壳里运行，
+ * docs/architecture/data-model.md 的 v1）。无浏览器降级 —— agent 只在桌面壳里运行，
  * 浏览器构建是纯 UI（mock transport），真跑到这里就该炸出来而不是静默降级。
  */
 import { invoke } from "../../../../platform/ipc";

@@ -1,5 +1,5 @@
 /**
- * The curated Phosphor set plugins may reference by name (docs/plugin-system.md
+ * The curated Phosphor set plugins may reference by name (docs/plugins/plugin-system.md
  * §6 — icons by name only, no custom SVG). A curated map keeps the icon library
  * tree-shakeable; extend deliberately rather than exposing the full catalog.
  */

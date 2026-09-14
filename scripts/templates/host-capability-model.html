@@ -17,11 +17,11 @@
 </style></head><body>
 <header><button id="drawer-open" aria-label="打开目录" aria-controls="sidenav" aria-expanded="false" title="打开目录"><i data-lucide="menu"></i></button><a class="brand" href="#top">ReadAware</a><span class="spacer"></span><a href="./host-capability-matrix.html">接线现状</a><a href="./host-capability-model.md">完整契约</a><button id="theme-toggle" aria-label="切换主题" title="切换主题"><i data-lucide="sun-moon"></i></button></header>
 <div class="layout"><aside id="sidenav" aria-label="目录"><button id="drawer-close" aria-label="关闭目录" title="关闭目录"><i data-lucide="x"></i></button><a href="#top">结论</a>{{NAV}}</aside><div id="backdrop"></div>
-<main id="top"><p class="meta">{{DATE}} · {{STATUS}}</p><h1>{{TITLE}}</h1><p>{{CONCLUSION}}</p>
+<main id="top"><p class="meta">文档整理 {{DATE}} · {{STATUS}}</p><h1>{{TITLE}}</h1><p>{{CONCLUSION}}</p>
 <div class="callout"><strong>统一所有权，不无限扩张权限。</strong><p>已有清单全部映射，尚未实现的入口仍明确标缺。临时计时器、复制聊天和导出格式优先组合，不为“完备”建设通用工作流或万能 API。</p></div>
 <label class="search">能力 / 场景 / 边界<input id="search" type="search" placeholder="搜索 Jumper、会话、memory…" autocomplete="off"></label><p id="result-count" class="meta" aria-live="polite"></p><p id="empty" hidden>没有符合条件的条目。</p>
 {{BODY}}
-<footer><a href="./host-capability-model.md">完整事实与双端契约</a> · <a href="./host-capability-model.data.ts">结构化目标源</a> · <a href="./plugin-capability-baseline.html">旧基线与 GAP</a></footer></main></div>
+<footer><a href="./host-capability-model.md">完整事实与双端契约</a> · <a href="./host-capability-model.data.ts">结构化目标源</a> · <a href="../archive/capabilities/plugin-capability-baseline.html">旧基线与 GAP</a></footer></main></div>
 <script>
 const $=id=>document.getElementById(id),nav=$('sidenav'),opener=$('drawer-open'),mobile=()=>matchMedia('(max-width:760px)').matches,rows=Array.from(document.querySelectorAll('details.ep'));
 function filter(){const terms=$('search').value.trim().toLowerCase().split(/\s+/).filter(Boolean);let n=0;for(const row of rows){const hay=(row.textContent+' '+row.dataset.searchSection).toLowerCase();row.hidden=!terms.every(t=>hay.includes(t));if(!row.hidden)n++}$('result-count').textContent=n+' / '+rows.length+' 条';$('empty').hidden=n!==0}

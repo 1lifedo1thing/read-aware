@@ -1,6 +1,6 @@
 /**
  * Code-level rate limiting over the D1-shaped database — the source of truth
- * for exact business limits (docs/sync-engine.md §4 revisited). Cloudflare WAF
+ * for exact business limits (docs/architecture/sync-engine.md revisited). Cloudflare WAF
  * rules should reject bursts before the Worker; these longer email/account
  * windows remain in code because they depend on identities the edge cannot
  * reliably derive, deploy with the application, and run under the test suite.

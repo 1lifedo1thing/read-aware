@@ -626,7 +626,7 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
             )
             ?;
             // Tombstone, not a row delete — the sync semantics in
-            // docs/sqlite-schema.sql keep the conversation with a cleared_at.
+            // docs/archive/designs/sqlite-schema.sql keep the conversation with a cleared_at.
             tx.execute(
                 "UPDATE ai_conversations SET cleared_at = ?2, updated_at = ?2 WHERE id = ?1",
                 params![id, at],
@@ -954,7 +954,7 @@ fn apply_reading_time(
     Ok(())
 }
 
-/// Blob bootstrap contract (docs/data-model.md §9): an event that references a
+/// Blob bootstrap contract (docs/architecture/data-model.md): an event that references a
 /// blob key must leave a `blob_objects` manifest row behind, so a fresh device
 /// replaying the log learns the blob exists remotely before any bytes arrive.
 /// `storage_uri` stays NULL — "known, not fetched" — which readers treat as a

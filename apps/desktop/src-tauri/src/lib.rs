@@ -743,7 +743,7 @@ pub fn run() {
         // scope below is ACL-gated in capabilities/default.json.
         .plugin(tauri_plugin_http::init())
         // User plugins: serve <app_data>/plugins/ as same-scheme ES modules
-        // (CSP script-src allowlists this scheme; see docs/plugin-system.md §9).
+        // (CSP script-src allowlists this scheme; see docs/plugins/plugin-system.md §9).
         .register_uri_scheme_protocol("raplugin", |ctx, request| {
             plugins::serve_plugin_asset(ctx.app_handle(), request)
         })

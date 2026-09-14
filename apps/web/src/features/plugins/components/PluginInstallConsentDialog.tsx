@@ -1,5 +1,5 @@
 /**
- * The install-time disclosure gate (docs/plugin-system.md §2 — installation
+ * The install-time disclosure gate (docs/plugins/plugin-system.md §2 — installation
  * is the trust boundary): who the plugin is, the trust warning, and every
  * declared permission spelled out, before any file lands or code runs.
  */

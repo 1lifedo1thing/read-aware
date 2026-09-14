@@ -1,6 +1,6 @@
 # 有界验收执行清单
 
-契约：[冻结16项](../../host-capability-validation-bounded-goal.md)。不追加项目。
+契约：[冻结16项](../../archive/validation/host-capability-validation-bounded-goal.md)。不追加项目。
 
 | 项目 | 负责人 | 状态 |
 | --- | --- | --- |

@@ -2,7 +2,7 @@
  * Settings → Plugins: Installed / Marketplace tabs. The active tab's primary
  * action (install from folder, refresh registry) sits on the tab strip's
  * trailing edge; both lists are searchable. Arrangement moved to the Menus
- * settings page (docs/plugin-system.md §7).
+ * settings page (docs/plugins/plugin-system.md §7).
  */
 import { useState } from "react";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";

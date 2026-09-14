@@ -145,9 +145,11 @@ Source of truth 在本地。原始领域事件构成可同步的记录；记忆�
 | `plugins/` | 一方插件：词典、朗读音色、主题、RSS、逐句阅读、Jumper、阅读目标、工作区配置、WebDAV 同步，以及批注 / 书库 / 记忆 / 文本 / 听读 / 维护各工作台 |
 
 架构决策与目标数据契约见
-[`docs/agent-architecture.md`](docs/agent-architecture.md) 和
-[`docs/data-model.md`](docs/data-model.md)。插件 API 参考与发布指南见
+[`docs/architecture/agent-architecture.md`](docs/architecture/agent-architecture.md) 和
+[`docs/architecture/data-model.md`](docs/architecture/data-model.md)。插件 API 参考与发布指南见
 [readaware.app/zh/docs/plugins](https://readaware.app/zh/docs/plugins)。
+
+完整导航见 [文档目录](docs/README.md)，包括当前契约、验收证据和历史档案。
 
 ## 发布
 

@@ -1,11 +1,11 @@
-//! The agent's long-term memory read model (docs/data-model.md §5.2).
+//! The agent's long-term memory read model (docs/architecture/data-model.md).
 //!
 //! Split out of `storage/mod.rs`; `use super::*` keeps the shared types in
 //! scope, so this is a move rather than a rewrite.
 use super::*;
 use crate::error::CommandError;
 
-// --- Memories projection (agent long-term memory; docs/data-model.md §5.2) ---
+// --- Memories projection (agent long-term memory; docs/architecture/data-model.md) ---
 
 /// Mirrors `MemoryRecord` in packages/agent (…/src/ports.ts).
 #[derive(Debug, Serialize, Deserialize)]

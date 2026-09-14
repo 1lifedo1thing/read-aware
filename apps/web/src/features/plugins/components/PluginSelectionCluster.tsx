@@ -1,6 +1,6 @@
 /**
  * Plugin-contributed actions inside the reader's selection/annotation menus.
- * Placement is user-owned (docs/plugin-system.md §7): promoted actions render
+ * Placement is user-owned (docs/plugins/plugin-system.md §7): promoted actions render
  * inline, everything else lives behind one quiet overflow trigger.
  * Renders nothing when no plugin contributes — the menus stay untouched.
  */

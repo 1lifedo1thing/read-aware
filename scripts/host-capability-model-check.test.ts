@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { units } from "../docs/host-capability-model.data";
+import { units } from "../docs/capabilities/host-capability-model.data";
 import { validateModel } from "./host-capability-model-check";
 
 describe("capability ownership audit", () => {

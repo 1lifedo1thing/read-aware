@@ -1,7 +1,7 @@
 /**
  * Plugin-contributed icon buttons for a header bar (shelf or reader).
  *
- * Placement is user-owned (docs/plugin-system.md §7): pinned actions render as
+ * Placement is user-owned (docs/plugins/plugin-system.md §7): pinned actions render as
  * buttons (popup ones as anchored Popovers, page ones push the plugin page);
  * everything else collapses behind one overflow trigger whose entries open in
  * the Dialog host. Renders nothing when no plugin contributes to this surface.

@@ -24,7 +24,7 @@ import { scopePluginWorkspace } from "./plugin-scoped-workspace";
  * Builds the `ctx` handed to a plugin's activate(). This is a POLICY shell:
  * the data surface itself is the shared domain layer (src/domain), built
  * here with origin `plugin:<id>`; this module adds what is plugin-specific —
- * manifest permission gating (docs/plugin-system.md §4), contribution
+ * manifest permission gating (docs/plugins/plugin-system.md §4), contribution
  * branding and disposal tracking, virtual-book bindings, and the service
  * capabilities. Gating is API-level — it prevents accidental overreach, not
  * malice; the trust boundary is installation itself (§2). Within a domain,

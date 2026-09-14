@@ -1,6 +1,200 @@
-# Profile And Entity Consolidation
+# 画像、实体身份与自动整理
 
-## Current Status
+本页合并原画像投影、实体注册表和身份巩固三份说明，保留各自的数据与执行契约。
+画像是对读者的认识；实体身份用于识别书中的同一个人物或对象；自动整理从已有记忆
+中提出和提交有证据的更新。三者共用事件与投影，不另建一份画像数据库。
+
+当前调用链已接，完整组合验收仍按 [C01](../capabilities/host-capability-acceptance.md) 执行。
+人工确认的画像与模型派生画像保持区分，后者不能冒充用户亲自确认的事实。
+
+<a id="profile-projections"></a>
+## 画像与实体的数据规则
+
+### Deterministic State
+
+- One `user_profile` row (`local`) belongs to the local account log, not to an
+  individual device or conversation. `profile.updated` patches displayName and
+  summary when present; null clears them. Traits patch top-level keys, with null
+  deleting a key. Nested values are retained verbatim, not recursively inferred.
+  Empty text remains distinct from absence. Omitted fields do not erase state.
+- `entities` retains each resolved identity's own definition. `entity_aliases`
+  retains its observed canonical names and explicit aliases, deduplicated by
+  identity/name. A later resolution updates that member, never a keeper's name
+  merely because the member was merged into it.
+- `entity_redirects` represents identity equivalence, separately from definitions.
+  Merging follows existing roots, redirects the losing root and all its members
+  to the keeper root, and is a no-op for already-equivalent IDs. Therefore reverse
+  or repeated merges cannot create cycles. Merges before either definition are
+  retained; missing keeper definitions are reported as pending, not fabricated.
+  Queries aggregate aliases across members but prefer the actual keeper's name
+  and kind. No original identity/alias is destroyed by a merge.
+- Existing memory entity IDs, when consumed, resolve through this identity graph;
+  chapter-local digest characters are not silently treated as global identities.
+  Resolution requires an explicit producer decision, never spelling alone.
+
+### Replay And Upgrade
+
+All projection writes remain children of storage/apply.rs and run inside the
+event-log transaction. Malformed known payloads abort the whole commit, including
+its outbox entry. Unknown future fields are ignored, not used as SQL or paths.
+The four tables participate in rebuild, drift verification, checkpoints and wipe.
+Checkpoint schema advances to 33 because an old checkpoint lacks these facts.
+Checkpoint restoration clears all child tables before replacing any parent,
+then inserts in reverse dependency order. Per-table delete/insert would otherwise
+cascade away the aliases restored just before their entity definitions.
+
+Migration 33 projects only historical profile/entity events in canonical HLC
+order, without rebuilding unrelated legacy rows. On an incomplete bootstrap log,
+mark projections stale and leave completion to the existing backfill/replay path;
+do not publish a new complete checkpoint from that partial history. A failed
+historical event rolls back the migration rather than marking it applied.
+
+### Profile Summary Migration
+
+#### Summary Migration Contract
+
+Native `profile_initialize`, `profile_inspect`, `profile_commit` and
+`profile_restore` now implement the transaction side below. They are registered
+internal IPC commands, not new plugin/model authority. Startup now invokes
+initialization, removes the legacy settings mirror and logs migration failure;
+profile operations retry initialization rather than reading a stale KV fallback.
+ProfilePort, prompt assembly, onboarding, public pages/edits/observations and v1
+backup summary handling now share this projection through memory domain 2.
+
+The host initializes the summary with a system-origin event envelope minted by
+the existing frontend HLC service. Native code supplies the actual durable KV
+value inside the same transaction that deletes the legacy key. A prior summary
+event, including an explicit null clear, takes precedence; displayName-only
+events do not prevent importing the old summary. Incomplete/stale history cannot
+decide this precedence. Initialization retries after failure and never publishes
+a second independently writable summary cache.
+
+Profile revisions become `profile2:` hashes of `[summary, lastProfileEventId]`.
+Native writes compare the observed revision inside an immediate transaction;
+an A-to-B-to-A change invalidates an old decision. Normal edits remain limited
+to 16000 UTF-16 units. Internal v1 backup restore preserves larger historical
+summaries through a separate host-only restore entry, not an actor override flag.
+Both use profile.updated and reject stale event clocks before committing.
+Memory domain 2 records the persistence contract as event-log, not device-local.
+
+The native reader refuses unretired legacy KV or stale projections instead of
+reporting an empty summary. Commit requires a fresh local-device envelope after
+the entire log/checkpoint frontier and rejects duplicate IDs. Equal text is a
+no-op only after the observed revision and envelope pass validation. Origin is
+provenance, not authorization: the host must keep restore/initialization outside
+the Agent/plugin bridge and retain existing grants for normal profile edits.
+
+The v1 backup wire format remains the same subset: export materializes the
+current summary under its historical KV key, import removes that key from raw
+KV restoration and conditionally writes the profile event instead. This does
+not turn v1 into a full profile/entity/event-log backup or a context bundle.
+An absent historical key leaves the current summary alone; an empty string
+restores an intentionally empty summary. The archive observes the current
+revision before restoring other KV, then submits it to conditional profile
+restore. Conflicts fail visibly; earlier sequential archive writes do not roll
+back. Normal onboarding takes a fresh snapshot and uses the same conditional
+summary write; its subsequent memory seeds remain separate transactions.
+
+Public reads remain bounded and writes conditional on the observed revision.
+The existing Memory Desk consumer now requires memory 2; this is a coordinated
+breaking contract, not an adapter that silently accepts profile1 decisions.
+Entity resolve/merge still need bounded read/conditional write APIs with explicit
+memory authorization and ownership/cancellation checks. Full interview/seed
+orchestration and consolidation are not implemented by summary migration.
+
+Stage one uses native transactional/replay tests and targeted permission/type
+checks only. Formal composition plugins belong to stage two; actual Tauri,
+cross-device/bootstrap, concurrent/failed/revoked operations and packaged plugin
+rounds belong to stage three. Neither is replaced by projection unit tests.
+
+<a id="entity-registry"></a>
+## 实体查询与人工决策
+
+### Reads
+
+One memory query supports identities, members and aliases. Identities lists
+canonical roots, including pending roots created by earlier merge events.
+Members returns original IDs and their own definitions, not copies of the
+keeper's definition. Aliases returns owner ID plus observed alias; identical
+spellings from different members retain provenance. Member/alias queries accept
+any known member ID and resolve its current root. Unknown IDs return an empty
+page with null canonicalId, never an invented pending identity.
+
+All modes are ordered and paged: default 25, maximum 100, nonnegative offset;
+later pages require the observed entities1 revision. Identity search is literal
+substring matching of IDs, canonical names and retained aliases, with SQLite's
+ASCII case folding. It never interprets FTS or wildcard syntax. Search is at
+most 128 UTF-16 units. Results bound entry count; historical event fields were
+not size-limited, so this is not an absolute byte or parsing-memory guarantee.
+New public writes bound IDs to 256, kind to 64, names/aliases to 512 UTF-16 units
+and each resolve request to 32 aliases. No data is silently truncated.
+
+The revision hashes the ordered entity definitions, retained aliases and flat
+redirect projection, including event identities. Hashing streams rows rather
+than materializing the registry. This costs O(registry size), with memory
+bounded by one stored row, not constant query CPU. A change anywhere in the
+registry invalidates pending pages and writes conservatively. Checkpoint
+bootstrap does not need its event-log backfill to reproduce the same revision;
+stale projections reject reads and writes until replay completes.
+
+### Decisions
+
+Agent approval binding: member/alias pages also return canonicalDefinition from
+the same native read transaction, null for unknown/pending roots and identity
+lists. This avoids scanning all member pages merely to name the keeper in an
+approval prompt. Memory 2.2 advertises this additional result contract. The
+Agent's two tools query_entities/manage_entity share one explicit entity port;
+manage_entity freezes the full candidate, pins both merge-class inspections to
+its revision, then shows candidate plus current canonical names/IDs and member
+counts in host confirmation. Merge rejects unknown/pending classes before
+asking. Resolve may define a new original member; resolving an already-merged
+member never claims to rename its keeper. Native CAS arbitrates changes after
+approval, with no retry or implicit approval. This binding is independent of
+automatic memory-building policy and does not import book digest characters.
+
+Resolve updates the specified original member definition and adds aliases;
+it does not silently edit the keeper when supplied a merged member ID. A new
+ID can be defined after reading the current registry version. Merge requires
+known classes with resolved keeper definitions, so user decisions cannot create
+invisible identities by typo. Already-equivalent classes are a no-op. The
+keeper's definition wins, and all original member definitions/aliases remain.
+
+Both decisions compare the full observed registry revision in an immediate
+SQLite transaction, then append/apply one existing canonical domain event and
+its outbox row. Duplicate/stale local envelopes reject before writing. Same
+definition plus already-known aliases is a no-op, not a fabricated event. No
+blind conflict retries: reread and renew the decision. Local transactions are
+not distributed CAS; offline devices merge their event logs in canonical HLC
+order under the existing replay rules.
+
+The plugin bindings stay within memory: queries.entities requires memory:read
+(write implies read), commands.decideEntity requires memory:write and an active
+activation. Both accept per-call cancellation; the Worker strips local signals
+and injects a host-owned signal. Entity reads use the existing shared 32-read
+capacity and retain source ownership until IPC settles, even after cancellation.
+Agent decisions show the exact proposed identity change and require host
+approval; book-local digest
+characters are not automatically imported or matched by spelling. These are
+global, explicitly resolved identities, not a way around book spoiler scopes.
+Cancellation before dispatch prevents the candidate event; dispatched native
+work drains to its real receipt. The entity-write Worker proxy sends cancellation
+but waits for host arbitration, retaining its pending-call slot. Native failure
+codes are not overwritten by a concurrent cancellation. The existing RPC deadline
+and Worker loss still bound waiting: either leaves an unknown write outcome, not
+proof of rollback, and must not trigger a blind retry. Retirement waits for the
+native source transaction but cannot promise delivery into a terminated Worker.
+Retired consumers cannot receive late pages. Changed transactions alone broadcast;
+conflicts and no-ops do not emit fake success events.
+
+### 验证边界
+
+查询、修改、授权和批准链已经接通。自动整理见下一节；当前组合验收以 C01 为准，
+已有单测和受控 Worker 证据不单独证明完整桌面行为。
+
+<a id="identity-consolidation"></a>
+## 自动整理与派生画像
+
+### Current Status
 
 Native snapshot/conditional commit, the v34 local checkpoint, typed host service,
 bounded automatic inference/idle production and evidence-validated prompt
@@ -12,7 +206,7 @@ now use a revision-pinned partition scan and exact selected-member hydration.
 MEM08 is wired pending integrated acceptance; no partial pass is labelled complete.
 Existing curated profile APIs retain their meaning.
 
-## Ownership
+### Ownership
 
 The idle maintenance coordinator remains the one owner; this is a deterministic
 pipeline around the existing fast inference port, not a second conversational
@@ -31,7 +225,7 @@ same original-member/keeper semantics as explicit management. All source
 material is data, never instructions; identity matches require evidence, not
 merely identical spelling. Book digest characters are not an input source.
 
-## Native Boundary
+### Native Boundary
 
 The native snapshot reads the initialized, fresh profile, registry revision and
 eligible memory snapshots in ONE transaction. Eligible means active user/global
@@ -67,7 +261,7 @@ Conflict requires a fresh snapshot and inference, never blind replay of a plan.
 Checkpoint bootstrap and log backfill may conservatively invalidate memory
 revisions; rerunning is preferable to hiding unseen source changes.
 
-## Producer And Consumers
+### Producer And Consumers
 
 The automatic producer first tries a complete, revision-pinned JSON envelope of
 eligible memories and registry classes/members/aliases. Input is capped at 48000
@@ -186,7 +380,7 @@ Incomplete model work stays pending with logged diagnostics, not a successful pa
 Curated profile edits win by separation and read-set conflict checks. Forgotten
 or superseded evidence invalidates the derived layer before regeneration.
 
-## Public Inspection
+### Public Inspection
 
 The shared host service reuses the `profile_context` read transaction; it does
 not expose the internal producer snapshot, raw traits, source text or registry.
@@ -240,6 +434,5 @@ tests exercise the actual HTTP adapter with scripted SSE responses and observe
 the output cap, single flight, independent completion gate and runtime recreation.
 The web assembly test goes through actual RuntimeDeps, inference and host minting
 with scripted IPC receipts; only native tests prove SQLite transaction semantics.
-Stage two adds real composition workflows; stage three
-proves real Tauri/Worker/inference, revocation and cross-device replay. Native
-foundations alone do not close MEM08 or count as those consumer workflows.
+Integrated Worker/Tauri/SQLite acceptance remains governed by C01 in the current
+acceptance list. The supporting checks above do not independently close that boundary.

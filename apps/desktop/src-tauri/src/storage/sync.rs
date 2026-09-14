@@ -21,7 +21,7 @@ pub struct SyncProfile {
     pub sync_enabled: bool,
     pub remote_account_id: Option<String>,
     /// Name of the secret-store slot holding the E2E master key — never the
-    /// key itself (docs/sqlite-schema.sql: SQLite holds no key material).
+    /// key itself (docs/archive/designs/sqlite-schema.sql: SQLite holds no key material).
     pub encryption_key_ref: Option<String>,
     pub last_push_at: Option<String>,
     pub last_pull_at: Option<String>,

@@ -394,7 +394,7 @@ export function forgetPluginBookAccess(id: string, origin: DomainActor = "user")
   return writeBookAccess(id, null, origin);
 }
 
-// ─── Placement (user-owned pinning; docs/plugin-system.md §7) ────────────────
+// ─── Placement (user-owned pinning; docs/plugins/plugin-system.md §7) ────────────────
 
 /**
  * Pin caps are a sanity rail, not a curation stance — the user arranges their
@@ -527,7 +527,7 @@ export function closePluginDialog(requestId: string): boolean {
   return true;
 }
 
-// ─── Install consent (docs/plugin-system.md §2/§4) ───────────────────────────
+// ─── Install consent (docs/plugins/plugin-system.md §2/§4) ───────────────────────────
 
 import type { PluginManifest } from "../lib/plugin-types";
 

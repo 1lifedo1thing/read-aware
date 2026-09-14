@@ -1,5 +1,5 @@
 /**
- * Phase 0 spike（docs/agent-architecture.md §12）：验证 pi 的两条关键路径 ——
+ * Phase 0 spike（docs/architecture/agent-architecture.md）：验证 pi 的两条关键路径 ——
  *   A. pi-ai 直接流式（BYOK apiKey 显式传入）
  *   B. pi-agent-core Agent 循环 + 自定义工具端到端
  *

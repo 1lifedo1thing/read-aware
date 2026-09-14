@@ -2,11 +2,11 @@
  * @read-aware/plugin-types — the public plugin API contract.
  *
  * This package is the single source of truth for every type a plugin author
- * touches (docs/plugin-system.md). The app re-exports it (its surfaces build
+ * touches (docs/plugins/plugin-system.md). The app re-exports it (its surfaces build
  * on these shapes), and the marketplace repo's TypeScript template ships a
  * declaration copy of it so plugins get full typing with zero dependencies.
  *
- * ## Construction rules (docs/plugin-system.md §4–§6)
+ * ## Construction rules (docs/plugins/plugin-system.md §4–§6)
  *
  * The contract is DERIVED from the app's domain model, not authored beside it:
  *
@@ -128,7 +128,7 @@ export type {
 // ─── Permissions ─────────────────────────────────────────────────────────────
 
 /**
- * Permission domains a manifest may declare (docs/plugin-system.md §4).
+ * Permission domains a manifest may declare (docs/plugins/plugin-system.md §4).
  *
  * - `<domain>:read` / `<domain>:write` — data access per domain; write
  *   implies the domain's read surface. Library ownership and reading-state
@@ -1776,7 +1776,7 @@ export type PluginDomains = {
    * handles belong to this activation. Dispatched writes may have committed even
    * if a later scope change prevents disclosure of their result; inspect before retry. */
   memory?: { queries: {
-    /** Memory 2.4: the versioned context-bundle archive (`docs/context-bundles.md`). Every recipe also needs
+    /** Memory 2.4: the versioned context-bundle archive (`docs/architecture/context-bundles.md`). Every recipe also needs
      * read access to the domains it draws on: book_memory_context needs annotations and library, book scopes
      * need library, conversation_insights_context needs conversations. History pages carry versions and
      * publication times only. A pinned read delivers the exact immutable cb1 artifact; a retained

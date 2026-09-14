@@ -19,6 +19,7 @@
     "build:landing": "turbo run build --filter=@read-aware/landing",
     "check:marketplace": "bun scripts/check-marketplace-contract.ts",
     "check:capabilities": "bun scripts/check-capabilities.ts",
+    "check:docs": "bun scripts/check-docs.ts",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "eval:agent": "bun packages/agent/src/eval-run.ts",

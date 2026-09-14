@@ -1,5 +1,5 @@
 /**
- * The relay's HTTP surface (docs/sync-engine.md §3-§5): magic-link auth, the
+ * The relay's HTTP surface (docs/architecture/sync-engine.md-§5): magic-link auth, the
  * numbered ciphertext mailbox, and encrypted blob storage. Pure request →
  * response over RelayPorts — no Cloudflare types in here, which is what lets
  * the whole surface run under bun:test against sqlite-backed ports.
@@ -205,7 +205,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
   const nowIso = () => new Date(ports.now()).toISOString();
   const billing = ports.stripe ? createBillingContext(ports.stripe) : null;
 
-  // ── Code-level throttles (docs/sync-engine.md §4) ─────────────────────────
+  // ── Code-level throttles (docs/architecture/sync-engine.md) ─────────────────────────
   //
   // Exact business windows counted in D1. Edge WAF rules absorb coarse bursts
   // before the Worker, but cannot replace email/account identities or these
@@ -466,7 +466,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     await accounts.putSession(await tokenHash(session), account.id, nowIso());
     // `email` is the login-CSRF defense: the client can only ask the user for
     // an encryption passphrase AFTER showing which account the token opened
-    // (docs/sync-engine.md §5). A token for an attacker's account must never
+    // (docs/architecture/sync-engine.md). A token for an attacker's account must never
     // be connectable while looking like "just finish signing in".
     return json(200, { session, accountId: account.id, email: account.email, keys: account.keys });
   }
@@ -895,7 +895,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
 
   /**
    * The bundled-AI proxy: OpenAI-compatible passthrough with the operator's
-   * upstream key injected and the usage numbers metered (docs/sync-engine.md
+   * upstream key injected and the usage numbers metered (docs/architecture/sync-engine.md
    * §11). The relay never logs or stores request/response CONTENT — these
    * requests are plaintext inside TLS (not E2E like sync data), so the only
    * thing allowed to touch storage is token counts. Admission is the tier's

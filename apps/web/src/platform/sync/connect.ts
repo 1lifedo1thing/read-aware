@@ -1,5 +1,5 @@
 /**
- * The account-connect flow (docs/sync-engine.md §5, §9), in TWO phases with a
+ * The account-connect flow (docs/architecture/sync-engine.md, §9), in TWO phases with a
  * user-facing boundary between them:
  *
  *  1. `verifySignInToken` — redeem the one-time token. Returns WHICH account

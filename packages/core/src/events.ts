@@ -2,10 +2,11 @@ import type { BookTextRange } from "./book-range";
 // Event-sourced foundation. `raw events` are the unit of sync; every higher
 // layer (core projections, working / long-term memory, context bundles, the
 // vector index) is a local projection rebuilt from this append-only log.
-// See CLAUDE.md > Memory and docs/data-model.md.
+// See CLAUDE.md > Memory and docs/architecture/data-model.md.
 //
-// This file is the CANONICAL event registry: docs/sqlite-schema.sql and
-// docs/data-model.md must agree with the variants declared here. Every column
+// This file is the CANONICAL event registry. Runtime migrations in
+// apps/desktop/src-tauri/src/storage/schema.rs and docs/architecture/data-model.md
+// must agree with the variants declared here. Every column
 // a projection table marks NOT NULL has to be derivable from some event payload
 // (or from the envelope's HLC wall time), or the projection cannot be rebuilt.
 //
@@ -299,7 +300,7 @@ export type DomainEvent =
   | DomainEventEnvelope<"note.removed", { noteId: Id }>
   /**
    * A question asked in the book thread leaves a passive trace anchored at the
-   * selection or reading position (docs/agent-architecture.md §7). Written by
+   * selection or reading position (docs/architecture/agent-architecture.md). Written by
    * the agent runtime, not the user.
    */
   | DomainEventEnvelope<

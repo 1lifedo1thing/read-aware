@@ -1,7 +1,7 @@
 /**
  * readaware://sync/login/<token> — the URL a sign-in email or the relay's
  * OAuth finish page uses to hand the one-time sign-in token back to the app
- * (docs/sync-engine.md §5). Parsing is pure and directly testable; the
+ * (docs/architecture/sync-engine.md). Parsing is pure and directly testable; the
  * subscription wraps the deep-link plugin so a caller misses neither a
  * cold-start URL (the OS launched us to serve the link — getCurrent) nor one
  * arriving while the app runs (onOpenUrl).

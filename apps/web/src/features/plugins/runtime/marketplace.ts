@@ -2,7 +2,7 @@
  * The community marketplace client. The marketplace is a public GitHub repo
  * (Raycast model — plugins land via pull request); the app reads its
  * `registry.json` index and installs plugins by fetching their text files and
- * handing them to Rust to write (docs/plugin-system.md §9).
+ * handing them to Rust to write (docs/plugins/plugin-system.md §9).
  *
  * Two mirrors: raw.githubusercontent.com is always fresh but unreachable on
  * some networks; jsDelivr is widely reachable but caches ~12h. The last mirror

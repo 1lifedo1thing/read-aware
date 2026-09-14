@@ -100,7 +100,7 @@ export function AppHeader({
   );
   const [activeCollectionId, setActiveCollectionId] =
     useAtom(activeCollectionAtom);
-  // Plugin buttons live on the shelf header only (docs/plugin-system.md §5).
+  // Plugin buttons live on the shelf header only (docs/plugins/plugin-system.md §5).
   const onShelf = activeTopNav === "shelf";
   const shelfPluginActions = useAtomValue(headerActionsAtom).filter(
     (action) => action.surface === "shelf" && action.state?.visible !== false,

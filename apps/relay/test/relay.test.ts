@@ -434,7 +434,7 @@ describe("diagnostic reports", () => {
   });
 });
 
-describe("unauthenticated throttles (docs/sync-engine.md §4)", () => {
+describe("unauthenticated throttles (docs/architecture/sync-engine.md)", () => {
   const ask = (handle: (req: Request) => Promise<Response>, email: string) =>
     handle(post("/v1/auth/request", { email }));
 

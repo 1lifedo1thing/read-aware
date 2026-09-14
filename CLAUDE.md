@@ -52,19 +52,21 @@ TanStack Router, Jotai, Tailwind CSS v4, Vite, and a Tauri 2 desktop shell.
 
 ## References by task
 
-Read only the references needed for the current change. Paths are repo-relative.
+Documentation map: [the documentation index](docs/README.md). Read only the references needed
+for the current change. Paths are repo-relative; `docs/archive/` is historical,
+not a source of current implementation status or automatic work items.
 
 | Task | Reference |
 | --- | --- |
-| Memory, retrieval, storage or reader architecture | [Architecture decisions](docs/agent-guidance/architecture.md); `docs/agent-architecture.md` or `docs/data-model.md` for the affected design |
-| Sync behavior | [Sync engine](docs/sync-engine.md) |
+| Memory, retrieval, storage or reader architecture | [Architecture decisions](docs/agent-guidance/architecture.md); `docs/architecture/agent-architecture.md` or `docs/architecture/data-model.md` for the affected design |
+| Sync behavior | [Sync engine](docs/architecture/sync-engine.md) |
 | Product UI and component conventions | [UI conventions](docs/agent-guidance/ui.md) |
 | Error handling and IPC | [Error contract](docs/agent-guidance/errors.md); keep stable codes, localized user messages, logged raw errors, honest retries and visible read/write failures |
-| Plugin boundaries | [Plugin system](docs/plugin-system.md) |
-| Host/Agent/plugin capability delivery | Start from the finite [acceptance list](docs/host-capability-acceptance.md), then read only affected rows in `docs/host-capability-matrix.data.ts` / `docs/host-capability-model.data.ts`; use the compact [evidence index](docs/host-capability-delivery.md) for prior proof. Generated MD/HTML are outputs |
+| Plugin boundaries | [Plugin system](docs/plugins/plugin-system.md) |
+| Host/Agent/plugin capability delivery | Start from the finite [acceptance list](docs/capabilities/host-capability-acceptance.md), then read only affected rows in `docs/capabilities/host-capability-matrix.data.ts` / `docs/capabilities/host-capability-model.data.ts`; use the compact [evidence index](docs/capabilities/host-capability-delivery.md) for prior proof. Generated MD/HTML are outputs |
 | Agent behavior evals | `.agents/skills/evals/SKILL.md` |
 | Authorized release work | `.agents/skills/publishing/SKILL.md` |
-| Historical migrations | [Historical implementation notes](docs/agent-guidance/implementation-history.md); not current status |
+| Historical migrations | [Historical implementation notes](docs/archive/reviews/implementation-history.md); not current status |
 
 ## Commands
 

@@ -1,5 +1,5 @@
 /**
- * Context 页 = 全局线程的主场（docs/agent-architecture.md §9）：跨书对话，
+ * Context 页 = 全局线程的主场（docs/architecture/agent-architecture.md）：跨书对话，
  * 支持多线程 —— 切换与新建在 AppHeader 的 ThreadsPopover（轻量弹层，无常驻
  * 边栏），当前线程经 activeGlobalThreadAtom 会合；记忆不随线程分裂。
  * 标注同样从 AppHeader 的图标弹出（AnnotationsPopover）；记忆不设 GUI，

@@ -1,6 +1,6 @@
 /**
  * Bridges plugin-registered tools into the agent runtime's AgentTool shape
- * (docs/plugin-system.md §8): namespaced `plugin_<id>_<name>`, provenance in
+ * (docs/plugins/plugin-system.md §8): namespaced `plugin_<id>_<name>`, provenance in
  * the description so the model knows the source, JSON results. Wired into
  * RuntimeDeps.extraTools; the registry snapshot is taken per model request.
  */

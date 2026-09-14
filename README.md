@@ -168,10 +168,12 @@ The repository itself is a Bun workspace monorepo orchestrated by Turborepo.
 | `plugins/` | First-party plugins: dictionary, TTS voices, themes, RSS reader, sentence reader, jumper, reading goals, workspace profiles, WebDAV sync, and the annotation / library / memory / text / listening / maintenance desks |
 
 Architecture decisions and target data contracts live in
-[`docs/agent-architecture.md`](docs/agent-architecture.md) and
-[`docs/data-model.md`](docs/data-model.md). The plugin API reference and
+[`docs/architecture/agent-architecture.md`](docs/architecture/agent-architecture.md) and
+[`docs/architecture/data-model.md`](docs/architecture/data-model.md). The plugin API reference and
 publishing guide live at
 [readaware.app/docs/plugins](https://readaware.app/docs/plugins).
+
+Browse the [documentation index](docs/README.md) for current contracts, verification and historical archives.
 
 ## Releases
 
