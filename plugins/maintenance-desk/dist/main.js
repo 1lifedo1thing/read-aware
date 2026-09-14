@@ -530,7 +530,7 @@ function pluginDirectory(ctx, signal) {
     if (kind === "plugins") {
       const result2 = await ctx.services.plugins.list(request);
       signal.throwIfAborted();
-      return liveView(ctx, signal, result2, (handler) => ctx.services.plugins.observe(request, handler), (value) => ({
+      return liveView(ctx, signal, result2, (handler) => ctx.services.plugins.observe(request, handler, { ruleId: "directory-live" }), (value) => ({
         kind: "list",
         title: `${t.plugins} (${value.total})`,
         emptyText: t.empty,
@@ -547,7 +547,7 @@ function pluginDirectory(ctx, signal) {
     }
     const result = await ctx.services.plugins.contributions(request);
     signal.throwIfAborted();
-    return liveView(ctx, signal, result, (handler) => ctx.services.plugins.observeContributions(request, handler), (value) => ({
+    return liveView(ctx, signal, result, (handler) => ctx.services.plugins.observeContributions(request, handler, { ruleId: "contributions-live" }), (value) => ({
       kind: "list",
       title: `${t.contributions} (${value.total})`,
       emptyText: t.empty,

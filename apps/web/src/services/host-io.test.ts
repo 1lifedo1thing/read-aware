@@ -1,8 +1,9 @@
+import { causalActor, actorCause, eventCause } from "../platform/domain-actor";
 import { afterEach, expect, spyOn, test } from "bun:test";
 import { getDefaultStore } from "jotai";
 import { hostIO } from "./host-io";
 import { pluginDirectory, pluginDirectoryPage } from "./plugin-directory";
-import { installedPluginsAtom } from "../features/plugins/state/plugin-store";
+import { installedPluginsAtom, setInstalledPlugins } from "../features/plugins/state/plugin-store";
 import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
 import type { PluginPermission } from "@read-aware/plugin-types";
 
@@ -37,10 +38,13 @@ test("plugin directory projects only public metadata and observers release", asy
   const page = pluginDirectoryPage(installed as never, { limit: 1 });
   expect(page.plugins).toEqual([{ id: "desk", name: "A desk", version: "1.0.0", builtin: false, enabled: true, activationFailed: true }]);
   expect(JSON.stringify(page)).not.toMatch(/PRIVATE|SECRET|password/);
-  const pages: unknown[] = [];
+  const pages: unknown[] = [], sources: object[] = [];
+  const origin = causalActor("plugin:directory-source");
   store.set(installedPluginsAtom, []);
-  const off = pluginDirectory.observe({}, value => pages.push(value));
-  store.set(installedPluginsAtom, installed as never);
+  const off = pluginDirectory.observe({}, (value, source) => { pages.push(value); sources.push(source!); });
+  setInstalledPlugins(installed as never, origin);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(eventCause(sources[1]!)).toBe(actorCause(origin));
   expect(pages).toHaveLength(2); off(); store.set(installedPluginsAtom, []); expect(pages).toHaveLength(2);
   expect((await pluginDirectory.list()).total).toBe(0);
 });

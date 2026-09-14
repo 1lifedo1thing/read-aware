@@ -916,7 +916,7 @@ export function buildPluginContext(
           lifecycle.assertActive("services.plugins.list");
           return pluginDirectory.list(query);
         },
-        observe: (query, handler) => track(() => ({ dispose: pluginDirectory.observe(query, handler) })),
+        observe: (query, handler) => track(() => ({ dispose: pluginDirectory.observe(query, handler, operationActor) })),
       },
       logging,
       ...(canUseHostService("diagnostics", permissions) ? { diagnostics: {

@@ -52,7 +52,7 @@ export function pluginDirectory(ctx: PluginContext, signal: AbortSignal) {
     if (kind === "plugins") {
       const result = await ctx.services.plugins.list(request);
       signal.throwIfAborted();
-      return liveView(ctx, signal, result, handler => ctx.services.plugins.observe(request, handler), value => ({
+      return liveView(ctx, signal, result, handler => ctx.services.plugins.observe(request, handler, { ruleId: "directory-live" }), value => ({
         kind: "list", title: `${t.plugins} (${value.total})`, emptyText: t.empty, actions, pagination: pagination(value),
         items: value.plugins.map(entry => ({ id: entry.id, title: entry.name, subtitle: `${entry.id} · ${entry.version}`,
           accessories: entry.activationFailed ? [{ kind: "text", text: t.activationFailed }] : [],
@@ -61,7 +61,7 @@ export function pluginDirectory(ctx: PluginContext, signal: AbortSignal) {
     }
     const result = await ctx.services.plugins.contributions(request);
     signal.throwIfAborted();
-    return liveView(ctx, signal, result, handler => ctx.services.plugins.observeContributions(request, handler), value => ({
+    return liveView(ctx, signal, result, handler => ctx.services.plugins.observeContributions(request, handler, { ruleId: "contributions-live" }), value => ({
       kind: "list", title: `${t.contributions} (${value.total})`, emptyText: t.empty, actions, pagination: pagination(value),
       items: value.contributions.map(entry => ({ id: JSON.stringify([entry.point, entry.pluginId, entry.key]),
         title: entry.key, subtitle: `${entry.pluginId} · ${entry.point}` })),

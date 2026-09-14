@@ -57,6 +57,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
     [context.services.ui.commands, "observe", 0],
     [context.services.ui.reader, "observe", 0],
     [context.services.ui.reader?.image, "observe", 0],
+    [context.services.plugins, "observe", 1],
     [context.services.plugins, "observeContributions", 1],
   ];
   for (const [namespace, key, index] of observations) {
@@ -67,7 +68,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
       const handler = args[index], subscription = {};
       args[index] = (snapshot: object | null, source?: object) => reactions.deliver(subscription, source ?? snapshot!,
         reaction => handler(snapshot, { reaction }));
-      if (namespace !== context.services.ui.window && namespace !== context.services.ui.workspace && namespace !== context.services.ui.commands && key !== "observeSession" && key !== "observeTime" && key !== "observeEnvironment") return observe(...args);
+      if (namespace !== context.services.plugins && namespace !== context.services.ui.window && namespace !== context.services.ui.workspace && namespace !== context.services.ui.commands && key !== "observeSession" && key !== "observeTime" && key !== "observeEnvironment") return observe(...args);
       const release = reactions.bindRule(subscription, args[index + 1]?.ruleId);
       try {
         const registration = observe(...args) as PluginDisposable;

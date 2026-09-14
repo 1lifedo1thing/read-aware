@@ -2379,11 +2379,11 @@ export type PluginHostServices = {
     /** Registered identities across extension points, never provider callbacks,
      * data, settings or a grant to invoke another plugin. Offset pages may change. */
     contributions(query?: import("@read-aware/core").PluginContributionQuery): Promise<import("@read-aware/core").PluginContributionPage>;
-    observeContributions(query: import("@read-aware/core").PluginContributionQuery, handler: PluginObservationHandler<import("@read-aware/core").PluginContributionPage>): PluginDisposable;
+    observeContributions(query: import("@read-aware/core").PluginContributionQuery, handler: PluginObservationHandler<import("@read-aware/core").PluginContributionPage>, options?: { ruleId?: string }): PluginDisposable;
     /** Public installed metadata only, no settings, paths, secrets or raw errors. */
     list(query?: import("@read-aware/core").PluginDirectoryQuery): Promise<import("@read-aware/core").PluginDirectoryPage>;
-    /** Initial page and changes; offset pages must be reloaded after directory changes. */
-    observe(query: import("@read-aware/core").PluginDirectoryQuery, handler: (page: import("@read-aware/core").PluginDirectoryPage) => unknown): PluginDisposable;
+    /** Plugins 1.10: serial reaction deliveries with stable rule IDs; reload offset pages after changes. */
+    observe(query: import("@read-aware/core").PluginDirectoryQuery, handler: PluginObservationHandler<import("@read-aware/core").PluginDirectoryPage>, options?: { ruleId?: string }): PluginDisposable;
   };
   maintenance: {
     /** Maintenance 1.3: reveal native AI test controls; only the user's click starts inference. */
