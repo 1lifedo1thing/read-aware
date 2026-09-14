@@ -37,7 +37,8 @@ function fixture() {
     commands: { mutate: async (input: unknown) => { writes.push(input); } },
     events: { observe: (query: MemoryObservationQuery, callback: typeof handler) => { requests.push(query); handler = callback; return { dispose() { stopped++; } }; } },
   } }, services: { ui: { publishView: async (_: unknown, update: PluginViewUpdate) => { updates.push(update); return { status: "applied" }; } } } } as unknown as PluginContext;
-  ctx.withEvent = () => ctx;
+  ctx.withEvent = ((_event: unknown, registration?: { dispose(): void | Promise<void> }) => registration
+    ? Object.assign({}, ctx, { dispose: async () => { await registration.dispose(); } }) : ctx) as PluginContext["withEvent"];
   return { ctx, requests, updates, writes, snapshot, emit: (event: MemoryObservation, delivery?: PluginReactionEvent) => handler(event, delivery), stopped: () => stopped };
 }
 
@@ -46,7 +47,8 @@ test("automatic memory publication uses the event binding while later user actio
   const reaction = { ...f.ctx, services: { ...f.ctx.services, ui: { ...f.ctx.services.ui,
     publishView: async (_channel: unknown, update: PluginViewUpdate) => { published.push(update); return { status: "applied" as const }; },
   } } };
-  f.ctx.withEvent = delivery => { bound.push(delivery); return reaction; };
+  f.ctx.withEvent = ((delivery: PluginReactionEvent | undefined, registration?: { dispose(): void | Promise<void> }) => { bound.push(delivery); return registration
+    ? Object.assign({}, reaction, { dispose: async () => { await registration.dispose(); } }) : reaction; }) as PluginContext["withEvent"];
   const view = await memoryDetail(f.ctx, "m", () => memories(f.ctx, "user"));
   const subscription = await view.live!.subscribe({ id: "channel" });
   const event = { status: "ready" as const, revision: 1, result: { kind: "inspect" as const, snapshot: f.snapshot("Updated", "mem1:b") } };

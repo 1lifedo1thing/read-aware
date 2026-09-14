@@ -1,3 +1,4 @@
+import { normalizeBookGraphTaskOptions, type BookGraphTaskOptions } from "./book-graph-task";
 import { AppError } from "./errors";
 import type { ReadingModeConfiguration } from "./reading-session";
 import { normalizeBookTextPrepareOptions, type BookTextPrepareOptions } from "./book-text";
@@ -10,9 +11,10 @@ export type ReadingOperationQuery = { bookId: string; sessionId?: string } & (
   | ({ operation: "reading.mode.configure" } & ReadingModeConfiguration)
 );
 export type BookTextAvailabilityQuery = { operation: "library.text.prepare"; bookId: string } & BookTextPrepareOptions;
+export type GraphAvailabilityQuery = { operation: "memory.graph.generate"; bookId: string; mode: "catch-up" | "rebuild"; maxChapters?: number };
 export type SyncAvailabilityQuery = { operation: "sync.now" };
-export type OperationAvailabilityQuery = InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | SyncAvailabilityQuery;
-export type NormalizedOperationAvailabilityQuery = Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | SyncAvailabilityQuery;
+export type OperationAvailabilityQuery = InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery;
+export type NormalizedOperationAvailabilityQuery = Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery;
 export type OperationConditionState = "satisfied" | "unconfigured" | "unavailable" | "unknown";
 export type OperationCondition = {
   kind: "permission" | "account" | "model" | "endpoint" | "provider" | "input" | "object" | "reader" | "capacity";
@@ -34,6 +36,13 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
   const invalid = () => new AppError("plugin/invalid-argument", "Invalid operation availability query");
   if (!input || typeof input !== "object" || Array.isArray(input)) throw invalid();
   const raw = input as Record<string, unknown>;
+  if (raw.operation === "memory.graph.generate") {
+    if (Object.keys(raw).some(key => !["operation", "bookId", "mode", "maxChapters"].includes(key))
+      || typeof raw.bookId !== "string" || !raw.bookId.trim() || raw.bookId.length > 256
+      || raw.mode !== "catch-up" && raw.mode !== "rebuild") throw invalid();
+    return { operation: raw.operation, bookId: raw.bookId, mode: raw.mode,
+      ...normalizeBookGraphTaskOptions(raw.maxChapters === undefined ? undefined : { maxChapters: raw.maxChapters }) };
+  }
   if (raw.operation === "sync.now") {
     if (Object.keys(raw).some(key => key !== "operation")) throw invalid();
     return { operation: "sync.now" };

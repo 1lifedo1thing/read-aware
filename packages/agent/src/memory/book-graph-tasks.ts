@@ -1,4 +1,4 @@
-import { AppError, errorCode, validateClassificationBookId, normalizeBookGraphTaskOptions, type BookGraphTaskOptions, type BookGraphTaskPort, type BookGraphTaskSnapshot, type DigestReport } from "@read-aware/core";
+import { AppError, errorCode, validateClassificationBookId, normalizeBookGraphTaskOptions, type BookGraphTaskOptions, type BookGraphTaskPort, type BookGraphTaskSnapshot, type DigestReport, type OperationCondition } from "@read-aware/core";
 
 export interface BookGraphTaskExecution {
   bookId: string;
@@ -30,6 +30,13 @@ export class BookGraphTaskOwner<TContext = undefined> implements BookGraphTaskPo
     else lifetime?.addEventListener("abort", () => this.dispose(), { once: true });
   }
   private assertLive() { if (this.stopped) throw cancelled(); }
+  /** Read-only actor-local admission, shared by query and actual task creation. */
+  capacityConditions(): OperationCondition[] {
+    this.assertLive();
+    const full = [...this.tasks.values()].filter(active).length >= 16;
+    return [{ kind: "capacity", state: full ? "unavailable" : "satisfied", reason: full ? "graph-task-limit" : "graph-task-capacity",
+      ...(full ? { errorCode: "memory/task-limit" } : {}) }];
+  }
   /** Host invalidation only; context is never part of a public task snapshot. */
   subscribeChanges(listener: (change: BookGraphTaskChange, context?: TContext) => void): () => void {
     this.assertLive(); this.listeners.add(listener); return () => { this.listeners.delete(listener); };
@@ -59,7 +66,7 @@ export class BookGraphTaskOwner<TContext = undefined> implements BookGraphTaskPo
     this.assertLive(); validateClassificationBookId(bookId);
     if (mode !== "catch-up" && mode !== "rebuild") throw new AppError("memory/invalid-input", "Invalid graph task mode");
     if (signal?.aborted) throw cancelled();
-    if ([...this.tasks.values()].filter(active).length >= 16) throw new AppError("memory/task-limit", "Too many active graph requests for this actor", { retryable: true });
+    if (this.capacityConditions().some(condition => condition.state === "unavailable")) throw new AppError("memory/task-limit", "Too many active graph requests for this actor", { retryable: true });
     for (const [id, task] of this.tasks) {
       if (this.tasks.size < 64) break;
       if (!active(task)) { this.tasks.delete(id); this.notify(task, "removed", context); }

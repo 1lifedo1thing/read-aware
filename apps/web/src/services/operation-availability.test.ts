@@ -19,6 +19,23 @@ beforeEach(() => {
   } });
 });
 
+test("graph prerequisites reject missing generation permission and foreign books before private reads", async () => {
+  const readAI = spyOn(aiConfig, "getAIConfig");
+  const clients = [
+    buildPluginContext({ id: "graph-read", name: "Read", version: "1", schemaVersion: 1, requires: {}, permissions: ["memory:read"] }, "1", []),
+    buildPluginContext({ id: "graph-write", name: "Write", version: "1", schemaVersion: 1, requires: {}, permissions: ["memory:write"] }, "1", []),
+    buildPluginContext({ id: "graph-model", name: "Model", version: "1", schemaVersion: 1, requires: {}, permissions: ["memory:write", "service:llm"] }, "1", [], { mode: "book", bookId: "book" }),
+  ];
+  clients.forEach(client => client.lifecycle.promote());
+  try {
+    const query = { operation: "memory.graph.generate" as const, bookId: "foreign", mode: "rebuild" as const };
+    for (const [index, reason] of ["memory:write-required", "service:llm-required", "book-scope-required"].entries()) {
+      expect((await clients[index]!.context.services.session.operationAvailability(query)).conditions[0]!.reason).toBe(reason);
+    }
+    expect(readAI).not.toHaveBeenCalled();
+  } finally { readAI.mockRestore(); for (const client of clients) { client.lifecycle.stop(); await client.lifecycle.drainCleanups(); } }
+});
+
 test("public reading prerequisites authorize the target before inspecting it and sanitize unavailable adapters", async () => {
   const query = { operation: "reading.playback" as const, bookId: "book", action: "start" as const };
   const inspect = spyOn(readingRuntime, "operationAvailability");

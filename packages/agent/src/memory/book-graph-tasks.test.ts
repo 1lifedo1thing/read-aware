@@ -115,7 +115,9 @@ test("handles isolate owners/books, cancellation waits for execution, and termin
 test("actor capacity, terminal eviction and generation retirement are bounded", async () => {
   const gate = deferred(), life = new AbortController(), signals: AbortSignal[] = [];
   const owner = new BookGraphTaskOwner(async input => { signals.push(input.signal); await gate.promise; return empty; }, () => {}, life.signal);
+  expect(owner.capacityConditions()[0]!.state).toBe("satisfied");
   const tasks = await Promise.all(Array.from({ length: 16 }, () => owner.start("b", "catch-up")));
+  expect(owner.capacityConditions()[0]).toMatchObject({ state: "unavailable", errorCode: "memory/task-limit" });
   await expect(owner.start("b", "catch-up")).rejects.toMatchObject({ code: "memory/task-limit" });
   gate.resolve(); await done(owner, tasks[0]!.taskId);
   for (let i = 0; i < 65; i++) { const task = await owner.start("b", "catch-up"); await done(owner, task.taskId); }

@@ -38,9 +38,9 @@ import { memoryPolicy } from "../memory-policy";
 import { readingContextPolicy } from "../reading-context-policy";
 import { inspectMemory, mutateMemory } from "../../../../domain/memory-management";
 import { inspectBookClassification, changeBookClassification } from "../../../../domain/book-classification";
-import { agentBookGraphTasks } from "../../../../domain/book-graph-tasks";
 import { identityConsolidationPort } from "../../../../domain/identity-consolidation";
 import { readingAiActions } from "../../../../services/reading-ai-runtime";
+import { agentBookGraphTasks } from "../../../../domain/book-graph-tasks";
 import { agentTextPreparationConditions } from "../../../../domain/library";
 import { pluginServices } from "../../../plugins/runtime/plugin-services";
 
@@ -73,7 +73,7 @@ export function buildRuntimeDeps(): RuntimeDeps {
     memoryManagement: { inspect: inspectMemory, mutate: (input, signal) => mutateMemory(input, "agent", signal) },
     hostCommands: trustedHostCommands("agent"),
     environment: { snapshot: async () => hostEnvironment.snapshot() },
-    operationAvailability: { check: (query, signal) => checkOperationAvailability(query, signal, { textPreparation: { conditions: agentTextPreparationConditions } }) },
+    operationAvailability: { check: (query, signal) => checkOperationAvailability(query, signal, { textPreparation: { conditions: agentTextPreparationConditions }, graphTasks: agentBookGraphTasks }) },
     window: { snapshot: signal => hostWindow.snapshot(signal),
       control: (request, signal) => hostWindow.control(request, signal, "agent") },
     workspace: { snapshot: async query => workspace.snapshot(query), navigate: (target, revision, signal) => workspace.navigate(target, revision, signal, true) },

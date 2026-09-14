@@ -10,7 +10,7 @@ import { afterSecretWrites } from "../platform/secret-store";
 import { createLogger } from "../platform/logger";
 import type { BookTextTaskOwner } from "../features/library/lib/book-text-tasks";
 
-export type OperationAvailabilityContext = { textPreparation?: Pick<BookTextTaskOwner, "conditions"> };
+export type OperationAvailabilityContext = { graphTasks?: { capacityConditions(): OperationCondition[] }; textPreparation?: Pick<BookTextTaskOwner, "conditions"> };
 
 const log = createLogger("operation-availability");
 const condition = (kind: OperationCondition["kind"], state: OperationCondition["state"], reason: string, errorCode?: string): OperationCondition =>
@@ -64,6 +64,21 @@ export async function checkOperationAvailability(input: OperationAvailabilityQue
     try { return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...await hostSync.conditions(signal)]); }
     catch (error) { signal?.throwIfAborted(); log.warn("Cannot read sync prerequisites", error);
       return operationAvailability(query, [condition("provider", "unknown", "sync-prerequisites-read-failed", errorCode(error) ?? "ipc/unknown")]); }
+  }
+  if (query.operation === "memory.graph.generate") {
+    try {
+      const capacity = context?.graphTasks?.capacityConditions() ?? [condition("capacity", "unknown", "graph-task-owner-unavailable")];
+      if (capacity.some(item => item.state === "unavailable")) return operationAvailability(query, capacity);
+      const { graphObjectConditions } = await import("../domain/book-graph-tasks");
+      const objects = await graphObjectConditions(query.bookId, signal);
+      const inference = await checkOperationAvailability({ operation: "llm.infer", model: "fast" }, signal);
+      signal?.throwIfAborted();
+      return operationAvailability(query, [...(context?.graphTasks?.capacityConditions() ?? capacity), ...objects, ...inference.conditions]);
+    } catch (error) {
+      signal?.throwIfAborted(); log.warn("Cannot read graph prerequisites", error);
+      const missing = ["reader/book-not-found", "library/book-not-found"].includes(errorCode(error) ?? "");
+      return operationAvailability(query, [condition("object", missing ? "unavailable" : "unknown", missing ? "book-not-found" : "graph-prerequisites-read-failed", errorCode(error) ?? "ipc/unknown")]);
+    }
   }
   if (query.operation === "library.text.prepare") {
     const { operation: _operation, bookId, ...options } = query;

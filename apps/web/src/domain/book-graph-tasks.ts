@@ -3,7 +3,7 @@ import type { DomainActor } from "../platform/domain-actor";
 import { createBookMemoryPort } from "../features/ai/agent/ports/book-memory-port";
 import { createBookTextPort } from "../features/ai/agent/ports/book-text-port";
 import { BookGraphTaskOwner, type BookMemoryPort } from "@read-aware/agent";
-import { AppError } from "@read-aware/core";
+import { AppError, assertOperationConditions, type OperationCondition } from "@read-aware/core";
 import { getBookRecord } from "../features/library/lib/library-db";
 import { getPersistedBookText } from "../features/library/lib/book-text-store";
 import { readingRuntime } from "./reading-runtime";
@@ -19,6 +19,18 @@ async function resolveBoundary(bookId: string): Promise<number | undefined> {
   return boundary.kind === "all" ? chapters?.length : boundary.kind === "before" ? boundary.chapterIndex : undefined;
 }
 
+/** The same persisted chapter boundary used by execution. This does not start
+ * extraction or classification, nor call a model or a content provider. */
+export async function graphObjectConditions(bookId: string, signal?: AbortSignal): Promise<OperationCondition[]> {
+  signal?.throwIfAborted();
+  const boundary = await resolveBoundary(bookId);
+  signal?.throwIfAborted();
+  return [{ kind: "object", state: "satisfied", reason: "book-found" },
+    { kind: "input", state: boundary === undefined ? "unavailable" : "satisfied",
+      reason: boundary === undefined ? "graph-boundary-unavailable" : "graph-boundary-resolved",
+      ...(boundary === undefined ? { errorCode: "memory/unavailable" } : {}) }];
+}
+
 export type DurableGraphExecution = {
   targets?: number[];
   preparedDigest?: import("@read-aware/agent").BookGraphTaskExecution["preparedDigest"];
@@ -29,6 +41,13 @@ export function createBookGraphTasks(lifetime?: AbortSignal, trackCleanup?: (wor
   const owner = new BookGraphTaskOwner<DomainActor>(async (input, actor) => {
     // Lazy runtime access avoids constructing a second Agent or a registry import cycle.
     const { getAgentRuntime } = await import("../features/ai/agent/agent-runtime");
+    input.signal.throwIfAborted();
+    const { checkOperationAvailability } = await import("../services/operation-availability");
+    // Capacity was reserved at admission; this dispatch rechecks source/model,
+    // not the capacity already occupied by this task.
+    const availability = await checkOperationAvailability({ operation: "memory.graph.generate", bookId: input.bookId,
+      mode: input.rebuild ? "rebuild" : "catch-up", maxChapters: input.maxChapters }, input.signal);
+    assertOperationConditions(availability.conditions.filter(condition => condition.kind !== "capacity"));
     input.signal.throwIfAborted();
     const runtime = getAgentRuntime();
     if (!runtime) throw new AppError("ai/not-configured", "Graph tasks require a configured model");

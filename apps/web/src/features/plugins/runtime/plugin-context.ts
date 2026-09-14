@@ -970,15 +970,18 @@ export function buildPluginContext(
             return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
           }
           if (query.operation !== "llm.infer") {
-            const permission = query.operation === "library.text.prepare" ? "library:write" : "reading:write";
+            const permission = query.operation === "library.text.prepare" ? "library:write" : query.operation === "memory.graph.generate" ? "memory:write" : "reading:write";
             if (!permissions.has(permission)) return Promise.resolve(operationAvailability(query, [
               { kind: "permission", state: "unavailable", reason: `${permission}-required` },
+            ]));
+            if (query.operation === "memory.graph.generate" && !canUseHostService("llm", permissions)) return Promise.resolve(operationAvailability(query, [
+              { kind: "permission", state: "unavailable", reason: "service:llm-required" },
             ]));
             try { objectAccess.assertBook(query.bookId, "services.session.operationAvailability"); }
             catch { return Promise.resolve(operationAvailability(query, [
               { kind: "permission", state: "unavailable", reason: "book-scope-required", errorCode: "plugin/object-access-denied" },
             ])); }
-            return scopedRead(query.bookId, "services.session.operationAvailability", signal => checkOperationAvailability(query, signal, { textPreparation: owners.textTasks }), options);
+            return scopedRead(query.bookId, "services.session.operationAvailability", signal => checkOperationAvailability(query, signal, { textPreparation: owners.textTasks, graphTasks: owners.graphTasks }), options);
           }
           if (!canUseHostService("llm", permissions)) return Promise.resolve(operationAvailability(query, [
             { kind: "permission", state: "unavailable", reason: "service:llm-required" },

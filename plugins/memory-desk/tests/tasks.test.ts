@@ -9,8 +9,9 @@ function fixture() {
   const ctx = { locale: "en", domains: { memory: { queries: { listGraphTasks: async () => [task], getGraphTask: async () => task },
     commands: { startGraphTask: async (...args: unknown[]) => { calls.push(args); return task; }, retryGraphTask: async (...args: unknown[]) => { calls.push(args); return task; }, cancelGraphTask: async () => { task.status = "cancelling"; return task; } },
     events: { observe: (_: unknown, listener: typeof handler) => { handler = listener; return { dispose() { stopped = true; } }; } },
-  } }, services: { ui: { publishView: async (_: unknown, update: PluginViewUpdate) => { updates.push(update); } } } } as unknown as PluginContext;
-  ctx.withEvent = () => ctx;
+  } }, services: { session: { operationAvailability: async () => ({ conditions: [], state: "available" }) }, ui: { publishView: async (_: unknown, update: PluginViewUpdate) => { updates.push(update); } } } } as unknown as PluginContext;
+  ctx.withEvent = ((_event: unknown, registration?: { dispose(): void | Promise<void> }) => registration
+    ? Object.assign({}, ctx, { dispose: async () => { await registration.dispose(); } }) : ctx) as PluginContext["withEvent"];
   return { ctx, task, calls, updates, stopped: () => stopped, emit: (event: MemoryObservation) => handler(event) };
 }
 test("task strings cover all locales, start and rebuild require confirmation", async () => {
@@ -19,7 +20,9 @@ test("task strings cover all locales, start and rebuild require confirmation", a
     expect(Object.values(taskBudgetWords(locale)).every(Boolean)).toBe(true);
   }
   const f = fixture(), view = await graphTasksView(f.ctx, "b");
-  const form = (await view.actions!.find(action => action.id === "rebuild")!.run())!.view as PluginFormView;
+  const conditions = (await view.actions!.find(action => action.id === "rebuild")!.run())!.view as PluginDetailView;
+  expect(f.calls).toHaveLength(0);
+  const form = (await conditions.actions!.find(action => action.id === "continue")!.run())!.view as PluginFormView;
   expect(form.fields[0]).toMatchObject({ kind: "number", value: 20, min: 1, max: 1000, step: 1 });
   expect(await form.onSubmit({ confirm: false, maxChapters: 1 })).toHaveProperty("fieldErrors.confirm"); expect(f.calls).toHaveLength(0);
   for (const value of [0, 1001, 1.5, "1", NaN]) expect(await form.onSubmit({ confirm: true, maxChapters: value })).toHaveProperty("fieldErrors.maxChapters");
@@ -38,7 +41,8 @@ test("task observation follows cancellation, errors clear actions, recovery and 
   expect((f.updates[1]!.view as PluginDetailView).actions).toBeUndefined();
   f.task.status = "partial";
   await f.emit({ revision: 3, status: "ready", result: { kind: "graphTask", task: f.task } });
-  const retry = (await (f.updates[2]!.view as PluginDetailView).actions!.find(action => action.id === "retry")!.run())!.view as PluginFormView;
+  const conditions = (await (f.updates[2]!.view as PluginDetailView).actions!.find(action => action.id === "retry")!.run())!.view as PluginDetailView;
+  const retry = (await conditions.actions!.find(action => action.id === "continue")!.run())!.view as PluginFormView;
   expect((f.updates[2]!.view as PluginDetailView).content.some(block => block.kind === "progress")).toBe(false);
   expect(retry.fields[0]).toMatchObject({ value: 2 });
   await retry.onSubmit({ confirm: true, maxChapters: 3 }); expect(f.calls).toEqual([["b", "task", { maxChapters: 3 }]]);
