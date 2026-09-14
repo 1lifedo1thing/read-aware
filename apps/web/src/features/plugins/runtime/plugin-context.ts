@@ -929,12 +929,12 @@ export function buildPluginContext(
       } } : {}),
       maintenance: {
         requestConnectionTest: options => lifecycle.read("services.maintenance.requestConnectionTest",
-          signal => hostMaintenance.requestConnectionTest(signal), callSignal(options)),
+          signal => hostMaintenance.requestConnectionTest(signal, operationActor), callSignal(options)),
         requestBackup: (action, options) => lifecycle.read("services.maintenance.requestBackup",
-          signal => hostMaintenance.requestBackup(action, signal), callSignal(options)),
+          signal => hostMaintenance.requestBackup(action, signal, operationActor), callSignal(options)),
         snapshot: async () => { lifecycle.assertActive("services.maintenance.snapshot"); return hostMaintenance.snapshot(); },
         observe: handler => track(() => ({ dispose: hostMaintenance.observe(handler, operationActor) })),
-        openSettings: surface => { lifecycle.assertActive("services.maintenance.openSettings"); return hostMaintenance.openSettings(surface, lifecycle.signal); },
+        openSettings: surface => { lifecycle.assertActive("services.maintenance.openSettings"); return hostMaintenance.openSettings(surface, lifecycle.signal, operationActor); },
         ...(canUseHostService("network", permissions) ? {
           checkForUpdates: () => { lifecycle.assertActive("services.maintenance.checkForUpdates"); return hostMaintenance.checkForUpdates(lifecycle.signal, operationActor); },
         } : {}),

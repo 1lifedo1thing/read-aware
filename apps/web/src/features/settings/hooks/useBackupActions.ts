@@ -1,3 +1,4 @@
+import { actorFromEvent } from "../../../platform/domain-actor";
 import { useLayoutEffect, useRef, useState } from "react";
 import { AppError, errorCode, type BackupAction } from "@read-aware/core";
 import { useToast } from "@read-aware/ui";
@@ -19,9 +20,10 @@ export function useBackupActions(blocked = false) {
   useLayoutEffect(() => {
     const controller = new AbortController(); lifetime.current = controller;
     const off = hostBackupFlows.bind({
-      open: ({ action }) => {
+      open: request => {
+        const { action } = request;
         if (active.current || unavailable.current) throw new AppError("ui/unavailable", "A native data action is already active");
-        hostMaintenance.revealControl(`backup-${action}`);
+        hostMaintenance.revealControl(`backup-${action}`, actorFromEvent(request));
         pending.current = action; setRequested(action);
       },
       close: () => { pending.current = null; setRequested(null); },

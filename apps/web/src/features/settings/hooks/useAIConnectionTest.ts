@@ -1,3 +1,4 @@
+import { actorFromEvent } from "../../../platform/domain-actor";
 import { useLayoutEffect, useRef, useState } from "react";
 import { AppError } from "@read-aware/core";
 import { describeError, useTranslation } from "../../../i18n";
@@ -18,9 +19,9 @@ export function useAIConnectionTest(config: AIConfig, canTest: boolean, beforeTe
   useLayoutEffect(() => {
     mounted.current = true;
     const off = hostConnectionTestFlows.bind({
-      open: () => {
+      open: request => {
         if (active.current) throw new AppError("ui/unavailable", "Connection test is already running");
-        hostMaintenance.revealControl("ai-connection");
+        hostMaintenance.revealControl("ai-connection", actorFromEvent(request));
       },
       close: () => {}, // No extra dialog or automatic action to dismiss.
     });

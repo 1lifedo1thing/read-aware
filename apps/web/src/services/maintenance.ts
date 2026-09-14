@@ -12,9 +12,9 @@ import { isTauri } from "../platform/environment";
 
 const log = createLogger("maintenance");
 export const hostConnectionTestFlows = new HostActionFlow<{ action: "test" }, "responded" | "empty">({
-  navigate: async signal => {
+  navigate: async (signal, origin) => {
     if (!isTauri()) throw new AppError("ui/unavailable", "Connection testing requires the desktop app");
-    await workspace.navigate({ surface: "settings", section: "ai" }, undefined, signal);
+    await workspace.navigate({ surface: "settings", section: "ai" }, undefined, signal, false, undefined, origin);
   },
   normalize: input => {
     if (input?.action !== "test") throw new AppError("ui/invalid-target", "Invalid connection test request");
@@ -26,9 +26,9 @@ export const hostConnectionTestFlows = new HostActionFlow<{ action: "test" }, "r
   },
 });
 export const hostBackupFlows = new HostActionFlow<{ action: BackupAction }, "imported" | "exported">({
-  navigate: async signal => {
+  navigate: async (signal, origin) => {
     if (!isTauri()) throw new AppError("ui/unavailable", "Backup requires the desktop app");
-    await workspace.navigate({ surface: "settings", section: "dataSync" }, undefined, signal);
+    await workspace.navigate({ surface: "settings", section: "dataSync" }, undefined, signal, false, undefined, origin);
   },
   normalize: input => {
     if (!input || (input.action !== "import" && input.action !== "export")) throw new AppError("ui/invalid-target", "Invalid backup action");
@@ -51,8 +51,8 @@ export const hostBackupFlows = new HostActionFlow<{ action: BackupAction }, "imp
   },
 });
 export const hostMaintenance = new HostMaintenanceService({
-  requestConnectionTest: signal => hostConnectionTestFlows.request({ action: "test" }, signal),
-  requestBackup: (action, signal) => hostBackupFlows.request({ action }, signal),
+  requestConnectionTest: (signal, origin) => hostConnectionTestFlows.request({ action: "test" }, signal, origin),
+  requestBackup: (action, signal, origin) => hostBackupFlows.request({ action }, signal, origin),
   snapshot: () => softwareUpdater.snapshot(),
   check: (signal, origin) => softwareUpdater.checkForUpdates(signal, origin),
   subscribe: handler => {
@@ -61,5 +61,5 @@ export const hostMaintenance = new HostMaintenanceService({
       channel = subscribeUpdateChannel(origin => handler(stampEventCause({}, origin)));
     return () => { state(); channel(); };
   },
-  navigate: (section, signal) => workspace.navigate({ surface: "settings", section }, undefined, signal),
+  navigate: (section, signal, origin) => workspace.navigate({ surface: "settings", section }, undefined, signal, false, undefined, origin),
 }, error => log.warn("Maintenance observer failed", error));

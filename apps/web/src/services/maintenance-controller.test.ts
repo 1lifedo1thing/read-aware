@@ -1,4 +1,4 @@
-import { actorCause, causalActor, eventCause, stampEventCause } from "../platform/domain-actor";
+import { actorCause, causalActor, eventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { HOST_MAINTENANCE_SURFACES, type HostMaintenanceSnapshot, type WorkspaceSettingsSection } from "@read-aware/core";
 import { HostMaintenanceService } from "./maintenance-controller";
@@ -7,7 +7,7 @@ function fixture() {
   const state: HostMaintenanceSnapshot = { phase: "idle", supported: true, channel: "stable", checkedChannel: null,
     currentVersion: "1.0", availableVersion: null, progress: null, errorStage: null };
   const listeners = new Set<(source: object) => void>(), errors: unknown[] = [];
-  const adapter = { snapshot: () => ({ ...state }), check: async () => ({ ...state }), navigate: async (_section: WorkspaceSettingsSection, _signal?: AbortSignal) => {},
+  const adapter = { snapshot: () => ({ ...state }), check: async () => ({ ...state }), navigate: async (_section: WorkspaceSettingsSection, _signal?: AbortSignal, _origin?: DomainActor) => {},
     subscribe: (handler: (source: object) => void) => { listeners.add(handler); return () => { listeners.delete(handler); }; } };
   const service = new HostMaintenanceService(adapter, error => errors.push(error));
   return { state, listeners, errors, adapter, service, notify: (source = stampEventCause({})) => { for (const h of listeners) h(source); } };
@@ -17,9 +17,12 @@ test("maintenance opens only mounted host controls after navigation; no export, 
   const f = fixture(), calls: string[] = [];
   await expect(f.service.openSettings("diagnostics")).rejects.toMatchObject({ code: "ui/unavailable" });
   const old = f.service.bindSurface("diagnostics", () => { calls.push("old"); });
-  const off = f.service.bindSurface("diagnostics", () => { calls.push("diagnostics"); }); old();
-  f.adapter.navigate = async () => { calls.push("navigate"); };
-  expect(await f.service.openSettings("diagnostics")).toEqual({ status: "opened", surface: "diagnostics" });
+  const source = causalActor("plugin:maintenance");
+  const off = f.service.bindSurface("diagnostics", origin => { expect(actorCause(origin)).toEqual(actorCause(source)); calls.push("diagnostics"); }); old();
+  f.adapter.navigate = async (_section, _signal, origin) => { expect(actorCause(origin)).toEqual(actorCause(source)); calls.push("navigate"); };
+  const receipt = await f.service.openSettings("diagnostics", undefined, source);
+  expect(receipt).toEqual({ status: "opened", surface: "diagnostics" });
+  expect(eventCause(receipt)).toEqual(actorCause(source));
   expect(calls).toEqual(["navigate", "diagnostics"]);
   await expect(f.service.openSettings("send" as never)).rejects.toMatchObject({ code: "ui/invalid-target" });
   const abort = new AbortController(); f.adapter.navigate = async () => { abort.abort(); };
