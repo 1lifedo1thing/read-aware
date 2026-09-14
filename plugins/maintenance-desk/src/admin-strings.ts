@@ -1,4 +1,5 @@
 const en = {
+  prerequisites: "Update check availability", ready: "Ready to check", shared: "Joins the active check", installationBusy: "Wait for installation to finish", serverUnchecked: "Update server has not been contacted", permissionRequired: "Network permission required",
   plugins: "Installed plugins", contributions: "Registered contributions", updates: "Software updates",
   managePlugins: "Manage plugins", manageUpdates: "Open update settings", check: "Check for updates",
   search: "Search", browse: "Browse", filters: "Search directory", refresh: "Refresh", empty: "No matches",
@@ -13,6 +14,7 @@ const en = {
     "installer-open": "Installer opened", error: "Update failed" },
 };
 const zh: typeof en = {
+  prerequisites: "更新检查条件", ready: "可以检查", shared: "加入正在进行的检查", installationBusy: "请等待安装完成", serverUnchecked: "尚未连接更新服务器", permissionRequired: "需要网络权限",
   plugins: "已安装插件", contributions: "已注册贡献项", updates: "软件更新",
   managePlugins: "管理插件", manageUpdates: "打开更新设置", check: "检查更新",
   search: "搜索", browse: "查询", filters: "搜索目录", refresh: "刷新", empty: "没有匹配项",

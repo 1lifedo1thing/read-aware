@@ -338,6 +338,12 @@ function catalogViews(ctx, signal) {
 
 // src/admin-strings.ts
 var en2 = {
+  prerequisites: "Update check availability",
+  ready: "Ready to check",
+  shared: "Joins the active check",
+  installationBusy: "Wait for installation to finish",
+  serverUnchecked: "Update server has not been contacted",
+  permissionRequired: "Network permission required",
   plugins: "Installed plugins",
   contributions: "Registered contributions",
   updates: "Software updates",
@@ -382,6 +388,12 @@ var en2 = {
   }
 };
 var zh2 = {
+  prerequisites: "更新检查条件",
+  ready: "可以检查",
+  shared: "加入正在进行的检查",
+  installationBusy: "请等待安装完成",
+  serverUnchecked: "尚未连接更新服务器",
+  permissionRequired: "需要网络权限",
   plugins: "已安装插件",
   contributions: "已注册贡献项",
   updates: "软件更新",
@@ -580,6 +592,7 @@ function updateViews(ctx, signal) {
       ] },
       ...snapshot.supported && busy ? [{ kind: "progress", value: snapshot.progress, max: 100, label: t.phases[snapshot.phase] }] : []
     ], actions: [
+      { id: "prerequisites", label: t.prerequisites, run: async () => ({ view: await prerequisites() }) },
       ...snapshot.supported && !busy && maintenance.checkForUpdates ? [{
         id: "check",
         label: t.check,
@@ -598,6 +611,33 @@ function updateViews(ctx, signal) {
         return { close: true };
       } }
     ] };
+  };
+  const prerequisites = async () => {
+    const value = await ctx.services.session.operationAvailability({ operation: "maintenance.checkForUpdates" }, { signal });
+    signal.throwIfAborted();
+    const reasons = {
+      authorized: t.yes,
+      "updater-unsupported": t.unsupported,
+      "update-installation-active": t.installationBusy,
+      "update-check-shared": t.shared,
+      "update-check-ready": t.ready,
+      "update-server-not-checked": t.serverUnchecked,
+      "service:network-required": t.permissionRequired
+    };
+    return {
+      kind: "detail",
+      title: t.prerequisites,
+      content: value.conditions.map((item) => ({ kind: "text", text: reasons[item.reason] ?? t.unknown })),
+      actions: [
+        ...value.state === "available" || value.state === "unknown" ? [{ id: "check", label: t.check, run: async () => {
+          signal.throwIfAborted();
+          const result = await maintenance.checkForUpdates();
+          signal.throwIfAborted();
+          return { view: show(result), navigation: "replace" };
+        } }] : [],
+        { id: "refresh", label: t.refresh, run: async () => ({ view: await prerequisites(), navigation: "replace" }) }
+      ]
+    };
   };
   const open = async () => {
     signal.throwIfAborted();

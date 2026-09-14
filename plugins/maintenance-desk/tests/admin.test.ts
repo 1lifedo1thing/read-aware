@@ -39,6 +39,7 @@ function fixture() {
   const ctx = { locale: "en", domains: { settings: { commands: { refreshModelCatalog: mock() } } },
     contributions: { commands: { register: (value: PluginCommand) => { command = value; } }, headerActions: { register: mock() } },
     services: {
+      session: { operationAvailability: async () => ({ state: "unknown", conditions: [{ reason: "update-server-not-checked", state: "unknown" }] }) },
       plugins: { list, contributions: readContributions,
         observe: (_query: unknown, handler: typeof directoryHandler) => { directoryHandler = handler; return { dispose: disposeDirectory }; },
         observeContributions: (_query: unknown, handler: typeof contributionHandler) => { contributionHandler = handler; return { dispose: disposeContributions }; } },
@@ -150,7 +151,10 @@ test("updates are read-only on opening; explicit check renders its receipt and n
   expect(f.checkForUpdates).not.toHaveBeenCalled();
   expect(JSON.stringify(updates)).toContain("Last successfully checked channel");
   expect(JSON.stringify(updates)).toContain("Stable");
-  const checked = view(await action(updates, "check").run());
+  const prerequisites = view(await action(updates, "prerequisites").run());
+  expect(JSON.stringify(prerequisites)).toContain("Update server has not been contacted");
+  expect(f.checkForUpdates).not.toHaveBeenCalled();
+  const checked = view(await action(prerequisites, "check").run());
   expect(JSON.stringify(checked)).toContain("0.4.0");
   expect(f.checkForUpdates).toHaveBeenCalledTimes(1);
   expect(f.snapshot).toHaveBeenCalledTimes(1);

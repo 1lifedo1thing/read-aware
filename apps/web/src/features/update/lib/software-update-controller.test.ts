@@ -22,6 +22,7 @@ test("native and external checks share one flight; cancelled caller does not can
   const abort = new AbortController();
   const origin = causalActor("plugin:update");
   const a = f.controller.checkForUpdates(abort.signal, origin), b = f.controller.checkForUpdates();
+  expect(f.controller.checkConditions()).toContainEqual(expect.objectContaining({ reason: "update-check-shared", state: "satisfied" }));
   await Bun.sleep(0);
   expect(checks).toBe(1); expect(f.controller.snapshot().phase).toBe("checking");
   const cancelled = a.then(() => null, error => error); abort.abort();
@@ -66,6 +67,7 @@ test("checks cannot replace the candidate during installation; repeated install 
   f.adapter.install = progress => { installs++; progress({ phase: "downloading", progress: 42 }); return release.promise; };
   const a = f.controller.installUpdate(), b = f.controller.installUpdate();
   await Bun.sleep(0);
+  expect(f.controller.checkConditions()).toContainEqual(expect.objectContaining({ reason: "update-installation-active", state: "unavailable" }));
   expect(installs).toBe(1); expect(f.controller.snapshot().progress).toBe(42);
   await expect(f.controller.checkForUpdates()).rejects.toMatchObject({ code: "ui/unavailable" });
   release.resolve("installer-started"); await a; await b;

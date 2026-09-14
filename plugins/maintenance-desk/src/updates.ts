@@ -21,6 +21,7 @@ export function updateViews(ctx: PluginContext, signal: AbortSignal) {
       ] },
       ...(snapshot.supported && busy ? [{ kind: "progress" as const, value: snapshot.progress, max: 100, label: t.phases[snapshot.phase] }] : []),
     ], actions: [
+      { id: "prerequisites", label: t.prerequisites, run: async () => ({ view: await prerequisites() }) },
       ...(snapshot.supported && !busy && maintenance.checkForUpdates ? [{ id: "check", label: t.check, icon: "arrows-clockwise",
         run: async (): Promise<PluginViewResult> => {
           signal.throwIfAborted();
@@ -35,6 +36,23 @@ export function updateViews(ctx: PluginContext, signal: AbortSignal) {
         return { close: true };
       } },
     ] };
+  };
+  const prerequisites = async (): Promise<PluginView> => {
+    const value = await ctx.services.session.operationAvailability({ operation: "maintenance.checkForUpdates" }, { signal });
+    signal.throwIfAborted();
+    const reasons: Record<string, string> = { authorized: t.yes, "updater-unsupported": t.unsupported,
+      "update-installation-active": t.installationBusy, "update-check-shared": t.shared,
+      "update-check-ready": t.ready, "update-server-not-checked": t.serverUnchecked, "service:network-required": t.permissionRequired };
+    return { kind: "detail", title: t.prerequisites, content: value.conditions.map(item => ({ kind: "text", text: reasons[item.reason] ?? t.unknown })),
+      actions: [
+        ...(value.state === "available" || value.state === "unknown" ? [{ id: "check", label: t.check, run: async () => {
+          signal.throwIfAborted();
+          const result = await maintenance.checkForUpdates!();
+          signal.throwIfAborted();
+          return { view: show(result), navigation: "replace" as const };
+        } }] : []),
+        { id: "refresh", label: t.refresh, run: async () => ({ view: await prerequisites(), navigation: "replace" as const }) },
+      ] };
   };
   const open = async (): Promise<PluginView> => {
     signal.throwIfAborted();

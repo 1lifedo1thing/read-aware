@@ -20,10 +20,11 @@ export type WindowAvailabilityQuery = { operation: "window.control"; request: Ho
 export type ExportAvailabilityQuery = { operation: "ui.exportFile" } & HostExportDescription;
 export type HostIOAvailabilityQuery = ExportAvailabilityQuery | { operation: "clipboard.writeText"; text: string } | { operation: "ui.openExternal"; url: string };
 export type SyncAvailabilityQuery = { operation: "sync.now" };
+export type UpdateAvailabilityQuery = { operation: "maintenance.checkForUpdates" };
 export type PluginServiceAvailabilityQuery = { operation: "plugins.callService"; serviceCall: PluginServiceCall };
 export type HostCommandAvailabilityQuery = { operation: "ui.commands.execute"; command: HostCommandRequest };
-export type OperationAvailabilityQuery = HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
-export type NormalizedOperationAvailabilityQuery = HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
+export type OperationAvailabilityQuery = UpdateAvailabilityQuery | HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
+export type NormalizedOperationAvailabilityQuery = UpdateAvailabilityQuery | HostCommandAvailabilityQuery | PluginServiceAvailabilityQuery | Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
 export type OperationConditionState = "satisfied" | "unconfigured" | "unavailable" | "unknown";
 export type OperationCondition = {
   kind: "permission" | "account" | "model" | "endpoint" | "provider" | "input" | "object" | "reader" | "capacity";
@@ -74,9 +75,9 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
     if (Object.keys(raw).some(key => !["operation", "request"].includes(key))) throw invalid();
     return { operation: raw.operation, request: normalizeHostWindowRequest(raw.request as HostWindowRequest) };
   }
-  if (raw.operation === "sync.now") {
+  if (raw.operation === "sync.now" || raw.operation === "maintenance.checkForUpdates") {
     if (Object.keys(raw).some(key => key !== "operation")) throw invalid();
-    return { operation: "sync.now" };
+    return { operation: raw.operation };
   }
   if (raw.operation === "library.text.prepare") {
     if (Object.keys(raw).some(key => !["operation", "bookId", "rebuild", "priority", "timeoutMs"].includes(key))

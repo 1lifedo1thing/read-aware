@@ -1,5 +1,5 @@
 import { actorFromEvent, causalActor, copyEventCause, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
-import { AppError, type HostMaintenanceSnapshot, type HostUpdateState } from "@read-aware/core";
+import { AppError, type OperationCondition, type HostMaintenanceSnapshot, type HostUpdateState } from "@read-aware/core";
 import type { AvailableSoftwareUpdate, DownloadProgress, InstallSoftwareUpdateResult } from "./software-update";
 
 type Adapter = {
@@ -37,11 +37,18 @@ export class SoftwareUpdateController {
     } catch (error) { this.report("App version lookup failed", error); }
   }
 
+  checkConditions(): OperationCondition[] {
+    if (!this.adapter.supported()) return [{ kind: "provider", state: "unavailable", reason: "updater-unsupported", errorCode: "ui/unavailable" }];
+    if (this.installing) return [{ kind: "capacity", state: "unavailable", reason: "update-installation-active", errorCode: "ui/unavailable" }];
+    return [{ kind: "capacity", state: "satisfied", reason: this.checking ? "update-check-shared" : "update-check-ready" },
+      { kind: "provider", state: "unknown", reason: "update-server-not-checked" }];
+  }
+
   async checkForUpdates(signal?: AbortSignal, origin: DomainActor = "user"): Promise<HostMaintenanceSnapshot> {
     origin = causalActor(origin);
     signal?.throwIfAborted();
-    if (!this.adapter.supported()) throw new AppError("ui/unavailable", "Software updater requires a supported native platform");
-    if (this.installing) throw new AppError("ui/unavailable", "An update installation is already in progress");
+    const blocked = this.checkConditions().find(value => value.state === "unavailable");
+    if (blocked) throw new AppError("ui/unavailable", blocked.reason);
     if (!this.checking) {
       const channel = this.adapter.channel();
       const revision = this.channelRevision;

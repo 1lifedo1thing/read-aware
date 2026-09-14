@@ -76,6 +76,11 @@ export async function checkOperationAvailability(input: OperationAvailabilityQue
   if (query.operation === "window.control") {
     return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...await hostWindow.conditions(query.request, signal)]);
   }
+  if (query.operation === "maintenance.checkForUpdates") {
+    const { softwareUpdater } = await import("../features/update/lib/software-update-runtime");
+    signal?.throwIfAborted();
+    return operationAvailability(query, [condition("permission", "satisfied", "authorized"), ...softwareUpdater.checkConditions()]);
+  }
   if (query.operation === "sync.now") {
     try { return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...await hostSync.conditions(signal)]); }
     catch (error) { signal?.throwIfAborted(); log.warn("Cannot read sync prerequisites", error);

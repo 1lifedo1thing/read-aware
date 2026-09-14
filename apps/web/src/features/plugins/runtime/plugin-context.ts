@@ -988,6 +988,12 @@ export function buildPluginContext(
           if (query.operation === "window.control") {
             return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
           }
+          if (query.operation === "maintenance.checkForUpdates") {
+            if (!canUseHostService("network", permissions)) return Promise.resolve(operationAvailability(query, [
+              { kind: "permission", state: "unavailable", reason: "service:network-required" },
+            ]));
+            return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
+          }
           if (query.operation === "sync.now") {
             if (!canUseHostService("sync", permissions)) return Promise.resolve(operationAvailability(query, [
               { kind: "permission", state: "unavailable", reason: "service:sync-required" },
