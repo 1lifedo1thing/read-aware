@@ -284,6 +284,48 @@ test("host event RPC retains cause, denies foreign/expired leases and rejects a 
   } finally { await foreign.close(); await first.close(); step.mockRestore(); }
 });
 
+test("host contribution RPC rejects repeated, expired and foreign leases before state changes or acknowledged retirement", async () => {
+  const first = await hostFixture(), foreign = await hostFixture();
+  const { worker } = first;
+  const call = async (id: number, method: string, args: unknown[], reaction?: PluginReactionToken) => {
+    await worker.deliver({ t: "call", id, method, args: worker.callbacks.encode(args), ...(reaction ? { reaction } : {}) });
+    return worker.sent.find(message => message.t === "result" && message.id === id)!;
+  };
+  const complete = async (id: number) => { await worker.deliver({ t: "result", id, ok: true, value: worker.callbacks.encode(null) }); await Bun.sleep(0); };
+  const current = () => getDefaultStore().get(pluginCommandsAtom).find(command => command.id === "causal-handle");
+  const delivery = () => worker.sent.findLast(message => message.t === "invoke")!;
+  const token = () => (delivery().args as [object, { reaction: PluginReactionToken }])[1].reaction;
+  try {
+    const registered = await call(1800, "contributions.commands.register", [{ id: "causal-handle", title: "Causal handle", run: () => {} }]);
+    const handle = registered.disposable;
+    const observer = await call(1801, "services.plugins.observeContributions", [{}, () => {}]);
+    const initial = delivery(), initialToken = token();
+    expect(initialToken.status).toBe("ready");
+    await foreign.worker.deliver({ t: "call", id: 1802, method: "$registration.dispose", args: foreign.worker.callbacks.encode([handle]), reaction: initialToken });
+    expect(foreign.worker.sent.find(message => message.id === 1802)).toMatchObject({ ok: false, code: "plugin/invalid-cause" });
+    expect(await call(1803, "$registration.updateState", [handle, { revision: 1, visible: true, enabled: false }], initialToken)).toMatchObject({ ok: true });
+    expect(current()?.state?.enabled).toBe(false);
+    await complete(initial.id!);
+    const repeated = delivery(), repeatedToken = token();
+    expect(repeatedToken.status).toBe("cycle");
+    expect(await call(1804, "$registration.dispose", [handle], repeatedToken)).toMatchObject({ ok: false, code: "plugin/event-cycle" });
+    expect(current()).toBeDefined(); await complete(repeated.id!);
+    expect(await call(1805, "$registration.dispose", [handle], initialToken)).toMatchObject({ ok: false, code: "plugin/invalid-cause" });
+    expect(current()).toBeDefined();
+    expect(await call(1806, "$registration.updateState", [handle, { revision: 2, visible: true, enabled: true }])).toMatchObject({ ok: true });
+    const independent = delivery(), independentToken = token();
+    expect(independentToken.status).toBe("ready");
+    expect(await call(1807, "$registration.dispose", [observer.disposable], independentToken)).toMatchObject({ ok: false, code: "plugin/invalid-cause" });
+    expect(await call(1808, "$registration.dispose", [handle], independentToken)).toMatchObject({ ok: true });
+    expect(current()).toBeUndefined();
+    await complete(independent.id!);
+    await complete(delivery().id!);
+    expect(worker.callbacks.size).toBe(1); // Only the still-live observer callback.
+    await worker.deliver({ t: "dispose", handle: observer.disposable });
+    expect(worker.callbacks.size).toBe(0);
+  } finally { await foreign.close(); await first.close(); }
+});
+
 describe("plugin worker capability bridge", () => {
   test("import task RPC exposes progress, actor isolation, cancellation and the eventual receipt", async () => {
     const gate = deferred(), entered = deferred();

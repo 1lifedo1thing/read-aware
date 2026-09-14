@@ -12,7 +12,7 @@
 | C01 | 按书授权的记忆、图谱、上下文归档 | 当前书/指定书的查询、分页、观察、条件写、图谱任务及三种书域归档可用；其他书和用户全局资料不披露；切书/撤权淘汰旧结果并释放资源 | 接线完成，待集中桌面验收 |
 | C02 | 按书授权的会话 | 读取本书会话/摘要/运行状态，提出一轮对话和停止/批准清空；事件及结果只含授权书，切书/撤权生效 | 接线完成，待集中桌面验收 |
 | C03 | 受限插件的宿主命令和工作区 | 发现并执行范围内命令，查询/观察安全工作区状态并进行允许的导航；跨书对象不能经旁路泄露或修改 | 接线完成，待集中桌面验收 |
-| C04 | 跨插件事件因果防环 | 跨领域写、Worker 回调及派生任务传递宿主签发的因果链；循环自动动作被明确拒绝，独立用户操作与合法后续任务不被误伤 | 实施中，事件/Worker、设置/文档/标注/记忆快照及投影通知已接，图谱任务和正文准备来源已接；阅读器开书/控件/播放/显式选区、导航、模式、面板开关/宽度和图片开关/变换及两者空快照观察已接，字体/CSS/正文宽度及固定页配色来源已接；同书布局切换重建及绑定生命周期已接；显式/自动焦点与原生选区反馈已接，窗口布局、其他异步原生反馈及其余观察来源仍缺 |
+| C04 | 跨插件事件因果防环 | 跨领域写、Worker 回调及派生任务传递宿主签发的因果链；循环自动动作被明确拒绝，独立用户操作与合法后续任务不被误伤 | 实施中，事件/Worker、设置/文档/标注/记忆快照及投影通知已接，图谱任务和正文准备来源已接；阅读器开书/控件/播放/显式选区、导航、模式、面板开关/宽度和图片开关/变换及两者空快照观察已接，字体/CSS/正文宽度及固定页配色来源已接；同书布局切换重建及绑定生命周期已接；显式/自动焦点与原生选区反馈已接；贡献目录、公共注册/状态/退休句柄及异步语音/传输刷新已接，窗口布局、贡献派生消费者及其余观察来源仍缺 |
 | C05 | 完整操作可用性 | Agent 与插件能查询操作需要的权限、阅读对象、账号、模型/端点和提供者条件；区分未配置、不可用、未知；执行前重验，不把注册或网络提示当健康 | 未实施 |
 | C06 | 通用类型化跨插件调用 | 声明版本化输入/输出契约、发现与调用；双方授权和对象范围共同约束，取消/停用/更新/迟到结果受生命周期保护；真实消费者组合 | 未实施 |
 | C07 | 跨领域提交与统一撤销 | 多个可事务化本地语义操作经冻结预览/版本校验在同一提交中全成全败，含设置、私有文档及领域变更；Agent/插件共用，撤销是新的受控条件提交；非事务性外部副作用在预览时明确拒绝纳入原子批次 | 未实施 |
@@ -297,3 +297,34 @@
   场景单独类型检查通过（临时配置补用仓库现有Bun类型目录）。日志为
   /tmp/readaware-c04-native-generated.log、readaware-c04-native-contracts.log和
   readaware-c04-native-protocol-types.log。未启动新增桌面/模型验收。
+
+- 原生焦点/选区批次已提交 `4d44a659`。C04本批plugins1.7接通贡献目录观察的
+  独立delivery和公共注册来源，并提供ctx.withEvent(delivery,registration)绑定已存在
+  的贡献句柄。更新/释放逐次复核本激活的真实句柄与事件租期，订阅/资源句柄拒绝；
+  普通句柄供独立用户操作，绑定释放跨Worker等待宿主回执，错误不再仅写后台日志。
+  回执表示注册退休，已开始的提供者清理仍按现有lifecycle drain排空。
+- 注册表按最终实际条目/owner变化合并来源；更新无变化不通知，同一对象重新注册
+  仍以新owner通知。失败嵌套注册/清理不会把来源带进成功父批次，回滚恢复原owner；
+  新通知重入时停止投递旧样本。异步listVoices使用获胜设置版本的来源，旧结果不发布；
+  sync transport配置/换代/关闭通知同源，仍保留旧会话排空和失败替换恢复。
+- Maintenance Desk0.5贡献目录自动发布使用绑定上下文并等待，循环delivery不发布；
+  渲染后的用户动作仍用原激活上下文。公开all/book A→B→A循环拒绝及独立用户根、
+  事件中注册/释放、新旧/外来/资源句柄拒绝通过；实际Bun Worker跨await携带令牌及
+  释放回执通过，生产host受控Worker验证过期/循环/外来令牌无副作用并释放回调。
+- 本批相关记录：/tmp/readaware-c04-contributions-public.log、
+  readaware-c04-contributions-registry.log、readaware-c04-contributions-providers.log、
+  readaware-c04-contributions-worker.log、readaware-c04-contributions-consumer.log。
+  它们是同realm/真实Bun Worker与受控IPC/提供者证据，不作新增Tauri/真实服务验收。
+- C04下一步仍为窗口响应式布局/图片ResizeObserver、其他异步原生反馈、字体/主题/
+  分段模式等贡献派生消费者、插件安装状态观察、设置目录/凭据及其他观察来源；
+  observeSession reaction仍未开放。C05–C09全部保留未实施，C01–C03及新增路径
+  的真实桌面/SQLite/模型组合留集中验收；本批不是整个C04完成。
+- 本批最终Plugin runtime contracts为413通过/0失败；受影响注册表/激活回滚/公共
+  目录21项、语音/传输28项、实际Worker/宿主边界95项、Maintenance Desk32项通过。
+  Core/Agent/plugin-types/Web/desktop类型与相关插件构建通过，Maintenance Desk
+  独立类型通过；生成校验及27项Core/库存/模型契约通过。日志为
+  /tmp/readaware-c04-contributions-runtime-final.log、readaware-c04-contributions-types-complete.log、
+  readaware-c04-contributions-consumer-types.log和readaware-c04-contributions-contracts.log。
+  测试夹具为新增withEvent重载补了显式mock类型转换；没有放松产品类型或授权检查。
+- 全类型检查重建了Jumper内联的Core能力目录（plugins1.3→1.7）；同步保留该生成
+  产物，Jumper42项检查通过，日志/tmp/readaware-c04-contributions-jumper-build-sync.log。

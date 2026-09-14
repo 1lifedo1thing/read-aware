@@ -28,6 +28,7 @@ import { buildPluginContext, currentAppLocale, pluginStoragePrefix } from "./plu
 import { pluginModuleUrl } from "./plugin-backend";
 import { i18n } from "../../../i18n";
 import { onAppEvent } from "../../../platform/app-events";
+import { actorFromEvent } from "../../../platform/domain-actor";
 import { localKV, onLocalKVChange } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { invalidateSyncTransportSessions } from "../../../platform/sync/transport-registry";
@@ -51,8 +52,8 @@ export type PluginRestoreStorage = {
   snapshot(): Record<string, string>;
 };
 
-type HeldRegistration = PluginDisposable & Partial<Pick<PluginActionRegistration, "updateState">>;
-const actionRegistrations = new Set(["selectionActions", "headerActions", "contextActions", "commands", "agentTools"].map(point => `contributions.${point}.register`));
+type HeldRegistration = PluginDisposable & Partial<Pick<PluginActionRegistration, "updateState">> & { contribution?: PluginDisposable };
+const actionRegistrations = new Set(["uriHandlers", "selectionActions", "headerActions", "contextActions", "commands", "agentTools"].map(point => `contributions.${point}.register`));
 
 const log = createLogger("plugins");
 
@@ -92,21 +93,22 @@ let syncWired = false;
 function wireHostSync(): void {
   if (syncWired) return;
   syncWired = true;
-  onLocalKVChange((key) => {
+  onLocalKVChange((key, _value, origin) => {
     const changed = new Set<string>();
     for (const { pluginId, sync } of liveWorkers.values()) {
       const prefix = pluginStoragePrefix(pluginId);
       if (key.startsWith(prefix)) sync({ storage: localKV.entries(prefix) });
       if (key === `${prefix}settings`) changed.add(pluginId);
     }
-    for (const pluginId of changed) invalidateSyncTransportSessions(pluginId);
+    for (const pluginId of changed) invalidateSyncTransportSessions(pluginId, origin);
   });
-  onAppEvent("plugin-storage-changed", ({ pluginId }) => {
+  onAppEvent("plugin-storage-changed", event => {
+    const { pluginId } = event;
     for (const live of liveWorkers.values()) {
       if (live.pluginId !== pluginId) continue;
       live.sync({ storage: localKV.entries(pluginStoragePrefix(pluginId)) });
     }
-    invalidateSyncTransportSessions(pluginId);
+    invalidateSyncTransportSessions(pluginId, actorFromEvent(event));
   });
   i18n.on("languageChanged", () => {
     const locale = currentAppLocale();
@@ -543,7 +545,24 @@ export function startPluginWorker(
                 const registration = heldDisposables.get(handle);
                 if (!registration) return { status: "inactive" };
                 if (!registration.updateState) throw new AppError("plugin/unavailable", "Registration has no action state");
+                if (message.reaction) {
+                  if (!registration.contribution) throw new AppError("plugin/invalid-cause", "Handle is not a contribution registration");
+                  return runtime.context.withEvent({ reaction: message.reaction }, registration.contribution as PluginActionRegistration)
+                    .updateState(state as Parameters<PluginActionRegistration["updateState"]>[0]);
+                }
                 return registration.updateState(state as Parameters<PluginActionRegistration["updateState"]>[0]);
+              }
+              : message.method === "$registration.dispose" ? async (...params: unknown[]) => {
+                runtime.lifecycle.assertActive("contribution.dispose");
+                const [handle] = params;
+                if (params.length !== 1 || typeof handle !== "string") throw new AppError("plugin/invalid-input", "Expected one registration handle");
+                const registration = heldDisposables.get(handle);
+                if (!registration) return;
+                if (!registration.contribution) throw new AppError("plugin/invalid-cause", "Handle is not a contribution registration");
+                if (message.reaction) await runtime.context.withEvent({ reaction: message.reaction }, registration.contribution).dispose();
+                // Release callback ownership after successful source-aware retirement.
+                heldDisposables.delete(handle);
+                registration.dispose();
               }
               : message.method === "withEvent" ? null : resolveMethod(target, message.method);
             const method = message.reaction
@@ -600,6 +619,7 @@ export function startPluginWorker(
               registrationLease = undefined;
               let disposed = false;
               argumentOwner = {
+                ...(message.method.startsWith("contributions.") && message.method.endsWith(".register") ? { contribution: registration } : {}),
                 dispose() {
                   if (disposed) return;
                   disposed = true;

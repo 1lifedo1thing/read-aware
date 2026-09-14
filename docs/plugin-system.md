@@ -329,6 +329,25 @@ new independent trigger is coalesced with a spent path, only eligible roots
 continue. Both depth and retained roots are bounded at 32. No ancestry or token
 is persisted as business data.
 
+Plugins 1.7 adds a delivery argument to `plugins.observeContributions`. Registry
+registration, replacement, dynamic action state, disposal, voice-list refresh and
+sync-transport invalidation retain their host source. Failed/nested activation
+rollback contributes no source unless it leaves a real change. Notifications
+remain serial and bounded; directory identities do not expose providers or
+credentials. An initial observation inherits its subscribing context.
+
+Existing contribution handles can use `ctx.withEvent(delivery, registration)`.
+Use its `updateState` or await its `dispose()` inside the callback. The host
+checks the event lease and exact activation-owned contribution handle on each
+operation; subscription/resource disposables are rejected. Worker retirement
+uses an acknowledged call, so a cycle, expired lease or invalid handle is an
+error visible to the caller. The acknowledgement means registration retirement;
+already-started provider cleanup follows the existing lifecycle drain contract.
+The original handle starts independent operations, including when registration
+itself was created from a bound context. Maintenance Desk 0.5 uses the bound
+context to publish contribution-directory changes; user actions in the view
+continue to use the activation context.
+
 Private document reads wait for matching dispatched writes to settle and retry
 if a commit crossed the read. Conflicts and failed writes do not publish a
 mutation. Failed callback retries and read-error recovery retain the pending

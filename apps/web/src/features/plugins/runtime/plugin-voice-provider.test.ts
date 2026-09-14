@@ -6,6 +6,7 @@ import { voiceProvidersAtom } from "../state/plugin-store";
 import { PluginLifecycleController } from "./plugin-lifecycle";
 import { registerPluginVoiceProvider } from "./plugin-voice-provider";
 import { decodePluginCallbacks, PluginCallbackRegistry } from "./plugin-callback-wire";
+import { actorCause, causalActor, eventCause } from "../../../platform/domain-actor";
 
 const brand = { pluginId: "voice-lifecycle-test", pluginName: "Voice lifecycle test" };
 const changed = () => emitAppEvent("plugin-storage-changed", { pluginId: brand.pluginId });
@@ -50,6 +51,26 @@ test("settings storms serialize and coalesce queries, suppressing every supersed
   pending[2].reject(new Error("network unavailable")); await turn();
   expect(snapshot()?.voices).toEqual(voices("latest-settings"));
   scope.lifecycle.stop();
+});
+
+test("async voice publication uses the winning settings source and disposal uses its actual caller", async () => {
+  const pending: Array<ReturnType<typeof Promise.withResolvers<PluginVoice[]>>> = [], store = getDefaultStore();
+  const lifecycle = new PluginLifecycleController([]); lifecycle.promote();
+  const initial = causalActor("plugin:voice"), setting = causalActor("plugin:settings"), retirement = causalActor("user");
+  const registration = registerPluginVoiceProvider({ id: "main", label: "Main", listVoices: () => {
+    const work = Promise.withResolvers<PluginVoice[]>(); pending.push(work); return work.promise;
+  }, synthesize: async () => new Uint8Array() }, brand, lifecycle, initial);
+  try {
+    expect(eventCause(store.get(voiceProvidersAtom))).toBe(actorCause(initial));
+    await turn();
+    emitAppEvent("plugin-storage-changed", { pluginId: brand.pluginId }, setting);
+    pending[0]!.resolve(voices("stale")); await turn();
+    expect(snapshot()?.voices).toEqual([]);
+    pending[1]!.resolve(voices("current")); await turn();
+    expect(eventCause(store.get(voiceProvidersAtom))).toBe(actorCause(setting));
+    registration.dispose(retirement);
+    expect(eventCause(store.get(voiceProvidersAtom))).toBe(actorCause(retirement));
+  } finally { registration.dispose(); lifecycle.stop(); }
 });
 
 test("a settings change from a voice publication observer queues the next revision", async () => {

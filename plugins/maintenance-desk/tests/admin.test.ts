@@ -1,5 +1,5 @@
 import { expect, mock, test } from "bun:test";
-import type { PluginCommand, PluginContext, PluginModule, PluginView, PluginViewResult } from "@read-aware/plugin-types";
+import type { PluginCommand, PluginContext, PluginModule, PluginReactionEvent, PluginView, PluginViewResult } from "@read-aware/plugin-types";
 import { maintenanceDesk } from "../src/views";
 
 type Directory = PluginContext["services"]["plugins"];
@@ -21,7 +21,7 @@ async function select(current: PluginView, id: string) {
   return view(await current.items.find(item => item.id === id)!.onSelect!());
 }
 function fixture() {
-  let directoryHandler!: (page: Page) => void, contributionHandler!: (page: Contributions) => void;
+  let directoryHandler!: (page: Page) => void, contributionHandler!: Parameters<Directory["observeContributions"]>[1];
   let updateHandler!: (snapshot: Snapshot) => void;
   let command!: PluginCommand;
   const entry = { id: "jumper", name: "Jumper", version: "0.4.0", enabled: true, builtin: false, activationFailed: true };
@@ -49,7 +49,7 @@ function fixture() {
   } as unknown as PluginContext;
   return { ctx, page, contributions, state, list, readContributions, snapshot, checkForUpdates, openSettings, publishView,
     disposeDirectory, disposeContributions, disposeUpdates, command: () => command,
-    directoryChanged: (value: Page) => directoryHandler(value), contributionsChanged: (value: Contributions) => contributionHandler(value),
+    directoryChanged: (value: Page) => directoryHandler(value), contributionsChanged: (value: Contributions, delivery?: PluginReactionEvent) => contributionHandler(value, delivery),
     updateChanged: (value: Snapshot) => updateHandler(value) };
 }
 
@@ -109,6 +109,26 @@ test("contribution observer is activation-owned and keeps duplicate keys across 
   expect(f.disposeContributions).toHaveBeenCalledTimes(1);
   f.contributionsChanged(f.contributions);
   expect(f.publishView).toHaveBeenCalledTimes(1);
+});
+
+test("contribution-driven rendering uses the bound context while later user actions keep the activation context", async () => {
+  const f = fixture(), desk = maintenanceDesk(f.ctx);
+  const publish = mock(async () => ({ status: "applied" as const }));
+  const bind = mock(() => ({ ...f.ctx, services: { ...f.ctx.services, ui: { ...f.ctx.services.ui, publishView: publish } } }));
+  f.ctx.withEvent = bind as unknown as PluginContext["withEvent"];
+  const directory = await select(desk.home(), "plugins"), entries = view(await action(directory, "contributions").run());
+  const subscription = await entries.live!.subscribe({ id: "causal-contributions" });
+  try {
+    const delivery: PluginReactionEvent = { reaction: { id: "ready", status: "ready" } };
+    await f.contributionsChanged(f.contributions, delivery);
+    expect(bind).toHaveBeenCalledWith(delivery); expect(publish).toHaveBeenCalledTimes(1);
+    expect(f.publishView).not.toHaveBeenCalled();
+    await f.contributionsChanged(f.contributions, { reaction: { id: "cycle", status: "cycle" } });
+    expect(publish).toHaveBeenCalledTimes(1);
+    await action(entries, "refresh").run();
+    expect(f.readContributions).toHaveBeenCalledTimes(2);
+    expect(bind).toHaveBeenCalledTimes(1);
+  } finally { subscription.dispose(); desk.dispose(); }
 });
 
 test("updates are read-only on opening; explicit check renders its receipt and native handoff only opens settings", async () => {

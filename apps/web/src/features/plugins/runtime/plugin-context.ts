@@ -26,7 +26,7 @@ import { scopePluginWorkspace } from "./plugin-scoped-workspace";
  */
 import { fetch as corsFreeFetch } from "@tauri-apps/plugin-http";
 import { createPluginNetworkService } from "./plugin-network";
-import type { PluginActionRegistration, PluginCallOptions } from "@read-aware/plugin-types";
+import type { PluginActionRegistration, PluginCallOptions, PluginReactionEvent } from "@read-aware/plugin-types";
 import { pluginOperationSignal } from "./plugin-call-options";
 import { readerPanels } from "../../../services/reader-panels";
 import { readerFocus } from "../../../services/reader-focus";
@@ -47,6 +47,8 @@ import {
 import { DEFAULT_LOCALE, i18n, isAppLocale } from "../../../i18n";
 import { onAppEvent } from "../../../platform/app-events";
 import { hostIO } from "../../../services/host-io";
+import { PluginContributionReactions } from "./plugin-contribution-reactions";
+import type { HostActionRegistration } from "../state/interactive-contribution-registry";
 import { pluginDirectory } from "../../../services/plugin-directory";
 import { afterLocalKVWrites, flushLocalKV, localKV } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
@@ -374,6 +376,7 @@ export function buildPluginContext(
   let network: PluginContext["services"]["network"], llm: PluginContext["services"]["llm"];
   const reactions = new PluginEventReactions(selfOrigin, lifecycle.signal);
   lifecycle.signal.addEventListener("abort", () => lifecycle.trackCleanup(reactions.drain()), { once: true });
+  const contributionHandles = new PluginContributionReactions(lifecycle, reactions, selfOrigin);
   const contexts = new WeakMap<object, PluginContext>();
   const contextForActor = (operationActor: DomainActor): PluginContext => {
     if (typeof operationActor === "object") {
@@ -404,14 +407,10 @@ export function buildPluginContext(
   const storagePrefix = pluginStoragePrefix(manifest.id);
   const track = (factory: () => PluginDisposable): PluginDisposable =>
     lifecycle.stage(factory);
-  const trackAction = (factory: () => PluginActionRegistration): PluginActionRegistration => {
-    let live: PluginActionRegistration | undefined;
-    const staged = track(() => { live = factory(); return live; });
-    return { dispose: () => staged.dispose(), updateState: async state => {
-      lifecycle.assertActive("contribution.updateState");
-      return live ? live.updateState(state) : { status: "inactive" };
-    } };
-  };
+  const trackContribution = (factory: (source: DomainActor) => { dispose(source?: DomainActor): void }): PluginDisposable =>
+    contributionHandles.stage(factory, operationActor);
+  const trackAction = (factory: (source: DomainActor) => HostActionRegistration): PluginActionRegistration =>
+    contributionHandles.action(factory, operationActor);
   const brand = { pluginId: manifest.id, pluginName: manifest.name };
 
   /**
@@ -434,7 +433,8 @@ export function buildPluginContext(
     }) as never;
 
   const ctx: PluginContext = {
-    withEvent: event => bindPluginEventContext(event, reactions, contextForActor),
+    withEvent: ((event: PluginReactionEvent | undefined, registration?: PluginDisposable) => registration === undefined
+      ? bindPluginEventContext(event, reactions, contextForActor) : contributionHandles.bind(event, registration)) as PluginContext["withEvent"],
     manifest,
     appVersion,
     // Live read — the worker mirrors this via the sync channel instead.
@@ -505,12 +505,12 @@ export function buildPluginContext(
         register: handler => {
           if (!handler || typeof handler !== "object" || typeof handler.id !== "string" || !NAMESPACE_KEY.test(handler.id) || typeof handler.open !== "function") throw new AppError("plugin/invalid-input", "Invalid URI handler");
           const captured={id:handler.id,open:handler.open,...(handler.state===undefined?{}:{state:normalizeActionState(handler.state)})};
-          return trackAction(() => pluginUriRegistry.register({ ...captured, ...brand, key: contributionKey(manifest.id, captured.id) }));
+          return trackAction(source => pluginUriRegistry.register({ ...captured, ...brand, key: contributionKey(manifest.id, captured.id) }, source));
         },
       },
       selectionActions: {
         register: (action) =>
-          trackAction(() =>
+          trackAction(source =>
             registerSelectionActionContribution({
               ...action,
               ...(objectAccess.restricted ? {
@@ -522,12 +522,12 @@ export function buildPluginContext(
               } : {}),
               ...brand,
               key: contributionKey(manifest.id, action.id),
-            }),
+            }, source),
           ),
       },
       headerActions: {
         register: (action) =>
-          trackAction(() => {
+          trackAction(source => {
             if (!["shelf", "reader", "agent"].includes(action.surface)) {
               throw new AppError("plugin/invalid-input", "Unknown header surface");
             }
@@ -543,11 +543,11 @@ export function buildPluginContext(
               presentation:
                 action.surface !== "shelf" ? "popup" : (action.presentation ?? "popup"),
               key: contributionKey(manifest.id, action.id),
-            });
+            }, source);
           }),
       },
       contextActions: {
-        register: (action) => trackAction(() => {
+        register: (action) => trackAction(source => {
           if (!["book", "collection"].includes(action.surface)) {
             throw new AppError("plugin/invalid-input", "Unknown context surface");
           }
@@ -561,18 +561,18 @@ export function buildPluginContext(
             } : {}),
             ...brand,
             key: contributionKey(manifest.id, action.id),
-          });
+          }, source);
         }),
       },
       commands: {
         register: (command) =>
-          trackAction(() =>
+          trackAction(source =>
             registerCommandContribution({
               ...command,
               defaultShortcut: normalizeDefaultShortcut(command.defaultShortcut),
               ...brand,
               key: contributionKey(manifest.id, command.id),
-            }),
+            }, source),
           ),
       },
       settingsOptions: {
@@ -587,32 +587,32 @@ export function buildPluginContext(
           if (typeof provider !== "function") {
             throw new Error("settingsOptions.register requires a provider function");
           }
-          return track(() =>
+          return trackContribution(source =>
             registerSettingsOptionsContribution({
               key: contributionKey(manifest.id, `settings-options.${id}`),
               pluginId: manifest.id,
               fieldId: id,
               resolve: (values) => Promise.resolve(provider(values)),
-            }),
+            }, source),
           );
         },
       },
       voiceProviders: {
-        register: provider => track(() => registerPluginVoiceProvider(provider, brand, lifecycle)),
+        register: provider => trackContribution(source => registerPluginVoiceProvider(provider, brand, lifecycle, source)),
       },
       contentProviders: {
-        register: provider => track(() => registerPluginContentProvider(manifest.id, provider, lifecycle.signal)),
+        register: provider => trackContribution(source => registerPluginContentProvider(manifest.id, provider, lifecycle.signal, source)),
       },
       readerModes: canUseContribution("readerModes", permissions)
         ? {
             register: (mode) => {
               const normalized = normalizeReaderMode(mode);
-              return track(() =>
+              return trackContribution(source =>
                 registerReaderModeContribution({
                   ...normalized,
                   ...brand,
                   key: contributionKey(manifest.id, normalized.id),
-                }),
+                }, source),
               );
             },
           }
@@ -621,15 +621,15 @@ export function buildPluginContext(
         ? {
             register: (tool) => {
               assertToolApproval(tool.approval, manifest.requires.contributions?.agentTools);
-              return trackAction(() =>
-            registerToolContribution({
+              return trackAction(source =>
+                registerToolContribution({
                   ...tool,
                   ...brand,
                   key: contributionKey(manifest.id, tool.name),
                   resolveBookCards: domain.library ? (ids, signal) => lifecycle.read("agentTools.bookCards",
                     active => resolvePluginBookCards(ids, ctx.domains.library!.queries.books.list, active), signal) : undefined,
                   ...(objectAccess.restricted ? { bookAccess: grantedBookAccess, assertBookAccess: assertBookScope } : {}),
-                }),
+                }, source),
               );
             },
           }
@@ -638,7 +638,7 @@ export function buildPluginContext(
         ? {
             register: (provider) => {
               const readingIntent = wrapReadingIntent(provider.readingIntent, lifecycle);
-              return track(() =>
+              return trackContribution(source =>
                 registerAgentContextProviderContribution({
                   ...provider,
                   ...brand,
@@ -666,7 +666,7 @@ export function buildPluginContext(
                   } : readingIntent,
                   readingIntentLifetime: lifecycle.signal,
                   ...(objectAccess.restricted ? { bookAccess: grantedBookAccess, assertBookAccess: assertBookScope } : {}),
-                }),
+                }, source),
               );
             },
           }
@@ -674,7 +674,7 @@ export function buildPluginContext(
       agentRetrievalProviders: canUseContribution("agentRetrievalProviders", permissions)
         ? {
             register: (provider) =>
-              track(() =>
+              trackContribution(source =>
                 registerAgentRetrievalProviderContribution({
                   ...provider,
                   ...brand,
@@ -684,13 +684,13 @@ export function buildPluginContext(
                     throw pluginObjectAccessDenied("agent retrieval provider global scope");
                   } : provider.retrieve,
                   ...(objectAccess.restricted ? { bookAccess: grantedBookAccess, assertBookAccess: assertBookScope } : {}),
-                }),
+                }, source),
               ),
           }
         : undefined,
       memoryCandidateProviders: canUseContribution("memoryCandidateProviders", permissions)
         ? {
-            register: (provider) => track(() => registerMemoryCandidateProviderContribution({
+            register: (provider) => trackContribution(source => registerMemoryCandidateProviderContribution({
               ...provider,
               ...(objectAccess.restricted ? {
                 propose: async input => {
@@ -710,7 +710,7 @@ export function buildPluginContext(
               } : {}),
               ...brand,
               key: contributionKey(manifest.id, provider.id),
-            })),
+            }, source)),
           }
         : undefined,
       syncTransports: canUseContribution("syncTransports", permissions)
@@ -722,22 +722,23 @@ export function buildPluginContext(
               if (typeof transport.open !== "function") {
                 throw new Error("syncTransports.register requires an open() function");
               }
-              return track(() => {
+              return trackContribution(source => {
                 const unregister = registerSyncTransport(manifest.id, {
                   id: String(transport.id),
                   label: transport.label,
                   open: transport.open,
-                }, releasePluginCallbacks);
+                }, releasePluginCallbacks, source);
                 let disposed = false;
-                const dispose = () => {
+                const dispose = (retirement: DomainActor = source) => {
                   if (disposed) return;
                   disposed = true;
-                  lifecycle.signal.removeEventListener("abort", dispose);
-                  lifecycle.trackCleanup(unregister());
+                  lifecycle.signal.removeEventListener("abort", cancel);
+                  lifecycle.trackCleanup(unregister(retirement));
                 };
+                const cancel = () => dispose(source);
                 // Retire session waiters before native cancellation races back
                 // through provider callbacks during the quiescence barrier.
-                lifecycle.signal.addEventListener("abort", dispose, { once: true });
+                lifecycle.signal.addEventListener("abort", cancel, { once: true });
                 if (lifecycle.signal.aborted) dispose();
                 return { dispose };
               });
@@ -860,7 +861,7 @@ export function buildPluginContext(
           lifecycle.assertActive("services.plugins.contributions");
           return pluginDirectory.contributions(query);
         },
-        observeContributions: (query, handler) => track(() => ({ dispose: pluginDirectory.observeContributions(query, handler) })),
+        observeContributions: (query, handler) => track(() => ({ dispose: pluginDirectory.observeContributions(query, handler, operationActor) })),
         list: async query => {
           lifecycle.assertActive("services.plugins.list");
           return pluginDirectory.list(query);

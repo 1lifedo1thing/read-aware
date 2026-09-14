@@ -33,6 +33,7 @@ import type {
   RegisteredMemoryCandidateProvider,
   PluginBookAccess,
 } from "../lib/plugin-types";
+import type { DomainActor } from "../../../platform/domain-actor";
 import { createContributionRegistry } from "./contribution-registry";
 import { createInteractiveContributionRegistry } from "./interactive-contribution-registry";
 
@@ -95,67 +96,75 @@ export function markPluginsReady(): void {
 
 export function registerSelectionActionContribution(
   item: RegisteredSelectionAction,
+  source?: DomainActor,
 ) {
-  return selectionActionsRegistry.register(item);
+  return selectionActionsRegistry.register(item, source);
 }
 
 export function registerHeaderActionContribution(
   item: RegisteredHeaderAction,
+  source?: DomainActor,
 ) {
-  return headerActionsRegistry.register(item);
+  return headerActionsRegistry.register(item, source);
 }
 
-export function registerContextActionContribution(item: RegisteredContextAction) {
-  return contextActionsRegistry.register(item);
+export function registerContextActionContribution(item: RegisteredContextAction, source?: DomainActor) {
+  return contextActionsRegistry.register(item, source);
 }
 
 export function registerReaderModeContribution(
   item: RegisteredReaderMode,
+  source?: DomainActor,
 ): PluginDisposable {
-  return readerModesRegistry.register(item);
+  return readerModesRegistry.register(item, source);
 }
 
-export function registerCommandContribution(item: RegisteredCommand) {
-  return commandsRegistry.register(item);
+export function registerCommandContribution(item: RegisteredCommand, source?: DomainActor) {
+  return commandsRegistry.register(item, source);
 }
 
-export function registerToolContribution(item: RegisteredTool) {
-  return toolsRegistry.register(item);
+export function registerToolContribution(item: RegisteredTool, source?: DomainActor) {
+  return toolsRegistry.register(item, source);
 }
 
 export function registerAgentContextProviderContribution(
   item: RegisteredAgentContextProvider,
+  source?: DomainActor,
 ): PluginDisposable {
-  return agentContextProvidersRegistry.register(item);
+  return agentContextProvidersRegistry.register(item, source);
 }
 
 export function registerAgentRetrievalProviderContribution(
   item: RegisteredAgentRetrievalProvider,
+  source?: DomainActor,
 ): PluginDisposable {
   // Cached Agent tools retain this identity, not just the reusable public key.
-  return agentRetrievalProvidersRegistry.register({ ...item });
+  return agentRetrievalProvidersRegistry.register({ ...item }, source);
 }
 
 export function registerMemoryCandidateProviderContribution(
   item: RegisteredMemoryCandidateProvider,
+  source?: DomainActor,
 ): PluginDisposable {
-  return memoryCandidateProvidersRegistry.register(item);
+  return memoryCandidateProvidersRegistry.register(item, source);
 }
 
 export function registerThemeContribution(
   item: RegisteredPluginTheme,
+  source?: DomainActor,
 ): PluginDisposable {
-  return themesRegistry.register(item);
+  return themesRegistry.register(item, source);
 }
 
-export function registerFontContribution(item: RegisteredPluginFont): PluginDisposable {
-  return fontsRegistry.register(item);
+export function registerFontContribution(item: RegisteredPluginFont, source?: DomainActor): PluginDisposable {
+  return fontsRegistry.register(item, source);
 }
 
 export function registerVoiceProviderContribution(
   item: RegisteredVoiceProvider,
+  source?: DomainActor,
 ) {
-  return voiceProvidersRegistry.register(item);
+  return voiceProvidersRegistry.register(item, source);
 }
 
 /**
@@ -175,8 +184,9 @@ const settingsOptionsRegistry =
 
 export function registerSettingsOptionsContribution(
   item: RegisteredSettingsOptions,
+  source?: DomainActor,
 ): PluginDisposable {
-  return settingsOptionsRegistry.register(item);
+  return settingsOptionsRegistry.register(item, source);
 }
 
 export function getSettingsOptionsProvider(
@@ -203,8 +213,9 @@ export const contentProvidersAtom = contentProvidersRegistry.atom;
 
 export function registerContentProviderContribution(
   provider: RegisteredContentProvider,
+  source?: DomainActor,
 ) {
-  return contentProvidersRegistry.register(provider);
+  return contentProvidersRegistry.register(provider, source);
 }
 
 export function getContentProvider(
@@ -222,13 +233,14 @@ export function updateVoiceProviderVoices(
   key: ContributionKey,
   voices: RegisteredVoiceProvider["voices"],
   expected: RegisteredVoiceProvider,
+  source?: DomainActor,
 ): RegisteredVoiceProvider | null {
   let replacement: RegisteredVoiceProvider | null = null;
   voiceProvidersRegistry.update(key, (entry) => {
     if (entry !== expected) return entry;
     replacement = { ...entry, voices };
     return replacement;
-  });
+  }, source);
   return replacement;
 }
 

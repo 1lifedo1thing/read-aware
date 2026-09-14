@@ -46,6 +46,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
     [context.services.storage, "observeDocuments", 1],
     [context.services.ui.reader, "observe", 0],
     [context.services.ui.reader?.image, "observe", 0],
+    [context.services.plugins, "observeContributions", 1],
   ];
   for (const [namespace, key, index] of observations) {
     const methods = namespace as Record<string, (...args: any[]) => unknown> | undefined;

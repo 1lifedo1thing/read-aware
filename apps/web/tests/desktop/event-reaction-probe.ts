@@ -2,6 +2,18 @@ import type { PluginModule } from "@read-aware/plugin-types";
 
 const plugin: PluginModule = {
   activate(ctx) {
+    if (ctx.manifest.description === "contribution-observation-reaction") {
+      const registration = ctx.contributions.commands.register({ id: "reaction", title: "Reaction", run: () => {} });
+      ctx.services.plugins.observeContributions({}, async (snapshot, delivery) => {
+        if ("reaction" in snapshot) throw new Error("Contribution snapshot shape changed");
+        const bound = ctx.withEvent(delivery, registration);
+        await Promise.resolve();
+        await bound.updateState({ revision: 1, visible: true, enabled: false });
+        await bound.dispose();
+        await ctx.services.storage.set("independent", true);
+      });
+      return;
+    }
     if (ctx.manifest.description === "nullable-observation-reaction") {
       ctx.services.ui.reader!.image!.observe(async (snapshot, delivery) => {
         if (snapshot !== null) throw new Error("Closed snapshot changed");

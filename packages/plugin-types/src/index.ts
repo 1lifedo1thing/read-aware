@@ -465,6 +465,10 @@ export type PluginFontContribution = {
 
 /** Returned by every `register*`/`on` call; disposing removes the contribution. */
 export type PluginDisposable = { dispose: () => void };
+/** A contribution handle bound to a live event delivery. Await retirement to
+ * observe host rejection or registration retirement across the Worker boundary;
+ * already-started provider cleanup still follows the activation drain contract. */
+export type PluginEventRegistration<T extends PluginDisposable> = Omit<T, "dispose"> & { dispose(): Promise<void> };
 
 // ─── View vocabulary ─────────────────────────────────────────────────────────
 
@@ -2355,7 +2359,7 @@ export type PluginHostServices = {
     /** Registered identities across extension points, never provider callbacks,
      * data, settings or a grant to invoke another plugin. Offset pages may change. */
     contributions(query?: import("@read-aware/core").PluginContributionQuery): Promise<import("@read-aware/core").PluginContributionPage>;
-    observeContributions(query: import("@read-aware/core").PluginContributionQuery, handler: (page: import("@read-aware/core").PluginContributionPage) => unknown): PluginDisposable;
+    observeContributions(query: import("@read-aware/core").PluginContributionQuery, handler: PluginObservationHandler<import("@read-aware/core").PluginContributionPage>): PluginDisposable;
     /** Public installed metadata only, no settings, paths, secrets or raw errors. */
     list(query?: import("@read-aware/core").PluginDirectoryQuery): Promise<import("@read-aware/core").PluginDirectoryPage>;
     /** Initial page and changes; offset pages must be reloaded after directory changes. */
@@ -2524,6 +2528,12 @@ export type PluginContext = {
    * retries and remote/restore invalidation. The snapshot contains no token.
    * Plugins 1.5 also accepts memory.events.observe deliveries. */
   withEvent(event: PluginReactionEvent | undefined): PluginContext;
+  /** Plugins 1.7: bind an existing contribution registration's updateState or
+   * disposal to this delivery. Only handles owned by this activation are valid;
+   * subscription/resource disposables are not contribution registrations.
+   * Every operation rechecks the delivery lease. User actions use the original
+   * handle, and automatic callbacks await the bound operation before returning. */
+  withEvent<T extends PluginDisposable>(event: PluginReactionEvent | undefined, registration: T): PluginEventRegistration<T>;
   readonly manifest: Readonly<PluginManifest>;
   readonly appVersion: string;
   readonly locale: string;

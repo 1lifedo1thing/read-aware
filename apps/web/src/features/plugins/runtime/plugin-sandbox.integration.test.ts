@@ -53,6 +53,41 @@ test("real Worker preserves and snapshots explicit safe retry options across req
   expect(resultData(await s.next(message => message.t === "result" && message.id === 900))).toMatchObject({ ok: true, value: { toast: "retried" } });
 });
 
+test("real Worker binds an existing contribution handle and awaits source-aware retirement acknowledgement", async () => {
+  const s = sandbox("contribution-observation-reaction", "event-reaction-probe.ts", {
+    shape: { domains: {}, services: { plugins: { observeContributions: "fn" } }, contributions: { commands: { register: "fn" } } },
+  });
+  const command = await s.next(message => message.method === "contributions.commands.register");
+  const subscription = await s.next(message => message.method === "services.plugins.observeContributions");
+  const callback = (data(subscription.args!) as [object, () => string])[1]();
+  s.worker.postMessage({ t: "result", id: command.id, ok: true, value: null, disposable: "command" });
+  s.worker.postMessage({ t: "result", id: subscription.id, ok: true, value: null, disposable: "observer" });
+  await s.next(message => message.t === "ready");
+  s.worker.postMessage({ t: "sync", patch: { phase: "active" } });
+  const reaction = { id: "contribution-lease", status: "ready" };
+  s.worker.postMessage({ t: "invoke", id: 940, handle: callback, args: [{ contributions: [], total: 0, offset: 0, nextOffset: null }, { reaction }] });
+  const update = await s.next(message => message.method === "$registration.updateState");
+  expect((update as unknown as { reaction: unknown }).reaction).toEqual(reaction);
+  expect(data(update.args!)).toEqual(["command", { revision: 1, visible: true, enabled: false }]);
+  s.worker.postMessage({ t: "result", id: update.id, ok: true, value: { status: "applied" } });
+  const retirement = await s.next(message => message.method === "$registration.dispose");
+  expect((retirement as unknown as { reaction: unknown }).reaction).toEqual(reaction);
+  expect(data(retirement.args!)).toEqual(["command"]);
+  expect(s.messages.some(message => message.t === "result" && message.id === 940)).toBe(false);
+  expect(s.messages.some(message => message.method === "services.storage.set")).toBe(false);
+  s.worker.postMessage({ t: "result", id: retirement.id, ok: true, value: null });
+  const independent = await s.next(message => message.method === "services.storage.set");
+  expect((independent as unknown as { reaction?: unknown }).reaction).toBeUndefined();
+  s.worker.postMessage({ t: "result", id: independent.id, ok: true, value: null });
+  expect(await s.next(message => message.t === "result" && message.id === 940)).toMatchObject({ ok: true });
+  // Host-side lease rejection must reach the callback rather than becoming a
+  // fire-and-forget disposal message or an apparent success.
+  s.worker.postMessage({ t: "invoke", id: 941, handle: callback, args: [{ contributions: [], total: 0, offset: 0, nextOffset: null }, { reaction }] });
+  const expired = await s.next(message => message.method === "$registration.updateState");
+  s.worker.postMessage({ t: "result", id: expired.id, ok: false, code: "plugin/invalid-cause", error: "Expired contribution reaction" });
+  expect(await s.next(message => message.t === "result" && message.id === 941)).toMatchObject({ ok: false });
+});
+
 test("real Worker event context keeps its opaque lease across await, nested namespaces and storage overrides", async () => {
   const s = sandbox("event-reaction", "event-reaction-probe.ts", {
     shape: { domains: { library: { events: { subscribe: "fn" } }, reading: { commands: { step: "fn" } } },

@@ -1,8 +1,9 @@
 import { atom, getDefaultStore, type PrimitiveAtom } from "jotai";
 import { createLogger } from "../../../platform/logger";
 import type { ContributionId } from "@read-aware/core";
-import type { ContributionKey, PluginDisposable } from "../lib/plugin-types";
+import type { ContributionKey } from "../lib/plugin-types";
 import { publishContributionChange, undoContributionReplacement } from "./contribution-activation";
+import { causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 
 export type ContributionIdentity = {
   key: ContributionKey;
@@ -11,7 +12,7 @@ export type ContributionIdentity = {
 
 export type ContributionPoint = ContributionId;
 
-export type ContributionRegistration = PluginDisposable & { isCurrent(): boolean };
+export type ContributionRegistration = { dispose(source?: DomainActor): void; isCurrent(): boolean };
 
 export type ContributionSnapshot = {
   point: ContributionPoint;
@@ -22,10 +23,10 @@ export type ContributionSnapshot = {
 export type ContributionRegistry<T extends ContributionIdentity> = {
   readonly point: ContributionPoint;
   readonly atom: PrimitiveAtom<T[]>;
-  register(item: T): ContributionRegistration;
+  register(item: T, source?: DomainActor): ContributionRegistration;
   list(): T[];
   find(predicate: (item: T) => boolean): T | null;
-  update(key: ContributionKey, update: (item: T) => T): T | null;
+  update(key: ContributionKey, update: (item: T) => T, source?: DomainActor): T | null;
 };
 
 type InspectableRegistry = {
@@ -34,11 +35,11 @@ type InspectableRegistry = {
 };
 
 const registries = new Map<ContributionPoint, InspectableRegistry>();
-const listeners = new Set<() => void>();
+const listeners = new Set<(source: object) => void>();
 const log = createLogger("contribution-registry");
 
 /** Registry changes only; observers never receive provider objects or callbacks. */
-export function subscribeContributions(listener: () => void): () => void {
+export function subscribeContributions(listener: (source: object) => void): () => void {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 }
@@ -62,18 +63,39 @@ export function createContributionRegistry<T extends ContributionIdentity>(
   const entriesAtom = atom<T[]>([]);
   const store = getDefaultStore();
   const owners = new Map<ContributionKey, { disposed: boolean }>();
+  let publishedOwners = new Map<ContributionKey, object>();
   let entries: T[] = [];
+  const pending = new Map<object, object>();
   const publish = () => publishContributionChange(entriesAtom, () => {
     const published = store.get(entriesAtom);
-    if (published.length !== entries.length || published.some((item, index) => item !== entries[index])) {
-      store.set(entriesAtom, entries);
+    const before = new Map(published.map(item => [item.key, item]));
+    const sources: object[] = [];
+    for (const item of entries) {
+      if (before.get(item.key) !== item || publishedOwners.get(item.key) !== owners.get(item.key)) {
+        const source = pending.get(owners.get(item.key)!);
+        if (source) sources.push(source);
+      }
+      before.delete(item.key);
     }
+    for (const key of before.keys()) {
+      const source = pending.get(publishedOwners.get(key)!);
+      if (source) sources.push(source);
+    }
+    const changed = published.length !== entries.length || published.some((item, index) => item !== entries[index]
+      || publishedOwners.get(item.key) !== owners.get(item.key));
+    // Only owners visible in the final delta contribute causes. A failed
+    // nested registration cannot add a fresh branch to a successful parent.
+    const snapshot = mergeEventCauses(sources, [...entries]);
+    pending.clear(); publishedOwners = new Map(owners);
+    if (changed) store.set(entriesAtom, snapshot);
   });
+  const change = (owner: object, source: DomainActor) => { pending.set(owner, stampEventCause({}, source)); publish(); };
   const registry: ContributionRegistry<T> = {
     point,
     atom: entriesAtom,
-    register(item) {
+    register(item, source = "system") {
       validateIdentity(item);
+      const origin = causalActor(source);
       const owner = { disposed: false };
       const previousOwner = owners.get(item.key);
       const previousIndex = entries.findIndex(entry => entry.key === item.key);
@@ -81,6 +103,7 @@ export function createContributionRegistry<T extends ContributionIdentity>(
       undoContributionReplacement(() => {
         // Disposal is irreversible: never resurrect an explicitly retired owner.
         if (owners.has(item.key) && owners.get(item.key) !== owner) return;
+        pending.delete(owner);
         owners.delete(item.key);
         entries = entries.filter(entry => entry.key !== item.key);
         if (previous && previousOwner && !previousOwner.disposed) {
@@ -94,22 +117,24 @@ export function createContributionRegistry<T extends ContributionIdentity>(
         ...entries.filter((entry) => entry.key !== item.key),
         item,
       ];
-      publish();
+      change(owner, origin);
       return {
         isCurrent: () => !owner.disposed && owners.get(item.key) === owner,
-        dispose: () => {
+        dispose: (source = origin) => {
           if (owner.disposed) return;
+          const retirement = causalActor(source);
           owner.disposed = true;
-          if (owners.get(item.key) !== owner) return;
+          if (owners.get(item.key) !== owner) { change(owner, retirement); return; }
           owners.delete(item.key);
           entries = entries.filter((entry) => entry.key !== item.key);
-          publish();
+          change(owner, retirement);
         },
       };
     },
     list: () => entries,
     find: (predicate) => entries.find(predicate) ?? null,
-    update: (key, update) => {
+    update: (key, update, source = "system") => {
+      const origin = causalActor(source), previous = entries;
       let updated: T | null = null;
       entries = entries.map((entry) => {
         if (entry.key !== key) return entry;
@@ -119,15 +144,17 @@ export function createContributionRegistry<T extends ContributionIdentity>(
         }
         return updated;
       });
-      publish();
+      if (entries.some((entry, index) => entry !== previous[index])) change(owners.get(key)!, origin);
       return updated;
     },
   };
   if (catalog) {
     registries.set(point, { point, list: () => registry.list() });
     store.sub(entriesAtom, () => {
+      const source = store.get(entriesAtom);
       for (const notify of [...listeners]) {
-        try { notify(); } catch (error) { log.warn("Contribution observer failed", error); }
+        if (store.get(entriesAtom) !== source) break;
+        try { notify(source); } catch (error) { log.warn("Contribution observer failed", error); }
       }
     });
   }

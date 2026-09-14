@@ -2,6 +2,8 @@ import { AppError, normalizePluginContributionQuery, type PluginContributionEntr
 import { inspectContributions, subscribeContributions } from "../features/plugins/state/contribution-registry";
 import { listSyncTransports, onSyncTransportsChanged } from "../platform/sync/transport-registry";
 import { createLogger } from "../platform/logger";
+import { observeSnapshot } from "../domain/snapshot-observation";
+import type { DomainActor } from "../platform/domain-actor";
 
 const log = createLogger("plugin-contributions");
 let observers = 0;
@@ -36,24 +38,18 @@ export function pluginContributionPage(entries: readonly PluginContributionEntry
 
 export const pluginContributions = {
   list: async (query?: PluginContributionQuery) => pluginContributionPage(registeredPluginContributions(), query),
-  observe(query: PluginContributionQuery, handler: (page: PluginContributionPage) => unknown): () => void {
+  observe(query: PluginContributionQuery, handler: (page: PluginContributionPage, source?: object) => unknown, origin?: DomainActor): () => void {
     const accepted = normalizePluginContributionQuery(query);
     if (observers >= 64) throw new AppError("ui/observer-limit", "Too many contribution observers");
-    let stopped = false, running = false, dirty = false;
-    const publish = async () => {
-      dirty = true; if (stopped || running) return;
-      running = true;
-      try {
-        do {
-          dirty = false;
-          try { if (!stopped) await handler(pluginContributionPage(registeredPluginContributions(), accepted)); }
-          catch (error) { log.warn("Contribution directory observer failed", error); }
-        } while (dirty && !stopped);
-      } finally { running = false; }
-    };
-    const notify = () => { void publish(); };
-    const off = subscribeContributions(notify), offTransport = onSyncTransportsChanged(notify);
-    observers++; notify();
-    return () => { if (!stopped) { stopped = true; observers--; off(); offTransport(); } };
+    let stopped = false;
+    // Reserve before the initial callback, which may synchronously subscribe.
+    observers++;
+    let off: () => void;
+    try { off = observeSnapshot(() => pluginContributionPage(registeredPluginContributions(), accepted), notify => {
+      const registry = subscribeContributions(notify), transport = onSyncTransportsChanged(notify);
+      return () => { registry(); transport(); };
+    }, handler, error => log.warn("Contribution directory observer failed", error), origin); }
+    catch (error) { observers--; throw error; }
+    return () => { if (!stopped) { stopped = true; observers--; off(); } };
   },
 };

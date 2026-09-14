@@ -1,5 +1,6 @@
 import { AppError } from "@read-aware/core";
-import type { PluginDisposable, PluginVoiceProvider } from "@read-aware/plugin-types";
+import type { PluginVoiceProvider } from "@read-aware/plugin-types";
+import { actorFromEvent, causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { onAppEvent } from "../../../platform/app-events";
 import { createLogger } from "../../../platform/logger";
 import { contributionKey, type RegisteredVoiceProvider } from "../lib/plugin-types";
@@ -16,7 +17,10 @@ export function registerPluginVoiceProvider(
   provider: PluginVoiceProvider,
   brand: { pluginId: string; pluginName: string },
   lifecycle: PluginLifecycleController,
-): PluginDisposable {
+  source: DomainActor = "system",
+): { dispose(source?: DomainActor): void } {
+  const origin = causalActor(source);
+  let requestedSource = origin;
   const signal = lifecycle.signal;
   const key = contributionKey(brand.pluginId, provider.id);
   const releaseResult = (value: unknown) => {
@@ -40,7 +44,7 @@ export function registerPluginVoiceProvider(
   };
   let disposed = false, committed = false, running = false;
   let requested = 0, completed = -1;
-  const registration = registerVoiceProviderContribution(registered);
+  const registration = registerVoiceProviderContribution(registered, origin);
   const current = () => !disposed && !signal.aborted && registration.isCurrent();
 
   const refresh = async () => {
@@ -48,12 +52,12 @@ export function registerPluginVoiceProvider(
     running = true;
     try {
       while (current() && completed !== requested) {
-        const revision = requested;
+        const revision = requested, source = requestedSource;
         try {
           const voices = await provider.listVoices();
           try {
             if (current() && revision === requested) {
-              const replacement = updateVoiceProviderVoices(key, normalizePluginVoices(voices), registered);
+              const replacement = updateVoiceProviderVoices(key, normalizePluginVoices(voices), registered, source);
               if (replacement) registered = replacement;
             }
           } finally { releaseResult(voices); }
@@ -65,17 +69,19 @@ export function registerPluginVoiceProvider(
       }
     } finally { running = false; }
   };
-  const offStorage = onAppEvent("plugin-storage-changed", ({ pluginId }) => {
+  const offStorage = onAppEvent("plugin-storage-changed", event => {
+    const { pluginId } = event;
     if (pluginId !== brand.pluginId || !current()) return;
+    requestedSource = actorFromEvent(event);
     requested++;
     void refresh();
   });
-  const dispose = () => {
+  const dispose = (source = origin) => {
     if (disposed) return;
     disposed = true;
     signal.removeEventListener("abort", cancel);
     offStorage();
-    registration.dispose();
+    registration.dispose(source);
   };
   const cancel = () => {
     try { dispose(); } catch (error) { lifecycle.trackCleanup(Promise.reject(error)); }

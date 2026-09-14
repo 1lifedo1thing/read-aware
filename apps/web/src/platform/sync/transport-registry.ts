@@ -17,6 +17,7 @@ import { AppError } from "@read-aware/core";
 import { closeTransportSessionValue, ownTransportSession } from "./transport-session";
 import { createLogger } from "../logger";
 import { commitContributionReplacement, publishContributionChange, undoContributionReplacement } from "../../features/plugins/state/contribution-activation";
+import { causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../domain-actor";
 
 const log = createLogger("sync-transports");
 
@@ -35,20 +36,38 @@ const transports = new Map<string, RegisteredSyncTransport>();
 const retirements = new WeakMap<RegisteredSyncTransport, () => Promise<void>>();
 const invalidations = new WeakMap<RegisteredSyncTransport, () => Promise<void>>();
 const retiredEntries = new WeakSet<RegisteredSyncTransport>();
-const listeners = new Set<() => void>();
+const listeners = new Set<(source: object) => void>();
+const pending = new Map<RegisteredSyncTransport, object>();
 let published = new Map<string, { entry: RegisteredSyncTransport; generation: number }>();
 
-function notify(): void {
+function publish(): void {
   publishContributionChange(transports, () => {
+    const sources: object[] = [];
+    for (const [ref, entry] of transports) {
+      const previous = published.get(ref);
+      if (previous?.entry !== entry || previous.generation !== entry.generation) {
+        const source = pending.get(entry); if (source) sources.push(source);
+      }
+    }
+    for (const [ref, previous] of published) if (!transports.has(ref)) {
+      const source = pending.get(previous.entry); if (source) sources.push(source);
+    }
+    const notification = mergeEventCauses(sources, {});
+    pending.clear();
     if (published.size === transports.size && [...transports].every(([ref, entry]) => {
       const previous = published.get(ref);
       return previous?.entry === entry && previous.generation === entry.generation;
     })) return;
     published = new Map([...transports].map(([ref, entry]) => [ref, { entry, generation: entry.generation }]));
+    const snapshot = published;
     for (const listener of [...listeners]) {
-      try { listener(); } catch (error) { log.warn("Transport observer failed", error); }
+      if (published !== snapshot) break;
+      try { listener(notification); } catch (error) { log.warn("Transport observer failed", error); }
     }
   });
+}
+function notify(entry: RegisteredSyncTransport, source: DomainActor): void {
+  pending.set(entry, stampEventCause({}, source)); publish();
 }
 
 export function syncTransportRef(pluginId: string, transportId: string): string {
@@ -61,7 +80,9 @@ export function registerSyncTransport(
   pluginId: string,
   transport: PluginSyncTransport,
   release: (value: unknown) => void = () => {},
-): () => Promise<void> {
+  source: DomainActor = "system",
+): (source?: DomainActor) => Promise<void> {
+  const origin = causalActor(source);
   let retired = false;
   let generation = 0;
   let retirement: Promise<void> | undefined;
@@ -105,9 +126,10 @@ export function registerSyncTransport(
   undoContributionReplacement(() => {
     void retire().catch(error => log.warn("Rolled back transport cleanup failed", error));
     if (transports.has(entry.ref) && transports.get(entry.ref) !== entry) return;
+    pending.delete(entry);
     if (previous && !retiredEntries.has(previous)) transports.set(entry.ref, previous);
     else transports.delete(entry.ref);
-    notify();
+    publish();
   });
   retirements.set(entry, retire);
   invalidations.set(entry, () => { generation++; return closeSessions(); });
@@ -115,28 +137,31 @@ export function registerSyncTransport(
   if (previous) commitContributionReplacement(() => {
     void retirements.get(previous)?.().catch(error => log.warn("Replaced transport cleanup failed", error));
   });
-  notify();
-  return () => {
+  notify(entry, origin);
+  return (source = origin) => {
+    const retirementSource = causalActor(source);
     const closing = retire();
     // Only remove our own registration — a replacement (blue-green update)
     // must not be torn down by the retiring instance's disposer.
     if (transports.get(entry.ref) === entry) {
       transports.delete(entry.ref);
-      notify();
     }
+    notify(entry, retirementSource);
     return closing;
   };
 }
 
 /** Call only after the Worker has received the new configuration snapshot. */
-export function invalidateSyncTransportSessions(pluginId: string): void {
+export function invalidateSyncTransportSessions(pluginId: string, source: DomainActor = "system"): void {
+  const origin = causalActor(source);
   let changed = false;
   for (const entry of transports.values()) {
     if (entry.pluginId !== pluginId) continue;
     changed = true;
+    pending.set(entry, stampEventCause({}, origin));
     void invalidations.get(entry)?.().catch(error => log.warn("Transport configuration cleanup failed", error));
   }
-  if (changed) notify();
+  if (changed) publish();
 }
 
 export function listSyncTransports(): RegisteredSyncTransport[] {
@@ -147,7 +172,7 @@ export function findSyncTransport(ref: string): RegisteredSyncTransport | null {
   return transports.get(ref) ?? null;
 }
 
-export function onSyncTransportsChanged(listener: () => void): () => void {
+export function onSyncTransportsChanged(listener: (source: object) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }

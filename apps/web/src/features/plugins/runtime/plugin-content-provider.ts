@@ -3,12 +3,14 @@ import type { PluginBookContent } from "@read-aware/plugin-types";
 import { normalizePluginBookContent } from "../lib/plugin-book-content";
 import { registerContentProviderContribution } from "../state/plugin-store";
 import { consumePluginResult } from "./plugin-result";
+import type { DomainActor } from "../../../platform/domain-actor";
 
 /** Guard both reader opens and detached Agent/plugin text reads at the provider boundary. */
 export function registerPluginContentProvider(
   pluginId: string,
   provider: { id: string; load(key: string): Promise<PluginBookContent> },
   signal: AbortSignal,
+  source?: DomainActor,
 ) {
   let registration: ReturnType<typeof registerContentProviderContribution> | undefined;
   const check = () => {
@@ -20,6 +22,6 @@ export function registerPluginContentProvider(
       check();
       return consumePluginResult(provider.load(key), value => { check(); return normalizePluginBookContent(value); });
     },
-  });
+  }, source);
   return registration;
 }

@@ -113,6 +113,7 @@ const callbacks = new PluginCallbackRegistry();
  * the release travelling once the host answers.
  */
 type CallResult = Promise<unknown> & PluginActionRegistration;
+const contributionBindings = new WeakMap<object, (token: PluginReactionToken) => import("@read-aware/plugin-types").PluginEventRegistration<PluginActionRegistration>>();
 
 function callHost(method: string, args: unknown[], signal?: AbortSignal, reaction?: PluginReactionToken): CallResult {
   const prepared = preparePluginCall(method, args);
@@ -137,11 +138,32 @@ function callHost(method: string, args: unknown[], signal?: AbortSignal, reactio
     const response = await receipt as { disposable?: string };
     if (disposed) return { status: "inactive" };
     if (!response.disposable) throw codedError("Call did not create a registration", "plugin/unavailable");
-    return await callHost("$registration.updateState", [response.disposable, state], undefined, reaction) as PluginActionStateReceipt;
+    return await callHost("$registration.updateState", [response.disposable, state]) as PluginActionStateReceipt;
   };
+  const bind = (token: PluginReactionToken) => {
+    const bound = {
+      dispose: async () => {
+        const response = await receipt as { disposable?: string };
+        if (!response.disposable) throw codedError("Call did not create a registration", "plugin/unavailable");
+        await callHost("$registration.dispose", [response.disposable], undefined, token);
+        disposed = true;
+      },
+      updateState: async (state: Parameters<PluginActionRegistration["updateState"]>[0]) => {
+        const response = await receipt as { disposable?: string };
+        if (!response.disposable) throw codedError("Call did not create a registration", "plugin/unavailable");
+        return await callHost("$registration.updateState", [response.disposable, state], undefined, token) as PluginActionStateReceipt;
+      },
+    };
+    contributionBindings.set(bound, bind);
+    return bound;
+  };
+  const isContribution = method.startsWith("contributions.") && method.endsWith(".register");
   const promise = receipt.then(value => {
     const response = value as { value: unknown; disposable?: string };
-    return response.disposable ? { dispose, updateState } : response.value;
+    if (!response.disposable) return response.value;
+    const handle = { dispose, updateState };
+    if (isContribution) contributionBindings.set(handle, bind);
+    return handle;
   });
   inFlightHostCalls.add(promise);
   void promise.then(
@@ -154,6 +176,7 @@ function callHost(method: string, args: unknown[], signal?: AbortSignal, reactio
   const result = promise as CallResult;
   result.dispose = dispose;
   result.updateState = updateState;
+  if (isContribution) contributionBindings.set(result, bind);
   return result;
 }
 
@@ -217,9 +240,16 @@ function buildContext(
   const ctx = remoteNamespace("", namespaces as ContextShape, reaction) as Record<string, unknown>;
 
   const call = (method: string, args: unknown[], signal?: AbortSignal) => callHost(method, args, signal, reaction);
-  ctx.withEvent = (event: import("@read-aware/plugin-types").PluginReactionEvent | undefined) => {
+  ctx.withEvent = (event: import("@read-aware/plugin-types").PluginReactionEvent | undefined, registration?: object) => {
     if (!event?.reaction) throw codedError("Event has no reaction lease", "plugin/invalid-cause");
-    return buildContext(manifest, appVersion, capabilities, grants, shape, Object.freeze({ ...event.reaction }));
+    const token = Object.freeze({ ...event.reaction });
+    if (token.status === "cycle") throw codedError("Event reaction would repeat a causal step", "plugin/event-cycle");
+    if (registration !== undefined) {
+      const bind = registration && contributionBindings.get(registration);
+      if (!bind) throw codedError("Not an owned contribution registration", "plugin/invalid-cause");
+      return bind(token);
+    }
+    return buildContext(manifest, appVersion, capabilities, grants, shape, token);
   };
   ctx.manifest = manifest;
   ctx.appVersion = appVersion;

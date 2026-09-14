@@ -6,6 +6,8 @@ import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
 import { pluginUriRegistry } from "../features/plugins/lib/plugin-uri";
 import { pluginContributions, pluginContributionPage } from "./plugin-contributions";
 import { hostIO } from "./host-io";
+import { actorCause, causalActor, eventCause, stampEventCause } from "../platform/domain-actor";
+import type { PluginActionRegistration, PluginEventRegistration, PluginReactionEvent } from "@read-aware/plugin-types";
 
 test("every current contribution point is discoverable without invoking or exposing a provider", async () => {
   let calls = 0;
@@ -71,4 +73,62 @@ test("filters and entry budgets cannot produce broken identities or endless empt
   const next = pluginContributionPage(entries, { offset: first.nextOffset! });
   expect(next.contributions[0]!.key).toBe(entries[first.nextOffset!]!.key);
   expect(() => pluginContributionPage([{ point: "commands", pluginId: "bad", key: "x".repeat(17000) }])).toThrow("budget");
+});
+
+test("public contribution observations bind existing handles, stop A/B loops and preserve later independent actions", async () => {
+  for (const mode of ["all", "book"] as const) {
+    const make = (name: string) => {
+      const runtime = buildPluginContext({ id: name, name, version: "1", schemaVersion: 1, requires: {}, permissions: [] }, "1", [],
+        mode === "book" ? { mode, bookId: "book" } : { mode });
+      runtime.lifecycle.promote(); return runtime;
+    };
+    const a = make(`causal-a-${mode}`), b = make(`causal-b-${mode}`);
+    const register = (runtime: typeof a) => runtime.context.contributions.commands.register({ id: "command", title: "Command", run: () => {} });
+    const ha = register(a), hb = register(b), subscriptions: { dispose(): void }[] = [];
+    let armed = false, writes = 0, cycles = 0, revision = 0;
+    let expired: PluginEventRegistration<PluginActionRegistration> | undefined;
+    try {
+      for (const [runtime, handle] of [[a, ha], [b, hb]] as const) {
+        subscriptions.push(runtime.context.services.plugins.observeContributions({}, async (page, delivery) => {
+          if (!armed) return;
+          expect(JSON.stringify(page)).not.toMatch(/reaction|cause/);
+          if (delivery?.reaction?.status === "cycle") { cycles++; return; }
+          const bound = runtime.context.withEvent(delivery, handle);
+          expired = bound;
+          expect(() => runtime.context.withEvent(delivery, runtime === a ? hb : ha)).toThrow(expect.objectContaining({ code: "plugin/invalid-cause" }));
+          if (++writes > 20) return; // Bound a regression without hiding a failed loop assertion.
+          await Promise.resolve();
+          expect(await bound.updateState({ revision: ++revision, visible: true, enabled: true })).toEqual({ status: "applied" });
+        }));
+      }
+      await Bun.sleep(0); armed = true;
+      await ha.updateState({ revision: ++revision, visible: true, enabled: false });
+      await Bun.sleep(0);
+      expect(writes).toBeGreaterThanOrEqual(2); expect(writes).toBeLessThan(20); expect(cycles).toBeGreaterThan(0);
+      expect(() => expired!.updateState({ revision: ++revision, visible: true, enabled: false })).toThrow(expect.objectContaining({ code: "plugin/invalid-cause" }));
+      await expect(expired!.dispose()).rejects.toMatchObject({ code: "plugin/invalid-cause" });
+      const before = writes;
+      await ha.updateState({ revision: ++revision, visible: true, enabled: false });
+      await Bun.sleep(0);
+      expect(writes).toBeGreaterThan(before); expect(writes).toBeLessThan(20);
+      armed = false;
+      let source: object | undefined;
+      const off = pluginContributions.observe({}, (_page, event) => { source = event; });
+      const event = stampEventCause({}, causalActor("user")), rule = {};
+      try {
+        await a.reactions.deliver(rule, event, async reaction => {
+          const delivery: PluginReactionEvent = { reaction }, origin = a.reactions.actor(reaction);
+          const created = a.context.withEvent(delivery).contributions.commands.register({ id: "new", title: "New", run: () => {} });
+          await Bun.sleep(0); expect(eventCause(source!)).toBe(actorCause(origin));
+          await a.context.withEvent(delivery, created).dispose();
+          await Bun.sleep(0); expect(eventCause(source!)).toBe(actorCause(origin));
+          expect(() => a.context.withEvent(delivery, subscriptions[0]!)).toThrow(expect.objectContaining({ code: "plugin/invalid-cause" }));
+        });
+      } finally { off(); }
+    } finally {
+      armed = false; for (const subscription of subscriptions) subscription.dispose();
+      ha.dispose(); hb.dispose(); a.lifecycle.stop(); b.lifecycle.stop();
+      await Promise.all([a.lifecycle.drainCleanups(), b.lifecycle.drainCleanups()]);
+    }
+  }
 });
