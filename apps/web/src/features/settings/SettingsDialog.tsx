@@ -20,7 +20,8 @@ import { cn } from "@read-aware/ui/cn";
 import { usePhoneViewport } from "@read-aware/ui/media";
 import { useBackInterceptor } from "../../hooks/useBackInterceptor";
 import { useTranslation } from "../../i18n";
-import { activeSettingsSectionAtom, settingsSectionRequestAtom, type CoreSettingsSectionId, type SettingsSectionId } from "../../state/ui";
+import { activeSettingsSectionAtom, settingsSectionRequestAtom, workspaceSourcesAtom, type CoreSettingsSectionId, type SettingsSectionId } from "../../state/ui";
+import { actorFromEvent, causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../../platform/domain-actor";
 import { workspace } from "../../services/workspace";
 import { installedPluginsAtom } from "../plugins/state/plugin-store";
 import type { PluginManifest } from "../plugins/lib/plugin-types";
@@ -90,7 +91,12 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
   const isPhone = usePhoneViewport();
   const [isPresent, setIsPresent] = useState(open);
   const [isClosing, setIsClosing] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const workspaceSources = useAtomValue(workspaceSourcesAtom);
+  const [activeNavigation, setActiveNavigation] = useState(() => stampEventCause({ index: 0 }, "system"));
+  const activeIndex = activeNavigation.index;
+  function setActiveIndex(index: number, source: DomainActor = "user") {
+    setActiveNavigation(stampEventCause({ index }, causalActor(source)));
+  }
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
   const [indicatorY, setIndicatorY] = useState<number | null>(null);
 
@@ -108,7 +114,11 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
 
   // Phone: two-level drill-in navigation — `null` shows the section list,
   // an index shows that section's panel. Reset to the list on every open.
-  const [phoneSectionIndex, setPhoneSectionIndex] = useState<number | null>(null);
+  const [phoneNavigation, setPhoneNavigation] = useState(() => stampEventCause({ index: null as number | null }, "system"));
+  const phoneSectionIndex = phoneNavigation.index;
+  function setPhoneSectionIndex(index: number | null, source: DomainActor = "user") {
+    setPhoneNavigation(stampEventCause({ index }, causalActor(source)));
+  }
   // The list page only animates when returning from a panel, not on open.
   const returnedFromPanelRef = useRef(false);
   const [sectionRequest, setSectionRequest] = useAtom(settingsSectionRequestAtom);
@@ -132,7 +142,7 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
     if (open) {
       setIsPresent(true);
       setIsClosing(false);
-      setPhoneSectionIndex(null);
+      setPhoneSectionIndex(null, actorFromEvent(workspaceSources.settingsOpen));
       returnedFromPanelRef.current = false;
       return;
     }
@@ -155,12 +165,13 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
   // One-shot: clearing the atom re-runs this effect, which bails immediately.
   useEffect(() => {
     if (!open || !sectionRequest) return;
+    const source = actorFromEvent(workspaceSources.sectionRequest);
     const index = entries.findIndex((entry) => entryKey(entry) === sectionRequest);
     if (index >= 0) {
-      setActiveIndex(index);
-      if (isPhone) setPhoneSectionIndex(index);
+      setActiveIndex(index, source);
+      if (isPhone) setPhoneSectionIndex(index, source);
     }
-    setSectionRequest(null);
+    setSectionRequest(null, source);
     // `entries` derives from render-time atoms; the closure sees the current
     // render's list, and the effect re-runs per request — deps stay minimal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -198,10 +209,35 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
   const setActiveSection = useSetAtom(activeSettingsSectionAtom);
   const currentEntry = isPhone ? (phoneSectionIndex === null ? null : entries[Math.min(phoneSectionIndex, entries.length - 1)]) : entries[safeActiveIndex];
   const currentSection = open && isPresent && !isClosing && currentEntry ? entryKey(currentEntry) : null;
+  const navigation = isPhone ? phoneNavigation : activeNavigation;
+  const visible = open && isPresent && !isClosing;
+  const publishedSection = useRef<{
+    section: SettingsSectionId | null;
+    visible: boolean;
+    isPhone: boolean;
+    navigation: typeof navigation;
+    entries: NavEntry[];
+  } | null>(null);
   useLayoutEffect(() => {
-    setActiveSection(currentSection);
+    const previous = publishedSection.current;
+    if (!previous || previous.section !== currentSection) {
+      const sources: object[] = [];
+      if (!previous || previous.visible !== visible) sources.push(workspaceSources.settingsOpen);
+      if (previous && previous.isPhone !== isPhone) sources.push(stampEventCause({}, "system"));
+      if (previous && previous.navigation !== navigation && previous.isPhone === isPhone) sources.push(navigation);
+      // Entry removal/reordering can change the selected panel without a click.
+      // Only join that registry mutation when it changes this index's projection.
+      if (previous && navigation.index !== null) {
+        const oldEntry = previous.entries[Math.min(navigation.index, previous.entries.length - 1)];
+        if (oldEntry && currentEntry && entryKey(oldEntry) !== entryKey(currentEntry)) sources.push(installedPlugins);
+      }
+      setActiveSection(currentSection, actorFromEvent(mergeEventCauses(sources, {})));
+    }
+    publishedSection.current = { section: currentSection, visible, isPhone, navigation, entries };
+  });
+  useLayoutEffect(() => {
     if (currentSection) workspace.acknowledge("settings", workspaceToken);
-  }, [currentSection, setActiveSection, workspaceToken]);
+  }, [currentSection, workspaceToken]);
 
   // Slide the active-section indicator to the centre of the active nav item.
   useLayoutEffect(() => {
