@@ -1,4 +1,4 @@
-import { causalActor, type DomainActor } from "../platform/domain-actor";
+import { causalActor, copyEventCause, eventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import { AppError, normalizeWorkspaceQuery, normalizeWorkspaceTarget, type WorkspaceQuery, type WorkspaceReceipt, type WorkspaceSnapshot, type WorkspaceTarget } from "@read-aware/core";
 import { createLogger } from "../platform/logger";
 
@@ -43,8 +43,8 @@ export class WorkspaceService {
     const after = accepted.selectionAfter;
     const remaining = after === undefined ? ids : ids.filter(id => id > after);
     const page = remaining.slice(0, accepted.limit);
-    return { ...structuredClone(view), revision: this.revision, selection: { active: selection.active,
-      total: ids.length, bookIds: page, nextCursor: remaining.length > page.length ? page.at(-1)! : null } };
+    return copyEventCause(this.binding.view, { ...structuredClone(view), revision: this.revision, selection: { active: selection.active,
+      total: ids.length, bookIds: page, nextCursor: remaining.length > page.length ? page.at(-1)! : null } });
   }
 
   observe(query: WorkspaceQuery, handler: (value: WorkspaceSnapshot | null) => unknown,
@@ -71,13 +71,14 @@ export class WorkspaceService {
 
   bind(adapter: Adapter, initial: WorkspaceView) {
     this.cancel(new AppError("ui/superseded", "Workspace owner changed"));
-    const binding: Binding = { adapter, view: structuredClone(initial), token: 0, acknowledgements: new Map() };
+    const binding: Binding = { adapter, view: eventCause(initial) ? copyEventCause(initial, structuredClone(initial)) : stampEventCause(structuredClone(initial), "system"), token: 0, acknowledgements: new Map() };
     this.binding = binding; this.changed();
     return {
       publish: (view: WorkspaceView, token: number) => {
         if (this.binding !== binding) return;
         const changed = JSON.stringify(view) !== JSON.stringify(binding.view);
-        binding.view = structuredClone(view); binding.token = token;
+        binding.view = changed ? (eventCause(view) ? copyEventCause(view, structuredClone(view)) : stampEventCause(structuredClone(view), "system"))
+          : copyEventCause(binding.view, structuredClone(view)); binding.token = token;
         if (changed) this.revision++;
         this.complete();
         if (changed) this.notify();

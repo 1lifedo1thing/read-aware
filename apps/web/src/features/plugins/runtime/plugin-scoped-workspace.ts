@@ -1,4 +1,4 @@
-import { type DomainActor } from "../../../platform/domain-actor";
+import { copyEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { AppError, errorCode, normalizeHostCommandRequest, normalizeWorkspaceQuery, normalizeWorkspaceTarget,
   type HostCommandSnapshot, type HostCommandRequest, type OperationAvailability, operationAvailability, type WorkspaceQuery, type WorkspaceSnapshot, type WorkspaceTarget } from "@read-aware/core";
 import type { PluginContext } from "@read-aware/plugin-types";
@@ -28,7 +28,7 @@ export function scopePluginWorkspace(host: WorkspaceService, hostCommands: Retur
   const stamp = (snapshot: WorkspaceSnapshot): WorkspaceSnapshot => {
     const key = JSON.stringify([bookId(), policy.grant.mode === "current" ? reader.current().sessionId : null]);
     if (state.nativeRevision !== snapshot.revision || state.scopeKey !== key) { state.revision++; state.nativeRevision = snapshot.revision; state.scopeKey = key; }
-    return { ...snapshot, revision: state.revision };
+    return copyEventCause(snapshot, { ...snapshot, revision: state.revision });
   };
   const capture = (query?: WorkspaceQuery) => stamp(host.snapshot(query, project));
   const expectedNative = (expected?: number) => {

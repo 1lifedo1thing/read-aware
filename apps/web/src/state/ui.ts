@@ -75,17 +75,31 @@ export const topNavs = ["shelf", "agent", "stats"] as const;
  */
 export type TopNav = (typeof topNavs)[number] | `plugin:${string}`;
 
-export const activeTopNavAtom = atom<TopNav>("shelf");
-
-export const settingsOpenAtom = atom(false);
-export const activeSettingsSectionAtom = atom<SettingsSectionId | null>(null);
-export const commandQueryAtom = atom("");
-const commandSearchOpenBaseAtom = atom(false);
+/** Keep provenance beside ephemeral values; it never enters persistence or plugin data. */
+function workspaceValue<T>(initial: T) {
+  const source = atom(stampEventCause({ value: initial }, "system"));
+  const value = atom(get => get(source).value, (get, set, update: T | ((previous: T) => T), origin: DomainActor = "user") => {
+    const previous = get(source).value;
+    const next = typeof update === "function" ? (update as (previous: T) => T)(previous) : update;
+    if (!Object.is(previous, next)) set(source, stampEventCause({ value: next }, causalActor(origin)));
+  });
+  return { value, source: atom(get => get(source)) };
+}
+const topNavState = workspaceValue<TopNav>("shelf");
+export const activeTopNavAtom = topNavState.value;
+const settingsOpenState = workspaceValue(false);
+export const settingsOpenAtom = settingsOpenState.value;
+const activeSectionState = workspaceValue<SettingsSectionId | null>(null);
+export const activeSettingsSectionAtom = activeSectionState.value;
+const commandQueryState = workspaceValue("");
+export const commandQueryAtom = commandQueryState.value;
+const commandSearchState = workspaceValue(false);
 export const commandSearchOpenAtom = atom(
-  get => get(commandSearchOpenBaseAtom),
-  (get, set, open: boolean) => {
-    if (open && !get(commandSearchOpenBaseAtom)) set(commandQueryAtom, "");
-    set(commandSearchOpenBaseAtom, open);
+  get => get(commandSearchState.value),
+  (get, set, open: boolean, origin: DomainActor = "user") => {
+    const source = causalActor(origin);
+    if (open && !get(commandSearchState.value)) set(commandQueryAtom, "", source);
+    set(commandSearchState.value, open, source);
   },
 );
 
@@ -104,7 +118,8 @@ export type SettingsSectionId = import("@read-aware/core").WorkspaceSettingsSect
  * when it next opens (set alongside `settingsOpenAtom`, e.g. by an error's
  * "open settings" action). The dialog consumes and clears it.
  */
-export const settingsSectionRequestAtom = atom<SettingsSectionId | null>(null);
+const sectionRequestState = workspaceValue<SettingsSectionId | null>(null);
+export const settingsSectionRequestAtom = sectionRequestState.value;
 
 /**
  * One-shot: a sync sign-in token that arrived through a readaware:// deep
@@ -292,10 +307,18 @@ export const shelfViewAtom = atom(
 /** Multi-select state for shelf batch management. Ephemeral — never persisted. */
 export type ShelfSelection = { active: boolean; ids: string[] };
 
-export const shelfSelectionAtom = atom<ShelfSelection>({ active: false, ids: [] });
+const shelfSelectionState = workspaceValue<ShelfSelection>({ active: false, ids: [] });
+export const shelfSelectionAtom = shelfSelectionState.value;
 
 /** The collection currently being viewed on the shelf, or null at the top level. */
-export const activeCollectionAtom = atom<string | null>(null);
+const activeCollectionState = workspaceValue<string | null>(null);
+export const activeCollectionAtom = activeCollectionState.value;
+/** Host-only per-field sources for the workspace commit adapter. */
+export const workspaceSourcesAtom = atom(get => ({
+  surface: get(topNavState.source), collection: get(activeCollectionState.source), selection: get(shelfSelectionState.source),
+  settingsOpen: get(settingsOpenState.source), section: get(activeSectionState.source), sectionRequest: get(sectionRequestState.source),
+  searchOpen: get(commandSearchState.source), query: get(commandQueryState.source),
+}));
 
 const shortcutBindingsBaseAtom = atom<ShortcutBindings>(getShortcutBindings());
 

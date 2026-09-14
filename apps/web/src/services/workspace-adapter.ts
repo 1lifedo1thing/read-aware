@@ -83,21 +83,21 @@ export async function applyWorkspaceTarget(store: Store, target: WorkspaceTarget
   signal.throwIfAborted();
   if (before !== intentState(store)) throw new AppError("ui/superseded", "Workspace intent changed during validation");
   if (target.surface === "settings") {
-    store.set(commandSearchOpenAtom, false);
-    store.set(settingsSectionRequestAtom, target.section ?? "general");
-    store.set(settingsOpenAtom, true);
+    store.set(commandSearchOpenAtom, false, source);
+    store.set(settingsSectionRequestAtom, target.section ?? "general", source);
+    store.set(settingsOpenAtom, true, source);
   } else if (target.surface === "search") {
-    store.set(settingsOpenAtom, false);
-    store.set(commandSearchOpenAtom, true);
-    store.set(commandQueryAtom, target.query ?? "");
+    store.set(settingsOpenAtom, false, source);
+    store.set(commandSearchOpenAtom, true, source);
+    store.set(commandQueryAtom, target.query ?? "", source);
   } else {
     // No awaits between the final guard and the ephemeral state change.
     if (readingRuntime.snapshot().sessionId) throw new AppError("ui/superseded", "A new reading session owns the screen");
-    store.set(settingsOpenAtom, false); store.set(commandSearchOpenAtom, false);
+    store.set(settingsOpenAtom, false, source); store.set(commandSearchOpenAtom, false, source);
     if (target.surface === "shelf") {
-      store.set(activeCollectionAtom, target.collectionId ?? null);
-      store.set(shelfSelectionAtom, target.selection ? { active: target.selection.active, ids: target.selection.bookIds } : { active: false, ids: [] });
+      store.set(activeCollectionAtom, target.collectionId ?? null, source);
+      store.set(shelfSelectionAtom, target.selection ? { active: target.selection.active, ids: target.selection.bookIds } : { active: false, ids: [] }, source);
     }
-    store.set(activeTopNavAtom, target.surface);
+    store.set(activeTopNavAtom, target.surface, source);
   }
 }

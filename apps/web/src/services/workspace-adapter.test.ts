@@ -1,10 +1,10 @@
-import { causalActor } from "../platform/domain-actor";
+import { actorCause, causalActor, eventCause } from "../platform/domain-actor";
 import { afterEach, expect, spyOn, test } from "bun:test";
 import { createStore } from "jotai";
 import { AppError } from "@read-aware/core";
 import { readingRuntime } from "../domain/reading-runtime";
 import * as db from "../features/library/lib/library-db";
-import { activeTopNavAtom, commandQueryAtom, commandSearchOpenAtom, settingsOpenAtom, settingsSectionRequestAtom } from "../state/ui";
+import { workspaceSourcesAtom, activeTopNavAtom, commandQueryAtom, commandSearchOpenAtom, settingsOpenAtom, settingsSectionRequestAtom } from "../state/ui";
 import { activeCollectionAtom, shelfSelectionAtom } from "../state/ui";
 import { libraryBooksAtom, libraryCollectionsAtom, libraryReadyAtom } from "../features/library/state/library-store";
 import { applyWorkspaceTarget, validateWorkspaceTarget } from "./workspace-adapter";
@@ -45,7 +45,8 @@ test("leaving a reader needs the extra grant and preserves native handoff; overl
   expect(store.get(commandQueryAtom)).toBe("kept"); expect(store.get(settingsOpenAtom)).toBe(false); expect(close).not.toHaveBeenCalled();
   const source = causalActor("plugin:workspace-caller");
   await applyWorkspaceTarget(store, { surface: "stats" }, s, true, source);
-  expect(close).toHaveBeenCalledWith(s, { sessionId: "reader" }, source); expect(store.get(activeTopNavAtom)).toBe("stats");
+  expect(close).toHaveBeenCalledWith(s, { sessionId: "reader" }, source);
+  expect(eventCause(store.get(workspaceSourcesAtom).surface)).toBe(actorCause(source)); expect(store.get(activeTopNavAtom)).toBe("stats");
   expect(store.get(commandSearchOpenAtom)).toBe(false);
   store.set(commandSearchOpenAtom, true); expect(store.get(commandQueryAtom)).toBe("");
 });

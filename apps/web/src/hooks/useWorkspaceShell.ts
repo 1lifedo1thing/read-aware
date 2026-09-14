@@ -1,9 +1,11 @@
+import { readingRuntime } from "../domain/reading-runtime";
+import { stampWorkspaceView } from "../services/workspace-causes";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAtomValue, useStore } from "jotai";
 import type { LibraryBook } from "../features/library/lib/library-types";
 import { workspace, type WorkspaceView } from "../services/workspace";
 import { applyWorkspaceTarget, validateWorkspaceTarget } from "../services/workspace-adapter";
-import { activeCollectionAtom, activeSettingsSectionAtom, activeTopNavAtom, commandQueryAtom, commandSearchOpenAtom, settingsOpenAtom, shelfSelectionAtom } from "../state/ui";
+import { workspaceSourcesAtom, activeCollectionAtom, activeSettingsSectionAtom, activeTopNavAtom, commandQueryAtom, commandSearchOpenAtom, settingsOpenAtom, shelfSelectionAtom } from "../state/ui";
 
 export function useWorkspaceShell(reading: boolean, books: LibraryBook[], collections: { id: string }[], ready: boolean): number {
   const store = useStore();
@@ -15,11 +17,15 @@ export function useWorkspaceShell(reading: boolean, books: LibraryBook[], collec
   const view: WorkspaceView = { surface: reading ? "reader" : surface.startsWith("plugin:") ? "plugin" : surface as "shelf" | "agent" | "stats",
     collectionId, settings: { open: settingsOpen, section: settingsOpen ? section : null }, search: { open: searchOpen, query },
     selection: { active: selection.active, bookIds: selection.ids } };
-  const committed = useRef(view);
-  useLayoutEffect(() => { committed.current = view; binding.current?.publish(view, token); });
+  const sources = useAtomValue(workspaceSourcesAtom);
+  const committed = useRef<WorkspaceView | undefined>(undefined);
+  useLayoutEffect(() => {
+    const current = stampWorkspaceView(view, committed.current, { ...sources, reader: readingRuntime.snapshot() });
+    committed.current = current; binding.current?.publish(current, token);
+  });
   useEffect(() => {
     const owner = workspace.bind({ prepare: (target, signal) => validateWorkspaceTarget(store, target, signal),
-      apply: (target, signal, allowClose, source) => applyWorkspaceTarget(store, target, signal, allowClose, source), requestCommit: setToken }, committed.current);
+      apply: (target, signal, allowClose, source) => applyWorkspaceTarget(store, target, signal, allowClose, source), requestCommit: setToken }, committed.current!);
     binding.current = owner;
     return () => { owner.dispose(); if (binding.current === owner) binding.current = null; };
   }, [store]);

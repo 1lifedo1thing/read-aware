@@ -1,4 +1,5 @@
-import { causalActor, type DomainActor } from "../platform/domain-actor";
+import { stampWorkspaceView } from "./workspace-causes";
+import { actorCause, causalActor, eventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { AppError, normalizeWorkspaceTarget, type WorkspaceSnapshot, type WorkspaceTarget } from "@read-aware/core";
 import { WorkspaceService, type WorkspaceView } from "./workspace";
@@ -30,15 +31,21 @@ function fixture(deadline = 1000) {
   }, view);
   return { service, binding, view, errors, sources, get applied() { return applied; }, get token() { return token; },
     hold: () => { hold = true; }, release: () => { hold = false; release(); }, fail: (error: unknown) => { prepareError = error; },
-    publish: () => binding.publish(view, token), ack: (surface: string) => service.acknowledge(surface, token),
+    publish: (value = view) => binding.publish(value, token), ack: (surface: string) => service.acknowledge(surface, token),
   };
 }
 
 test("workspace receipts require a matching fresh destination commit, not dispatch or Suspense fallback", async () => {
   const f = fixture(); let settled = false;
+  const before = structuredClone(f.view);
   const source = causalActor("plugin:workspace-caller");
   const result = f.service.navigate({ surface: "stats" }, undefined, undefined, false, undefined, source).then(v => { settled = true; return v; });
-  await tick(); expect(f.sources[0]).toBe(source); f.publish(); await tick(); expect(settled).toBe(false);
+  await tick(); expect(f.sources[0]).toBe(source);
+  const changed = stampEventCause({}, source), unrelated = stampEventCause({}, "user");
+  f.publish(stampWorkspaceView({ ...f.view }, before, { surface: changed, collection: unrelated, selection: unrelated,
+    settingsOpen: unrelated, section: unrelated, searchOpen: unrelated, query: unrelated, reader: unrelated }));
+  expect(eventCause(f.service.snapshot())).toBe(actorCause(source));
+  f.publish(); await tick(); expect(settled).toBe(false);
   f.service.acknowledge("stats", f.token - 1); await tick(); expect(settled).toBe(false);
   f.ack("stats"); expect((await result).snapshot.surface).toBe("stats");
   const again = f.service.navigate({ surface: "stats" }); await tick(); f.ack("stats"); f.publish();
