@@ -1,3 +1,4 @@
+import { READER_PREFERENCES_KEY } from "../../features/settings/lib/reader-settings";
 import { copyEventCause, stampEventCause, actorOrigin, type DomainActor } from "../../platform/domain-actor";
 import type {
   SettingCatalogEntry,
@@ -383,6 +384,7 @@ export function createSettingsDomain(
 
 /** Host-only planning. The returned KV bytes never enter the public capability. */
 export async function prepareAtomicSettings(origin: DomainActor, changes: SettingChange[], access?: SettingsAccessPolicy) {
+  initializeSettingsObservation();
   const accepted = structuredClone(changes);
   const policy = actorPolicy(origin, access);
   for (const change of accepted) {
@@ -406,8 +408,16 @@ export async function prepareAtomicSettings(origin: DomainActor, changes: Settin
         return { path: change.path, target, value: descriptor.value } as SettingChange;
       });
     });
-    return { changed: result.changed, beforeValues,
+    // A book override can later be removed by undo. Retain the inherited
+    // baseline as a read-only native condition, so its event/preview value stays true.
+    const readingBaseline = result.changed.some(change => (change.target?.kind === "book" || change.target?.kind === "all-books") && change.path.startsWith("reading."))
+      ? [{ key: READER_PREFERENCES_KEY, expected: localKV.getItem(READER_PREFERENCES_KEY), value: localKV.getItem(READER_PREFERENCES_KEY) }] : [];
+    return { changed: result.changed, beforeValues, readingBaseline, revision: settingsObservation.revision,
       entries: [...entries].map(([key, value]) => ({ key, expected: localKV.getItem(key), value })),
     };
   });
+}
+
+export function assertAtomicSettingsRevision(revision: number): void {
+  if (settingsObservation.revision !== revision) throw new AppError("transaction/conflict", "Settings or their providers changed before dispatch");
 }

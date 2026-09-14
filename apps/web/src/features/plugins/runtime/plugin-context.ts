@@ -1,3 +1,4 @@
+import { createPluginTransactions } from "./plugin-transactions";
 import { bookServiceStorage, denyUnscopedServiceData } from "./plugin-service-storage";
 import { pluginServices, type PluginServiceParticipant } from "./plugin-services";
 import type { DomainActorOwners } from "../../../domain/actor-owners";
@@ -377,6 +378,7 @@ export function buildPluginContext(
   const activationLifecycle = { get phase() { return lifecycle.phase; } };
   const owners: DomainActorOwners = {};
   const documentObserver = new PluginDocumentObserver(lifecycle);
+  const transactionBudget = { pending: 0 };
   const logging = createPluginLogging(manifest.id, manifest.version, lifecycle);
   const scopedWorkspaceState = { revision: 0 };
   const scopedConversationState = { revision: 0 };
@@ -413,6 +415,11 @@ export function buildPluginContext(
     discover: [...(requestedSettings.discover ?? []), ...ownSettingsPaths],
     read: [...(requestedSettings.read ?? []), ...ownSettingsPaths],
     write: [...(requestedSettings.write ?? []), ...ownSettingsPaths],
+  };
+  let transactionSession: ReturnType<typeof createPluginTransactions> | undefined;
+  const transactions = () => transactionSession ??= createPluginTransactions(manifest, objectAccess, lifecycle, documentObserver, operationActor, settingsAccess, transactionBudget);
+  const transactionCall = <T,>(perform: () => Promise<T>): Promise<T> => {
+    const pending = perform(); lifecycle.trackCleanup(pending.then(() => {}, () => {})); return pending;
   };
   const settingsDomain = createSettingsDomain(operationActor, settingsAccess, permissions.has("service:network"));
   const storagePrefix = pluginStoragePrefix(manifest.id);
@@ -866,6 +873,12 @@ export function buildPluginContext(
             return { dispose: () => { registration.dispose(); lifecycle.trackCleanup(pluginSchedules.drainWrites(manifest.id)); } };
           });
         },
+      },
+      transactions: {
+        preview: (operations, options) => transactionCall(() => transactions().preview(operations, callSignal(options))),
+        commit: (id, options) => transactionCall(() => transactions().commit(id, callSignal(options))),
+        previewUndo: (id, options) => transactionCall(() => transactions().previewUndo(id, callSignal(options))),
+        receipt: (id, options) => transactionCall(() => transactions().receipt(id, callSignal(options))),
       },
       plugins: {
         listServices: async (query, options) => {

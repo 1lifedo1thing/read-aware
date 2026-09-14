@@ -1,5 +1,5 @@
 import type { PluginContext } from "@read-aware/plugin-types";
-import { applyProfile, captureProfile, deleteProfile, listProfiles, parseProfile, profileCollection, profileName, profileToken, saveProfile } from "./profiles";
+import { applyProfile, undoProfile, captureProfile, deleteProfile, listProfiles, parseProfile, profileCollection, profileName, profileToken, saveProfile } from "./profiles";
 
 const invalid = (): never => { throw Object.assign(Error("Invalid workspace tool input"), { code: "plugin/invalid-input" }); };
 function fields(params: Record<string, unknown>, allowed: string[]) {
@@ -54,7 +54,7 @@ export function registerProfileTools(ctx: PluginContext) {
     },
   });
   ctx.contributions.agentTools.register({ name: "manage_workspace_profile", label: "Manage workspace profile", contexts: ["global", "book"], approval: "required",
-    description: "Apply or permanently delete an exact workspace preset after host approval. First inspect it with workspace_profiles(inspect), then pass the exact id and expectedRevision. Changed documents return conflict. Apply submits the inspected preset values in one host settings update, preserving per-book overrides; version 1 changes seven fields and leaves fonts unchanged, version 2 changes ten. Delete conditionally removes only the preset. No book data, selection, AI privacy, credentials or plugin lifecycle changes. Application is not a transaction with private profile storage or a font-rendering completion receipt.",
+    description: "Apply or permanently delete an exact workspace preset after host approval. First inspect it with workspace_profiles(inspect), then pass the exact id and expectedRevision. Changed documents return conflict. Apply submits the inspected preset values in one host settings update, preserving per-book overrides; version 1 changes seven fields and leaves fonts unchanged, version 2 changes ten. Delete conditionally removes only the preset. No book data, selection, AI privacy, credentials or plugin lifecycle changes. Apply checks the profile revision and settings in one transaction and returns transactionId for conditional undo; it is not a font-rendering completion receipt.",
     parameters: { type: "object", properties: { action: { type: "string", enum: ["apply", "delete"] }, id: string(), expectedRevision: string() }, required: ["action", "id", "expectedRevision"], additionalProperties: false },
     execute: async params => {
       fields(params, ["action", "id", "expectedRevision"]);
@@ -62,8 +62,13 @@ export function registerProfileTools(ctx: PluginContext) {
       if (params.action === "delete") return deleteProfile(ctx, id, revision);
       if (params.action !== "apply") return invalid();
       const result = await applyProfile(ctx, id, revision);
-      return result.status === "conflict" ? result : { status: result.status, id, name: result.name,
-        changed: result.changed, preservedBookOverrides: result.overrides.length };
+      return result;
     },
   });
+  ctx.contributions.agentTools.register({ name: "undo_workspace_profile", label: "Undo workspace profile", contexts: ["global"], approval: "required",
+    description: "Conditionally undo the exact transactionId returned by manage_workspace_profile(apply). Host approval is required. Later profile or settings changes cause conflict and are never overwritten. Inspect the result before retrying an unknown outcome.",
+    parameters: { type: "object", properties: { transactionId: string(128) }, required: ["transactionId"], additionalProperties: false },
+    execute: params => { fields(params, ["transactionId"]); return undoProfile(ctx, text(params.transactionId, 128)); },
+  });
+
 }

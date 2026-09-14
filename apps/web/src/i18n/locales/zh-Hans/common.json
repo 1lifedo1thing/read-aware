@@ -164,7 +164,13 @@
     "pluginServiceTimeout": "服务执行超时。重试修改前，请先检查实际结果。",
     "pluginServiceResultInvalid": "服务返回了无效结果。重试前，请先检查操作是否已生效。",
     "pluginServiceFailed": "插件服务执行失败。重复修改前，请先检查实际结果。",
-    "pluginServiceDataChanged": "服务使用的文档已变更，请重新读取后再保存。"
+    "pluginServiceDataChanged": "服务使用的文档已变更，请重新读取后再保存。",
+    "transactionConflict": "数据或可用选项已变化，请重新预览。",
+    "transactionInvalid": "这项操作无法加入原子事务。",
+    "transactionPreviewExpired": "预览已过期，请重新预览后提交。",
+    "transactionReceiptMissing": "未找到属于当前调用者的事务回执。",
+    "transactionQuota": "事务已达到限制，请缩小批次或减少待提交预览。",
+    "transactionNoChanges": "当前状态已符合请求，无需修改。"
   },
   "crashPrompt": {
     "title": "ReadAware 上次运行出了问题",

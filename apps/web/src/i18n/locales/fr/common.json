@@ -164,7 +164,13 @@
     "pluginServiceTimeout": "Le délai a expiré. Vérifiez le résultat avant de répéter des modifications.",
     "pluginServiceResultInvalid": "Le résultat est invalide. Vérifiez l’état avant de réessayer.",
     "pluginServiceFailed": "Le service a échoué. Vérifiez le résultat avant de répéter des modifications.",
-    "pluginServiceDataChanged": "Le document a changé. Relisez-le avant de sauvegarder."
+    "pluginServiceDataChanged": "Le document a changé. Relisez-le avant de sauvegarder.",
+    "transactionConflict": "Les données ou options ont changé. Préparez un nouvel aperçu.",
+    "transactionInvalid": "Cette opération ne peut pas faire partie de la transaction.",
+    "transactionPreviewExpired": "L’aperçu a expiré. Préparez-en un nouveau avant de valider.",
+    "transactionReceiptMissing": "Aucun reçu de transaction trouvé pour cet appelant.",
+    "transactionQuota": "Limite atteinte. Réduisez le lot ou les aperçus en attente.",
+    "transactionNoChanges": "L’état demandé est déjà présent."
   },
   "crashPrompt": {
     "title": "ReadAware a rencontré un problème la dernière fois",

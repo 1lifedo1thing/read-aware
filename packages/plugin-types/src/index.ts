@@ -2442,6 +2442,14 @@ export type PluginHostServices = {
     requestFlow(request: import("@read-aware/core").HostSyncFlowRequest, options?: PluginCallOptions): ReturnType<import("@read-aware/core").HostSyncPort["requestFlow"]>;
     observe(handler: (snapshot: import("@read-aware/core").HostSyncSnapshot) => unknown): PluginDisposable;
   };
+  /** Local semantic transactions. Preview does not execute; commit consumes the
+   * frozen preview once. Query the receipt after an unknown response before retrying. */
+  transactions: {
+    preview(operations: import("@read-aware/core").AtomicOperation[], options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicPreview>;
+    commit(previewId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicReceipt>;
+    previewUndo(receiptId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicPreview>;
+    receipt(receiptId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").AtomicReceipt | null>;
+  };
   session: {
     /** Session 2.3: inspect inference, book-targeted playback/mode and text preparation prerequisites without executing
      * or probing. Missing permission returns only the permission condition.

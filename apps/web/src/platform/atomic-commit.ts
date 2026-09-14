@@ -23,6 +23,7 @@ export type AtomicJournalRecord = { id: string; metadata: unknown; receipt: Atom
  * build these bytes; neither the Agent nor a Worker receives this interface. */
 export type AtomicHostPlan = {
   guards: AtomicAggregateGuard[];
+  settingGuards?: AtomicSettingBytes[];
   events: DomainEventDraft[];
   settings: AtomicSettingBytes[];
   documents: { pluginId: string; changes: AtomicDocumentBytes[] }[];

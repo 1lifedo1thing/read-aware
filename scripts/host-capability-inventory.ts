@@ -55,6 +55,7 @@ const agentMap = pairs([
   ["open_resource_external", "SYS12"],
   ["list_installed_plugins", "EXT11"],
   ["list_plugin_contributions", "EXT11 MORE06"],
+  ["preview_atomic_transaction commit_atomic_transaction preview_transaction_undo get_transaction_receipt", "CON08 CON02 CON03"],
   ["list_plugin_services", "MORE06 CON02 CON03"],
   ["call_plugin_service", "MORE06 CON02 CON03"],
   ["copy_to_clipboard", "SYS08"],
@@ -216,6 +217,7 @@ const pluginMap = pairs([
   ["services.ui.commands.list services.ui.commands.execute services.ui.commands.observe", "UI03"],
   ["services.network.fetch", "SYS06"], ["services.network.policy", "SYS07"], ["services.llm.ask", "AI06"], ["services.clipboard.writeText", "SYS08"],
   ["services.network.openStream", "SYS07"], ["services.network.readStream", "SYS07"], ["services.network.closeStream", "SYS07"],
+  ["services.transactions.preview services.transactions.commit services.transactions.previewUndo services.transactions.receipt", "CON08 CON02 CON03"],
   ["services.session.environment services.session.observeEnvironment", "MORE03"],
   ["services.session.operationAvailability", "MORE03 AI06 READ16 READ18 TXT05"],
   ["services.sync.snapshot services.sync.observe services.sync.backlog services.sync.requestSync", "OPS01 OPS03"],
@@ -243,7 +245,7 @@ const pluginMap = pairs([
 const catalogMap: Record<string, Record<string, string[]>> = {
   domains: { library:["LIB01"], reading:["STAT01","READ01"], annotations:["ANN01"], conversations:["AI01"], settings:["CFG01"], memory:["MEM01","MEM11"] },
   contributions: { uriHandlers:["SYS12"], selectionActions:["EXT01"], headerActions:["EXT02","MORE04"], contextActions:["MORE04"], commands:["UI03"], settingsOptions:["CFG09"], voiceProviders:["READ17"], contentProviders:["LIB14"], readerModes:["READ15"], agentTools:["AI05","AI10"], agentContextProviders:["AI11"], agentRetrievalProviders:["AI12"], memoryCandidateProviders:["MEM03"], themes:["EXT08"], fonts:["EXT08"], syncTransports:["OPS04"] },
-  services: { storage:["SYS01","SYS02"], secrets:["SYS04"], ui:["EXT07","SYS10"], schedules:["MORE01"], session:["MORE03"], plugins:["EXT11"], maintenance:["SYS15","SYS16"], diagnostics:["OPS03","OPS11","SYS15"], logging:["SYS15"], resources:["SYS11","SYS13"], sync:["OPS01"], network:["SYS06"], llm:["AI06"], clipboard:["SYS08"] },
+  services: { transactions:["CON08","CON02","CON03"], storage:["SYS01","SYS02"], secrets:["SYS04"], ui:["EXT07","SYS10"], schedules:["MORE01"], session:["MORE03"], plugins:["EXT11"], maintenance:["SYS15","SYS16"], diagnostics:["OPS03","OPS11","SYS15"], logging:["SYS15"], resources:["SYS11","SYS13"], sync:["OPS01"], network:["SYS06"], llm:["AI06"], clipboard:["SYS08"] },
   schemas: { views:["EXT03","EXT04","EXT05","EXT06"], settings:["CFG09"], themes:["EXT08"] },
 };
 const nativeMap = pairs([
@@ -287,6 +289,7 @@ const nativeMap = pairs([
   ["ai_chat_load ai_chat_load_all ai_chat_list ai_chat_replace ai_chat_clear", "AI01 AI02 AI03"],
   ["plugin_docs_put plugin_docs_get plugin_docs_delete plugin_docs_list plugin_docs_clear vocabulary_migrate_to_plugin_documents", "SYS02 SYS03"],
   ["plugin_docs_snapshot plugin_docs_restore plugin_data_snapshot plugin_data_restore", "SYS03"],
+  ["atomic_commit atomic_aggregate_revisions atomic_receipt_get", "CON08"],
   ["plugin_docs_page plugin_docs_apply", "SYS02"],
   ["plugin_storage_usage", "SYS05"],
   ["reading_time_genesis reading_time_load reading_session_accrue reading_session_position reading_sessions_pending reading_session_flush reading_time_import", "STAT03 STAT04"],
@@ -373,6 +376,12 @@ export function collectInventory(): Inventory[] {
   assertUniqueSourceKeys();
   inventory.length = 0;
   const { deps } = createInMemoryDeps();
+  deps.transactions = () => ({
+    preview: async () => { throw new Error("Inventory does not execute transactions"); },
+    commit: async () => { throw new Error("Inventory does not execute transactions"); },
+    previewUndo: async () => { throw new Error("Inventory does not execute transactions"); },
+    receipt: async () => null, inspectPreview: async () => null,
+  });
   deps.pluginServices = {
     list: async () => ({ services: [], total: 0, nextOffset: null }),
     call: async () => { throw new Error("Inventory must not execute services"); },

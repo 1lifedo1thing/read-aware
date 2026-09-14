@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { applyProfile, deleteProfile, LEGACY_PROFILE_PATHS, PROFILE_PATHS, readProfile, saveProfile } from "../src/profiles";
 import plugin from "../src/index";
 import { fixture } from "./fixture";
-test("captures one snapshot, applies one atomic command, and preserves override receipts", async () => {
+test("captures one snapshot and applies settings with a profile condition and transaction receipt", async () => {
   const f = fixture(); const saved = await saveProfile(f.ctx, "  Research  ");
   if (saved.status !== "saved") throw Error("Save failed");
   expect(saved.name).toBe("Research"); expect(f.snapshots()).toBe(1); expect(f.updates).toHaveLength(0);
@@ -11,7 +11,7 @@ test("captures one snapshot, applies one atomic command, and preserves override 
   if (applied.status !== "applied") throw Error("Apply failed");
   expect(f.updates).toHaveLength(1); expect(f.updates[0]!.map(change => change.path)).toEqual([...PROFILE_PATHS]);
   expect(f.updates[0]!.every(change => change.target?.kind === "global")).toBe(true);
-  expect(applied.overrides).toHaveLength(1);
+  expect(applied.transactionId).toBeString();
 });
 test("version 1 presets preserve fonts; version 2 requires its complete field set", async () => {
   const f = fixture();
@@ -52,6 +52,6 @@ test("deleting a preset does not apply any host settings", async () => {
 test("registers shelf UI, command and both Agent scopes", () => {
   const f = fixture();
   plugin.activate(f.ctx);
-  expect(f.registrations).toEqual(["header", "command", "tool", "tool", "tool"]);
+  expect(f.registrations).toEqual(["header", "command", "tool", "tool", "tool", "tool"]);
   expect(f.tools.get("workspace_profiles")).toMatchObject({ name: "workspace_profiles", contexts: ["global", "book"] });
 });

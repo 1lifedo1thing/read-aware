@@ -20,9 +20,9 @@
 
 ## 计数与口径
 
-- 宿主：实装 210、部分 30、占位 1、非桌面 1、待建 1。
-- Agent：接通 151、接通（待 E2E） 23、扩展 11、部分 31、自动 13、未接 14。
-- 插件：接通 167、接通（待 E2E） 28、部分 42、未接 6。
+- 宿主：实装 211、部分 29、占位 1、非桌面 1、待建 1。
+- Agent：接通 151、接通（待 E2E） 24、扩展 11、部分 30、自动 13、未接 14。
+- 插件：接通 167、接通（待 E2E） 29、部分 41、未接 6。
 
 不提供一个虚假的“整体覆盖率”：这里既有功能族也有逐字段行，且自动管线、插件条件扩展、禁止开放、宿主未建不应混为一个分母。上面的数量是本表状态分布，不是通过率。当前可调用具体入口的库存另列，入口数也不代表语义完整。
 
@@ -347,7 +347,7 @@
 | <a id="CON05"></a>CON05 | 稳定错误码/安全文案/可重试与降级状态 | 部分 | **部分**：工具错误包装与产品错误表面<br>[设计] 可机器判定回执 | **部分**：桥会保留 code；非所有生命周期路径<br>[设计] 统一错误 envelope | 宿主 AppError；插件 UI toast | 错误字符串/空列表 fallback 不能算成功；消费者需明确 empty 与 failed | [ERRORS](../packages/core/src/errors.ts) [WIRE](../apps/web/src/features/plugins/runtime/plugin-worker-host.ts) [HOST](../apps/web/src/features/plugins/runtime/plugin-host.ts) [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) | R06 |
 | <a id="CON06"></a>CON06 | 长任务进度、取消、超时、并发与幂等 | 部分 | **部分**：局部 thread abort/工具 sequential<br>[设计] 统一任务原语 | **部分**：按方法表的PluginCallOptions；分域正文/图谱/导入任务<br>[设计] 统一任务服务 | 搜索/导航/LLM等同RPC取消；其他任务仍分域 | Library1.17/Reading2.18共用末参数options.signal和26项位置表；本地预取消不派发，宿主请求控制器合并realm，查询取消先结束等待、源清理继续。lifecycle.read限每realm32个未结算源操作，满则plugin/busy，不因取消早退槽；不是全App配额或全宿主TaskRef/进度/幂等/重试协议。Library1.20另接有owner的导入任务ID、阶段、终态、单调观察、取消与0..30秒终态等待；查询超时返回进度，取消观察不取消任务，accepted后的真实写结果仍保留。直接导入已接options.signal，其他资源获取、持久写及未列入方法没有自动新增此options，不能宣称所有宿主操作都可单次取消；不是通用持久任务/重试/幂等系统。 | [THREAD](../packages/agent/src/runtime/thread.ts) [WIRE](../apps/web/src/features/plugins/runtime/plugin-worker-host.ts) [HOST](../apps/web/src/features/plugins/runtime/plugin-host.ts) [API](../packages/plugin-types/src/index.ts) [CALLOPTIONS](../apps/web/src/features/plugins/runtime/plugin-call-options.ts) [CALLOPTIONSPROOF](../apps/web/src/features/plugins/runtime/plugin-call-options.test.ts) | K06, L07, N05, Q04, Q06 |
 | <a id="CON07"></a>CON07 | 领域事件的本地/远端/外部变化一致性 | 部分 | **自动**：端口每轮读；runtime 配置失效<br>[设计] 有版本快照/读后写 | **部分**：domain subscribe；library/conversations observeInvalidation<br>[设计] 业务事件与失效通知分开 | 本地domain broadcasts；授权投影失效 | plugins1.6 ctx.withEvent(event/delivery)，授权后的本地域/设置subscribe交付不透明因果令牌；自动后续调用经Worker envelope逐次复核，同订阅重复路径拒绝，回调结束后新调用拒绝，既有授权/激活owner保持。导入任务及图谱摘要/自动分类写保留发起actor；RSS0.21删除回调使用绑定入口。设置observe、书库/会话observeInvalidation和私有文档observeDocuments第二参数已交付令牌，保留原快照格式；重读/合并保留按根分支，同源祖先合并，独立新根不被旧循环误伤。文档观察等匹配写回执，读跨提交重试，冲突/失败不发布，回调重试与读取错误恢复保留原因；激活内共享owner。Jumper0.9/Workspace Profiles0.7已消费。原生派生反馈、其余观察及设置目录/凭据来源仍缺，C04保持部分；不把ignoreSelf或普通来源字符串当全链防环。library1.18/conversations1.3读授权初始及变化通知已接，来源initial/local/host/remote/restore/mixed，无业务payload/actor；订阅序号非CAS或数据库版本。串行合并与每领域64观察，失败callback日志隔离、后续仍可交付，退休不取消已经开始的callback。sync投影提交即发而非等待整轮成功，备份书籍/集合行恢复同样通知；保留旧subscribe本地语义，不能当远端可重放事件流或自动重做写操作。基础授权/IPC/生命周期检查通过，外部原始DB修改、所有历史恢复入口和GAP09/11其余项、真实组合Tauri仍缺。plugins1.6为面板/图片observe提供独立delivery，含关闭null；串行合并及回调失败后续通知保留原因，首快照继承订阅来源。Agent/插件图片打开、跨await读取、变换及关闭沿原actor；迟到清理不能关新图，原生接管不能确认旧命令。Listening Desk0.11/Text Desk0.23自动发布使用withEvent，用户动作仍用根上下文。公开all/book双插件循环及独立根、真实Bun Worker空快照跨await协议通过，React/受控IPC不作新增Tauri验收；窗口尺寸等派生来源仍缺；显式与聊天/灯箱自动焦点已接来源。阅读外观写的actor经KV镜像/回滚、全局或本书设置及auto配色投影进入字体/CSS、正文宽度/间距与固定页配色；只合并实际改变有效设置的输入，其他书修改不重绘。原生编辑保留user来源，远端KV后的汇总通知不再重复重标。异步字体请求按renderer和调用退休，较早结果/替换阅读器/卸载不写新样式；Foliate属性批次、字体展开、固定配色/布局反馈携带不透明context，重复值不制造重排。公开设置→React/受控原生存储、回滚/范围/迟到字体和编译引擎协议通过，实际字体/布局仍待Tauri场景；同书布局切换在React提交时捕获设置来源，旧引擎清理、新引擎初始定位/就绪/失败及选区绑定沿用本次actor；朗读/分段模式按实际会话变化的来源退役和重绑，首次开书仍保留独立身份，无关设置和StrictMode重放不重建来源。公开设置→React hooks→宿主适配器的循环拒绝/独立用户根，以及延迟就绪/失败/旧清理和模式重绑检查通过；真实Tauri整引擎重建待集中验收。显式Agent/插件焦点与聊天/灯箱自动焦点已沿实际DOM调用保留来源，导航产生的原生选区写和deselect同源；选区settle绑定实际DOM样本、输入代次及当前文档，已发布样本不重复捕获，新输入/文档替换淘汰旧反馈。Foliate焦点RAF和拖选延迟翻页保存来源，新导航/输入/卸载拒绝旧回调。公开all/book焦点A→B→A循环拒绝及独立用户根、真实JSDOM焦点/选区和编译引擎协议通过；滚动几何为受控样本，不是Tauri布局证明。窗口响应式布局/图片ResizeObserver、其他原生异步反馈及贡献换代来源仍缺。plugins1.7贡献目录observeContributions第二参数已交付因果令牌；公共注册、动态状态及退休按调用保存来源，ctx.withEvent(delivery,registration)可绑定既有句柄，逐次复核本激活身份/令牌，Worker释放有明确回执。失败嵌套注册不向成功父批次注入来源，同值换owner仍通知，合并只取最终可见变化；异步语音目录及传输配置失效/换代同源。Maintenance Desk0.5绑定自动视图发布，用户动作仍用根上下文。公开all/book双插件循环及独立根、真实Bun Worker跨await/释放回执、宿主过期/外来/错误句柄拒绝和激活回滚检查通过；不等于Tauri/真实提供者验收。安装状态观察及其余注册换代后的派生消费者来源仍缺。选中字体/主题与分段提供者换代后的消费者已接来源；注册表按key提供宿主私有快照，替换/移除在发布时更新，React批次中的后续无关注册不覆盖来源，同值换owner仍生效。阅读CSS/固定页配色与应用主题auto投影只采用实际改变的输入；启动主题缓存写入/清除同源。分段重建使用选中提供者的来源，目录变化不改当前请求；公开设置反应及React/受控IPC、替换/移除/回滚和独立用户根检查通过，真实字体、布局与Worker分段仍待集中Tauri验收。窗口命令在派发前读基线，原生请求后的实际状态/客户区尺寸变化保留Agent、插件事件或原生用户来源；无变化不重标，取消或中途失败仍保留已观察效果。布局读按已准入窗口命令隔离合并，不能复用命令前的在途样本；尺寸不进入公开窗口数据。图片ResizeObserver只接受匹配窗口尺寸的来源，重复尺寸不通知，父组件重绘不冒用旧pan/zoom来源；新变换、新尺寸或卸载退休旧异步反馈。受控原生/实际React与公开插件路径通过；未关联的动画后续帧、同viewport其他容器变化和OS读取失败仍无完整来源，C04不关闭，真实Tauri布局后置。外层阅读器viewport的选区清除和正文宽度更新已接匹配窗口尺寸来源；新原生输入、选区或章节保护新选区，新尺寸/引擎替换/卸载退休旧反馈。公开插件窗口调用→宿主采样→实际React/受控几何及DOM选区检查通过，独立用户变化不继承旧循环。Foliate内部ResizeObserver与窄窗口面板分支仍待接，未覆盖后续原生动画或同viewport其他来源，真实Tauri布局留集中验收。 | [READERVIEWPORTRESIZE](../apps/web/src/features/reader/hooks/useReaderViewportResize.ts) [READERVIEWPORTRESIZEPROOF](../apps/web/src/features/reader/hooks/reader-viewport-resize.test.tsx) [RESIZESOURCE](../apps/web/src/features/reader/lib/resize-source.ts) [WINDOWSERVICE](../apps/web/src/services/window-controller.ts) [WINDOWPROOF](../apps/web/src/services/window-controller.test.ts) [CONTRIBUTIONSELECTION](../apps/web/src/features/plugins/hooks/useRegisteredContribution.ts) [CONTRIBUTIONCAUSE](../apps/web/src/features/plugins/runtime/plugin-contribution-reactions.ts) [CONTRIBUTIONREGISTRYCAUSE](../apps/web/src/features/plugins/state/contribution-registry.ts) [CONTRIBUTIONCAUSEPROOF](../apps/web/src/services/plugin-contributions.test.ts) [READERNATIVEINPUT](../apps/web/src/features/reader/lib/reading-document-input.ts) [READERNATIVEINPUTPROOF](../apps/web/src/features/reader/lib/reading-document-input.test.ts) [READERENGINELOADCAUSE](../apps/web/src/features/reader/hooks/useReaderEngineLoadSource.ts) [READERAPPEARANCECAUSE](../apps/web/src/features/reader/lib/reader-appearance-source.ts) [READERTYPOGRAPHYCAUSE](../apps/web/src/features/reader/hooks/useReaderTypography.ts) [READERTYPOGRAPHYPROOF](../apps/web/src/features/reader/hooks/reader-typography.test.tsx) [SNAPSHOTOBSERVATION](../apps/web/src/domain/snapshot-observation.ts) [EVENTROSTER](../apps/web/src/domain/events.ts) [APPEVENTS](../apps/web/src/platform/app-events.ts) [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) [SYNC](../apps/web/src/platform/sync/sync-scheduler.ts) [PROJECTIONINVALIDATION](../apps/web/src/domain/projection-invalidation.ts) [PROJECTIONINVALIDATIONPROOF](../apps/web/src/domain/projection-invalidation.test.ts) [SYNCSTORE](../apps/web/src/platform/sync/sync-store.ts) [EVENTCONTEXT](../apps/web/src/features/plugins/runtime/plugin-event-context.ts) [EVENTCONTEXTPROOF](../apps/web/src/features/plugins/runtime/plugin-event-context.test.ts) [EVENTREACTIONS](../apps/web/src/features/plugins/runtime/plugin-event-reactions.ts) [EVENTREACTIONPROOF](../apps/web/src/features/plugins/runtime/plugin-event-reactions.test.ts) | A06, Q01, Q02 |
-| <a id="CON08"></a>CON08 | 事务/CAS/撤销/跨对象一致回执 | 部分 | **部分**：单工具领域写/批准，无跨工具事务<br>[设计] 受控批量/预览/回执 | **部分**：单域命令 Promise；无通用事务/CAS<br>[设计] 声明式批次，不给 DB transaction handle | 底层 commit_events 单 SQLite 事务 | 数据库事务存在不等于业务跨调用事务；undo 与导航 back 是两类能力 | [EVENTS](../apps/web/src/platform/domain-events.ts) [APPLY](../apps/desktop/src-tauri/src/storage/apply.rs) [LIB](../apps/web/src/domain/library.ts) [ANNOT](../apps/web/src/domain/annotations.ts) [API](../packages/plugin-types/src/index.ts) | A05, O02 |
+| <a id="CON08"></a>CON08 | 事务/CAS/撤销/跨对象一致回执 | 实装 | **接通（待 E2E）**：preview_atomic_transaction/commit_atomic_transaction/preview_transaction_undo/get_transaction_receipt<br>[设计] 宿主冻结预览与逐次批准 | **接通（待 E2E）**：transactions1.0 preview/commit/previewUndo/receipt<br>[设计] 语义批次与条件撤销 | Workspace Profiles0.8应用预设联合文档版本检查与设置提交，支持条件撤销 | book.metadata、settings、自有document.put/delete/check进入同一SQLite事务；全成全败，事件历史/设置原值/文档revision复核。schema46持久同owner回执和逆向计划，撤销按提交后条件写新事件，不覆盖后续修改；OS副作用与任意回调不纳入。Agent书域与宿主批准，插件权限/当前书围栏/文档归属和生命周期排空；设置在派发前重验目录/提供者时钟。原生SQLite与受控Agent批准、实际Bun Worker拒权及编译消费者通过；真实Tauri三域成功/冲突/跨重启回执/可见批准与撤销仍待集中验收，不把类型或模拟端口当桌面证据。 | [ATOMICCONTRACT](../packages/core/src/transactions.ts) [ATOMICHOST](../apps/web/src/domain/transactions.ts) [ATOMICNATIVE](../apps/desktop/src-tauri/src/storage/atomic_commit.rs) [ATOMICNATIVEPROOF](../apps/desktop/src-tauri/src/storage/atomic_commit_tests.rs) [ATOMICPLUGIN](../apps/web/src/features/plugins/runtime/plugin-transactions.ts) [ATOMICAGENT](../packages/agent/src/tools/transaction-tools.ts) [ATOMICAGENTPROOF](../packages/agent/src/tools/transaction-tools.test.ts) [ATOMICCONSUMER](../plugins/workspace-profiles/src/profiles.ts) [SERVICEWORKERPROOF](../apps/web/src/features/plugins/runtime/plugin-services.integration.test.ts) | A05, O02 |
 | <a id="CON09"></a>CON09 | 沙箱、权限撤销和 packaged CSP 验证 | 部分 | **扩展**：插件工具间接承受同样沙箱风险<br>[设计] 统一信任边界 | **部分**：Worker 响应独立 CSP + API gate<br>[设计] 可测试的最小出口 | 安装信任边界；全部插件及插件 Agent 工具 | macOS release 复现零权限插件经原型 fetch、子 blob Worker、HTTP 动态模块直接联网；已修复为 Worker 响应独立 CSP，三路复测均失败且服务器零新增请求，已授权宿主网络仍 200。开发响应共享策略，构建拒绝保护入口缺失/重复。Annotation Desk 正向安装/导出/卸载证据保留；直接消息/其余平台绕行、执行中撤权与 Windows/Linux 实机仍未验收，不宣称完整沙箱证明 | [WORKER](../apps/web/src/features/plugins/runtime/plugin-sandbox.worker.ts) [WIRE](../apps/web/src/features/plugins/runtime/plugin-worker-host.ts) [RUST](../apps/desktop/src-tauri/src/lib.rs) [HOST](../apps/web/src/features/plugins/runtime/plugin-host.ts) [DESKRELEASE](../docs/evidence/packaged-annotation-desk-2026-09-09.json) [SANDBOXPOLICY](../apps/web/plugin-sandbox-policy.json) [SANDBOXNATIVE](../apps/desktop/src-tauri/src/plugin_sandbox_policy.rs) [SANDBOXBUILD](../apps/web/build/plugin-sandbox-policy.ts) [SANDBOXPROOF](../docs/evidence/packaged-sandbox-network-2026-09-09.json) | R03 |
 | <a id="CON10"></a>CON10 | 宿主-工具-插件覆盖门禁/契约测试 | 部分 | **部分**：registry/tool-surface + check:capabilities<br>[设计] host 行为映射门禁 | **部分**：catalog/ctx/Worker + check:capabilities<br>[设计] 双端一致性/失败时序测试 | 本地统一门禁；main push/PR CI 配置 | bun run check:capabilities 串行隔离运行矩阵/模型 --check、库存防遗漏、core/Agent/domain/runtime、真实Bun Worker及原生迁移桥契约和双端类型；任一步失败即非零退出，不重写文档掩盖漂移。CI 只读权限、锁文件安装、无 continue-on-error，main push/PR 均触发；三桌面平台另跑 cargo test --locked --lib。macOS 本地统一门禁在 Bun1.3.13/1.4 通过，原生312通过/1个显式压力测试忽略；尚未推送、首次远端CI未验，不称跨平台通过。GAP18仍需全部用户流程语义证据；库存不自动发现任意React闭包行为，CI成功不替代Tauri/真实模型/消费者验收 | [CATALOG](../packages/core/src/capabilities.ts) [REGISTRY](../packages/agent/src/tools/registry.ts) [API](../packages/plugin-types/src/index.ts) [WIRE](../apps/web/src/features/plugins/runtime/plugin-worker-host.ts) [CAPABILITYCHECK](../scripts/check-capabilities.ts) [CAPABILITYCHECKPROOF](../scripts/check-capabilities.test.ts) [CAPABILITYCI](../.github/workflows/capabilities.yml) | R07, R08 |
 | <a id="CON11"></a>CON11 | 任意 SQL/FS/shell/DOM、密钥、伪造历史 | 实装 | **未接**：未注册这些工具<br>[设计] 不开放：越过领域/用户授权 | **未接**：不属于 public API<br>[设计] 不开放：越过隔离/宿主所有权 | 宿主内部可能需要底层权力 | 拒绝原始权力不等于拒绝语义需求：用 ResourceRef/审批/领域命令替代 | [API](../packages/plugin-types/src/index.ts) [REGISTRY](../packages/agent/src/tools/registry.ts) [CTX](../apps/web/src/features/plugins/runtime/plugin-context.ts) [RUST](../apps/desktop/src-tauri/src/lib.rs) | 新增盘点 |
@@ -400,22 +400,22 @@
 | Memory Desk | 个人/跨书/本书记忆检索、保护图谱、来源导航、条件纠错/置顶/遗忘 | 同源 search_memory / query_book_graph / manage_memory；管理逐次批准，不注册重复插件工具 | memory:read 非按书授权；有查询观察，缺来源版本校验；非内置 |
 | WebDAV Sync | 密文 transport | 无专属工具；非敏感设置可改 | 连接/断开/同步状态，必须使用宿主控制面 |
 
-[代码] Reading Goals 同时注册 agentContextProviders 与 memoryCandidateProviders：每轮按请求书籍提供私有阅读目标，用户选择后提出书内偏好；实际宿主裁决、入库与 buildMemory 取消已在隔离 Tauri 验证。Dictionary 提供检索贡献，运行时会生成一个额外 retrieve 工具。具体带命名空间的 25 个插件 Agent 入口在库存表中列出。
+[代码] Reading Goals 同时注册 agentContextProviders 与 memoryCandidateProviders：每轮按请求书籍提供私有阅读目标，用户选择后提出书内偏好；实际宿主裁决、入库与 buildMemory 取消已在隔离 Tauri 验证。Dictionary 提供检索贡献，运行时会生成一个额外 retrieve 工具。具体带命名空间的 26 个插件 Agent 入口在库存表中列出。
 
 [代码/范围补充] 邻接仓库 `readaware-plugins` 在本轮查看的提交为 `441e3c9b2403c086459b1d4611efad6e8e1ceb72`：Theme Schedule 1.0.1 已通过 settings discover/update 与 Worker clock 组合主题定时切换，没有专属 Agent 工具；WebDAV 0.1.0 是另一个分发位置。此补充不另计主仓插件，不证明线上 marketplace 已发布或用户已安装；生成器不依赖邻接仓库。
 
 ## 注册库存与覆盖反查
 
-- Agent global：141 个。
-- Agent book：120 个。
-- Plugin ctx：262 个。
+- Agent global：145 个。
+- Agent book：124 个。
+- Plugin ctx：266 个。
 - Plugin returned interface：30 个。
 - Capability domains：6 个。
 - Capability contributions：16 个。
-- Capability services：14 个。
+- Capability services：15 个。
 - Capability schemas：3 个。
 - Settings path：73 个。
-- Native command：230 个。
+- Native command：233 个。
 - Native plugin：12 个。
 - Menu placement：16 个。
 - Shortcut：19 个。
@@ -429,11 +429,11 @@
 - Domain subscription CONVERSATION_EVENTS：4 个。
 - Feature owner：14 个。
 - First-party source plugin：15 个。
-- Plugin Agent contribution：25 个。
+- Plugin Agent contribution：26 个。
 - Plugin setting declaration：24 个。
 - Native bundled plugin：6 个。
 
-以下“已映射”只保证注册项可追到矩阵行，不意味着目标已实现。Plugin ctx 是授予当前全部 manifest 权限后的 262 个顶层可调用路径；返回的 collection/session 方法单列。Settings 73 路径是在 custom + 主/快模型配置的完整条件快照中生成，不表示未配置 AI 时也显示全部路径。Native command 包含 cfg/no-op 历史项，见 SYS18，不能算桌面能力全部对插件开放。
+以下“已映射”只保证注册项可追到矩阵行，不意味着目标已实现。Plugin ctx 是授予当前全部 manifest 权限后的 266 个顶层可调用路径；返回的 collection/session 方法单列。Settings 73 路径是在 custom + 主/快模型配置的完整条件快照中生成，不表示未配置 AI 时也显示全部路径。Native command 包含 cfg/no-op 历史项，见 SYS18，不能算桌面能力全部对插件开放。
 
 ### Agent global
 
@@ -465,6 +465,10 @@
 | `open_external_url` | [SYS12](#SYS12) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `list_plugin_services` | [MORE06](#MORE06) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `call_plugin_service` | [MORE06](#MORE06) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `preview_atomic_transaction` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `preview_transaction_undo` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `get_transaction_receipt` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `commit_atomic_transaction` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `get_sync_status` | [OPS01](#OPS01) [OPS03](#OPS03) [OPS06](#OPS06) [OPS07](#OPS07) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `manage_sync` | [OPS01](#OPS01) [OPS04](#OPS04) [OPS06](#OPS06) [OPS07](#OPS07) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `request_ai_connection_test` | [CFG08](#CFG08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -610,6 +614,10 @@
 | `open_external_url` | [SYS12](#SYS12) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `list_plugin_services` | [MORE06](#MORE06) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `call_plugin_service` | [MORE06](#MORE06) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `preview_atomic_transaction` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `preview_transaction_undo` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `get_transaction_receipt` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `commit_atomic_transaction` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `get_sync_status` | [OPS01](#OPS01) [OPS03](#OPS03) [OPS06](#OPS06) [OPS07](#OPS07) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `manage_sync` | [OPS01](#OPS01) [OPS04](#OPS04) [OPS06](#OPS06) [OPS07](#OPS07) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `request_ai_connection_test` | [CFG08](#CFG08) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -896,6 +904,10 @@
 | `services.schedules.observe` | [MORE01](#MORE01) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.schedules.control` | [MORE01](#MORE01) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.schedules.bind` | [MORE01](#MORE01) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `services.transactions.preview` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `services.transactions.commit` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `services.transactions.previewUndo` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `services.transactions.receipt` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.plugins.listServices` | [MORE06](#MORE06) [CON02](#CON02) [CON03](#CON03) [CON06](#CON06) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.plugins.callService` | [MORE06](#MORE06) [CON02](#CON02) [CON03](#CON03) [CON06](#CON06) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `services.plugins.contributions` | [EXT11](#EXT11) [MORE06](#MORE06) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -1048,6 +1060,7 @@
 | `secrets` | [SYS04](#SYS04) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `ui` | [EXT07](#EXT07) [SYS10](#SYS10) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `schedules` | [MORE01](#MORE01) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
+| `transactions` | [CON08](#CON08) [CON02](#CON02) [CON03](#CON03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `session` | [MORE03](#MORE03) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `plugins` | [EXT11](#EXT11) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
 | `maintenance` | [SYS15](#SYS15) [SYS16](#SYS16) | [代码] 注册库存已映射，不表示产品 E2E 通过 |
@@ -1156,6 +1169,9 @@
 | `covers::library_cover_backlog` | [LIB09](#LIB09) [LIB10](#LIB10) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::append_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::commit_events` | [OPS11](#OPS11) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::atomic_commit` | [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::atomic_receipt_get` | [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
+| `storage::atomic_aggregate_revisions` | [CON08](#CON08) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::virtual_books::virtual_book_create` | [LIB12](#LIB12) [LIB13](#LIB13) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::virtual_books::virtual_book_prune` | [LIB13](#LIB13) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
 | `storage::apply_remote_events` | [OPS02](#OPS02) [OPS05](#OPS05) | [代码] 内部 IPC 能力证据；不是插件或模型授权入口 |
@@ -1619,7 +1635,7 @@
 | `text-desk` | [TXT04](#TXT04) [TXT05](#TXT05) [TXT06](#TXT06) [TXT07](#TXT07) [TXT10](#TXT10) [TXT11](#TXT11) [TXT12](#TXT12) [TXT13](#TXT13) [LIB01](#LIB01) [READ01](#READ01) [READ13](#READ13) [EXT01](#EXT01) [EXT02](#EXT02) [EXT05](#EXT05) [EXT06](#EXT06) [SYS09](#SYS09) [SYS13](#SYS13) [AI07](#AI07) | [代码] 源码版本 0.27.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `tts` | [READ17](#READ17) [READ18](#READ18) | [代码] 源码版本 0.6.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `webdav-sync` | [OPS04](#OPS04) | [代码] 源码版本 0.3.0；源码存在不等于打包、安装、启用或模型可调用 |
-| `workspace-profiles` | [UI02](#UI02) [UI04](#UI04) [CFG01](#CFG01) [CFG10](#CFG10) [EXT02](#EXT02) [EXT05](#EXT05) [SYS02](#SYS02) | [代码] 源码版本 0.7.0；源码存在不等于打包、安装、启用或模型可调用 |
+| `workspace-profiles` | [UI02](#UI02) [UI04](#UI04) [CFG01](#CFG01) [CFG10](#CFG10) [EXT02](#EXT02) [EXT05](#EXT05) [SYS02](#SYS02) | [代码] 源码版本 0.8.0；源码存在不等于打包、安装、启用或模型可调用 |
 
 ### Plugin Agent contribution
 
@@ -1650,6 +1666,7 @@
 | `plugin_workspace_profiles_workspace_profiles` | [UI02](#UI02) [UI04](#UI04) [CFG01](#CFG01) [CFG10](#CFG10) [EXT02](#EXT02) [EXT05](#EXT05) [SYS02](#SYS02) | [代码] global/book；插件启用后才进入工具集；来源 plugins/workspace-profiles/src/tools.ts |
 | `plugin_workspace_profiles_save_workspace_profile` | [UI02](#UI02) [UI04](#UI04) [CFG01](#CFG01) [CFG10](#CFG10) [EXT02](#EXT02) [EXT05](#EXT05) [SYS02](#SYS02) | [代码] global/book；插件启用后才进入工具集；来源 plugins/workspace-profiles/src/tools.ts |
 | `plugin_workspace_profiles_manage_workspace_profile` | [UI02](#UI02) [UI04](#UI04) [CFG01](#CFG01) [CFG10](#CFG10) [EXT02](#EXT02) [EXT05](#EXT05) [SYS02](#SYS02) | [代码] global/book；插件启用后才进入工具集；来源 plugins/workspace-profiles/src/tools.ts |
+| `plugin_workspace_profiles_undo_workspace_profile` | [UI02](#UI02) [UI04](#UI04) [CFG01](#CFG01) [CFG10](#CFG10) [EXT02](#EXT02) [EXT05](#EXT05) [SYS02](#SYS02) | [代码] global/book；插件启用后才进入工具集；来源 plugins/workspace-profiles/src/tools.ts |
 
 ### Plugin setting declaration
 

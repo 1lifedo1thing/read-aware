@@ -164,7 +164,13 @@
     "pluginServiceTimeout": "Die Zeit wurde überschritten. Prüfe das Ergebnis, bevor du Änderungen wiederholst.",
     "pluginServiceResultInvalid": "Der Dienst hat ein ungültiges Ergebnis geliefert. Prüfe den Zustand vor einem erneuten Versuch.",
     "pluginServiceFailed": "Der Plugin-Dienst ist fehlgeschlagen. Prüfe das Ergebnis vor dem Wiederholen von Änderungen.",
-    "pluginServiceDataChanged": "Das Dokument wurde geändert. Lies es vor dem Speichern erneut."
+    "pluginServiceDataChanged": "Das Dokument wurde geändert. Lies es vor dem Speichern erneut.",
+    "transactionConflict": "Daten oder Optionen haben sich geändert. Erstellen Sie eine neue Vorschau.",
+    "transactionInvalid": "Dieser Vorgang kann nicht Teil der Transaktion sein.",
+    "transactionPreviewExpired": "Die Vorschau ist abgelaufen. Erstellen Sie vor dem Absenden eine neue.",
+    "transactionReceiptMissing": "Für diesen Aufrufer wurde kein Transaktionsbeleg gefunden.",
+    "transactionQuota": "Das Transaktionslimit ist erreicht. Reduzieren Sie den Umfang oder ausstehende Vorschauen.",
+    "transactionNoChanges": "Der gewünschte Zustand besteht bereits."
   },
   "crashPrompt": {
     "title": "ReadAware hatte beim letzten Mal ein Problem",

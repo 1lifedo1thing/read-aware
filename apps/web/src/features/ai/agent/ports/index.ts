@@ -1,3 +1,4 @@
+import { createAgentTransactions } from "./transactions-port";
 /** RuntimeDeps 装配：全部端口都接产品存储。 */
 import type { RuntimeDeps } from "@read-aware/agent";
 import { createLogger } from "../../../../platform/logger";
@@ -47,6 +48,7 @@ export function buildRuntimeDeps(): RuntimeDeps {
   const conversations = createConversationsDomain("agent");
   const interactions = createUserInteractionPort();
   return {
+    transactions: createAgentTransactions(),
     readingAiActions: { enabled: readingAiActions.enabled,
       run: (action, bookId, signal) => readingAiActions.run(action, bookId, signal, "agent") },
     schedules: { list: async query => pluginSchedules.list(query), control: (input, signal) => pluginSchedules.control(input, signal) },

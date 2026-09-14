@@ -24,8 +24,8 @@ test("displayed profile revisions protect apply and confirmed deletion", async (
   expect(await form.onSubmit({ confirm: false })).toMatchObject({ fieldErrors: { confirm: "Confirm deletion first." } });
   expect(f.documents.has(saved.id)).toBe(true);
   f.revisions.set(saved.id, "changed");
-  expect(JSON.stringify(await action(detail, "apply").run!())).toContain("The profile changed");
-  expect(JSON.stringify(await form.onSubmit({ confirm: true }))).toContain("The profile changed");
+  expect(JSON.stringify(await action(detail, "apply").run!())).toContain("The profile or settings changed");
+  expect(JSON.stringify(await form.onSubmit({ confirm: true }))).toContain("The profile or settings changed");
   expect(f.updates).toHaveLength(0); expect(f.documents.has(saved.id)).toBe(true);
   const freshForm = resultView(await action(await profileView(f.ctx, saved.id), "delete").run!());
   if (freshForm.kind !== "form") throw Error("Expected confirmation");

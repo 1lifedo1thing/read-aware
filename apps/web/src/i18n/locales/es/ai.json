@@ -166,6 +166,11 @@
           "memories": "Recuerdos iniciales",
           "fact": "Hecho",
           "preference": "Preferencia"
+        },
+        "atomicTransaction": {
+          "question": "¿Aplicar estos cambios?",
+          "description": "Los cambios locales se confirman juntos solo si la vista previa sigue vigente. Deshacer también comprueba las condiciones y no sobrescribe cambios posteriores.",
+          "approve": "Aplicar cambios"
         }
       }
     },

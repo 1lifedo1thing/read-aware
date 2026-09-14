@@ -1,5 +1,5 @@
 import type { PluginContext, PluginDocument, PluginFormView, PluginListView, PluginView } from "@read-aware/plugin-types";
-import { applyProfile, deleteProfile, listProfiles, parseProfile, profileCollection, profileName, saveProfile } from "./profiles";
+import { applyProfile, undoProfile, deleteProfile, listProfiles, parseProfile, profileCollection, profileName, saveProfile } from "./profiles";
 import { copy, settingLabel } from "./strings";
 import { shortcutView } from "./shortcut";
 import { currentWorkspaceView } from "./current";
@@ -45,7 +45,14 @@ export async function profileView(ctx: PluginContext, id: string): Promise<Plugi
     { kind: "actions", actions: [
       ...(profile ? [{ id: "apply", label: t.apply, icon: "check", run: async () => {
         const result = await applyProfile(ctx, id, doc.revision);
-        return result.status === "applied" ? { toast: t.applied, close: true } : { view: message(ctx, t.conflict), navigation: "replace" as const };
+        return result.status === "applied" ? { view: {
+          kind: "detail" as const, title: t.applied, content: [{ kind: "text" as const, text: profile.name }], actions: [
+            { id: "undo", label: t.undo, icon: "arrow-counter-clockwise", run: async () => {
+              await undoProfile(ctx, result.transactionId);
+              return { view: message(ctx, t.undone), navigation: "replace" as const };
+            } },
+          ],
+        }, navigation: "replace" as const } : { view: message(ctx, t.conflict), navigation: "replace" as const };
       } }] : []),
       { id: "delete", label: t.remove, icon: "trash", run: () => ({ view: deleteForm(ctx, doc) }) },
       { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await profileView(ctx, id), navigation: "replace" }) },

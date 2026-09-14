@@ -22,6 +22,7 @@ export const INTERACTIVE_TOOL_NAMES = [
   "classify_book",
   "manage_book_graph",
   "call_plugin_service",
+  "commit_atomic_transaction",
 ] as const;
 
 export type UserInteractionToolDetails =

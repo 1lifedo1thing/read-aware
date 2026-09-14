@@ -1,3 +1,4 @@
+import { buildTransactionTools } from "./transaction-tools";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import type { RuntimeDeps } from "../ports";
 import type { ThreadScope } from "../thread-scope";
@@ -61,6 +62,7 @@ export function buildAgentTools(
     ...buildHostCommandTools(deps),
     ...buildHostIOTools(deps),
     ...buildPluginServiceTools(scope, deps, turnState),
+    ...buildTransactionTools(scope, deps),
     ...buildSyncTools(scope, deps),
     ...buildMaintenanceTools(deps),
     ...buildResourceTools(scope, deps),

@@ -217,7 +217,7 @@ export interface UserInteractionOption {
 }
 
 export type UserPermissionAction =
-  "delete-book" | "delete-books" | "delete-collection" | "delete-annotation" | "manage-memory" | "classify-book" | "generate-book-graph" | "clear-conversation" | "sync-now" | "manage-schedule" | "access-book-file" | "import-resource" | "merge-books" | "plugin-tool" | "download-resource" | "complete-onboarding" | "update-profile" | "manage-entity";
+  "delete-book" | "delete-books" | "delete-collection" | "delete-annotation" | "manage-memory" | "classify-book" | "generate-book-graph" | "clear-conversation" | "sync-now" | "manage-schedule" | "access-book-file" | "import-resource" | "merge-books" | "plugin-tool" | "atomic-transaction" | "download-resource" | "complete-onboarding" | "update-profile" | "manage-entity";
 
 type UserInteractionBase = {
   /** Globally unique for the lifetime of the tool call. */
@@ -497,6 +497,7 @@ export interface RuntimeDeps {
   readingContextPolicy?: import("./runtime/reading-context-policy").ReadingContextPolicy;
   environment: { snapshot(): Promise<import("@read-aware/core").HostEnvironmentSnapshot> };
   operationAvailability?: import("@read-aware/core").OperationAvailabilityPort;
+  transactions?: (scope: import("./thread-scope").ThreadScope) => import("@read-aware/core").TransactionsPort & { inspectPreview(id: string): Promise<import("@read-aware/core").AtomicPreview | null> };
   pluginServices?: {
     list(scope: import("./thread-scope").ThreadScope, query?: import("@read-aware/core").PluginServiceQuery, signal?: AbortSignal): Promise<import("@read-aware/core").PluginServicePage>;
     call(scope: import("./thread-scope").ThreadScope, request: import("@read-aware/core").PluginServiceCall,

@@ -60,12 +60,26 @@ async function applyProfile(ctx, id, expectedRevision) {
   const profile = parseProfile(doc.data);
   if (!profile)
     return invalid("Invalid workspace profile");
-  const receipt = await ctx.domains.settings.commands.update(profile.changes);
-  return { status: "applied", id, name: profile.name, changed: receipt.changed, overrides: receipt.settings.overrides };
+  const preview = await ctx.services.transactions.preview([
+    { kind: "document.check", collection: "profiles", id, expectedRevision },
+    { kind: "settings", changes: profile.changes }
+  ]);
+  try {
+    const receipt = await ctx.services.transactions.commit(preview.id);
+    return { status: "applied", id, name: profile.name, transactionId: receipt.id };
+  } catch (error) {
+    if (error.code === "transaction/conflict")
+      return { status: "conflict" };
+    throw error;
+  }
 }
 async function deleteProfile(ctx, id, expectedRevision) {
   const receipt = await ctx.services.storage.applyDocuments([{ kind: "delete", collection: "profiles", id, expectedRevision }]);
   return { status: receipt.status === "conflict" ? "conflict" : "deleted", id };
+}
+async function undoProfile(ctx, receiptId) {
+  const preview = await ctx.services.transactions.previewUndo(receiptId);
+  return ctx.services.transactions.commit(preview.id);
 }
 
 // src/tools.ts
@@ -141,7 +155,7 @@ function registerProfileTools(ctx) {
     label: "Manage workspace profile",
     contexts: ["global", "book"],
     approval: "required",
-    description: "Apply or permanently delete an exact workspace preset after host approval. First inspect it with workspace_profiles(inspect), then pass the exact id and expectedRevision. Changed documents return conflict. Apply submits the inspected preset values in one host settings update, preserving per-book overrides; version 1 changes seven fields and leaves fonts unchanged, version 2 changes ten. Delete conditionally removes only the preset. No book data, selection, AI privacy, credentials or plugin lifecycle changes. Application is not a transaction with private profile storage or a font-rendering completion receipt.",
+    description: "Apply or permanently delete an exact workspace preset after host approval. First inspect it with workspace_profiles(inspect), then pass the exact id and expectedRevision. Changed documents return conflict. Apply submits the inspected preset values in one host settings update, preserving per-book overrides; version 1 changes seven fields and leaves fonts unchanged, version 2 changes ten. Delete conditionally removes only the preset. No book data, selection, AI privacy, credentials or plugin lifecycle changes. Apply checks the profile revision and settings in one transaction and returns transactionId for conditional undo; it is not a font-rendering completion receipt.",
     parameters: { type: "object", properties: { action: { type: "string", enum: ["apply", "delete"] }, id: string(), expectedRevision: string() }, required: ["action", "id", "expectedRevision"], additionalProperties: false },
     execute: async (params) => {
       fields(params, ["action", "id", "expectedRevision"]);
@@ -151,19 +165,27 @@ function registerProfileTools(ctx) {
       if (params.action !== "apply")
         return invalid2();
       const result = await applyProfile(ctx, id, revision);
-      return result.status === "conflict" ? result : {
-        status: result.status,
-        id,
-        name: result.name,
-        changed: result.changed,
-        preservedBookOverrides: result.overrides.length
-      };
+      return result;
+    }
+  });
+  ctx.contributions.agentTools.register({
+    name: "undo_workspace_profile",
+    label: "Undo workspace profile",
+    contexts: ["global"],
+    approval: "required",
+    description: "Conditionally undo the exact transactionId returned by manage_workspace_profile(apply). Host approval is required. Later profile or settings changes cause conflict and are never overwritten. Inspect the result before retrying an unknown outcome.",
+    parameters: { type: "object", properties: { transactionId: string(128) }, required: ["transactionId"], additionalProperties: false },
+    execute: (params) => {
+      fields(params, ["transactionId"]);
+      return undoProfile(ctx, text(params.transactionId, 128));
     }
   });
 }
 
 // src/strings.ts
 var en = {
+  undo: "Undo profile application",
+  undone: "Profile application undone",
   title: "Workspace Profiles",
   save: "Save current workspace",
   name: "Name",
@@ -174,7 +196,7 @@ var en = {
   refresh: "Refresh",
   saved: "Profile saved",
   applied: "Profile applied",
-  conflict: "The profile changed. Refresh before trying again.",
+  conflict: "The profile or settings changed. Refresh before trying again.",
   missing: "Profile no longer exists",
   invalidProfile: "Invalid profile",
   stalePage: "Profiles changed. Refresh the list.",
@@ -204,6 +226,8 @@ var en = {
   no: "Off"
 };
 var zh = {
+  undo: "撤销应用预设",
+  undone: "已撤销应用预设",
   title: "工作区预设",
   save: "保存当前工作区",
   name: "名称",
@@ -214,7 +238,7 @@ var zh = {
   refresh: "刷新",
   saved: "预设已保存",
   applied: "预设已应用",
-  conflict: "预设已变化，请刷新后再试。",
+  conflict: "预设或设置已变化，请刷新后再试。",
   missing: "预设已不存在",
   invalidProfile: "无效预设",
   stalePage: "预设列表已变化，请刷新。",
@@ -542,7 +566,17 @@ async function profileView(ctx, id) {
     { kind: "actions", actions: [
       ...profile ? [{ id: "apply", label: t.apply, icon: "check", run: async () => {
         const result = await applyProfile(ctx, id, doc.revision);
-        return result.status === "applied" ? { toast: t.applied, close: true } : { view: message(ctx, t.conflict), navigation: "replace" };
+        return result.status === "applied" ? { view: {
+          kind: "detail",
+          title: t.applied,
+          content: [{ kind: "text", text: profile.name }],
+          actions: [
+            { id: "undo", label: t.undo, icon: "arrow-counter-clockwise", run: async () => {
+              await undoProfile(ctx, result.transactionId);
+              return { view: message(ctx, t.undone), navigation: "replace" };
+            } }
+          ]
+        }, navigation: "replace" } : { view: message(ctx, t.conflict), navigation: "replace" };
       } }] : [],
       { id: "delete", label: t.remove, icon: "trash", run: () => ({ view: deleteForm(ctx, doc) }) },
       { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await profileView(ctx, id), navigation: "replace" }) }

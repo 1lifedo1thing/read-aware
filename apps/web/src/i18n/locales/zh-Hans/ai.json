@@ -166,6 +166,11 @@
           "memories": "种子记忆",
           "fact": "事实",
           "preference": "偏好"
+        },
+        "atomicTransaction": {
+          "question": "提交这组变更？",
+          "description": "显示的本地变更只会在预览仍有效时一起提交。撤销同样检查条件，不会覆盖后续修改。",
+          "approve": "提交变更"
         }
       }
     },

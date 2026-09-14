@@ -31,4 +31,13 @@ fn atomic_domains_roll_back_together_and_reject_changed_preview() {
     assert_eq!(conn.query_row("SELECT count(*) FROM atomic_receipts", [], |row| row.get::<_, i64>(0)).unwrap(), 1);
     assert_eq!(conn.query_row("SELECT title FROM books WHERE id='book'", [], |row| row.get::<_, String>(0)).unwrap(), "Atomic book");
     assert_eq!(conn.query_row("SELECT count(*) FROM plugin_documents", [], |row| row.get::<_, i64>(0)).unwrap(), 1);
+    let mut guarded = input(None);
+    guarded.events.clear(); guarded.guards.clear(); guarded.documents.clear();
+    guarded.journal.as_mut().unwrap().id = "guarded".into();
+    guarded.settings[0].expected = Some("\"paper\"".into());
+    guarded.settings[0].value = Some("\"night\"".into());
+    guarded.setting_guards.push(AtomicSettingChange { key: "reader-baseline".into(), expected: Some("old".into()), value: None });
+    assert!(matches!(atomic_commit_inner(&mut conn, guarded).unwrap(), AtomicCommitResult::Conflict { domain, .. } if domain == "settings"));
+    assert_eq!(conn.query_row("SELECT value_json FROM app_kv WHERE key='read-aware-theme'", [], |row| row.get::<_, String>(0)).unwrap(), "\"paper\"");
+
 }

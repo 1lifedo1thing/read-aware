@@ -166,6 +166,11 @@
           "memories": "Souvenirs initiaux",
           "fact": "Fait",
           "preference": "Préférence"
+        },
+        "atomicTransaction": {
+          "question": "Appliquer ces modifications ?",
+          "description": "Les modifications locales sont validées ensemble si l’aperçu est toujours à jour. L’annulation vérifie aussi les conditions et n’écrase pas les modifications ultérieures.",
+          "approve": "Appliquer"
         }
       }
     },

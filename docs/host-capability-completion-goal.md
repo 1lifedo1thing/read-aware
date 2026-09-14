@@ -21,7 +21,7 @@
 | C04 | 跨插件事件因果防环 | 跨领域写、Worker 回调及派生任务传递宿主签发的因果链；循环自动动作被明确拒绝，独立用户操作与合法后续任务不被误伤 | 实施中，事件/Worker、设置/文档/标注/记忆快照及投影通知已接，图谱任务和正文准备来源已接；阅读器开书/控件/播放/显式选区、导航、模式、面板开关/宽度和图片开关/变换及两者空快照观察已接，字体/CSS/正文宽度及固定页配色来源已接；同书布局切换重建及绑定生命周期已接；显式/自动焦点与原生选区反馈已接；贡献目录、公共注册/状态/退休句柄及异步语音/传输刷新已接，选中字体/主题/分段消费者和启动主题缓存来源已接；窗口请求的状态/尺寸采样及匹配的图片重排、外层阅读器viewport来源已接；动画后续帧、Foliate内部和面板响应式布局、其他派生消费者及其余观察来源仍缺 |
 | C05 | 完整操作可用性 | Agent 与插件能查询操作需要的权限、阅读对象、账号、模型/端点和提供者条件；区分未配置、不可用、未知；执行前重验，不把注册或网络提示当健康 | 实施中：推理、书域朗读/模式及正文准备条件查询、实际执行重验及Text Desk消费者已接；library1.31正文任务接当前书授权的准入/执行围栏；其余操作条件仍缺，集中桌面验收待执行 |
 | C06 | 通用类型化跨插件调用 | 声明版本化输入/输出契约、发现与调用；双方授权和对象范围共同约束，取消/停用/更新/迟到结果受生命周期保护；真实消费者组合 | 实施中：plugins1.8宿主/Worker及Jumper→Text Desk书签服务已接；Agent逐次授权服务入口已接；集中Tauri组合验收待执行 |
-| C07 | 跨领域提交与统一撤销 | 多个可事务化本地语义操作经冻结预览/版本校验在同一提交中全成全败，含设置、私有文档及领域变更；Agent/插件共用，撤销是新的受控条件提交；非事务性外部副作用在预览时明确拒绝纳入原子批次 | 实施中：原生同事务事件/设置/文档及条件检查已写；SQLite冲突回滚/成功提交/持久回执已验证；宿主语义预览/提交/撤销编译已写，授权适配、Agent/插件入口及消费者未接 |
+| C07 | 跨领域提交与统一撤销 | 多个可事务化本地语义操作经冻结预览/版本校验在同一提交中全成全败，含设置、私有文档及领域变更；Agent/插件共用，撤销是新的受控条件提交；非事务性外部副作用在预览时明确拒绝纳入原子批次 | 实施中：原生同事务事件/设置/文档及条件检查已写；SQLite冲突回滚/成功提交/持久回执已验证；宿主、Agent逐次批准、transactions1.0插件权限/Worker及Workspace Profiles0.8消费者已接；真实Tauri组合/跨重启撤销待集中验收 |
 | C08 | 统一长任务恢复 | 类型化多步骤工作有持久任务身份、进度、取消/暂停/恢复、幂等回执及跨重启续跑；接入现有任务消费者，失联结果必须先查证而非盲重放 | 未实施 |
 | C09 | 可续读变化日志 | Agent/插件按授权范围分页读取变更、持久游标续读及补齐停用期间变更；本地/远端/恢复同源，过期游标明确报错；不得公开原始秘密或无权限数据 | 未实施 |
 
@@ -428,3 +428,7 @@
 
 - C07宿主编译批次：core transactions契约只接受book.metadata、settings及自有document.put/delete，未知/外部操作拒绝；TransactionSession保留5分钟/最多16个冻结预览，原生最终比较版本/字节。复用bookMetadataPatch、设置catalog/编码与KV发布，宿主提交纳入领域/插件写屏障并于成功后发布领域/设置来源。schema46 atomic_receipts随原事务写owner/id/hash、逆向计划及提交后版本；相同请求身份返回旧回执，改参数复用身份拒绝。撤销编译使用提交后版本/设置字节/文档revision条件，精确恢复旧KV包括覆盖存在性，作为新事务写事件；不提供盲重放/redo。插件清私有数据同步删除plugin:<id>回执。原生编译与单项SQLite组合检查、既有设置durability检查、Web/desktop类型通过，日志/tmp/readaware-c07-receipts-final.log、readaware-c07-settings-check.log、readaware-c07-types-complete.log。类型首轮SettingsTarget含all-books不适用于快照查询，改为分global/各书展示先前值；无新增Tauri证据。
   仍缺：TransactionAuthority.acquire/assertDocumentBook/withDocumentWrite的实际Agent及插件适配（操作权限、书域/当前书、设置目标、生命周期与真实文档observer）；四个公开方法的Worker接线、Agent逐次批准工具、第一方消费者及集中Tauri验收。Session是宿主模块，尚无产品调用者，不计为C07闭合。接续应直接把这条链接到实际调用者，不重做原生事务或扩大测试。
+
+- C07接线批次：transactions1.0公开preview/commit/previewUndo/receipt，实际context/Worker options及提交取消排空已接。插件书域/当前书围栏、library:write、设置路径/目标、自有文档归属与本激活来源逐次复核；预览限时、消费一次，每激活跨actor共享16份预览/在途提交额度，停用退休预览并排空已派发调用，空闲时解除生命周期订阅；check文档只加版本条件，不发布假写通知。Agent四工具接实际runtime port，书内只改本书元数据/本书设置，无插件私有数据权；批准弹窗用宿主冻结内容，拒绝无执行。Workspace Profiles0.8应用预设联合document.check和settings，杜绝读完预设后被替换仍应用；新增可见撤销及获批准undo_workspace_profile，返回事务ID供回执查询。
+  派发前重验设置目录/提供者版本；本书或all-books阅读变更另外持有原生只读全局排版基线，避免撤销恢复继承后使用已变化的全局值却发布旧值。此基线不写入KV，若同批也修改全局排版，撤销改用该批提交后的基线。Workspace Profiles编译/类型与受影响检查通过，初轮两处旧工具数/版本断言已更新且定向复跑通过；Agent类型、Web/desktop类型、库存与统一模型检查通过，模型旧目录数39改为40；无新增全量回归。受控Agent批准与真实Bun Worker调用transactions.preview后拒绝只读插件写入通过；原生单项SQLite组合涵盖跨域回滚、持久回执与只读条件，仍不是Tauri组合成功证据。相关日志/tmp/readaware-c07-boundaries.log、readaware-c07-workspace-final.log、readaware-c07-workspace-rerun.log、readaware-c07-contracts.log、readaware-c07-model-final.log、readaware-c07-types-final.log、readaware-c07-native-complete.log。
+  C07接线已推进到消费者；集中仍需真实Agent批准UI、全/书域插件三域正向与冲突、切书/停用取消、进程重启回执和条件撤销及Workspace Profiles可见动作。C04、C05余项与C08/C09继续，不把本批当全目标完成。

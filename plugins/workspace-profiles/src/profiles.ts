@@ -66,11 +66,25 @@ export async function applyProfile(ctx: PluginContext, id: string, expectedRevis
   if (!doc || doc.revision !== expectedRevision) return { status: "conflict" as const };
   const profile = parseProfile(doc.data);
   if (!profile) return invalid("Invalid workspace profile");
-  // Current host catalog validates stale/uninstalled theme references atomically.
-  const receipt = await ctx.domains.settings.commands.update(profile.changes);
-  return { status: "applied" as const, id, name: profile.name, changed: receipt.changed, overrides: receipt.settings.overrides };
+  // The selected profile revision and the settings update share one native commit.
+  const preview = await ctx.services.transactions.preview([
+    { kind: "document.check", collection: "profiles", id, expectedRevision },
+    { kind: "settings", changes: profile.changes },
+  ]);
+  try {
+    const receipt = await ctx.services.transactions.commit(preview.id);
+    return { status: "applied" as const, id, name: profile.name, transactionId: receipt.id };
+  } catch (error) {
+    if ((error as { code?: string }).code === "transaction/conflict") return { status: "conflict" as const };
+    throw error;
+  }
 }
 export async function deleteProfile(ctx: PluginContext, id: string, expectedRevision: string) {
   const receipt = await ctx.services.storage.applyDocuments([{ kind: "delete", collection: "profiles", id, expectedRevision }]);
   return { status: receipt.status === "conflict" ? "conflict" as const : "deleted" as const, id };
+}
+
+export async function undoProfile(ctx: PluginContext, receiptId: string) {
+  const preview = await ctx.services.transactions.previewUndo(receiptId);
+  return ctx.services.transactions.commit(preview.id);
 }

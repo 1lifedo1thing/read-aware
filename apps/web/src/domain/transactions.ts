@@ -5,9 +5,10 @@ import { atomicAggregateRevisions, atomicReceipt, commitAtomicHostPlan, type Ato
 import { bookMetadataPatch } from "../features/library/lib/book-metadata-patch";
 import { getBookRecord } from "../features/library/lib/library-db";
 import { pluginDocsGet } from "../features/plugins/runtime/plugin-backend";
-import { prepareAtomicSettings, publishSettingsChanges } from "./settings/domain";
+import { prepareAtomicSettings, publishSettingsChanges, assertAtomicSettingsRevision } from "./settings/domain";
 
 export type TransactionAuthority = {
+  onPending?(): void; onIdle?(): void; reservePreview?(): void; releasePreview?(): void;
   actor: DomainActor; owner: string; pluginId?: string; settingsAccess?: SettingsAccessPolicy;
   /** The capability owner holds book/current-book/lifecycle fences until dispose. */
   acquire(operations: AtomicOperation[], signal?: AbortSignal): Promise<{ assert(): void | Promise<void>; dispose(): void }>;
@@ -16,7 +17,7 @@ export type TransactionAuthority = {
   withDocumentWrite<T>(targets: { collection: string; id: string }[], work: () => Promise<T>): Promise<T>;
 };
 type Inverse = Pick<AtomicHostPlan, "events" | "settings" | "documents">;
-type Metadata = { version: 1; operations: AtomicOperation[]; before: unknown[]; inverse: Inverse; settingsChanges: SettingChange[]; inverseSettingsChanges: SettingChange[]; undoOf?: string };
+type Metadata = { version: 1; operations: AtomicOperation[]; before: unknown[]; inverse: Inverse; settingsChanges: SettingChange[]; inverseSettingsChanges: SettingChange[]; settingGuards?: AtomicHostPlan["settingGuards"]; undoOf?: string };
 type Prepared = { view: AtomicPreview; plan: AtomicHostPlan; authority: Awaited<ReturnType<TransactionAuthority["acquire"]>>; timer: ReturnType<typeof setTimeout> };
 const conflict = () => new AppError("transaction/conflict", "State changed; prepare a new preview");
 
@@ -30,13 +31,16 @@ export class TransactionSession implements TransactionsPort {
   dispose(): void { for (const id of [...this.plans.keys()]) this.retire(id); }
   private retire(id: string): void {
     const plan = this.plans.get(id); if (!plan) return;
-    this.plans.delete(id); clearTimeout(plan.timer); plan.authority.dispose();
+    this.plans.delete(id); clearTimeout(plan.timer); plan.authority.dispose(); this.owner.releasePreview?.();
+    if (!this.plans.size) this.owner.onIdle?.();
   }
   private keep(operations: AtomicOperation[], before: unknown[], plan: AtomicHostPlan, authority: Prepared["authority"], undoOf?: string): AtomicPreview {
     if (this.plans.size >= 16) throw new AppError("transaction/quota-exceeded", "Too many pending previews");
+    this.owner.reservePreview?.();
     const view: AtomicPreview = { id: plan.journal.id, expiresAt: new Date(Date.now() + 300_000).toISOString(), operations, before, ...(undoOf ? { undoOf } : {}) };
     const timer = setTimeout(() => this.retire(view.id), 300_000);
     this.plans.set(view.id, { view, plan, authority, timer });
+    this.owner.onPending?.();
     return structuredClone(view);
   }
   async preview(input: AtomicOperation[], signal?: AbortSignal): Promise<AtomicPreview> {
@@ -51,7 +55,7 @@ export class TransactionSession implements TransactionsPort {
       const before: unknown[] = [], events: DomainEventDraft[] = [], inverseEvents: DomainEventDraft[] = [];
       const docs: AtomicDocumentBytes[] = [], inverseDocs: AtomicDocumentBytes[] = [];
       const settings = operations.flatMap(op => op.kind === "settings" ? op.changes : []);
-      const settingPlan = settings.length ? await prepareAtomicSettings(this.owner.actor, settings, this.owner.settingsAccess) : { entries: [], changed: [], beforeValues: [] };
+      const settingPlan = settings.length ? await prepareAtomicSettings(this.owner.actor, settings, this.owner.settingsAccess) : { entries: [], changed: [], beforeValues: [], readingBaseline: [] };
       for (const operation of operations) {
         signal?.throwIfAborted(); await authority.assert();
         const identity = operation.kind === "book.metadata" ? `book:${operation.bookId}` : operation.kind === "settings" ? "settings" : `document:${operation.collection}/${operation.id}`;
@@ -72,13 +76,14 @@ export class TransactionSession implements TransactionsPort {
         else {
           if (!this.owner.pluginId) throw new AppError("plugin/permission-denied", "Private document operations require a plugin owner");
           const old = await pluginDocsGet(this.owner.pluginId, operation.collection, operation.id);
+          if (operation.expectedRevision !== undefined && operation.expectedRevision !== (old?.revision ?? null)) throw conflict();
           if (old) await this.owner.assertDocumentBook(old.bookId ?? null);
           if (operation.kind === "document.put") await this.owner.assertDocumentBook(operation.bookId);
           before.push(old ? { data: JSON.parse(old.json), bookId: old.bookId, anchor: old.anchor } : null);
           const target = { collection: operation.collection, id: operation.id };
           docs.push(operation.kind === "document.put" ? { ...target, expectedRevision: old?.revision ?? null, kind: "put", json: JSON.stringify(operation.data), bookId: operation.bookId, anchor: operation.anchor }
-            : { ...target, expectedRevision: old?.revision ?? null, kind: "delete" });
-          inverseDocs.push(old ? { ...target, expectedRevision: null, kind: "put", json: old.json, bookId: old.bookId, anchor: old.anchor }
+            : { ...target, expectedRevision: old?.revision ?? null, kind: operation.kind === "document.check" ? "check" : "delete" });
+          inverseDocs.push(operation.kind === "document.check" ? { ...target, expectedRevision: null, kind: "check" } : old ? { ...target, expectedRevision: null, kind: "put", json: old.json, bookId: old.bookId, anchor: old.anchor }
             : { ...target, expectedRevision: null, kind: "delete" });
         }
       }
@@ -86,13 +91,19 @@ export class TransactionSession implements TransactionsPort {
       if (after.some((revision, index) => revision !== revisions[index])) throw conflict();
       await authority.assert(); signal?.throwIfAborted();
       if (!events.length && !settingPlan.entries.length && !docs.length) throw new AppError("transaction/no-changes", "The requested state is already present");
-      const metadata: Metadata = { version: 1, operations, before, settingsChanges: settingPlan.changed, inverseSettingsChanges: settingPlan.beforeValues,
+      const metadata: Metadata = { version: 1, operations, before, settingGuards: settingPlan.readingBaseline.map(guard => { const value = settingPlan.entries.find(entry => entry.key === guard.key)?.value ?? guard.expected; return { ...guard, expected: value, value }; }), settingsChanges: settingPlan.changed, inverseSettingsChanges: settingPlan.beforeValues,
         inverse: { events: inverseEvents, settings: settingPlan.entries.map(entry => ({ key: entry.key, expected: entry.value, value: entry.expected })),
           documents: this.owner.pluginId && inverseDocs.length ? [{ pluginId: this.owner.pluginId, changes: inverseDocs }] : [] } };
-      return this.keep(operations, before, { guards: targets.map((target, index) => ({ ...target, revision: revisions[index]! })), events,
+      return this.keep(operations, before, { settingGuards: settingPlan.readingBaseline, guards: targets.map((target, index) => ({ ...target, revision: revisions[index]! })), events,
         settings: settingPlan.entries, documents: this.owner.pluginId && docs.length ? [{ pluginId: this.owner.pluginId, changes: docs }] : [],
         journal: { id: crypto.randomUUID(), owner: this.owner.owner, metadata } }, authority);
     } catch (error) { authority.dispose(); throw error; }
+  }
+  async inspectPreview(id: string): Promise<AtomicPreview | null> {
+    const prepared = this.plans.get(id);
+    if (!prepared) return null;
+    await prepared.authority.assert();
+    return structuredClone(prepared.view);
   }
   async commit(id: string, signal?: AbortSignal): Promise<AtomicReceipt> {
     const prepared = this.plans.get(id);
@@ -101,12 +112,15 @@ export class TransactionSession implements TransactionsPort {
     this.plans.delete(id); clearTimeout(prepared.timer);
     const metadata = prepared.plan.journal.metadata as Metadata;
     try {
-      await this.owner.withDocumentWrite(prepared.plan.documents.flatMap(group => group.changes), () => commitAtomicHostPlan(prepared.plan, this.owner.actor, {
-        signal, assertAuthorized: () => prepared.authority.assert(),
+      // Revalidate current catalog/provider constraints before entering the KV
+      // write queue; waiting for that same queue inside persist would deadlock.
+      const settings = metadata.settingsChanges.length ? await prepareAtomicSettings(this.owner.actor, metadata.settingsChanges, this.owner.settingsAccess) : undefined;
+      await this.owner.withDocumentWrite(prepared.plan.documents.flatMap(group => group.changes.filter(change => change.kind !== "check")), () => commitAtomicHostPlan(prepared.plan, this.owner.actor, {
+        signal, assertAuthorized: async () => { await prepared.authority.assert(); if (settings) assertAtomicSettingsRevision(settings.revision); },
         committed: () => publishSettingsChanges(this.owner.actor, metadata.settingsChanges),
       }));
       return { id, committed: true, ...(metadata.undoOf ? { undoOf: metadata.undoOf } : {}) };
-    } finally { prepared.authority.dispose(); }
+    } finally { prepared.authority.dispose(); this.owner.releasePreview?.(); if (!this.plans.size) this.owner.onIdle?.(); }
   }
   async receipt(id: string, signal?: AbortSignal): Promise<AtomicReceipt | null> {
     signal?.throwIfAborted();
@@ -144,13 +158,14 @@ export class TransactionSession implements TransactionsPort {
       const undoMetadata: Metadata = { ...metadata, undoOf: id, settingsChanges: metadata.inverseSettingsChanges, inverse: { events: [], settings: [], documents: [] } };
       if (metadata.undoOf) throw new AppError("transaction/invalid-operation", "Prepare a new semantic operation to redo a change");
       const undoOperations: AtomicOperation[] = operations.map((operation, index) => {
+        if (operation.kind === "document.check") return operation;
         if (operation.kind === "book.metadata") return { ...operation, patch: metadata.before[index] as { title?: string; author?: string } };
         if (operation.kind === "settings") return { kind: "settings", changes: metadata.inverseSettingsChanges };
         const old = metadata.before[index] as { data: unknown; bookId: string | null; anchor?: string | null } | null;
         return old ? { kind: "document.put", collection: operation.collection, id: operation.id, data: old.data, bookId: old.bookId, ...(old.anchor ? { anchor: old.anchor } : {}) }
           : { kind: "document.delete", collection: operation.collection, id: operation.id };
       });
-      return this.keep(undoOperations, operations, { ...inverse, guards: record.revisions,
+      return this.keep(undoOperations, operations, { ...inverse, settingGuards: metadata.settingGuards, guards: record.revisions,
         journal: { id: crypto.randomUUID(), owner: this.owner.owner, metadata: undoMetadata } }, authority, id);
     } catch (error) { authority.dispose(); throw error; }
   }

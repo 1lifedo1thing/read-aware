@@ -29,6 +29,8 @@ pub struct AtomicDocumentChanges {
 pub struct AtomicCommitInput {
     pub journal: Option<AtomicJournal>,
     pub guards: Vec<AtomicAggregateGuard>,
+    #[serde(default)]
+    pub setting_guards: Vec<AtomicSettingChange>,
     pub events: Vec<EventRow>,
     pub settings: Vec<AtomicSettingChange>,
     pub documents: Vec<AtomicDocumentChanges>,
@@ -72,7 +74,7 @@ pub(crate) fn atomic_commit_inner(conn: &mut Connection, input: AtomicCommitInpu
         }
     }
     let total = input.events.len() + input.settings.len() + input.documents.iter().map(|group| group.changes.len()).sum::<usize>();
-    if total == 0 || total > 100 || input.guards.len() > 100 { return Err(invalid("Expected 1..100 operations")); }
+    if total == 0 || total > 100 || input.guards.len() > 100 || input.setting_guards.len() > 100 { return Err(invalid("Expected 1..100 operations")); }
     let bytes = input.events.iter().map(|event| event.payload.to_string().len()).sum::<usize>()
         + input.settings.iter().map(|setting| setting.expected.as_ref().map_or(0, String::len) + setting.value.as_ref().map_or(0, String::len)).sum::<usize>();
     let bytes = bytes + input.documents.iter().flat_map(|group| &group.changes).map(|change| match &change.operation {
@@ -132,7 +134,7 @@ pub(crate) fn atomic_commit_inner(conn: &mut Connection, input: AtomicCommitInpu
             return Err(invalid("Event was already committed; inspect its receipt before retrying"));
         }
     }
-    for (index, setting) in input.settings.iter().enumerate() {
+    for (index, setting) in input.settings.iter().chain(&input.setting_guards).enumerate() {
         let current: Option<String> = tx.query_row("SELECT value_json FROM app_kv WHERE key=?1", [&setting.key], |row| row.get(0)).optional()?;
         if current != setting.expected { return Ok(AtomicCommitResult::Conflict { domain: "settings".into(), index }); }
     }

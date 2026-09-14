@@ -7,8 +7,8 @@ import type { SettingChange } from "./settings";
 export type AtomicOperation =
   | { kind: "book.metadata"; bookId: string; patch: { title?: string; author?: string } }
   | { kind: "settings"; changes: SettingChange[] }
-  | { kind: "document.put"; collection: string; id: string; bookId: string | null; data: unknown; anchor?: string }
-  | { kind: "document.delete"; collection: string; id: string };
+  | { kind: "document.put"; collection: string; id: string; bookId: string | null; data: unknown; anchor?: string; expectedRevision?: string | null }
+  | { kind: "document.delete" | "document.check"; collection: string; id: string; expectedRevision?: string | null };
 export type AtomicPreview = { id: string; expiresAt: string; operations: AtomicOperation[]; before: unknown[]; undoOf?: string };
 export type AtomicReceipt = { id: string; committed: true; undoOf?: string };
 export interface TransactionsPort {
@@ -48,8 +48,10 @@ export function normalizeAtomicOperations(input: unknown): AtomicOperation[] {
         break;
       case "document.put":
       case "document.delete":
-        if (!fields(value, value.kind === "document.put" ? ["kind", "collection", "id", "bookId", "data", "anchor"] : ["kind", "collection", "id"])
+      case "document.check":
+        if (!fields(value, value.kind === "document.put" ? ["kind", "collection", "id", "bookId", "data", "anchor", "expectedRevision"] : ["kind", "collection", "id", "expectedRevision"])
           || !text(value.collection, 64) || !/^[a-z0-9][a-z0-9_-]*$/.test(value.collection) || !text(value.id)) return invalid();
+        if (value.expectedRevision !== undefined && value.expectedRevision !== null && (typeof value.expectedRevision !== "string" || !/^[a-f0-9]{32}$/i.test(value.expectedRevision))) return invalid();
         if (value.kind === "document.put" && (value.bookId !== null && !text(value.bookId)
           || !Object.prototype.hasOwnProperty.call(value, "data") || value.anchor !== undefined && !text(value.anchor, 16384))) return invalid();
         break;

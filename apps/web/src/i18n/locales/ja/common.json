@@ -164,7 +164,13 @@
     "pluginServiceTimeout": "サービスがタイムアウトしました。変更を再試行する前に結果を確認してください。",
     "pluginServiceResultInvalid": "サービスの結果が不正です。再試行前に操作結果を確認してください。",
     "pluginServiceFailed": "プラグインサービスに失敗しました。変更を繰り返す前に結果を確認してください。",
-    "pluginServiceDataChanged": "サービスの文書が変わりました。再読込してから保存してください。"
+    "pluginServiceDataChanged": "サービスの文書が変わりました。再読込してから保存してください。",
+    "transactionConflict": "データや選択肢が変わりました。再度プレビューしてください。",
+    "transactionInvalid": "この操作はトランザクションに含められません。",
+    "transactionPreviewExpired": "プレビューの有効期限が切れました。再度プレビューしてください。",
+    "transactionReceiptMissing": "この呼び出し元の処理記録が見つかりません。",
+    "transactionQuota": "トランザクションの上限に達しました。変更数や保留中のプレビューを減らしてください。",
+    "transactionNoChanges": "すでに要求された状態です。"
   },
   "crashPrompt": {
     "title": "前回 ReadAware に問題が発生しました",

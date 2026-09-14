@@ -356,6 +356,32 @@ service, and provider generation, book access and cancellation are rechecked.
 The Agent tool to real Bun Worker chain uses controlled approval answers; real
 Tauri approval UI and model behavior remain pending.
 
+### Transactions 1.0
+
+`ctx.services.transactions` provides `preview(operations)`, `commit(previewId)`,
+`previewUndo(receiptId)` and `receipt(receiptId)`, each with optional call options.
+Supported semantic verbs are `book.metadata`, `settings`, and the caller's private
+`document.put`, `document.delete`, `document.check`. Document operations may carry
+`expectedRevision` from an earlier inspection. External I/O and arbitrary callbacks
+cannot join the batch. Previews expire after five minutes (16 pending per plugin activation, shared across reaction contexts).
+The native transaction bounds batches to 100 operations and 8 MiB.
+
+The host intersects existing operation permissions, settings paths and book grants.
+Current-book grants retain a fence; a global setting/document requires all-book
+access. Commit consumes the frozen preview once, rechecks catalog/provider state
+and native versions, and publishes changes only after success. A document check
+adds a read condition without a write notification. Stop/cancel does not undo an
+already dispatched commit: query its receipt before retrying an unknown outcome.
+
+Receipts and inverse plans persist in the same transaction. Conditional undo writes
+new events and compares the original post-commit state; subsequent edits cause a
+conflict. Exact old KV bytes preserve whether a reading override existed; inherited
+reading baselines are also guarded. Receipt metadata remains host-private and is
+accessible only through its authorized owner. Agent transactions use host-frozen
+approval and cannot directly mutate another plugin's private documents.
+Workspace Profiles 0.8 applies settings together with a profile revision check and
+provides a conditional undo action. Real Tauri acceptance remains pending.
+
 Plugins 1.2 adds `ctx.withEvent(event)` for automatic reactions to local domain
 and settings `events.subscribe` callbacks. The delivered event carries an opaque
 host lease, not the causal path. Use the returned context for operations caused

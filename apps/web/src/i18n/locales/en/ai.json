@@ -166,6 +166,11 @@
           "memories": "Seed memories",
           "fact": "Fact",
           "preference": "Preference"
+        },
+        "atomicTransaction": {
+          "question": "Apply this transaction?",
+          "description": "The displayed local changes commit together only if the preview is still current. Undo is also conditional and will not overwrite later changes.",
+          "approve": "Apply changes"
         }
       }
     },

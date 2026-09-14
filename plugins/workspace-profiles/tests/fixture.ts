@@ -35,6 +35,31 @@ export function fixture() {
       return { status: "applied", documents: changes.map(change => ({ collection: change.collection, id: change.id, revision: revisions.get(change.id) })) };
     },
   };
+  type Operations = Parameters<PluginContext["services"]["transactions"]["preview"]>[0];
+  const plans = new Map<string, Operations>();
+  const receipts = new Map<string, Operations>();
+  const transactions = {
+    preview: async (operations: Operations) => {
+      const id = crypto.randomUUID(); plans.set(id, structuredClone(operations));
+      return { id, operations, before: [], expiresAt: new Date(Date.now() + 300000).toISOString() };
+    },
+    commit: async (id: string) => {
+      const operations = plans.get(id); if (!operations) throw Error("missing preview"); plans.delete(id);
+      if (fail) throw Error("rejected stale option");
+      for (const operation of operations) if (operation.kind === "document.check" && operation.expectedRevision !== (documents.has(operation.id) ? revisions.get(operation.id) ?? "initial" : null)) {
+        throw Object.assign(Error("conflict"), { code: "transaction/conflict" });
+      }
+      const changes = operations.flatMap(operation => operation.kind === "settings" ? operation.changes : []);
+      receipts.set(id, [{ kind: "settings", changes: changes.map(change => ({ ...change, value: values[change.path] as Change["value"] })) }]);
+      updates.push(structuredClone(changes));
+      for (const change of changes) values[change.path] = change.value;
+      return { id, committed: true };
+    },
+    previewUndo: async (id: string) => {
+      const inverse = receipts.get(id); if (!inverse) throw Error("missing receipt");
+      return transactions.preview(inverse);
+    },
+  };
   const ctx = { locale: "en", domains: { settings: {
     queries: { snapshot: async () => {
       snapshots++;
@@ -45,7 +70,7 @@ export function fixture() {
       updates.push(structuredClone(changes));
       return { changed: changes, settings: { overrides: [{ target: { kind: "book", bookId: "keep" }, paths: ["reading.fontSize"] }] } };
     } },
-  } }, services: { storage }, contributions: {
+  } }, services: { storage, transactions }, contributions: {
     headerActions: { register: () => registrations.push("header") },
     commands: { register: () => registrations.push("command") },
     agentTools: { register: (tool: PluginToolDefinition) => { registrations.push("tool"); tools.set(tool.name, tool); } },

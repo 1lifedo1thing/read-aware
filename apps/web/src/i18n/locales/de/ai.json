@@ -166,6 +166,11 @@
           "memories": "Erste Erinnerungen",
           "fact": "Fakt",
           "preference": "Präferenz"
+        },
+        "atomicTransaction": {
+          "question": "Diese Änderungen anwenden?",
+          "description": "Die lokalen Änderungen werden gemeinsam übernommen, sofern die Vorschau noch aktuell ist. Auch das Rückgängigmachen prüft die Bedingungen und überschreibt keine späteren Änderungen.",
+          "approve": "Änderungen anwenden"
         }
       }
     },

@@ -164,7 +164,13 @@
     "pluginServiceTimeout": "服務執行逾時。重試修改前，請先檢查實際結果。",
     "pluginServiceResultInvalid": "服務傳回無效結果。重試前，請先檢查操作是否已生效。",
     "pluginServiceFailed": "外掛服務執行失敗。重複修改前，請先檢查實際結果。",
-    "pluginServiceDataChanged": "服務使用的文件已變更，請重新讀取後再儲存。"
+    "pluginServiceDataChanged": "服務使用的文件已變更，請重新讀取後再儲存。",
+    "transactionConflict": "資料或可用選項已變更，請重新預覽。",
+    "transactionInvalid": "這項操作無法加入原子交易。",
+    "transactionPreviewExpired": "預覽已過期，請重新預覽後提交。",
+    "transactionReceiptMissing": "找不到屬於目前呼叫者的交易回執。",
+    "transactionQuota": "交易已達限制，請縮小批次或減少待提交預覽。",
+    "transactionNoChanges": "目前狀態已符合請求，無需修改。"
   },
   "crashPrompt": {
     "title": "ReadAware 上次執行發生了問題",

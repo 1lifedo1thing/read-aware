@@ -44,7 +44,7 @@ test("apply and delete check exact revision, preserve overrides, and propagate f
   for (const action of ["apply", "delete"]) expect(await f.run("manage_workspace_profile", { action, id: saved.id, expectedRevision: "old" })).toMatchObject({ status: "conflict" });
   expect(f.updates).toHaveLength(0); expect(f.documents.has(saved.id)).toBe(true);
   const result = await f.run("manage_workspace_profile", { action: "apply", id: saved.id, expectedRevision: doc.revision });
-  expect(result).toMatchObject({ status: "applied", preservedBookOverrides: 1 });
+  expect(result).toMatchObject({ status: "applied", transactionId: expect.any(String) });
   expect(JSON.stringify(result)).not.toContain('"keep"');
   expect(f.updates[0]).toEqual(doc.data.changes);
   f.fail();
@@ -81,11 +81,11 @@ test("invalid or extra arguments cannot turn reads into writes", async () => {
   await expect(f.run("manage_workspace_profile", { action: "apply", id: "id", expectedRevision: "r", name: "extra" })).rejects.toMatchObject({ code: "plugin/invalid-input" });
   expect(f.commits).toHaveLength(0); expect(f.updates).toHaveLength(0);
 });
-test("compiled plugin registers the same three tools and approval contracts", async () => {
+test("compiled plugin registers the transaction tools and approval contracts", async () => {
   const built = await Bun.build({ entrypoints: [new URL("../src/index.ts", import.meta.url).pathname], target: "browser" });
   expect(built.success).toBe(true);
   const plugin = (await import(`data:text/javascript;base64,${Buffer.from(await built.outputs[0]!.text()).toString("base64")}`)).default;
   const f = fixture(); await plugin.activate(f.ctx);
-  expect([...f.tools.keys()]).toEqual(["workspace_profiles", "save_workspace_profile", "manage_workspace_profile"]);
+  expect([...f.tools.keys()]).toEqual(["workspace_profiles", "save_workspace_profile", "manage_workspace_profile", "undo_workspace_profile"]);
   expect(f.tools.get("manage_workspace_profile")!.approval).toBe("required");
 });

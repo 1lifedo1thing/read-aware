@@ -164,7 +164,13 @@
     "pluginServiceTimeout": "Se agotó el tiempo. Comprueba el resultado antes de repetir cambios.",
     "pluginServiceResultInvalid": "El servicio devolvió un resultado no válido. Comprueba el estado antes de reintentar.",
     "pluginServiceFailed": "El servicio falló. Comprueba el resultado antes de repetir cambios.",
-    "pluginServiceDataChanged": "El documento ha cambiado. Vuelve a leerlo antes de guardar."
+    "pluginServiceDataChanged": "El documento ha cambiado. Vuelve a leerlo antes de guardar.",
+    "transactionConflict": "Los datos u opciones cambiaron. Prepara una nueva vista previa.",
+    "transactionInvalid": "Esta operación no puede incluirse en la transacción.",
+    "transactionPreviewExpired": "La vista previa caducó. Prepara una nueva antes de confirmar.",
+    "transactionReceiptMissing": "No se encontró un recibo de transacción para este solicitante.",
+    "transactionQuota": "Se alcanzó el límite. Reduce el lote o las vistas previas pendientes.",
+    "transactionNoChanges": "El estado solicitado ya está presente."
   },
   "crashPrompt": {
     "title": "ReadAware tuvo un problema la última vez",
