@@ -9,7 +9,8 @@ type Phase = PluginContext["lifecycle"]["phase"];
 export type HostMessage =
   | { t: "boot"; protocolVersion: typeof PLUGIN_PROTOCOL_VERSION; url: string; manifest: PluginManifest;
       appVersion: string; capabilities: PluginContext["capabilities"]; grants: PluginContext["grants"]; shape: ContextShape;
-      storage: Record<string, string>; locale: string; phase: Phase }
+      storage: Record<string, string>; locale: string; phase: Phase; serviceId?: string }
+  | { t: "service"; id: number; serviceId: string; input: unknown }
   | { t: "invoke"; id: number; handle: string; args: unknown[] }
   | { t: "sync"; patch: { storage?: Record<string, string>; locale?: string; phase?: Phase } }
   | { t: "result"; id: number; ok: true; value: unknown; disposable?: string }
@@ -56,13 +57,16 @@ export function parsePluginHostMessage(value: unknown, account?: (usage: { bytes
   let valid = false;
   if (record(value)) switch (value.t) {
     case "boot":
-      valid = keys(value, ["t", "protocolVersion", "url", "manifest", "appVersion", "capabilities", "grants", "shape", "storage", "locale", "phase"])
+      valid = keys(value, ["t", "protocolVersion", "url", "manifest", "appVersion", "capabilities", "grants", "shape", "storage", "locale", "phase", "serviceId"])
         && value.protocolVersion === PLUGIN_PROTOCOL_VERSION && text(value.url, 8192) && value.url.length > 0
         && text(value.appVersion, 128) && value.appVersion.length > 0 && capabilities(value.capabilities)
+        && (value.serviceId === undefined || text(value.serviceId, 64) && /^[a-z0-9][a-z0-9-]{0,63}$/.test(value.serviceId))
         && grants(value.grants)
         && shape(value.shape) && storage(value.storage) && text(value.locale, 128) && phase(value.phase);
       if (valid) { try { validateManifest(value.manifest); } catch { valid = false; /* Map parser diagnostics to the stable wire error. */ } }
       break;
+    case "service": valid = keys(value, ["t", "id", "serviceId", "input"]) && validPluginCallId(value.id)
+      && text(value.serviceId, 64) && /^[a-z0-9][a-z0-9-]{0,63}$/.test(value.serviceId) && Object.hasOwn(value, "input"); break;
     case "invoke": valid = keys(value, ["t", "id", "handle", "args"]) && validPluginCallId(value.id)
       && handle(value.handle) && Array.isArray(value.args); break;
     case "sync": valid = keys(value, ["t", "patch"]) && record(value.patch) && keys(value.patch, ["storage", "locale", "phase"])

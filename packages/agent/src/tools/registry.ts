@@ -24,6 +24,7 @@ import { buildBookImageTools } from "./book-image-tools";
 import { buildWorkspaceTools } from "./workspace-tools";
 import { buildHostCommandTools } from "./host-command-tools";
 import { buildHostIOTools } from "./host-io-tools";
+import { buildPluginServiceTools } from "./plugin-service-tools";
 import { buildSyncTools } from "./sync-tools";
 import { buildMaintenanceTools } from "./maintenance-tools";
 import { buildResourceTools } from "./resource-tools";
@@ -59,6 +60,7 @@ export function buildAgentTools(
     ...buildWorkspaceTools(deps),
     ...buildHostCommandTools(deps),
     ...buildHostIOTools(deps),
+    ...buildPluginServiceTools(scope, deps, turnState),
     ...buildSyncTools(scope, deps),
     ...buildMaintenanceTools(deps),
     ...buildResourceTools(scope, deps),

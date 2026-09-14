@@ -1,6 +1,10 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  jumperBookmarks: ["Jumper bookmarks", "Jumper 书签", "Jumper 書籤", "Jumper のブックマーク", "Закладки Jumper", "Signets Jumper", "Jumper-Lesezeichen", "Marcadores de Jumper"],
+  jumperUnavailable: ["Enable Jumper and grant both plugins access to this book to read its bookmarks.", "请启用 Jumper，并允许两个插件访问本书，以读取书签。", "請啟用 Jumper，並允許兩個外掛存取本書，以讀取書籤。", "Jumper を有効にして、両方のプラグインにこの本へのアクセスを許可してください。", "Включите Jumper и разрешите обоим плагинам доступ к этой книге.", "Activez Jumper et autorisez les deux extensions à accéder à ce livre.", "Aktiviere Jumper und erlaube beiden Plugins den Zugriff auf dieses Buch.", "Activa Jumper y permite a ambos complementos acceder a este libro."],
+  jumperChanged: ["The bookmarks or Jumper changed. Refresh to read the current list.", "书签或 Jumper 已发生变化，请刷新列表。", "書籤或 Jumper 已變更，請重新整理清單。", "ブックマークまたは Jumper が変わりました。更新してください。", "Закладки или Jumper изменились. Обновите список.", "Les signets ou Jumper ont changé. Actualisez la liste.", "Die Lesezeichen oder Jumper wurden geändert. Aktualisiere die Liste.", "Los marcadores o Jumper han cambiado. Actualiza la lista."],
+  jumperEmpty: ["No bookmarks on this page.", "本页没有书签。", "本頁沒有書籤。", "このページにブックマークはありません。", "На этой странице нет закладок.", "Aucun signet sur cette page.", "Keine Lesezeichen auf dieser Seite.", "No hay marcadores en esta página."],
   preparationPrerequisites: ["Text preparation prerequisites", "正文准备条件", "正文準備條件", "本文準備の条件", "Условия подготовки текста", "Conditions de préparation du texte", "Voraussetzungen der Textaufbereitung", "Requisitos de preparación del texto"],
   rebuildPrerequisites: ["Text rebuild prerequisites", "正文重建条件", "正文重建條件", "本文再構築の条件", "Условия перестроения текста", "Conditions de reconstruction du texte", "Voraussetzungen des Textneuaufbaus", "Requisitos de reconstrucción del texto"],
   preparationPrerequisitesNote: ["Checks the source and request capacity without loading content or downloading. Unknown conditions are verified when you run the operation.", "检查书籍源和任务容量，不加载正文或下载文件。未知条件会在执行操作时确认。", "檢查書籍來源與工作容量，不載入正文或下載檔案。未知條件會在執行操作時確認。", "本文の読み込みやダウンロードをせずに、書籍の元データとタスク容量を確認します。不明な条件は操作時に確認されます。", "Проверяет источник и ёмкость задач без загрузки содержимого. Неизвестные условия проверяются при выполнении.", "Vérifie la source et la capacité des tâches sans charger de contenu ni télécharger. Les conditions inconnues sont vérifiées à l’exécution.", "Prüft Quelle und Auftragskapazität ohne Inhalte zu laden oder herunterzuladen. Unbekannte Bedingungen werden bei der Ausführung geprüft.", "Comprueba la fuente y la capacidad de tareas sin cargar contenido ni descargar. Las condiciones desconocidas se verifican al ejecutar."],
@@ -700,7 +704,7 @@ var HOST_SERVICE_CATALOG = {
   ui: { version: "1.15.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
   session: { version: "2.3.0", permission: null },
-  plugins: { version: "1.7.0", permission: null },
+  plugins: { version: "1.8.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
   logging: { version: "1.0.0", permission: null },
@@ -738,6 +742,8 @@ var PLUGIN_ASSET_TOTAL_BYTES = 512 * 1024 * 1024;
 // ../../packages/core/src/model-image.ts
 var MODEL_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 var MODEL_IMAGES_MAX_BYTES = 16 * 1024 * 1024;
+// ../../packages/core/src/plugin-services.ts
+var PLUGIN_SERVICE_LIMITS = { bytes: 1024 * 1024, depth: 16, nodes: 16000, schemas: 512, timeoutMs: 120000 };
 // ../../packages/plugin-types/src/book-location-search.ts
 var HARD_MAX_SECTIONS = 256;
 var HARD_MAX_HITS = 200;
@@ -1467,6 +1473,51 @@ async function preparationAvailability(ctx, bookId, title, rebuild = false) {
   ] };
 }
 
+// src/bookmark-services.ts
+function bookmarkPage(value) {
+  const invalid = () => Object.assign(Error("Invalid bookmark page"), { code: "plugin/service-result-invalid" });
+  if (!value || typeof value !== "object")
+    throw invalid();
+  const page = value;
+  if (!["ready", "stale-cursor"].includes(page.status) || !Array.isArray(page.items) || page.items.length > 20 || page.nextCursor !== null && (typeof page.nextCursor !== "string" || page.nextCursor.length > 8192) || page.items.some((item) => !item || typeof item.id !== "string" || item.id.length > 1024 || typeof item.name !== "string" || item.name.length > 120 || !["location", "selection"].includes(item.kind)))
+    throw invalid();
+  return page;
+}
+async function jumperBookmarks(ctx, bookId, title, service, cursor) {
+  const refresh = { id: "refresh", label: tr(ctx.locale, "refresh"), run: async () => ({ view: await jumperBookmarks(ctx, bookId, title), navigation: "replace" }) };
+  const heading = `${title} · ${tr(ctx.locale, "jumperBookmarks")}`;
+  const message = (key) => ({
+    kind: "detail",
+    title: heading,
+    content: [{ kind: "text", text: tr(ctx.locale, key) }],
+    actions: [refresh]
+  });
+  const ref = service ?? (await ctx.services.plugins.listServices({ pluginId: "jumper", id: "bookmark-page" })).services.find((item) => item.version === "1.0.0")?.ref;
+  if (!ref)
+    return message("jumperUnavailable");
+  let page;
+  try {
+    page = bookmarkPage((await ctx.services.plugins.callService({ service: ref, bookId, input: { limit: 20, ...cursor === undefined ? {} : { cursor } } })).value);
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "plugin/service-unavailable")
+      return message("jumperChanged");
+    throw error;
+  }
+  if (page.status === "stale-cursor")
+    return message("jumperChanged");
+  return {
+    kind: "list",
+    title: heading,
+    items: page.items.map((item) => ({ id: item.id, title: item.name, icon: "book-bookmark" })),
+    emptyText: tr(ctx.locale, "jumperEmpty"),
+    actions: [refresh, ...page.nextCursor === null ? [] : [{
+      id: "next",
+      label: tr(ctx.locale, "next"),
+      run: async () => ({ view: await jumperBookmarks(ctx, bookId, title, ref, page.nextCursor), navigation: "replace" })
+    }]]
+  };
+}
+
 // src/views.ts
 async function textDetail(ctx, bookId, title) {
   const state = await ctx.domains.library.queries.books.getTextState(bookId);
@@ -1478,6 +1529,7 @@ async function textDetail(ctx, bookId, title) {
   if (state.progress)
     rows.push({ label: tr(ctx.locale, "sections"), value: `${state.progress.completed} / ${state.progress.total}` }, { label: tr(ctx.locale, "failed"), value: String(state.progress.failed) }, { label: tr(ctx.locale, "unsupportedSections"), value: String(state.progress.unsupported) });
   return { kind: "detail", title, content: [{ kind: "keyValue", rows }], actions: [
+    { id: "jumper-bookmarks", label: tr(ctx.locale, "jumperBookmarks"), icon: "book-bookmark", run: async () => ({ view: await jumperBookmarks(ctx, bookId, title) }) },
     { id: "preparation-prerequisites", label: tr(ctx.locale, "preparationPrerequisites"), run: async () => ({ view: await preparationAvailability(ctx, bookId, title) }) },
     { id: "search", label: tr(ctx.locale, "searchBook"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx, bookId) }) },
     { id: "find-passage", label: tr(ctx.locale, "findPassage"), icon: "magnifying-glass", run: () => ({ view: rangeSearchForm(ctx, bookId) }) },

@@ -113,7 +113,7 @@ var PARAMETERLESS_HOST_COMMAND_IDS = [
 var HOST_COMMAND_IDS = [...PARAMETERLESS_HOST_COMMAND_IDS, "open-book", "open-collection"];
 // ../../packages/core/src/domains.ts
 var DOMAIN_CATALOG = {
-  library: { version: "1.30.0", pluginAccess: ["read", "write"] },
+  library: { version: "1.31.0", pluginAccess: ["read", "write"] },
   reading: { version: "2.21.0", pluginAccess: ["read", "write"] },
   annotations: { version: "2.2.0", pluginAccess: ["read", "write"] },
   conversations: { version: "1.5.0", pluginAccess: ["read", "write"] },
@@ -146,8 +146,8 @@ var HOST_SERVICE_CATALOG = {
   secrets: { version: "1.0.0", permission: null },
   ui: { version: "1.15.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
-  session: { version: "2.0.0", permission: null },
-  plugins: { version: "1.7.0", permission: null },
+  session: { version: "2.3.0", permission: null },
+  plugins: { version: "1.8.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
   logging: { version: "1.0.0", permission: null },
@@ -185,6 +185,8 @@ var PLUGIN_ASSET_TOTAL_BYTES = 512 * 1024 * 1024;
 // ../../packages/core/src/model-image.ts
 var MODEL_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 var MODEL_IMAGES_MAX_BYTES = 16 * 1024 * 1024;
+// ../../packages/core/src/plugin-services.ts
+var PLUGIN_SERVICE_LIMITS = { bytes: 1024 * 1024, depth: 16, nodes: 16000, schemas: 512, timeoutMs: 120000 };
 // ../../packages/plugin-types/src/book-location-search.ts
 var HARD_MAX_SECTIONS = 256;
 var HARD_MAX_HITS = 200;
@@ -1243,8 +1245,24 @@ function registerBookmarkTools(ctx) {
   });
 }
 
+// src/bookmark-service.ts
+async function listBookmarkPage(ctx, input) {
+  if (ctx.grants.book.mode !== "book")
+    throw Object.assign(Error("A book is required"), { code: "plugin/object-access-denied" });
+  const { cursor, limit = 20 } = input;
+  const bookId = ctx.grants.book.bookId;
+  const page = await ctx.services.storage.collection(BOOKMARKS).page({ bookId, limit, ...cursor === undefined ? {} : { cursor } });
+  if (page.status === "stale-cursor")
+    return { status: "stale-cursor", items: [], nextCursor: null };
+  return { status: "ready", items: page.items.flatMap((doc) => {
+    const bookmark = parseBookmark(doc.data);
+    return bookmark?.target.bookId === bookId ? [{ id: doc.id, name: bookmark.name, kind: bookmark.kind }] : [];
+  }), nextCursor: page.nextCursor };
+}
+
 // src/index.ts
 var plugin = {
+  services: { "bookmark-page": listBookmarkPage },
   activate(ctx) {
     assertCapabilities(ctx);
     registerBookmarkTools(ctx);

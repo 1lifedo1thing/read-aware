@@ -157,11 +157,21 @@
     "aiImageBudget": "图片输入已达到上限，请减少图片数量或大小。",
     "bookContentBudget": "本节内容超过查询读取上限。",
     "aiOutputBudget": "AI 输出已达到本次上限，请缩小请求或提高预算。",
-    "aiInputBudget": "AI 请求文本过多，请缩小读取范围。"
+    "aiInputBudget": "AI 请求文本过多，请缩小读取范围。",
+    "pluginServiceUnavailable": "此插件服务已变更或停止，请刷新列表后继续。",
+    "pluginServiceForbidden": "此服务调用超出两个插件共同拥有的权限或书籍范围。",
+    "pluginServiceCycle": "此服务调用会重复当前调用链，已被阻止。",
+    "pluginServiceTimeout": "服务执行超时。重试修改前，请先检查实际结果。",
+    "pluginServiceResultInvalid": "服务返回了无效结果。重试前，请先检查操作是否已生效。",
+    "pluginServiceFailed": "插件服务执行失败。重复修改前，请先检查实际结果。",
+    "pluginServiceDataChanged": "服务使用的文档已变更，请重新读取后再保存。"
   },
   "crashPrompt": {
     "title": "ReadAware 上次运行出了问题",
     "body": "发送一份诊断报告可以帮助修复它。",
     "action": "查看并发送"
+  },
+  "pluginServices": {
+    "approvalNote": "仅为本次调用批准上述权限。书籍访问包含全书，可能涉及未读内容；全局访问包含所有书籍。修改及外部操作可能无法撤销。"
   }
 }

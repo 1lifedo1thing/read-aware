@@ -157,11 +157,21 @@
     "aiImageBudget": "圖片輸入已達到上限，請減少圖片數量或大小。",
     "bookContentBudget": "本節內容超過查詢讀取上限。",
     "aiOutputBudget": "AI 輸出已達到本次上限，請縮小請求或提高預算。",
-    "aiInputBudget": "AI 請求文字過多，請縮小讀取範圍。"
+    "aiInputBudget": "AI 請求文字過多，請縮小讀取範圍。",
+    "pluginServiceUnavailable": "此外掛服務已變更或停止，請重新整理清單後繼續。",
+    "pluginServiceForbidden": "此服務呼叫超出兩個外掛共同擁有的權限或書籍範圍。",
+    "pluginServiceCycle": "此服務呼叫會重複目前的呼叫鏈，已被阻止。",
+    "pluginServiceTimeout": "服務執行逾時。重試修改前，請先檢查實際結果。",
+    "pluginServiceResultInvalid": "服務傳回無效結果。重試前，請先檢查操作是否已生效。",
+    "pluginServiceFailed": "外掛服務執行失敗。重複修改前，請先檢查實際結果。",
+    "pluginServiceDataChanged": "服務使用的文件已變更，請重新讀取後再儲存。"
   },
   "crashPrompt": {
     "title": "ReadAware 上次執行發生了問題",
     "body": "傳送一份診斷報告有助於修復它。",
     "action": "檢視並傳送"
+  },
+  "pluginServices": {
+    "approvalNote": "僅為本次呼叫批准上述權限。書籍存取包含全書，可能涉及未讀內容；全域存取包含所有書籍。修改及外部操作可能無法復原。"
   }
 }

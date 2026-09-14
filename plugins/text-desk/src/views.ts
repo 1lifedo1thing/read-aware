@@ -9,6 +9,7 @@ import { capturedRangeDetail, rangeSearchForm } from "./range-views";
 import { emphasisList } from "./emphasis-views";
 import { contentSections } from "./content-sections";
 import { preparationAvailability } from "./preparation-availability";
+import { jumperBookmarks } from "./bookmark-services";
 
 export async function textDetail(ctx: PluginContext, bookId: string, title: string): Promise<PluginDetailView> {
   const state = await ctx.domains.library!.queries.books.getTextState(bookId);
@@ -21,6 +22,7 @@ export async function textDetail(ctx: PluginContext, bookId: string, title: stri
     { label: tr(ctx.locale, "unsupportedSections"), value: String(state.progress.unsupported) },
   );
   return { kind: "detail", title, content: [{ kind: "keyValue", rows }], actions: [
+    { id: "jumper-bookmarks", label: tr(ctx.locale, "jumperBookmarks"), icon: "book-bookmark", run: async () => ({ view: await jumperBookmarks(ctx, bookId, title) }) },
     { id: "preparation-prerequisites", label: tr(ctx.locale, "preparationPrerequisites"), run: async () => ({ view: await preparationAvailability(ctx, bookId, title) }) },
     { id: "search", label: tr(ctx.locale, "searchBook"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx, bookId) }) },
     { id: "find-passage", label: tr(ctx.locale, "findPassage"), icon: "magnifying-glass", run: () => ({ view: rangeSearchForm(ctx, bookId) }) },

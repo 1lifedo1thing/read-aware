@@ -39,6 +39,7 @@ import { agentBookGraphTasks } from "../../../../domain/book-graph-tasks";
 import { identityConsolidationPort } from "../../../../domain/identity-consolidation";
 import { readingAiActions } from "../../../../services/reading-ai-runtime";
 import { agentTextPreparationConditions } from "../../../../domain/library";
+import { pluginServices } from "../../../plugins/runtime/plugin-services";
 
 export { GLOBAL_CONVERSATION_ID } from "./conversation-port";
 
@@ -57,6 +58,10 @@ export function buildRuntimeDeps(): RuntimeDeps {
     conversationControl: { snapshot: conversations.queries.runtime, listThreads: conversations.queries.listThreads,
       turnRequests: conversations.queries.turnRequests, ...conversations.commands },
     hostIO,
+    pluginServices: {
+      list: async (scope, query, signal) => { signal?.throwIfAborted(); return pluginServices.listForAgent(scope, query); },
+      call: (scope, request, authorize, signal) => pluginServices.delegate(scope, request, authorize, signal),
+    },
     bookGraphTasks: agentBookGraphTasks,
     bookClassification: { inspect: inspectBookClassification, change: (input, signal) => changeBookClassification(input, "agent", signal) },
     memoryManagement: { inspect: inspectMemory, mutate: (input, signal) => mutateMemory(input, "agent", signal) },

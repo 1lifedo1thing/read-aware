@@ -251,6 +251,8 @@ export type PluginManifest = {
    * the actual work at activate() via `ctx.services.schedules.bind(id, run)`.
    */
   schedules?: PluginScheduleDeclaration[];
+  /** Plugins 1.8: explicit versioned module service exports, executed with shared authority. */
+  services?: import("@read-aware/core").PluginServiceDeclaration[];
   /**
    * Declarative themes (`ui:themes`). Registered while the plugin is enabled;
    * they appear alongside the built-in choices in Settings → Appearance
@@ -2358,6 +2360,11 @@ export type PluginHostServices = {
     control(id: string, action: "pause" | "resume" | "run"): Promise<import("@read-aware/core").PluginScheduleReceipt>;
   };
   plugins: {
+    /** Plugins 1.8: authorized service contracts; discovery does not execute providers. */
+    listServices(query?: import("@read-aware/core").PluginServiceQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginServicePage>;
+    /** Executes one declared export in a fresh restricted Worker. No live-root closures,
+     * callbacks, binary handles, automatic retries, or resources surviving the call. */
+    callService(request: import("@read-aware/core").PluginServiceCall, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginServiceReceipt>;
     /** Registered identities across extension points, never provider callbacks,
      * data, settings or a grant to invoke another plugin. Offset pages may change. */
     contributions(query?: import("@read-aware/core").PluginContributionQuery): Promise<import("@read-aware/core").PluginContributionPage>;
@@ -2557,6 +2564,9 @@ export type PluginContext = {
 /** The default export of a plugin's entry module. */
 export type PluginModule = {
   activate(ctx: PluginContext): void | Promise<void>;
+  /** Runs without activate(), in a fresh realm with intersected permissions/settings/
+   * network and a host-fixed book grant. Return bounded JSON matching the manifest. */
+  services?: Record<string, (ctx: PluginContext, input: unknown) => unknown | Promise<unknown>>;
   /** Runs with storage-only authority before a changed data schema is committed. */
   migrate?(ctx: PluginMigrationContext, migration: PluginMigration): void | Promise<void>;
   deactivate?(): void | Promise<void>;

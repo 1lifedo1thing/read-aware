@@ -157,11 +157,21 @@
     "aiImageBudget": "画像入力の上限に達しました。画像の数やサイズを減らしてください。",
     "bookContentBudget": "このセクションは読み取り上限を超えています。",
     "aiOutputBudget": "AI出力の上限に達しました。依頼を絞るか上限を増やしてください。",
-    "aiInputBudget": "AIへの入力が長すぎます。範囲を狭めてください。"
+    "aiInputBudget": "AIへの入力が長すぎます。範囲を狭めてください。",
+    "pluginServiceUnavailable": "プラグインサービスが変更または停止しました。一覧を更新してください。",
+    "pluginServiceForbidden": "この呼び出しは両プラグインの共有権限または本のアクセス範囲を超えています。",
+    "pluginServiceCycle": "呼び出しが循環するため停止しました。",
+    "pluginServiceTimeout": "サービスがタイムアウトしました。変更を再試行する前に結果を確認してください。",
+    "pluginServiceResultInvalid": "サービスの結果が不正です。再試行前に操作結果を確認してください。",
+    "pluginServiceFailed": "プラグインサービスに失敗しました。変更を繰り返す前に結果を確認してください。",
+    "pluginServiceDataChanged": "サービスの文書が変わりました。再読込してから保存してください。"
   },
   "crashPrompt": {
     "title": "前回 ReadAware に問題が発生しました",
     "body": "診断レポートを送信すると修正に役立ちます。",
     "action": "確認して送信"
+  },
+  "pluginServices": {
+    "approvalNote": "この呼び出しに限り、上記の権限を許可します。書籍へのアクセスは未読部分を含む全体、グローバルアクセスはすべての書籍が対象です。変更や外部操作は取り消せない場合があります。"
   }
 }

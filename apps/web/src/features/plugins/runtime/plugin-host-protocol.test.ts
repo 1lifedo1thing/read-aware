@@ -11,6 +11,7 @@ const boot: HostMessage = { t: "boot", protocolVersion: 1, url: "https://localho
 test("every host envelope is explicit and preserves opaque business data", () => {
   const value: { self?: unknown; bytes: Uint8Array; __fn: string } = { bytes: new Uint8Array([1, 2]), __fn: "ordinary" }; value.self = value;
   const messages: HostMessage[] = [boot, { t: "invoke", id: 1, handle: "h1", args: [value] },
+    { ...boot, serviceId: "inspect" }, { t: "service", id: 2, serviceId: "inspect", input: null },
     { t: "sync", patch: { locale: "zh-Hans", phase: "migrating", storage: { key: "value" } } },
     { t: "result", id: 1, ok: true, value, disposable: "d1" },
     { t: "result", id: 1, ok: false, code: "db/locked", error: "locked" },
@@ -28,6 +29,7 @@ test("every host envelope is explicit and preserves opaque business data", () =>
 test("malformed mirrors, callback calls, migrations and bootstrap shapes are rejected", () => {
   const cycle: Record<string, unknown> = {}; cycle.self = cycle;
   for (const message of [null, [], {}, { ...boot, protocolVersion: 0 }, { ...boot, protocolVersion: undefined },
+    { t: "service", id: 1, serviceId: "../other", input: null }, { t: "service", id: 1, serviceId: "inspect" },
     { ...boot, shape: cycle }, { ...boot, shape: { constructor: "fn" } }, { ...boot, shape: { x: [] } },
     { ...boot, capabilities: { ...boot.capabilities, services: { unknown: "1.0.0" } } },
     { ...boot, manifest: { ...boot.manifest, schemaVersion: -1 } }, { ...boot, storage: { x: false } },

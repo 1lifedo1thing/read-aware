@@ -305,6 +305,57 @@ feature, menu, or route is not a domain merely because it has a name.
 There is no `shelf` domain. Library ownership and active reading behavior are
 separate. Do not restore `shelf` as an alias.
 
+Plugins 1.8 adds versioned cross-plugin services. A provider declares a bounded
+`manifest.services` array and requires `services.plugins: "^1.8.0"`. Each declaration
+has an ID, semantic version, title/description, `book` or `global` scope, permissions,
+and closed JSON input/output schemas. Its module exports the matching function in
+`services[id]`, alongside its ordinary `activate()` entry.
+
+Consumers use `ctx.services.plugins.listServices(query, options)` and pass the
+returned `ref` to `callService({ service: ref, bookId, input }, options)`. Discovery
+does not execute providers. References bind the provider activation generation;
+updates invalidate old calls/pages instead of silently invoking a replacement.
+The receipt contains the call ID, exact service reference and validated value.
+Both calls accept `PluginCallOptions.signal`.
+
+The host executes each service in a fresh Worker, skips `activate()`/`deactivate()`,
+and exposes only the service's declared permissions, which both participants must
+hold. Settings paths and allowed network origins intersect. Book services require
+an explicit book authorized by both participants; global services require both
+all-book grants. Provider activation closures and ordinary contribution registration
+are unavailable in the service realm. No caller-supplied actor or permission list
+can alter this context.
+
+Provider-owned documents in a book service are filtered by that fixed book at the
+host boundary. Direct reads/observers check ownership and mutations use inspected
+versions in the native conditional commit. Unscoped private KV, secrets, assets
+and usage are available only to global services; book-service boot and storage
+broadcasts contain no global KV mirror. Providers must also validate any book
+references inside their document payloads, as Jumper's bookmark service does.
+
+Service data is JSON only, at most 1 MiB, depth 16 and 16,000 values. Schemas support
+closed objects, arrays, scalar types, bounded strings/numbers and `anyOf`; executable
+validators, references, callbacks and resource handles are rejected. Calls have a
+120-second deadline, four concurrent calls per participant and sixteen globally.
+Nested calls retain host lineage; repeated services and chains deeper than eight
+are refused. Cancellation, book changes, disable/update and deadlines invalidate
+late results; capacity is released after physical cleanup. Cancellation does not
+undo accepted writes or remote effects. Do not blindly retry an unknown outcome.
+
+Jumper 0.10 exports `bookmark-page` version 1.0.0. Text Desk 0.27 consumes it from
+book details, preserves the observed reference while paging and offers explicit
+refresh after service replacement or a stale document cursor. The compiled
+consumer and actual Bun caller/host/provider Worker chain are checked; Tauri/SQLite
+acceptance remains pending. Agent `list_plugin_services` discovers the same contracts;
+`call_plugin_service` requires per-call user approval of frozen arguments and grants.
+Book conversations cannot target other books. Approval explains full-book/unread
+content access and potentially irreversible effects. Restricted automatic reading
+context rejects opaque services requiring reading or conversation permissions;
+policy tightening cancels the call. Authority is issued only for that approved
+service, and provider generation, book access and cancellation are rechecked.
+The Agent tool to real Bun Worker chain uses controlled approval answers; real
+Tauri approval UI and model behavior remain pending.
+
 Plugins 1.2 adds `ctx.withEvent(event)` for automatic reactions to local domain
 and settings `events.subscribe` callbacks. The delivered event carries an opaque
 host lease, not the causal path. Use the returned context for operations caused
@@ -6284,8 +6335,9 @@ credentials, provider outputs or callback objects. Registration is not proof
 of health, readiness, UI visibility/enabled state or tool visibility in a
 particular Agent request. Execute through the relevant existing host API/tool
 with its own argument format and authorization, never through a discovered key
-alone. The host still has no generic cross-plugin invoke/permission-intersection
-broker; MORE06 remains partial rather than claiming that discovery implements it.
+alone. Plugins 1.8 separately provides declared service contracts and permission
+intersection through `listServices`/`callService`; registry keys cannot be used as
+service references. MORE06 retains pending Agent and desktop acceptance work.
 
 Rows sort by point, plugin ID and key. The page admits at most 16000 JSON
 characters of entry objects/separators (excluding the envelope), without

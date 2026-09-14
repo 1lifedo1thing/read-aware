@@ -1,3 +1,5 @@
+import { bookServiceStorage, denyUnscopedServiceData } from "./plugin-service-storage";
+import { pluginServices, type PluginServiceParticipant } from "./plugin-services";
 import type { DomainActorOwners } from "../../../domain/actor-owners";
 import { PluginEventReactions } from "./plugin-event-reactions";
 import { attachPluginEventReactions, bindPluginEventContext } from "./plugin-event-context";
@@ -173,6 +175,7 @@ export type PluginContextRuntime = {
   lifecycle: PluginLifecycleController;
   reactions: PluginEventReactions;
   contextForActor(actor: DomainActor): PluginContext;
+  serviceParticipant: PluginServiceParticipant;
 };
 
 function guardMutationTree<T extends object>(
@@ -218,6 +221,7 @@ export function buildPluginContext(
   appVersion: string,
   disposables: PluginDisposable[],
   bookAccess: PluginBookAccess = { mode: "all" },
+  serviceInvocation?: { origin: DomainActor; lineage: readonly string[] },
 ): PluginContextRuntime {
   // Keep the grant immutable inside this activation as well as on the Worker
   // wire. The caller owns the persisted object, while all policy closures
@@ -380,6 +384,10 @@ export function buildPluginContext(
   const reactions = new PluginEventReactions(selfOrigin, lifecycle.signal);
   lifecycle.signal.addEventListener("abort", () => lifecycle.trackCleanup(reactions.drain()), { once: true });
   const contributionHandles = new PluginContributionReactions(lifecycle, reactions, selfOrigin);
+  const serviceParticipant = (origin: DomainActor): PluginServiceParticipant => ({
+    manifest, access: objectAccess, signal: lifecycle.signal, origin, lineage: serviceInvocation?.lineage,
+    assertLive: () => lifecycle.assertActive("plugin service"), track: work => lifecycle.trackCleanup(work),
+  });
   const contexts = new WeakMap<object, PluginContext>();
   const contextForActor = (operationActor: DomainActor): PluginContext => {
     if (typeof operationActor === "object") {
@@ -860,6 +868,11 @@ export function buildPluginContext(
         },
       },
       plugins: {
+        listServices: async (query, options) => {
+          callSignal(options).throwIfAborted();
+          return pluginServices.list(serviceParticipant(operationActor), query);
+        },
+        callService: (request, options) => pluginServices.call(serviceParticipant(operationActor), request, callSignal(options)),
         contributions: async query => {
           lifecycle.assertActive("services.plugins.contributions");
           return pluginDirectory.contributions(query);
@@ -1807,9 +1820,14 @@ export function buildPluginContext(
     };
   }
 
+  if (serviceInvocation && objectAccess.grant.mode === "book") {
+    ctx.services.storage = bookServiceStorage(ctx.services.storage, objectAccess.grant.bookId);
+    ctx.services.secrets = { get: denyUnscopedServiceData, set: denyUnscopedServiceData, remove: denyUnscopedServiceData };
+    ctx.services.resources.assets = { policy: denyUnscopedServiceData, list: denyUnscopedServiceData, get: denyUnscopedServiceData, store: denyUnscopedServiceData, open: denyUnscopedServiceData, delete: denyUnscopedServiceData };
+  }
   attachPluginEventReactions(ctx, reactions);
   if (typeof operationActor === "object") contexts.set(operationActor, ctx);
   return ctx;
   };
-  return { context: contextForActor(selfOrigin), lifecycle, reactions, contextForActor };
+  return { context: contextForActor(serviceInvocation?.origin ?? selfOrigin), lifecycle, reactions, contextForActor, serviceParticipant: serviceParticipant(serviceInvocation?.origin ?? selfOrigin) };
 }

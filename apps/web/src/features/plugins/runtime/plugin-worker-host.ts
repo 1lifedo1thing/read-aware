@@ -1,3 +1,4 @@
+import { pluginServices, type PluginServiceExecution } from "./plugin-services";
 /**
  * Host side of the plugin sandbox.
  *
@@ -64,9 +65,12 @@ export type SandboxedPlugin = {
   migrate(migration: PluginMigration): Promise<void>;
   promote(): void;
   terminate(): Promise<void>;
+  invokeService?(serviceId: string, input: unknown): Promise<unknown>;
 };
 
 export type StartPluginWorkerOptions = {
+  /** Host-only execution authority. Never accepted in a Worker call payload. */
+  serviceExecution?: Pick<PluginServiceExecution, "declaration" | "lineage" | "origin" | "signal">;
   /** Host-owned object grant for this activation; never read from Worker input. */
   bookAccess?: PluginBookAccess;
   /** Alternate entry URL for a separately staged update candidate. */
@@ -210,18 +214,37 @@ export function startPluginWorker(
   disposables: PluginDisposable[],
   options: StartPluginWorkerOptions = {},
 ): Promise<SandboxedPlugin> {
-  const runtime = buildPluginContext(manifest, appVersion, disposables, options.bookAccess);
+  options.serviceExecution?.signal.throwIfAborted();
+  const runtime = buildPluginContext(manifest, appVersion, disposables, options.bookAccess, options.serviceExecution);
+  if (options.serviceExecution) runtime.context.contributions = {} as PluginContext["contributions"];
   const ctx = options.restoreStorage ? {
     ...runtime.context,
     services: { ...runtime.context.services, storage: options.restoreStorage.create(runtime.lifecycle) },
   } : runtime.context;
-  const storageSnapshot = () => options.restoreStorage?.snapshot() ?? localKV.entries(pluginStoragePrefix(manifest.id));
+  if (!options.serviceExecution && !options.restoreStorage && manifest.services?.length) {
+    runtime.lifecycle.stage(() => pluginServices.register(runtime.serviceParticipant, async execution => {
+      const child = await startPluginWorker(execution.manifest, appVersion, [], {
+        bookAccess: execution.bookAccess, moduleUrl: options.moduleUrl ?? pluginModuleUrl(manifest.id, manifest.main ?? "main.js"),
+        instanceId: `service:${execution.callId}`, serviceExecution: execution, onRuntimeError: () => {},
+      });
+      try {
+        execution.signal.throwIfAborted(); child.promote();
+        if (!child.invokeService) throw new AppError("plugin/service-unavailable", "Missing service execution transport");
+        return await child.invokeService(execution.declaration.id, execution.input);
+      } finally {
+        const closing = child.terminate(); runtime.lifecycle.trackCleanup(closing); await closing;
+      }
+    }));
+  }
+  const bookService = Boolean(options.serviceExecution && ctx.grants.book.mode !== "all");
+  const storageSnapshot = () => bookService ? {} : options.restoreStorage?.snapshot() ?? localKV.entries(pluginStoragePrefix(manifest.id));
   const worker = new Worker(new URL("./plugin-sandbox.worker.ts", import.meta.url), {
     type: "module",
     name: `plugin:${manifest.id}`,
   });
   const instanceId = options.instanceId ?? manifest.id;
   wireHostSync();
+  let releaseServiceAbort: (() => void) | undefined;
   let terminated = false;
   let quiescing = false;
   let termination: Promise<void> | undefined;
@@ -296,7 +319,7 @@ export function startPluginWorker(
   };
   const closeTransport = (reason: string) => {
     if (terminated) return;
-    terminated = true;
+    terminated = true; releaseServiceAbort?.();
     quiescing = true;
     runtime.lifecycle.cancelOperations();
     abortIncomingCalls();
@@ -352,9 +375,16 @@ export function startPluginWorker(
       if (settled) return;
       failRuntime("plugin activation timed out");
     }, 10_000);
+    if (options.serviceExecution) {
+      const signal = options.serviceExecution.signal;
+      const abort = () => failRuntime("Plugin service invocation cancelled");
+      signal.addEventListener("abort", abort, { once: true });
+      releaseServiceAbort = () => signal.removeEventListener("abort", abort);
+      if (signal.aborted) { abort(); return; }
+    }
     retireForTraffic = error => failRuntime(error instanceof Error ? error.message : "Plugin transport traffic exhausted");
     if (!options.restoreStorage) liveWorkers.set(instanceId, { pluginId: manifest.id, worker, sync(patch) {
-      try { post({ t: "sync", patch }); }
+      try { post({ t: "sync", patch: bookService && patch.storage ? { ...patch, storage: {} } : patch }); }
       catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
     } });
 
@@ -402,6 +432,11 @@ export function startPluginWorker(
             resolve({
               manifest,
               hasMigration: message.hasMigration,
+              invokeService(serviceId, input) {
+                assertRunning();
+                if (!options.serviceExecution || options.serviceExecution.declaration.id !== serviceId) return Promise.reject(new AppError("plugin/service-unavailable", "Service export is unavailable"));
+                return pendingInvokes.call(id => post({ t: "service", id, serviceId, input }));
+              },
               checkHealth() {
                 try { assertRunning(); } catch (error) { return Promise.reject(error); }
                 const id = nextHealthId++;
@@ -565,6 +600,9 @@ export function startPluginWorker(
                 registration.dispose();
               }
               : message.method === "withEvent" ? null : resolveMethod(target, message.method);
+            if (options.serviceExecution && (message.method.startsWith("contributions.") || message.method.startsWith("$registration."))) {
+              throw new AppError("plugin/service-forbidden", "Service executions cannot register activation contributions");
+            }
             const method = message.reaction
               ? (...args: unknown[]) => runtime.reactions.execute(message.reaction!, async actor => {
                 if (options.restoreStorage) throw new AppError("plugin/invalid-cause", "Migration cannot react to events");
@@ -745,6 +783,7 @@ export function startPluginWorker(
       storage: storageSnapshot(),
       locale: ctx.locale,
       phase: runtime.lifecycle.phase,
+      ...(options.serviceExecution ? { serviceId: options.serviceExecution.declaration.id } : {}),
     }); } catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
   });
 }

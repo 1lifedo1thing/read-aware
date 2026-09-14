@@ -497,6 +497,12 @@ export interface RuntimeDeps {
   readingContextPolicy?: import("./runtime/reading-context-policy").ReadingContextPolicy;
   environment: { snapshot(): Promise<import("@read-aware/core").HostEnvironmentSnapshot> };
   operationAvailability?: import("@read-aware/core").OperationAvailabilityPort;
+  pluginServices?: {
+    list(scope: import("./thread-scope").ThreadScope, query?: import("@read-aware/core").PluginServiceQuery, signal?: AbortSignal): Promise<import("@read-aware/core").PluginServicePage>;
+    call(scope: import("./thread-scope").ThreadScope, request: import("@read-aware/core").PluginServiceCall,
+      authorize: (subject: string, signal: AbortSignal) => Promise<boolean>, signal?: AbortSignal): Promise<
+        { executed: false; reason: "declined" } | { executed: true; receipt: import("@read-aware/core").PluginServiceReceipt }>;
+  };
   window: import("@read-aware/core").HostWindowPort;
   conversationControl: {
     turnRequests(): Promise<import("@read-aware/core").ConversationTurnRequestSnapshot[]>;

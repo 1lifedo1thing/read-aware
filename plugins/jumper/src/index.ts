@@ -5,8 +5,10 @@ import { tr } from "./strings";
 import { bookmarksView } from "./bookmark-views";
 import { bookmarkCopy } from "./bookmark-strings";
 import { registerBookmarkTools } from "./bookmark-tools";
+import { listBookmarkPage } from "./bookmark-service";
 
 const plugin: PluginModule = {
+  services: { "bookmark-page": listBookmarkPage },
   activate(ctx) {
     assertCapabilities(ctx);
     registerBookmarkTools(ctx);

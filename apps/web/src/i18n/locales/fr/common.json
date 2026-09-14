@@ -157,11 +157,21 @@
     "aiImageBudget": "Limite d’images atteinte. Réduisez leur nombre ou leur taille.",
     "bookContentBudget": "Cette section dépasse la limite de lecture.",
     "aiOutputBudget": "Limite de sortie IA atteinte. Réduisez la demande ou augmentez la limite.",
-    "aiInputBudget": "La demande contient trop de texte. Réduisez la sélection."
+    "aiInputBudget": "La demande contient trop de texte. Réduisez la sélection.",
+    "pluginServiceUnavailable": "Ce service a changé ou s’est arrêté. Actualisez la liste.",
+    "pluginServiceForbidden": "Cet appel dépasse les autorisations communes des extensions ou l’accès au livre.",
+    "pluginServiceCycle": "Cet appel a été arrêté pour éviter une chaîne circulaire.",
+    "pluginServiceTimeout": "Le délai a expiré. Vérifiez le résultat avant de répéter des modifications.",
+    "pluginServiceResultInvalid": "Le résultat est invalide. Vérifiez l’état avant de réessayer.",
+    "pluginServiceFailed": "Le service a échoué. Vérifiez le résultat avant de répéter des modifications.",
+    "pluginServiceDataChanged": "Le document a changé. Relisez-le avant de sauvegarder."
   },
   "crashPrompt": {
     "title": "ReadAware a rencontré un problème la dernière fois",
     "body": "Envoyer un rapport de diagnostic aide à le corriger.",
     "action": "Vérifier et envoyer"
+  },
+  "pluginServices": {
+    "approvalNote": "Autorisez ces permissions pour cet appel uniquement. L’accès au livre couvre tout le livre, y compris les passages non lus ; l’accès global couvre tous les livres. Les modifications et actions externes peuvent être irréversibles."
   }
 }

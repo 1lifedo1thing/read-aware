@@ -21,6 +21,7 @@ export const INTERACTIVE_TOOL_NAMES = [
   "manage_entity",
   "classify_book",
   "manage_book_graph",
+  "call_plugin_service",
 ] as const;
 
 export type UserInteractionToolDetails =

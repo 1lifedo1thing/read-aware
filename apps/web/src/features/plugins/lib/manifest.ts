@@ -4,7 +4,7 @@
  * human-readable reason (surfaced in settings and at install time).
  */
 import {
-  HOST_CAPABILITY_CATALOG,
+  HOST_CAPABILITY_CATALOG, normalizePluginServices,
 } from "@read-aware/core";
 import { intersects, validRange } from "semver";
 import {
@@ -146,6 +146,17 @@ export function validateManifest(raw: unknown): PluginManifest {
       }
     }
     permissions = [...new Set(rawPermissions as PluginPermission[])];
+  }
+
+  let services: PluginManifest["services"];
+  if (record.services !== undefined) {
+    const range = requires.services?.plugins;
+    if (!range || intersects(range, ">=0.0.0 <1.8.0")) throw new PluginManifestError("manifest.services requires plugins >=1.8");
+    try { services = normalizePluginServices(record.services); }
+    catch { throw new PluginManifestError("manifest.services contains an invalid typed service contract"); }
+    const grants = new Set<string>(permissions ?? []);
+    for (const grant of [...grants]) if (grant.endsWith(":write")) grants.add(grant.replace(/:write$/, ":read"));
+    if (services.some(service => service.permissions.some(permission => !grants.has(permission)))) throw new PluginManifestError("service permissions exceed the provider's grants");
   }
 
   let networkAccess: PluginManifest["networkAccess"];
@@ -350,6 +361,7 @@ export function validateManifest(raw: unknown): PluginManifest {
     main,
     settings,
     schedules,
+    services,
     themes,
     fonts,
   };

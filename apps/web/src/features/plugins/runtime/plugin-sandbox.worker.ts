@@ -276,6 +276,7 @@ function buildContext(
   services.storage = {
     policy: () => call("services.storage.policy", []),
     get<T = unknown>(key: string): T | null {
+      if (serviceId && grants.book.mode !== "all") throw codedError("Book services cannot access unscoped private data", "plugin/service-forbidden");
       const raw = storageSnapshot.get(key);
       if (raw === undefined) return null;
       try {
@@ -366,6 +367,8 @@ function buildContext(
 let plugin: PluginModule | null = null;
 let pluginContext: PluginContext | null = null;
 let booted = false;
+let serviceId: string | undefined;
+let serviceInvoked = false;
 let stopped = false;
 const failProtocol = () => {
   stopped = true;
@@ -419,11 +422,26 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
             message.grants,
             message.shape,
           );
-        await plugin.activate(pluginContext);
+        serviceId = message.serviceId;
+        if (serviceId !== undefined) {
+          if (!plugin.services || !Object.hasOwn(plugin.services, serviceId) || typeof plugin.services[serviceId] !== "function") throw new Error("Declared service export is missing");
+        } else await plugin.activate(pluginContext);
         await drainActivationCalls();
         if (!stopped) post({ t: "ready", protocolVersion: PLUGIN_PROTOCOL_VERSION, hasMigration: typeof plugin.migrate === "function" });
       } catch (error) {
         if (!stopped) post({ t: "failed", error: error instanceof Error ? error.message : String(error) });
+      }
+      return;
+    }
+
+    case "service": {
+      try {
+        if (!serviceId || serviceId !== message.serviceId || serviceInvoked || lifecyclePhase !== "active") throw codedError("Service invocation is unavailable", "plugin/service-unavailable");
+        serviceInvoked = true;
+        const value = await plugin!.services![serviceId]!(pluginContext!, message.input);
+        if (!stopped) callbacks.send(value ?? null, wire => post({ t: "result", id: message.id, ok: true, value: wire }));
+      } catch (error) {
+        if (!stopped) post({ t: "result", id: message.id, ok: false, code: codeOf(error), error: error instanceof Error ? error.message : String(error) });
       }
       return;
     }
@@ -525,7 +543,7 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
       stopped = true;
       pendingCalls.close(codedError("Plugin runtime stopped", "plugin/unavailable"));
       try {
-        await plugin?.deactivate?.();
+        await (serviceId ? undefined : plugin?.deactivate?.());
       } catch (error) {
         // Raw console on purpose: the Worker has no Tauri IPC, so it cannot
         // reach the logger seam — errors reach it via the host's onerror.

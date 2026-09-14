@@ -157,11 +157,21 @@
     "aiImageBudget": "The image input limit was reached. Use fewer or smaller images.",
     "bookContentBudget": "This section exceeds the content query limit.",
     "aiOutputBudget": "The AI output limit was reached. Reduce the request or increase its budget.",
-    "aiInputBudget": "The AI request contains too much text. Use a smaller selection."
+    "aiInputBudget": "The AI request contains too much text. Use a smaller selection.",
+    "pluginServiceUnavailable": "This plugin service changed or stopped. Refresh its list before continuing.",
+    "pluginServiceForbidden": "This service call exceeds the plugins’ shared permissions or book access.",
+    "pluginServiceCycle": "This service call would repeat an existing call chain and was stopped.",
+    "pluginServiceTimeout": "The service exceeded its time limit. Check the result before retrying any changes.",
+    "pluginServiceResultInvalid": "The service returned an invalid result. Check the outcome before retrying.",
+    "pluginServiceFailed": "The plugin service failed. Check the outcome before repeating changes.",
+    "pluginServiceDataChanged": "The service’s document changed. Read it again before saving."
   },
   "crashPrompt": {
     "title": "ReadAware had a problem last time",
     "body": "Sending a diagnostics report helps get it fixed.",
     "action": "Review & send"
+  },
+  "pluginServices": {
+    "approvalNote": "Approve these permissions for this call only. Book access includes the full book and may include unread material; global access includes all books. Changes and external effects may not be undoable."
   }
 }

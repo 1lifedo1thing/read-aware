@@ -157,11 +157,21 @@
     "aiImageBudget": "Bildlimit erreicht. Verwenden Sie weniger oder kleinere Bilder.",
     "bookContentBudget": "Dieser Abschnitt überschreitet das Leselimit.",
     "aiOutputBudget": "KI-Ausgabelimit erreicht. Verkleinern Sie die Anfrage oder erhöhen Sie das Limit.",
-    "aiInputBudget": "Die KI-Anfrage enthält zu viel Text. Verkleinern Sie die Auswahl."
+    "aiInputBudget": "Die KI-Anfrage enthält zu viel Text. Verkleinern Sie die Auswahl.",
+    "pluginServiceUnavailable": "Dieser Plugin-Dienst wurde geändert oder beendet. Aktualisiere die Liste.",
+    "pluginServiceForbidden": "Dieser Aufruf überschreitet die gemeinsamen Berechtigungen oder den Buchzugriff.",
+    "pluginServiceCycle": "Dieser Aufruf wurde gestoppt, um eine Aufrufschleife zu vermeiden.",
+    "pluginServiceTimeout": "Die Zeit wurde überschritten. Prüfe das Ergebnis, bevor du Änderungen wiederholst.",
+    "pluginServiceResultInvalid": "Der Dienst hat ein ungültiges Ergebnis geliefert. Prüfe den Zustand vor einem erneuten Versuch.",
+    "pluginServiceFailed": "Der Plugin-Dienst ist fehlgeschlagen. Prüfe das Ergebnis vor dem Wiederholen von Änderungen.",
+    "pluginServiceDataChanged": "Das Dokument wurde geändert. Lies es vor dem Speichern erneut."
   },
   "crashPrompt": {
     "title": "ReadAware hatte beim letzten Mal ein Problem",
     "body": "Ein Diagnosebericht hilft, es zu beheben.",
     "action": "Prüfen & senden"
+  },
+  "pluginServices": {
+    "approvalNote": "Diese Berechtigungen gelten nur für diesen Aufruf. Der Buchzugriff umfasst das gesamte Buch einschließlich ungelesener Inhalte; globaler Zugriff umfasst alle Bücher. Änderungen und externe Aktionen lassen sich möglicherweise nicht rückgängig machen."
   }
 }

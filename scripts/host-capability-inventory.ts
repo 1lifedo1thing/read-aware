@@ -55,6 +55,8 @@ const agentMap = pairs([
   ["open_resource_external", "SYS12"],
   ["list_installed_plugins", "EXT11"],
   ["list_plugin_contributions", "EXT11 MORE06"],
+  ["list_plugin_services", "MORE06 CON02 CON03"],
+  ["call_plugin_service", "MORE06 CON02 CON03"],
   ["copy_to_clipboard", "SYS08"],
   ["export_text_file", "SYS10"],
   ["open_external_url", "SYS12"],
@@ -119,6 +121,7 @@ const pluginMap = pairs([
   ["domains.conversations.commands.requestTurn domains.conversations.commands.cancelTurnRequest domains.conversations.queries.turnRequests", "AI03"],
   ["services.plugins.list services.plugins.observe", "EXT11"],
   ["services.plugins.contributions services.plugins.observeContributions", "EXT11 MORE06"],
+  ["services.plugins.listServices services.plugins.callService", "MORE06 CON02 CON03 CON06"],
   ["services.ui.openExternal", "SYS12"],
   ["services.ui.window.snapshot services.ui.window.observe services.ui.window.control", "SYS17"],
   ["services.ui.reader.image.snapshot services.ui.reader.image.observe services.ui.reader.image.control", "READ12"],
@@ -370,6 +373,10 @@ export function collectInventory(): Inventory[] {
   assertUniqueSourceKeys();
   inventory.length = 0;
   const { deps } = createInMemoryDeps();
+  deps.pluginServices = {
+    list: async () => ({ services: [], total: 0, nextOffset: null }),
+    call: async () => { throw new Error("Inventory must not execute services"); },
+  };
   for (const scope of [{ kind:"global", threadId:"audit" }, { kind:"book", bookId:"audit" }] as const) {
     const tools = buildAgentTools(scope as never, deps);
     for (const tool of tools) add(`Agent ${scope.kind}`, tool.name, agentMap[tool.name]);
