@@ -1,3 +1,4 @@
+import { actorOrigin, causalActor, type DomainActor } from "../platform/domain-actor";
 import { AppError, normalizeConversationTarget, normalizeConversationTurnRequest,
   type ConversationTarget, type ConversationTurnRequest, type ConversationTurnRequestSnapshot,
   type ConversationTurnRequestStatus, type EventOrigin } from "@read-aware/core";
@@ -9,7 +10,7 @@ type Surface = {
   retry(): boolean;
 };
 type Entry = {
-  snapshot: ConversationTurnRequestSnapshot; owner: EventOrigin; surface?: Surface;
+  snapshot: ConversationTurnRequestSnapshot; owner: EventOrigin; origin: DomainActor; surface?: Surface;
   generation?: object; request?: ConversationTurnRequest; release(): void;
 };
 export type PendingConversationTurn = ConversationTurnRequestSnapshot & { owner: EventOrigin; text?: string };
@@ -18,7 +19,7 @@ export type PendingConversationTurn = ConversationTurnRequestSnapshot & { owner:
 export class ConversationTurnRequests {
   private surfaces = new Map<string, Surface>();
   private entries = new Map<string, Entry>();
-  constructor(private changed: () => void, private lifetimeMs = 300_000) {}
+  constructor(private changed: (source: DomainActor) => void, private lifetimeMs = 300_000) {}
 
   bind(input: ConversationTarget, surface: Surface) {
     const target = normalizeConversationTarget(input);
@@ -38,7 +39,9 @@ export class ConversationTurnRequests {
     return entry ? { ...this.copy(entry), owner: entry.owner,
       ...(entry.request && "text" in entry.request ? { text: entry.request.text } : {}) } : null;
   }
-  request(owner: EventOrigin, input: ConversationTurnRequest, signal?: AbortSignal, onRetire?: () => void) {
+  request(origin: DomainActor, input: ConversationTurnRequest, signal?: AbortSignal, onRetire?: () => void) {
+    origin = causalActor(origin);
+    const owner = actorOrigin(origin);
     const request = normalizeConversationTurnRequest(input);
     signal?.throwIfAborted();
     const surface = this.surfaces.get(request.target.id), state = surface?.state();
@@ -53,26 +56,29 @@ export class ConversationTurnRequests {
     const id = crypto.randomUUID();
     const cancel = () => this.finish(entry, "cancelled");
     const timer = setTimeout(() => this.finish(entry, "expired"), this.lifetimeMs);
-    const entry: Entry = { owner, surface, generation: state.generation, request,
+    const entry: Entry = { owner, origin, surface, generation: state.generation, request,
       snapshot: { id, target: request.target, action: request.action, status: "pending", createdAt: Date.now() },
       release: () => { clearTimeout(timer); signal?.removeEventListener("abort", cancel); onRetire?.(); } };
     this.entries.set(id, entry);
     signal?.addEventListener("abort", cancel, { once: true });
-    this.changed();
+    this.changed(origin);
     return this.copy(entry);
   }
-  cancel(owner: EventOrigin, id: string) {
+  cancel(origin: DomainActor, id: string) {
+    origin = causalActor(origin);
+    const owner = actorOrigin(origin);
     const entry = typeof id === "string" ? this.entries.get(id) : undefined;
     if (!entry || entry.owner !== owner) throw new AppError("ui/invalid-target", "Conversation request does not exist for this actor");
-    this.finish(entry, "cancelled");
+    this.finish(entry, "cancelled", origin);
     return this.copy(entry);
   }
-  cancelTarget(targetId: string) {
-    for (const entry of this.entries.values()) if (entry.snapshot.target.id === targetId) this.finish(entry, "cancelled");
+  cancelTarget(targetId: string, origin: DomainActor = "system") {
+    origin = causalActor(origin);
+    for (const entry of this.entries.values()) if (entry.snapshot.target.id === targetId) this.finish(entry, "cancelled", origin);
   }
   dismiss(id: string) {
     const entry = this.entries.get(id);
-    if (entry) this.finish(entry, "dismissed");
+    if (entry) this.finish(entry, "dismissed", "user");
   }
   accept(id: string) {
     const entry = this.entries.get(id), request = entry?.request;
@@ -92,12 +98,12 @@ export class ConversationTurnRequests {
       if (!accepted) throw new AppError("ui/unavailable", "Conversation could not accept the request");
       entry.snapshot.status = request.action === "draft" ? "adopted" : "started";
     } catch (error) { entry.snapshot.status = "failed"; throw error; }
-    finally { this.changed(); }
+    finally { this.changed(causalActor("user")); }
     return this.copy(entry);
   }
-  private finish(entry: Entry, status: ConversationTurnRequestStatus) {
+  private finish(entry: Entry, status: ConversationTurnRequestStatus, origin: DomainActor = entry.origin) {
     if (!entry.request) return;
-    this.retire(entry); entry.snapshot.status = status; this.changed();
+    this.retire(entry); entry.snapshot.status = status; this.changed(causalActor(origin));
   }
   private retire(entry: Entry) {
     entry.release(); entry.request = undefined; entry.surface = undefined; entry.generation = undefined;

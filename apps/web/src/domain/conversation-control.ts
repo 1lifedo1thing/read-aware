@@ -1,7 +1,7 @@
-import { actorOrigin, type DomainActor } from "../platform/domain-actor";
+import { actorFromEvent, copyEventCause, causalActor, type DomainActor } from "../platform/domain-actor";
 import { AppError, normalizeConversationTarget, type ConversationTarget, type ConversationRuntimeSnapshot } from "@read-aware/core";
 import { getDefaultStore } from "jotai";
-import { activeGlobalThreadAtom, selectGlobalThread } from "../features/ai/state/global-thread";
+import { activeGlobalThreadSourceAtom, activeGlobalThreadAtom, selectGlobalThread } from "../features/ai/state/global-thread";
 import { clearConversation, listGlobalThreads, newGlobalThreadId } from "../features/ai/lib/conversation-store";
 import { getBookRecord } from "../features/library/lib/library-db";
 import { emitAppEvent } from "../platform/app-events";
@@ -11,11 +11,11 @@ import { ConversationTurnRequests } from "./conversation-turn-requests";
 
 const log = createLogger("conversation-control");
 export const conversationRuntime = new ConversationRuntime(error => log.warn("Conversation lifecycle failed", error));
-export const conversationTurnRequests = new ConversationTurnRequests(() => conversationRuntime.changed());
+export const conversationTurnRequests = new ConversationTurnRequests(origin => conversationRuntime.changed(origin));
 const store = getDefaultStore();
-store.sub(activeGlobalThreadAtom, () => conversationRuntime.changed());
+store.sub(activeGlobalThreadSourceAtom, () => conversationRuntime.changed(actorFromEvent(store.get(activeGlobalThreadSourceAtom))));
 export function conversationSnapshot(): ConversationRuntimeSnapshot {
-  return { revision: conversationRuntime.revision, selectedGlobalThreadId: store.get(activeGlobalThreadAtom), sessions: conversationRuntime.snapshot() };
+  return copyEventCause(conversationRuntime.provenance(), { revision: conversationRuntime.revision, selectedGlobalThreadId: store.get(activeGlobalThreadAtom), sessions: conversationRuntime.snapshot() });
 }
 export function observeConversations(handler: (value: ConversationRuntimeSnapshot) => unknown) {
   const publish = () => {
@@ -32,9 +32,9 @@ export function conversationCommands(origin: DomainActor) {
   };
   return {
     requestTurn: async (input: import("@read-aware/core").ConversationTurnRequest, signal?: AbortSignal, onRetire?: () => void) =>
-      conversationTurnRequests.request(actorOrigin(origin), input, signal, onRetire),
+      conversationTurnRequests.request(origin, input, signal, onRetire),
     cancelTurnRequest: async (id: string, signal?: AbortSignal) => {
-      signal?.throwIfAborted(); return conversationTurnRequests.cancel(actorOrigin(origin), id);
+      signal?.throwIfAborted(); return conversationTurnRequests.cancel(origin, id);
     },
     createThread: async (signal?: AbortSignal) => {
       signal?.throwIfAborted(); const id = newGlobalThreadId();
@@ -50,23 +50,25 @@ export function conversationCommands(origin: DomainActor) {
       return { status: "completed" as const, target };
     },
     stop: async (input: ConversationTarget, signal?: AbortSignal) => {
+      const source = causalActor(origin);
       const target = await validate(input, signal);
-      conversationTurnRequests.cancelTarget(target.id);
-      await conversationRuntime.quiesce(target.id, async () => {}, signal);
+      conversationTurnRequests.cancelTarget(target.id, source);
+      await conversationRuntime.quiesce(target.id, async () => {}, signal, source);
       return { status: "completed" as const, target };
     },
     clear: async (input: ConversationTarget, signal?: AbortSignal) => {
+      const source = causalActor(origin);
       const target = await validate(input, signal);
-      conversationTurnRequests.cancelTarget(target.id);
+      conversationTurnRequests.cancelTarget(target.id, source);
       await conversationRuntime.quiesce(target.id, async () => {
         // Lazy import avoids making the Agent's port construction import its own runtime.
         const { discardAgentThread } = await import("../features/ai/agent/agent-runtime");
         signal?.throwIfAborted();
-        await discardAgentThread(target.kind, target.id, origin);
+        await discardAgentThread(target.kind, target.id, source);
         signal?.throwIfAborted();
-        await clearConversation(target.id, origin, signal);
-        emitAppEvent("conversations-changed", {}, origin);
-      }, signal);
+        await clearConversation(target.id, source, signal);
+        emitAppEvent("conversations-changed", {}, source);
+      }, signal, source);
       return { status: "completed" as const, target };
     },
   };

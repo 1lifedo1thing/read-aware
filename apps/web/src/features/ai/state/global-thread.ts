@@ -1,4 +1,4 @@
-import type { DomainActor } from "../../../platform/domain-actor";
+import { actorFromEvent, causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { atom, getDefaultStore } from "jotai";
 import { onAppEvent } from "../../../platform/app-events";
 import { afterLocalKVWrites, localKV } from "../../../platform/local-store";
@@ -25,15 +25,17 @@ function readStoredThreadId(): string {
   return isGlobalThreadId(value) ? value : GLOBAL_CONVERSATION_ID;
 }
 
-const baseAtom = atom<string>(readStoredThreadId());
+const baseAtom = atom(stampEventCause({ id: readStoredThreadId() }, "system"));
+export const activeGlobalThreadSourceAtom = atom(get => get(baseAtom));
 const log = createLogger("global-thread");
 
 export function selectGlobalThread(threadId: string, origin: DomainActor = "user", signal?: AbortSignal): Promise<void> {
+  const source = causalActor(origin);
   const target = normalizeConversationTarget({ kind: "global", id: threadId });
   return afterLocalKVWrites(async () => {
     signal?.throwIfAborted();
-    await localKV.setItemAsync(ACTIVE_THREAD_KEY, JSON.stringify(target.id), origin);
-    getDefaultStore().set(baseAtom, target.id);
+    await localKV.setItemAsync(ACTIVE_THREAD_KEY, JSON.stringify(target.id), source);
+    getDefaultStore().set(baseAtom, stampEventCause({ id: target.id }, source));
   });
 }
 
@@ -44,7 +46,7 @@ export function selectGlobalThread(threadId: string, origin: DomainActor = "user
  * 两者隔着 AppHeader 的组件树，靠这个 atom 会合。
  */
 export const activeGlobalThreadAtom = atom(
-  (get) => get(baseAtom),
+  (get) => get(baseAtom).id,
   (_get, _set, threadId: string) => {
     void selectGlobalThread(threadId).catch(error => log.warn("Could not select conversation", error));
   },
@@ -52,7 +54,7 @@ export const activeGlobalThreadAtom = atom(
 
 // A pull moved the roamed selection: re-seed from the freshly-overlaid KV.
 // Lifetime listener — the Context page may not be mounted when it lands.
-onAppEvent("roaming-preferences-changed", ({ keys }) => {
-  if (!keys.includes(ACTIVE_THREAD_KEY)) return;
-  getDefaultStore().set(baseAtom, readStoredThreadId());
+onAppEvent("roaming-preferences-changed", event => {
+  if (!event.keys.includes(ACTIVE_THREAD_KEY)) return;
+  getDefaultStore().set(baseAtom, stampEventCause({ id: readStoredThreadId() }, actorFromEvent(event)));
 });

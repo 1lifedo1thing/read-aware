@@ -1,3 +1,4 @@
+import { causalActor, actorCause, eventCause } from "../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { ConversationRuntime } from "./conversation-runtime";
 
@@ -7,11 +8,12 @@ test("conversation clear blocks new turns and waits for the aborted turn's final
   const work = new Promise<void>(resolve => { finish = resolve; });
   runtime.track("thread-a", () => { aborted = true; }, work);
   expect(runtime.canStart("thread-a")).toBe(false);
-  const clearing = runtime.quiesce("thread-a", async () => { cleared = true; });
+  const origin = causalActor("plugin:clear");
+  const clearing = runtime.quiesce("thread-a", async () => { cleared = true; }, undefined, origin);
   expect(aborted).toBe(true); expect(cleared).toBe(false);
   await expect(runtime.quiesce("thread-a", async () => {})).rejects.toMatchObject({ code: "ui/unavailable" });
   expect(runtime.canStart("thread-b")).toBe(true);
-  finish(); await clearing; expect(cleared).toBe(true); expect(runtime.canStart("thread-a")).toBe(true); expect(errors).toEqual([]);
+  finish(); await clearing; expect(eventCause(runtime.provenance())).toBe(actorCause(origin)); expect(cleared).toBe(true); expect(runtime.canStart("thread-a")).toBe(true); expect(errors).toEqual([]);
 });
 test("old session disposal cannot remove a replacement and cancelled/failed drains do not clear", async () => {
   const runtime = new ConversationRuntime(() => {}), changes: number[] = [];
