@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { AppError, type ReadingEmphasisSnapshot } from "@read-aware/core";
+import { actorCause, causalActor, eventCause, reactionActor } from "../platform/domain-actor";
 import { ReadingSessionController } from "./reading-session-controller";
 import { ReadingEmphasisController, type ReadingEmphasisAdapter, type EmphasisPresentation } from "./reading-emphasis-controller";
 
@@ -22,20 +23,27 @@ function fixture(deadline = 1000) {
 
 test("owned batches validate before commit, copy inputs, never navigate, and remove only their own revision", async () => {
   const f = fixture(), a = f.controller.forOwner({}), b = f.controller.forOwner({});
+  const source = reactionActor("plugin:emphasis", "mark-follow", actorCause(causalActor("user"))!);
+  const observations: ReadingEmphasisSnapshot[][] = [];
+  const stop = a.observe(value => { observations.push(value); });
   const before = f.reading.snapshot(), input = { ranges: [structuredClone(range)] };
   let done!: () => void;
   f.adapter.validate = () => new Promise(resolve => { done = resolve; });
-  const pending = a.put(input); input.ranges[0].cfi = "mutated";
+  const pending = a.put(input, undefined, undefined, source); input.ranges[0].cfi = "mutated";
   expect(a.list()).toEqual([]); expect(f.drawings.size).toBe(0);
   done(); const first = (await pending).emphasis;
+  expect(eventCause(observations.at(-1)!)).toBe(actorCause(source));
+  expect(() => reactionActor("plugin:emphasis", "mark-follow", eventCause(observations.at(-1)!)!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
   expect(f.drawings.get(first.id)).toMatchObject({ ranges: [range] });
   expect(f.reading.snapshot()).toEqual(before); expect(b.list()).toEqual([]);
   expect(await b.remove({ id: first.id, expectedRevision: first.revision })).toMatchObject({ removed: false });
   f.adapter.validate = async () => {};
   const second = (await a.put({ ranges: [range], id: first.id, expectedRevision: first.revision, style: "underline" })).emphasis;
   await expect(a.remove({ id: first.id, expectedRevision: first.revision })).rejects.toMatchObject({ code: "reader/superseded" });
-  expect(await a.remove({ id: second.id, expectedRevision: second.revision })).toMatchObject({ removed: true });
+  expect(await a.remove({ id: second.id, expectedRevision: second.revision }, undefined, undefined, source)).toMatchObject({ removed: true });
   expect(await a.remove({ id: second.id, expectedRevision: second.revision })).toMatchObject({ removed: false });
+  expect(eventCause(observations.at(-1)!)).toBe(actorCause(source));
+  expect(observations.at(-1)).toEqual([]); stop();
   expect(f.drawings.size).toBe(0); f.release();
 });
 

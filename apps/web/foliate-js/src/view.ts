@@ -246,7 +246,7 @@ export class View extends HTMLElement {
         return this.#renderer?.getContents().find((content): content is Content & { overlayer: Overlayer } =>
             content.index === index && !!content.overlayer)
     }
-    #createOverlayer({ doc, index }: LoadDetail) {
+    #createOverlayer({ doc, index, context }: LoadDetail) {
         const overlayer = new Overlayer()
         const previous = this.#overlayerClickHandlers.get(doc)
         if (previous) doc.removeEventListener('click', previous)
@@ -259,7 +259,7 @@ export class View extends HTMLElement {
         doc.addEventListener('click', onClick, { signal: this.#events.signal })
         for (const item of this.#searchResults.get(index) ?? [])
             void this.addAnnotation(item).catch((error: unknown) => console.error('Could not restore search highlight', error))
-        this.#emit('create-overlay', { index })
+        this.#emit('create-overlay', { index, context })
         return overlayer
     }
     async showAnnotation({ value }: Annotation) {

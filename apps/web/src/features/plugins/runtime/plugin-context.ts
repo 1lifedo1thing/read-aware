@@ -1540,8 +1540,8 @@ export function buildPluginContext(
           return track(() => ({ dispose: reading.events.observeEmphasis(snapshot => {
             try {
               for (const item of snapshot) objectAccess.assertReturnedBook(item.bookId, "reading.events.observeEmphasis");
-              handler(snapshot);
-            } catch (error) { log.debug?.("reading emphasis outside book grant", error); }
+            } catch (error) { log.debug?.("reading emphasis outside book grant", error); return; }
+            return handler(snapshot);
           }) }));
         },
         observeTime: (query, handler) => {
@@ -1598,7 +1598,7 @@ export function buildPluginContext(
             if (!bookId || input.ranges.some(range => range.bookId !== bookId)) throw pluginObjectAccessDenied("reading.commands.putEmphasis");
             return scopedCommand(bookId, "reading.commands.putEmphasis", signal => rawCommands.putEmphasis(input, signal, guard), options, true, value => objectAccess.assertReturnedBook(value.emphasis.bookId, "reading.commands.putEmphasis"));
           },
-          removeEmphasis: denyPluginBookOperation("reading.commands.removeEmphasis"),
+          removeEmphasis: (input, guard, options) => scopedCurrentCommand("reading.commands.removeEmphasis", signal => rawCommands.removeEmphasis(input, signal, guard), options, true),
           selectRange: (range, guard, options) => scopedCommand(range.bookId, "reading.commands.selectRange", signal => rawCommands.selectRange(range, signal, guard), options, true, value => {
             if (value.selection?.range) objectAccess.assertReturnedBook(value.selection.range.bookId, "reading.commands.selectRange");
           }),

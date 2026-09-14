@@ -815,7 +815,7 @@ var HOST_COMMAND_IDS = [...PARAMETERLESS_HOST_COMMAND_IDS, "open-book", "open-co
 // ../../packages/core/src/domains.ts
 var DOMAIN_CATALOG = {
   library: { version: "1.31.0", pluginAccess: ["read", "write"] },
-  reading: { version: "2.22.0", pluginAccess: ["read", "write"] },
+  reading: { version: "2.23.0", pluginAccess: ["read", "write"] },
   annotations: { version: "2.2.0", pluginAccess: ["read", "write"] },
   conversations: { version: "1.5.0", pluginAccess: ["read", "write"] },
   settings: { version: "1.10.0", pluginAccess: [] },
@@ -1174,8 +1174,10 @@ function emphasisSnapshot(ctx, marks) {
 async function emphasisList(ctx) {
   return { ...emphasisSnapshot(ctx, await ctx.domains.reading.queries.emphasis()), live: { subscribe: (channel) => {
     let revision = 0;
-    return ctx.domains.reading.events.observeEmphasis(async (marks) => {
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: emphasisSnapshot(ctx, marks) });
+    return ctx.domains.reading.events.observeEmphasis(async (marks, delivery) => {
+      if (delivery?.reaction?.status === "cycle")
+        return;
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: emphasisSnapshot(ctx, marks) });
     });
   } } };
 }

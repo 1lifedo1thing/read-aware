@@ -42,6 +42,36 @@ test("event contexts retain the activation's permissions and resource owner, and
   } finally { runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups(); readingRuntime.closed(); owner.mockRestore(); }
 });
 
+test("book-scoped emphasis can clear its own marks through a live reaction and rejects feedback loops", async () => {
+  const { readingEmphasis } = await import("../../../domain/reading-emphasis");
+  const range = { bookId: "b", contentVersion: "v", cfi: "epubcfi(/6/2)" };
+  const session = readingRuntime.begin("b");
+  const detach = readingRuntime.attach(session, { navigate: async () => range, step: async () => range }, range);
+  const unbind = readingEmphasis.bind(session, "b", "v", { validate: async () => {},
+    put: (_id, ranges) => ({ attached: ranges.length, status: "attached" }), remove: () => {}, observe: () => () => {}, retire: () => {} });
+  const make = (id: string, bookId: string) => buildPluginContext({ id, name: id, version: "1", schemaVersion: 1, requires: {}, permissions: ["reading:write"] }, "1", [], { mode: "book", bookId });
+  const runtime = make("emphasis-reaction", "b"), foreign = make("emphasis-foreign", "other"), done = deferred();
+  let failure: unknown, cycle = false;
+  try {
+    runtime.lifecycle.promote(); foreign.lifecycle.promote();
+    const subscription = runtime.context.domains.reading!.events.observeEmphasis(async (marks, delivery) => {
+      if (delivery?.reaction?.status === "cycle") { cycle = true; return; }
+      if (!marks.length) return;
+      try {
+        await Promise.resolve();
+        await runtime.context.withEvent(delivery).domains.reading!.commands!.removeEmphasis({ id: marks[0]!.id, expectedRevision: marks[0]!.revision });
+      } catch (error) { failure = error; }
+      finally { done.resolve(); }
+    });
+    const receipt = await runtime.context.domains.reading!.commands!.putEmphasis({ ranges: [range] });
+    await done.promise;
+    expect(failure).toBeUndefined(); expect(cycle).toBe(true);
+    expect(await runtime.context.domains.reading!.queries.emphasis()).toEqual([]);
+    await expect(foreign.context.domains.reading!.commands!.removeEmphasis({ id: receipt.emphasis.id, expectedRevision: receipt.emphasis.revision })).rejects.toMatchObject({ code: "plugin/object-access-denied" });
+    subscription.dispose();
+  } finally { unbind(); detach(); runtime.lifecycle.stop(); foreign.lifecycle.stop(); await Promise.all([runtime.lifecycle.drainCleanups(), foreign.lifecycle.drainCleanups()]); readingRuntime.closed(); }
+});
+
 test("scoped reading observation retains its lease across await and rejects its own feedback", async () => {
   const runtime = buildPluginContext({ id: "session-reaction", name: "Session", version: "1", schemaVersion: 1, requires: {},
     permissions: ["reading:write"] }, "1", [], { mode: "book", bookId: "b" });

@@ -31,6 +31,8 @@ test("live mark lists publish attachment changes and release their observer", as
   const ctx = { locale: "en", domains: { reading: { queries: { emphasis: async () => [] }, events: {
     observeEmphasis: (handler: typeof observe) => { observe = handler; return { dispose: () => { stopped = true; } }; },
   } } }, services: { ui: { publishView: async (_channel: unknown, value: typeof published[number]) => { published.push(value); } } } } as unknown as PluginContext;
+  ctx.withEvent = ((_event: unknown, registration?: { dispose(): void | Promise<void> }) => registration
+    ? Object.assign({}, ctx, { dispose: async () => { await registration.dispose(); } }) : ctx) as PluginContext["withEvent"];
   const view = await emphasisList(ctx), disposable = await view.live!.subscribe("channel" as never);
   await observe([{ id: "one", revision: 1, sessionId: "s", bookId: "b", count: 2, attached: 1, status: "partial", style: "highlight" }]);
   await observe([]);

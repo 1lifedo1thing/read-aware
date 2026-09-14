@@ -1,6 +1,7 @@
 import { AppError, normalizeReadingEmphasisRef, normalizeReadingEmphasisWrite, type BookTextRange,
   type ReadingEmphasisWrite, type ReadingEmphasisRef, type ReadingEmphasisSnapshot, type ReadingEmphasisStyle,
   type ReadingEmphasisReceipt, type ReadingEmphasisRemoval, type ReadingSessionGuard } from "@read-aware/core";
+import { actorFromEvent, causalActor, copyEventCause, mergeEventCauses, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import type { ReadingSessionController } from "./reading-session-controller";
 
 export type EmphasisPresentation = Pick<ReadingEmphasisSnapshot, "attached" | "status" | "errorCode">;
@@ -8,7 +9,7 @@ export type ReadingEmphasisAdapter = {
   validate(ranges: BookTextRange[], signal: AbortSignal): Promise<void>;
   put(id: string, ranges: BookTextRange[], style: ReadingEmphasisStyle): EmphasisPresentation;
   remove(id: string): void;
-  observe(handler: (id: string, state: EmphasisPresentation) => void): () => void;
+  observe(handler: (id: string, state: EmphasisPresentation, origin?: DomainActor) => void): () => void;
   retire(): void;
 };
 type Binding = { sessionId: string; bookId: string; contentVersion: string; adapter: ReadingEmphasisAdapter; dispose(): void };
@@ -22,6 +23,7 @@ export class ReadingEmphasisController {
   private pending = new Set<Pending>();
   private observers = new Map<object, Set<(value: ReadingEmphasisSnapshot[]) => unknown>>();
   private revision = 0;
+  private sources = new WeakMap<object, object>();
   constructor(private readonly reading: Pick<ReadingSessionController, "snapshot" | "observe">,
     private readonly report: (error: unknown) => void, private readonly deadlineMs = 30000) {}
 
@@ -37,18 +39,18 @@ export class ReadingEmphasisController {
       for (const work of this.pending) work.controller.abort(new AppError("reader/superseded", "Emphasis renderer retired"));
       const owners = new Set([...this.entries.values()].map(entry => entry.owner));
       this.entries.clear(); adapter.retire();
-      for (const owner of owners) this.changed(owner);
+      for (const owner of owners) this.changed(owner, actorFromEvent(this.reading.snapshot()));
     };
     binding.dispose = dispose;
     unobserve = this.reading.observe(state => {
       if (state.sessionId !== sessionId || state.status !== "ready" || state.location?.contentVersion !== contentVersion) dispose();
     });
     if (this.binding !== binding) { unobserve(); return dispose; }
-    unpaint = adapter.observe((id, presentation) => {
+    unpaint = adapter.observe((id, presentation, origin) => {
       const entry = this.entries.get(id);
       if (this.binding !== binding || !entry) return;
-      entry.snapshot = { ...entry.snapshot, errorCode: undefined, ...presentation };
-      this.changed(entry.owner);
+      entry.snapshot = stampEventCause({ ...entry.snapshot, errorCode: undefined, ...presentation }, origin ?? actorFromEvent(this.reading.snapshot()));
+      this.changed(entry.owner, actorFromEvent(entry.snapshot));
     });
     return dispose;
   }
@@ -56,9 +58,11 @@ export class ReadingEmphasisController {
   forOwner(owner: object, lifetime?: AbortSignal, trackCleanup?: (work: Promise<void>) => void) {
     const assertLive = () => lifetime?.throwIfAborted();
     const dispose = () => {
+      const removed = [...this.entries.values()].filter(entry => entry.owner === owner).map(entry => entry.snapshot);
       for (const work of this.pending) if (work.owner === owner) work.controller.abort(lifetime?.reason);
       for (const [id, entry] of this.entries) if (entry.owner === owner) { this.binding?.adapter.remove(id); this.entries.delete(id); }
-      this.changed(owner); this.observers.delete(owner);
+      if (removed.length) this.changed(owner, actorFromEvent(mergeEventCauses(removed, {})));
+      this.observers.delete(owner); this.sources.delete(owner);
     };
     lifetime?.addEventListener("abort", dispose, { once: true });
     return {
@@ -68,24 +72,24 @@ export class ReadingEmphasisController {
         this.deliver(owner, handler);
         return () => { set.delete(handler); if (!set.size) this.observers.delete(owner); };
       },
-      put: (input: ReadingEmphasisWrite, signal?: AbortSignal, guard?: ReadingSessionGuard) => {
-        assertLive(); return this.put(owner, input, signal, guard, trackCleanup);
+      put: (input: ReadingEmphasisWrite, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system") => {
+        assertLive(); return this.put(owner, input, signal, guard, trackCleanup, causalActor(origin));
       },
-      remove: async (input: ReadingEmphasisRef, signal?: AbortSignal, guard?: ReadingSessionGuard): Promise<ReadingEmphasisRemoval> => {
+      remove: async (input: ReadingEmphasisRef, signal?: AbortSignal, guard?: ReadingSessionGuard, origin: DomainActor = "system"): Promise<ReadingEmphasisRemoval> => {
         assertLive(); signal?.throwIfAborted(); const ref = normalizeReadingEmphasisRef(input);
         const entry = this.owned(owner, ref.id);
         if (!entry) return { status: "completed", id: ref.id, removed: false };
         this.checkGuard(guard);
         if (entry.snapshot.revision !== ref.expectedRevision) throw new AppError("reader/superseded", "Emphasis was replaced");
         for (const work of this.pending) if (work.owner === owner && work.id === ref.id) work.controller.abort(new AppError("reader/superseded", "Emphasis was removed"));
-        this.binding!.adapter.remove(ref.id); this.entries.delete(ref.id); this.changed(owner);
+        this.binding!.adapter.remove(ref.id); this.entries.delete(ref.id); this.changed(owner, causalActor(origin));
         return { status: "completed", id: ref.id, removed: true };
       },
     };
   }
 
   private async put(owner: object, value: ReadingEmphasisWrite, signal?: AbortSignal, guard?: ReadingSessionGuard,
-    trackCleanup?: (work: Promise<void>) => void): Promise<ReadingEmphasisReceipt> {
+    trackCleanup?: (work: Promise<void>) => void, origin: DomainActor = "system"): Promise<ReadingEmphasisReceipt> {
     signal?.throwIfAborted(); const input = normalizeReadingEmphasisWrite(value); this.checkGuard(guard);
     const binding = this.binding;
     if (!binding) throw new AppError("reader/unavailable", "No emphasis renderer is attached");
@@ -118,9 +122,10 @@ export class ReadingEmphasisController {
       const presentation = binding.adapter.put(id, input.ranges, input.style);
       const snapshot: ReadingEmphasisSnapshot = { id, revision: ++this.revision, sessionId: binding.sessionId,
         bookId: binding.bookId, style: input.style, count: input.ranges.length, ...presentation };
+      stampEventCause(snapshot, origin);
       this.entries.set(id, { owner, ranges: input.ranges, snapshot });
       const receipt: ReadingEmphasisReceipt = { status: "completed", emphasis: structuredClone(snapshot) };
-      this.changed(owner); return receipt;
+      this.changed(owner, origin); return receipt;
     })();
     // A cancelled RPC may finish before native reads. Keep their physical lifetime
     // tracked so plugin retirement cannot declare drained while a source is leased.
@@ -151,8 +156,8 @@ export class ReadingEmphasisController {
     if (guard?.bookId !== undefined && guard.bookId !== state.bookId || guard?.sessionId !== undefined && guard.sessionId !== state.sessionId) throw new AppError("reader/superseded", "Emphasis session changed");
     if (state.status !== "ready") throw new AppError("reader/unavailable", "A ready reader is required");
   }
-  private changed(owner: object): void { for (const handler of [...this.observers.get(owner) ?? []]) this.deliver(owner, handler); }
+  private changed(owner: object, origin: DomainActor): void { this.sources.set(owner, stampEventCause({}, origin)); for (const handler of [...this.observers.get(owner) ?? []]) this.deliver(owner, handler); }
   private deliver(owner: object, handler: (value: ReadingEmphasisSnapshot[]) => unknown): void {
-    try { Promise.resolve(handler(this.list(owner))).catch(this.report); } catch (error) { this.report(error); }
+    try { Promise.resolve(handler(copyEventCause(this.sources.get(owner) ?? this.reading.snapshot(), this.list(owner)))).catch(this.report); } catch (error) { this.report(error); }
   }
 }

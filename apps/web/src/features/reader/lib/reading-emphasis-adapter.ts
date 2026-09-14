@@ -3,6 +3,8 @@ import type { EmphasisPresentation, ReadingEmphasisAdapter } from "../../../doma
 import { readBookRange } from "../../library/lib/book-range";
 import { loadContentNavigation, loadDrawFns, type FoliateOverlayer, type FoliateView } from "./foliate-engine";
 import { renderedBookRange } from "./rendered-book-range";
+import { readingRenderActor } from "./reading-render-context";
+import { actorFromEvent, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { createLogger } from "../../../platform/logger";
 
 type Mark = { ranges: BookTextRange[]; style: ReadingEmphasisStyle; attached: Array<{ overlayer: FoliateOverlayer; key: string }>; state: EmphasisPresentation };
@@ -10,7 +12,7 @@ const log = createLogger("reading-emphasis-renderer");
 
 export async function createReadingEmphasisAdapter(view: FoliateView): Promise<ReadingEmphasisAdapter> {
   const draw = await loadDrawFns(), { resolveTextQuote } = await loadContentNavigation();
-  const marks = new Map<string, Mark>(), observers = new Set<(id: string, state: EmphasisPresentation) => void>();
+  const marks = new Map<string, Mark>(), observers = new Set<(id: string, state: EmphasisPresentation, origin?: DomainActor) => void>();
   let retired = false, queued = false;
   const remove = (attached: Mark["attached"]) => { for (const mark of attached) mark.overlayer.remove(mark.key); };
   const paint = (id: string, ranges: BookTextRange[], style: ReadingEmphasisStyle): Mark => {
@@ -33,11 +35,16 @@ export async function createReadingEmphasisAdapter(view: FoliateView): Promise<R
     return { ranges, style, attached, state: { attached: attached.length,
       status: attached.length === ranges.length ? "attached" : attached.length ? "partial" : "deferred" } };
   };
-  const refresh = () => {
-    if (retired || queued) return;
+  let pendingSource: object | undefined;
+  const refresh = (event: Event) => {
+    if (retired) return;
+    const detail = (event as CustomEvent<object>).detail;
+    const source = stampEventCause({}, readingRenderActor(detail && typeof detail === "object" ? detail : event, "system"));
+    pendingSource = pendingSource ? mergeEventCauses([pendingSource, source], {}) : source;
+    if (queued) return;
     queued = true;
     queueMicrotask(() => {
-      queued = false; if (retired) return;
+      queued = false; const source = pendingSource!; pendingSource = undefined; if (retired) return;
       for (const [id, previous] of marks) {
         let next: Mark;
         try { next = paint(id, previous.ranges, previous.style); }
@@ -46,7 +53,7 @@ export async function createReadingEmphasisAdapter(view: FoliateView): Promise<R
           if (previous.state.status !== "error" || previous.state.errorCode !== next.state.errorCode) log.warn("Could not reattach temporary emphasis", error);
         }
         remove(previous.attached); marks.set(id, next);
-        if (JSON.stringify(previous.state) !== JSON.stringify(next.state)) for (const observer of observers) observer(id, next.state);
+        if (JSON.stringify(previous.state) !== JSON.stringify(next.state)) for (const observer of observers) observer(id, next.state, actorFromEvent(source));
       }
     });
   };

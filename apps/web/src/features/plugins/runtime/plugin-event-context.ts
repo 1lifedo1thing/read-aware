@@ -46,6 +46,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
     [context.domains.annotations?.events, "observe", 1],
     [context.domains.memory?.events, "observe", 1],
     [context.domains.reading?.events, "observeSession", 0],
+    [context.domains.reading?.events, "observeEmphasis", 0],
     [context.domains.library?.events, "observeInvalidation", 0],
     [context.domains.conversations?.events, "observeInvalidation", 0],
     [context.services.storage, "observeDocuments", 1],

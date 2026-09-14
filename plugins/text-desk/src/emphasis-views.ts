@@ -44,8 +44,9 @@ function emphasisSnapshot(ctx: PluginContext, marks: ReadingEmphasisSnapshot[]):
 export async function emphasisList(ctx: PluginContext): Promise<PluginListView & Pick<PluginView, "live">> {
   return { ...emphasisSnapshot(ctx, await ctx.domains.reading!.queries.emphasis()), live: { subscribe: channel => {
     let revision = 0;
-    return ctx.domains.reading!.events.observeEmphasis(async marks => {
-      await ctx.services.ui.publishView(channel, { revision: ++revision, view: emphasisSnapshot(ctx, marks) });
+    return ctx.domains.reading!.events.observeEmphasis(async (marks, delivery) => {
+      if (delivery?.reaction?.status === "cycle") return;
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: emphasisSnapshot(ctx, marks) });
     });
   } } };
 }

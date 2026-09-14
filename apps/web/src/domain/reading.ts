@@ -138,8 +138,8 @@ export function createReadingDomain(origin: DomainActor, lifetime?: AbortSignal,
   };
 
   const commands: ReadingCommands = {
-    putEmphasis: emphasis.put,
-    removeEmphasis: emphasis.remove,
+    putEmphasis: (input, signal, guard) => emphasis.put(input, signal, guard, origin),
+    removeEmphasis: (input, signal, guard) => emphasis.remove(input, signal, guard, origin),
     selectRange: (range, signal, guard) => readingRuntime.selectRange(range, signal, guard, origin),
     clearSelection: (expectedId, signal, guard) => readingRuntime.clearSelection(expectedId, signal, guard, origin),
     setControls: (visible, signal, guard) => readingRuntime.setControls(visible, signal, guard, origin),

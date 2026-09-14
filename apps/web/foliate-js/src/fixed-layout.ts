@@ -183,6 +183,7 @@ export class FixedLayout extends HTMLElement {
     async #createFrame(
         { index, src: srcOption }: { index: number; src?: string | PageSource },
         parent: ShadowRoot | HTMLDivElement = this.#root,
+        context = this.#positionContext,
     ): Promise<FixedFrame> {
         const srcOptionIsString = typeof srcOption === 'string'
         const src = srcOptionIsString ? srcOption : srcOption?.src
@@ -254,7 +255,7 @@ export class FixedLayout extends HTMLElement {
                 // READAWARE: a lazily rendered page (PDF) has no text layer at
                 // load time — there would be nothing for a CFI to anchor to.
                 // Those frames get their overlayer once rendering finishes.
-                if (!onZoom) this.#createOverlayer(frame)
+                if (!onZoom) this.#createOverlayer(frame, context)
                 resolve(frame)
             }, { once: true })
             iframe.src = src
@@ -263,12 +264,12 @@ export class FixedLayout extends HTMLElement {
     // READAWARE: hand the view a fresh overlayer for this frame and mount its
     // element. Re-callable: a re-rendered page needs its annotations rebuilt
     // from their CFIs, because the ranges pointed into the discarded DOM.
-    #createOverlayer(frame: FixedFrame) {
+    #createOverlayer(frame: FixedFrame, context: object) {
         if (!frame?.doc) return
         this.dispatchEvent(new CustomEvent('create-overlayer', {
             detail: {
                 doc: frame.doc,
-                index: frame.index,
+                index: frame.index, context,
                 attach: (overlayer: Overlayer) => {
                     frame.overlayer = overlayer
                     frame.overlay.replaceChildren(overlayer.element)
@@ -311,7 +312,7 @@ export class FixedLayout extends HTMLElement {
                 this.dispatchEvent(new CustomEvent('rendered', { detail: { context, index: frame.index } }))
                 // The render rebuilt the text layer, so the overlayer's
                 // ranges are detached — start it over.
-                this.#createOverlayer(frame)
+                this.#createOverlayer(frame, context)
             })
             .catch((error: unknown) => {
                 // A cancelled older render no longer owns this frame's verdict.
@@ -443,7 +444,7 @@ export class FixedLayout extends HTMLElement {
     // READAWARE: create (or reuse) the frames of one spread. Creations are
     // memoized by promise so a background preload and a user navigation
     // arriving at the same spread share one set of iframes.
-    #framesFor(spreadIndex: number): Promise<SpreadFrames> {
+    #framesFor(spreadIndex: number, context: object): Promise<SpreadFrames> {
         const pending = this.#framePromises.get(spreadIndex)
         if (pending) return pending
         const spread = this.#spreads[spreadIndex]
@@ -455,15 +456,15 @@ export class FixedLayout extends HTMLElement {
             if (spread.center) {
                 const index = book.sections.indexOf(spread.center)
                 const src = await spread.center?.load?.()
-                frames = { center: await this.#createFrame({ index, src }) }
+                frames = { center: await this.#createFrame({ index, src }, this.#root, context) }
             } else {
                 const indexL = spread.left ? book.sections.indexOf(spread.left) : -1
                 const indexR = spread.right ? book.sections.indexOf(spread.right) : -1
                 const srcL = await spread.left?.load?.()
                 const srcR = await spread.right?.load?.()
                 frames = {
-                    left: await this.#createFrame({ index: indexL, src: srcL }),
-                    right: await this.#createFrame({ index: indexR, src: srcR }),
+                    left: await this.#createFrame({ index: indexL, src: srcL }, this.#root, context),
+                    right: await this.#createFrame({ index: indexR, src: srcR }, this.#root, context),
                 }
             }
             // Closing the renderer or switching layouts invalidates in-flight
@@ -577,7 +578,7 @@ export class FixedLayout extends HTMLElement {
                 if (token !== this.#preloadToken) return
                 if (spreadIndex === this.#index) continue
                 try {
-                    const frames = await this.#framesFor(spreadIndex)
+                    const frames = await this.#framesFor(spreadIndex, context)
                     if (token !== this.#preloadToken) return
                     const spread = this.#spreads[spreadIndex]
                     const side = spread.center ? 'center'
@@ -698,7 +699,7 @@ export class FixedLayout extends HTMLElement {
             const section = spread.center ?? spread.left ?? spread.right
             const src = await section?.load?.()
             const frame = await this.#createFrame(
-                { index: sectionIndex, src }, entry.slot)
+                { index: sectionIndex, src }, entry.slot, context)
             // The stack may have been torn down (mode switch), or this entry
             // demoted (scrolled far away), while the iframe was loading — a
             // demoted creation must NOT resurrect itself, or the frame
@@ -1132,7 +1133,7 @@ export class FixedLayout extends HTMLElement {
             return
         }
         this.#index = index
-        const frames = await this.#framesFor(index)
+        const frames = await this.#framesFor(index, context)
         // READAWARE: a newer navigation landed while the frames were loading —
         // it owns the display now.
         if (this.#index !== index || this.#navigation !== navigation) return

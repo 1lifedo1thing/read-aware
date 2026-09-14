@@ -27,6 +27,17 @@
 
 ## 当前交接
 
+- C04临时强调链：reading2.23 observeEmphasis带独立反应凭证，列表包含空快照的宿主来源。
+  领域put/remove把每次调用actor交给共享owner控制器；提交、清除、阅读会话退休和渲染附着反馈
+  保留来源，异步验证/取消与物理排空沿旧路径。Foliate create-overlay补透传context，固定页
+  创建/预加载/PDF重绘显式传递上下文；强调适配器合并同批渲染通知来源后再发布实际状态变化。
+  书域观察返回回调Promise以保持凭证；受限插件清除改走当前书围栏及既有owner/revision校验，
+  修复能创建但不能清除自己临时标记的断点。Text Desk0.31用事件上下文更新实时标记列表，用户动作仍独立。
+  控制器关键取消/失败/所有权与来源检查、公共受限创建→事件反应→清除→cycle及跨书拒绝通过；
+  Text Desk类型/构建与既有视图流程、Foliate严格编译和Web/desktop类型通过。
+  日志 `/tmp/readaware-emphasis-cause-check.log`、`/tmp/readaware-emphasis-public-check.log`、`/tmp/readaware-emphasis-cause-types.log`。
+  实际Tauri强调覆盖层/Worker反馈仍待集中验收；observeTime、环境观察、安装状态和其余来源缺口继续保留。
+
 - C04设置目录来源：settings observation现在直接订阅已签发来源的字体/主题/命令/菜单动作/
   阅读模式注册表数组，不再把shortcutEnvironment等派生对象的变化改为新系统来源。
   当前阅读模式选择增加宿主私有来源封装；模式控制器通知带入actor，清除选择保留阅读会话来源，
