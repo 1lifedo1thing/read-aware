@@ -6,6 +6,8 @@ use rusqlite::OptionalExtension;
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ChangeSelector {
+    #[serde(default)]
+    pub projection_key: Option<String>,
     pub event_types: Vec<String>,
     pub settings_keys: Vec<String>,
     pub book_id: Option<String>,
@@ -23,11 +25,11 @@ pub struct CapabilityChangePage { changes: Vec<CapabilityChange>, cursor: String
 fn invalid() -> CommandError { CommandError::new("changes/invalid-query", "Invalid change selector") }
 fn expired() -> CommandError { CommandError::new("changes/cursor-expired", "Change history or cursor expired; capture a new baseline") }
 fn selector_key(owner: &str, selector: &mut ChangeSelector) -> Result<String, CommandError> {
-    if owner.is_empty() || owner.len()>512 || selector.event_types.len()>256 || selector.settings_keys.len()>256
+    if selector.projection_key.as_ref().is_some_and(|s| s.len()>32768) || owner.is_empty() || owner.len()>512 || selector.event_types.len()>256 || selector.settings_keys.len()>256
         || selector.event_types.iter().chain(selector.settings_keys.iter()).any(|s| s.is_empty() || s.len()>512)
         || selector.book_id.as_ref().is_some_and(|s| s.is_empty() || s.len()>1024)
         || selector.plugin_id.as_ref().is_some_and(|s| s.is_empty() || s.len()>128) { return Err(invalid()); }
-    if selector.book_id.is_some() && !selector.settings_keys.is_empty() { return Err(invalid()); }
+    if selector.book_id.is_some() && selector.settings_keys.iter().any(|key| !["read-aware-reader-settings", "read-aware-reader-overrides"].contains(&key.as_str())) { return Err(invalid()); }
     selector.event_types.sort(); selector.event_types.dedup(); selector.settings_keys.sort(); selector.settings_keys.dedup();
     Ok(serde_json::to_string(selector)?)
 }
@@ -64,7 +66,7 @@ pub(crate) fn capability_changes_read_inner(conn: &mut Connection, owner: &str, 
           WHERE seq>?1 AND (
             (kind='event' AND operation IN (SELECT value FROM json_each(?2)) AND (?4 IS NULL OR book_id=?4))
             OR (kind='document' AND plugin_id=?5 AND (?4 IS NULL OR book_id=?4))
-            OR (kind='setting' AND entity_id IN (SELECT value FROM json_each(?3)))) ORDER BY seq LIMIT ?6")?;
+            OR (kind='setting' AND entity_id IN (SELECT value FROM json_each(?3)) AND (?4 IS NULL OR book_id=?4 OR entity_id='read-aware-reader-settings'))) ORDER BY seq LIMIT ?6")?;
         let values = stmt.query_map(params![after,event_types,settings,selector.book_id,selector.plugin_id,limit+1], |r| Ok((r.get::<_,i64>(0)?, CapabilityChange {
             kind:r.get(1)?,operation:r.get(2)?,entity_id:r.get(3)?,book_id:r.get(4)?,plugin_id:r.get(5)?,detail:r.get(6)?,event_id:r.get(7)?,
         })))?.collect::<Result<Vec<_>,_>>()?; values
@@ -92,7 +94,7 @@ mod tests {
         let dir=tempfile::tempdir().unwrap(); let path=dir.path().join("changes.sqlite");
         let mut conn=Connection::open(&path).unwrap();
         apply_connection_pragmas(&conn).unwrap(); register_sql_functions(&conn).unwrap(); run_migrations(&mut conn).unwrap();
-        let selector=ChangeSelector { event_types:vec![],settings_keys:vec![],book_id:Some("book".into()),plugin_id:Some("sample".into()) };
+        let selector=ChangeSelector { projection_key:None,event_types:vec![],settings_keys:vec![],book_id:Some("book".into()),plugin_id:Some("sample".into()) };
         let token=capability_changes_open_inner(&mut conn,"plugin:sample",selector.clone()).unwrap();
         {
             let tx=conn.transaction().unwrap();
@@ -108,6 +110,26 @@ mod tests {
         let mut changed=selector.clone(); changed.book_id=Some("outside".into());
         assert_eq!(capability_changes_read_inner(&mut conn,"plugin:sample",changed,&token,20).err().unwrap().code,"changes/cursor-scope-changed");
         assert!(capability_changes_read_inner(&mut conn,"plugin:sample",selector.clone(),&page.cursor,20).unwrap().changes.is_empty());
+        let events=ChangeSelector { projection_key:None,event_types:vec!["note.updated".into(),"book.merged".into(),"memory.revised".into()],settings_keys:vec![],book_id:Some("book".into()),plugin_id:None };
+        let event_cursor=capability_changes_open_inner(&mut conn,"plugin:sample",events.clone()).unwrap();
+        conn.execute("INSERT INTO domain_events(id,type,hlc_wall_ms,hlc_counter,hlc_device,aggregate_type,aggregate_id,payload_json,created_at) VALUES
+          ('note-create','note.created',10,0,'device','annotation','note','{\"noteId\":\"note\",\"bookId\":\"book\",\"body\":\"SECRET_NOTE\"}','now'),
+          ('note-edit','note.updated',11,0,'device','annotation','note','{\"noteId\":\"note\",\"body\":\"NEW_SECRET\"}','now'),
+          ('memory-create','memory.promoted',12,0,'device','memory','memory','{\"memoryId\":\"memory\",\"scope\":\"book\",\"bookId\":\"book\"}','now'),
+          ('memory-move','memory.revised',13,0,'device','memory','memory','{\"memoryId\":\"memory\",\"scope\":\"user\"}','now'),
+          ('merge','book.merged',14,0,'device','book','book','{\"keepId\":\"book\",\"mergedId\":\"outside\"}','now')",[]).unwrap();
+        let routed=capability_changes_read_inner(&mut conn,"plugin:sample",events,&event_cursor,20).unwrap();
+        assert_eq!(routed.changes.len(),3);
+        assert!(routed.changes.iter().all(|change| change.book_id.as_deref()==Some("book")));
+        assert!(!serde_json::to_string(&routed).unwrap().contains("SECRET"));
+        let settings=ChangeSelector { projection_key:None,event_types:vec![],settings_keys:vec!["read-aware-reader-overrides".into()],book_id:Some("book".into()),plugin_id:None };
+        let setting_cursor=capability_changes_open_inner(&mut conn,"plugin:sample",settings.clone()).unwrap();
+        conn.execute("INSERT INTO app_kv(key,value_json,updated_at) VALUES('read-aware-reader-overrides','{\"book\":{\"scope\":\"book\"},\"outside\":{\"scope\":\"book\"}}','now')",[]).unwrap();
+        let settings_page=capability_changes_read_inner(&mut conn,"plugin:sample",settings.clone(),&setting_cursor,20).unwrap();
+        assert_eq!(settings_page.changes.len(),1);
+        conn.execute("UPDATE app_kv SET value_json='{\"book\":{\"scope\":\"book\"},\"outside\":{\"scope\":\"global\"}}' WHERE key='read-aware-reader-overrides'",[]).unwrap();
+        assert!(capability_changes_read_inner(&mut conn,"plugin:sample",settings,&settings_page.cursor,20).unwrap().changes.is_empty());
+        conn.execute("INSERT INTO domain_events(id,type,hlc_wall_ms,hlc_counter,hlc_device,payload_json,created_at) VALUES('string-pref','preference.changed',15,0,'device','{\"key\":\"read-aware-default-mark-color\",\"value\":\"yellow\"}','now')",[]).unwrap();
         conn.execute("INSERT INTO domain_events(id,type,hlc_wall_ms,hlc_counter,hlc_device,payload_json,created_at) VALUES('reset-event','book.removed',1,0,'device','{}','now')",[]).unwrap();
         conn.execute("DELETE FROM domain_events WHERE id='reset-event'",[]).unwrap();
         assert_eq!(capability_changes_read_inner(&mut conn,"plugin:sample",selector,&page.cursor,20).err().unwrap().code,"changes/cursor-expired");

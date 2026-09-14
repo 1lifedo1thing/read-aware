@@ -81,3 +81,5 @@ export * from "./plugin-services";
 export * from "./transactions";
 
 export * from "./jobs";
+
+export * from "./changes";

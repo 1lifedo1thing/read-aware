@@ -839,6 +839,76 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
       CREATE TRIGGER capability_change_retention AFTER INSERT ON capability_changes BEGIN
         DELETE FROM capability_changes WHERE seq<=NEW.seq-100000;
       END;"),
+    (49, "capability_change_book_routes", "DROP TRIGGER capability_change_event_insert;
+      CREATE TRIGGER capability_change_event_insert AFTER INSERT ON domain_events BEGIN
+        UPDATE capability_change_state SET epoch=lower(hex(randomblob(24))) WHERE NEW.type IN ('backup.restoreChunk','backup.restored');
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id,detail,event_id)
+        SELECT 'event',NEW.type,COALESCE(NEW.aggregate_id,NEW.id),CASE
+        WHEN NEW.type LIKE 'memory.%' THEN
+          (SELECT CASE WHEN json_extract(e.payload_json,'$.scope')='book' THEN json_extract(e.payload_json,'$.bookId') END
+           FROM domain_events e WHERE e.aggregate_id=NEW.aggregate_id AND e.type IN ('memory.promoted','memory.revised')
+             AND json_type(e.payload_json,'$.scope') IS NOT NULL ORDER BY e.hlc_wall_ms DESC,e.hlc_counter DESC,e.hlc_device DESC LIMIT 1)
+        WHEN NEW.type='context.bundlePublished' THEN CASE WHEN json_extract(NEW.payload_json,'$.content.scope.kind')='book' THEN json_extract(NEW.payload_json,'$.content.scope.id') END
+        ELSE COALESCE(json_extract(NEW.payload_json,'$.bookId'),
+          CASE WHEN NEW.aggregate_type='book' THEN NEW.aggregate_id END,
+          (SELECT json_extract(e.payload_json,'$.bookId') FROM domain_events e
+           WHERE e.aggregate_id=NEW.aggregate_id AND e.type IN ('highlight.created','note.created','ask.recorded','aiConversation.started')
+           ORDER BY e.hlc_wall_ms DESC,e.hlc_counter DESC,e.hlc_device DESC LIMIT 1),
+          (SELECT book_id FROM annotations WHERE id=NEW.aggregate_id),
+          (SELECT json_extract(e.payload_json,'$.bookId') FROM domain_events e WHERE e.type='aiConversation.started'
+            AND e.aggregate_id=json_extract(NEW.payload_json,'$.conversationId') ORDER BY e.hlc_wall_ms DESC,e.hlc_counter DESC,e.hlc_device DESC LIMIT 1),
+          (SELECT id FROM books WHERE id=json_extract(NEW.payload_json,'$.conversationId')))
+      END,NEW.aggregate_type,NEW.id WHERE NEW.type<>'book.merged';
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id,detail,event_id)
+        SELECT 'event',NEW.type,value,value,'book',NEW.id FROM json_each(json_array(json_extract(NEW.payload_json,'$.keepId'),json_extract(NEW.payload_json,'$.mergedId')))
+          WHERE NEW.type='book.merged' AND type='text';
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id,detail,event_id)
+        SELECT 'event',NEW.type,NEW.aggregate_id,json_extract(e.payload_json,'$.bookId'),NEW.aggregate_type,NEW.id
+          FROM domain_events e WHERE NEW.type='memory.revised' AND json_type(NEW.payload_json,'$.scope') IS NOT NULL
+          AND e.id=(SELECT p.id FROM domain_events p WHERE p.id<>NEW.id AND p.aggregate_id=NEW.aggregate_id AND p.type IN ('memory.promoted','memory.revised')
+            AND json_type(p.payload_json,'$.scope') IS NOT NULL ORDER BY p.hlc_wall_ms DESC,p.hlc_counter DESC,p.hlc_device DESC LIMIT 1)
+          AND json_extract(e.payload_json,'$.scope')='book'
+          AND (json_extract(NEW.payload_json,'$.scope')<>'book' OR json_extract(e.payload_json,'$.bookId') IS NOT json_extract(NEW.payload_json,'$.bookId'));
+        INSERT INTO capability_changes(kind,operation,entity_id)
+        SELECT 'setting','invalidate',json_extract(NEW.payload_json,'$.key') WHERE NEW.type='preference.changed' AND json_extract(NEW.payload_json,'$.key')<>'read-aware-reader-overrides';
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id)
+        SELECT 'setting','invalidate','read-aware-reader-overrides',j.key FROM (SELECT key FROM json_each((CASE WHEN NEW.type='preference.changed' AND json_extract(NEW.payload_json,'$.key')='read-aware-reader-overrides' AND json_type(NEW.payload_json,'$.value')='object' THEN json_extract(NEW.payload_json,'$.value') ELSE '{}' END)) UNION SELECT key FROM json_each(COALESCE((SELECT CASE WHEN json_type(p.payload_json,'$.value')='object' THEN json_extract(p.payload_json,'$.value') ELSE '{}' END FROM domain_events p WHERE p.id<>NEW.id AND p.type='preference.changed' AND json_extract(p.payload_json,'$.key')='read-aware-reader-overrides' ORDER BY p.hlc_wall_ms DESC,p.hlc_counter DESC,p.hlc_device DESC LIMIT 1),'{}'))) j
+        WHERE NEW.type='preference.changed' AND json_extract(NEW.payload_json,'$.key')='read-aware-reader-overrides'
+          AND (SELECT value FROM json_each(COALESCE((SELECT CASE WHEN json_type(p.payload_json,'$.value')='object' THEN json_extract(p.payload_json,'$.value') ELSE '{}' END FROM domain_events p WHERE p.id<>NEW.id AND p.type='preference.changed' AND json_extract(p.payload_json,'$.key')='read-aware-reader-overrides' ORDER BY p.hlc_wall_ms DESC,p.hlc_counter DESC,p.hlc_device DESC LIMIT 1),'{}')) WHERE key=j.key) IS NOT (SELECT value FROM json_each((CASE WHEN NEW.type='preference.changed' AND json_extract(NEW.payload_json,'$.key')='read-aware-reader-overrides' AND json_type(NEW.payload_json,'$.value')='object' THEN json_extract(NEW.payload_json,'$.value') ELSE '{}' END)) WHERE key=j.key);
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id,detail,event_id)
+        SELECT 'event',NEW.type,b.id,b.id,'book',NEW.id FROM books b
+        WHERE NEW.type IN ('collection.renamed','collection.removed') AND b.collection_id=json_extract(NEW.payload_json,'$.collectionId');
+        UPDATE capability_changes SET book_id=COALESCE((SELECT keep_id FROM book_aliases WHERE merged_id=book_id),book_id)
+          WHERE event_id=NEW.id AND NEW.type<>'book.merged';
+      END;
+      DROP TRIGGER capability_change_setting_insert;
+      CREATE TRIGGER capability_change_setting_insert AFTER INSERT ON app_kv WHEN (NEW.key IN ('read-aware-app-settings','read-aware-general-settings','read-aware-shelf-view','read-aware-shortcuts','read-aware-reader-settings','read-aware-content-typography','read-aware-ai-preferences','read-aware-menu-config','read-aware-ai-config','read-aware-default-mark-color','read-aware-update-channel') OR NEW.key GLOB 'read-aware-plugin.*.settings') BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id) VALUES('setting','invalidate',NEW.key);
+      END;
+      CREATE TRIGGER capability_change_book_setting_insert AFTER INSERT ON app_kv WHEN NEW.key='read-aware-reader-overrides' BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id)
+        SELECT 'setting','invalidate',NEW.key,k.key FROM (SELECT key FROM json_each('{}') UNION SELECT key FROM json_each(NEW.value_json)) k
+        WHERE (SELECT value FROM json_each('{}') WHERE key=k.key) IS NOT (SELECT value FROM json_each(NEW.value_json) WHERE key=k.key);
+      END;
+      DROP TRIGGER capability_change_setting_update;
+      CREATE TRIGGER capability_change_setting_update AFTER UPDATE ON app_kv WHEN (NEW.key IN ('read-aware-app-settings','read-aware-general-settings','read-aware-shelf-view','read-aware-shortcuts','read-aware-reader-settings','read-aware-content-typography','read-aware-ai-preferences','read-aware-menu-config','read-aware-ai-config','read-aware-default-mark-color','read-aware-update-channel') OR NEW.key GLOB 'read-aware-plugin.*.settings') AND OLD.value_json IS NOT NEW.value_json BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id) VALUES('setting','invalidate',NEW.key);
+      END;
+      CREATE TRIGGER capability_change_book_setting_update AFTER UPDATE ON app_kv WHEN NEW.key='read-aware-reader-overrides' BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id)
+        SELECT 'setting','invalidate',NEW.key,k.key FROM (SELECT key FROM json_each(OLD.value_json) UNION SELECT key FROM json_each(NEW.value_json)) k
+        WHERE (SELECT value FROM json_each(OLD.value_json) WHERE key=k.key) IS NOT (SELECT value FROM json_each(NEW.value_json) WHERE key=k.key);
+      END;
+      DROP TRIGGER capability_change_setting_delete;
+      CREATE TRIGGER capability_change_setting_delete AFTER DELETE ON app_kv WHEN (OLD.key IN ('read-aware-app-settings','read-aware-general-settings','read-aware-shelf-view','read-aware-shortcuts','read-aware-reader-settings','read-aware-content-typography','read-aware-ai-preferences','read-aware-menu-config','read-aware-ai-config','read-aware-default-mark-color','read-aware-update-channel') OR OLD.key GLOB 'read-aware-plugin.*.settings') BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id) VALUES('setting','invalidate',OLD.key);
+      END;
+      CREATE TRIGGER capability_change_book_setting_delete AFTER DELETE ON app_kv WHEN OLD.key='read-aware-reader-overrides' BEGIN
+        INSERT INTO capability_changes(kind,operation,entity_id,book_id)
+        SELECT 'setting','invalidate',OLD.key,k.key FROM (SELECT key FROM json_each(OLD.value_json) UNION SELECT key FROM json_each('{}')) k
+        WHERE (SELECT value FROM json_each(OLD.value_json) WHERE key=k.key) IS NOT (SELECT value FROM json_each('{}') WHERE key=k.key);
+      END;
+      UPDATE capability_change_state SET epoch=lower(hex(randomblob(24))) WHERE id=1;"),
 ];
 
 /// Rebuild the annotation FTS index from the table. Required after any VACUUM
