@@ -6,7 +6,8 @@ import {
   pluginThemesAtom,
   pluginsReadyAtom,
 } from "../../plugins/state/plugin-store";
-import { isPluginRef, toPluginRef } from "../../plugins/lib/plugin-theme";
+import { isPluginRef } from "../../plugins/lib/plugin-theme";
+import { useRegisteredContribution } from "../../plugins/hooks/useRegisteredContribution";
 import type { RegisteredPluginTheme } from "../../plugins/lib/plugin-types";
 import { applyAppSkin, getAppSkinSnapshot } from "../lib/app-skin";
 
@@ -26,10 +27,10 @@ import { applyAppSkin, getAppSkinSnapshot } from "../lib/app-skin";
  */
 export function useAppearance(): void {
   const appSettings = useAtomValue(appSettingsAtom);
-  const pluginThemes = useAtomValue(pluginThemesAtom);
+  const theme = useRegisteredContribution(pluginThemesAtom, isPluginRef(appSettings.theme) ? appSettings.theme.slice(7) : "");
   const pluginsReady = useAtomValue(pluginsReadyAtom);
   const setResolvedTheme = useSetAtom(resolvedAppThemeAtom);
-  const previousTheme = useRef<string | undefined>(undefined);
+  const previous = useRef<{ preference: string; theme: typeof theme; ready: boolean; origin: DomainActor } | undefined>(undefined);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -42,10 +43,7 @@ export function useAppearance(): void {
       let bootPending = false;
 
       if (isPluginRef(pref)) {
-        skin =
-          pluginThemes.find(
-            (theme) => theme.app && toPluginRef(theme.pluginId, theme.id) === pref,
-          ) ?? null;
+        skin = theme.value?.app ? theme.value : null;
         const snapshot = skin ? null : getAppSkinSnapshot();
         if (skin) {
           resolved = skin.polarity;
@@ -68,16 +66,19 @@ export function useAppearance(): void {
       root.dataset.theme = resolved;
       root.style.colorScheme = resolved;
       setResolvedTheme(resolved, origin);
-      applyAppSkin(skin, bootPending);
+      applyAppSkin(skin, bootPending, origin);
     };
 
-    const source = previousTheme.current !== appSettings.theme ? actorFromEvent(appSettings) : causalActor("system");
-    previousTheme.current = appSettings.theme;
+    const before = previous.current;
+    const source = before?.preference !== appSettings.theme ? actorFromEvent(appSettings)
+      : before.theme !== theme ? actorFromEvent(theme)
+      : before.ready !== pluginsReady ? causalActor("system") : before.origin;
+    previous.current = { preference: appSettings.theme, theme, ready: pluginsReady, origin: source };
     apply(source);
     const systemChanged = () => apply(causalActor("system"));
     media.addEventListener("change", systemChanged);
     return () => media.removeEventListener("change", systemChanged);
-  }, [appSettings.theme, pluginThemes, pluginsReady, setResolvedTheme]);
+  }, [appSettings.theme, theme, pluginsReady, setResolvedTheme]);
 
   useEffect(() => {
     const root = document.documentElement;

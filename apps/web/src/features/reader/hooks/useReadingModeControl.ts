@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { useAtomValue } from "jotai";
 import { useLocale } from "../../../i18n";
 import { readingRuntime } from "../../../domain/reading-runtime";
@@ -6,6 +6,8 @@ import { afterLocalKVWrites, onLocalKVCommit } from "../../../platform/local-sto
 import { actorFromEvent, causalActor, eventCause, type DomainActor } from "../../../platform/domain-actor";
 import { pluginSettingsKey } from "../../plugins/lib/plugin-settings";
 import { readerModesAtom, setActiveReaderMode, releaseActiveReaderMode } from "../../plugins/state/plugin-store";
+import { selectContribution } from "../../plugins/state/contribution-registry";
+import { useRegisteredContribution } from "../../plugins/hooks/useRegisteredContribution";
 import { resolvePluginText } from "../../plugins/lib/plugin-i18n";
 import { ReadingModeController } from "../lib/reading-mode-controller";
 import { readTextUnitModeState, readTextUnitModeSettings, ReadingModeConfigurationWrites, isTextUnitModeStateCompatible, textUnitModeStateKey } from "../lib/text-unit-mode-state";
@@ -26,11 +28,13 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
   const configurationWrites = useMemo(() => new ReadingModeConfigurationWrites(controller.configurationConfirmed), [controller]);
   const request = useSyncExternalStore(controller.observe, controller.requested);
   const snapshot = useSyncExternalStore(controller.observe, controller.snapshot);
+  const selected = useRegisteredContribution(readerModesAtom, request.modeKey ?? "");
+  const previousEnvironment = useRef<{ controller: ReadingModeController; modes: typeof modes; key: string | null; selected: typeof selected } | undefined>(undefined);
   const mode = modes.find(mode => mode.kind === "text-unit-navigator" && mode.key === request.modeKey) ?? null;
   const descriptors = useMemo(() => modes.filter(mode => mode.kind === "text-unit-navigator").map(mode => ({
     key: mode.key, label: `${mode.pluginName}: ${resolvePluginText(mode.copy.title, locale)}`, defaultUnitId: mode.defaultUnitId,
     units: mode.units.map(unit => ({ id: unit.id, label: resolvePluginText(unit.label, locale) })),
-    implementation: mode.segmentText,
+    implementation: selectContribution(readerModesAtom, mode.key).getSnapshot(),
   })), [modes, locale]);
   const persistRequest = useCallback(() => {
     const requested = controller.requested();
@@ -49,8 +53,15 @@ export function useReadingModeControl(bookId: string, supported: boolean) {
     if (controller.retire()) persistRequest();
   }, [controller, persistRequest]);
   useEffect(() => {
-    controller.environment(descriptors, supported, controller.generation() === 0 ? controller.requested().origin : "system");
-  }, [controller, descriptors, supported]);
+    const previous = previousEnvironment.current;
+    const initial = previous?.controller !== controller;
+    const origin = initial ? controller.requested().origin
+      : previous.modes !== modes && eventCause(modes) ? actorFromEvent(modes) : causalActor("system");
+    const selectionOrigin = !initial && previous.key === request.modeKey && previous.selected !== selected
+      ? actorFromEvent(selected) : origin;
+    previousEnvironment.current = { controller, modes, key: request.modeKey, selected };
+    controller.environment(descriptors, supported, origin, selectionOrigin);
+  }, [controller, descriptors, modes, request.modeKey, selected, supported]);
   useEffect(() => {
     const publish = () => setActiveReaderMode(controller, controller.requested().modeKey);
     publish();

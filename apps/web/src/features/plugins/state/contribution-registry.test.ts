@@ -1,10 +1,37 @@
 import { describe, expect, test } from "bun:test";
-import { createContributionRegistry } from "./contribution-registry";
+import { createContributionRegistry, selectContribution } from "./contribution-registry";
 import { getDefaultStore } from "jotai";
 import { withContributionActivation } from "./contribution-activation";
 import { actorCause, causalActor, eventCause } from "../../../platform/domain-actor";
 
 describe("contribution registry", () => {
+  test("selected entries retain exact replacement and removal sources across batched unrelated publications", () => {
+    const registry = createContributionRegistry("commands", { catalog: false });
+    const item = { key: "active:main", pluginId: "active" };
+    const selected = selectContribution(registry.atom, item.key);
+    const initial = selected.getSnapshot();
+    const source = causalActor("plugin:active"), replacementSource = causalActor("plugin:replacement"), retirement = causalActor("user");
+    const old = registry.register(item, source);
+    expect(eventCause(selected.getSnapshot())).toBe(actorCause(source));
+    expect(selected.getSnapshot()).not.toBe(initial);
+    const replacement = registry.register(item, replacementSource);
+    const active = selected.getSnapshot();
+    expect(active.value).toBe(item);
+    expect(eventCause(active)).toBe(actorCause(replacementSource));
+    const unrelated = registry.register({ key: "other:main", pluginId: "other" });
+    expect(selected.getSnapshot()).toBe(active);
+    expect(() => withContributionActivation(() => {
+      registry.register({ ...item }, causalActor("plugin:failed"));
+      throw Error("failed");
+    })).toThrow("failed");
+    expect(selected.getSnapshot()).toBe(active);
+    // The selector may be read after multiple publications and before its
+    // React subscription is installed; only the selected key supplies a cause.
+    replacement.dispose(retirement); unrelated.dispose(); old.dispose();
+    expect(selected.getSnapshot().value).toBeNull();
+    expect(eventCause(selected.getSnapshot())).toBe(actorCause(retirement));
+    expect(eventCause(active)).toBe(actorCause(replacementSource));
+  });
   test("settled publications keep operation sources, retire rolled-back causes and ignore no-op updates", () => {
     const registry = createContributionRegistry<{ key: string; pluginId: string; value: number }>("commands", { catalog: false });
     const store = getDefaultStore(), seen: object[] = [];

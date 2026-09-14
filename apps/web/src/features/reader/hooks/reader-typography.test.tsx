@@ -19,11 +19,13 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
   const { DEFAULT_READER_PREFERENCES, READER_PREFERENCES_KEY } = await import("../../settings/lib/reader-settings");
   const { READER_OVERRIDES_KEY } = await import("../../settings/lib/reader-overrides");
   const { APP_SETTINGS_KEY } = await import("../../settings/lib/app-settings");
-  const { localKV, flushLocalKV } = await import("../../../platform/local-store");
+  const { localKV, flushLocalKV, onLocalKVCommit } = await import("../../../platform/local-store");
   const { buildPluginContext } = await import("../../plugins/runtime/plugin-context");
   const { getDefaultStore } = await import("jotai");
   const { appSettingsAtom } = await import("../../../state/ui");
   const { emitAppEvent } = await import("../../../platform/app-events");
+  const { registerFontContribution, registerThemeContribution, markPluginsReady } = await import("../../plugins/state/plugin-store");
+  const { BUILTIN_READER_PALETTES } = await import("../../settings/lib/reader-theme");
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
   test("public settings reactions reach CSS and layout through native KV and the committed appearance projection", async () => {
@@ -40,8 +42,9 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
         return Promise.resolve();
       } } });
     const root = createRoot(dom.window.document.getElementById("root")!);
-    const rendered: { css: string; context: object }[] = [], layouts: object[] = [];
+    const rendered: { css: string; context: object }[] = [], layouts: object[] = [], pageColors: object[] = [];
     const renderer = { setStyles(css: string, context: object) { rendered.push({ css, context }); },
+      setPageColors(_colors: object, context: object) { pageColors.push(context); },
       setLayoutAttributes(_values: object, context: object) { layouts.push(context); } } as unknown as FoliateRenderer;
     const events = new EventTarget();
     const viewRef = { current: { renderer, lastLocation: { cfi: "current", fraction: 0.5, section: { current: 0, total: 1 } },
@@ -67,7 +70,13 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
     }
     const runtime = buildPluginContext({ id: "typography", name: "Typography", version: "1", schemaVersion: 1, requires: {},
       settingsAccess: { read: ["reading.*", "appearance.*"], write: ["reading.*", "appearance.*"] } }, "1", []);
+    const contributions: { dispose(): void }[] = [];
+    const skinCommits: object[] = [];
+    const offSkinCommit = onLocalKVCommit(commit => {
+      if (commit.entries.some(entry => entry.key === "read-aware-app-skin")) skinCommits.push(commit);
+    });
     runtime.lifecycle.promote();
+    markPluginsReady();
     try {
       await localKV.setItemAsync(READER_PREFERENCES_KEY, JSON.stringify({ ...DEFAULT_READER_PREFERENCES, fontFamily: "system:Arial", theme: "auto" }));
       await localKV.setItemAsync(READER_OVERRIDES_KEY, "{}");
@@ -138,6 +147,73 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
         expect(appearance.effective.fontSize).toBe(previousSize);
         expect(actorCause(readingRenderActor(rendered.at(-1)!.context))?.root).toBe(actorCause(origin)!.root);
       });
+      const font = { id: "serif", key: "typography:serif", pluginId: "typography", pluginName: "Typography", name: "Serif",
+        family: "Selected Serif", files: [{ path: "font.woff2" }] };
+      const skin = { id: "skin", key: "typography:skin", pluginId: "typography", pluginName: "Typography", name: "Skin",
+        polarity: "dark" as const, app: { paper: "#101010" }, reader: { palette: BUILTIN_READER_PALETTES.dark } };
+      let selectedFont!: ReturnType<typeof registerFontContribution>, selectedTheme!: ReturnType<typeof registerThemeContribution>;
+      await act(async () => {
+        selectedFont = registerFontContribution(font); selectedTheme = registerThemeContribution(skin);
+        contributions.push(selectedFont, selectedTheme);
+        await runtime.context.domains.settings.commands.update([
+          { path: "reading.fontFamily", value: "plugin:typography:serif", target: { kind: "global" } },
+          { path: "reading.theme", value: "plugin:typography:skin", target: { kind: "global" } },
+          { path: "appearance.theme", value: "plugin:typography:skin" },
+        ]); await tick();
+      });
+      expect(rendered.at(-1)!.css).toContain("Selected Serif");
+      const typographyRule = {};
+      await runtime.reactions.deliver(typographyRule, stampEventCause({}, causalActor("user")), async reaction => {
+        const origin = runtime.reactions.actor(reaction);
+        await act(async () => {
+          // Replacement can preserve the exact value while changing ownership.
+          selectedFont = registerFontContribution(font, origin); contributions.push(selectedFont);
+          contributions.push(registerFontContribution({ ...font, key: "other:serif", pluginId: "other" }, causalActor("user")));
+          await tick();
+        });
+        expect(actorCause(readingRenderActor(rendered.at(-1)!.context))).toBe(actorCause(origin));
+        await runtime.reactions.deliver(typographyRule, stampEventCause({}, readingRenderActor(rendered.at(-1)!.context)), repeated => {
+          expect(repeated.status).toBe("cycle");
+        });
+        await act(async () => {
+          selectedFont.dispose(origin);
+          contributions.push(registerFontContribution({ ...font, key: "other:second", pluginId: "other", id: "second" }));
+          await tick();
+        });
+        expect(rendered.at(-1)!.css).not.toContain("@font-face");
+        expect(actorCause(readingRenderActor(rendered.at(-1)!.context))).toBe(actorCause(origin));
+      });
+      const countBeforeUnrelated = rendered.length;
+      await act(async () => {
+        contributions.push(registerThemeContribution({ ...skin, key: "other:skin", pluginId: "other" })); await tick();
+      });
+      expect(rendered).toHaveLength(countBeforeUnrelated);
+      await runtime.reactions.deliver(typographyRule, stampEventCause({}, causalActor("user")), async reaction => {
+        expect(reaction.status).toBe("ready");
+        const origin = runtime.reactions.actor(reaction);
+        await act(async () => {
+          selectedTheme = registerThemeContribution({ ...skin, polarity: "light", reader: { palette: BUILTIN_READER_PALETTES.light } }, origin);
+          contributions.push(selectedTheme); await tick();
+        });
+        expect(dom.window.document.documentElement.dataset.theme).toBe("light");
+        expect(actorCause(readingRenderActor(rendered.at(-1)!.context))).toBe(actorCause(origin));
+        expect(actorCause(readingRenderActor(pageColors.at(-1)!))).toBe(actorCause(origin));
+        // Auto reader color follows the resolved app theme with the same source.
+        await act(async () => { await runtime.context.domains.settings.commands.update([
+          { path: "reading.theme", value: "auto", target: { kind: "global" } },
+        ]); await tick(); });
+        await act(async () => {
+          selectedTheme = registerThemeContribution(skin, origin); contributions.push(selectedTheme); await tick();
+        });
+        expect(appearance.effective.theme).toBe("dark");
+        expect(actorCause(readingRenderActor(rendered.at(-1)!.context))).toBe(actorCause(origin));
+        expect(eventCause(skinCommits.at(-1)!)).toBe(actorCause(origin));
+        await act(async () => { selectedTheme.dispose(origin); await tick(); });
+        expect(dom.window.document.documentElement.dataset.theme).toBe("light");
+        expect(appearance.effective.theme).toBe("warm");
+        expect(actorCause(readingRenderActor(rendered.at(-1)!.context))).toBe(actorCause(origin));
+        expect(eventCause(skinCommits.at(-1)!)).toBe(actorCause(origin));
+      });
       const slow = Promise.withResolvers<string>(), source = causalActor("plugin:slow-font");
       waiting.set("inter", slow.promise);
       const oldSettings = stampEventCause({ ...appearance.effective, fontFamily: "curated:inter" } as ReaderSettings, source);
@@ -161,6 +237,8 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
     } finally {
       heldWrite?.resolve();
       await act(async () => root.unmount()); runtime.lifecycle.stop(); await runtime.lifecycle.drainCleanups();
+      for (const contribution of contributions) contribution.dispose();
+      offSkinCommit();
       readingRuntime.closed();
       waiting.clear(); dom.window.close();
       for (const [key, descriptor] of saved) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key); }

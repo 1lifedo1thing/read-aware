@@ -4,6 +4,12 @@ import { ReadingModePositionWrites } from "./reading-mode-position-writes";
 import { causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 
 export type ModeDescriptor = ReadingModeDescriptor & { implementation?: object };
+function sameDescriptor(a: ModeDescriptor | null, b: ModeDescriptor | null): boolean {
+  if (!a || !b) return a === b;
+  const { implementation: left, ...before } = a;
+  const { implementation: right, ...after } = b;
+  return left === right && JSON.stringify(before) === JSON.stringify(after);
+}
 export type ModeRequest = { revision: number; active: boolean; unitId: string | null; modeKey: string | null; origin: DomainActor };
 export type ModeFeedback = { status: "inactive" | "building" | "ready" | "empty" | "error"; errorCode?: string;
   progress: { ordinal: number; total: number } | null; cfiRange: string | null; position?: ReadingModePosition | null };
@@ -147,17 +153,18 @@ export class ReadingModeController {
     });
   }
 
-  environment(descriptors: ModeDescriptor | ModeDescriptor[] | null, supported: boolean, origin: DomainActor = "system"): void {
+  /** Discovery may include unrelated changes; rebuilding the selected mode
+   * must retain that registration's own source. */
+  environment(descriptors: ModeDescriptor | ModeDescriptor[] | null, supported: boolean, origin: DomainActor = "system", selectionOrigin: DomainActor = origin): void {
     const modes = descriptors === null ? [] : Array.isArray(descriptors) ? descriptors : [descriptors];
     const oldDescriptor = this.descriptor;
-    if (JSON.stringify(this.modes) === JSON.stringify(modes) && this.supported === supported
-      && this.modes.every((mode, i) => mode.implementation === modes[i]?.implementation)) return;
+    if (this.modes.length === modes.length && this.supported === supported
+      && this.modes.every((mode, i) => sameDescriptor(mode, modes[i] ?? null))) return;
     const wasSupported = this.supported;
     this.modes = modes;
     this.supported = supported;
     // Registering an unrelated provider is discovery, not a new reading intent.
-    if (this.request.modeKey && JSON.stringify(oldDescriptor) === JSON.stringify(this.descriptor)
-      && oldDescriptor?.implementation === this.descriptor?.implementation && wasSupported === supported) {
+    if (this.request.modeKey && sameDescriptor(oldDescriptor, this.descriptor) && wasSupported === supported) {
       this.result = { ...this.result, availableModes: this.availableModes() }; this.emit(origin); return;
     }
     const before = this.pending?.before ?? this.rollback ?? this.request;
@@ -168,7 +175,7 @@ export class ReadingModeController {
     const unitId = preferred && descriptor?.units.some(unit => unit.id === preferred) ? preferred
       : descriptor?.units.some(unit => unit.id === before.unitId)
       ? before.unitId : descriptor ? this.defaultUnit(descriptor) : before.unitId;
-    this.change(before.active, unitId, modeKey, undefined, origin);
+    this.change(before.active, unitId, modeKey, undefined, selectionOrigin);
   }
 
   /** Native UI and changes to the mode's declared settings supersede in-flight actor commands. */

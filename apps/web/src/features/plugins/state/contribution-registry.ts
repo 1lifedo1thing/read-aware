@@ -3,7 +3,7 @@ import { createLogger } from "../../../platform/logger";
 import type { ContributionId } from "@read-aware/core";
 import type { ContributionKey } from "../lib/plugin-types";
 import { publishContributionChange, undoContributionReplacement } from "./contribution-activation";
-import { causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+import { causalActor, copyEventCause, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 
 export type ContributionIdentity = {
   key: ContributionKey;
@@ -38,6 +38,24 @@ const registries = new Map<ContributionPoint, InspectableRegistry>();
 const listeners = new Set<(source: object) => void>();
 const log = createLogger("contribution-registry");
 
+type ContributionSelection<T> = {
+  getSnapshot(): { value: T | null };
+  subscribe(listener: () => void): () => void;
+};
+const selectors = new WeakMap<object, (key: ContributionKey) => ContributionSelection<ContributionIdentity>>();
+// A consumer may retain only the snapshot (e.g. a mode descriptor). Keep its
+// selector alive for that lifetime without retaining unmounted consumers.
+const selectionOwners = new WeakMap<object, object>();
+
+/** Host-only selected registration, including its removal source. The cache is
+ * updated at publication, so React batching cannot replace an active font's
+ * retirement with a later, unrelated registration's cause. */
+export function selectContribution<T extends ContributionIdentity>(entries: PrimitiveAtom<T[]>, key: ContributionKey): ContributionSelection<T> {
+  const select = selectors.get(entries);
+  if (!select) throw new Error("Unknown contribution registry");
+  return select(key) as ContributionSelection<T>;
+}
+
 /** Registry changes only; observers never receive provider objects or callbacks. */
 export function subscribeContributions(listener: (source: object) => void): () => void {
   listeners.add(listener);
@@ -66,28 +84,73 @@ export function createContributionRegistry<T extends ContributionIdentity>(
   let publishedOwners = new Map<ContributionKey, object>();
   let entries: T[] = [];
   const pending = new Map<object, object>();
+  let publishedSources = new Map<ContributionKey, object>();
+  type Selection = ContributionSelection<T> & { update(value: T | null, owner: object | undefined, source: object): void; notify(): void };
+  const selections = new Map<ContributionKey, WeakRef<Selection>>();
+  selectors.set(entriesAtom, key => {
+    const existing = selections.get(key)?.deref();
+    if (existing) return existing;
+    let owner = publishedOwners.get(key);
+    let snapshot = copyEventCause(publishedSources.get(key) ?? stampEventCause({}), {
+      value: store.get(entriesAtom).find(item => item.key === key) ?? null,
+    });
+    const listeners = new Set<() => void>();
+    const selection: Selection = {
+      getSnapshot: () => snapshot,
+      subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+      update: (value, nextOwner, source) => {
+        if (snapshot.value === value && owner === nextOwner) return;
+        owner = nextOwner;
+        snapshot = copyEventCause(source, { value });
+        selectionOwners.set(snapshot, selection);
+      },
+      notify: () => {
+        const current = snapshot;
+        for (const listener of [...listeners]) {
+          if (snapshot !== current) break;
+          try { listener(); } catch (error) { log.warn("Selected contribution observer failed", error); }
+        }
+      },
+    };
+    selectionOwners.set(snapshot, selection);
+    selections.set(key, new WeakRef(selection));
+    return selection;
+  });
   const publish = () => publishContributionChange(entriesAtom, () => {
     const published = store.get(entriesAtom);
     const before = new Map(published.map(item => [item.key, item]));
     const sources: object[] = [];
+    const changedSources = new Map<ContributionKey, object>();
     for (const item of entries) {
       if (before.get(item.key) !== item || publishedOwners.get(item.key) !== owners.get(item.key)) {
         const source = pending.get(owners.get(item.key)!);
-        if (source) sources.push(source);
+        if (source) { sources.push(source); changedSources.set(item.key, source); }
       }
       before.delete(item.key);
     }
     for (const key of before.keys()) {
       const source = pending.get(publishedOwners.get(key)!);
-      if (source) sources.push(source);
+      if (source) { sources.push(source); changedSources.set(key, source); }
     }
     const changed = published.length !== entries.length || published.some((item, index) => item !== entries[index]
       || publishedOwners.get(item.key) !== owners.get(item.key));
     // Only owners visible in the final delta contribute causes. A failed
     // nested registration cannot add a fresh branch to a successful parent.
     const snapshot = mergeEventCauses(sources, [...entries]);
+    publishedSources = new Map(entries.map(item => [item.key, changedSources.get(item.key) ?? publishedSources.get(item.key) ?? snapshot]));
+    const selected: Selection[] = [];
+    for (const [key, reference] of selections) {
+      const selection = reference.deref();
+      if (!selection) { selections.delete(key); continue; }
+      const source = changedSources.get(key);
+      if (source) {
+        selection.update(entries.find(item => item.key === key) ?? null, owners.get(key), source);
+        selected.push(selection);
+      }
+    }
     pending.clear(); publishedOwners = new Map(owners);
     if (changed) store.set(entriesAtom, snapshot);
+    for (const selection of selected) selection.notify();
   });
   const change = (owner: object, source: DomainActor) => { pending.set(owner, stampEventCause({}, source)); publish(); };
   const registry: ContributionRegistry<T> = {

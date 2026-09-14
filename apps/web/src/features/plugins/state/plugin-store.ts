@@ -152,11 +152,11 @@ export function registerMemoryCandidateProviderContribution(
 export function registerThemeContribution(
   item: RegisteredPluginTheme,
   source?: DomainActor,
-): PluginDisposable {
+) {
   return themesRegistry.register(item, source);
 }
 
-export function registerFontContribution(item: RegisteredPluginFont, source?: DomainActor): PluginDisposable {
+export function registerFontContribution(item: RegisteredPluginFont, source?: DomainActor) {
   return fontsRegistry.register(item, source);
 }
 

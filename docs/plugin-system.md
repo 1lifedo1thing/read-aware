@@ -348,6 +348,14 @@ itself was created from a bound context. Maintenance Desk 0.5 uses the bound
 context to publish contribution-directory changes; user actions in the view
 continue to use the activation context.
 
+The host also retains the selected registration's source when fonts, themes,
+or text-unit modes are replaced or removed. A later unrelated registry update
+in the same React batch cannot replace that source. Reader CSS and fixed-page
+colors, the app-theme-to-auto-reader projection, and the startup skin cache
+follow it; replacing the selected mode retires its old implementation identity.
+An unrelated provider only refreshes discovery, preserving the current reading
+request. These are host-private snapshots, with no added public callback fields.
+
 Private document reads wait for matching dispatched writes to settle and retry
 if a commit crossed the read. Conflicts and failed writes do not publish a
 mutation. Failed callback retries and read-error recovery retain the pending

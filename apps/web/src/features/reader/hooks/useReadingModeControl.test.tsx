@@ -7,7 +7,7 @@ import { registerReaderModeContribution } from "../../plugins/state/plugin-store
 import { readTextUnitModeState, writeTextUnitModeState, readTextUnitModeSettings, updateTextUnitModeSettings } from "../lib/text-unit-mode-state";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { sentenceReaderCopy, sentenceReaderUnits } from "../../../../../../plugins/sentence-reader/src/copy";
-import { actorCause, eventCause, reactionActor, stampEventCause } from "../../../platform/domain-actor";
+import { actorCause, eventCause, reactionActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 
 test("provider replacement and external preferences converge without replaying an obsolete render", async () => {
   const dom = new JSDOM("<!doctype html><div id='root'></div>", { url: "http://localhost" });
@@ -23,20 +23,23 @@ test("provider replacement and external preferences converge without replaying a
     if (++renders > 80) throw new Error("Mode preferences did not converge");
     return null;
   }
-  const register = (pluginId: string) => registerReaderModeContribution({ id: "reader", key: `${pluginId}:reader`, pluginId,
+  const segmentText = ({ text }: { text: string }) => [{ start: 0, end: text.length }];
+  const register = (pluginId: string, source?: DomainActor) => registerReaderModeContribution({ id: "reader", key: `${pluginId}:reader`, pluginId,
     pluginName: pluginId, kind: "text-unit-navigator", defaultUnitId: "sentence", units: sentenceReaderUnits,
-    copy: sentenceReaderCopy, segmentText: ({ text }) => [{ start: 0, end: text.length }] });
+    copy: sentenceReaderCopy, segmentText }, source);
   let off: ReturnType<typeof register> | undefined;
   try {
     const id = readingRuntime.begin("mode-owner-test");
     const location = { bookId: "mode-owner-test", contentVersion: "v1", cfi: "first" };
     const detachEngine = readingRuntime.attach(id, { navigate: async () => location, step: async () => location }, location);
     updateTextUnitModeSettings("mode-owner-a:reader", { unitId: "paragraph" });
-    off = register("mode-owner-a");
+    const removalActor = reactionActor("plugin:mode-owner", "remove-provider", eventCause(stampEventCause({}))!);
+    off = register("mode-owner-a", removalActor);
     await act(async () => { root.render(<Harness />); });
     expect(state.request.unitId).toBe("paragraph");
     await act(async () => { off?.dispose(); off = undefined; });
     expect(state.controller.snapshot().unavailableReason).toBe("no-provider");
+    expect(eventCause(readingRuntime.snapshot())).toBe(actorCause(removalActor));
     updateTextUnitModeSettings("mode-owner-b:reader", { unitId: "sentence" });
     await act(async () => { off = register("mode-owner-b"); });
     expect(state.request.modeKey).toBe("mode-owner-a:reader");
@@ -64,7 +67,19 @@ test("provider replacement and external preferences converge without replaying a
       state.controller.feedback(state.request.revision, state.request.modeKey, state.request.unitId, { status: "inactive", progress: null, cfiRange: null });
       await selection;
     });
+    const replacementActor = reactionActor("plugin:mode-owner", "replace-provider", eventCause(stampEventCause({}))!);
+    const beforeReplacement = state.request;
+    await act(async () => {
+      const previous = off;
+      off = register("mode-owner-b", replacementActor); previous?.dispose();
+      const unrelated = register("mode-owner-unrelated"); unrelated.dispose();
+    });
+    expect(state.request.revision).toBeGreaterThan(beforeReplacement.revision);
+    expect(actorCause(state.request.origin)).toBe(actorCause(replacementActor));
+    expect(eventCause(readingRuntime.snapshot())).toBe(actorCause(replacementActor));
+    expect(() => reactionActor("plugin:mode-owner", "replace-provider", eventCause(readingRuntime.snapshot())!)).toThrow(expect.objectContaining({ code: "plugin/event-cycle" }));
     await act(async () => { state.setUnit("paragraph"); });
+    expect(() => reactionActor("plugin:mode-owner", "replace-provider", eventCause(readingRuntime.snapshot())!)).not.toThrow();
     expect(readTextUnitModeSettings("mode-owner-b:reader").unitId).toBe("paragraph");
     const preferenceActor = reactionActor("plugin:preference-client", "update-unit", eventCause(stampEventCause({}))!);
     await act(async () => { await updateTextUnitModeSettings("mode-owner-b:reader", { unitId: "sentence" }, preferenceActor); });

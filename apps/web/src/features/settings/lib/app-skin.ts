@@ -14,6 +14,7 @@
  * it on every resolution.
  */
 import { localKV } from "../../../platform/local-store";
+import type { DomainActor } from "../../../platform/domain-actor";
 import { buildAppSkinCss, toPluginRef } from "../../plugins/lib/plugin-theme";
 import type { RegisteredPluginTheme } from "../../plugins/lib/plugin-types";
 
@@ -85,6 +86,7 @@ export function bootAppSkin(themePreference: string): void {
 export function applyAppSkin(
   theme: RegisteredPluginTheme | null,
   bootPending: boolean,
+  origin: DomainActor = "system",
 ): void {
   if (theme?.app) {
     const ref = toPluginRef(theme.pluginId, theme.id);
@@ -92,11 +94,11 @@ export function applyAppSkin(
     ensureSkinStyle(css);
     document.documentElement.dataset.skin = ref;
     const snapshot: AppSkinSnapshot = { ref, polarity: theme.polarity, css };
-    localKV.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot));
+    localKV.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot), "local", origin);
     return;
   }
   if (bootPending) return;
   delete document.documentElement.dataset.skin;
   removeSkinStyle();
-  if (localKV.getItem(SNAPSHOT_KEY) !== null) localKV.removeItem(SNAPSHOT_KEY);
+  if (localKV.getItem(SNAPSHOT_KEY) !== null) localKV.removeItem(SNAPSHOT_KEY, "local", origin);
 }
