@@ -1,3 +1,4 @@
+import { actorCause, causalActor, eventCause } from "../../../platform/domain-actor";
 import { expect, spyOn, test } from "bun:test";
 import { JSDOM } from "jsdom";
 import { act, StrictMode } from "react";
@@ -34,7 +35,10 @@ test("mounted report flow never exports/sends before preview confirmation and re
     await initI18n("en");
     await act(async () => { root.render(<StrictMode><ToastProvider><Harness /></ToastProvider></StrictMode>); });
     let request!: Promise<DiagnosticsReportReceipt>;
-    await act(async () => { request = hostDiagnosticsFlows.request({ action: "send" }); await tick(); });
+    const origin = causalActor("plugin:diagnostics");
+    await act(async () => { request = hostDiagnosticsFlows.request({ action: "send" }, undefined, origin); await tick(); });
+    expect(eventCause(flow.report!)).toEqual(actorCause(origin));
+    expect(actorCause(assemble.mock.calls.at(-1)?.[0])).toEqual(actorCause(origin));
     expect(flow.report?.step).toBe("preview"); expect(sends).toBe(0); expect(exports).toBe(0);
     await act(async () => { flow.close(); });
     expect(await request).toEqual({ action: "send", status: "cancelled" });
@@ -46,9 +50,11 @@ test("mounted report flow never exports/sends before preview confirmation and re
       expect(await request).toEqual({ action: "export", status: saved ? "exported" : "cancelled" });
       expect(flow.report).toBeNull();
     }
-    await act(async () => { request = hostDiagnosticsFlows.request({ action: "send" }); await tick(); });
+    await act(async () => { request = hostDiagnosticsFlows.request({ action: "send" }, undefined, origin); await tick(); });
     await act(async () => { await flow.confirm(); });
     expect(await request).toEqual({ action: "send", status: "sent" });
+    expect(eventCause(flow.report!)).toEqual(eventCause(await request));
+    expect(eventCause(flow.report!)).not.toEqual(actorCause(origin));
     expect(flow.report).toEqual({ action: "send", step: "sent", reportId: "PRIVATE REPORT ID" });
     expect(sends).toBe(1); expect(exports).toBe(2);
     await act(async () => { flow.close(); });

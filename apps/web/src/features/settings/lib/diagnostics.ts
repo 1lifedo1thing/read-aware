@@ -1,3 +1,4 @@
+import { causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 /**
  * The diagnostics bundle: everything a "the app broke" conversation needs,
  * assembled on demand — app/platform facts, the tail of the file log
@@ -56,18 +57,19 @@ function describeFailure(error: unknown): { unavailable: string } {
   return { unavailable: error instanceof Error ? error.message : String(error) };
 }
 
-export async function assembleDiagnosticsBundle(): Promise<DiagnosticsBundle> {
+export async function assembleDiagnosticsBundle(origin: DomainActor = "user"): Promise<DiagnosticsBundle> {
+  origin = causalActor(origin);
   const [logs, projections] = isTauri()
     ? await Promise.all([
         invoke<LogFileTail[]>("diagnostics_read_logs").catch(describeFailure),
-        verifyProjectionReport().catch(describeFailure),
+        verifyProjectionReport(origin).catch(describeFailure),
       ])
     : [
         { unavailable: "log files exist only in the desktop/mobile app" },
         { unavailable: "storage self-check exists only in the desktop/mobile app" },
       ];
 
-  return {
+  return stampEventCause({
     generatedAt: new Date().toISOString(),
     appVersion: await readCurrentAppVersion(),
     platform: platformName(),
@@ -75,7 +77,7 @@ export async function assembleDiagnosticsBundle(): Promise<DiagnosticsBundle> {
     language: navigator.language,
     logs,
     projections,
-  };
+  }, origin);
 }
 
 export async function exportDiagnosticsBundle(bundle: DiagnosticsBundle): Promise<boolean> {
