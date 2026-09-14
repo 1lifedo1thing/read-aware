@@ -1,3 +1,4 @@
+import { isTauri } from "../platform/environment";
 import { accountCredential, createModelResolver } from "@read-aware/agent";
 import { errorCode, normalizeOperationAvailability, operationAvailability, type OperationAvailabilityQuery,
   type InferenceAvailabilityQuery, type OperationAvailability, type OperationCondition } from "@read-aware/core";
@@ -75,6 +76,16 @@ export async function checkOperationAvailability(input: OperationAvailabilityQue
   }
   if (query.operation === "window.control") {
     return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...await hostWindow.conditions(query.request, signal)]);
+  }
+  if (query.operation === "maintenance.requestBackup" || query.operation === "maintenance.requestConnectionTest"
+    || query.operation === "diagnostics.requestReport" || query.operation === "diagnostics.requestProjectionRepair") {
+    if (!isTauri()) return operationAvailability(query, [condition("provider", "unavailable", "host-flow-desktop-required", "ui/unavailable")]);
+    const flow = query.operation === "maintenance.requestBackup" ? (await import("./maintenance")).hostBackupFlows
+      : query.operation === "maintenance.requestConnectionTest" ? (await import("./maintenance")).hostConnectionTestFlows
+      : query.operation === "diagnostics.requestReport" ? (await import("./diagnostics")).hostDiagnosticsFlows
+      : (await import("./diagnostics")).hostProjectionRepairFlow;
+    signal?.throwIfAborted();
+    return operationAvailability(query, [condition("permission", "satisfied", "authorized"), ...flow.requestConditions()]);
   }
   if (query.operation === "diagnostics.verifyProjections") {
     const { hostDiagnostics } = await import("./diagnostics");

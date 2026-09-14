@@ -1,5 +1,7 @@
 # 宿主能力实现与验收进度
 
+session2.14新增maintenance.requestBackup/import-export、maintenance.requestConnectionTest、diagnostics.requestReport/export-send和diagnostics.requestProjectionRepair条件查询，Agent同接。插件诊断权限先检；查询不导航、不推理、不导出/发送/修复。HostActionFlow共用occupied判定覆盖导航、待确认和执行，取消等待后已受理操作仍占用；空闲只返回可请求，控件与用户确认保留unknown。Maintenance Desk0.12相关确认页均可查条件并返回明确确认。受影响Core/Web/Agent/插件类型、构建与参数/权限/取消占用及消费者检查通过；真实Tauri、其他C04/C05和完整目标仍未完成。
+
 AI配置保存/清除在入口捕获单一宿主来源，普通配置KV、当前提供者密钥写删、旧单槽密钥清理及全部提供者清除沿同源。实际AIConfigPanel防抖/失焦/连接检查前flush沿既有saveAIConfig消费，无新增保存动作。受影响类型及现有配置兼容/密钥行为、通知来源检查通过；此证据是本地内存适配器，真实加密存储/持久发布及跨重启待验。连接检查结果状态来源与其余C04/C05及完整目标仍未完成。
 
 session2.13新增diagnostics.verifyProjections只读条件，Agent工具接同一查询；插件先检查service:diagnostics，未授权不读原生状态。宿主条件与执行共用支持检查，已有宿主共享执行可加入，日志完整性仍unknown并由原生回放时重验。Maintenance Desk0.11校验确认页新增条件页和返回确认动作，查询不派发回放。受影响Core/Web/Agent/插件类型、构建及权限/共享取消/消费者检查通过；Core既有三个查询fixture补字面量类型以通过当前类型检查。真实Tauri与其余C04/C05及完整组合验收待执行。

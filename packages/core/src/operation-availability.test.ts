@@ -3,7 +3,8 @@ import { assertOperationAvailable, normalizeOperationAvailability, operationAvai
 
 test("availability rejects arbitrary operations and distinguishes missing prerequisites from unknown remote health", () => {
   for (const input of [null, [], {}, { operation: "sql" }, { operation: "llm.infer", model: "secret" },
-    { operation: "llm.infer", images: 1 }, { operation: "llm.infer", endpoint: "private" }]) expect(() => normalizeOperationAvailability(input)).toThrow();
+    { operation: "maintenance.requestBackup", action: "send" }, { operation: "diagnostics.requestReport", action: "import" },
+    { operation: "maintenance.requestConnectionTest", action: "test" }, { operation: "llm.infer", images: 1 }, { operation: "llm.infer", endpoint: "private" }]) expect(() => normalizeOperationAvailability(input)).toThrow();
   const query = normalizeOperationAvailability({ operation: "llm.infer" });
   expect(query).toEqual({ operation: "llm.infer", model: "fast", images: false });
   const unknown = operationAvailability(query, [{ kind: "provider", state: "unknown", reason: "remote-health-not-checked" }]);

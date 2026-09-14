@@ -1,5 +1,5 @@
 import { causalActor, stampEventCause, type DomainActor } from "../platform/domain-actor";
-import { AppError } from "@read-aware/core";
+import { AppError, type OperationCondition } from "@read-aware/core";
 
 type Request = { action: string };
 type Receipt<R extends Request, S extends string> = { action: R["action"]; status: S | "cancelled" };
@@ -25,6 +25,15 @@ export class HostActionFlow<R extends Request, S extends string> {
     epoch?(): unknown;
   }) {}
 
+  private get occupied(): boolean { return this.requesting || !!this.pending || this.running; }
+
+  requestConditions(): OperationCondition[] {
+    if (this.occupied) return [{ kind: "capacity", state: "unavailable", reason: "host-flow-active", errorCode: "ui/unavailable" }];
+    return [{ kind: "capacity", state: "satisfied", reason: "host-flow-ready" },
+      { kind: "provider", state: "unknown", reason: "host-flow-controls-not-checked" },
+      { kind: "input", state: "unknown", reason: "host-flow-user-confirmation-required" }];
+  }
+
   bind(surface: Surface<R>): () => void {
     this.surface = surface;
     return () => {
@@ -40,7 +49,7 @@ export class HostActionFlow<R extends Request, S extends string> {
     signal?.throwIfAborted();
     origin = causalActor(origin);
     const request = stampEventCause(this.config.normalize(input), origin);
-    if (this.requesting || this.pending || this.running) throw new AppError("ui/unavailable", "A host action flow is already active");
+    if (this.occupied) throw new AppError("ui/unavailable", "A host action flow is already active");
     this.requesting = true;
     try {
       await this.config.navigate(signal, origin);

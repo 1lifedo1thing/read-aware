@@ -1,5 +1,10 @@
 // src/strings.ts
 var en = {
+  flowPrerequisites: "Operation prerequisites",
+  flowReady: "No active host request",
+  flowDesktop: "Desktop app required",
+  flowControls: "Native controls will be checked after navigation",
+  flowConfirmation: "Your confirmation is still required",
   repair: "Repair local projections",
   "rebuilt-reload-required": "Projections rebuilt; reload required",
   repairReview: "The host previews differences and requires your confirmation. Repair replays the complete local event log and discards projection-only changes. Writes then pause until app reload. Cancelling this wait cannot undo a confirmed repair.",
@@ -77,6 +82,11 @@ var en = {
   verifyReview: "Checks event-log projections on this device only. This does not repair data or verify backups and other devices."
 };
 var zh = {
+  flowPrerequisites: "操作条件",
+  flowReady: "当前没有占用的宿主请求",
+  flowDesktop: "需要桌面应用",
+  flowControls: "打开界面后检查原生控件",
+  flowConfirmation: "仍需由你确认操作",
   repair: "修复本机投影",
   "rebuilt-reload-required": "投影已重建；需要重新载入",
   repairReview: "宿主将显示差异并要求确认。修复按完整事件日志重建本机投影，丢弃仅存在于投影的修改，之后暂停写入直至重新载入应用。取消等待不能撤销已确认的修复。",
@@ -1051,12 +1061,26 @@ function maintenanceDesk(ctx) {
           return { toast: t.busy };
         return operation === "verify" ? { view: history(), navigation: "reset" } : { close: true };
       }
-    }, ...operation === "verify" ? [{ id: "prerequisites", label: t.verifyPrerequisites, run: async () => ({ view: await verificationPrerequisites() }) }] : []]
+    }, { id: "prerequisites", label: t.flowPrerequisites, run: async () => ({ view: await verificationPrerequisites(operation) }) }]
   });
-  const verificationPrerequisites = async () => {
-    const value = await ctx.services.session.operationAvailability({ operation: "diagnostics.verifyProjections" }, { signal: lifetime.signal });
+  const verificationPrerequisites = async (operation) => {
+    const queries = {
+      verify: { operation: "diagnostics.verifyProjections" },
+      connection: { operation: "maintenance.requestConnectionTest" },
+      repair: { operation: "diagnostics.requestProjectionRepair" },
+      backupExport: { operation: "maintenance.requestBackup", action: "export" },
+      backupImport: { operation: "maintenance.requestBackup", action: "import" },
+      reportExport: { operation: "diagnostics.requestReport", action: "export" },
+      reportSend: { operation: "diagnostics.requestReport", action: "send" }
+    };
+    const value = await ctx.services.session.operationAvailability(queries[operation], { signal: lifetime.signal });
     lifetime.signal.throwIfAborted();
     const reasons = {
+      "host-flow-active": t.busy,
+      "host-flow-ready": t.flowReady,
+      "host-flow-desktop-required": t.flowDesktop,
+      "host-flow-controls-not-checked": t.flowControls,
+      "host-flow-user-confirmation-required": t.flowConfirmation,
       authorized: t.verifyReady,
       "projection-verification-ready": t.verifyReady,
       "projection-verification-shared": t.verifyShared,
@@ -1064,9 +1088,9 @@ function maintenanceDesk(ctx) {
       "service:diagnostics-required": t.verifyPermission,
       "projection-log-completeness-not-checked": t.verifyUnknown
     };
-    return { kind: "detail", title: t.verifyPrerequisites, content: value.conditions.filter((item) => item.reason !== "authorized").map((item) => ({ kind: "text", text: reasons[item.reason] ?? t.verifyUnknown })), actions: [
-      ...value.state === "available" || value.state === "unknown" ? [{ id: "continue", label: t.continue, run: () => ({ view: review("verify") }) }] : [],
-      { id: "refresh", label: t.refresh, run: async () => ({ view: await verificationPrerequisites(), navigation: "replace" }) }
+    return { kind: "detail", title: t.flowPrerequisites, content: value.conditions.filter((item) => item.reason !== "authorized").map((item) => ({ kind: "text", text: reasons[item.reason] ?? t.verifyUnknown })), actions: [
+      ...value.state === "available" || value.state === "unknown" ? [{ id: "continue", label: t.continue, run: () => ({ view: review(operation) }) }] : [],
+      { id: "refresh", label: t.refresh, run: async () => ({ view: await verificationPrerequisites(operation), navigation: "replace" }) }
     ] };
   };
   const entryBlocks = (entry) => [

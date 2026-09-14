@@ -988,6 +988,13 @@ export function buildPluginContext(
           if (query.operation === "window.control") {
             return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
           }
+          if (query.operation === "maintenance.requestBackup" || query.operation === "maintenance.requestConnectionTest"
+            || query.operation === "diagnostics.requestReport" || query.operation === "diagnostics.requestProjectionRepair") {
+            if (query.operation.startsWith("diagnostics.") && !canUseHostService("diagnostics", permissions)) return Promise.resolve(operationAvailability(query, [
+              { kind: "permission", state: "unavailable", reason: "service:diagnostics-required" },
+            ]));
+            return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
+          }
           if (query.operation === "diagnostics.verifyProjections") {
             if (!canUseHostService("diagnostics", permissions)) return Promise.resolve(operationAvailability(query, [
               { kind: "permission", state: "unavailable", reason: "service:diagnostics-required" },

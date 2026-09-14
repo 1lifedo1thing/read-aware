@@ -36,7 +36,9 @@ test("each directed flow waits for the native action, with no fabricated purchas
 
 test("dismiss, unmount and caller abort do not execute unconfirmed operations", async () => {
   const f = fixture();
+  expect(f.controller.requestConditions()).toContainEqual(expect.objectContaining({ reason: "host-flow-ready" }));
   const dismissed = f.controller.request({ action: "delete-account" }); await Bun.sleep(0);
+  expect(f.controller.requestConditions()).toContainEqual(expect.objectContaining({ reason: "host-flow-active", state: "unavailable" }));
   f.controller.dismiss("connect");
   await expect(f.controller.request({ action: "connect" })).rejects.toMatchObject({ code: "ui/unavailable" });
   f.controller.dismiss("delete-account");
@@ -55,6 +57,7 @@ test("confirmed work holds the slot through cancellation and only settles after 
   let finish!: () => void;
   const work = f.controller.run("delete-account", () => new Promise<void>(resolve => { finish = resolve; }));
   abort.abort(Error("stop waiting")); f.unbind();
+  expect(f.controller.requestConditions()).toContainEqual(expect.objectContaining({ reason: "host-flow-active" }));
   await expect(f.controller.request({ action: "connect" })).rejects.toMatchObject({ code: "ui/unavailable" });
   await expect(f.controller.run("delete-account", async () => {})).rejects.toMatchObject({ code: "ui/unavailable" });
   expect(f.closed()).toBe(0);

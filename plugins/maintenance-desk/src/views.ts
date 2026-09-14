@@ -45,18 +45,26 @@ export function maintenanceDesk(ctx: PluginContext) {
         // Leave native controls accessible; the wait belongs to this activation.
         return operation === "verify" ? { view: history(), navigation: "reset" } : { close: true };
       },
-    }, ...(operation === "verify" ? [{ id: "prerequisites", label: t.verifyPrerequisites, run: async () => ({ view: await verificationPrerequisites() }) }] : [])],
+    }, { id: "prerequisites", label: t.flowPrerequisites, run: async () => ({ view: await verificationPrerequisites(operation) }) }],
   });
-  const verificationPrerequisites = async (): Promise<PluginView> => {
-    const value = await ctx.services.session.operationAvailability({ operation: "diagnostics.verifyProjections" }, { signal: lifetime.signal });
+  const verificationPrerequisites = async (operation: ReviewOperation): Promise<PluginView> => {
+    const queries = {
+      verify: { operation: "diagnostics.verifyProjections" }, connection: { operation: "maintenance.requestConnectionTest" },
+      repair: { operation: "diagnostics.requestProjectionRepair" }, backupExport: { operation: "maintenance.requestBackup", action: "export" },
+      backupImport: { operation: "maintenance.requestBackup", action: "import" }, reportExport: { operation: "diagnostics.requestReport", action: "export" },
+      reportSend: { operation: "diagnostics.requestReport", action: "send" },
+    } as const;
+    const value = await ctx.services.session.operationAvailability(queries[operation], { signal: lifetime.signal });
     lifetime.signal.throwIfAborted();
-    const reasons: Record<string, string> = { authorized: t.verifyReady, "projection-verification-ready": t.verifyReady,
+    const reasons: Record<string, string> = { "host-flow-active": t.busy, "host-flow-ready": t.flowReady,
+      "host-flow-desktop-required": t.flowDesktop, "host-flow-controls-not-checked": t.flowControls,
+      "host-flow-user-confirmation-required": t.flowConfirmation, authorized: t.verifyReady, "projection-verification-ready": t.verifyReady,
       "projection-verification-shared": t.verifyShared, "projection-verification-unsupported": t.verifyUnsupported,
       "service:diagnostics-required": t.verifyPermission, "projection-log-completeness-not-checked": t.verifyUnknown };
-    return { kind: "detail", title: t.verifyPrerequisites, content: value.conditions.filter(item => item.reason !== "authorized")
+    return { kind: "detail", title: t.flowPrerequisites, content: value.conditions.filter(item => item.reason !== "authorized")
       .map(item => ({ kind: "text", text: reasons[item.reason] ?? t.verifyUnknown })), actions: [
-      ...(value.state === "available" || value.state === "unknown" ? [{ id: "continue", label: t.continue, run: () => ({ view: review("verify") }) }] : []),
-      { id: "refresh", label: t.refresh, run: async () => ({ view: await verificationPrerequisites(), navigation: "replace" as const }) },
+      ...(value.state === "available" || value.state === "unknown" ? [{ id: "continue", label: t.continue, run: () => ({ view: review(operation) }) }] : []),
+      { id: "refresh", label: t.refresh, run: async () => ({ view: await verificationPrerequisites(operation), navigation: "replace" as const }) },
     ] };
   };
   const entryBlocks = (entry: Entry): PluginBlock[] => [
