@@ -1,7 +1,7 @@
 import { expect, spyOn, test } from "bun:test";
 import { AppError, type BookTextSnapshot, type BookTextTaskSnapshot } from "@read-aware/core";
 import { BookTextTaskOwner } from "./book-text-tasks";
-import { causalActor } from "../../../platform/domain-actor";
+import { actorCause, eventCause, causalActor } from "../../../platform/domain-actor";
 import type { TextPreparationOptions } from "./book-text-repository";
 
 function deferred<T>() {
@@ -73,13 +73,13 @@ test("failed requests preserve codes; a failed diagnostic read is not an empty s
 });
 
 test("task observation coalesces slow callbacks and preserves the terminal revision", async () => {
-  const h = harness(); const started = await h.owner.start("book");
+  const h = harness(), origin = causalActor("plugin:text-source"); const started = await h.owner.start("book", {}, origin);
   const gate = deferred<void>(); const seen: BookTextTaskSnapshot[] = [];
   const stop = h.owner.observe("book", started.taskId, async snapshot => { seen.push(snapshot); if (seen.length === 1) await gate.promise; });
   for (let completed = 0; completed < 30; completed++) h.work[0]!.options.progress?.({ ...state("book", "preparing"), progress: { total: 30, completed, failed: 0, unsupported: 0 } });
   h.work[0]!.result.resolve(state("book", "ready")); await settle();
   expect(seen).toHaveLength(1); gate.resolve(); await settle();
-  expect(seen).toHaveLength(2); expect(seen[1]!.status).toBe("completed"); expect(seen[1]!.revision).toBeGreaterThan(seen[0]!.revision);
+  expect(seen).toHaveLength(2); expect(seen[1]!.status).toBe("completed"); expect(eventCause(seen[1]!)).toBe(actorCause(origin)); expect(seen[1]!.revision).toBeGreaterThan(seen[0]!.revision);
   stop(); stop();
   const failureStop = h.owner.observe("book", started.taskId, () => { throw Error("observer failed"); });
   await settle(); expect(h.warnings).toHaveLength(1); failureStop();
@@ -223,12 +223,14 @@ test("completed extraction exposes failed history persistence and an explicit hi
   const history = new BookTextTaskHistory(crypto.randomUUID(), { read: async () => raw,
     write: async value => { if (failure) throw new AppError("db/locked", "History not saved"); raw = value; }, run: operation => operation() });
   const owner = new BookTextTaskOwner({ snapshot: async () => state(), prepare: async () => done.promise }, () => {}, undefined, history);
-  const task = await owner.start("book"); await settle(); failure = true;
+  const origin = causalActor("plugin:text-history");
+  const task = await owner.start("book", {}, origin); await settle(); failure = true;
   done.resolve(state("book", "ready")); await settle();
   expect(owner.get("book", task.taskId)).toMatchObject({ status: "completed", history: { status: "failed", errorCode: "db/locked" } });
   await expect(owner.listHistory("book")).rejects.toMatchObject({ code: "db/locked" });
   failure = false; expect((await owner.listHistory("book")).items[0]!.snapshot.status).toBe("completed");
-  expect(owner.get("book", task.taskId).history?.status).toBe("saved"); owner.dispose();
+  expect(owner.get("book", task.taskId).history?.status).toBe("saved");
+  expect(eventCause(owner.get("book", task.taskId))).toBe(actorCause(origin)); owner.dispose();
 });
 
 

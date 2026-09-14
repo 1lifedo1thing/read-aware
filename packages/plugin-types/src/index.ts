@@ -1549,7 +1549,8 @@ export type PluginLibraryDomain = {
   };
   events: {
     subscribe: DomainSubscribe<LibraryDomainEventType>;
-    observeTextTask(bookId: string, taskId: string, handler: (snapshot: import("@read-aware/core").BookTextTaskSnapshot) => void | Promise<void>): PluginDisposable;
+    /** Library 1.32: serial reaction deliveries retain task and history-write sources. */
+    observeTextTask(bookId: string, taskId: string, handler: PluginObservationHandler<import("@read-aware/core").BookTextTaskSnapshot>, options?: { ruleId?: string }): PluginDisposable;
     /** Initial snapshot and coalesced monotonic revisions, including terminal failures. */
     observeImportTask(taskId: string, handler: (snapshot: import("@read-aware/core").BookImportTaskSnapshot) => void | Promise<void>): PluginDisposable;
     observeEnrichment(bookId: string, handler: (event: import("@read-aware/core").BookEnrichmentObservation) => unknown): PluginDisposable;

@@ -162,7 +162,7 @@ export type LibraryDomain = {
   events: {
     observeInvalidation(handler: (event: import("@read-aware/core").ProjectionInvalidation) => unknown): () => void;
     subscribe: DomainEventSubscribe<(typeof LIBRARY_EVENTS)[number]>;
-    observeTextTask(bookId: string, taskId: string, listener: (snapshot: BookTextTaskSnapshot) => void | Promise<void>): () => void;
+    observeTextTask(bookId: string, taskId: string, listener: (snapshot: BookTextTaskSnapshot) => unknown): () => void;
     observeEnrichment(bookId: string, listener: (event: import("@read-aware/core").BookEnrichmentObservation) => unknown): () => void;
     observeContentState(bookId: string, listener: (event: import("@read-aware/core").BookContentObservation) => unknown): () => void;
   };
@@ -229,7 +229,7 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
       prepareText: (bookId, options, access) => textTasks.start(bookId, options, origin, access),
       mergeDuplicates: (input, signal) => mergeDuplicateBooks(input, origin, signal ?? lifetime),
       retryEnrichment: (bookId, signal) => retryBookEnrichment(bookId, origin, signal ?? lifetime),
-      setTextTaskPriority: async (bookId, taskId, priority) => textTasks.setPriority(bookId, taskId, priority),
+      setTextTaskPriority: async (bookId, taskId, priority) => textTasks.setPriority(bookId, taskId, priority, origin),
       pauseTextTask: async (bookId, taskId) => textTasks.pause(bookId, taskId, origin),
       resumeTextTask: async (bookId, taskId) => textTasks.resume(bookId, taskId, origin),
       cancelTextTask: async (bookId, taskId) => textTasks.cancel(bookId, taskId, origin),
@@ -307,7 +307,7 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
   return {
     queries,
     commands,
-    events: { observeInvalidation: handler => observeLibraryInvalidation(handler, lifetime, origin), subscribe: domainSubscribe(LIBRARY_EVENTS, actorOrigin(origin)), observeTextTask: (bookId, taskId, listener) => textTasks.observe(bookId, taskId, listener),
+    events: { observeInvalidation: handler => observeLibraryInvalidation(handler, lifetime, origin), subscribe: domainSubscribe(LIBRARY_EVENTS, actorOrigin(origin)), observeTextTask: (bookId, taskId, listener) => textTasks.observe(bookId, taskId, listener, origin),
       observeEnrichment: createEnrichmentObserver(lifetime), observeContentState: createContentStateObserver(lifetime) },
   };
 }

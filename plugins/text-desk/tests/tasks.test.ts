@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { BookTextTaskSnapshot, PluginContext, PluginDetailView, PluginViewUpdate } from "@read-aware/plugin-types";
+import type { BookTextTaskSnapshot, PluginContext, PluginDetailView, PluginViewUpdate, PluginObservationHandler } from "@read-aware/plugin-types";
 import { rebuildForm, requestDetail, requestList, startRequest, timedPrepareForm } from "../src/task-views";
 
 function harness() {
@@ -29,6 +29,7 @@ function harness() {
       if (fails) throw Error("cancel failed"); expect(bookId).toBe("book"); cancelled.push(taskId); task.status = "cancelled";
     },
   } } } } } as unknown as PluginContext;
+  ctx.withEvent = (() => ctx) as unknown as PluginContext["withEvent"];
   return { ctx, task, starts, cancelled, fail: () => { fails = true; } };
 }
 
@@ -67,7 +68,7 @@ test("task list drills into its exact handle, failed queries and cancels do not 
 
 test("request views publish initial, progress and terminal snapshots; hiding releases observation, not the request", async () => {
   const h = harness(), updates: PluginViewUpdate[] = [];
-  let observer: ((task: BookTextTaskSnapshot) => void | Promise<void>) | undefined;
+  let observer: PluginObservationHandler<BookTextTaskSnapshot> | undefined;
   h.ctx.domains.library!.events = { ...h.ctx.domains.library!.events,
     observeTextTask: (bookId, taskId, callback) => {
       expect([bookId, taskId]).toEqual(["book", "task"]);

@@ -6,9 +6,10 @@ const active = (task: BookTextTaskSnapshot) => task.status === "queued" || task.
 export async function requestDetail(ctx: PluginContext, bookId: string, title: string, taskId: string): Promise<PluginDetailView & Pick<PluginView, "live">> {
   const task = await ctx.domains.library!.queries.books.getTextTask(bookId, taskId);
   return { ...requestSnapshot(ctx, title, task), live: {
-    subscribe: channel => ctx.domains.library!.events.observeTextTask(bookId, taskId, async current => {
-      await ctx.services.ui.publishView(channel, { revision: current.revision, view: requestSnapshot(ctx, title, current) });
-    }),
+    subscribe: channel => ctx.domains.library!.events.observeTextTask(bookId, taskId, async (current, delivery) => {
+      if (delivery?.reaction?.status === "cycle") return;
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: current.revision, view: requestSnapshot(ctx, title, current) });
+    }, { ruleId: "text-task-live" }),
   } };
 }
 

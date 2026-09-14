@@ -461,9 +461,11 @@ var active = (task) => task.status === "queued" || task.status === "running" || 
 async function requestDetail(ctx, bookId, title, taskId) {
   const task = await ctx.domains.library.queries.books.getTextTask(bookId, taskId);
   return { ...requestSnapshot(ctx, title, task), live: {
-    subscribe: (channel) => ctx.domains.library.events.observeTextTask(bookId, taskId, async (current) => {
-      await ctx.services.ui.publishView(channel, { revision: current.revision, view: requestSnapshot(ctx, title, current) });
-    })
+    subscribe: (channel) => ctx.domains.library.events.observeTextTask(bookId, taskId, async (current, delivery) => {
+      if (delivery?.reaction?.status === "cycle")
+        return;
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: current.revision, view: requestSnapshot(ctx, title, current) });
+    }, { ruleId: "text-task-live" })
   } };
 }
 function requestSnapshot(ctx, title, task) {
@@ -814,10 +816,10 @@ var PARAMETERLESS_HOST_COMMAND_IDS = [
 var HOST_COMMAND_IDS = [...PARAMETERLESS_HOST_COMMAND_IDS, "open-book", "open-collection"];
 // ../../packages/core/src/domains.ts
 var DOMAIN_CATALOG = {
-  library: { version: "1.31.0", pluginAccess: ["read", "write"] },
+  library: { version: "1.32.0", pluginAccess: ["read", "write"] },
   reading: { version: "2.24.0", pluginAccess: ["read", "write"] },
   annotations: { version: "2.2.0", pluginAccess: ["read", "write"] },
-  conversations: { version: "1.5.0", pluginAccess: ["read", "write"] },
+  conversations: { version: "1.6.0", pluginAccess: ["read", "write"] },
   settings: { version: "1.10.0", pluginAccess: [] },
   memory: { version: "2.8.0", pluginAccess: ["read", "write"] }
 };
@@ -845,13 +847,13 @@ var CONTRIBUTION_CATALOG = {
 var HOST_SERVICE_CATALOG = {
   storage: { version: "2.5.0", permission: null },
   secrets: { version: "1.0.0", permission: null },
-  ui: { version: "1.15.0", permission: null },
+  ui: { version: "1.17.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
   jobs: { version: "1.1.0", permission: null },
   changes: { version: "1.0.0", permission: null },
   transactions: { version: "1.0.0", permission: null },
-  session: { version: "2.10.0", permission: null },
-  plugins: { version: "1.9.0", permission: null },
+  session: { version: "2.11.0", permission: null },
+  plugins: { version: "1.10.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
   logging: { version: "1.0.0", permission: null },

@@ -2,11 +2,11 @@ import { AppError, errorCode, assertOperationConditions, normalizeBookTextPrepar
 import type { ResourceAccess } from "../../../services/resource-access";
 import type { BookTextTaskHistory } from "./book-text-task-history";
 import type { BookTextRepository } from "./book-text-repository";
-import { causalActor, type DomainActor } from "../../../platform/domain-actor";
+import { actorFromEvent, copyEventCause, ObservationCauses, stampEventCause, causalActor, type DomainActor } from "../../../platform/domain-actor";
 
-type Listener = (state: BookTextTaskSnapshot) => void | Promise<void>;
+type Listener = (state: BookTextTaskSnapshot) => unknown;
 type Observer = { send(state: BookTextTaskSnapshot): void; stop(): void };
-type Task = { executions: Set<Promise<void>>; releaseAccess?: () => void; source: { origin: DomainActor; cancellationOrigin?: DomainActor }; admitted: boolean; lastHistoryRevision?: number; timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
+type Task = { executions: Set<Promise<void>>; releaseAccess?: () => void; source: { origin: DomainActor; cancellationOrigin?: DomainActor }; admitted: boolean; lastHistoryRevision?: number; historySource?: object; timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
 const active = (state: BookTextTaskSnapshot) => state.status === "queued" || state.status === "running" || state.status === "paused";
 const cancelled = () => new AppError("library/text-cancelled", "This text preparation request was cancelled");
 
@@ -47,9 +47,9 @@ export class BookTextTaskOwner {
     this.expire(task);
     return task;
   }
-  private publish(task: Task, change: Partial<Pick<BookTextTaskSnapshot, "status" | "textState" | "errorCode" | "priority" | "waitReason">>) {
+  private publish(task: Task, change: Partial<Pick<BookTextTaskSnapshot, "status" | "textState" | "errorCode" | "priority" | "waitReason">>, origin: DomainActor = task.source.origin) {
     if (!active(task.state)) return;
-    task.state = { ...task.state, ...change, revision: task.state.revision + 1, updatedAt: new Date().toISOString() };
+    task.state = stampEventCause({ ...task.state, ...change, revision: task.state.revision + 1, updatedAt: new Date().toISOString() }, origin);
     if (!active(task.state)) { clearTimeout(task.timer); task.timer = undefined; task.releaseAccess?.(); task.releaseAccess = undefined; }
     if (change.status !== undefined || change.priority !== undefined) this.record(task);
     for (const observer of task.observers) observer.send(task.state);
@@ -57,16 +57,17 @@ export class BookTextTaskOwner {
 
   private historySettled(task: Task, revision: number, error?: unknown): void {
     if (this.stopped || task.lastHistoryRevision !== revision) return;
-    task.state = { ...task.state, revision: task.state.revision + 1,
+    task.state = copyEventCause(task.historySource!, { ...task.state, revision: task.state.revision + 1,
       history: error === undefined ? { status: "saved", persistedRevision: revision }
-        : { status: "failed", errorCode: errorCode(error) ?? "db/error" } };
+        : { status: "failed", errorCode: errorCode(error) ?? "db/error" } });
     for (const observer of task.observers) observer.send(task.state);
   }
 
   private record(task: Task): void {
     if (!this.history) return;
     const revision = task.state.revision; task.lastHistoryRevision = revision;
-    task.state = { ...task.state, history: { status: "pending" } };
+    task.historySource = copyEventCause(task.state, {});
+    task.state = copyEventCause(task.state, { ...task.state, history: { status: "pending" } });
     const failed = (error: unknown) => { this.warn("Text task history write failed", error); this.historySettled(task, revision, error); };
     try { void this.history.record(task.state).then(() => this.historySettled(task, revision), failed); }
     catch (error) { failed(error); }
@@ -134,6 +135,7 @@ export class BookTextTaskOwner {
       taskId: crypto.randomUUID(), bookId, mode: request.rebuild ? "rebuild" : "prepare", revision: 0,
       status: "queued", priority: request.priority, timeoutMs: request.timeoutMs, deadlineAt, waitReason: null, createdAt: now, updatedAt: now, textState: state,
     } };
+    stampEventCause(task.state, actor);
     this.tasks.set(task.state.taskId, task);
     if (access) {
       const abort = () => { if (!this.stopped) this.cancel(bookId, task.state.taskId); };
@@ -149,7 +151,7 @@ export class BookTextTaskOwner {
       this.scheduleDeadline(task);
       if (task.state.status === "queued") this.dispatch(task);
     }
-    return structuredClone(task.state);
+    return copyEventCause(task.state, structuredClone(task.state));
   }
 
   private dispatch(task: Task): void {
@@ -196,10 +198,10 @@ export class BookTextTaskOwner {
     const task = this.lookup(bookId, taskId);
     if (task.state.status === "queued" || task.state.status === "running") {
       task.source.cancellationOrigin = origin === undefined ? task.source.origin : causalActor(origin);
-      this.publish(task, { status: "paused", waitReason: null, errorCode: undefined });
+      this.publish(task, { status: "paused", waitReason: null, errorCode: undefined }, task.source.cancellationOrigin);
       task.controller.abort(new AppError("library/text-cancelled", "Text request paused"));
     }
-    return structuredClone(task.state);
+    return copyEventCause(task.state, structuredClone(task.state));
   }
 
   resume(bookId: string, taskId: string, origin?: DomainActor): BookTextTaskSnapshot {
@@ -210,59 +212,61 @@ export class BookTextTaskOwner {
       if (task.admitted) this.dispatch(task);
       else this.publish(task, { status: "queued" });
     }
-    return structuredClone(task.state);
+    return copyEventCause(task.state, structuredClone(task.state));
   }
 
-  setPriority(bookId: string, taskId: string, priority: BookTextPriority): BookTextTaskSnapshot {
+  setPriority(bookId: string, taskId: string, priority: BookTextPriority, origin?: DomainActor): BookTextTaskSnapshot {
     const task = this.lookup(bookId, taskId);
     if (priority !== "normal" && priority !== "background") throw new AppError("library/invalid-input", "Invalid text priority");
-    if (active(task.state) && task.state.priority !== priority) this.publish(task, { priority });
-    return structuredClone(task.state);
+    if (active(task.state) && task.state.priority !== priority) this.publish(task, { priority }, origin === undefined ? task.source.origin : causalActor(origin));
+    return copyEventCause(task.state, structuredClone(task.state));
   }
 
-  get(bookId: string, taskId: string): BookTextTaskSnapshot { return structuredClone(this.lookup(bookId, taskId).state); }
+  get(bookId: string, taskId: string): BookTextTaskSnapshot { const state = this.lookup(bookId, taskId).state; return copyEventCause(state, structuredClone(state)); }
   list(bookId: string): BookTextTaskSnapshot[] {
     this.assertLive();
     if (typeof bookId !== "string" || !bookId.trim()) throw new AppError("library/invalid-input", "A book ID is required");
     for (const task of this.tasks.values()) if (task.state.bookId === bookId) this.expire(task);
-    return [...this.tasks.values()].filter(task => task.state.bookId === bookId).map(task => structuredClone(task.state));
+    return [...this.tasks.values()].filter(task => task.state.bookId === bookId).map(task => copyEventCause(task.state, structuredClone(task.state)));
   }
   cancel(bookId: string, taskId: string, origin?: DomainActor): BookTextTaskSnapshot {
     const task = this.lookup(bookId, taskId);
     if (active(task.state)) {
       task.source.cancellationOrigin = origin === undefined ? task.source.origin : causalActor(origin);
-      this.publish(task, { status: "cancelled", waitReason: null, errorCode: "library/text-cancelled" });
+      this.publish(task, { status: "cancelled", waitReason: null, errorCode: "library/text-cancelled" }, task.source.cancellationOrigin);
       task.controller.abort(cancelled());
     }
-    return structuredClone(task.state);
+    return copyEventCause(task.state, structuredClone(task.state));
   }
 
   /** Immediate snapshot plus monotonic revisions; slow consumers coalesce to the latest snapshot. */
-  observe(bookId: string, taskId: string, listener: Listener): () => void {
+  observe(bookId: string, taskId: string, listener: Listener, origin?: DomainActor): () => void {
     const task = this.lookup(bookId, taskId);
     if (task.observers.size >= 16) throw new AppError("library/text-task-limit", "Too many observers of this task");
     if (typeof listener !== "function") throw new AppError("library/invalid-input", "A task observer is required");
     let stopped = false, delivering = false;
-    let latest: BookTextTaskSnapshot | undefined;
+    let latest: BookTextTaskSnapshot | undefined, retry: object | undefined;
+    const causes = new ObservationCauses();
     const observer: Observer = {
       send: state => {
         if (stopped) return;
+        causes.add(state);
         latest = structuredClone(state);
         if (!delivering) void deliver();
       },
-      stop: () => { stopped = true; latest = undefined; task.observers.delete(observer); },
+      stop: () => { stopped = true; latest = undefined; retry = undefined; task.observers.delete(observer); },
     };
     const deliver = async () => {
       delivering = true;
       try {
         while (!stopped && latest) {
-          const value = latest; latest = undefined;
+          const value = causes.take(latest, retry); latest = undefined; retry = undefined;
           try { await listener(value); }
-          catch (error) { this.warn("Text task observer failed", error); }
+          catch (error) { retry = copyEventCause(value, {}); this.warn("Text task observer failed", error); }
         }
       } finally { delivering = false; }
     };
-    task.observers.add(observer); observer.send(task.state);
+    task.observers.add(observer); observer.send(stampEventCause(structuredClone(task.state), origin === undefined ? actorFromEvent(task.state) : causalActor(origin)));
     return observer.stop;
   }
 
