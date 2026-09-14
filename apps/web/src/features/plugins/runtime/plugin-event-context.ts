@@ -69,6 +69,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
     [context.services.storage, "observeDocuments", 1],
     [context.services.schedules, "observe", 1],
     [context.services.maintenance, "observe", 0],
+    [context.services.sync, "observe", 0],
     [context.services.session, "observeEnvironment", 0],
     [context.services.ui.window, "observe", 0],
     [context.services.ui.workspace, "observe", 1],
@@ -86,7 +87,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
       const handler = args[index], subscription = {};
       args[index] = (snapshot: object | null, source?: object) => reactions.deliver(subscription, source ?? snapshot!,
         reaction => handler(snapshot, { reaction }));
-      if (namespace !== context.services.maintenance && namespace !== context.services.schedules && namespace !== context.services.plugins && namespace !== context.services.ui.window && namespace !== context.services.ui.workspace && namespace !== context.services.ui.commands && key !== "observeImportTask" && key !== "observeContentState" && key !== "observeEnrichment" && key !== "observeTextTask" && key !== "observeRuntime" && key !== "observeSession" && key !== "observeTime" && key !== "observeEnvironment") return observe(...args);
+      if (namespace !== context.services.sync && namespace !== context.services.maintenance && namespace !== context.services.schedules && namespace !== context.services.plugins && namespace !== context.services.ui.window && namespace !== context.services.ui.workspace && namespace !== context.services.ui.commands && key !== "observeImportTask" && key !== "observeContentState" && key !== "observeEnrichment" && key !== "observeTextTask" && key !== "observeRuntime" && key !== "observeSession" && key !== "observeTime" && key !== "observeEnvironment") return observe(...args);
       const release = reactions.bindRule(subscription, args[index + 1]?.ruleId);
       try {
         const registration = observe(...args) as PluginDisposable;

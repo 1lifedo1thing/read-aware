@@ -1,11 +1,12 @@
+import { causalActor, copyEventCause, ObservationCauses, type DomainActor } from "../platform/domain-actor";
 import { AppError, assertOperationConditions, type OperationCondition, type AccountResponse, type HostSyncAccount, type HostSyncPort, type HostSyncSnapshot } from "@read-aware/core";
 import type { SyncStatusSnapshot } from "../platform/sync/sync-scheduler";
 
 type Adapter = {
   supported(): boolean; busy(): boolean; epoch(): string; status(): SyncStatusSnapshot;
-  subscribe(handler: () => void): () => void;
+  subscribe(handler: (source: object) => void): () => void;
   backlog: HostSyncPort["backlog"]; account(): Promise<AccountResponse>;
-  run(): Promise<unknown | null>; openSettings(signal?: AbortSignal): Promise<unknown>;
+  run(origin?: DomainActor): Promise<unknown | null>; openSettings(signal?: AbortSignal): Promise<unknown>;
   connectionOptions: HostSyncPort["connectionOptions"];
   requestFlow: HostSyncPort["requestFlow"];
   conditions?(): Promise<OperationCondition[]>;
@@ -21,27 +22,31 @@ function count(value: number): number {
 
 export class HostSyncService implements HostSyncPort {
   private revision = 0;
-  private listeners = new Set<() => void>();
+  private listeners = new Set<(source: object) => void>();
+  private retirement = new AbortController();
   private unsubscribe: () => void;
   constructor(private adapter: Adapter, private report: (error: unknown) => void) {
-    this.unsubscribe = adapter.subscribe(() => {
+    this.unsubscribe = adapter.subscribe(source => {
       this.revision++;
-      for (const listener of this.listeners) listener();
+      for (const listener of this.listeners) listener(source);
     });
   }
-  dispose() { this.unsubscribe(); this.listeners.clear(); }
+  dispose() { this.retirement.abort(); this.unsubscribe(); this.listeners.clear(); }
   async snapshot(): Promise<HostSyncSnapshot> {
     const state = this.adapter.status(), p = state.progress, last = state.lastCycle;
-    return { revision: this.revision, supported: this.adapter.supported(), connectionBusy: this.adapter.busy(),
+    return copyEventCause(state, { revision: this.revision, supported: this.adapter.supported(), connectionBusy: this.adapter.busy(),
       state: state.state, connected: state.accountConnected, backend: state.backend,
       lastSyncAt: state.lastSyncAt, lastErrorCode: state.lastErrorCode,
       progress: p ? { phase: p.phase, pulled: p.pulled, pushed: p.pushed, verified: p.verified,
         backfilled: p.backfilled, blobsDone: p.blobsDone, blobsTotal: p.blobsTotal } : null,
       cycleStartBacklog: state.cycleTotals ? { events: state.cycleTotals.events, blobs: state.cycleTotals.blobs } : null,
       lastCycle: last ? { pulled: last.pulled, pushed: last.pushed, blobs: last.blobs, backfilled: last.backfilled ?? 0 } : null,
-      backfillRemaining: state.backfillRemaining };
+      backfillRemaining: state.backfillRemaining });
   }
-  observe(handler: (snapshot: HostSyncSnapshot) => unknown) {
+  observe(handler: (snapshot: HostSyncSnapshot) => unknown, origin?: DomainActor) {
+    this.retirement.signal.throwIfAborted();
+    const causes = new ObservationCauses(causalActor(origin ?? "system"));
+    let retry: object | undefined;
     if (this.listeners.size >= 64) throw new AppError("ui/observer-limit", "Too many sync observers");
     let stopped = false, running = false, dirty = false;
     const deliver = async () => {
@@ -50,14 +55,22 @@ export class HostSyncService implements HostSyncPort {
       try {
         do {
           dirty = false;
-          try { const snapshot = await this.snapshot(); if (!stopped) await handler(snapshot); }
+          try {
+            const revision = causes.revision, snapshot = await this.snapshot();
+            if (stopped) return;
+            if (revision !== causes.revision) { dirty = true; continue; }
+            const value = causes.take(snapshot, retry); retry = copyEventCause(value, {});
+            await handler(value); retry = undefined;
+          }
           catch (error) { this.report(error); }
         } while (dirty && !stopped);
       } finally { running = false; }
     };
-    const notify = () => { void deliver(); };
-    this.listeners.add(notify); notify();
-    return () => { stopped = true; this.listeners.delete(notify); };
+    const notify = (source: object) => { if (!stopped) { causes.add(source); void deliver(); } };
+    const stop = () => { stopped = true; this.listeners.delete(notify); this.retirement.signal.removeEventListener("abort", stop); };
+    this.retirement.signal.addEventListener("abort", stop, { once: true });
+    this.listeners.add(notify); void deliver();
+    return stop;
   }
   async backlog(signal?: AbortSignal) {
     signal?.throwIfAborted();
@@ -79,11 +92,12 @@ export class HostSyncService implements HostSyncPort {
       limits: { maxBlobBytes: quota(account.limits?.maxBlobBytes), maxAccountBlobBytes: quota(account.limits?.maxAccountBlobBytes),
         maxAccountEvents: quota(account.limits?.maxAccountEvents), aiMonthlyCredits: quota(account.limits?.aiMonthlyCredits) } };
   }
-  async requestSync(signal?: AbortSignal) {
+  async requestSync(signal?: AbortSignal, origin: DomainActor = "user") {
+    origin = causalActor(origin);
     const epoch = this.guard(signal);
     assertOperationConditions(await this.conditions(signal));
     this.guard(signal, epoch);
-    const result = await this.adapter.run();
+    const result = await this.adapter.run(origin);
     this.guard(signal, epoch);
     return { status: result === null ? "already-running" as const : "completed" as const, snapshot: await this.snapshot() };
   }

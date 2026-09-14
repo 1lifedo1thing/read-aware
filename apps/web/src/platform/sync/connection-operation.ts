@@ -1,3 +1,4 @@
+import { causalActor, stampEventCause, type DomainActor } from "../domain-actor";
 /**
  * Process-wide serialization for account-connection commands.
  *
@@ -10,7 +11,7 @@
 let operationInFlight = false;
 let operationRevision = 0;
 export const getSyncConnectionOperationRevision = () => operationRevision;
-const listeners = new Set<() => void>();
+const listeners = new Set<(source: object) => void>();
 
 export class SyncConnectionBusyError extends Error {
   constructor() {
@@ -23,24 +24,26 @@ export function getSyncConnectionBusy(): boolean {
   return operationInFlight;
 }
 
-export function subscribeSyncConnectionBusy(listener: () => void): () => void {
+export function subscribeSyncConnectionBusy(listener: (source: object) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
 
-function setOperationInFlight(next: boolean): void {
+function setOperationInFlight(next: boolean, origin: DomainActor): void {
   operationInFlight = next;
-  for (const listener of listeners) listener();
+  const source = stampEventCause({ busy: next }, origin);
+  for (const listener of listeners) listener(source);
 }
 
 /** Run one credential/account operation; reject rather than queue duplicates. */
-export async function runSyncConnectionOperation<T>(operation: () => Promise<T>): Promise<T> {
+export async function runSyncConnectionOperation<T>(operation: () => Promise<T>, origin: DomainActor = "user"): Promise<T> {
   if (operationInFlight) throw new SyncConnectionBusyError();
+  origin = causalActor(origin);
   operationRevision++;
-  setOperationInFlight(true);
+  setOperationInFlight(true, origin);
   try {
     return await operation();
   } finally {
-    setOperationInFlight(false);
+    setOperationInFlight(false, origin);
   }
 }

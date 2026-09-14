@@ -1,3 +1,4 @@
+import { actorCause, causalActor, eventCause } from "../domain-actor";
 import { expect, spyOn, test } from "bun:test";
 import type { SyncEngine } from "./sync-engine";
 import type { RelayClient } from "./relay-client";
@@ -105,7 +106,9 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
       spyOn(annotations, "listAnnotations").mockResolvedValue([]),
       spyOn(userProfile, "readUserProfileSnapshot").mockResolvedValue({ summary: null, revision: "empty" }),
     ];
-    const initial = scheduler.syncNow(); await Bun.sleep(0); expect(cycles).toBe(1);
+    const origin = causalActor("plugin:sync-proof");
+    const initial = scheduler.syncNow(origin); await Bun.sleep(0); expect(cycles).toBe(1);
+    expect(eventCause(scheduler.getSyncStatusSnapshot())).toEqual(actorCause(origin));
     let saved = false;
     const backup = exportBackup().then(json => { saved = true; return JSON.parse(json); });
     const laterCycle = scheduler.syncNow(), laterBlob = scheduler.fetchRemoteBlob("later");

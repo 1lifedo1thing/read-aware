@@ -144,7 +144,7 @@ export function syncViews(ctx: PluginContext, signal: AbortSignal, operations: O
   const open = async (): Promise<PluginView> => {
     const sync = service(), snapshot = await sync.snapshot();
     signal.throwIfAborted();
-    return liveView(ctx, signal, snapshot, handler => sync.observe(handler), render);
+    return liveView(ctx, signal, snapshot, handler => sync.observe(handler, { ruleId: "sync-live" }), render);
   };
   return { open, title: t.title };
 }

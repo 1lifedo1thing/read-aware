@@ -1863,7 +1863,7 @@ export function buildPluginContext(
       snapshot: async () => { lifecycle.assertActive("services.sync.snapshot"); return hostSync.snapshot(); },
       backlog: () => { lifecycle.assertActive("services.sync.backlog"); return hostSync.backlog(lifecycle.signal); },
       account: () => { lifecycle.assertActive("services.sync.account"); return hostSync.account(lifecycle.signal); },
-      requestSync: () => { lifecycle.assertActive("services.sync.requestSync"); return hostSync.requestSync(lifecycle.signal); },
+      requestSync: () => { lifecycle.assertActive("services.sync.requestSync"); return hostSync.requestSync(lifecycle.signal, operationActor); },
       openSettings: () => { lifecycle.assertActive("services.sync.openSettings"); return hostSync.openSettings(lifecycle.signal); },
       connectionOptions: async () => { lifecycle.assertActive("services.sync.connectionOptions"); return hostSync.connectionOptions(); },
       requestFlow: (request, options) => {
@@ -1871,7 +1871,7 @@ export function buildPluginContext(
         const signal = pluginOperationSignal(lifecycle.signal, options);
         return lifecycle.read("services.sync.requestFlow", () => hostSync.requestFlow(request, signal), signal);
       },
-      observe: handler => track(() => ({ dispose: hostSync.observe(handler) })),
+      observe: handler => track(() => ({ dispose: hostSync.observe(handler, operationActor) })),
     };
   }
 

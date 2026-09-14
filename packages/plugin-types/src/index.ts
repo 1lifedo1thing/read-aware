@@ -2453,7 +2453,7 @@ export type PluginHostServices = {
     requestSync(): ReturnType<import("@read-aware/core").HostSyncPort["requestSync"]>;
     openSettings(): ReturnType<import("@read-aware/core").HostSyncPort["openSettings"]>;
     requestFlow(request: import("@read-aware/core").HostSyncFlowRequest, options?: PluginCallOptions): ReturnType<import("@read-aware/core").HostSyncPort["requestFlow"]>;
-    observe(handler: (snapshot: import("@read-aware/core").HostSyncSnapshot) => unknown): PluginDisposable;
+    observe(handler: PluginObservationHandler<import("@read-aware/core").HostSyncSnapshot>, options?: { ruleId?: string }): PluginDisposable;
   };
   /** Persistent scoped reload hints, available under the existing read grants. */
   changes: {

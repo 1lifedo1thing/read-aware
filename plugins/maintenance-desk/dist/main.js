@@ -946,7 +946,7 @@ function syncViews(ctx, signal, operations, history) {
   const open = async () => {
     const sync = service(), snapshot = await sync.snapshot();
     signal.throwIfAborted();
-    return liveView(ctx, signal, snapshot, (handler) => sync.observe(handler), render);
+    return liveView(ctx, signal, snapshot, (handler) => sync.observe(handler, { ruleId: "sync-live" }), render);
   };
   return { open, title: t.title };
 }

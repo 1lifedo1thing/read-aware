@@ -26,7 +26,7 @@ async function select(current: PluginView, id: string) {
   return view(await current.items.find(item => item.id === id)!.onSelect!());
 }
 function fixture() {
-  let handler!: (value: Snapshot) => unknown, command!: PluginCommand;
+  let handler!: Parameters<Sync["observe"]>[0], command!: PluginCommand;
   const state: Snapshot = { revision: 1, supported: true, connectionBusy: false, state: "idle", connected: true,
     backend: "relay", lastSyncAt: null, lastErrorCode: null, progress: null,
     cycleStartBacklog: { events: 12, blobs: 3 }, lastCycle: { pulled: 2, pushed: 1, blobs: 1, backfilled: 0 }, backfillRemaining: 9 };
@@ -40,14 +40,14 @@ function fixture() {
   const connectionOptions = mock(async () => [{ ref: "webdav-sync:webdav", label: "WebDAV" }]);
   const openSettings = mock(async () => ({ status: "opened", surface: "dataSync" }));
   const disposeObserver = mock(() => {}), publishView = mock(async (_channel: unknown, _update: { revision: number; view: PluginView }) => ({ status: "applied" }));
-  const ctx = { locale: "en", domains: { settings: { commands: { refreshModelCatalog: mock() } } },
+  const ctx = { withEvent: () => ctx, locale: "en", domains: { settings: { commands: { refreshModelCatalog: mock() } } },
     contributions: { commands: { register: (value: PluginCommand) => { command = value; } }, headerActions: { register: mock() } },
     services: { maintenance: {}, diagnostics: {}, ui: { publishView }, logging: { write: mock(async () => {}) },
       sync: { snapshot: mock(async () => state), requestFlow, requestSync, backlog, account, connectionOptions, openSettings,
         observe: (next: typeof handler) => { handler = next; return { dispose: disposeObserver }; } } },
   } as unknown as PluginContext;
   return { ctx, state, flow, sync, requestFlow, requestSync, backlog, account, connectionOptions, openSettings, disposeObserver, publishView,
-    changed: (value: Snapshot) => handler(value), command: () => command };
+    changed: (value: Snapshot) => handler(value, { reaction: { id: "sync", status: "ready" } }), command: () => command };
 }
 
 test("sync overview stays local, distinguishes live backlog from cycle-start counts, and disposes observation", async () => {

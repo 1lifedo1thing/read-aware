@@ -31,7 +31,7 @@ export const hostSync = new HostSyncService({
   },
   backlog: async () => invoke<{ events: number; blobs: number }>("sync_outbox_counts"),
   account: () => remote(() => syncRelayClient().account()),
-  run: () => remote(syncNow),
+  run: origin => remote(() => syncNow(origin)),
   conditions: async () => (await getRemoteBlobFetchConditions()).map(value => ({ ...value,
     reason: value.reason === "source-download-not-checked" ? "sync-remote-health-not-checked" : value.reason,
     ...(value.errorCode ? { errorCode: "ui/unavailable" } : {}) })),

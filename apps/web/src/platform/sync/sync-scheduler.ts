@@ -1,3 +1,4 @@
+import { actorFromEvent, causalActor, ObservationCauses, stampEventCause, type DomainActor } from "../domain-actor";
 /**
  * The sync scheduler: owns the singleton engine and its cadence. Started once
  * at boot (App.tsx); the settings panel talks to the same singleton for
@@ -158,7 +159,7 @@ export type SyncStatusSnapshot = {
   backfillRemaining: number;
 };
 
-let status: SyncStatusSnapshot = {
+let status: SyncStatusSnapshot = stampEventCause({
   state: "disabled",
   accountConnected: false,
   backend: null,
@@ -169,17 +170,18 @@ let status: SyncStatusSnapshot = {
   cycleTotals: null,
   lastCycle: null,
   backfillRemaining: 0,
-};
-const statusListeners = new Set<() => void>();
+});
+const statusListeners = new Set<(source: object) => void>();
 
 export const getSyncStatusSnapshot = (): SyncStatusSnapshot => status;
-export function subscribeSyncStatus(listener: () => void): () => void {
+export function subscribeSyncStatus(listener: (source: object) => void): () => void {
   statusListeners.add(listener);
   return () => statusListeners.delete(listener);
 }
-function setStatus(next: Partial<SyncStatusSnapshot>): void {
-  status = { ...status, ...next };
-  for (const listener of [...statusListeners]) listener();
+function setStatus(next: Partial<SyncStatusSnapshot>, origin: DomainActor = "system"): void {
+  status = stampEventCause({ ...status, ...next }, origin);
+  const source = status;
+  for (const listener of [...statusListeners]) listener(source);
 }
 
 // ── The singleton engine ─────────────────────────────────────────────────────
@@ -223,6 +225,8 @@ let transportSessions = newTransportSessions();
 onSyncTransportsChanged(() => transportSessions.refresh());
 
 let engine: SyncEngine | null = null;
+// SyncWorkGate serializes physical cycles and blob reads; detach the sink on settlement.
+let progressSink: ((progress: SyncCycleProgress) => void) | undefined;
 
 async function resolveEngine(): Promise<SyncEngine> {
   if (engine) return engine;
@@ -248,7 +252,7 @@ async function resolveEngine(): Promise<SyncEngine> {
     observe: observeRemoteHlcStamps,
     // Every page/batch/blob lands in the status snapshot, which is what the
     // header indicator and the Data & Sync panel subscribe to.
-    onProgress: (progress) => setStatus({ progress }),
+    onProgress: progress => progressSink?.(progress),
   });
   return engine;
 }
@@ -263,13 +267,14 @@ let running = false;
 /** How soon the next cycle runs while a bootstrap's backfill is still owed. */
 const BACKFILL_FOLLOW_UP_MS = 1_500;
 
-function runCycle(isCurrent = () => true): Promise<SyncCycleOutcome | null> {
-  return syncWork.run(() => isCurrent() ? runAcceptedCycle() : Promise.resolve(null));
+function runCycle(isCurrent = () => true, origin: DomainActor = causalActor("system")): Promise<SyncCycleOutcome | null> {
+  return syncWork.run(() => isCurrent() ? runAcceptedCycle(origin) : Promise.resolve(null));
 }
 
-async function runAcceptedCycle(): Promise<SyncCycleOutcome | null> {
+async function runAcceptedCycle(origin: DomainActor): Promise<SyncCycleOutcome | null> {
   if (running) return null;
   running = true;
+  progressSink = progress => setStatus({ progress }, origin);
   // Denominators first: what the outbox holds now is what this cycle's push
   // and blob phases will work through. Best-effort — without them the ring
   // just stays indeterminate.
@@ -297,7 +302,7 @@ async function runAcceptedCycle(): Promise<SyncCycleOutcome | null> {
       blobPartsTotal: 0,
     },
     cycleTotals,
-  });
+  }, origin);
   try {
     await flushRestoredCredentialPublications();
     const outcome = await (await resolveEngine()).syncOnce();
@@ -309,14 +314,14 @@ async function runAcceptedCycle(): Promise<SyncCycleOutcome | null> {
       await reconcileDuplicateBooks();
       // Merged events write projections straight through Rust — nothing else
       // tells the mounted UI. The shelf already reloads on this event.
-      emitAppEvent("library-changed", {});
+      emitAppEvent("library-changed", {}, origin);
       // Mounted conversations must re-read too: their save path upserts the
       // in-memory transcript, and a stale one would keep hiding (though no
       // longer deleting — see ai_chat_replace) freshly merged peer messages.
-      emitAppEvent("conversations-changed", {});
+      emitAppEvent("conversations-changed", {}, origin);
       // Roamed preferences (theme, typography) follow the same wake-up:
       // re-overlay the projection onto KV and announce what moved.
-      await refreshRoamingPreferences();
+      await refreshRoamingPreferences(origin);
     }
     setStatus({
       state: "idle",
@@ -326,13 +331,14 @@ async function runAcceptedCycle(): Promise<SyncCycleOutcome | null> {
       cycleTotals: null,
       lastCycle: { pulled, pushed, blobs, backfilled: outcome.backfilled },
       backfillRemaining: outcome.backfillRemaining,
-    });
+    }, origin);
     // Covers other devices extracted: fetch whatever the shelf still lacks.
     // Runs after EVERY cycle (not just pulls) because the peer's cover upload
     // produces no event to pull — only its bytes appearing on the relay.
     void hydrateMissingCovers(fetchRemoteBlob, { reset: pulled > 0 || bootstrapped });
     return outcome;
   } finally {
+    progressSink = undefined;
     running = false;
   }
 }
@@ -390,13 +396,14 @@ export async function getRemoteBlobFetchConditions(signal?: AbortSignal): Promis
   return result.conditions;
 }
 
-async function fetchAcceptedRemoteBlob(key: string): Promise<RemoteBlobFetch> {
+async function fetchAcceptedRemoteBlob(key: string, origin: DomainActor = causalActor("system")): Promise<RemoteBlobFetch> {
   const admission = await remoteBlobAdmission();
   if (admission.reason) return { outcome: "unavailable", reason: admission.reason };
   // Surface the download like any sync activity: the indicator ring narrates
   // "syncing <book> n/m" while parts stream in, then yields to the prior state.
   const restoreState = status.state === "syncing" ? null : status.state;
-  setStatus({ state: "syncing" });
+  progressSink = progress => setStatus({ progress }, origin);
+  setStatus({ state: "syncing" }, origin);
   try {
     const result = await (await resolveEngine()).fetchBlob(key);
     return result === "fetched" ? { outcome: "fetched" } : { outcome: "missing" };
@@ -414,7 +421,8 @@ async function fetchAcceptedRemoteBlob(key: string): Promise<RemoteBlobFetch> {
     }
     return { outcome: "failed", reason: "unreachable", detail };
   } finally {
-    if (restoreState !== null) setStatus({ state: restoreState, progress: null });
+    progressSink = undefined;
+    if (restoreState !== null) setStatus({ state: restoreState, progress: null }, origin);
   }
 }
 
@@ -441,9 +449,10 @@ let connectionGeneration = 0;
 export const getSyncConnectionGeneration = () => connectionGeneration;
 
 /** Manual "sync now" (settings panel). Throws so the panel can toast failure. */
-export async function syncNow(): Promise<SyncCycleOutcome | null> {
+export async function syncNow(origin: DomainActor = "user"): Promise<SyncCycleOutcome | null> {
+  origin = causalActor(origin);
   try {
-    return await runCycle();
+    return await runCycle(undefined, origin);
   } catch (error) {
     log.error("manual sync failed", error);
     setStatus({
@@ -451,7 +460,7 @@ export async function syncNow(): Promise<SyncCycleOutcome | null> {
       lastErrorCode: classifySyncError(error),
       progress: null,
       cycleTotals: null,
-    });
+    }, origin);
     throw error;
   }
 }
@@ -490,16 +499,16 @@ export function startSyncScheduler(): () => void {
   let doorbellDebounce: number | null = null;
   let sessionRejected = false;
 
-  const schedule = (ms: number) => {
+  const schedule = (ms: number, origin?: DomainActor) => {
     if (disposed) return;
     if (timer !== null) window.clearTimeout(timer);
-    timer = window.setTimeout(tick, ms);
+    timer = window.setTimeout(() => tick(origin), ms);
   };
 
   // A dead session cannot heal on its own, so retrying (or keeping the
   // doorbell alive) would only hammer the relay with 401s. Go dormant; a
   // reconnect through the settings panel restarts the scheduler fresh.
-  const onAuthRejected = () => {
+  const onAuthRejected = (origin: DomainActor = "system") => {
     if (sessionRejected) return;
     sessionRejected = true;
     if (timer !== null) window.clearTimeout(timer);
@@ -513,23 +522,24 @@ export function startSyncScheduler(): () => void {
       lastErrorCode: null,
       progress: null,
       cycleTotals: null,
-    });
+    }, origin);
   };
 
-  const tick = () => {
+  const tick = (origin: DomainActor = causalActor("system")) => {
     if (disposed || sessionRejected) return;
-    void runCycle(() => !disposed && !sessionRejected)
+    void runCycle(() => !disposed && !sessionRejected, origin)
       .then((outcome) => {
         if (disposed) return;
         failures = 0;
         // A bootstrapped device owes the pre-frontier log: keep cycling
         // briskly (each cycle backfills a bounded slice) until it is whole.
-        schedule(outcome && outcome.backfillRemaining > 0 ? BACKFILL_FOLLOW_UP_MS : PULL_INTERVAL_MS);
+        const backfill = !!outcome && outcome.backfillRemaining > 0;
+        schedule(backfill ? BACKFILL_FOLLOW_UP_MS : PULL_INTERVAL_MS, backfill ? origin : undefined);
       })
       .catch((error) => {
         if (disposed) return;
         if (isAuthRejection(error)) {
-          onAuthRejected();
+          onAuthRejected(origin);
           return;
         }
         failures += 1;
@@ -545,8 +555,8 @@ export function startSyncScheduler(): () => void {
           lastErrorCode: classifySyncError(error),
           progress: null,
           cycleTotals: null,
-        });
-        schedule(nextSyncDelayMs(failures, { baseMs: PULL_INTERVAL_MS }));
+        }, origin);
+        schedule(nextSyncDelayMs(failures, { baseMs: PULL_INTERVAL_MS }), origin);
       });
   };
 
@@ -604,6 +614,7 @@ export function startSyncScheduler(): () => void {
   // Registered only once the connection is confirmed below: a local write on
   // a disconnected device (a preference at boot, anything after sign-out)
   // must not wake a cycle that can only fail with "no master key".
+  const pushCauses = new ObservationCauses();
   let offBroadcast: (() => void) | null = null;
   const onFocus = () => tick();
   // Mobile lifecycle: a backgrounded webview pauses timers, so a scheduled
@@ -629,11 +640,12 @@ export function startSyncScheduler(): () => void {
     }
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
-    offBroadcast = onDomainEventBroadcast(() => {
+    offBroadcast = onDomainEventBroadcast(event => {
       // A local write: push soon, but let a burst (import, batch edit) settle.
       if (disposed) return;
       if (pushDebounce !== null) window.clearTimeout(pushDebounce);
-      pushDebounce = window.setTimeout(tick, PUSH_DEBOUNCE_MS);
+      pushCauses.add(event);
+      pushDebounce = window.setTimeout(() => tick(actorFromEvent(pushCauses.take({}))), PUSH_DEBOUNCE_MS);
     });
     setStatus({
       state: "idle",
