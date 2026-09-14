@@ -42,9 +42,9 @@ describe("plugin capability negotiation", () => {
   });
   test("metadata service does not grant reading access and legacy event contracts are rejected", () => {
     const empty = manifest({ permissions: [] });
-    expect(resolvePluginCapabilities(empty).services.session).toBe("2.1.0");
+    expect(resolvePluginCapabilities(empty).services.session).toBe("2.2.0");
     expect(resolvePluginCapabilities(empty).domains.reading).toBeUndefined();
-    expect(() => assertPluginCapabilityRequirements(manifest({ requires: { services: { session: "^1.0.0" } } }))).toThrow(/host provides 2.1.0/);
+    expect(() => assertPluginCapabilityRequirements(manifest({ requires: { services: { session: "^1.0.0" } } }))).toThrow(/host provides 2.2.0/);
     expect(() => assertPluginCapabilityRequirements(manifest({ requires: { services: { session: "^2.0.0" } } }))).not.toThrow();
     expect(() => assertPluginCapabilityRequirements(manifest({ requires: { domains: { reading: "^2.0.0" } } }))).toThrow(/unavailable capability domains.reading/);
     expect(() => assertPluginCapabilityRequirements(manifest({ permissions: ["reading:read"], requires: { domains: { reading: "^2.0.0" } } }))).not.toThrow();

@@ -6,6 +6,7 @@ import type { AIConfig } from "../features/ai/lib/ai-config";
 import * as aiConfig from "../features/ai/lib/ai-config";
 import { getSecret, setSecret, deleteSecret } from "../platform/secret-store";
 import { getAgentRuntime } from "../features/ai/agent/agent-runtime";
+import { readingRuntime } from "../domain/reading-runtime";
 
 const input = { operation: "llm.infer" as const };
 const configured: AIConfig = { provider: "custom", apiKey: "private-credential", model: "private-model", customBaseUrl: "https://private.example/v1" };
@@ -16,6 +17,43 @@ beforeEach(() => {
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
     getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key),
   } });
+});
+
+test("public reading prerequisites authorize the target before inspecting it and sanitize unavailable adapters", async () => {
+  const query = { operation: "reading.playback" as const, bookId: "book", action: "start" as const };
+  const inspect = spyOn(readingRuntime, "operationAvailability");
+  const readAI = spyOn(aiConfig, "getAIConfig");
+  const clients = [
+    buildPluginContext({ id: "reader-metadata-only", name: "Read", version: "1", schemaVersion: 1, requires: {}, permissions: ["reading:read"] }, "1", []),
+    buildPluginContext({ id: "reader-writer", name: "Write", version: "1", schemaVersion: 1, requires: {}, permissions: ["reading:write"] }, "1", [], { mode: "book", bookId: "book" }),
+  ];
+  clients.forEach(client => client.lifecycle.promote());
+  try {
+    const [denied, allowed] = clients;
+    expect((await denied!.context.services.session.operationAvailability(query)).conditions).toEqual([
+      { kind: "permission", state: "unavailable", reason: "reading:write-required" },
+    ]);
+    expect((await allowed!.context.services.session.operationAvailability({ ...query, bookId: "foreign" })).conditions).toEqual([
+      { kind: "permission", state: "unavailable", reason: "book-scope-required", errorCode: "plugin/object-access-denied" },
+    ]);
+    expect(inspect).not.toHaveBeenCalled();
+    expect((await allowed!.context.services.session.operationAvailability(query)).conditions).toContainEqual(expect.objectContaining({ reason: "no-reading-session" }));
+    expect(readAI).not.toHaveBeenCalled();
+    inspect.mockImplementation(() => { throw new Error("PRIVATE_ADAPTER_FAILURE"); });
+    const failure = await allowed!.context.services.session.operationAvailability(query);
+    expect(failure.state).toBe("unknown"); expect(JSON.stringify(failure)).not.toContain("PRIVATE");
+  } finally { inspect.mockRestore(); readAI.mockRestore(); for (const client of clients) { client.lifecycle.stop(); await client.lifecycle.drainCleanups(); } }
+});
+
+test("current-book prerequisite result is retired when the reader changes in flight", async () => {
+  readingRuntime.begin("book");
+  const client = buildPluginContext({ id: "current-prerequisites", name: "Current", version: "1", schemaVersion: 1, requires: {}, permissions: ["reading:write"] }, "1", [], { mode: "current" });
+  client.lifecycle.promote();
+  try {
+    const pending = client.context.services.session.operationAvailability({ operation: "reading.playback", bookId: "book", action: "start" });
+    readingRuntime.begin("foreign");
+    await expect(pending).rejects.toMatchObject({ code: "plugin/object-access-denied" });
+  } finally { readingRuntime.closed(); client.lifecycle.stop(); await client.lifecycle.drainCleanups(); }
 });
 afterEach(() => { if (savedStorage) Object.defineProperty(globalThis, "localStorage", savedStorage); else Reflect.deleteProperty(globalThis, "localStorage"); });
 

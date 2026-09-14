@@ -43,7 +43,7 @@ test("inference rechecks after resource reads, and unknown remote health does no
   const image = Promise.withResolvers<import("@read-aware/core").ModelImageInput>();
   const runtime = { ask: async () => { calls++; return "result"; }, askDetailed: async () => { calls++; return { value: "result", attempts: [] }; } } as Pick<AgentRuntime, "ask" | "askDetailed">;
   const api = createPluginLlm("preflight", lifecycle, () => { runtimeReads++; return runtime; }, undefined,
-    () => image.promise, undefined, { check: async query => ({ operation: query.operation, model: query.model ?? "fast", remoteChecked: false,
+    () => image.promise, undefined, { check: async query => ({ operation: query.operation, model: query.operation === "llm.infer" ? query.model ?? "fast" : undefined, remoteChecked: false,
       state: configured ? "unknown" : "unconfigured", conditions: configured
         ? [{ kind: "provider", state: "unknown", reason: "remote-health-not-checked" }]
         : [{ kind: "account", state: "unconfigured", reason: "credential-missing", errorCode: "ai/not-configured" }] }) });

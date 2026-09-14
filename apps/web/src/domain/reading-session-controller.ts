@@ -3,6 +3,7 @@ import { AppError, errorCode, type ReadingModeConfiguration, type ReadingModeSna
 import type { ReadingModeStepOutcome, ReadingModeStepReceipt, ReadingStep, ReadingPaginationSnapshot } from "@read-aware/core";
 import type { ReadingSessionChange as PublicReadingSessionChange, ReadingDemandSnapshot, ReadingControlsSnapshot, ReadingControlsReceipt, ReadingVisibleTextState } from "@read-aware/core";
 import { normalizeBookRangeQuery, type BookTextRange, type ReadingSelectionSnapshot, type ReadingSelectionReceipt } from "@read-aware/core";
+import { operationAvailability, type ReadingOperationQuery, type OperationCondition, type OperationAvailability } from "@read-aware/core";
 
 type ReadingSessionChange = Omit<PublicReadingSessionChange, "origin"> & { origin: DomainActor };
 
@@ -21,6 +22,7 @@ export type ReadingControlsAdapter = {
 };
 
 export type ReadingModeAdapter = {
+  conditions?(input: ReadingModeConfiguration): OperationCondition[];
   generation(): number;
   snapshot(): ReadingModeSnapshot;
   observe(listener: (origin?: DomainActor) => void): () => void;
@@ -33,6 +35,7 @@ export const unavailableMode = (): ReadingModeSnapshot => ({ status: "unavailabl
   requestedActive: false, availableModes: [], modeKey: null, label: null, unitId: null, units: [], progress: null, cfiRange: null, position: null });
 
 export type ReadingPlaybackAdapter = {
+  conditions?(action: "start" | "stop"): OperationCondition[];
   snapshot(): ReadingPlaybackSnapshot;
   observe(listener: (origin?: DomainActor) => void): () => void;
   start(owner: DomainActor, signal?: AbortSignal): Promise<void>;
@@ -90,6 +93,27 @@ export class ReadingSessionController {
   constructor(private readonly report: (error: unknown) => void = () => {}, private readonly deadlineMs = 30_000, private readonly readerCooldownMs = 1500) {}
 
   snapshot(): ReadingSessionSnapshot { return copyEventCause(this.state, structuredClone(this.state)); }
+
+  /** Caller authorizes the supplied book before entering. Never expose the
+   * actual book, text, locator or provider identity when that target is inactive. */
+  operationAvailability(query: ReadingOperationQuery): OperationAvailability {
+    const conditions: OperationCondition[] = [{ kind: "permission", state: "satisfied", reason: "authorized" }];
+    const denied = (kind: "object" | "reader", reason: string, errorCode = "reader/unavailable") =>
+      operationAvailability(query, [...conditions, { kind, state: "unavailable", reason, errorCode }]);
+    if (!this.session) return denied("object", "no-reading-session");
+    if (this.session.bookId !== query.bookId) return denied("object", "book-not-active", "reader/superseded");
+    if (query.sessionId !== undefined && query.sessionId !== this.session.id) return denied("object", "reading-session-changed", "reader/superseded");
+    conditions.push({ kind: "object", state: "satisfied", reason: "requested-book-active" });
+    if (this.state.status !== "ready") return denied("reader", "reader-not-ready");
+    const binding = query.operation === "reading.playback" ? this.playbackAdapter : this.modeAdapter;
+    if (!binding || binding.id !== this.session.id) return denied("reader", "operation-not-attached");
+    conditions.push({ kind: "reader", state: "satisfied", reason: "reader-ready" });
+    const current = query.operation === "reading.playback" ? this.playbackAdapter!.adapter.conditions?.(query.action)
+      : this.modeAdapter!.adapter.conditions?.(query);
+    return operationAvailability(query, [...conditions, ...(current ?? [
+      { kind: "provider" as const, state: "unknown" as const, reason: "provider-prerequisites-unavailable" },
+    ])]);
+  }
 
   get readerDemandDelay(): number { return Math.max(0, (this.state.readerDemand?.idleAt ?? 0) - Date.now()); }
 

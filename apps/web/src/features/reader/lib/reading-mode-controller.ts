@@ -1,4 +1,4 @@
-import { AppError, errorCode, type ReadingModeConfiguration, type ReadingModeSnapshot, type ReadingModePosition, type ReadingModeStepOutcome, type ReadingModeDescriptor } from "@read-aware/core";
+import { AppError, errorCode, assertOperationConditions, type OperationCondition, type ReadingModeConfiguration, type ReadingModeSnapshot, type ReadingModePosition, type ReadingModeStepOutcome, type ReadingModeDescriptor } from "@read-aware/core";
 import { ReadingModeWrites } from "./reading-mode-writes";
 import { ReadingModePositionWrites } from "./reading-mode-position-writes";
 import { causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
@@ -50,6 +50,20 @@ export class ReadingModeController {
   generation = (): number => this.request.revision;
   configurationConfirmed = (revision: number): boolean => this.confirmedRevision === revision;
   snapshot = (): ReadingModeSnapshot => this.result;
+  /** Local selection/format checks shared by discovery and actual configuration. */
+  conditions = (input: ReadingModeConfiguration): OperationCondition[] => {
+    const denied = (kind: OperationCondition["kind"], reason: string, errorCode: string): OperationCondition[] =>
+      [{ kind, state: "unavailable", reason, errorCode }];
+    if (input.modeKey !== undefined && input.modeKey !== this.request.modeKey) return denied("provider", "mode-provider-changed", "reader/superseded");
+    const descriptor = input.selectModeKey === undefined ? this.descriptor : this.modes.find(mode => mode.key === input.selectModeKey);
+    if (input.selectModeKey !== undefined && !descriptor) return denied("provider", "mode-provider-not-registered", "reader/unavailable");
+    if (input.active && !this.supported) return denied("object", "unsupported-format", "reader/unavailable");
+    if (input.active && !descriptor) return [{ kind: "provider", state: "unconfigured", reason: "no-provider", errorCode: "reader/unavailable" }];
+    if (input.unitId !== undefined && !descriptor?.units.some(unit => unit.id === input.unitId)) return denied("input", "unknown-mode-unit", "reader/invalid-target");
+    return input.active ? [{ kind: "provider", state: "satisfied", reason: "mode-provider-registered" },
+      { kind: "provider", state: "unknown", reason: "mode-execution-not-checked" }]
+      : [{ kind: "input", state: "satisfied", reason: "mode-deactivation-allowed" }];
+  };
   observe = (listener: (origin?: DomainActor) => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
 
   requireDurability(): void { this.persistenceTracked = true; }
@@ -262,11 +276,7 @@ export class ReadingModeController {
       || input.modeKey !== undefined && typeof input.modeKey !== "string"
       || input.selectModeKey !== undefined && typeof input.selectModeKey !== "string"
       || input.unitId !== undefined && typeof input.unitId !== "string") throw new AppError("reader/invalid-target", "Invalid reading mode configuration");
-    if (input.modeKey !== undefined && input.modeKey !== this.request.modeKey) throw new AppError("reader/superseded", "Reading mode provider changed");
-    const descriptor = input.selectModeKey === undefined ? this.descriptor : this.modes.find(mode => mode.key === input.selectModeKey);
-    if (input.selectModeKey !== undefined && !descriptor) throw new AppError("reader/unavailable", "Requested reading mode is not registered");
-    if (input.active && (!this.supported || !descriptor)) throw new AppError("reader/unavailable", "Reading mode is unavailable");
-    if (input.unitId !== undefined && !descriptor?.units.some(unit => unit.id === input.unitId)) throw new AppError("reader/invalid-target", "Unknown reading mode unit");
+    assertOperationConditions(this.conditions(input));
   }
 
   private supersede(reason: unknown = new AppError("reader/superseded", "Reading mode request was replaced")): void {

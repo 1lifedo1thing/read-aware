@@ -1,4 +1,4 @@
-import { AppError, errorCode, type ReadingPlaybackSnapshot, type ReadingModeStepOutcome } from "@read-aware/core";
+import { AppError, errorCode, assertOperationConditions, type OperationCondition, type ReadingPlaybackSnapshot, type ReadingModeStepOutcome } from "@read-aware/core";
 import { actorOrigin, causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 
 export type PlaybackHandle = { cancel(): void };
@@ -35,6 +35,16 @@ export class ReadAloudController {
   constructor(private readonly deps: Dependencies, private readonly startDeadlineMs = 30_000, private readonly advanceDeadlineMs = 35_000) {}
 
   snapshot = (): ReadingPlaybackSnapshot => this.state;
+  /** The same live input and voice prerequisites used by start. Never synthesizes audio. */
+  conditions = (action: "start" | "stop"): OperationCondition[] => {
+    if (action === "stop") return [{ kind: "input", state: "satisfied", reason: "stop-without-unit-or-voice" }];
+    const reason = this.reason();
+    if (reason) return [{ kind: reason === "no-voice" ? "provider" : "input",
+      state: reason === "no-voice" ? "unconfigured" : "unavailable", reason, errorCode: "reader/unavailable" }];
+    return [{ kind: "input", state: "satisfied", reason: "reading-unit-ready" },
+      { kind: "provider", state: "satisfied", reason: this.input.voice ? "plugin-voice-selected" : "system-voice-present" },
+      { kind: "provider", state: "unknown", reason: "audio-output-not-checked" }];
+  };
   observe = (listener: (origin?: DomainActor) => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -63,7 +73,7 @@ export class ReadAloudController {
 
   start(owner: DomainActor, signal?: AbortSignal): Promise<void> {
     if (signal?.aborted) return Promise.reject(signal.reason);
-    if (this.reason()) return Promise.reject(new AppError("reader/unavailable", `Read aloud unavailable: ${this.reason()}`));
+    try { assertOperationConditions(this.conditions("start")); } catch (error) { return Promise.reject(error); }
     const origin = causalActor(owner);
     const generation = this.generation + 1;
     this.stop(undefined, origin);

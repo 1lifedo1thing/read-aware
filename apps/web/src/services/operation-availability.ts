@@ -1,6 +1,7 @@
 import { accountCredential, createModelResolver } from "@read-aware/agent";
 import { errorCode, normalizeOperationAvailability, operationAvailability, type OperationAvailabilityQuery,
-  type OperationAvailability, type OperationCondition } from "@read-aware/core";
+  type InferenceAvailabilityQuery, type OperationAvailability, type OperationCondition } from "@read-aware/core";
+import { readingRuntime } from "../domain/reading-runtime";
 import { getAIConfig, type AIConfig } from "../features/ai/lib/ai-config";
 import { accountFromConfig } from "../features/ai/agent/account";
 import { afterLocalKVWrites } from "../platform/local-store";
@@ -13,8 +14,9 @@ const condition = (kind: OperationCondition["kind"], state: OperationCondition["
 
 /** Shared with execution's account/model resolver. No remote calls, catalog
  * refresh, runtime construction, credential values or endpoint identifiers. */
-export function inspectInferenceAvailability(input: OperationAvailabilityQuery, config: AIConfig | null): OperationAvailability {
+export function inspectInferenceAvailability(input: InferenceAvailabilityQuery, config: AIConfig | null): OperationAvailability {
   const query = normalizeOperationAvailability(input);
+  if (query.operation !== "llm.infer") throw new Error("Expected inference availability query");
   const conditions: OperationCondition[] = [condition("permission", "satisfied", "authorized")];
   if (!config) return operationAvailability(query, [...conditions, condition("account", "unconfigured", "connection-not-configured", "ai/not-configured")]);
   let mapped: ReturnType<typeof accountFromConfig>;
@@ -54,6 +56,17 @@ export function inspectInferenceAvailability(input: OperationAvailabilityQuery, 
 export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal): Promise<OperationAvailability> {
   const query = normalizeOperationAvailability(input);
   signal?.throwIfAborted();
+  if (query.operation !== "llm.infer") {
+    try {
+      const result = readingRuntime.operationAvailability(query);
+      signal?.throwIfAborted();
+      return result;
+    } catch (error) {
+      signal?.throwIfAborted();
+      log.warn("Cannot read reading prerequisites", error);
+      return operationAvailability(query, [condition("reader", "unknown", "reader-prerequisites-read-failed", errorCode(error) ?? "ipc/unknown")]);
+    }
+  }
   // Read only settled preferences and credentials, with no legacy migration.
   const snapshot = await afterLocalKVWrites(() => afterSecretWrites(() => {
     signal?.throwIfAborted();

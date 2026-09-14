@@ -918,6 +918,16 @@ export function buildPluginContext(
           const signal = callSignal(options);
           signal.throwIfAborted();
           const query = normalizeOperationAvailability(input);
+          if (query.operation !== "llm.infer") {
+            if (!permissions.has("reading:write")) return Promise.resolve(operationAvailability(query, [
+              { kind: "permission", state: "unavailable", reason: "reading:write-required" },
+            ]));
+            try { objectAccess.assertBook(query.bookId, "services.session.operationAvailability"); }
+            catch { return Promise.resolve(operationAvailability(query, [
+              { kind: "permission", state: "unavailable", reason: "book-scope-required", errorCode: "plugin/object-access-denied" },
+            ])); }
+            return scopedRead(query.bookId, "services.session.operationAvailability", signal => checkOperationAvailability(query, signal), options);
+          }
           if (!canUseHostService("llm", permissions)) return Promise.resolve(operationAvailability(query, [
             { kind: "permission", state: "unavailable", reason: "service:llm-required" },
           ]));

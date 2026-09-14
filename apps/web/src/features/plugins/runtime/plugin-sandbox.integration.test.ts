@@ -46,7 +46,7 @@ async function command(scenario: string, fixture?: string) {
 }
 
 test("real Worker queries operation prerequisites with cancellable call options", async () => {
-  for (const scenario of ["read", "cancel"]) {
+  for (const scenario of ["read", "cancel", "reading"]) {
     const s = sandbox(scenario, "operation-availability-probe.ts", { shape: {
       services: { session: { operationAvailability: "fn" } }, contributions: { commands: { register: "fn" } },
     } });
@@ -57,11 +57,13 @@ test("real Worker queries operation prerequisites with cancellable call options"
     s.worker.postMessage({ t: "sync", patch: { phase: "active" } });
     s.worker.postMessage({ t: "invoke", id: 901, handle, args: [] });
     const query = await s.next(message => message.method === "services.session.operationAvailability");
-    expect(data(query.args!)).toEqual([{ operation: "llm.infer", model: "smart", images: true }, undefined]);
+    expect(data(query.args!)).toEqual([scenario === "reading"
+      ? { operation: "reading.playback", bookId: "book", sessionId: "session", action: "start" }
+      : { operation: "llm.infer", model: "smart", images: true }, undefined]);
     if (scenario === "cancel") {
       await s.next(message => message.t === "cancel" && message.id === query.id);
     } else s.worker.postMessage({ t: "result", id: query.id, ok: true, value: {
-      operation: "llm.infer", model: "smart", state: "unknown", remoteChecked: false,
+      operation: scenario === "reading" ? "reading.playback" : "llm.infer", state: "unknown", remoteChecked: false,
       conditions: [{ kind: "provider", state: "unknown", reason: "remote-health-not-checked" }],
     } });
     const result = resultData(await s.next(message => message.t === "result" && message.id === 901));

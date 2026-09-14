@@ -2434,7 +2434,7 @@ export type PluginHostServices = {
     observe(handler: (snapshot: import("@read-aware/core").HostSyncSnapshot) => unknown): PluginDisposable;
   };
   session: {
-    /** Session 2.1: inspect semantic operation prerequisites without executing
+    /** Session 2.2: inspect inference and book-targeted playback/mode prerequisites without executing
      * or probing. Missing permission returns only the permission condition.
      * Unknown remote health is not a local refusal or a success guarantee. */
     operationAvailability(query: import("@read-aware/core").OperationAvailabilityQuery, options?: PluginCallOptions): Promise<import("@read-aware/core").OperationAvailability>;

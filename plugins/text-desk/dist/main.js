@@ -1,6 +1,16 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  readingAvailability: ["Reading prerequisites", "阅读操作条件", "閱讀操作條件", "読書操作の利用条件", "Условия чтения", "Conditions de lecture", "Lesevoraussetzungen", "Requisitos de lectura"],
+  readingAvailabilityNote: ["Checks this reading session. Voice presence and mode registration do not verify audio output or provider execution.", "检查本次阅读会话。语音可用或模式已注册，不代表已经验证播放或提供者执行成功。", "檢查本次閱讀工作階段。語音可用或模式已註冊，不代表已驗證播放或提供者執行成功。", "現在の読書セッションを確認します。音声やモードの存在は、再生や実行の成功を保証しません。", "Проверяет текущий сеанс. Наличие голоса или режима не подтверждает успешное воспроизведение или выполнение.", "Vérifie cette session. La présence d’une voix ou d’un mode ne confirme pas la réussite de la lecture ou du fournisseur.", "Prüft diese Lesesitzung. Vorhandene Stimmen oder Modi bestätigen noch keine erfolgreiche Wiedergabe oder Ausführung.", "Comprueba esta sesión. La presencia de voz o modo no confirma la reproducción ni la ejecución del proveedor."],
+  enableReadingMode: ["Enable reading mode", "启用阅读模式", "啟用閱讀模式", "読書モードを有効化", "Включить режим чтения", "Activer le mode de lecture", "Lesemodus aktivieren", "Activar modo de lectura"],
+  startReadingAloud: ["Start read aloud", "开始朗读", "開始朗讀", "読み上げ開始", "Начать чтение вслух", "Démarrer la lecture vocale", "Vorlesen starten", "Iniciar lectura en voz alta"],
+  stopReadingAloud: ["Stop read aloud", "停止朗读", "停止朗讀", "読み上げ停止", "Остановить чтение вслух", "Arrêter la lecture vocale", "Vorlesen stoppen", "Detener lectura en voz alta"],
+  readingModeCondition: ["Active reading mode", "阅读模式已启用", "閱讀模式已啟用", "有効な読書モード", "Активный режим чтения", "Mode de lecture actif", "Aktiver Lesemodus", "Modo de lectura activo"],
+  readingUnitCondition: ["Reading input", "阅读输入", "閱讀輸入", "読書の入力", "Входные данные чтения", "Entrée de lecture", "Leseeingabe", "Entrada de lectura"],
+  readingProviderCondition: ["Reading provider", "阅读提供者", "閱讀提供者", "読書機能の提供元", "Провайдер чтения", "Fournisseur de lecture", "Leseanbieter", "Proveedor de lectura"],
+  availability_object: ["Target book and session", "目标书籍与会话", "目標書籍與工作階段", "対象の本とセッション", "Целевая книга и сеанс", "Livre et session ciblés", "Zielbuch und Sitzung", "Libro y sesión de destino"],
+  availability_reader: ["Reader readiness", "阅读器就绪状态", "閱讀器就緒狀態", "リーダーの準備状態", "Готовность ридера", "Disponibilité du lecteur", "Bereitschaft des Readers", "Disponibilidad del lector"],
   inferenceAvailability: ["Image AI prerequisites", "图像 AI 使用条件", "影像 AI 使用條件", "画像AIの利用条件", "Условия для ИИ изображений", "Conditions pour l’IA d’images", "Voraussetzungen für Bild-KI", "Requisitos de IA de imágenes"],
   availabilityNote: ["Checks the saved Smart-model configuration for image input. This does not send a request or verify the remote service.", "检查已保存的 Smart 模型是否具备图像输入条件。不会发送请求，也不验证远端服务。", "檢查已儲存的 Smart 模型是否具備影像輸入條件。不會傳送請求，也不驗證遠端服務。", "保存済みSmartモデルの画像入力条件を確認します。リクエスト送信や外部サービスの検証は行いません。", "Проверяет настройки Smart для изображений. Не отправляет запрос и не проверяет удалённый сервис.", "Vérifie la configuration Smart enregistrée pour les images, sans envoyer de requête ni tester le service distant.", "Prüft die gespeicherte Smart-Konfiguration für Bilder, ohne Anfrage oder Test des entfernten Dienstes.", "Comprueba la configuración Smart guardada para imágenes, sin enviar solicitudes ni probar el servicio remoto."],
   availability_permission: ["Permission", "权限", "權限", "権限", "Разрешение", "Autorisation", "Berechtigung", "Permiso"],
@@ -250,6 +260,49 @@ async function inferenceAvailability(ctx) {
     icon: "arrows-clockwise",
     run: async () => ({ view: await inferenceAvailability(ctx), navigation: "replace" })
   }] };
+}
+
+// src/reading-availability.ts
+async function readingAvailability(ctx, target) {
+  const reading = ctx.domains.reading;
+  if (!reading)
+    throw Error("Text Desk requires reading access");
+  const current = target ? null : await reading.queries.session();
+  const guard = target ?? (current?.bookId && current.sessionId ? { bookId: current.bookId, sessionId: current.sessionId } : null);
+  if (!guard)
+    return { kind: "detail", title: tr(ctx.locale, "readingAvailability"), content: [{ kind: "error", code: "reader/unavailable" }] };
+  const queries = [
+    { operation: "reading.mode.configure", ...guard, active: true },
+    { operation: "reading.playback", ...guard, action: "start" },
+    { operation: "reading.playback", ...guard, action: "stop" }
+  ];
+  const results = await Promise.all(queries.map((query) => ctx.services.session.operationAvailability(query)));
+  const names = ["enableReadingMode", "startReadingAloud", "stopReadingAloud"];
+  const conditionLabel = (reason, kind) => reason === "mode-inactive" ? "readingModeCondition" : reason === "no-unit" || kind === "input" ? "readingUnitCondition" : kind === "provider" ? "readingProviderCondition" : `availability_${kind}`;
+  return { kind: "detail", title: tr(ctx.locale, "readingAvailability"), content: [
+    { kind: "text", text: tr(ctx.locale, "readingAvailabilityNote") },
+    ...results.flatMap((result, i) => [
+      { kind: "heading", text: tr(ctx.locale, names[i]) },
+      { kind: "keyValue", rows: result.conditions.map((condition) => ({
+        label: tr(ctx.locale, conditionLabel(condition.reason, condition.kind)),
+        value: tr(ctx.locale, `availability_${condition.state}`)
+      })) },
+      ...result.conditions.filter((condition) => condition.errorCode).map((condition) => ({ kind: "error", code: condition.errorCode }))
+    ])
+  ], actions: [
+    ...results.flatMap((result, i) => !reading.commands || result.conditions.some((condition) => condition.state === "unavailable" || condition.state === "unconfigured") ? [] : [{
+      id: names[i],
+      label: tr(ctx.locale, names[i]),
+      run: async () => {
+        if (i === 0)
+          await reading.commands.configureMode({ active: true }, guard);
+        else
+          await reading.commands.controlPlayback(i === 1 ? "start" : "stop", guard);
+        return { view: await readingAvailability(ctx, guard), navigation: "replace" };
+      }
+    }]),
+    { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await readingAvailability(ctx, guard), navigation: "replace" }) }
+  ] };
 }
 
 // src/task-views.ts
@@ -641,7 +694,7 @@ var HOST_SERVICE_CATALOG = {
   secrets: { version: "1.0.0", permission: null },
   ui: { version: "1.15.0", permission: null },
   schedules: { version: "2.0.0", permission: null },
-  session: { version: "2.1.0", permission: null },
+  session: { version: "2.2.0", permission: null },
   plugins: { version: "1.7.0", permission: null },
   maintenance: { version: "1.4.0", permission: null },
   diagnostics: { version: "1.2.0", permission: "service:diagnostics" },
@@ -1481,6 +1534,7 @@ var src_default = {
     if (!ctx.domains.library?.commands || !ctx.domains.reading?.commands)
       throw Error("Text Desk requires library:write and reading:write");
     const title = tr(ctx.locale, "title");
+    ctx.contributions.commands.register({ id: "reading-availability", title: `${title}: ${tr(ctx.locale, "readingAvailability")}`, icon: "speaker-high", run: async () => ({ view: await readingAvailability(ctx) }) });
     ctx.contributions.commands.register({ id: "inference-availability", title: `${title}: ${tr(ctx.locale, "inferenceAvailability")}`, icon: "sparkle", run: async () => ({ view: await inferenceAvailability(ctx) }) });
     ctx.contributions.commands.register({ id: "open", title, icon: "book-open", run: async () => ({ view: await textDesk(ctx) }) });
     ctx.contributions.commands.register({

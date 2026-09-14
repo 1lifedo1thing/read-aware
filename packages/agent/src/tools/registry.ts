@@ -52,7 +52,7 @@ export function buildAgentTools(
     ...(scope.kind === "global" ? [buildOnboardingTool(scope, deps)] : []),
     ...buildReadingAiTools(scope, deps),
     ...buildEnvironmentTools(deps),
-    ...buildOperationAvailabilityTools(deps),
+    ...buildOperationAvailabilityTools(deps, scope),
     ...buildWindowTools(deps),
     ...buildImageViewerTools(scope, deps),
     ...buildBookImageTools(scope, deps, turnState),

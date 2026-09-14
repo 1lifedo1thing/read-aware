@@ -37,8 +37,11 @@ test("provider replacement and external preferences converge without replaying a
     off = register("mode-owner-a", removalActor);
     await act(async () => { root.render(<Harness />); });
     expect(state.request.unitId).toBe("paragraph");
+    const query = { operation: "reading.mode.configure" as const, bookId: "mode-owner-test", sessionId: id, active: true };
+    expect(readingRuntime.operationAvailability(query).conditions).toContainEqual({ kind: "provider", state: "satisfied", reason: "mode-provider-registered" });
     await act(async () => { off?.dispose(); off = undefined; });
     expect(state.controller.snapshot().unavailableReason).toBe("no-provider");
+    expect(readingRuntime.operationAvailability(query).conditions).toContainEqual({ kind: "provider", state: "unconfigured", reason: "no-provider", errorCode: "reader/unavailable" });
     expect(eventCause(readingRuntime.snapshot())).toBe(actorCause(removalActor));
     updateTextUnitModeSettings("mode-owner-b:reader", { unitId: "sentence" });
     await act(async () => { off = register("mode-owner-b"); });
