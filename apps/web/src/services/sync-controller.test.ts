@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { AccountResponse, HostSyncSnapshot } from "@read-aware/core";
+import type { AccountResponse, HostSyncSnapshot, OperationCondition } from "@read-aware/core";
 import type { SyncStatusSnapshot } from "../platform/sync/sync-scheduler";
 import { HostSyncService } from "./sync-controller";
 
@@ -16,6 +16,7 @@ function fixture() {
     subscribe: (handler: () => void) => { notify = handler; return () => { notify = () => {}; }; },
     backlog: async () => ({ events: 10, blobs: 20 }), account: async () => account,
     run: async (): Promise<object | null> => { runs++; return {}; },
+    conditions: async (): Promise<OperationCondition[]> => [{ kind: "provider", state: "unknown", reason: "remote-health-not-checked" }],
     openSettings: async () => ({ snapshot: { selection: { bookIds: ["private-selected-book"] } } }),
     connectionOptions: async () => [{ ref: "test:transport", label: "Test backend" }],
     requestFlow: async (request: import("@read-aware/core").HostSyncFlowRequest) => ({ action: request.action, status: "cancelled" as const }),
@@ -46,13 +47,27 @@ test("requests distinguish an existing cycle and reject disconnected, pre-cancel
     const signal = new AbortController(); signal.abort(Error("cancelled"));
     await expect(f.service.requestSync(signal.signal)).rejects.toThrow("cancelled");
     let finish!: (value: object) => void;
-    f.adapter.run = () => new Promise(resolve => { finish = resolve; });
-    const run = f.service.requestSync(); f.change(); finish({});
+    const started = Promise.withResolvers<void>();
+    f.adapter.run = () => new Promise(resolve => { finish = resolve; started.resolve(); });
+    const run = f.service.requestSync(); await started.promise; f.change(); finish({});
     await expect(run).rejects.toMatchObject({ code: "ui/superseded" });
     f.status.state = "unauthenticated";
     await expect(f.service.requestSync()).rejects.toMatchObject({ code: "sync/unauthorized" });
     f.status.accountConnected = false;
     await expect(f.service.requestSync()).rejects.toMatchObject({ code: "ui/unavailable" });
+  } finally { f.service.dispose(); }
+});
+test("sync discovery does not run a cycle and execution rechecks withdrawn provider conditions", async () => {
+  const f = fixture();
+  try {
+    expect((await f.service.conditions()).some(value => value.state === "unknown")).toBe(true);
+    expect(f.runs()).toBe(0);
+    f.adapter.conditions = async () => [{ kind: "provider", state: "unavailable", reason: "provider-retired", errorCode: "ui/unavailable" }];
+    await expect(f.service.requestSync()).rejects.toMatchObject({ code: "ui/unavailable" });
+    expect(f.runs()).toBe(0);
+    f.adapter.conditions = async () => { f.change(); return []; };
+    await expect(f.service.requestSync()).rejects.toMatchObject({ code: "ui/superseded" });
+    expect(f.runs()).toBe(0);
   } finally { f.service.dispose(); }
 });
 test("account reads cannot cross a connection epoch; observation is initial, serial and disposable", async () => {

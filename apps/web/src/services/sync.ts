@@ -4,7 +4,7 @@ import { classifySyncError } from "../platform/sync/classify-sync-error";
 import { isTauri } from "../platform/environment";
 import { createLogger } from "../platform/logger";
 import { getSyncConnectionBusy, getSyncConnectionOperationRevision, subscribeSyncConnectionBusy } from "../platform/sync/connection-operation";
-import { getSyncConnectionGeneration, getSyncStatusSnapshot, subscribeSyncStatus, syncNow, syncRelayClient } from "../platform/sync/sync-scheduler";
+import { getRemoteBlobFetchConditions, getSyncConnectionGeneration, getSyncStatusSnapshot, subscribeSyncStatus, syncNow, syncRelayClient } from "../platform/sync/sync-scheduler";
 import { HostSyncService } from "./sync-controller";
 import { SyncFlowController } from "./sync-flow-controller";
 import { listSyncTransports } from "../platform/sync/transport-registry";
@@ -32,6 +32,9 @@ export const hostSync = new HostSyncService({
   backlog: async () => invoke<{ events: number; blobs: number }>("sync_outbox_counts"),
   account: () => remote(() => syncRelayClient().account()),
   run: () => remote(syncNow),
+  conditions: async () => (await getRemoteBlobFetchConditions()).map(value => ({ ...value,
+    reason: value.reason === "source-download-not-checked" ? "sync-remote-health-not-checked" : value.reason,
+    ...(value.errorCode ? { errorCode: "ui/unavailable" } : {}) })),
   openSettings: signal => workspace.navigate({ surface: "settings", section: "dataSync" }, undefined, signal),
   connectionOptions: async () => listSyncTransports().map(({ ref, label }) => ({ ref, label: contributionText(label) })),
   requestFlow: async (request, signal) => {

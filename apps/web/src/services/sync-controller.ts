@@ -1,4 +1,4 @@
-import { AppError, type AccountResponse, type HostSyncAccount, type HostSyncPort, type HostSyncSnapshot } from "@read-aware/core";
+import { AppError, assertOperationConditions, type OperationCondition, type AccountResponse, type HostSyncAccount, type HostSyncPort, type HostSyncSnapshot } from "@read-aware/core";
 import type { SyncStatusSnapshot } from "../platform/sync/sync-scheduler";
 
 type Adapter = {
@@ -8,6 +8,7 @@ type Adapter = {
   run(): Promise<unknown | null>; openSettings(signal?: AbortSignal): Promise<unknown>;
   connectionOptions: HostSyncPort["connectionOptions"];
   requestFlow: HostSyncPort["requestFlow"];
+  conditions?(): Promise<OperationCondition[]>;
 };
 function quota(value: number | null): number | null {
   if (value === null || (typeof value === "number" && Number.isFinite(value) && value >= 0)) return value;
@@ -80,9 +81,30 @@ export class HostSyncService implements HostSyncPort {
   }
   async requestSync(signal?: AbortSignal) {
     const epoch = this.guard(signal);
+    assertOperationConditions(await this.conditions(signal));
+    this.guard(signal, epoch);
     const result = await this.adapter.run();
     this.guard(signal, epoch);
     return { status: result === null ? "already-running" as const : "completed" as const, snapshot: await this.snapshot() };
+  }
+  async conditions(signal?: AbortSignal): Promise<OperationCondition[]> {
+    signal?.throwIfAborted();
+    const local = this.localConditions();
+    if (local.some(value => value.state === "unavailable" || value.state === "unconfigured")) return local;
+    const epoch = this.adapter.epoch();
+    const provider = await this.adapter.conditions?.() ?? [{ kind: "provider" as const, state: "unknown" as const, reason: "sync-provider-not-checked" }];
+    signal?.throwIfAborted();
+    if (epoch !== this.adapter.epoch()) return [{ kind: "provider", state: "unknown", reason: "sync-connection-changed", errorCode: "ui/superseded" }];
+    return [...this.localConditions(), ...provider];
+  }
+  private localConditions(): OperationCondition[] {
+    const state = this.adapter.status();
+    if (!this.adapter.supported()) return [{ kind: "provider", state: "unavailable", reason: "desktop-required", errorCode: "ui/unavailable" }];
+    if (this.adapter.busy()) return [{ kind: "capacity", state: "unavailable", reason: "sync-connection-busy", errorCode: "ui/unavailable" }];
+    if (!state.accountConnected) return [{ kind: "account", state: "unconfigured", reason: "sync-not-connected", errorCode: "ui/unavailable" }];
+    if (state.state === "disabled") return [{ kind: "provider", state: "unconfigured", reason: "sync-disabled", errorCode: "ui/unavailable" }];
+    if (state.state === "unauthenticated") return [{ kind: "account", state: "unconfigured", reason: "sync-reconnect-required", errorCode: "sync/unauthorized" }];
+    return [{ kind: "account", state: "satisfied", reason: "sync-connected" }];
   }
   async openSettings(signal?: AbortSignal) {
     signal?.throwIfAborted(); await this.adapter.openSettings(signal); signal?.throwIfAborted();
@@ -98,10 +120,8 @@ export class HostSyncService implements HostSyncPort {
   }
   private guard(signal?: AbortSignal, expected?: string): string {
     signal?.throwIfAborted();
-    const state = this.adapter.status();
     if (expected !== undefined && expected !== this.adapter.epoch()) throw new AppError("ui/superseded", "Sync connection changed during the request");
-    if (!this.adapter.supported() || this.adapter.busy() || !state.accountConnected || state.state === "disabled") throw new AppError("ui/unavailable", "Sync is not connected or connection management is in progress");
-    if (state.state === "unauthenticated") throw new AppError("sync/unauthorized", "Reconnect before syncing");
+    assertOperationConditions(this.localConditions());
     return this.adapter.epoch();
   }
 }

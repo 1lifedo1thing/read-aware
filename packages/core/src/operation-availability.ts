@@ -10,8 +10,9 @@ export type ReadingOperationQuery = { bookId: string; sessionId?: string } & (
   | ({ operation: "reading.mode.configure" } & ReadingModeConfiguration)
 );
 export type BookTextAvailabilityQuery = { operation: "library.text.prepare"; bookId: string } & BookTextPrepareOptions;
-export type OperationAvailabilityQuery = InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery;
-export type NormalizedOperationAvailabilityQuery = Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery>;
+export type SyncAvailabilityQuery = { operation: "sync.now" };
+export type OperationAvailabilityQuery = InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | SyncAvailabilityQuery;
+export type NormalizedOperationAvailabilityQuery = Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | SyncAvailabilityQuery;
 export type OperationConditionState = "satisfied" | "unconfigured" | "unavailable" | "unknown";
 export type OperationCondition = {
   kind: "permission" | "account" | "model" | "endpoint" | "provider" | "input" | "object" | "reader" | "capacity";
@@ -33,6 +34,10 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
   const invalid = () => new AppError("plugin/invalid-argument", "Invalid operation availability query");
   if (!input || typeof input !== "object" || Array.isArray(input)) throw invalid();
   const raw = input as Record<string, unknown>;
+  if (raw.operation === "sync.now") {
+    if (Object.keys(raw).some(key => key !== "operation")) throw invalid();
+    return { operation: "sync.now" };
+  }
   if (raw.operation === "library.text.prepare") {
     if (Object.keys(raw).some(key => !["operation", "bookId", "rebuild", "priority", "timeoutMs"].includes(key))
       || typeof raw.bookId !== "string" || !raw.bookId.trim() || raw.bookId.length > 256) throw invalid();

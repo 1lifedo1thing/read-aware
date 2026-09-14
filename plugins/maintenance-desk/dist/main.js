@@ -610,6 +610,27 @@ function updateViews(ctx, signal) {
 
 // src/sync-strings.ts
 var en3 = {
+  prerequisites: "Sync prerequisites",
+  prerequisitesNote: "Checks local connection, credentials and provider registration without sending a request. Unknown remote health can be tried; synchronization checks again before starting.",
+  conditionStates: { satisfied: "Ready", unconfigured: "Not configured", unavailable: "Unavailable", unknown: "Not verified" },
+  conditionReasons: {
+    authorized: "Permission",
+    "desktop-required": "Desktop app",
+    "sync-connection-busy": "Connection management in progress",
+    "sync-not-connected": "Connect synchronization",
+    "sync-disabled": "Enable synchronization",
+    "sync-reconnect-required": "Reconnect synchronization",
+    "sync-connected": "Connection configured",
+    "source-sync-credentials-present": "Local sync credentials",
+    "source-sync-credentials-missing": "Missing local sync credentials",
+    "source-transport-unavailable": "Transport provider unavailable",
+    "source-sync-disabled": "Enable synchronization",
+    "sync-remote-health-not-checked": "Remote connection",
+    "sync-provider-not-checked": "Provider",
+    "sync-connection-changed": "Connection changed; refresh",
+    "sync-prerequisites-read-failed": "Could not read prerequisites",
+    "service:sync-required": "Sync permission required"
+  },
   title: "Synchronization",
   status: "Status",
   unavailable: "Synchronization unavailable on this platform",
@@ -669,6 +690,27 @@ var en3 = {
   }
 };
 var zh3 = {
+  prerequisites: "同步操作条件",
+  prerequisitesNote: "检查本机连接、凭据和提供者注册状态，不发送请求。远端状态未知时可以尝试，同步开始前会再次检查。",
+  conditionStates: { satisfied: "已就绪", unconfigured: "未配置", unavailable: "不可用", unknown: "未验证" },
+  conditionReasons: {
+    authorized: "权限",
+    "desktop-required": "桌面应用",
+    "sync-connection-busy": "正在管理连接",
+    "sync-not-connected": "需要连接同步",
+    "sync-disabled": "需要启用同步",
+    "sync-reconnect-required": "需要重新连接同步",
+    "sync-connected": "连接已配置",
+    "source-sync-credentials-present": "本机同步凭据",
+    "source-sync-credentials-missing": "缺少本机同步凭据",
+    "source-transport-unavailable": "传输提供者不可用",
+    "source-sync-disabled": "需要启用同步",
+    "sync-remote-health-not-checked": "远端连接",
+    "sync-provider-not-checked": "提供者",
+    "sync-connection-changed": "连接已变化，请刷新",
+    "sync-prerequisites-read-failed": "条件读取失败",
+    "service:sync-required": "需要同步权限"
+  },
   title: "同步",
   status: "状态",
   unavailable: "此平台不支持同步",
@@ -750,6 +792,21 @@ function syncViews(ctx, signal, operations, history) {
     await service().openSettings();
     return { close: true };
   } };
+  const prerequisites = async () => {
+    const value = await ctx.services.session.operationAvailability({ operation: "sync.now" }, { signal });
+    signal.throwIfAborted();
+    return { kind: "detail", title: t.prerequisites, content: [
+      { kind: "text", text: t.prerequisitesNote },
+      { kind: "keyValue", rows: value.conditions.map((item) => ({
+        label: t.conditionReasons[item.reason] ?? t.unknown,
+        value: t.conditionStates[item.state]
+      })) }
+    ], actions: [
+      ...value.state === "available" || value.state === "unknown" ? [{ id: "sync", label: common.syncNow, run: () => ({ view: syncReview() }) }] : [],
+      { id: "refresh", label: t.refresh, run: async () => ({ view: await prerequisites(), navigation: "replace" }) },
+      settings
+    ] };
+  };
   const requestReview = (request, label) => {
     const operation = flowOperations[request.action];
     const review = {
@@ -875,6 +932,7 @@ function syncViews(ctx, signal, operations, history) {
       });
     const ready = snapshot.supported && !snapshot.connectionBusy;
     return { kind: "detail", title: t.title, content, actions: [
+      { id: "prerequisites", label: t.prerequisites, run: async () => ({ view: await prerequisites() }) },
       ...ready && snapshot.connected && !["disabled", "unauthenticated", "syncing"].includes(snapshot.state) ? [{ id: "sync", label: common.syncNow, icon: "arrows-clockwise", run: () => ({ view: syncReview() }) }] : [],
       ...ready && (!snapshot.connected || snapshot.state === "unauthenticated") ? [{ id: "connect", label: common.syncConnect, icon: "arrow-square-out", run: async () => ({ view: await connect() }) }] : [],
       ...ready && snapshot.connected ? [flowAction("disconnect")] : [],

@@ -22,6 +22,20 @@ export function syncViews(ctx: PluginContext, signal: AbortSignal, operations: O
     await service().openSettings();
     return { close: true };
   } };
+  const prerequisites = async (): Promise<PluginView> => {
+    const value = await ctx.services.session.operationAvailability({ operation: "sync.now" }, { signal });
+    signal.throwIfAborted();
+    return { kind: "detail", title: t.prerequisites, content: [
+      { kind: "text", text: t.prerequisitesNote },
+      { kind: "keyValue", rows: value.conditions.map(item => ({
+        label: t.conditionReasons[item.reason as keyof typeof t.conditionReasons] ?? t.unknown,
+        value: t.conditionStates[item.state],
+      })) },
+    ], actions: [
+      ...(value.state === "available" || value.state === "unknown" ? [{ id: "sync", label: common.syncNow, run: () => ({ view: syncReview() }) }] : []),
+      { id: "refresh", label: t.refresh, run: async () => ({ view: await prerequisites(), navigation: "replace" as const }) }, settings,
+    ] };
+  };
   const requestReview = (request: Request, label?: string): PluginView => {
     const operation = flowOperations[request.action];
     const review = { connect: t.connectReview, disconnect: t.disconnectReview, "delete-account": t.deleteReview,
@@ -114,6 +128,7 @@ export function syncViews(ctx: PluginContext, signal: AbortSignal, operations: O
     });
     const ready = snapshot.supported && !snapshot.connectionBusy;
     return { kind: "detail", title: t.title, content, actions: [
+      { id: "prerequisites", label: t.prerequisites, run: async () => ({ view: await prerequisites() }) },
       ...(ready && snapshot.connected && !["disabled", "unauthenticated", "syncing"].includes(snapshot.state)
         ? [{ id: "sync", label: common.syncNow, icon: "arrows-clockwise", run: () => ({ view: syncReview() }) }] : []),
       ...(ready && (!snapshot.connected || snapshot.state === "unauthenticated")

@@ -2,6 +2,7 @@ import { accountCredential, createModelResolver } from "@read-aware/agent";
 import { errorCode, normalizeOperationAvailability, operationAvailability, type OperationAvailabilityQuery,
   type InferenceAvailabilityQuery, type OperationAvailability, type OperationCondition } from "@read-aware/core";
 import { readingRuntime } from "../domain/reading-runtime";
+import { hostSync } from "./sync";
 import { getAIConfig, type AIConfig } from "../features/ai/lib/ai-config";
 import { accountFromConfig } from "../features/ai/agent/account";
 import { afterLocalKVWrites } from "../platform/local-store";
@@ -59,6 +60,11 @@ export function inspectInferenceAvailability(input: InferenceAvailabilityQuery, 
 export async function checkOperationAvailability(input: OperationAvailabilityQuery, signal?: AbortSignal, context?: OperationAvailabilityContext): Promise<OperationAvailability> {
   const query = normalizeOperationAvailability(input);
   signal?.throwIfAborted();
+  if (query.operation === "sync.now") {
+    try { return operationAvailability(query, [{ kind: "permission", state: "satisfied", reason: "authorized" }, ...await hostSync.conditions(signal)]); }
+    catch (error) { signal?.throwIfAborted(); log.warn("Cannot read sync prerequisites", error);
+      return operationAvailability(query, [condition("provider", "unknown", "sync-prerequisites-read-failed", errorCode(error) ?? "ipc/unknown")]); }
+  }
   if (query.operation === "library.text.prepare") {
     const { operation: _operation, bookId, ...options } = query;
     try {
