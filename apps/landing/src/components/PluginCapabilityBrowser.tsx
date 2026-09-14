@@ -18,6 +18,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
+import { IconButton, Kbd, TextField } from "@read-aware/ui";
 import type { DocsResource } from "../i18n";
 import {
   useCapabilityDetail,
@@ -91,32 +92,38 @@ export function PluginCapabilityBrowser({
         />
       ) : (
         <>
-          <div className="explorer-search" role="search">
-            <MagnifyingGlass size={21} aria-hidden="true" />
-            <input
+          <div role="search">
+            <TextField
+              className="explorer-search"
               ref={inputRef}
+              label=""
+              variant="outlined"
               type="search"
               aria-label={copy.searchLabel}
               placeholder={copy.explorer.searchPlaceholder}
               value={search.q ?? ""}
+              leadingIcon={<MagnifyingGlass size={16} aria-hidden="true" />}
+              trailingAction={
+                search.q ? (
+                  <IconButton
+                    size="sm"
+                    label={copy.explorer.clearSearch}
+                    icon={<X size={16} aria-hidden="true" />}
+                    onClick={() => {
+                      update({ q: undefined });
+                      inputRef.current?.focus();
+                    }}
+                  />
+                ) : (
+                  <span aria-hidden="true">
+                    <Kbd className="mx-1">/</Kbd>
+                  </span>
+                )
+              }
               onChange={(event) =>
                 update({ q: event.target.value || undefined, cap: undefined })
               }
             />
-            {search.q ? (
-              <button
-                type="button"
-                aria-label={copy.explorer.clearSearch}
-                onClick={() => {
-                  update({ q: undefined });
-                  inputRef.current?.focus();
-                }}
-              >
-                <X size={17} />
-              </button>
-            ) : (
-              <kbd aria-hidden="true">/</kbd>
-            )}
           </div>
           <div className="explorer-topic-bar">
             <div
@@ -363,25 +370,27 @@ function CapabilityDetail({
           </h3>
           {entry.methods.length ? (
             <>
-              <label className="method-search">
-                <MagnifyingGlass size={16} aria-hidden="true" />
-                <input
-                  type="search"
-                  aria-label={copy.explorer.methodSearch}
-                  placeholder={copy.explorer.methodSearch}
-                  value={methodQuery}
-                  onChange={(event) => setMethodQuery(event.target.value)}
-                />
-                {methodQuery ? (
-                  <button
-                    type="button"
-                    aria-label={copy.explorer.clearSearch}
-                    onClick={() => setMethodQuery("")}
-                  >
-                    <X size={14} />
-                  </button>
-                ) : null}
-              </label>
+              <TextField
+                className="method-search"
+                label=""
+                variant="outlined"
+                type="search"
+                aria-label={copy.explorer.methodSearch}
+                placeholder={copy.explorer.methodSearch}
+                value={methodQuery}
+                leadingIcon={<MagnifyingGlass size={16} aria-hidden="true" />}
+                trailingAction={
+                  methodQuery ? (
+                    <IconButton
+                      size="sm"
+                      label={copy.explorer.clearSearch}
+                      icon={<X size={16} aria-hidden="true" />}
+                      onClick={() => setMethodQuery("")}
+                    />
+                  ) : undefined
+                }
+                onChange={(event) => setMethodQuery(event.target.value)}
+              />
               {groups.length ? (
                 groups.map((group) => (
                   <div className="method-group" key={group.name}>

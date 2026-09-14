@@ -1,8 +1,11 @@
 /* The explorer is a developer workspace inside the editorial docs shell. */
+.explorer-shell {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;
+}
 .explorer-page,
 .explorer-shell > aside {
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.55;
 }
@@ -13,17 +16,25 @@
 .explorer-page summary {
   cursor: pointer;
 }
-.explorer-page :is(a, button, input, select, summary):focus-visible,
+.explorer-page
+  :is(
+    a,
+    select,
+    summary,
+    .explorer-text-button,
+    .explorer-button
+  ):focus-visible,
+.explorer-topics button:focus-visible,
+.access-switch button:focus-visible,
+.detail-mobile-tabs button:focus-visible,
 .explorer-mobile-docs summary:focus-visible {
   outline: 2px solid var(--color-fg-muted);
   outline-offset: 4px;
 }
-.explorer-page input[type="search"]::-webkit-search-cancel-button {
+/* TextField supplies one accessible clear action via its trailingAction slot. */
+.explorer-search input::-webkit-search-cancel-button,
+.method-search input::-webkit-search-cancel-button {
   display: none;
-}
-.explorer-page input {
-  outline: none;
-  min-width: 0;
 }
 .explorer-page svg {
   flex-shrink: 0;
@@ -85,54 +96,6 @@
   color: var(--color-fg);
   border-color: var(--color-fg);
   font-weight: 600;
-}
-.explorer-search,
-.method-search {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 7px;
-  background: var(--color-surface);
-  color: var(--color-fg-muted);
-}
-.explorer-search {
-  padding: 0 16px;
-  height: 52px;
-}
-.explorer-search:focus-within,
-.method-search:focus-within {
-  border-color: var(--color-fg-muted);
-  box-shadow: 0 0 0 2px var(--color-border);
-}
-.explorer-search input,
-.method-search input {
-  flex: 1;
-  width: 100%;
-  color: var(--color-fg);
-  background: transparent;
-}
-.explorer-search input {
-  font-size: 15px;
-  height: 100%;
-}
-.explorer-search kbd {
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 0 6px;
-  font-size: 12px;
-}
-.explorer-search button,
-.method-search button {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-}
-.explorer-search button:hover,
-.method-search button:hover {
-  background: var(--color-paper);
 }
 .explorer-topic-bar {
   margin-top: 15px;
@@ -386,13 +349,7 @@
   min-width: 0;
 }
 .method-search {
-  height: 37px;
-  padding: 0 10px;
-  margin-bottom: 25px;
-}
-.method-search input {
-  height: 100%;
-  font-size: 12px;
+  margin-bottom: 24px;
 }
 .method-group {
   margin-top: 24px;
@@ -691,14 +648,6 @@
   .explorer-topics button {
     font-size: 12px;
     padding: 6px 9px;
-  }
-  .explorer-search {
-    padding: 0 12px;
-    height: 48px;
-  }
-  .explorer-search input,
-  .method-search input {
-    font-size: 16px;
   }
   .explorer-search kbd {
     display: none;
