@@ -1,3 +1,4 @@
+import { actorFromEvent, causalActor, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import { AppError, type ProjectionVerification } from "@read-aware/core";
 import { HostActionFlow } from "./host-action-flow";
 
@@ -11,22 +12,23 @@ export class ProjectionRepairController {
   private generation = 0;
   private listeners = new Set<() => void>();
   constructor(private flow: HostActionFlow<{ action: "repair" }, "rebuilt-reload-required">,
-    private verify: (signal?: AbortSignal) => Promise<ProjectionVerification>,
-    private apply: (signal?: AbortSignal) => Promise<void>,
+    private verify: (signal?: AbortSignal, origin?: DomainActor) => Promise<ProjectionVerification>,
+    private apply: (signal?: AbortSignal, origin?: DomainActor) => Promise<void>,
     private log: (error: unknown) => void) {}
   snapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
-  private publish(state: State) { this.state = state; for (const listener of this.listeners) listener(); }
+  private publish(state: State, origin: DomainActor = "user") { this.state = state ? stampEventCause(state, origin) : null; for (const listener of this.listeners) listener(); }
   open = (_request: { action: "repair" }, signal?: AbortSignal) => {
     if (this.state) throw new AppError("ui/unavailable", "Projection repair controls are already active");
     signal?.throwIfAborted();
+    const origin = actorFromEvent(_request);
     const ticket = ++this.generation;
-    this.publish({ step: "checking" });
-    void Promise.resolve().then(() => this.verify(signal)).then(report => {
-      if (ticket === this.generation && !signal?.aborted) this.publish({ step: "preview", report });
+    this.publish({ step: "checking" }, origin);
+    void Promise.resolve().then(() => this.verify(signal, origin)).then(report => {
+      if (ticket === this.generation && !signal?.aborted) this.publish({ step: "preview", report }, origin);
     }, error => {
       if (ticket !== this.generation) return;
-      this.log(error); this.flow.reject("repair", error); this.publish({ step: "failed", error });
+      this.log(error); this.flow.reject("repair", error); this.publish({ step: "failed", error }, origin);
     });
   };
   close = () => {
@@ -36,12 +38,13 @@ export class ProjectionRepairController {
   };
   confirm = async () => {
     if (this.state?.step !== "preview" || this.state.report.consistent) return;
-    this.publish({ step: "working" });
+    const origin = causalActor("user");
+    this.publish({ step: "working" }, origin);
     try {
-      await this.flow.run("repair", this.apply);
-      this.publish({ step: "done" });
+      await this.flow.run("repair", this.apply, false, origin);
+      this.publish({ step: "done" }, origin);
     } catch (error) {
-      this.log(error); this.publish({ step: "failed", error });
+      this.log(error); this.publish({ step: "failed", error }, origin);
     }
   };
 }

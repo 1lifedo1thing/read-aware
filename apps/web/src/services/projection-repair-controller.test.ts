@@ -1,3 +1,4 @@
+import { actorCause, causalActor, eventCause } from "../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { AppError, type ProjectionVerification } from "@read-aware/core";
 import { HostActionFlow } from "./host-action-flow";
@@ -19,14 +20,18 @@ function setup(verify = async () => report) {
 
 test("request previews differences; only native confirmation starts repair; durable result survives unmount", async () => {
   const f = setup();
-  const request = f.flow.request({ action: "repair" }); await tick();
+  const origin = causalActor("plugin:diagnostics");
+  const request = f.flow.request({ action: "repair" }, undefined, origin); await tick();
   expect(f.controller.snapshot()).toEqual({ step: "preview", report }); expect(f.calls()).toBe(0);
+  expect(eventCause(f.controller.snapshot()!)).toEqual(actorCause(origin));
   const run = f.controller.confirm();
   expect(f.calls()).toBe(1); expect(f.controller.snapshot()?.step).toBe("working");
   f.off(); f.controller.close(); // Settings navigation must not abandon confirmed work.
   expect(f.controller.snapshot()?.step).toBe("working");
   f.native.resolve(); await run;
   expect(await request).toEqual({ action: "repair", status: "rebuilt-reload-required" });
+  expect(eventCause(f.controller.snapshot()!)).toEqual(eventCause(await request));
+  expect(eventCause(f.controller.snapshot()!)).not.toEqual(actorCause(origin));
   expect(f.controller.snapshot()?.step).toBe("done");
   f.controller.close(); expect(f.controller.snapshot()?.step).toBe("done");
   expect(() => f.controller.open({ action: "repair" })).toThrow();

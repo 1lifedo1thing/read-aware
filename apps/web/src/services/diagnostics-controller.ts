@@ -1,7 +1,8 @@
+import { causalActor, copyEventCause, eventCause, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import { AppError, type HostDiagnosticsPort, type ProjectionVerification } from "@read-aware/core";
 
-type Adapter = { supported(): boolean; verify(): Promise<unknown>; requestReport: HostDiagnosticsPort["requestReport"];
-  requestProjectionRepair?: HostDiagnosticsPort["requestProjectionRepair"] };
+type Adapter = { supported(): boolean; verify(origin?: DomainActor): Promise<unknown>; requestReport(action: Parameters<HostDiagnosticsPort["requestReport"]>[0], signal?: AbortSignal, origin?: DomainActor): ReturnType<HostDiagnosticsPort["requestReport"]>;
+  requestProjectionRepair?(signal?: AbortSignal, origin?: DomainActor): ReturnType<HostDiagnosticsPort["requestProjectionRepair"]> };
 
 function count(value: unknown): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
@@ -35,10 +36,10 @@ export class HostDiagnosticsService implements HostDiagnosticsPort {
   private active: Promise<ProjectionVerification> | undefined;
   constructor(private adapter: Adapter, private report: (error: unknown) => void) {}
 
-  async requestProjectionRepair(signal?: AbortSignal) {
+  async requestProjectionRepair(signal?: AbortSignal, origin: DomainActor = "user") {
     signal?.throwIfAborted();
     if (!this.adapter.supported() || !this.adapter.requestProjectionRepair) throw new AppError("ui/unavailable", "Projection repair requires desktop controls");
-    try { return await this.adapter.requestProjectionRepair(signal); }
+    try { return await this.adapter.requestProjectionRepair(signal, causalActor(origin)); }
     catch (error) {
       signal?.throwIfAborted();
       this.report(error);
@@ -46,22 +47,26 @@ export class HostDiagnosticsService implements HostDiagnosticsPort {
     }
   }
 
-  async requestReport(...args: Parameters<HostDiagnosticsPort["requestReport"]>) {
-    args[1]?.throwIfAborted();
+  async requestReport(action: Parameters<HostDiagnosticsPort["requestReport"]>[0], signal?: AbortSignal, origin: DomainActor = "user") {
+    signal?.throwIfAborted();
     if (!this.adapter.supported()) throw new AppError("ui/unavailable", "Diagnostic reports require desktop");
-    try { return await this.adapter.requestReport(...args); }
+    try { return await this.adapter.requestReport(action, signal, causalActor(origin)); }
     catch (error) {
-      args[1]?.throwIfAborted();
+      signal?.throwIfAborted();
       this.report(error);
       throw new AppError(error instanceof AppError ? error.code : "ipc/unknown", "Diagnostic report action failed");
     }
   }
 
-  verifyProjections(signal?: AbortSignal): Promise<ProjectionVerification> {
+  verifyProjections(signal?: AbortSignal, origin: DomainActor = "user"): Promise<ProjectionVerification> {
     signal?.throwIfAborted();
     if (!this.adapter.supported()) throw new AppError("ui/unavailable", "Projection verification requires desktop");
     if (!this.active) {
-      this.active = Promise.resolve().then(() => this.adapter.verify()).then(projectionVerificationSummary)
+      origin = causalActor(origin);
+      this.active = Promise.resolve().then(() => this.adapter.verify(origin)).then(value => {
+        const summary = projectionVerificationSummary(value);
+        return value && typeof value === "object" && eventCause(value) ? copyEventCause(value, summary) : stampEventCause(summary, origin);
+      })
         .catch(error => { this.report(error); throw error; }).finally(() => { this.active = undefined; });
     }
     const source = this.active;
@@ -71,7 +76,7 @@ export class HostDiagnosticsService implements HostDiagnosticsPort {
       source.then(result => {
         signal?.removeEventListener("abort", abort);
         if (signal?.aborted) reject(signal.reason);
-        else resolve({ ...result });
+        else resolve(copyEventCause(result, { ...result }));
       }, error => { signal?.removeEventListener("abort", abort); reject(error); });
       if (signal?.aborted) abort();
     });

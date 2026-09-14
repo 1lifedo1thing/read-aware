@@ -921,11 +921,11 @@ export function buildPluginContext(
       logging,
       ...(canUseHostService("diagnostics", permissions) ? { diagnostics: {
         requestProjectionRepair: options => lifecycle.read("services.diagnostics.requestProjectionRepair",
-          signal => hostDiagnostics.requestProjectionRepair(signal), pluginOperationSignal(lifecycle.signal, options)),
+          signal => hostDiagnostics.requestProjectionRepair(signal, operationActor), pluginOperationSignal(lifecycle.signal, options)),
         requestReport: (action, options) => lifecycle.read("services.diagnostics.requestReport",
-          signal => hostDiagnostics.requestReport(action, signal), pluginOperationSignal(lifecycle.signal, options)),
+          signal => hostDiagnostics.requestReport(action, signal, operationActor), pluginOperationSignal(lifecycle.signal, options)),
         verifyProjections: (options?: PluginCallOptions) => lifecycle.read("services.diagnostics.verifyProjections",
-          signal => hostDiagnostics.verifyProjections(signal), callSignal(options)),
+          signal => hostDiagnostics.verifyProjections(signal, operationActor), callSignal(options)),
       } } : {}),
       maintenance: {
         requestConnectionTest: options => lifecycle.read("services.maintenance.requestConnectionTest",

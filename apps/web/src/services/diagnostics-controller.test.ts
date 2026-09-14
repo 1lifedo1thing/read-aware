@@ -1,3 +1,4 @@
+import { actorCause, causalActor, eventCause } from "../platform/domain-actor";
 import { expect, spyOn, test } from "bun:test";
 import { AppError } from "@read-aware/core";
 import { HostDiagnosticsService, projectionVerificationSummary } from "./diagnostics-controller";
@@ -42,7 +43,8 @@ test("call cancellation releases the waiter, not the shared native operation; ev
   let calls = 0;
   const service = new HostDiagnosticsService({ requestReport, supported: () => true, verify: () => { calls++; return gate.promise; } }, () => {});
   const controller = new AbortController();
-  const cancelled = service.verifyProjections(controller.signal);
+  const origin = causalActor("plugin:diagnostics");
+  const cancelled = service.verifyProjections(controller.signal, origin);
   const sibling = service.verifyProjections();
   controller.abort(new Error("cancel waiter"));
   await expect(cancelled).rejects.toThrow("cancel waiter");
@@ -50,6 +52,8 @@ test("call cancellation releases the waiter, not the shared native operation; ev
   expect(calls).toBe(1);
   gate.resolve(report);
   const [first, second] = await Promise.all([sibling, later]);
+  expect(eventCause(first)).toEqual(actorCause(origin));
+  expect(eventCause(second)).toEqual(actorCause(origin));
   first.onlyLiveRows = 999;
   expect(second.onlyLiveRows).toBe(2);
   expect(first.checkedAt).toBe(second.checkedAt);
@@ -76,12 +80,14 @@ test("settings diagnostics and actor diagnostics share the same native verificat
   const invoke = spyOn(ipc, "invoke").mockImplementation(async () => gate.promise as never);
   const service = new HostDiagnosticsService({ requestReport, supported: () => true, verify: verifyProjectionReport }, () => {});
   try {
-    const settings = verifyProjectionReport(), actor = service.verifyProjections();
+    const origin = causalActor("user");
+    const settings = verifyProjectionReport(origin), actor = service.verifyProjections(undefined, "plugin:diagnostics");
     await Promise.resolve();
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(invoke).toHaveBeenCalledWith("verify_projections");
     gate.resolve(report);
     expect(await settings).toBe(report);
     expect(await actor).toMatchObject({ onlyLiveRows: 2, onlyReplayedRows: 4 });
+    expect(eventCause(await actor)).toEqual(actorCause(origin));
   } finally { gate.resolve(report); await gate.promise; invoke.mockRestore(); }
 });
