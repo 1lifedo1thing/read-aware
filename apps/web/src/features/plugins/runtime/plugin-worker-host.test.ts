@@ -13,6 +13,7 @@ import { PluginLifecycleController } from "./plugin-lifecycle";
 import { actorCause, causalActor, eventCause, type DomainActor } from "../../../platform/domain-actor";
 import { broadcastDomainEventDrafts } from "../../../platform/domain-events";
 import type { PluginReactionToken } from "@read-aware/plugin-types";
+import * as operationConditions from "../../../services/operation-availability";
 import * as runtimeModule from "../../ai/agent/agent-runtime";
 import type { AgentRuntime, OneShotInput } from "@read-aware/agent";
 import type { PluginPermission } from "@read-aware/core";
@@ -446,6 +447,12 @@ describe("plugin worker capability bridge", () => {
       return { status: "complete", eligible: 0, attempted: 0, digested: 0, remaining: 0, emptyChapters: [], failures: [] };
     } } as unknown as AgentRuntime;
     const source = spyOn(runtimeModule, "getAgentRuntime").mockReturnValue(runtime);
+    // This bridge check owns a dispatched executor. Admission validation is
+    // covered by graph prerequisite checks; otherwise an absent fixture book
+    // fails before the executor and leaves entered waiting forever.
+    const prerequisites = spyOn(operationConditions, "checkOperationAvailability").mockImplementation(async query => ({
+      operation: query.operation, state: "available", remoteChecked: false, conditions: [],
+    }));
     const { worker, close } = await hostFixture(["memory:write", "service:llm"]);
     let closing: Promise<void> | undefined;
     try {
@@ -461,7 +468,7 @@ describe("plugin worker capability bridge", () => {
       expect(executionSignal.aborted).toBe(true); expect(retired).toBe(false);
       finish.resolve(); await closing;
       expect(retired).toBe(true); expect(worker.terminated).toBe(true);
-    } finally { finish.resolve(); await (closing ?? close()); source.mockRestore(); }
+    } finally { finish.resolve(); await (closing ?? close()); source.mockRestore(); prerequisites.mockRestore(); }
   });
   test.each(["stop", "crash", "write-failure"])("%s waits for cancelled but still running host writes before completing retirement", async mode => {
     const entered = deferred(), finish = deferred();
