@@ -107,10 +107,10 @@ if (process.env.BACKUP_FILES_PROOF === "1") {
       await expect(clearConversation(conversationId)).rejects.toMatchObject({ code: "backup/busy" });
       expect(calls).toHaveLength(before);
     });
-    holds.add("ai_chat_clear");
+    holds.add("commit_events");
     const clear = clearConversation(conversationId); let closed = false;
     const closing = withDomainBackup(async () => { closed = true; });
-    await tick(); expect(closed).toBe(false); take("ai_chat_clear").resolve();
+    await tick(); expect(closed).toBe(false); take("commit_events").resolve({ appended: 1, applied: 1 });
     await clear; await closing; holds.clear(); expect(durableWrites.size).toBe(0);
   });
 

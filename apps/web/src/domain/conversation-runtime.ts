@@ -4,7 +4,7 @@ import { AppError, type ConversationSessionState, type ConversationTarget } from
 /** Shared ownership of live UI turns. Clearing waits for their final persistence. */
 export class ConversationRuntime {
   private sessions = new Map<string, ConversationSessionState>();
-  private flights = new Map<string, Set<{ abort(): void; done: Promise<void> }>>();
+  private flights = new Map<string, Set<{ abort(source: DomainActor): void; done: Promise<void> }>>();
   private blocked = new Set<string>();
   private listeners = new Set<(source: object) => void>();
   revision = 0;
@@ -33,7 +33,7 @@ export class ConversationRuntime {
   }
   canStart(id: string) { return !this.blocked.has(id) && !this.flights.get(id)?.size; }
   isControlling(id: string) { return this.blocked.has(id); }
-  track(id: string, abort: () => void, done: Promise<void>) {
+  track(id: string, abort: (source: DomainActor) => void, done: Promise<void>) {
     const set = this.flights.get(id) ?? new Set(), flight = { abort, done };
     set.add(flight); this.flights.set(id, set);
     const release = () => { set.delete(flight); if (!set.size) this.flights.delete(id); };
@@ -46,7 +46,7 @@ export class ConversationRuntime {
     this.blocked.add(id);
     try {
       const flights = [...this.flights.get(id) ?? []];
-      for (const flight of flights) flight.abort();
+      for (const flight of flights) flight.abort(origin);
       await Promise.all(flights.map(flight => flight.done));
       signal?.throwIfAborted(); return await action();
     } finally { this.blocked.delete(id); this.changed(origin); }

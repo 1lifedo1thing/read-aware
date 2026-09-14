@@ -1,3 +1,7 @@
+import { getDefaultStore } from "jotai";
+import { actorFromEvent, causalActor, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
+import { readingRuntime } from "../../../domain/reading-runtime";
+import { activeGlobalThreadSourceAtom } from "../state/global-thread";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorCode } from "@read-aware/core";
 import { useTranslation } from "../../../i18n";
@@ -16,6 +20,12 @@ import {
   loadConversation,
   saveConversation,
 } from "../lib/conversation-store";
+
+function useConversationValue<T>(initial: T, id: string) {
+  const [state, setState] = useState(() => stampEventCause({ value: initial, id }, "system"));
+  const set = useCallback((value: T, source: DomainActor) => setState(stampEventCause({ value, id }, source)), [id]);
+  return [state.value, set, state] as const;
+}
 
 export interface BookConversation {
   messages: ChatMessage[];
@@ -56,9 +66,9 @@ export function useBookConversation(
   readingCursor: ChatReadingCursor | null = null,
 ): BookConversation {
   const { t } = useTranslation("ai");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [messages, setMessages, messagesSource] = useConversationValue<ChatMessage[]>([], bookId);
+  const [isLoading, setIsLoading, loadingSource] = useConversationValue(true, bookId);
+  const [isStreaming, setIsStreaming, streamingSource] = useConversationValue(false, bookId);
   const [streamingParts, setStreamingParts] = useState<ChatAssistantPart[]>([]);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -69,7 +79,9 @@ export function useBookConversation(
   // Turn-in-flight marker + deferred sync reload; refs because the stream
   // callbacks and the app-event handler both need the value synchronously.
   const inFlightRef = useRef(false);
-  const pendingReloadRef = useRef(false);
+  const pendingReloadRef = useRef<object | null>(null);
+  const reloadRevision = useRef(0);
+  const stopRef = useRef<((source: DomainActor) => void) | null>(null);
   // Which conversation the hook is currently mounted on — a reload resolving
   // after the user switched books must not paint the old transcript.
   const mountedIdRef = useRef(bookId);
@@ -78,30 +90,48 @@ export function useBookConversation(
   const readingCursorRef = useRef<ChatReadingCursor | null>(readingCursor);
   readingCursorRef.current = readingCursor;
   const bindingRef = useRef<ReturnType<typeof conversationRuntime.bind> | null>(null);
+  const openingSource = useRef<DomainActor>("system");
+  const published = useRef<{ messages: typeof messagesSource; loading: typeof loadingSource; streaming: typeof streamingSource } | null>(null);
   useEffect(() => {
-    const binding = conversationRuntime.bind({ kind: thread, id: bookId });
+    const source = thread === "global" ? getDefaultStore().get(activeGlobalThreadSourceAtom) : readingRuntime.snapshot();
+    openingSource.current = ("id" in source ? source.id : source.bookId) === bookId ? actorFromEvent(source) : causalActor("system");
+    const binding = conversationRuntime.bind({ kind: thread, id: bookId }, openingSource.current);
+    published.current = null;
     bindingRef.current = binding;
     return () => { binding.dispose(); if (bindingRef.current === binding) bindingRef.current = null; };
   }, [bookId, thread]);
   useEffect(() => {
-    bindingRef.current?.update({ loading: isLoading, streaming: isStreaming, messageCount: messages.length });
-  }, [bookId, thread, isLoading, isStreaming, messages.length]);
+    if ([messagesSource, loadingSource, streamingSource].some(value => value.id !== bookId)) return;
+    const previous = published.current;
+    const sources = [
+      ...(!previous || previous.messages.value.length !== messages.length ? [messagesSource] : []),
+      ...(!previous || previous.loading.value !== isLoading ? [loadingSource] : []),
+      ...(!previous || previous.streaming.value !== isStreaming ? [streamingSource] : []),
+    ];
+    if (sources.length) bindingRef.current?.update({ loading: isLoading, streaming: isStreaming, messageCount: messages.length }, actorFromEvent(mergeEventCauses(sources, {})));
+    published.current = { messages: messagesSource, loading: loadingSource, streaming: streamingSource };
+  }, [bookId, thread, isLoading, isStreaming, messages.length, messagesSource, loadingSource, streamingSource]);
 
   // (Re)load the persisted conversation when the book changes; abort any
   // in-flight turn from the previous book.
   useEffect(() => {
     let alive = true;
-    setIsLoading(true);
+    const source = openingSource.current;
+    reloadRevision.current++; pendingReloadRef.current = null;
+    setMessages([], source); setIsStreaming(false, source);
+    setIsLoading(true, source);
     void loadConversation(bookId).then((loaded) => {
       if (!alive) return;
-      setMessages(loaded);
-      setIsLoading(false);
+      setMessages(loaded, source);
+      setIsLoading(false, source);
+    }).catch(error => {
+      if (alive) log.warn("Conversation load failed", error);
     });
     return () => {
       alive = false;
-      abortRef.current?.abort();
+      stopRef.current?.(causalActor("system"));
     };
-  }, [bookId]);
+  }, [bookId, thread, setMessages, setIsLoading, setIsStreaming]);
 
   /**
    * Re-read the persisted transcript (a sync pull may have merged peer
@@ -110,30 +140,30 @@ export function useBookConversation(
    * transcript under a streaming reply would race its final persist — and
    * re-checked when the load resolves, since a turn may have started meanwhile.
    */
-  const reloadFromStore = useCallback(() => {
-    if (inFlightRef.current) {
-      pendingReloadRef.current = true;
-      return;
-    }
-    const id = mountedIdRef.current;
+  const reloadFromStore = useCallback((origin: DomainActor) => {
+    const source = actorFromEvent(mergeEventCauses([...(pendingReloadRef.current ? [pendingReloadRef.current] : []), stampEventCause({}, origin)], {}));
+    pendingReloadRef.current = stampEventCause({}, source);
+    const revision = ++reloadRevision.current;
+    if (inFlightRef.current) return;
+    const id = mountedIdRef.current, owner = bindingRef.current;
     void loadConversation(id).then((loaded) => {
-      if (mountedIdRef.current !== id) return;
-      if (inFlightRef.current) {
-        pendingReloadRef.current = true;
-        return;
-      }
-      setMessages(loaded);
-    });
-  }, []);
+      if (mountedIdRef.current !== id || bindingRef.current !== owner || revision !== reloadRevision.current) return;
+      if (inFlightRef.current) return;
+      pendingReloadRef.current = null;
+      setMessages(loaded, source);
+    }).catch(error => log.warn("Conversation refresh failed", error));
+  }, [setMessages]);
 
-  useEffect(() => onAppEvent("conversations-changed", reloadFromStore), [reloadFromStore]);
+  const reloadRef = useRef(reloadFromStore);
+  reloadRef.current = reloadFromStore;
+  useEffect(() => onAppEvent("conversations-changed", event => reloadFromStore(actorFromEvent(event))), [reloadFromStore]);
 
   const persist = useCallback(
-    (next: ChatMessage[]) => {
-      if (mountedIdRef.current === bookId) setMessages(next);
-      return saveConversation(bookId, next);
+    (next: ChatMessage[], source: DomainActor, owner = bindingRef.current) => {
+      if (mountedIdRef.current === bookId && bindingRef.current === owner) setMessages(next, source);
+      return saveConversation(bookId, next, source);
     },
-    [bookId],
+    [bookId, setMessages],
   );
 
   /**
@@ -144,16 +174,24 @@ export function useBookConversation(
    */
   const runTurn = useCallback(
     (history: ChatMessage[], userMessage: ChatMessage, reset = false) => {
+      const source = causalActor("user"), owner = bindingRef.current;
+      let completionSource = source;
       const withUser = [...history, userMessage];
       inFlightRef.current = true;
-      const persisted = persist(withUser);
+      const persisted = persist(withUser, source, owner);
 
       setStreamingParts([]);
       setStatus(null);
-      setIsStreaming(true);
+      setIsStreaming(true, source);
 
       const controller = new AbortController();
       abortRef.current = controller;
+      const stop = (origin: DomainActor) => {
+        if (controller.signal.aborted) return;
+        completionSource = actorFromEvent(mergeEventCauses([stampEventCause({}, source), stampEventCause({}, causalActor(origin))], {}));
+        controller.abort();
+      };
+      stopRef.current = stop;
 
       const work = (async () => {
         let assembled: ChatAssistantPart[] = [];
@@ -220,27 +258,31 @@ export function useBookConversation(
               error: failure ?? undefined,
               errorCode: failure ? failureCode : undefined,
             };
-            committed = persist([...withUser, assistantMessage]);
+            committed = persist([...withUser, assistantMessage], completionSource, owner);
           }
           if (abortRef.current === controller) {
-            setStreamingParts([]);
-            setStatus(null);
-            setIsStreaming(false);
+            if (bindingRef.current === owner) {
+              setStreamingParts([]);
+              setStatus(null);
+              setIsStreaming(false, completionSource);
+            }
+            stopRef.current = null;
             abortRef.current = null;
             inFlightRef.current = false;
           }
           // A sync pull landed mid-turn: reload now that the turn's own
           // persist has the transcript on disk.
           if (pendingReloadRef.current) {
-            pendingReloadRef.current = false;
-            void committed.then(reloadFromStore).catch(error => log.warn("Deferred conversation reload failed", error));
+            const deferredSource = actorFromEvent(pendingReloadRef.current);
+            pendingReloadRef.current = null;
+            void committed.then(() => reloadRef.current(deferredSource)).catch(error => log.warn("Deferred conversation reload failed", error));
           }
           await committed;
         }
       })();
-      conversationRuntime.track(bookId, () => controller.abort(), work);
+      conversationRuntime.track(bookId, stop, work);
     },
-    [bookId, bookTitle, thread, persist, reloadFromStore, t],
+    [bookId, bookTitle, thread, persist, reloadFromStore, setIsStreaming, t],
   );
 
   const send = useCallback(
@@ -279,13 +321,14 @@ export function useBookConversation(
   }, [bookId, isLoading, runTurn]);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    stopRef.current?.(causalActor("user"));
   }, []);
 
   const clear = useCallback(async () => {
-    await conversationCommands("user").clear({ kind: thread, id: bookId });
-    if (mountedIdRef.current === bookId) setMessages([]);
-  }, [bookId, thread]);
+    const source = causalActor("user"), owner = bindingRef.current;
+    await conversationCommands(source).clear({ kind: thread, id: bookId });
+    if (mountedIdRef.current === bookId && bindingRef.current === owner) setMessages([], source);
+  }, [bookId, thread, setMessages]);
 
   return { messages, isLoading, isStreaming, streamingParts, status, send, retry, stop, clear };
 }

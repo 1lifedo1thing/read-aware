@@ -1,4 +1,4 @@
-import type { DomainActor } from "../../../platform/domain-actor";
+import { actorFromEvent, actorOrigin, causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { isTauri } from "../../../platform/environment";
@@ -190,7 +190,9 @@ export async function loadAllConversations(): Promise<Record<string, ChatMessage
 export async function saveConversation(
   conversationId: string,
   messages: ChatMessage[],
+  origin?: DomainActor,
 ): Promise<void> {
+  const source = origin === undefined ? undefined : stampEventCause({}, causalActor(origin));
   if (!isTauri()) {
     memoryStore.set(conversationId, messages);
     return;
@@ -205,7 +207,8 @@ export async function saveConversation(
       // stub, replaced on retry). Both are presentation state — see DIFF_SPECS in
       // storage/apply.rs, which excludes them from the consistency check. Rows
       // this webview doesn't know (merged from a peer device) are left alone.
-      const drafts = await conversationEventDrafts(conversationId, captured);
+      const drafts = (await conversationEventDrafts(conversationId, captured)).map(draft => source
+        ? { ...draft, origin: actorFromEvent(source, actorOrigin(draft.origin ?? origin!)) } : draft);
       if (drafts.length > 0) await commitDomainEvents(...drafts);
       await invoke("ai_chat_replace", {
         conversationId,
