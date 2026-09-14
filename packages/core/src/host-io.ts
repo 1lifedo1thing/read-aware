@@ -1,6 +1,7 @@
 import { AppError } from "./errors";
 import { CONTRIBUTION_CATALOG, type ContributionId } from "./capabilities";
 
+export type HostExportDescription = { filename: string; byteLength: number; mimeType?: string };
 export type HostExportFile = { filename: string; content: string | Uint8Array | ArrayBuffer; mimeType?: string };
 export type PluginDirectoryQuery = { search?: string; offset?: number; limit?: number };
 export type PluginDirectoryEntry = {
@@ -38,16 +39,29 @@ export function normalizeExternalUrl(value: unknown): string {
   if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) return invalid("Only HTTP(S) URLs without credentials may be opened");
   return url.href;
 }
-export function normalizeHostExport(value: HostExportFile): HostExportFile {
+/** Metadata-only export validation shared by inspection and actual export. */
+export function normalizeHostExportDescription(value: HostExportDescription): HostExportDescription {
   if (!value || typeof value !== "object" || Array.isArray(value)
-    || Object.keys(value).some(key => !["filename", "content", "mimeType"].includes(key))
+    || Object.keys(value).some(key => !["filename", "byteLength", "mimeType"].includes(key))
     || typeof value.filename !== "string" || !value.filename.trim() || value.filename.length > 256
-    || value.mimeType !== undefined && (typeof value.mimeType !== "string" || value.mimeType.length > 256 || /[\r\n]/.test(value.mimeType))) return invalid("Invalid export description");
+    || value.mimeType !== undefined && (typeof value.mimeType !== "string" || value.mimeType.length > 256 || /[\r\n]/.test(value.mimeType))
+    || !Number.isSafeInteger(value.byteLength) || value.byteLength < 0 || value.byteLength > 64 * 1024 * 1024) return invalid("Invalid export description or size");
+  return { filename: value.filename, byteLength: value.byteLength,
+    ...(value.mimeType === undefined ? {} : { mimeType: value.mimeType }) };
+}
+export function describeHostExport(value: HostExportFile): HostExportDescription {
+  if (!value || typeof value !== "object" || Array.isArray(value)
+    || Object.keys(value).some(key => !["filename", "content", "mimeType"].includes(key))) return invalid("Invalid export description");
   const content = value.content;
   if (typeof content !== "string" && !(content instanceof Uint8Array) && !(content instanceof ArrayBuffer)) return invalid("Export requires text or bytes");
-  if ((typeof content === "string" ? new TextEncoder().encode(content).byteLength : content.byteLength) > 64 * 1024 * 1024) return invalid("Export exceeds 64 MiB");
-  return { filename: value.filename, content: typeof content === "string" ? content : content.slice(0),
-    ...(value.mimeType === undefined ? {} : { mimeType: value.mimeType }) };
+  return normalizeHostExportDescription({ filename: value.filename,
+    byteLength: typeof content === "string" ? new TextEncoder().encode(content).byteLength : content.byteLength,
+    ...(value.mimeType === undefined ? {} : { mimeType: value.mimeType }) });
+}
+export function normalizeHostExport(value: HostExportFile): HostExportFile {
+  const description = describeHostExport(value);
+  return { filename: description.filename, content: typeof value.content === "string" ? value.content : value.content.slice(0),
+    ...(description.mimeType === undefined ? {} : { mimeType: description.mimeType }) };
 }
 export function normalizePluginDirectoryQuery(value: PluginDirectoryQuery = {}): Required<PluginDirectoryQuery> {
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some(key => !["search", "offset", "limit"].includes(key))) return invalid("Invalid plugin directory query");

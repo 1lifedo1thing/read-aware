@@ -19,6 +19,7 @@ test("Agent IO shares bounded host effects, preserves cancelled export and retur
     conditions: [{ kind: "provider", state: "unavailable", reason: "entry-missing", errorCode: "ui/unavailable" }] }) };
   await expect(call("copy_to_clipboard", { text: "blocked" })).rejects.toMatchObject({ code: "ui/unavailable" });
   await expect(call("open_external_url", { url: "https://example.com" })).rejects.toMatchObject({ code: "ui/unavailable" });
+  await expect(call("export_text_file", { filename: "notes.txt", content: "blocked" })).rejects.toMatchObject({ code: "ui/unavailable" });
   expect(calls).toHaveLength(3);
   deps.operationAvailability = { check: async query => ({ operation: query.operation, state: "unknown", remoteChecked: false,
     conditions: [{ kind: "provider", state: "unknown", reason: "access-not-probed" }] }) };

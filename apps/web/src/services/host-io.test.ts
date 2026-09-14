@@ -66,3 +66,18 @@ test("IO availability enforces grants without effects and rechecks clipboard ent
   await expect(allowed.clipboard!.writeText("later")).rejects.toMatchObject({ code: "ui/unavailable" });
   expect(copied).toEqual(["requested"]);
 });
+
+
+test("export inspection opens no dialog and execution rechecks its entry", async () => {
+  const services = actor([]).context.services;
+  const original = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const invoke = () => { throw Error("inspection must not call native IO"); };
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { __TAURI_INTERNALS__: { invoke } } });
+  cleanups.push(() => { if (original) Object.defineProperty(globalThis, "window", original); else Reflect.deleteProperty(globalThis, "window"); });
+  const snapshot = await services.session.operationAvailability({ operation: "ui.exportFile", filename: "private.txt", byteLength: 3 });
+  expect(snapshot.state).toBe("unknown"); expect(JSON.stringify(snapshot)).not.toContain("private.txt");
+  expect(() => services.session.operationAvailability({ operation: "ui.exportFile", filename: "x", byteLength: 67108865 })).toThrow();
+  Object.defineProperty(globalThis, "window", { configurable: true, value: undefined });
+  expect((await services.session.operationAvailability({ operation: "ui.exportFile", filename: "x", byteLength: 0 })).state).toBe("unavailable");
+  expect(() => services.ui.exportFile({ filename: "x", content: "文" })).toThrow();
+});

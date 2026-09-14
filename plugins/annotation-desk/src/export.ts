@@ -26,7 +26,14 @@ export function annotationExport(items: PluginAnnotation[], books: Books, scope:
 
 export async function exportAnnotations(ctx: DeskContext, items: PluginAnnotation[], books: Books, scope: "page" | "selection", format: "json" | "csv") {
   const at = new Date();
-  const saved = await ctx.services.ui.exportFile({ filename: `readaware-annotations-${at.toISOString().slice(0, 10)}.${format}`,
-    content: annotationExport(items, books, scope, format, at), mimeType: format === "json" ? "application/json" : "text/csv;charset=utf-8" });
+  const file = { filename: `readaware-annotations-${at.toISOString().slice(0, 10)}.${format}`,
+    content: annotationExport(items, books, scope, format, at), mimeType: format === "json" ? "application/json" : "text/csv;charset=utf-8" };
+  const availability = await ctx.services.session.operationAvailability({ operation: "ui.exportFile",
+    filename: file.filename, byteLength: new TextEncoder().encode(file.content).byteLength, mimeType: file.mimeType });
+  if (availability.state === "unavailable" || availability.state === "unconfigured") {
+    const blocked = availability.conditions.find(item => item.state === "unavailable" || item.state === "unconfigured");
+    throw Object.assign(new Error("Export unavailable"), { code: blocked?.errorCode ?? "ui/unavailable" });
+  }
+  const saved = await ctx.services.ui.exportFile(file);
   return saved ? { toast: tr(ctx.locale, "exported") } : undefined;
 }

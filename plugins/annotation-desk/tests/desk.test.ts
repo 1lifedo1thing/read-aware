@@ -33,7 +33,7 @@ function fixture(items: PluginAnnotation[] = [note, highlight, ask]) {
     } } },
     library: { queries: { books: { get: async () => book, list: async () => [book] } } },
     reading: { queries: { session: async () => ({ bookId: "book" }) }, commands: { goTo: async (target: ReadingTarget) => { jumps.push(target); } } },
-  }, services: { ui: { exportFile: async () => true } } } as unknown as DeskContext;
+  }, services: { session: { operationAvailability: async (query: { operation: string }) => ({ operation: query.operation, state: "unknown", conditions: [], remoteChecked: false }) }, ui: { exportFile: async () => true } } } as unknown as DeskContext;
   let refreshes = 0;
   const refresh = async () => { refreshes++; return { view: await deskView(ctx), navigation: "reset" as const }; };
   return { ctx, queries, writes, snapshots, inspected, jumps, refresh, get refreshes() { return refreshes; } };
@@ -233,8 +233,18 @@ test("CSV quotes delimiters/newlines and neutralizes spreadsheet formulas includ
 
 test("cancelled native export never claims success, failed export propagates", async () => {
   const f = fixture();
-  f.ctx.services.ui.exportFile = async () => false;
+  let saves = 0;
+  f.ctx.services.ui.exportFile = async () => { saves++; return false; };
   expect(await exportAnnotations(f.ctx, [note], new Map(), "page", "json")).toBeUndefined();
+  f.ctx.services.session.operationAvailability = async query => {
+    expect(query).toMatchObject({ operation: "ui.exportFile", mimeType: "text/csv;charset=utf-8" });
+    expect(query).not.toHaveProperty("content");
+    return { operation: query.operation, state: "unavailable", remoteChecked: false,
+      conditions: [{ kind: "provider", state: "unavailable", reason: "export-entry-unavailable", errorCode: "ui/unavailable" }] };
+  };
+  await expect(exportAnnotations(f.ctx, [note], new Map(), "page", "csv")).rejects.toMatchObject({ code: "ui/unavailable" });
+  expect(saves).toBe(1);
+  f.ctx.services.session.operationAvailability = async query => ({ operation: query.operation, state: "unknown", remoteChecked: false, conditions: [] });
   f.ctx.services.ui.exportFile = async () => { throw new Error("disk full"); };
   await expect(exportAnnotations(f.ctx, [note], new Map(), "page", "csv")).rejects.toThrow("disk full");
 });

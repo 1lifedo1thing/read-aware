@@ -1,6 +1,6 @@
 import { normalizeBookGraphTaskOptions, type BookGraphTaskOptions } from "./book-graph-task";
 import { normalizeHostWindowRequest, type HostWindowRequest } from "./host-window";
-import { normalizeClipboardText, normalizeExternalUrl } from "./host-io";
+import { normalizeClipboardText, normalizeExternalUrl, normalizeHostExportDescription, type HostExportDescription } from "./host-io";
 import { AppError } from "./errors";
 import type { ReadingModeConfiguration } from "./reading-session";
 import { normalizeBookTextPrepareOptions, type BookTextPrepareOptions } from "./book-text";
@@ -15,7 +15,8 @@ export type ReadingOperationQuery = { bookId: string; sessionId?: string } & (
 export type BookTextAvailabilityQuery = { operation: "library.text.prepare"; bookId: string } & BookTextPrepareOptions;
 export type GraphAvailabilityQuery = { operation: "memory.graph.generate"; bookId: string; mode: "catch-up" | "rebuild"; maxChapters?: number };
 export type WindowAvailabilityQuery = { operation: "window.control"; request: HostWindowRequest };
-export type HostIOAvailabilityQuery = { operation: "clipboard.writeText"; text: string } | { operation: "ui.openExternal"; url: string };
+export type ExportAvailabilityQuery = { operation: "ui.exportFile" } & HostExportDescription;
+export type HostIOAvailabilityQuery = ExportAvailabilityQuery | { operation: "clipboard.writeText"; text: string } | { operation: "ui.openExternal"; url: string };
 export type SyncAvailabilityQuery = { operation: "sync.now" };
 export type OperationAvailabilityQuery = InferenceAvailabilityQuery | ReadingOperationQuery | BookTextAvailabilityQuery | GraphAvailabilityQuery | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
 export type NormalizedOperationAvailabilityQuery = Required<InferenceAvailabilityQuery> | ReadingOperationQuery | Required<BookTextAvailabilityQuery> | (GraphAvailabilityQuery & BookGraphTaskOptions) | SyncAvailabilityQuery | WindowAvailabilityQuery | HostIOAvailabilityQuery;
@@ -46,6 +47,10 @@ export function normalizeOperationAvailability(input: unknown): NormalizedOperat
       || raw.mode !== "catch-up" && raw.mode !== "rebuild") throw invalid();
     return { operation: raw.operation, bookId: raw.bookId, mode: raw.mode,
       ...normalizeBookGraphTaskOptions(raw.maxChapters === undefined ? undefined : { maxChapters: raw.maxChapters }) };
+  }
+  if (raw.operation === "ui.exportFile") {
+    const { operation, ...description } = raw;
+    return { operation, ...normalizeHostExportDescription(description as HostExportDescription) };
   }
   if (raw.operation === "clipboard.writeText" || raw.operation === "ui.openExternal") {
     const field = raw.operation === "clipboard.writeText" ? "text" : "url";

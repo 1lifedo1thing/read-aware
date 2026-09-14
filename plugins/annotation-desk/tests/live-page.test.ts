@@ -11,7 +11,7 @@ function fixture() {
     observe: (_query: unknown, callback: typeof handler) => { handler = callback; return { dispose() { stopped = true; } }; },
   } } }, services: { ui: { publishView: async (_channel: unknown, update: PluginViewUpdate) => { updates.push(update); } } } } as unknown as DeskContext;
   const bound: (PluginReactionEvent | undefined)[] = [];
-  ctx.withEvent = event => { bound.push(event); return ctx; };
+  ctx.withEvent = ((event: PluginReactionEvent | undefined) => { bound.push(event); return ctx; }) as DeskContext["withEvent"];
   return { ctx, page, updates, bound, emit: (event: AnnotationObservation, delivery?: PluginReactionEvent) => handler(event, delivery), stopped: () => stopped };
 }
 
@@ -21,7 +21,7 @@ test("automatic publication binds the delivery while repeated causal reactions s
   const bound = { ...f.ctx, services: { ...f.ctx.services, ui: { ...f.ctx.services.ui,
     publishView: async () => { calls.push("bound publication"); return { status: "applied" as const }; },
   } } };
-  f.ctx.withEvent = delivery => { f.bound.push(delivery); return bound as DeskContext; };
+  f.ctx.withEvent = ((delivery: PluginReactionEvent | undefined) => { f.bound.push(delivery); return bound as DeskContext; }) as DeskContext["withEvent"];
   const sub = await view.live!.subscribe({ id: "channel" });
   const event = { status: "ready" as const, revision: 1, result: { kind: "page" as const, page: f.page } };
   const delivery = { reaction: { id: "host-lease", status: "ready" as const } };

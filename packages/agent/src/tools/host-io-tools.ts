@@ -1,6 +1,6 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { assertOperationAvailable, CONTRIBUTION_CATALOG, normalizePluginContributionQuery, normalizeClipboardText, normalizeExternalUrl, normalizeHostExport, normalizePluginDirectoryQuery, type HostExportFile, type PluginDirectoryQuery, type PluginContributionQuery } from "@read-aware/core";
+import { assertOperationAvailable, describeHostExport, CONTRIBUTION_CATALOG, normalizePluginContributionQuery, normalizeClipboardText, normalizeExternalUrl, normalizeHostExport, normalizePluginDirectoryQuery, type HostExportFile, type PluginDirectoryQuery, type PluginContributionQuery } from "@read-aware/core";
 import type { RuntimeDeps } from "../ports";
 import { textResult } from "./tool-result";
 
@@ -45,7 +45,13 @@ export function buildHostIOTools(deps: RuntimeDeps): AgentTool[] {
     parameters: Type.Object({ filename: Type.String({ minLength: 1, maxLength: 256 }), content: Type.String({ maxLength: 1_000_000 }),
       mimeType: Type.Optional(Type.String({ maxLength: 256 })) }, { additionalProperties: false }),
     executionMode: "sequential",
-    execute: async (_id, params, signal) => textResult({ saved: await deps.hostIO.exportFile(normalizeHostExport(params as HostExportFile), signal) }),
+    execute: async (_id, params, signal) => {
+      const file = normalizeHostExport(params as HostExportFile);
+      signal?.throwIfAborted();
+      if (deps.operationAvailability) assertOperationAvailable(await deps.operationAvailability.check({ operation: "ui.exportFile", ...describeHostExport(file) }, signal));
+      signal?.throwIfAborted();
+      return textResult({ saved: await deps.hostIO.exportFile(file, signal) });
+    },
   }, {
     name: "open_external_url", label: "Open external link",
     description: "Open an HTTP(S) URL in the user's system browser only in response to an explicit request to open that destination. Never use this to transmit book text, credentials, memories or other private data through a URL. No file, data, javascript, custom application schemes or URL credentials. Completion means handed to the OS, not that the remote page loaded.",

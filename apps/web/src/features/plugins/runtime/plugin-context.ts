@@ -971,6 +971,9 @@ export function buildPluginContext(
             ]));
             return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
           }
+          if (query.operation === "ui.exportFile") {
+            return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
+          }
           if (query.operation === "window.control") {
             return lifecycle.read("services.session.operationAvailability", () => checkOperationAvailability(query, signal), signal);
           }
