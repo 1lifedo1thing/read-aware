@@ -6,7 +6,7 @@ import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 
 type Listener = (state: BookTextTaskSnapshot) => void | Promise<void>;
 type Observer = { send(state: BookTextTaskSnapshot): void; stop(): void };
-type Task = { releaseAccess?: () => void; source: { origin: DomainActor; cancellationOrigin?: DomainActor }; admitted: boolean; lastHistoryRevision?: number; timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
+type Task = { executions: Set<Promise<void>>; releaseAccess?: () => void; source: { origin: DomainActor; cancellationOrigin?: DomainActor }; admitted: boolean; lastHistoryRevision?: number; timer?: ReturnType<typeof setTimeout>; state: BookTextTaskSnapshot; controller: AbortController; rebuildPending: boolean; observers: Set<Observer> };
 const active = (state: BookTextTaskSnapshot) => state.status === "queued" || state.status === "running" || state.status === "paused";
 const cancelled = () => new AppError("library/text-cancelled", "This text preparation request was cancelled");
 
@@ -14,6 +14,7 @@ const cancelled = () => new AppError("library/text-cancelled", "This text prepar
 export class BookTextTaskOwner {
   private readonly tasks = new Map<string, Task>();
   private stopped = false;
+  private readonly executions = new Set<Promise<void>>();
   constructor(private readonly repository: Pick<BookTextRepository, "snapshot" | "prepare"> & Partial<Pick<BookTextRepository, "preparationConditions">>,
     private readonly warn: (message: string, error: unknown) => void,
     lifetime?: AbortSignal, private readonly history?: BookTextTaskHistory) {
@@ -129,7 +130,7 @@ export class BookTextTaskOwner {
     // the reader. Recheck before adding this request or writing its history.
     check();
     const now = new Date().toISOString(), deadlineAt = new Date(Date.parse(now) + request.timeoutMs).toISOString();
-    const task: Task = { source: { origin: actor }, admitted: false, controller: new AbortController(), rebuildPending: request.rebuild, observers: new Set(), state: {
+    const task: Task = { executions: new Set(), source: { origin: actor }, admitted: false, controller: new AbortController(), rebuildPending: request.rebuild, observers: new Set(), state: {
       taskId: crypto.randomUUID(), bookId, mode: request.rebuild ? "rebuild" : "prepare", revision: 0,
       status: "queued", priority: request.priority, timeoutMs: request.timeoutMs, deadlineAt, waitReason: null, createdAt: now, updatedAt: now, textState: state,
     } };
@@ -146,9 +147,24 @@ export class BookTextTaskOwner {
     check(); this.expire(task); task.admitted = true;
     if (active(task.state)) {
       this.scheduleDeadline(task);
-      if (task.state.status === "queued") void this.run(task);
+      if (task.state.status === "queued") this.dispatch(task);
     }
     return structuredClone(task.state);
+  }
+
+  private dispatch(task: Task): void {
+    const work = this.run(task);
+    task.executions.add(work); this.executions.add(work);
+    const settled = () => { task.executions.delete(work); this.executions.delete(work); };
+    void work.then(settled, settled);
+  }
+  /** A cancelled snapshot releases a lease; physical extraction may still drain. */
+  async whenSettled(bookId: string, taskId: string): Promise<void> {
+    const task = this.lookup(bookId, taskId);
+    while (task.executions.size) await Promise.all([...task.executions]);
+  }
+  async drain(): Promise<void> {
+    while (this.executions.size) await Promise.all([...this.executions]);
   }
 
   private async run(task: Task): Promise<void> {
@@ -158,7 +174,7 @@ export class BookTextTaskOwner {
     try {
       const textState = await this.repository.prepare(task.state.bookId, {
         origin: source.origin, cancellationOrigin: () => source.cancellationOrigin,
-        rebuild: task.rebuildPending, signal: controller.signal,
+        rebuild: task.rebuildPending, signal: controller.signal, drainOnCancel: true,
         priority: () => task.state.priority,
         scheduling: reason => { if (current() && task.state.waitReason !== reason) this.publish(task, { waitReason: reason }); },
         onRebuildReset: () => { task.rebuildPending = false; },
@@ -191,7 +207,7 @@ export class BookTextTaskOwner {
     if (task.state.status === "paused") {
       task.source = { origin: origin === undefined ? task.source.origin : causalActor(origin) };
       task.controller = new AbortController();
-      if (task.admitted) void this.run(task);
+      if (task.admitted) this.dispatch(task);
       else this.publish(task, { status: "queued" });
     }
     return structuredClone(task.state);

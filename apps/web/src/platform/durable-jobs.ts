@@ -7,10 +7,11 @@ import { withPluginDataWrites } from "./plugin-data-access";
 /** Host-private checkpoint, including reconciliation handles. Never exposed as
  * plugin JSON: public snapshots contain only progress and stable error codes. */
 export type DurableJobAttempt = {
-  stepIndex: number; dispatchId: string; phase: "prepared" | "dispatching" | "unknown";
+  stepIndex: number; dispatchId: string; phase: "prepared" | "dispatching" | "unknown" | "settled";
   data: unknown;
 };
 export type DurableJobState = {
+  resumeRequested?: boolean;
   requestedAction?: "pause" | "cancel" | null;
   status: DurableJobStatus; nextStep: number; attempt: DurableJobAttempt | null;
   results: Array<{ stepId: string; receipt: unknown }>; errorCode: string | null;

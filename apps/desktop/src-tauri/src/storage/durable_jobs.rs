@@ -87,10 +87,10 @@ pub(crate) fn durable_job_checkpoint_inner(conn: &mut Connection, owner: &str, i
     let attempt = state.get("attempt").ok_or_else(|| invalid("Missing attempt"))?;
     if !attempt.is_null() && (next >= count || attempt["stepIndex"].as_u64() != Some(next as u64)
         || attempt["dispatchId"].as_str().map_or(true, |id| id.is_empty() || id.len() > 128)
-        || !matches!(attempt["phase"].as_str(), Some("prepared" | "dispatching" | "unknown"))) {
+        || !matches!(attempt["phase"].as_str(), Some("prepared" | "dispatching" | "unknown" | "settled"))) {
         return Err(invalid("Invalid dispatch checkpoint"));
     }
-    if status == "cancelled" && !attempt.is_null() && attempt["phase"] != "prepared" {
+    if status == "cancelled" && !attempt.is_null() && !matches!(attempt["phase"].as_str(), Some("prepared" | "settled")) {
         return Err(invalid("Unknown dispatch cannot be marked cancelled"));
     }
     if next > previous && (!attempt.is_null() || before.state["attempt"].is_null()

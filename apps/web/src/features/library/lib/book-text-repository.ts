@@ -23,6 +23,8 @@ export type TextPreparationOptions = {
   /** Host-only request identity; never serialized into extracted text. */
   origin?: DomainActor;
   cancellationOrigin?(): DomainActor | undefined;
+  /** Wait for physical cleanup when this request cancels the last shared lease. */
+  drainOnCancel?: boolean;
   rebuild?: boolean;
   priority?(): BookTextPriority;
   scheduling?(reason: BookTextWaitReason): void;
@@ -158,7 +160,10 @@ export class BookTextRepository {
       };
       const abort = () => {
         if (finished) return;
-        finished = true; release(); reject(options.signal?.reason ?? new AppError("library/text-cancelled", "Text request cancelled"));
+        finished = true; release();
+        const reason = options.signal?.reason ?? new AppError("library/text-cancelled", "Text request cancelled");
+        if (options.drainOnCancel && !job.consumers.size) void job.promise.then(() => reject(reason), () => reject(reason));
+        else reject(reason);
       };
       options.signal?.addEventListener("abort", abort, { once: true });
       // Always attach to the shared promise, even if this caller already cancelled.

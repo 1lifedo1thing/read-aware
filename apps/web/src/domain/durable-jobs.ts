@@ -1,7 +1,7 @@
 import { AppError, errorCode, normalizeDurableJobPlan, type DurableJobPlan, type DurableJobStep, type DurableJobSnapshot, type DurableJobControl } from "@read-aware/core";
 import type { DurableJobStore, DurableJobRecord, DurableJobAttempt } from "../platform/durable-jobs";
 
-type Outcome = { status: "complete"; receipt: unknown } | { status: "needs-attention"; code: string };
+type Outcome = { status: "complete"; receipt: unknown } | { status: "needs-attention"; code: string; settled?: boolean };
 export type DurableJobExecutor = {
   authorize(plan: DurableJobPlan, signal: AbortSignal): Promise<{ assert(): void | Promise<void>; dispose(): void }>;
   /** Pure preparation only: persist its result before dispatching side effects. */
@@ -71,6 +71,7 @@ export class DurableJobRunner {
     if (terminal(record.state.status) || (!explicitResume && !["queued", "running"].includes(record.state.status))) return;
     let grant: Awaited<ReturnType<DurableJobExecutor["authorize"]>> | undefined;
     record.plan = normalizeDurableJobPlan(record.plan);
+    explicitResume ||= record.state.resumeRequested === true;
     let writes = Promise.resolve();
     const save = (update: (state: State) => State) => {
       const writing = writes.then(async () => { const next = update(record.state); if (next !== record.state) record = await this.store.checkpoint(record, next); });
@@ -82,6 +83,13 @@ export class DurableJobRunner {
       await save(state => terminal(state.status) ? state : { ...state, requestedAction: state.requestedAction === "cancel" ? "cancel" : action });
       this.flights.get(id)?.controller.abort(new AppError("jobs/interrupted", `Job ${action} requested`));
     });
+    const incomplete = async (outcome: Extract<Outcome, { status: "needs-attention" }>) => {
+      await save(state => ({ ...state,
+        status: outcome.settled && state.requestedAction === "cancel" ? "cancelled" : outcome.settled && state.requestedAction === "pause" ? "paused" : "needs-attention",
+        attempt: outcome.settled && state.attempt ? { ...state.attempt, phase: "settled" } : state.attempt,
+        errorCode: outcome.code,
+      }));
+    };
     const finishStep = async (receipt: unknown) => {
       const step = record.plan.steps[record.state.nextStep]!;
       const next = record.state.nextStep + 1;
@@ -93,10 +101,13 @@ export class DurableJobRunner {
       while (!terminal(record.state.status) && record.state.nextStep < record.plan.steps.length) {
         signal.throwIfAborted(); await grant.assert();
         const step = record.plan.steps[record.state.nextStep]!;
+        if (record.state.requestedAction === "cancel" && record.state.attempt?.phase === "settled") {
+          await save(state => ({ ...state, status: "cancelled" })); return;
+        }
         if (record.state.attempt && record.state.attempt.phase !== "prepared") {
           const outcome = await this.executor.reconcile(step, record.state.attempt, signal, explicitResume);
           if (outcome.status === "complete") { await finishStep(outcome.receipt); if (record.state.status === "paused") return; continue; }
-          if (outcome.status === "needs-attention") { await save(state => ({ ...state, status: "needs-attention", errorCode: outcome.code })); return; }
+          if (outcome.status === "needs-attention") { await incomplete(outcome); return; }
           if (record.state.requestedAction === "cancel") {
             await save(state => ({ ...state, status: "needs-attention", errorCode: "jobs/outcome-unknown" }));
             return;
@@ -114,13 +125,14 @@ export class DurableJobRunner {
           await save(state => ({ ...state, status: "running", attempt: { stepIndex: record.state.nextStep, dispatchId, phase: "prepared", data }, errorCode: null }));
         }
         signal.throwIfAborted(); await grant.assert();
-        await save(state => signal.aborted || state.requestedAction ? state : ({ ...state, status: "running", attempt: { ...state.attempt!, phase: "dispatching" } }));
+        await save(state => signal.aborted || state.requestedAction ? state : ({ ...state, status: "running", resumeRequested: false, attempt: { ...state.attempt!, phase: "dispatching" } }));
         signal.throwIfAborted();
         if (record.state.requestedAction) throw new AppError("jobs/interrupted", "Job control requested");
+        explicitResume = false;
         const outcome = await this.executor.execute(step, record.state.attempt!, signal, async data => {
           await save(state => ({ ...state, attempt: { ...state.attempt!, data: structuredClone(data) } }));
         });
-        if (outcome.status !== "complete") { await save(state => ({ ...state, status: "needs-attention", errorCode: outcome.code })); return; }
+        if (outcome.status !== "complete") { await incomplete(outcome); return; }
         await finishStep(outcome.receipt);
         if (record.state.status === "paused") return;
       }
@@ -130,7 +142,7 @@ export class DurableJobRunner {
       // particular, it must not overwrite a newer owner's reconciliation.
       if (errorCode(error) === "jobs/conflict") throw error;
       const action = record.state.requestedAction;
-      const uncertain = !!record.state.attempt && record.state.attempt.phase !== "prepared";
+      const uncertain = !!record.state.attempt && ["dispatching", "unknown"].includes(record.state.attempt.phase);
       await save(state => ({ ...state, status: uncertain ? "needs-attention" : action === "cancel" ? "cancelled" : action === "pause" || this.closed ? "paused" : "failed",
         attempt: uncertain ? { ...record.state.attempt!, phase: "unknown" } : record.state.attempt,
         errorCode: errorCode(error) ?? (signal.aborted ? "jobs/interrupted" : "jobs/step-failed") }));
@@ -153,11 +165,11 @@ export class DurableJobRunner {
     const record = visible;
     if (terminal(record.state.status)) return durableJobSnapshot(record);
     if (action === "resume") {
-      const queued = await this.store.checkpoint(record, { ...record.state, status: "queued", requestedAction: record.state.requestedAction === "cancel" ? "cancel" : null, errorCode: null });
+      const queued = await this.store.checkpoint(record, { ...record.state, status: "queued", resumeRequested: true, requestedAction: record.state.requestedAction === "cancel" ? "cancel" : null, errorCode: null });
       this.launch(id, true); return durableJobSnapshot(queued);
     }
     return durableJobSnapshot(await this.store.checkpoint(record, { ...record.state, requestedAction: record.state.requestedAction === "cancel" ? "cancel" : action,
-      status: record.state.attempt && record.state.attempt.phase !== "prepared" ? "needs-attention" : action === "cancel" ? "cancelled" : "paused" }));
+      status: record.state.attempt && ["dispatching", "unknown"].includes(record.state.attempt.phase) ? "needs-attention" : action === "cancel" ? "cancelled" : "paused" }));
   }
   async stop(): Promise<void> {
     this.closed = true;

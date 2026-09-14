@@ -379,3 +379,21 @@ test("missing local source checks retrieval conditions without retrieval, and re
   const abort = new AbortController(); abort.abort(new Error("retired")); const before = sourceReads;
   await expect(repo.preparationConditions("book", false, abort.signal)).rejects.toThrow("retired"); expect(sourceReads).toBe(before);
 });
+
+test("last-lease cancellation can await physical parser cleanup", async () => {
+  const entered = deferred(), gate = deferred();
+  const h = harness(makeBook([async () => { entered.resolve(); await gate.promise; return prose; }]));
+  const controller = new AbortController();
+  let finished = false;
+  const work = h.repo.prepare("book", { signal: controller.signal, drainOnCancel: true }).then(
+    value => { finished = true; return value; }, error => { finished = true; return error; },
+  );
+  await entered.promise;
+  controller.abort(new AppError("library/text-cancelled", "cancel"));
+  await Promise.resolve(); await Promise.resolve();
+  expect(finished).toBe(false);
+  expect(h.signals[0]!.aborted).toBe(true);
+  gate.resolve();
+  expect(await work).toMatchObject({ code: "library/text-cancelled" });
+  expect(h.saved()).toBeNull();
+});
