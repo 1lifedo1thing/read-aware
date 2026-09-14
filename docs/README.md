@@ -1,6 +1,6 @@
 # ReadAware 文档
 
-这里记录当前架构、功能契约、开发规范和验收证据。按要解决的问题进入，旧设计和
+这里记录当前架构、功能契约、开发规范和能力状态。按要解决的问题进入，旧设计和
 旧审计集中放在 [archive](./archive/README.md)，不作为当前状态或自动待办。
 
 ## 从哪里开始
@@ -12,7 +12,7 @@
 | 插件能做什么、如何接入 | [插件简明说明](./plugins/plugin-system.html) · [完整契约](./plugins/plugin-system.md) |
 | 当前能力工作还剩什么 | [九项集中验收](./capabilities/host-capability-acceptance.md) |
 | 某个能力有没有接通 | [可筛选能力表](./capabilities/host-capability-matrix.html) · [文字版](./capabilities/host-capability-matrix.md) |
-| 已经做过哪些真实验证 | [交接与证据索引](./capabilities/host-capability-delivery.md) |
+| 当前能力工作进行到哪一步 | [当前交接](./capabilities/host-capability-delivery.md) |
 
 ## 架构与数据
 
@@ -48,15 +48,10 @@
 | 文档 | 唯一职责 |
 | --- | --- |
 | [集中验收](./capabilities/host-capability-acceptance.md) | 当前执行范围、完成条件和停止规则 |
-| [交接与证据索引](./capabilities/host-capability-delivery.md) | 当前阶段及稳定证据入口 |
+| [当前交接](./capabilities/host-capability-delivery.md) | 当前阶段、范围及下一步 |
 | [能力矩阵](./capabilities/host-capability-matrix.md) / [HTML](./capabilities/host-capability-matrix.html) | 宿主、Agent、插件的行级接线和边界 |
 | [责任模型](./capabilities/host-capability-model.md) / [HTML](./capabilities/host-capability-model.html) | 能力归属、目标契约和取舍 |
 | [详细场景库](./capabilities/host-capability-stage-three.md) | 集中验收可引用的具体操作场景，不能自行扩大范围 |
-| [记忆分页验收](./acceptance/mem01-native-pagination-2026-09-12.md) | 一次原生分页桌面验收的环境、操作和边界 |
-| [备份恢复验收](./acceptance/ops08-backup-2026-09-12.md) | 一次完整备份恢复桌面验收的环境、操作和边界 |
-
-[evidence/](./evidence/) 保存原始 JSON、截图和按批次的报告。文件名带日期；历史通过、
-失败和外部阻塞只适用于对应样本及环境，不能因文档归档而改变结论。
 
 ## 示例与历史
 
@@ -65,7 +60,7 @@
 
 ## 怎样维护
 
-1. 当前契约按主题更新，不按日期另起一份状态说明；只有验收记录需要明确日期和环境。
+1. 当前契约按主题更新，不按日期另起状态说明；验证结果写回对应文档，注明日期和环境，不堆积原始运行工件。
 2. 先更新已有文档。一个主题只有一个主要说明，其他地方用链接引用。
 3. 能力事实改 [matrix.data.ts](./capabilities/host-capability-matrix.data.ts)，责任模型改
    [model.data.ts](./capabilities/host-capability-model.data.ts)，再运行对应生成器；不手改输出。

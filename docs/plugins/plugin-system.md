@@ -14,9 +14,10 @@
 > Navigation updated 2026-09-15: this is the detailed contract reference. The
 > [matrix](../capabilities/host-capability-matrix.md) records current wiring;
 > [C01–C09](../capabilities/host-capability-acceptance.md) is the only current
-> execution list, and the [evidence index](../capabilities/host-capability-delivery.md)
-> records actual validation. Versioned implementation notes below describe their
+> execution list, and the [current handoff](../capabilities/host-capability-delivery.md)
+> records the current phase. Versioned implementation notes below describe their
 > stated scope and evidence; their old pending items are not a second work queue.
+> Original acceptance reports and runtime artifacts are retained only in Git history.
 > The [original baseline](../archive/capabilities/plugin-capability-baseline.md)
 > is historical. Do not infer that every old GAP is still open or now closed.
 
@@ -564,7 +565,6 @@ Unchecked clear preserved both messages; checked clear removed them. Adopting
 the draft and dismissing send each left message count at two, with no inference.
 The fixture assistant message was scripted, not model output. This does not
 cover retry/streaming/stop, Agent-header entry, upgrade grants or model turns.
-See [native evidence](../evidence/image-conversation-composition-2026-09-11.json).
 
 ### Stored Conversation Summaries (Conversations 1.4)
 
@@ -1104,7 +1104,7 @@ one-time import, replay and remote-event ingestion remain trusted restoration
 paths, not exported edit commands. This change is local optimistic concurrency,
 not distributed CAS or a prohibition on host restoration.
 
-[环境] [Annotations 2 evidence](../evidence/annotation-contract-v2-2026-09-10.json)
+[环境] Annotations 2 evidence
 records actual macOS debug Worker command keys, read-only exclusion, old-version
 negotiation rejection, conditional ask deletion, wrong-kind/missing failures,
 atomic stale/fresh batches and Agent approval conflicts. The compiled Desk's
@@ -1153,7 +1153,7 @@ eight-language labels. Tests use controlled Bun contexts, not native selection
 gestures, real SQLite persistence, Worker/Tauri rendering or a complete Agent
 turn. Those combinations and document visuals remain concentrated acceptance.
 
-[验证] The [2026-09-11 native composition](../evidence/annotation-composition-2026-09-11.json)
+[验证] The 2026-09-11 native composition
 now covers Text Desk search/result/Select passage -> native selection More ->
 Annotation Desk creation, against an owned FB2 and real SQLite. An anchored note
 was created and conditionally edited without changing its quote/CFI; a second
@@ -1269,7 +1269,7 @@ closing or unmounting retires the UI generation, but does not roll back a write
 already dispatched. Explicitly opening another draft remounts the editor content,
 even if its initial body happens to equal the preceding note's body.
 
-[环境] [Native CAS evidence](../evidence/native-annotation-cas-2026-09-10.json)
+[环境] Native CAS evidence
 verifies real desktop textarea input and Update/Cancel controls: a Worker note
 edit and a separate actual Agent `edit_annotation` both make the open old native
 draft conflict, preserve its text and leave the competing value intact. Closing
@@ -1282,7 +1282,7 @@ save, old callback/completion, replacement drafts and book change.
 
 [环境] The initial two SQLite lock attempts did not capture a successfully
 delayed save completion or painted busy state; that historical evidence remains
-unchanged. The [storage execution follow-up](../evidence/storage-execution-2026-09-10.json)
+unchanged. The storage execution follow-up
 now verifies native busy controls, Cancel/reopen while a write is pending, and a
 successful old completion after lock release that leaves the replacement draft
 open and unchanged. Saving that old replacement snapshot then conflicts.
@@ -1555,7 +1555,7 @@ used an awaited animation-frame loop and exceeded bridge wait; it is not the
 successful timeout evidence. No maximum pool load, packaged, Windows/Linux,
 real multi-device sync or autonomous model claim is made.
 
-[环境] The [native evidence](../evidence/annotation-observation-2026-09-10.json)
+[环境] The native evidence
 covers real SQLite, four WebKit Workers, actual Agent queries and compiled
 Annotation Desk: local/remote-store/Worker changes, SQLite read failure and
 recovery, preserved conflicting drafts, deletion versus failure, and retirement.
@@ -1563,7 +1563,7 @@ The book is metadata-only, not an import/render test; sync applyRemote is real
 but does not exercise a relay or another device. Long-duration/maximum-payload,
 packaged and Windows/Linux tests remain; ANN09 and the broader GAPs stay partial.
 
-[环境] Separate [native reader evidence](../evidence/native-annotation-observation-2026-09-10.json)
+[环境] Separate native reader evidence
 uses uniquely imported FB2 files, a real Worker and actual Agent queries:
 creation/recolor/removal appear in both Notes and Foliate, removal restores the
 underlying note marker, remote-store note edits update the list, scoped SQL read
@@ -1584,7 +1584,7 @@ marker agreed without imperative refresh. Opening used the production engine's
 show-annotation event rather than a pointer hit-test; typing and Update used the
 actual editor controls. The deterministic late-write-ack race was not injected.
 The historical fourth-run pending bucket is retained in that evidence file;
-the follow-up [retirement evidence](../evidence/reading-retirement-2026-09-10.json)
+the follow-up retirement evidence
 records the fix and final zero-pending audit rather than rewriting that failure
 as a success.
 
@@ -1691,7 +1691,7 @@ compiled Text Desk menu/detail/open flow. Fault injection is at the parser
 section boundary, not a native disk permission failure. Repository tests cover
 write failure, deletion/source races, concurrent PDF work and final-checkpoint
 restart. Durable setup error history, virtual indexing, all formats, release and cross-platform tests
-remain incomplete. See [evidence](../evidence/book-text-state-2026-09-09.json).
+remain incomplete.
 
 ### Persisted Reading Time
 
@@ -1770,7 +1770,7 @@ produced 20.001 then 40.003 pending seconds; closing settled 43.7 seconds includ
 the partial tick. The 25-second setup was synthetic native accrual, not real
 reading. Rust tests cover WAL concurrent read/flush and racing ticks. Autonomous
 model decisions, long-running load, packaged builds and Windows/Linux are not
-verified by this evidence. See [evidence](../evidence/reading-time-snapshot-2026-09-09.json).
+verified by this evidence.
 
 ### Settled Reading Insights
 
@@ -1850,8 +1850,7 @@ automatically cleared the error. These synthetic samples are not elapsed user
 reading; direct tool invocation is not autonomous model decision evidence.
 Native tests cover transaction consistency under a concurrent WAL writer and
 read-only scope validation. Large-history performance, complete all-source
-observation, packaged builds and Windows/Linux remain unverified. See
-[desktop evidence](../evidence/reading-insights-2026-09-09.json).
+observation, packaged builds and Windows/Linux remain unverified.
 
 ### Derived Text Requests
 
@@ -1923,7 +1922,7 @@ add source/write races, caps, slow-observer coalescing, failure propagation and
 64-task Agent pagination. Explicit pause/resume/prioritization, durable history,
 task-wide timeout, virtual indexing, all formats, marketplace installation,
 packaged/cross-platform and physical-input validation remain outstanding. TXT05
-therefore remains partial. See [task evidence](../evidence/book-text-tasks-2026-09-09.json).
+therefore remains partial.
 
 ### Native Image Viewer Controls (UI 1.12)
 
@@ -2000,7 +1999,7 @@ the viewer. Foreground 900x650 and 600x750 logical-window screenshots were
 inspected; the narrow control dialog had no overflowing descendants. Native
 image identity remained bound across the handoff. Pinned-header entry, physical
 gestures, focus restoration, Escape, other formats and full Agent turns are not
-proved by this batch. See [native evidence](../evidence/image-conversation-composition-2026-09-11.json).
+proved by this batch.
 
 ### Owning Presentation Dismissal (Views 1.9)
 
@@ -2525,7 +2524,7 @@ view's retirement listener. Closing/unloading the owner still retires the view,
 including callback-free content. No guarantee is made for preserving drafts when
 the field schema or view kind fundamentally changes.
 
-[环境] [Live-view evidence](../evidence/plugin-live-views-2026-09-09.json) records
+[环境] Live-view evidence records
 isolated macOS debug tests using actual WebKit Workers and the app renderer:
 foreign publication, stale revision, updated button callback, retained user draft,
 push/back/modal source disposal, fresh resubscription, invalid content, late ACK,
@@ -2586,7 +2585,7 @@ operations are not cancelled by this refresh. Scope, turn permissions, spoiler
 state, message history and result compaction remain governed by existing policy.
 This is not unified availability for all host built-in operations.
 
-[环境] [Tool-loop evidence](../evidence/agent-tool-refresh-2026-09-09.json) records a
+[环境] Tool-loop evidence records a
 real isolated macOS Tauri Worker and product AgentThread across nine model requests:
 arm a disabled tool, execute it, disable during an outstanding response, re-enable
 in the same user turn, replace the same name during the next user turn, then execute
@@ -2608,7 +2607,7 @@ open/header require a ready session; back/forward additionally require the host
 history flag. Initial entries are disabled until the first observed snapshot.
 Jumper never owns a second history or infers readiness from menu visibility.
 
-[环境] [Action-state evidence](../evidence/plugin-action-state-2026-09-09.json)
+[环境] Action-state evidence
 records actual isolated macOS WebKit Workers, shelf/reader menus, command palette,
 selection toolbar, keyboard listener, retained page draft, cached Agent tool and
 an in-flight tool surviving disable. Compiled Jumper followed real FB2 navigation,
@@ -2660,7 +2659,7 @@ uses the host frame identity. Older refresh results and disposed views cannot
 publish over newer content. Its review is plugin UX, not a host authorization
 ticket. It is a source plugin, not one of the six Rust bundled plugins.
 
-[环境] [Native evidence](../evidence/book-batch-removal-2026-09-09.json) covers
+[环境] Native evidence covers
 isolated macOS debug Tauri: no/read/write Worker grants, invalid input, both actors'
 second-event rollback, pending file release, file-only retry without new events,
 restored-book preflight preserving both files, Agent rejection/cancellation/success,
@@ -2712,7 +2711,7 @@ Pending file cleanup action lists 50 entries per page, displays the full stored
 title and ID in detail, and retries only that ID. Its refresh action re-queries;
 discovery does not depend on the plugin retaining the original removal receipt.
 
-[环境] [Recovery evidence](../evidence/book-removal-recovery-2026-09-09.json)
+[环境] Recovery evidence
 records isolated macOS debug restarts, fresh no/read/write Worker consumers,
 production Agent discovery/approved file-only retry, and real Library Desk menu
 discovery/detail/retry. Binding loss for a synthetic virtual book does not erase
@@ -2782,7 +2781,7 @@ bounded surrounding text, offsets and continuation; stale/failed reads reject
 instead of constructing a successful detail. Existing derived-index search
 remains separate and does not pretend its offsets are ranges.
 
-[环境] [Range evidence](../evidence/book-range-2026-09-10.json) records real
+[环境] Range evidence records real
 macOS debug Tauri, native imported FB2/PDF, permission-gated module Workers,
 eight concurrent reads per format/permission, actual Agent tools/fence and the
 compiled Text Desk UI. Native navigation reached the second PDF occurrence
@@ -2840,7 +2839,7 @@ access for source reads; a contribution input does not grant either domain.
 menu contribution, or reads the current selection from its header view action,
 then uses ordinary range detail and explicit navigation. No range gives a
 non-actionable unavailable detail, not a guessed search or restamped anchor.
-[Native evidence](../evidence/selection-range-2026-09-10.json) covers real FB2/PDF
+Native evidence covers real FB2/PDF
 DOM selections, module Workers with no/read/write grants, session observation,
 actual Agent session-to-range tool composition, compiled menu details, guided
 paragraph detail, native Escape and switch clearing. Selection was created via
@@ -2875,7 +2874,7 @@ current location and mode position. The model must still use authorized range
 reads for text. Navigation now accepts exact quotes up to the producer's 12000
 UTF-16 limit rather than rejecting otherwise valid 8193-12000-unit references.
 
-[环境] [Native evidence](../evidence/selection-control-2026-09-10.json) covers
+[环境] Native evidence covers
 real FB2/PDF module Worker select/clear, no/read grant absence, stale clear
 preserving a newer selection, actual Agent tool select/clear and stale version
 rejection. Compiled Text Desk 0.7 composes search/read/select and a captured-ID
@@ -2934,8 +2933,7 @@ snippet detail and explicit Open book. Opening a book does not pretend to jump
 to the snippet. Empty copy refers only to the searched index. Form validation
 preserves the input; host failures propagate to the host error surface.
 
-[环境] The isolated macOS debug evidence is
-[book-text-search-2026-09-09.json](../evidence/book-text-search-2026-09-09.json).
+[环境] The following checks ran in isolated macOS debug Tauri on 2026-09-09.
 Real permission-gated Workers verify no-grant/read/write views, single/shelf
 matches, invalid input, missing books and -1 ceilings. Product Agent tools with
 real ports verify global hits and the current-book spoiler fence. An unprepared
@@ -3109,8 +3107,7 @@ after insertion, kept the current reader unchanged until explicit open, then loa
 the updated body. A real HTTP 503 preserved the last snapshot. With the loopback
 server stopped and the Worker restarted, the article still opened from saved content.
 Actual unsubscribe removed the feed, virtual book and cache; owned SQL counts are
-zero. Foreground 900/600 logical-pixel reader screenshots and exact observations:
-[RSS composition evidence](../evidence/rss-composition-2026-09-11.json).
+zero. Foreground reader screenshots were inspected at 900/600 logical-pixel widths.
 This does not cover remote media, app restart, OPML/Agent workflows, crash recovery,
 cross-version position migration or packaged/cross-platform behavior. The failure
 toast was not captured. No host API changes were needed for this composition.
@@ -3139,7 +3136,7 @@ since migration 31, not RSS private data or failed binding persistence. An alrea
 idempotent no-op. No new permissions or raw storage APIs are exposed. RSS private
 subscription cleanup and its core-Agent approval workflow are separate concerns.
 
-[环境] [Virtual-removal evidence](../evidence/virtual-book-removal-2026-09-09.json)
+[环境] Virtual-removal evidence
 uses an isolated macOS Tauri Worker with command and Agent-tool paths. A SQLite
 trigger rejects the synthetic book's deletion event: both paths report `db/error`,
 preserving book and binding. A second trigger rejects binding KV writes: both
@@ -3179,8 +3176,7 @@ view rather than a live subscriber, and does not add a redundant model tool.
 
 [验证] Controller, real React DOM, Agent tool and plugin view tests cover completion,
 concurrency, stale guards, cancellation, timeouts, observer reentrancy, disposal and
-failure propagation. Native evidence and remaining environment boundaries are
-recorded in [reader controls evidence](../evidence/reader-controls-2026-09-09.json).
+failure propagation. Historical native checks are separate from this local coverage.
 
 ### Reader Panel Presentation
 
@@ -3284,8 +3280,7 @@ is still not exposed.
 Listening Desk 0.9 added UI 1.1 and composes four guarded panel actions with
 reading mode, playback, history and controls. It closes its own view only on
 success; a stale session guard leaves the view available for Refresh and retry.
-[验证] Unit/React/actor tests and isolated macOS debug Tauri tests cover the paths
-listed in [reader panel evidence](../evidence/reader-panels-2026-09-09.json), including
+[验证] Unit/React/actor tests and historical isolated macOS debug Tauri tests cover
 SQLite rejection, real Workers, real plugin UI, narrow/wide windows and fixed-layout
 appearance. Packaged and Windows/Linux panel behavior remain unverified.
 
@@ -3336,7 +3331,7 @@ is no per-reader native registration or deferred unlisten. This changes neither
 public capabilities nor Worker permissions. The earlier unregisterListener stack
 and installed Tauri registration code support an asynchronous registration/retirement
 race; the precise native scheduling interleaving was not instrumented.
-[环境] The [wheel lifetime evidence](../evidence/wheel-phase-lifetime-2026-09-09.json)
+[环境] The wheel lifetime evidence
 records 20 actual FB2/PDF close/reopen cycles without the old rejection, 200 retired
 listeners without callbacks, native eval delivery of touch/momentum/end and
 synchronous cleanup. Rust tests preserve the phase classifier. The eval probe
@@ -3365,7 +3360,7 @@ save failure renders localized copy. A held SQLite lock also blocked MCP
 observation and ultimately returned db/locked; it is not evidence of responsive
 UI while writes are delayed. Controlled IPC/React tests separately verify delayed
 receipts and stale-write prevention. Packaged and other-platform validation remain
-open; see [mode durability evidence](../evidence/reading-mode-durability-2026-09-09.json).
+open.
 
 [代码] Unit stepping and returning now also await persistence of their exact
 book/content-version/provider/unit/CFI target before acknowledging completion.
@@ -3382,7 +3377,7 @@ not durable storage. Already-performed page movement and dispatched writes are
 not rolled back. The automatic read-aloud loop awaits the same step receipt and
 stops on a database error instead of playing the next unsaved unit.
 
-[环境] [Position durability evidence](../evidence/reading-position-durability-2026-09-09.json)
+[环境] Position durability evidence
 uses the isolated macOS debug app, synthetic FB2, real Agent tool ports and
 Listening Desk Worker actions. SQLite triggers reject unit/return writes; both
 actors receive db/error and recover without reconfiguring. A two-second local
@@ -3406,7 +3401,7 @@ The host-only batch IPC accepts null deletions; no raw KV authority is exposed
 to plugins or the model. This does not make completed cross-provider preference
 changes universally undoable.
 
-[环境] [Migration evidence](../evidence/reading-mode-migration-2026-09-09.json)
+[环境] Migration evidence
 records real Agent and Listening Desk Worker failures on a SQLite BEFORE DELETE
 trigger in isolated macOS debug Tauri. The legacy row, original plugin values
 and inactive book configuration survive. Removing the trigger permits recovery;
@@ -3507,7 +3502,7 @@ roster now contains 15 plugins; Rust BUNDLED remains six, excluding Memory Desk 
 
 [环境/验证] Isolated macOS debug Tauri tests use real SQLite, module Workers,
 production Agent tools (not autonomous inference), compiled Memory Desk and a
-synthetic three-chapter FB2. Evidence: [memory domain](../evidence/memory-domain-2026-09-10.json).
+synthetic three-chapter FB2.
 They cover denied/granted authority, explicit scopes, pre-merge spoiler protection,
 unknown/live boundary, flavor reclassification, rejected caller spoiler claims,
 localized SQLite read failure retaining the old view, retry and source navigation.
@@ -3567,7 +3562,7 @@ It does not prove all underlying IO or remote model work has stopped. The report
 alone does not provide public task lifecycle, scheduling or content-version/source
 identity. Local scheduling and chapter/classification conditions are described below.
 
-[环境] [Digest execution evidence](../evidence/digest-run-2026-09-10.json)
+[环境] Digest execution evidence
 uses real SQLite ports in isolated macOS Tauri debug with scripted inference.
 Chapter 0 returned length while chapter 1 still committed; a targeted owned-row
 SQL trigger caused db/error with event count 8→8, and retry succeeded after
@@ -3621,7 +3616,7 @@ remote event application is unchanged. No content hash, anchor read-set version
 or full physical IO drain is claimed. The local queue below prevents overlapping
 host passes; protected write receipts drain through the memory build policy.
 
-[环境] [Conditional digest evidence](../evidence/digest-conditional-2026-09-10.json)
+[环境] Conditional digest evidence
 uses isolated macOS debug, a three-chapter FB2, scripted inference and six real
 Workers. A Worker changed narrative to expository and back during inference:
 chapter 0 conflicted while chapter 1 committed. A fresh pass repaired chapter 0;
@@ -3666,7 +3661,7 @@ Cancellation preserves the caller's AbortSignal reason; a default DOMException
 is not a newly defined public task error envelope. This unit adds no public task
 IDs, progress observation, start/cancel/retry/rebuild API or task view.
 
-[环境] [Digest queue evidence](../evidence/digest-queue-2026-09-10.json) uses isolated
+[环境] Digest queue evidence uses isolated
 macOS debug and three independent runtime-dependency instances over real SQLite.
 The leader commits chapter 0 while its receipt delivery is held; a follower and
 a cancelled queued request make no model calls. Cancelling the leader leaves the
@@ -3878,7 +3873,7 @@ approval. This is not a tool to recursively invoke the chat Agent.
 
 [代码/环境] Memory Desk 0.5 combines graph queries, library navigation, task
 observation, explicit cost confirmation and live task list/detail/cancel/retry.
-[Public task evidence](../evidence/book-graph-tasks-2026-09-10.json) records six
+Public task evidence records six
 Workers, real SQLite and native OpenAI-compatible SSE to a scripted loopback
 provider. Read-only/no-LLM permissions were denied; another actor's list was empty.
 Failed rebuild retained Ada while the other chapter updated; retry attempted only
@@ -3910,7 +3905,7 @@ permission request carries the resolved limit through the production chat mapper
 all eight localized descriptions include the task subject and limit. Previously
 the graph permission description omitted subject interpolation, hiding the book and
 operation. Graph interactions now follow the existing suppressed tool-row policy.
-[Budget evidence](../evidence/book-graph-budget-2026-09-10.json) verifies real Worker
+Budget evidence verifies real Worker
 limits and inherited retry, actual Agent approval component decline/approve/retry,
 and compiled Memory Desk limit 1 followed by retry limit 2. Each pair generated
 only chapter 0 then chapter 1; future chapter 2 remained untouched. Three native
@@ -3985,7 +3980,7 @@ older clients do not enforce the guard. Existing mismatched digests rebuild
 lazily, not on classify completion. No cancellation of in-flight digests, erasure
 of previous answers, versioned provenance or public graph-rebuild task is added.
 
-[环境] [Public classification evidence](../evidence/book-classification-public-2026-09-10.json)
+[环境] Public classification evidence
 covers six real Workers in isolated macOS Tauri debug, absent/read/write grants,
 strict input/stale versions, live changes, errors/recovery and unsubscribe.
 The production Agent tool and interaction port used the real ChatInteractionPrompt
@@ -3997,8 +3992,8 @@ conflicting draft, cleared a corrupt SQLite read and recovered after finally
 restoring the owned row. Four screenshots were inspected; SQLite confirmed
 actor origins, owned-book removal and three forgotten synthetic memories.
 Packaged, all locales/formats, real relay/second-device and Windows/Linux remain
-unverified. Foundational native transaction/replay evidence is
-[recorded separately](../evidence/book-classification-storage-2026-09-10.json).
+unverified. Foundational native transaction/replay checks were recorded separately
+in Git history.
 
 <a id="memory-feedback"></a>
 ### Memory 1.1: Conditional User Feedback
@@ -4052,7 +4047,7 @@ event history and not removing prior prompts or external copies. There is no
 public restore operation. Old 0.1 installs need approval of the added write grant;
 the native fixture does not prove the full upgrade-consent flow.
 
-[环境] [Native evidence](../evidence/memory-feedback-2026-09-10.json): real Worker
+[环境] Native evidence: real Worker
 read/write separation, stale revision rejection, Agent approval/decline and
 concurrent-write rejection, compiled plugin SQL fault/retry, retained stale draft,
 explicit forgetting and canonical event origins. Agent answers were scripted via
@@ -4097,7 +4092,7 @@ digest section so chat can continue; this is not a claim that the graph is empty
 A degraded digest load does not settle the chapter-session cache; the next user
 turn retries without requiring a new session or explicit reset.
 
-[环境] [Native evidence](../evidence/chapter-memory-integrity-2026-09-10.json)
+[环境] Native evidence
 covers real SQLite malformed JSON, alias type and unknown-flavor faults on an
 owned synthetic FB2, actual Agent tool and Worker calls, compiled Memory Desk
 error clearing and automatic recovery. Three native screenshots were inspected.
@@ -4133,7 +4128,7 @@ accumulated messages; normal cross-chapter session reset retains its old semanti
 An unchanged successful same-chapter snapshot stays cached; failed digest reads
 log, omit the digest section, and leave the cache unsettled for the next turn.
 
-[环境] [Native evidence](../evidence/memory-prompt-policy-2026-09-10.json) uses a
+[环境] Native evidence uses a
 real AgentThread with production SQLite ports and scripted inference, plus real
 Worker queries and compiled Memory Desk. Narrative/expository/narrative changes
 in the same chapter produce corresponding prompt samples with 1/3/5 messages,
@@ -4196,7 +4191,7 @@ back navigation and plugin retirement release subscriptions through view ownersh
 The book picker remains a paged query snapshot, not a library observer. Existing
 source navigation still rechecks the graph before opening its chapter.
 
-[环境] [Native evidence](../evidence/memory-observation-2026-09-10.json) covers
+[环境] Native evidence covers
 real Worker read/write/absent grants, invalid spoiler authority, local/Worker/
 native remote-apply changes, Agent search of the same persisted result, compiled
 list search retention, SQL read failure/automatic recovery, frozen draft conflict,
@@ -4261,7 +4256,7 @@ poll cadence, not an immediate change subscription, durable job or an execution
 deadline; slow model/background work can delay a pass. Restarting creates a fresh
 checkpoint. No extra observer/timer or plugin maintenance authority was added.
 
-[环境] [Native evidence](../evidence/memory-maintenance-2026-09-10.json) verifies a
+[环境] Native evidence verifies a
 real Worker correction during scripted judgment, stale merge/reinforcement
 rejection, second-event SQL failure with whole-batch rollback, successful retry,
 and subsequent editing through compiled Memory Desk. Rust tests independently
@@ -4270,7 +4265,7 @@ scripted, not autonomous inference; packaged/Windows/Linux and distributed races
 are unverified. The Pin/Correct icon fallback discovered there is now fixed by
 registering the existing `push-pin`/`pencil-simple` names in the host icon catalog.
 
-[环境] [Idle evidence](../evidence/memory-idle-2026-09-10.json) uses a real
+[环境] Idle evidence uses a real
 AgentRuntime with production SQLite ports restricted to one owned fixture row,
 actual Worker writes, native `applyRemote`, and compiled Memory Desk pin/correct
 actions. Each change reruns evaluation and then settles. With an injected clock,
@@ -4515,7 +4510,7 @@ profile activation. Sealed remote overlays await the encrypted local write and
 announce only successful movement; failed writes roll back and retry on a later
 refresh. No new Agent tool or plugin secret permission is introduced.
 
-[环境] [Credential roaming evidence](../evidence/credential-roaming-2026-09-10.json)
+[环境] Credential roaming evidence
 covers isolated macOS debug encrypted writes, rejected insert/replacement/delete,
 sealed event payloads, remote overlay failure/recovery and non-echo. Delayed
 publication, failed catch-up, pending master-key replacement and rejected
@@ -4542,7 +4537,7 @@ Current workspace shows seven preset values, updates without refresh, retains
 the last sample beside a localized read error, clears errors on recovery, and
 unsubscribes on leaving. Profile CRUD and explicit shortcut editing are unchanged.
 
-[环境] [Desktop evidence](../evidence/settings-observation-2026-09-10.json)
+[环境] Desktop evidence
 records no/read/write Workers, actual Appearance-page click, production Agent
 book/global tools, remote-overlay/prefix-restore sources, theme registration and
 removal, compiled plugin at 1200×800 and 800×650, SQLite rejection without a false
@@ -4781,19 +4776,19 @@ host toast bridge; recognized codes render localized copy, unknown failures
 retain the generic fallback. Raw error details remain in logs. A failed submit
 preserves the form and cannot emit a success toast or close it.
 
-[环境] [Keyboard evidence](../evidence/keyboard-shortcuts-2026-09-09.json)
+[环境] Keyboard evidence
 covers actual Agent tools, a real Worker batch swap, native keyboard dispatch,
 the installed Workspace Profiles form, conflict toast, null reset and cleanup
 in isolated macOS debug Tauri. It does not prove model inference, packaged
 builds, Windows/Linux, all key layouts or every reader/native-menu route.
-Additional [native editor evidence](../evidence/shortcut-editor-2026-09-09.json)
+Additional native editor evidence
 covers native rebind/reset/reset-all, actual keyboard dispatch, an Agent reset
 refreshing the mounted editor, Worker edits of a retired command, and persisted
 cleanup. An isolated React/native-IPC test holds and rejects writes to verify
 busy state, rollback, error presentation and actor ordering. These are not
 real SQLite-lock or full keyboard-layout tests.
 
-[环境] [Dispatch evidence](../evidence/shortcut-dispatch-2026-09-09.json) covers
+[环境] Dispatch evidence covers
 real Worker reactivation conflicting with global search, native conflict
 notices and rebind recovery, reading page conflicts on the window and actual
 Foliate document, retirement recovery, and plugin opening without a second
@@ -4805,7 +4800,7 @@ all-format/selection/mode routes, packaged or cross-platform claim is made.
 UI04 remains partial: full revision/origin observation and the remaining
 keyboard-route/platform validation are open, not exemptions.
 
-[环境] The [desktop evidence](../evidence/workspace-profiles-2026-09-09.json)
+[环境] The desktop evidence
 covers real product tools, the built plugin Worker, save/validation/apply/delete
 UI, shelf grouping and ordering, the header entry, and cleanup in isolated
 macOS debug Tauri. Focused tests cover queued actors, permission filtering,
@@ -4896,7 +4891,7 @@ selection count, while the collection list is a snapshot refreshed by reopening.
 Its 0.3 manifest requires UI ^1.3.0 and reading:write as well as library:write;
 normal installation/update consent remains required for the expanded grant.
 
-[环境] [Desktop evidence](../evidence/workspace-navigation-2026-09-09.json)
+[环境] Desktop evidence
 covers isolated macOS debug Tauri: real permission-gated Workers, both production
 Agent scopes, a two-book native selection/page, hidden/missing-target rejection,
 native command-result navigation, reader-close authorization, settings over a
@@ -5022,19 +5017,19 @@ queries with searchable resource pickers, then execute the selected real ID with
 the revision of the clicked command snapshot, not a later live update. Its manifest requires UI ^1.6, views ^1.2 and
 read/write grants for exactly `shelf.layout`, `shelf.sort`, `shelf.group`.
 
-[环境] [Native evidence](../evidence/host-commands-2026-09-10.json) covers isolated
+[环境] Native evidence covers isolated
 macOS debug: real no/read/write/full Workers, both production Agent scopes,
 preserved two-book selection, revision rejection, real FB2 reader authorization,
 SQLite write failure with no navigation, recovery, and compiled plugin search
 and list-layout execution. Deferred writes, partial receipts, retirement and
 all 16 basic operation mappings are additionally unit-tested.
-[Current routing evidence](../evidence/command-routing-2026-09-10.json) adds real
+Current routing evidence adds real
 Worker resource schemas/grants/missing targets, book/global Agent resource calls,
 native palette dynamic results and compiled Library Desk 0.5 resource pickers.
 A targeted SQLite failure kept the native palette open with no successful setting
 event; recovery produced one settings.changed with origin=user and closed it.
 That failure exposed duplicate storage/command toasts. The subsequent
-[observation and error-ownership evidence](../evidence/command-observation-2026-09-10.json)
+observation and error-ownership evidence
 verifies their repair: settings-domain commits explicitly assign failure presentation
 to their caller. KV rollback, logging, `local-write-failed` and Promise rejection
 remain; the event carries owner=caller and the global toast bridge does not render
@@ -5082,7 +5077,7 @@ new calls after re-enable, and SQLite failure/rollback. The diagnostic fixture
 now backs up its configuration in the encrypted secret store before mutation
 and can recover after a WebView reload. The initial closure-only fixture lost
 its first backup during development reload; that attempt is not counted as a
-successful restoration. See [exact evidence](../evidence/inference-local-only-2026-09-09.json).
+successful restoration.
 
 [代码/边界] This is not a global network firewall: arbitrary granted plugin
 HTTP, TTS, sync, and other network services are not governed by this policy.
@@ -5139,7 +5134,7 @@ off. Saved words retain source; legacy words without it are conservatively
 treated as selections when regenerating. Explicitly provided/typed terms remain
 ordinary prompts. Local selection processing is not itself external disclosure.
 
-[环境] The [structured-reading evidence](../evidence/structured-reading-context-2026-09-09.json)
+[环境] The structured-reading evidence
 covers 24 isolated macOS debug calls (two actors, three modes, four flag
 combinations), actual built Dictionary Worker cold/cache/denial paths, a
 malformed-response retry, and three concurrent held calls cancelled by a
@@ -5164,8 +5159,7 @@ in-flight transport cancellation and a new request after re-enable. The attachme
 was supplied by the fixture, not a selection UI gesture. Grounding inclusion is
 covered by runtime tests; this one-screen native sample produced no additional
 grounding block. Packaged, Windows/Linux, full privacy-settings UI and complete
-plugin data-flow coverage remain unverified. See
-[structured evidence](../evidence/reading-context-policy-2026-09-09.json).
+plugin data-flow coverage remain unverified.
 
 ### Host Memory Build Policy
 
@@ -5202,7 +5196,7 @@ public task ownership. Local inference coordination is supplied separately by
 the digest queue. Direct domain edits such as user classification
 and feedback retain their own lifetimes, outside the automatic-build policy.
 
-[环境] [Memory write-drain evidence](../evidence/memory-commit-drain-2026-09-10.json)
+[环境] Memory write-drain evidence
 uses isolated macOS debug, real SQLite writes and three Worker consumers. The
 fixture holds delivery of a real port receipt after native completion, not the
 SQLite transaction itself: cancellation stays pending with one policy subscription,
@@ -5238,7 +5232,6 @@ failures for goal/policy/insight writes. The source plugin is not release-bundle
 marketplace install/restart, packaged CSP, remote inference semantics and other
 desktop platforms were not tested for this plugin. Narrow-window body scrolling
 exists; keyboard focus traversal and every off-screen control remain unverified.
-See [structured evidence](../evidence/memory-build-policy-2026-09-09.json).
 
 ### Reading Goals Agent Operations
 
@@ -6026,7 +6019,7 @@ validator are checked separately. These are not actual Worker/Tauri/native-file,
 provider-network or desktop E2E results; concentrated desktop acceptance remains
 pending. No host API was added for this consumer.
 
-[环境/验证] The subsequent [macOS debug acceptance](../evidence/maintenance-desk-2026-09-11.json)
+[环境/验证] The subsequent macOS debug acceptance
 uses the real compiled Worker and production host in isolated
 `com.readaware.app.capability-e2e`, not a plain browser. Explicit public-catalog
 refresh returned 39 OpenAI rows and two pages. AI test handoff and wait cancellation
@@ -6445,7 +6438,7 @@ exactly-once or durable replay is promised. Plugins needing these methods declar
 on view refresh. It does not disable Start on that hint, including system voice.
 The shared store, actual Agent tool and zero-permission Worker were tested in
 isolated macOS debug Tauri; the built Listening Desk Worker returned the localized
-hint. [Evidence](../evidence/host-environment-2026-09-09.json) distinguishes actual
+hint. Evidence distinguishes actual
 language changes from controlled navigator/event injection. Network hints do not
 prove endpoint reachability, model/account readiness, or supported format
 availability. Those availability gaps remain open. Real OS timezone/network changes, packaged and other platforms are not
@@ -6472,7 +6465,7 @@ are not used by the new keys; saved vocabulary is unchanged. Installed plugin
 updates follow the normal permission-consent policy; compiled built-ins follow
 the existing host-owned bundled policy, not a newly introduced consent bypass.
 
-[环境] [Session boundary evidence](../evidence/reading-session-boundary-2026-09-09.json)
+[环境] Session boundary evidence
 covers isolated macOS debug Tauri. A zero-permission Worker has only the two
 metadata methods and no reading domain; a read-only Worker immediately receives
 the already-open FB2 session, then PDF loading/ready and closed/idle updates,
@@ -6725,7 +6718,7 @@ in their packages and registered capabilities.
 
 ### Text Desk Content Composition
 
-[环境/验证] Subsequent [grouped native acceptance](../evidence/library-content-composition-2026-09-11.json)
+[环境/验证] Subsequent grouped native acceptance
 uses the real Text Desk 0.10 Worker and native FB2 parser: section/image/reference
 selection, an empty image section, 240x160 decoded resource pixels, actual macOS
 PNG save, native copy receipt, and native lightbox/footnote handoff pass. Retained
@@ -6777,7 +6770,7 @@ a consumer. Document visual checks were not rerun.
 
 ### Library Desk Organization
 
-[环境/验证] Subsequent [grouped native acceptance](../evidence/library-content-composition-2026-09-11.json)
+[环境/验证] Subsequent grouped native acceptance
 uses the real compiled Library Desk 0.8 Worker and isolated SQLite-backed FB2.
 Author edit/clear, favorite, collection create/rename, confirmed assignment and
 confirmed collection removal pass with fresh native queries. Unchecked assignment

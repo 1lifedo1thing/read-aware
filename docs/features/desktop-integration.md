@@ -3,9 +3,8 @@
 这里集中说明开机启动，以及从 Finder / 文件管理器打开书籍的行为。两个开关都涉及
 操作系统状态与应用设置，必须报告真实结果，补偿失败不能称为已回滚。
 
-已有隔离 macOS 主路径证据：[开机启动 B04](../evidence/2026-09-13-bounded-validation/b04.json)、
-[Finder 文件接收 B05](../evidence/2026-09-13-bounded-validation/b05.json)。
-这些记录不代表 Windows/Linux、真实登录启动或全部安装包场景已验收。
+2026-09-13 的隔离 macOS 验收覆盖开机启动注册和 Finder 文件接收。
+这不代表 Windows/Linux、真实登录启动或全部安装包场景已验收。
 
 <a id="desktop-startup"></a>
 ## 开机启动

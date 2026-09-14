@@ -23,16 +23,12 @@
 | [历史实施记录](./reviews/implementation-history.md) | 从根指令抽出的旧版本迁移背景 |
 | [插件能力基线](./capabilities/plugin-capability-baseline.md) / [HTML](./capabilities/plugin-capability-baseline.html) | 原 129 项、32 个场景与 GAP 的历史契约，供生成器反查；不是当前待办 |
 
-## 旧验收计划与结果
+## 旧验收计划
 
-| 当时的范围 | 结果入口 |
-| --- | --- |
-| [2026-09-13 全量验证清单](./validation/host-capability-validation.md) | [对应桌面记录](../evidence/2026-09-13-full-validation/README.md) |
-| [2026-09-13 固定 16 项目标](./validation/host-capability-validation-bounded-goal.md) | [最终分类报告](../evidence/2026-09-13-bounded-validation/final-report.md) |
-| Luna 并行回归试跑 | [试跑报告](../evidence/2026-09-13-luna-parallel-trial/report.md) |
-| 后续修复与第二轮验证 | [第二轮报告](../evidence/2026-09-13-full-validation-2/README.md) |
+- [2026-09-13 全量验证清单](./validation/host-capability-validation.md)
+- [2026-09-13 固定 16 项目标](./validation/host-capability-validation-bounded-goal.md)
 
-原始工件保留在 evidence 原位置，不复制、不覆盖，不因归档把失败变成通过。
+专项验收报告和原始运行工件已删除，只保留在 Git 历史中。
 较早源码路径、章节编号、环境路径和部署状态可能已经失效；追查时结合对应 Git 版本。
 
 ## 本次合并与删除

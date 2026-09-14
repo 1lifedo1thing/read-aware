@@ -28,7 +28,7 @@ const stats = ["host","agent","plugin"].map(which=>`${which === "host" ? "宿主
 const conclusions = [
   "本表记录宿主、Agent、插件的源码接线及每行边界。接通、目标设计和真实验收是不同事实，不能把状态分布当作通过率。",
   "当前执行范围只由集中验收清单 C01–C09 决定。既有调用链不重复实现，表中的 partial、历史 GAP 和目标列不自动成为新待办。",
-  "原 129 个验收条目保留反查关系；当前能力看下面的行级来源，真实运行结果看交付与证据索引。旧基线按历史档案使用。",
+  "原 129 个验收条目保留反查关系；当前能力看下面的行级来源，当前阶段看交接文档；原始验收工件只保留在 Git 历史中。旧基线按历史档案使用。",
 ];
 const definitions = [
   ["宿主 实装", "存在产品调用链。只表示本地源码接线，不承诺本次 Tauri/生产验证。"],
@@ -41,10 +41,10 @@ const definitions = [
   ["未接", "该 actor 无正式入口。目标列为不开放的行是有意边界，不是应补权力；其余是需建模/接线缺口。"],
 ];
 const validation = [
-  "[代码] 原盘点基于 5dc7f7a2 及 2026-09-07 工作区；2026-09-08 在 1d97e2e4 后工作区补 CFG11–13 并分开源码/编译内置插件库存。后续阅读/搜索/Jumper 实现与隔离 Tauri 验收见执行账本。矩阵生成器自身只构造与枚举 ctx，不 activate/promote，不执行安装、备份、同步或写入用户数据。",
+  "[代码] 原盘点基于 5dc7f7a2 及 2026-09-07 工作区；2026-09-08 在 1d97e2e4 后工作区补 CFG11–13 并分开源码/编译内置插件库存。后续阅读/搜索/Jumper 实现与隔离 Tauri 验收过程保留在 Git 历史中。矩阵生成器自身只构造与枚举 ctx，不 activate/promote，不执行安装、备份、同步或写入用户数据。",
   "[代码] 生成器实际运行 Agent 工具构造器（内存 deps）、全权限 plugin ctx 构造器、settings catalog；TypeScript AST 枚举菜单、命令、事件、快捷键与插件工具声明；Rust generate_handler 名单独立反查。",
   "[代码] 129 个旧验收项全部映射到新矩阵；已注册库存未映射、失效来源、重复 ID、设置可写性漂移或生成文档不一致会使 --check 失败。目录映射只是人工审计入口，不是所有语义的形式化证明。",
-  "[环境] 尚未完成所有能力的 Tauri E2E。隔离 release .app 的 Annotation Desk 安装/导出/重启/卸载见 docs/evidence/packaged-annotation-desk-2026-09-09.json。另在 macOS release 复现并修复零权限插件的原型 fetch、子 blob Worker、HTTP 模块加载联网，三路零新增请求且授权宿主网络仍 200，证据见 docs/evidence/packaged-sandbox-network-2026-09-09.json；不代替其余绕行、执行中撤权、Windows/Linux、完整跨设备、第三方服务及全部格式验收。",
+  "[环境] 尚未完成所有能力的 Tauri E2E。历史隔离 release .app 验证覆盖 Annotation Desk 安装/导出/重启/卸载。另在 macOS release 复现并修复零权限插件的原型 fetch、子 blob Worker、HTTP 模块加载联网，三路零新增请求且授权宿主网络仍 200；不代替其余绕行、执行中撤权、Windows/Linux、完整跨设备、第三方服务及全部格式验收。",
   "[环境] HTML 是静态文档，Geist/Tailwind/Lucide/Mermaid 固定 CDN 资源需网络；核心表格和自带样式不依赖远端业务服务。文档浏览器检查不等于产品验证。",
   "[历史验证，2026-09-07] 相关单元/契约测试 62 通过、0 失败（17 文件，324 assertions）。库存/生成一致性与两组文档 pair validator 通过；无 Mermaid 图的矩阵得到预期提醒，旧基线图正常渲染。不是本次新模型测试结果。",
   "[历史验证，2026-09-07] 两个 HTML 均检查 1440×1000、1024×768、390×844 截图与横向溢出；矩阵搜索、状态过滤、零结果、Esc、移动目录焦点、主题刷新保留通过；浏览器无 console/page errors。此项只验证当时文档。",
@@ -55,7 +55,7 @@ for (const group of groups) {
   markdown += `\n### ${group.name}\n\n| ID | 宿主能力 | 宿主现状 | Agent 当前与目标 | 插件当前与目标 | 实际消费者 | 缺口/边界 | 来源 | 旧基线 |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n`;
   for (const row of group.rows) markdown += `| <a id="${row.id}"></a>${row.id} | ${md(row.name)} | ${row.host} | ${actorMd(row.agent)} | ${actorMd(row.plugin)} | ${md(row.consumers)} | ${md(row.gap)} | ${row.sources.map(key=>`[${key}](../../${sources[key]})`).join(" ")} | ${row.baseline.join(", ") || "新增盘点"} |\n`;
 }
-markdown += `\n## 当前执行范围\n\n唯一执行清单是 [C01–C09 集中验收](./host-capability-acceptance.md)，交接和真实运行记录见 [证据索引](./host-capability-delivery.md)。本表不维护第二份优先级或待办列表。\n\n当前有 ${ineffectiveSettings.size} 个设置路径未找到效果消费者。这是源码映射检查，不能代替实际开关效果的验收。\n\n## 注册库存与覆盖反查\n\n以下库存从当前构造器和声明中收集，已映射不代表所有参数、平台和失败场景已经通过。具体插件消费者和边界保留在上面的行级矩阵。\n`;
+markdown += `\n## 当前执行范围\n\n唯一执行清单是 [C01–C09 集中验收](./host-capability-acceptance.md)，当前阶段见 [交接文档](./host-capability-delivery.md)。本表不维护第二份优先级或待办列表。\n\n当前有 ${ineffectiveSettings.size} 个设置路径未找到效果消费者。这是源码映射检查，不能代替实际开关效果的验收。\n\n## 注册库存与覆盖反查\n\n以下库存从当前构造器和声明中收集，已映射不代表所有参数、平台和失败场景已经通过。具体插件消费者和边界保留在上面的行级矩阵。\n`;
 for (const [family,list] of roster) markdown += `\n### ${family}\n\n| 当前注册项 | 矩阵行 | 说明 |\n| --- | --- | --- |\n${list!.map(item=>`| \`${item.name}\` | ${item.rows.map(id=>`[${id}](#${id})`).join(" ")} | ${md(item.note)} |`).join("\n")}\n`;
 markdown += `\n## 旧基线反向索引\n\n| 验收项 | 本矩阵行 |\n| --- | --- |\n${Object.entries(baselineCoverage).map(([id,mapped])=>`| ${id} | ${mapped.map(key=>`[${key}](#${key})`).join(" ")} |`).join("\n")}\n\n## 验证边界\n\n${validation.map(s=>`- ${s}`).join("\n")}\n\n可重复执行：\n\n\`\`\`sh\nbun run check:capabilities\nbun scripts/build-host-capability-matrix.ts\nbun scripts/build-host-capability-matrix.ts --check\nbun test packages/agent/src/tools apps/web/src/domain/registry.test.ts apps/web/src/domain/settings/domain.test.ts apps/web/src/features/plugins/runtime/plugin-capabilities.test.ts apps/web/src/features/plugins/runtime/plugin-worker-host.test.ts apps/web/src/features/plugins/runtime/plugin-update-transaction.test.ts\ngit diff --check\n\`\`\`\n\n### 维护规则\n\n1. 新增/改变宿主能力时，先登记此表 current/两个 target、来源、消费者；不能只在插件请求时补入口。\n2. 新增工具/公开方法/原生 handler/设置路径/菜单或事件时，库存必须有人工映射，不允许兜底归入“其他已支持”。删除入口同样复查失效映射。\n3. 新增用户可见原语可更新基线；已有行为只是没开放或组合语义坏了，应当登记缺陷而不是新能力。\n4. 接通目标需要同源业务入口、权限/作用域、参数与引用、回执与失败、取消与生命周期以及真实消费者验证；一个新增导出或通过类型检查不够。\n5. Agent 自动管线、模型工具、插件提供者、实际插件工具分别审查；允许明确有意不开放，不把敏感底层能力拿来冲覆盖率。\n6. 此生成器已纳入 check:capabilities 与 main/PR CI 配置，但仍是库存和文档一致性门禁，不是自动证明所有行为完整的系统。新增 UI 内联逻辑仍需 reviewer 按功能 owner 清点并补语义测试。\n`;
 
@@ -87,9 +87,9 @@ ${resources}
 <p id="result-count" class="meta" aria-live="polite">${rows.length} / ${rows.length} 行</p><div class="table-wrap" tabindex="0" aria-label="宿主、Agent、插件能力对照"><table><colgroup><col style="width:85px"><col style="width:21%"><col style="width:23%"><col style="width:23%"><col></colgroup><thead><tr><th>编号<br>宿主</th><th>能力</th><th>Agent 当前</th><th>插件当前</th><th>缺口 / 证据</th></tr></thead><tbody>
 ${htmlRows.join("\n")}
 </tbody></table><p id="empty" hidden>没有符合条件的能力。</p></div></section>
-<section id="priorities"><h2>当前执行范围</h2><p>${escape(conclusions[1])}</p><p><a href="./host-capability-acceptance.md">集中验收清单</a> · <a href="./host-capability-delivery.md">交接与证据索引</a> · <a href="../archive/capabilities/plugin-capability-baseline.html">历史基线</a></p></section>
+<section id="priorities"><h2>当前执行范围</h2><p>${escape(conclusions[1])}</p><p><a href="./host-capability-acceptance.md">集中验收清单</a> · <a href="./host-capability-delivery.md">当前交接</a> · <a href="../archive/capabilities/plugin-capability-baseline.html">历史基线</a></p></section>
 <section id="inventory"><h2>注册库存</h2><div class="roster">${roster.map(([family,list])=>`<span><b>${list!.length}</b> ${escape(family)}</span>`).join("")}</div><p class="scope">库存已逐项映射，具体名称在 <a href="./host-capability-matrix.md">事实与库存</a>。已映射不表示已实现；原生内部命令、移动端遗留桥和禁止开放的权力不会冒充插件能力。</p></section>
-<section id="boundaries"><h2>验证边界</h2><p class="scope">不是 Tauri 全能力端到端验收。隔离 release 已验证 Annotation Desk 的安装、导出与卸载；macOS 上三条零权限联网绕行已复现、修复并复测，授权宿主联网仍可用。其余绕行、执行中撤权、Windows/Linux 实机、完整跨设备与全部格式仍待验收。<a href="../evidence/packaged-annotation-desk-2026-09-09.json">正向证据</a> · <a href="../evidence/packaged-sandbox-network-2026-09-09.json">联网边界证据</a>。</p><p class="scope">只承诺当前基线允许原语的组合。新算法、编号规则、导出格式不该改宿主；新格式解码器、系统权限、数据模型或呈现原语需要宿主能力更新。</p><p class="meta">静态文档的字体与图标等固定 CDN 资源需要网络；文档浏览器验证不代表产品验证。</p></section>
+<section id="boundaries"><h2>验证边界</h2><p class="scope">不是 Tauri 全能力端到端验收。隔离 release 已验证 Annotation Desk 的安装、导出与卸载；macOS 上三条零权限联网绕行已复现、修复并复测，授权宿主联网仍可用。其余绕行、执行中撤权、Windows/Linux 实机、完整跨设备与全部格式仍待验收。</p><p class="scope">只承诺当前基线允许原语的组合。新算法、编号规则、导出格式不该改宿主；新格式解码器、系统权限、数据模型或呈现原语需要宿主能力更新。</p><p class="meta">静态文档的字体与图标等固定 CDN 资源需要网络；文档浏览器验证不代表产品验证。</p></section>
 <p><a href="./host-capability-model.html">统一目标与边界裁决</a>：按 Domain / Contribution / Service 归属；并非本表每个建议都需要新增 API。</p>
 <p class="meta">历史验证（2026-09-07）：相关测试 62 通过、0 失败；当时两份文档通过三个尺寸和交互检查。不是本次统一模型的测试结果，也不是产品 E2E 验收。</p>
 <footer><a href="./host-capability-matrix.md">完整事实镜像</a> · <a href="./host-capability-matrix.data.ts">结构化事实源</a> · <a href="../../scripts/build-host-capability-matrix.ts">可重复校验</a></footer></main></div>

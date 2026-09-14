@@ -72,10 +72,10 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | READ14 | 临时范围强调/搜索标记及释放 | F3 | release模式当前句/段强调及退出清除真实绘制通过；公共putEmphasis及搜索标记待验，见第三十四流程 |
 | READ15 | 贡献句子/段落等分段模式 | F3 | 本机Sentence Reader实际CFI通过；release句4单元/段3单元及两句整段强调真实绘制通过；其他格式待验，见第三十四流程 |
 | READ16 | 启停模式/上下一单元/跟随/回当前 | F3 | 本机调用与release真实启停/上下句/下一段/跨章回当前/退出清除强调通过；独立follow未实现，跨进程模式恢复待验，见第三十四流程 |
-| READ17 | 列声音并合成音频的提供者 | F3 | 有界B01：[ 外部阻塞 ](../../evidence/2026-09-13-bounded-validation/b01/observations.json)  |
+| READ17 | 列声音并合成音频的提供者 | F3 | 有界B01： 外部阻塞   |
 | READ18 | 开始/停止朗读、播放位置与 fallback 状态 | F3 | 本机插件TTS失败后系统fallback启动/逐句跨章推进/停止状态通过；音质/其他后端待验 |
 | READ19 | 完成页、标记读完/撤销读完 | F3 | 部分通过（70）：Agent显式标完成后原生finished，取消完成后这本零进度书回unread；全局显式ID及书内默认ID通过。完成页/实际阅读结尾/用户动作、其他状态和packaged待验 |
-| READ20 | 跨书/并发导航的取消、序列化与回执 | F3 | 有界B02：[ 本轮主路径通过 ](../../evidence/2026-09-13-bounded-validation/b02-navigation.json)  |
+| READ20 | 跨书/并发导航的取消、序列化与回执 | F3 | 有界B02： 本轮主路径通过   |
 | ANN01 | 列出/按书按词按类型检索标注 | F3 | 本机插件及 domain 列出两类自有标注通过；检索/分页待验 |
 | ANN02 | 创建高亮 | F3 | 本机真实 Worker 改为高亮并绘制通过；release物理拖选/UI创建黄色高亮及进程重启绘制通过，见第三十二流程 |
 | ANN03 | 创建下划线样式 | F3 | 本机插件创建绿色下划线且实际绘制通过；其他格式待验 |
@@ -103,7 +103,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | CFG06 | 更新内容弹窗 general.whatsNewDialog | F6 | 真实UI/Worker/Agent开关及启动合成版本变更：关闭消费提示、重开不补弹、新提示加载日志/关闭及原生重启不重弹通过；实际升级/packaged待验，见第四十四流程 |
 | CFG07 | AI 提供商/端点/密钥配置 | F6 | 本机实际Tauri表单清除/自定义配置/原生连接测试、custom↔OpenAI凭据隔离及返回恢复通过；原15凭据槽/配置全量恢复核对；Responses受控原生聊天工具往返/取消/失败重试通过（59），原配置/自定义凭据恢复；锁屏DOM非物理输入，远端provider/进程重启待验，见第五十、五十九流程 |
 | CFG08 | 模型目录刷新、连接测试与模型能力 | F6 | 部分通过：原生模型目录刷新/视觉发现与真实Qwen调用（15）；配置表单连接测试、在途编辑不误认证新配置（50）通过。Responses受控原生聊天协议通过（59）；其连接测试界面/其他远端provider/发布包待验，账户阻止的GPT路由不计模型失败 |
-| CFG09 | 插件非敏感设置的动态路径 | F6 | 有界B03：[ 本轮主路径通过 ](../../evidence/2026-09-13-bounded-validation/b03-plugin-settings.json)  |
+| CFG09 | 插件非敏感设置的动态路径 | F6 | 有界B03： 本轮主路径通过   |
 | CFG10 | 设置变化事件/外部写入刷新 | F6 | 本机真实 Worker 观察本地设置/目录变化、remote与restore来源注入、停止订阅通过；跨设备待验 |
 | CFG11 | 聊天/笔记内容字体：跟随阅读或独立字号/字体/行距 | F6 | 本机Worker/Agent修改后书内消息/输入框/笔记列表独立Menlo及跟随全局Lora、字号行距实际computed和关书重开通过（28、51）；全局消息/输入框同设置通过（62）。修复笔记编辑器输入区漏接内容排版，独立/跟随/小字号、实际保存及引擎定位重开通过；标签/按钮保持界面字体。像素/物理焦点、插件内容、进程重启/packaged和其他平台待验 |
 | CFG12 | 新标注默认颜色 | F6 | 真实Worker设blue→阅读器新高亮blue，Agent改pink→新下划线pink，旧标注保持；原生记录及实际SVG填充/描边、关书重开通过；前台像素/packaged待验，见第四十五流程 |
@@ -111,9 +111,9 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET01 | general.startView | F6 | 修复设置无启动消费者；真实macOS debug进程重启自动恢复最后FB2第二章/同CFI，手动关书不重开，shelf重载保持书架；虚拟书/外部冷启动/缺源/packaged及其他平台待验，见第四十三流程 |
 | SET02 | general.language | F6 | 实际UI en→zh-Hans、Worker→ja、Agent→zh-Hans，页面/html语言同步且原生重启保持；其他语言/OS检测及完整翻译待验，见第四十四流程 |
 | SET03 | general.crashPrompt | F6 | 真实启动消费合成崩溃标记，关闭不提示、开启新标记显示询问，动作进入诊断、重启不重弹通过；没有发送报告，实际崩溃全程待验，见第四十四流程 |
-| SET04 | general.launchAtStartup | F6 | 有界B04：[ 本轮原生注册通过 ](../../evidence/2026-09-13-bounded-validation/b04.json)  |
-| SET05 | general.fileAssociations | F6 | 有界B05：[ 本轮macOS文件接收通过 ](../../evidence/2026-09-13-bounded-validation/b05.json)  |
-| SET06 | general.autoUpdate | F6 | 有界B06：[ 本轮持久化与App消费者通过 ](../../evidence/2026-09-13-bounded-validation/b06-consumer.json)  |
+| SET04 | general.launchAtStartup | F6 | 有界B04： 本轮原生注册通过   |
+| SET05 | general.fileAssociations | F6 | 有界B05： 本轮macOS文件接收通过   |
+| SET06 | general.autoUpdate | F6 | 有界B06： 本轮持久化与App消费者通过   |
 | SET07 | appearance.theme | F6 | 实际UI Dark、Worker Light、Agent Dark的根主题/正文背景computed一致，原生重启保持并恢复System；OS自动切换/插件皮肤及packaged待验，见第四十四流程 |
 | SET08 | appearance.motion | F6 | 实际UI reduced使设置面板animation-name=none，Worker system移除强制标记，Agent修改/原生重启保持通过；其他动效/OS变化待验，见第四十四流程 |
 | SET09 | reading.theme | F6 | 实际设置UI Warm→Dark及原生KV通过；后台预览内联暗色、computed颜色过渡未完成，实际正文颜色待验，见第二十五流程 |
@@ -124,7 +124,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET14 | reading.paragraphSpacing | F6 | 实际设置UI Normal→Tight、预览段距0.6rem及原生KV通过；实际正文待验，见第二十五流程 |
 | SET15 | reading.pageMargins | F6 | 实际设置UI Wide→Narrow及原生KV通过；实际正文页边距待验，见第二十五流程 |
 | SET16 | reading.readingMode | F6 | 实际设置UI Two Pages→Scroll及原生KV通过；实际正文模式切换待验，见第二十五流程 |
-| SET17 | reading.fixedLayoutReadingMode | F6 | 有界B07：[ 本轮单CBZ模式通过 ](../../evidence/2026-09-13-bounded-validation/b07-fixed-layout.json)  |
+| SET17 | reading.fixedLayoutReadingMode | F6 | 有界B07： 本轮单CBZ模式通过   |
 | SET18 | ai.preferences.features.explainSelection | F6 | 实际Agent工具关闭/恢复开关，当前选区Explain selection入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
 | SET19 | ai.preferences.features.defineTerm | F6 | 实际Agent工具关闭/恢复开关，当前选区Define term入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
 | SET20 | ai.preferences.features.translate | F6 | 实际Agent工具关闭/恢复开关，当前选区Translate入口随之消失/恢复；本项不宣称模型效果通过，见第二十九流程 |
@@ -176,7 +176,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SET66 | shortcuts.toggle-controls | F6 | release物理按键space显示阅读工具栏通过；聊天输入框内对应编辑键不导航通过；其他格式/重绑待验，见第三十三流程 |
 | SET67 | shortcuts.reader-mode-next-unit | F6 | release真实Sentence Reader物理Down推进句/段，计数及实际强调一致；其他格式/重绑待验，见第三十四流程 |
 | SET68 | shortcuts.reader-mode-prev-unit | F6 | release真实Sentence Reader物理Up回前句，计数/强调正确；其他格式/重绑待验，见第三十四流程 |
-| SET69 | shortcuts.selection-copy | F6 | 有界B08：[ 外部阻塞：剪贴板权限 ](../../evidence/2026-09-13-bounded-validation/b08.json)  |
+| SET69 | shortcuts.selection-copy | F6 | 有界B08： 外部阻塞：剪贴板权限   |
 | SET70 | shortcuts.selection-highlight | F6 | release物理拖选后按h创建黄色高亮，实际绘制/原生重读通过；重绑/其他格式待验，见第三十六流程 |
 | SET71 | shortcuts.selection-underline | F6 | release物理拖选后按u创建黄色下划线，实际绘制/原生重读通过；重绑/其他格式待验，见第三十六流程 |
 | SET72 | shortcuts.selection-add-note | F6 | release物理选区按n打开正确引用的笔记编辑器并聚焦，Cancel不留记录通过；快捷键路径保存/重绑待验，见第三十六流程 |
@@ -203,9 +203,9 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | MEM07 | Onboarding 访谈写入画像 | F5 | 部分通过：原生命令原子写画像及两记忆，完全重放幂等、改内容冲突；访谈/审批 UI 待验，见第十六流程 |
 | MEM08 | profile.updated / entity.resolved / entity.merged 投影 | F5 | 部分通过：画像清空/恢复/CAS、身份合并及别名、重载保持且28事件投影一致；大批恢复/跨设备待验，见第十六流程 |
 | MEM09 | 叙事性分类/重分类与图谱风格 | F5 | 本机重分类过滤旧摘要、改回恢复通过；模型分类质量待验 |
-| MEM10 | 完成章节摘要、人物/概念图生成与补齐 | F5 | 有界B09：[ 本轮复用原生证据通过，非语义评测 ](../../evidence/2026-09-13-bounded-validation/b09/observations.json)  |
+| MEM10 | 完成章节摘要、人物/概念图生成与补齐 | F5 | 有界B09： 本轮复用原生证据通过，非语义评测   |
 | MEM11 | 检索书内人物/关系/概念图 | F5 | 本机源版本绑定图谱、进度边界和越权拒绝通过；真实书摘要语义待验 |
-| MEM12 | 跨对话 insights 与滚动摘要 | F5 | 有界B10：[ 外部阻塞：摘要生成缺模型配置 ](../../evidence/2026-09-13-bounded-validation/b10/observations.json)  |
+| MEM12 | 跨对话 insights 与滚动摘要 | F5 | 有界B10： 外部阻塞：摘要生成缺模型配置   |
 | MEM13 | 可版本化导出 context bundle | F5 | 部分通过：真实 Worker 画像归档/幂等/历史/574字节JSON导出、来源变更撤销资源、旧归档不变、重载三版保留；其他recipe及跨设备待验，见第十六流程 |
 | EXT01 | 选择菜单动作/lookup/标注入口 | F7 | 部分通过：真实选区菜单Underline/Copy/更多项及AI开关即时过滤（29），release物理选区高亮/下划线/笔记取消/词典缺配置提示（32、36）；其余动作/配置组合待验 |
 | EXT02 | 书架与阅读 header menu 入口 | F7 | 部分通过：真实书架/阅读页头与overflow按配置排序，Workspace Profiles/Jumper入口及外观/书架视图动作（29）；窄窗、退役重启及其他入口待验 |
@@ -215,7 +215,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | EXT06 | 大列表分页/虚拟化、Tree/Table/编辑器/图像资源 | F7 | 部分通过：字体列表虚拟渲染和翻页（28），贡献目录两页（56）；Tree/Table/资源图像完整运行组合、窄窗/辅助技术待验。富文本编辑器未实现，不能标通过 |
 | EXT07 | Toast、持久错误、进度/取消/确认交互 | F7 | 部分通过：真实删除批准/拒绝（24）、投影修复持久完成与失败控件（53）、清空失败恢复提示（55）；其他进度/Toast/取消/错误呈现待验 |
 | EXT08 | 应用/阅读主题和字体贡献 | F7 | 部分通过：实际目录出现插件字体/主题身份（28、56），Lora/Inter及Menlo实际加载/应用（28、51）；插件主题/EB Garamond实际呈现与卸载回退未验 |
-| EXT09 | 词典查询/收藏/复习列表/CSV 导出 | F7 | 有界B11：[ 本轮词典CSV组合通过 ](../../evidence/2026-09-13-bounded-validation/b11-dictionary-export.json)  |
+| EXT09 | 词典查询/收藏/复习列表/CSV 导出 | F7 | 有界B11： 本轮词典CSV组合通过   |
 | EXT10 | RSS 订阅/刷新/退订/OPML/阅读文章 | F7 | 本机 RSS 真实插件消费者订阅/更新/离线/退订通过；其他组合待验 |
 | EXT11 | 本地 marketplace 插件清单与启用状态 | F7 | 部分通过：Maintenance Desk编译Worker目录搜索/贡献分页/实时注销与恢复，Agent15插件和79贡献分页无重复、只返回公开字段（56）；安装元数据实时变化、超预算目录及全部筛选待验 |
 | EXT12 | 安装/授权/启停/更新/回滚/卸载插件 | F7 | 部分通过：正常安装入口真实Worker迁移失败回滚代码/KV/文档、成功升级/降级/卸载（20），现有内置插件停用/恢复（56）；第80流程发布包Library Desk原生安装同意/启用/实际Worker执行/确认卸载通过；安装拒绝、故障恢复失败/进程中断等待验 |
@@ -234,7 +234,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | SYS13 | Blob 范围读取/流式读写/提交/中止 | F8 | 第79流程真实两Worker/原生1MiB+257分块、跨块/EOF/逐字节哈希、派发后源数组修改隔离、offset/块限/封口拒写、跨owner隔离、16引用额度/abort复用及退役18原生句柄释放通过；Agent实际工具BOM/中文/emoji/组合字符字节游标4/7/11/14/18无损、无效UTF-8/二进制/跨线程/原书export-only拒绝及release幂等通过。字节总额度/host额度/TTL/崩溃/发布包及其他平台待验，测试Worker不冒称正式消费者 |
 | SYS14 | 系统字体枚举和字体资产加载 | F8 | 部分通过：真实原生字体目录翻页/搜索，本机Menlo及Lora/Inter在阅读文档和应用文档加载（28、51）；全字体、目录变化、加载失败及其他平台/发布包待验 |
 | SYS15 | 原生日志/诊断包/崩溃报告导出与发送 | F8 | 第82流程发布包实际预览→系统Save→12570字节JSON，原生日志片段逐字核对、73事件完整性重放consistent/无drift；日志Reveal真实Finder选中隔离目录。发送/回执、真实崩溃、插件或Agent入口、轮转截断/失败与其他平台待验，原始bundle仅留私有.eval |
-| SYS16 | 检查/下载/安装更新与重启 | F8 | 有界B12：[ 检查通过，升级环境阻塞 ](../../evidence/2026-09-13-bounded-validation/b12.json)  |
+| SYS16 | 检查/下载/安装更新与重启 | F8 | 有界B12： 检查通过，升级环境阻塞   |
 | SYS17 | 窗口最小化/最大化/全屏/关闭/标题栏 | F8 | 编译Workspace Profiles最大化/最小化/还原：原生flag与Worker实时显示通过；补destroy权限后debug正常关闭/重启、release包原生关闭按钮/退出通过；release原生菜单全屏/还原与沉浸标题栏显隐通过；插件全屏请求及其他标题栏动作待验，见第二十七/三十一流程 |
 | SYS18 | Android/iOS 遗留桥：状态栏/安全区/音量键/商店 | F8 | 不适用：当前产品仅桌面；matrix.data.ts SYS18和model B1明确移动遗留分支/no-op不计桌面能力，未声明移动实机通过 |
 | OPS01 | 同步连接/断开/立即同步/状态与积压 | F8 | 部分：第83双隔离Tauri真实连接/立即同步/断开、状态与503积压恢复；Agent/插件批准及生产服务待验 |
@@ -242,11 +242,11 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | OPS03 | 检查点/投影恢复/事件历史回填 | F8 | 新隔离Tauri真实Maintenance Desk/Agent投影差异预览、取消不执行、确认重建/重载、完成前取消等待不回滚、事务故障回滚及重试通过；checkpoint/bootstrap/回填/跨设备仍待验，见第五十三流程 |
 | OPS04 | WebDAV 等自定义密文 transport | F8 | 部分：第83编译WebDAV Worker→原生HTTP实际双向密文transport；生产WebDAV及其他外部环境待验 |
 | OPS05 | 偏好漫游/远端合并后的 UI 失效 | F8 | 部分通过：隔离合成凭据本地加密事件/远端来源不回传/删除；跨设备与UI失效待验，changed计数0，见第十九流程 |
-| OPS06 | 账号登录、连接 token、退出、删除账号 | F8 | 有界B13：[ 取消通过，缺测试账户 ](../../evidence/2026-09-13-bounded-validation/b13.json)  |
-| OPS07 | 套餐/用量/购买/账单管理 | F8 | 有界B14：[ 外部阻塞：缺测试账户资格 ](../../evidence/2026-09-13-bounded-validation/b14.json)  |
+| OPS06 | 账号登录、连接 token、退出、删除账号 | F8 | 有界B13： 取消通过，缺测试账户   |
+| OPS07 | 套餐/用量/购买/账单管理 | F8 | 有界B14： 外部阻塞：缺测试账户资格   |
 | OPS08 | 备份导出与合并导入 | F8 | 本机加密导出/错密码拒绝/预检及UI恢复书目、重载写屏障通过；旧库缺源拒绝；修正Agent/插件错误宣称只支持v1，真实插件Import/Agent Export到完整/旧版选择器并取消通过；文件替换/迁移等边界待验，见第十/五十四流程 |
 | OPS09 | 删除本地全部数据 | F8 | macOS debug：Agent只揭示宿主入口、DELETE确认/取消、清空及重新写入通过；修复提交后文件失败仍可旧页写入/丢防导入标记，实际权限故障、事务回滚及进程重启恢复通过，见第五十五流程；物理输入/发布包、远端同步及其他平台待验 |
-| OPS10 | 数据目录显示/Reveal | F8 | 有界B15：[ 本轮发布包目录Reveal通过 ](../../evidence/2026-09-13-bounded-validation/b15.json)  |
+| OPS10 | 数据目录显示/Reveal | F8 | 有界B15： 本轮发布包目录Reveal通过   |
 | OPS11 | 事件写入、重建/验证投影、历史 genesis | F8 | 新隔离库原生领域事件一致，注入仅投影改动后1表两侧各1行差异；Worker/Agent宿主确认修复、写屏障/重载及失败回滚恢复写入、最终6事件一致通过；不完整日志/genesis历史/跨平台待验，见第五十三流程 |
 | CON01 | 能力发现/版本/权限/依赖与安装同意 | F7 | 第80流程发布包Library Desk安装同意显示版本/作者、四类权限及六项设置读写路径，Install后已启用且真实Worker执行、确认卸载恢复原集合；能力目录分页/版本依赖拒绝等仍待验，已有证据对账见第81项报告；第86实际Agent host目录2页4项/39、词典book4/global6工具分页及停用fresh目录0/旧revision拒绝/恢复通过，未全枚举host目录。 |
 | CON02 | 对象级授权/用户批准/来源与审计 | F7 | 部分通过：真实设置混合越权整批拒绝（6）、阅读控制权限/旧工作区revision拒绝（23）、Agent批准与拒绝删除（24）、合并目标变化后旧批准拒绝（58）；所有对象/来源审计及跨设备待验 |
@@ -256,7 +256,7 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 | CON06 | 长任务进度、取消、超时、并发与幂等 | F7 | 部分通过：真实正文共享取消/退役（14、38）、32未结算读背压（42）、延迟任务幂等（18）、确认后取消等待不回滚原生修复（53）；其余任务超时/恢复待验，不声称通用任务服务 |
 | CON07 | 领域事件的本地/远端/外部变化一致性 | F7 | 部分通过：设置local/remote/restore来源注入与订阅退休（6）、原生时长事件（13、35）；注入不等于跨设备，真实远端合并/所有恢复入口及业务事件一致性待验 |
 | CON08 | 事务/CAS/撤销/跨对象一致回执 | F7 | 部分通过：真实设置整批拒绝（6）、标注条件批次与版本冲突（3）、私有文档CAS无前置泄漏（20）、修复/清空SQLite回滚（53、55）；跨工具事务/通用撤销未实现，不以底层事务代替 |
-| CON09 | 沙箱、权限撤销和 packaged CSP 验证 | F7 | 部分历史证据可复用：2026-09-09真实macOS release中原型fetch/子Worker/HTTP模块三条无授权网络路径被阻止，授权宿主网络正向成功（见evidence/packaged-sandbox-network-2026-09-09.json）。第64批核对当前策略hash与该次一致，当前生产构建通过；没有重跑当前二进制的攻击夹具，不计完整沙箱、在途撤权及Windows/Linux通过 |
+| CON09 | 沙箱、权限撤销和 packaged CSP 验证 | F7 | 部分历史证据可复用：2026-09-09真实macOS release中原型fetch/子Worker/HTTP模块三条无授权网络路径被阻止，授权宿主网络正向成功。第64批核对当前策略hash与该次一致，当前生产构建通过；没有重跑当前二进制的攻击夹具，不计完整沙箱、在途撤权及Windows/Linux通过 |
 | CON10 | 宿主-工具-插件覆盖门禁/契约测试 | F7 | 本机分阶段门禁、Web构建通过；a00eb3fa源码macOS优化release .app构建及原生启动、隔离一书四标注数据保持通过（64）。发布包交互、CI及跨平台另验 |
 | CON11 | 任意 SQL/FS/shell/DOM、密钥、伪造历史 | F7 | 设计不开放：当前公共API不提供任意SQL/FS/shell/DOM、凭据或伪造历史；matrix CON11/model B1为依据。此分类不是沙箱逃逸验收，隔离/撤权证据仍归CON09 |
 | CON12 | 新格式/OCR/实时协作/向量/任意编辑与新平台 | F7 | 未实现/排除当前对等范围：matrix为待建，model B1明确未来格式/OCR/协作/向量/任意编辑/新平台不计当前宿主对等开放率；不计通过，也不为清零状态新增产品 |
@@ -271,4 +271,4 @@ READ16 独立跟随、EXT06 富文本编辑、MORE02 跨插件因果防环及 MO
 
 ## 本轮证据
 
-[第一批：真实 Text Desk 流程、门禁修复及模型复核](../../evidence/2026-09-13-full-validation/README.md)。已有子流程通过仍保留本行剩余边界。
+第一批已记录真实 Text Desk 流程、门禁修复及模型复核，原始工件保留在 Git 历史中。已有子流程通过仍保留本行剩余边界。

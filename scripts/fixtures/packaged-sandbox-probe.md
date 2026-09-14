@@ -26,8 +26,8 @@ strings; do not substitute real data or external destinations.
    packages through Settings, quit the isolated app, and stop the owned server.
 
 The zero-permission diagnostic is intentionally unchanged across before/after
-builds. The first verified before/after run and exact binary/package hashes are
-in `docs/evidence/packaged-sandbox-network-2026-09-09.json`.
+builds. The first verified before/after run was on 2026-09-09; its report and exact
+binary/package hashes are retained only in Git history.
 
 The policy is shared by Vite development responses and native release asset
 responses. Parent-page CSP, JavaScript getters and Bun Worker tests do not replace

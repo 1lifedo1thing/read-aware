@@ -4,7 +4,7 @@
 
 这份文件是当前能力工作的唯一执行清单。它只描述尚未完成的交付边界，不记录逐
 commit 过程。能力现状以 `host-capability-matrix.data.ts` 和运行时代码为准，详细
-历史保留在 Git，实际运行证据保留在 `docs/evidence/`。
+历史与原始运行工件保留在 Git 历史中。
 
 ## 当前判断
 
@@ -44,10 +44,9 @@ commit 过程。能力现状以 `host-capability-matrix.data.ts` 和运行时代
 5. Windows/Linux、任意格式排列、生产账号/付款、第三方服务质量和未来产品能力不
    属于本轮范围；具体安全或正确性失败除外。
 
-## 事实与证据入口
+## 相关文档
 
 - 结构化现状：`host-capability-matrix.data.ts`
 - 责任和边界：`host-capability-model.data.ts`
-- 当前交接与证据索引：`host-capability-delivery.md`
+- 当前交接：`host-capability-delivery.md`
 - 已规划的真实桌面场景：`host-capability-stage-three.md`
-- 原始运行工件：`docs/evidence/`
