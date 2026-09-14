@@ -10,7 +10,7 @@ import { describeContext, startPluginWorker } from "./plugin-worker-host";
 import { PluginCallbackRegistry, pluginCallbackOwner, retainPluginCallbacks } from "./plugin-callback-wire";
 import { openPluginViewChannel } from "../lib/plugin-view-channels";
 import { PluginLifecycleController } from "./plugin-lifecycle";
-import { actorCause, type DomainActor } from "../../../platform/domain-actor";
+import { actorCause, causalActor, eventCause, type DomainActor } from "../../../platform/domain-actor";
 import { broadcastDomainEventDrafts } from "../../../platform/domain-events";
 import type { PluginReactionToken } from "@read-aware/plugin-types";
 import * as runtimeModule from "../../ai/agent/agent-runtime";
@@ -178,6 +178,7 @@ test.each(["read", "cancel", "denied"])("context bundle Worker RPC %s resolves t
 /** Deterministic transport faults, with the real host context and registration path. */
 class FaultWorker {
   static current: FaultWorker;
+  static beforeReady: ((worker: FaultWorker) => Promise<void>) | undefined;
   static bootFault: "failed" | "clone" | "version" | "early-call" | undefined;
   onmessage: ((event: MessageEvent) => Promise<void>) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
@@ -196,6 +197,7 @@ class FaultWorker {
       queueMicrotask(async () => {
         if (FaultWorker.bootFault === "early-call") await this.deliver({ t: "call", id: 1, method: "contributions.commands.register", args: this.callbacks.encode([]) });
         await this.deliver({ t: "hello", protocolVersion: FaultWorker.bootFault === "version" ? 2 : 1 });
+        await FaultWorker.beforeReady?.(this);
         await this.deliver(response);
       });
     }
@@ -981,4 +983,21 @@ test("restore Worker uses private committed storage before RPC acknowledgement a
     await worker.deliver({ t: "migrated", id: request.id, ok: true });
     await migration;
   } finally { await close(); }
+});
+
+
+test("startup registrations retain their initiating cause without relabelling later ordinary calls", async () => {
+  const origin = causalActor("user");
+  FaultWorker.beforeReady = worker => worker.deliver({ t: "call", id: 1901, method: "contributions.commands.register",
+    args: worker.callbacks.encode([{ id: "startup-cause", title: "Startup", run: () => {} }]) });
+  let fixture: Awaited<ReturnType<typeof hostFixture>> | undefined;
+  try {
+    fixture = await hostFixture([], true, undefined, { activationOrigin: origin });
+    expect(fixture.worker.sent.find(message => message.t === "result" && message.id === 1901)).toMatchObject({ ok: true });
+    expect(eventCause(getDefaultStore().get(pluginCommandsAtom))).toBe(actorCause(origin));
+    await fixture.worker.deliver({ t: "call", id: 1902, method: "contributions.commands.register",
+      args: fixture.worker.callbacks.encode([{ id: "later-cause", title: "Later", run: () => {} }]) });
+    expect(fixture.worker.sent.find(message => message.t === "result" && message.id === 1902)).toMatchObject({ ok: true });
+    expect(eventCause(getDefaultStore().get(pluginCommandsAtom))!.root).not.toBe(actorCause(origin)!.root);
+  } finally { FaultWorker.beforeReady = undefined; await fixture?.close(); }
 });

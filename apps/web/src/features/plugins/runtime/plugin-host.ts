@@ -218,7 +218,7 @@ function activatePlugin(manifest: PluginManifest, origin: DomainActor = "system"
   const work = (async () => {
     try {
       await deactivating.get(manifest.id);
-      active.set(manifest.id, await startPluginInstance(manifest));
+      active.set(manifest.id, await startPluginInstance(manifest, { activationOrigin: origin }));
       updateInstalledPlugin(manifest.id, { error: undefined }, origin);
     } catch (error) {
       log.error(`activation of "${manifest.id}" failed`, error);
@@ -416,7 +416,7 @@ export async function updatePluginBookAccess(id: string, input: PluginBookAccess
       await deactivatePlugin(id);
       await persistPluginBookAccess(id, grant, origin);
       updateInstalledPlugin(id, { bookAccess: grant, bookAccessSource: "user", error: undefined }, origin);
-      if (plugin.enabled) active.set(id, await startPluginInstance(plugin.manifest, { bookAccess: grant }, undefined, scope));
+      if (plugin.enabled) active.set(id, await startPluginInstance(plugin.manifest, { bookAccess: grant, activationOrigin: origin }, undefined, scope));
     });
   } catch (error) {
     updateInstalledPlugin(id, { error: errorMessage(error) }, origin);
@@ -460,8 +460,8 @@ async function migratePluginInstance(
   await setPluginDataSchemaVersion(instance.manifest.id, target);
 }
 
-async function restartPreviousInstance(previous: ActivePlugin, dataUpdate: PluginDataUpdate): Promise<void> {
-  const restored = await startPluginInstance(previous.manifest, {}, undefined, dataUpdate);
+async function restartPreviousInstance(previous: ActivePlugin, dataUpdate: PluginDataUpdate, origin: DomainActor): Promise<void> {
+  const restored = await startPluginInstance(previous.manifest, { activationOrigin: origin }, undefined, dataUpdate);
   active.set(previous.manifest.id, restored);
 }
 
@@ -519,6 +519,7 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
         startPluginInstance(
           manifest,
           {
+            activationOrigin: origin,
             moduleUrl: pluginCandidateModuleUrl(entry.token, manifest.main ?? "main.js"),
             instanceId: `${manifest.id}@candidate:${entry.token}`,
             bookAccess: grant,
@@ -589,7 +590,7 @@ async function applyCandidate(entry: PluginCandidateDiskEntry, requestedGrant?: 
       restartPrevious: async () => {
         // Also release a baseline taken before a failed file switch (no migration).
         await recoverJournal();
-        if (previous && previousQuiesced) await restartPreviousInstance(previous, dataUpdate);
+        if (previous && previousQuiesced) await restartPreviousInstance(previous, dataUpdate, origin);
       },
     }).catch(error => {
       // Successful restoration/restart already released its scope. A retained

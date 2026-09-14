@@ -29,7 +29,7 @@ import { buildPluginContext, currentAppLocale, pluginStoragePrefix } from "./plu
 import { pluginModuleUrl } from "./plugin-backend";
 import { i18n } from "../../../i18n";
 import { onAppEvent } from "../../../platform/app-events";
-import { actorFromEvent } from "../../../platform/domain-actor";
+import { actorFromEvent, causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { localKV, onLocalKVChange } from "../../../platform/local-store";
 import { createLogger } from "../../../platform/logger";
 import { invalidateSyncTransportSessions } from "../../../platform/sync/transport-registry";
@@ -69,6 +69,8 @@ export type SandboxedPlugin = {
 };
 
 export type StartPluginWorkerOptions = {
+  /** Host-only source for calls admitted before the activation-ready message. */
+  activationOrigin?: DomainActor;
   /** Host-only execution authority. Never accepted in a Worker call payload. */
   serviceExecution?: Pick<PluginServiceExecution, "declaration" | "lineage" | "origin" | "signal">;
   /** Host-owned object grant for this activation; never read from Worker input. */
@@ -221,6 +223,11 @@ export function startPluginWorker(
     ...runtime.context,
     services: { ...runtime.context.services, storage: options.restoreStorage.create(runtime.lifecycle) },
   } : runtime.context;
+  // Select per admitted call, never alter the retained Worker context. Later
+  // user callbacks must not inherit the startup source. Isolated service and
+  // restore contexts already have their own authority and storage bindings.
+  const activationContext = options.serviceExecution || options.restoreStorage ? ctx
+    : runtime.contextForActor(actorFromEvent(stampEventCause({}, causalActor(options.activationOrigin ?? "system")), `plugin:${manifest.id}`));
   if (!options.serviceExecution && !options.restoreStorage && manifest.services?.length) {
     runtime.lifecycle.stage(() => pluginServices.register(runtime.serviceParticipant, async execution => {
       const child = await startPluginWorker(execution.manifest, appVersion, [], {
@@ -349,12 +356,12 @@ export function startPluginWorker(
   };
 
   return new Promise<SandboxedPlugin>((resolve, reject) => {
-    let settled = false;
+    let startupSettled = false;
     let handshaken = false;
     const failRuntime = (reason: string) => {
-      const starting = !settled;
+      const starting = !startupSettled;
       const currentInstance = liveWorkers.get(instanceId)?.worker === worker;
-      settled = true;
+      startupSettled = true;
       clearTimeout(activationTimeout);
       closeTransport(reason);
       termination ??= drainRuntime();
@@ -372,7 +379,7 @@ export function startPluginWorker(
       }
     };
     const activationTimeout = setTimeout(() => {
-      if (settled) return;
+      if (startupSettled) return;
       failRuntime("plugin activation timed out");
     }, 10_000);
     if (options.serviceExecution) {
@@ -426,8 +433,8 @@ export function startPluginWorker(
       }
       switch (message.t) {
         case "ready":
-          if (!settled) {
-            settled = true;
+          if (!startupSettled) {
+            startupSettled = true;
             clearTimeout(activationTimeout);
             resolve({
               manifest,
@@ -610,7 +617,7 @@ export function startPluginWorker(
                 if (!bound) throw new AppError("plugin/unavailable", `"${message.method}" is not granted to plugin "${manifest.id}"`);
                 return bound(...args);
               })
-              : resolve(ctx);
+              : resolve(startupSettled ? ctx : activationContext);
             if (!method) throw new AppError("plugin/unavailable", `"${message.method}" is not granted to plugin "${manifest.id}"`);
             const callbackLease = callbackBudget.acquire(message.args);
             releaseArguments = () => { callbackLease.dispose(); releaseCallbacks(message.args); };
