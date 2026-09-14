@@ -885,9 +885,9 @@ export function buildPluginContext(
       },
       jobs: {
         start: (plan, options) => transactionCall(() => jobs().start(plan, callSignal(options), operationActor)),
-        get: async (id, options) => { const signal = callSignal(options); signal.throwIfAborted(); const value = await jobs().get(id); signal.throwIfAborted(); return value; },
-        list: async (query, options) => { const signal = callSignal(options); signal.throwIfAborted(); const value = await jobs().list(query); signal.throwIfAborted(); return value; },
-        control: (id, action, options) => transactionCall(() => { callSignal(options).throwIfAborted(); return jobs().control(id, action); }),
+        get: async (id, options) => { const signal = callSignal(options); signal.throwIfAborted(); const value = await jobs().get(id, signal); signal.throwIfAborted(); return value; },
+        list: async (query, options) => { const signal = callSignal(options); signal.throwIfAborted(); const value = await jobs().list(query, signal); signal.throwIfAborted(); return value; },
+        control: (id, action, options) => transactionCall(() => jobs().control(id, action, callSignal(options))),
       },
       transactions: {
         preview: (operations, options) => transactionCall(() => transactions().preview(operations, callSignal(options))),

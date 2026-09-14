@@ -1,3 +1,5 @@
+import { buildPluginContext } from "./plugin-context";
+import * as jobStore from "../../../platform/durable-jobs";
 import { expect, test, spyOn } from "bun:test";
 import { BookGraphTaskOwner } from "@read-aware/agent";
 import { createContextBundle, type MemoryRecord, type MemorySnapshot, type MemoryObservation, type ContextBundleKind } from "@read-aware/core";
@@ -132,4 +134,52 @@ test("memory observation rejects a book switch between its successful read and c
     expect(delivered).toEqual([]); expect(f.listeners.size).toBe(0);
     await expect(read!(query)).rejects.toMatchObject({ code: "plugin/object-access-denied" });
   } finally { subscription.dispose(); await f.close(); }
+});
+
+
+test("durable graph creation and recovery require the same model grant as direct graph calls", async () => {
+  const plan = { title: "Graph", steps: [{ id: "graph", kind: "book.graph" as const, bookId: "a", mode: "catch-up" as const }] };
+  const record: jobStore.DurableJobRecord = { owner: "plugin:durable-graph-permissions", id: "saved", plan,
+    state: { status: "queued", nextStep: 0, attempt: null, results: [], errorCode: null }, revision: "1", createdAt: "now", updatedAt: "now" };
+  let writes = 0, reads = 0;
+  const storage = spyOn(jobStore, "nativeDurableJobStore").mockReturnValue({
+    create: async () => { writes++; return record; }, checkpoint: async () => { writes++; return record; },
+    get: async () => { reads++; return structuredClone(record); }, list: async () => [structuredClone(record)],
+  });
+  const actor = buildPluginContext({ id: "durable-graph-permissions", name: "Graph", version: "1", schemaVersion: 1, requires: {}, permissions: ["memory:write"] }, "1", []);
+  try {
+    actor.lifecycle.promote();
+    await expect(actor.context.services.jobs.start(plan)).rejects.toMatchObject({ code: "plugin/permission-denied" });
+    await expect(actor.context.services.jobs.get("saved")).rejects.toMatchObject({ code: "plugin/permission-denied" });
+    await expect(actor.context.services.jobs.control("saved", "resume")).rejects.toMatchObject({ code: "plugin/permission-denied" });
+    expect((await actor.context.services.jobs.list()).jobs).toEqual([]);
+    await Bun.sleep(0);
+    expect(reads).toBeGreaterThan(3); // Includes activation recovery, before any execution preparation.
+    expect(writes).toBe(0);
+  } finally { actor.lifecycle.stop(); await actor.lifecycle.drainCleanups(); storage.mockRestore(); }
+});
+
+
+test("cancelling a durable control during lookup prevents persisting its intent", async () => {
+  let gate = deferred(), entered = deferred(), writes = 0;
+  const record: jobStore.DurableJobRecord = { owner: "plugin:job-control-cancel", id: "saved",
+    plan: { title: "Graph", steps: [{ id: "graph", kind: "book.graph", bookId: "a", mode: "catch-up" }] },
+    state: { status: "paused", nextStep: 0, attempt: null, results: [], errorCode: null }, revision: "1", createdAt: "now", updatedAt: "now" };
+  const storage = spyOn(jobStore, "nativeDurableJobStore").mockReturnValue({
+    create: async () => { throw Error("Unexpected create"); }, list: async () => [],
+    get: async () => { entered.resolve(); await gate.promise; return structuredClone(record); },
+    checkpoint: async () => { writes++; return record; },
+  });
+  const actor = buildPluginContext({ id: "job-control-cancel", name: "Graph", version: "1", schemaVersion: 1, requires: {}, permissions: ["memory:write", "service:llm"] }, "1", []);
+  try {
+    actor.lifecycle.promote();
+    for (const action of ["pause", "resume", "cancel"] as const) {
+      gate = deferred(); entered = deferred();
+      const abort = new AbortController();
+      const work = actor.context.services.jobs.control("saved", action, { signal: abort.signal });
+      await entered.promise; abort.abort(Error("cancel review")); gate.resolve();
+      await expect(work).rejects.toThrow("cancel review");
+    }
+    expect(writes).toBe(0);
+  } finally { gate.resolve(); actor.lifecycle.stop(); await actor.lifecycle.drainCleanups(); storage.mockRestore(); }
 });

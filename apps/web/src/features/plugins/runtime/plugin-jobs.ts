@@ -1,4 +1,4 @@
-import { AppError, type DurableJobPlan } from "@read-aware/core";
+import { canUseHostService, AppError, type DurableJobPlan } from "@read-aware/core";
 import type { PluginManifest } from "@read-aware/plugin-types";
 import type { PluginBookAccessPolicy } from "../../../domain/plugin-object-access";
 import type { TransactionSession } from "../../../domain/transactions";
@@ -32,6 +32,9 @@ export function createPluginJobs(manifest: PluginManifest, access: PluginBookAcc
       for (const step of plan.steps) {
         if (step.kind === "transaction") grants.push(await transactions.authorizeDurableOperations(step.operations, signal));
         else {
+          if (step.kind === "book.graph" && !canUseHostService("llm", permissions)) {
+            throw new AppError("plugin/permission-denied", "Graph job steps require service:llm");
+          }
           const required = step.kind === "book.graph" ? "memory:write" : "library:read";
           if (!permissions.has(required) && !(required === "library:read" && permissions.has("library:write"))) throw new AppError("plugin/permission-denied", "Job step permission is not granted");
           const grant = await acquireBook(step.bookId, signal);

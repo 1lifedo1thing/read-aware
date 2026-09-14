@@ -1,3 +1,4 @@
+import { AppError } from "@read-aware/core";
 import { expect, test } from "bun:test";
 import { DurableJobRunner, type DurableJobExecutor } from "./durable-jobs";
 import type { DurableJobRecord, DurableJobStore } from "../platform/durable-jobs";
@@ -59,4 +60,44 @@ test("cancel survives an interrupted dispatch and reconciliation never starts th
   expect(executions).toBe(1);
   expect(restoredSources).toBe(2);
   expect((await store.get(job.id)).state.requestedAction).toBe("cancel");
+});
+
+
+test("failed recovery admissions do not starve later jobs or hot-loop, and explicit resume retries", async () => {
+  const rows = Array.from({ length: 5 }, (_, index): DurableJobRecord => ({ owner: "plugin:owner", id: String(index),
+    plan: { title: String(index), steps: [{ id: "text", kind: "library.text.prepare", bookId: "book" }] },
+    state: { status: "queued", nextStep: 0, attempt: null, results: [], errorCode: null }, revision: "0", createdAt: "now", updatedAt: "now" }));
+  const admissions = new Map<string, number>(), finished = Promise.withResolvers<void>();
+  let allow = false;
+  const store: DurableJobStore = {
+    create: async () => { throw Error("Unexpected create"); },
+    get: async id => structuredClone(rows[Number(id)]!), list: async () => structuredClone(rows),
+    checkpoint: async (before, state) => {
+      const record = { ...before, state: structuredClone(state), revision: String(Number(before.revision) + 1) };
+      rows[Number(before.id)] = record;
+      if (state.status === "completed" && before.id === "4") finished.resolve();
+      return structuredClone(record);
+    },
+  };
+  const runner = new DurableJobRunner(store, {
+    authorize: async plan => {
+      admissions.set(plan.title, (admissions.get(plan.title) ?? 0) + 1);
+      if (plan.title !== "4" && !allow) throw new AppError("plugin/permission-denied", "Grant removed");
+      return { assert() {}, dispose() {} };
+    },
+    prepare: async () => ({}), execute: async () => ({ status: "complete", receipt: {} }),
+    reconcile: async () => { throw Error("Unexpected reconciliation"); }, report() {},
+  });
+  try {
+    await runner.recover(); await finished.promise;
+    await Bun.sleep(0);
+    for (const id of ["0", "1", "2", "3"]) expect(admissions.get(id)).toBe(1);
+    expect(rows[4]!.state.status).toBe("completed");
+    allow = true;
+    expect(await runner.get("1")).toMatchObject({ status: "needs-attention", errorCode: "plugin/permission-denied" });
+    await runner.control("0", "resume");
+    while (runner.active) await Bun.sleep(0);
+    expect(rows[0]!.state.status).toBe("completed");
+    expect(rows[1]!.state.status).toBe("queued");
+  } finally { await runner.stop(); }
 });

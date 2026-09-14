@@ -30,6 +30,7 @@ export function durableJobSnapshot(record: DurableJobRecord): DurableJobSnapshot
  * precedes dispatch, and all work settles before a pause/cancel is acknowledged. */
 export class DurableJobRunner {
   private flights = new Map<string, Flight>();
+  private recoveryFailures = new Map<string, string>();
   private closed = false;
   constructor(private readonly store: DurableJobStore, private readonly executor: DurableJobExecutor) {}
   get active(): boolean { return this.flights.size > 0; }
@@ -58,20 +59,24 @@ export class DurableJobRunner {
     }
   }
   private launch(id: string, explicitResume: boolean): void {
-    if (this.closed || this.flights.has(id) || this.flights.size >= 4) return;
+    if (explicitResume) this.recoveryFailures.delete(id);
+    if (this.closed || this.flights.has(id) || this.flights.size >= 4 || this.recoveryFailures.has(id)) return;
     const controller = new AbortController();
     // Publish the flight before any async continuation can observe it.
     let install!: (request: Flight["request"]) => void;
     const ready = new Promise<Flight["request"]>(resolve => { install = resolve; });
     const flight: Flight = { controller, promise: Promise.resolve(), request: async action => (await ready)(action) };
     this.flights.set(id, flight);
-    let settled = false;
-    flight.promise = this.drive(id, controller.signal, explicitResume, install).then(() => { settled = true; }, error => this.executor.report(error)).finally(() => {
+    flight.promise = this.drive(id, controller.signal, explicitResume, install).catch(error => {
+      this.recoveryFailures.set(id, errorCode(error) ?? "jobs/recovery-failed");
+      this.executor.report(error);
+    }).finally(() => {
       // Also release controls if loading/authorization failed before installation.
       install(async () => {});
       this.flights.delete(id);
-      // A storage failure must not turn a still-queued record into a hot retry loop.
-      if (settled && !this.closed) void this.recover().catch(error => this.executor.report(error));
+      // A failed read/authorization must neither hot-loop the same queued job
+      // nor starve later jobs. Retry it only on explicit resume or a new owner.
+      if (!this.closed) void this.recover().catch(error => this.executor.report(error));
     });
   }
   private async drive(id: string, signal: AbortSignal, explicitResume: boolean, install: (request: Flight["request"]) => void): Promise<void> {
@@ -157,6 +162,13 @@ export class DurableJobRunner {
         errorCode: errorCode(error) ?? (signal.aborted ? "jobs/interrupted" : "jobs/step-failed") }));
     } finally { grant?.dispose(); }
   }
+  private snapshot(record: DurableJobRecord): DurableJobSnapshot {
+    const snapshot = durableJobSnapshot(record), error = this.recoveryFailures.get(record.id);
+    // A failed checkpoint cannot durably record its own error. Expose the
+    // current owner's retryable recovery failure without rewriting that evidence.
+    return error && ["queued", "running"].includes(snapshot.status)
+      ? { ...snapshot, status: "needs-attention", errorCode: error } : snapshot;
+  }
   private async visible(id: string, signal = new AbortController().signal): Promise<DurableJobRecord> {
     const record = await this.store.get(id);
     const grant = await this.executor.authorize(normalizeDurableJobPlan(record.plan), signal);
@@ -168,13 +180,13 @@ export class DurableJobRunner {
     const records = await this.store.list(offset, limit);
     const jobs: DurableJobSnapshot[] = [];
     for (const record of records) {
-      try { jobs.push(durableJobSnapshot(await this.visible(record.id, signal))); }
+      try { jobs.push(this.snapshot(await this.visible(record.id, signal))); }
       catch (error) { if (!["plugin/permission-denied", "plugin/object-access-denied"].includes(errorCode(error) ?? "")) throw error; }
     }
     return { jobs, nextOffset: records.length === limit && offset + limit < 256 ? offset + limit : null };
   }
   async inspectPlan(id: string): Promise<DurableJobPlan> { return structuredClone((await this.visible(id)).plan); }
-  async get(id: string, signal?: AbortSignal): Promise<DurableJobSnapshot> { return durableJobSnapshot(await this.visible(id, signal)); }
+  async get(id: string, signal?: AbortSignal): Promise<DurableJobSnapshot> { return this.snapshot(await this.visible(id, signal)); }
   async control(id: string, action: DurableJobControl, signal?: AbortSignal): Promise<DurableJobSnapshot> {
     if (this.closed) throw new AppError("jobs/unavailable", "Job owner retired");
     signal?.throwIfAborted();
