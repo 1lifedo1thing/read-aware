@@ -1028,3 +1028,34 @@ test("startup and migration calls retain their initiating cause without relabell
     expect(eventCause(getDefaultStore().get(pluginCommandsAtom))).toBe(actorCause(retirement));
   } finally { FaultWorker.beforeReady = undefined; await fixture?.close(); writes.mockRestore(); entries.mockRestore(); }
 });
+
+
+test("failed mirror and migration receipts retain the host source through retirement", async () => {
+  const entries = spyOn(localKV, "entries").mockReturnValue({});
+  try {
+    for (const mode of ["mirror", "migration"] as const) {
+      const source = causalActor("user");
+      let failureSource: DomainActor | undefined, retired: DomainActor | undefined;
+      const fixture = await hostFixture([], mode === "mirror", undefined, {
+        activationOrigin: mode === "mirror" ? causalActor("system") : source, onRuntimeError: (_message, actor) => { failureSource = actor; },
+      });
+      try {
+        fixture.runtime.stageHostContribution(() => ({ dispose: actor => { retired = actor; } }));
+        if (mode === "mirror") {
+          fixture.worker.throwOn = "sync";
+          emitAppEvent("plugin-storage-changed", { pluginId: "callback-host-test" }, source);
+          expect(actorCause(retired)).toBe(actorCause(source));
+        } else {
+          const migration = fixture.runtime.migrate({ fromVersion: 1, toVersion: 2, direction: "upgrade" });
+          const result = migration.catch(error => error);
+          const request = fixture.worker.sent.find(message => message.t === "migrate")!;
+          fixture.worker.throwOn = "sync";
+          await fixture.worker.deliver({ t: "migrated", id: request.id, ok: true });
+          expect(await result).toBeInstanceOf(Error);
+        }
+        expect(fixture.worker.terminated).toBe(true);
+        expect(actorCause(failureSource)).toBe(actorCause(source));
+      } finally { await fixture.close(); }
+    }
+  } finally { entries.mockRestore(); }
+});

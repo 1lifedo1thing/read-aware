@@ -27,7 +27,7 @@ import { AppError, errorCode } from "@read-aware/core";
 import { injectPluginCallSignal, pluginCallDrainsCancellation } from "./plugin-call-options";
 import { buildPluginContext, currentAppLocale, pluginStoragePrefix } from "./plugin-context";
 import { pluginModuleUrl } from "./plugin-backend";
-import { i18n } from "../../../i18n";
+import { i18n, localeActor } from "../../../i18n";
 import { onAppEvent } from "../../../platform/app-events";
 import { actorFromEvent, causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { localKV, onLocalKVChange } from "../../../platform/local-store";
@@ -95,7 +95,7 @@ export type StartPluginWorkerOptions = {
 // the app language switching), every live sandbox gets a `sync` patch, or
 // its mirror silently serves boot-time values forever.
 
-const liveWorkers = new Map<string, { pluginId: string; worker: Worker; sync: (patch: Extract<HostMessage, { t: "sync" }>["patch"]) => void }>();
+const liveWorkers = new Map<string, { pluginId: string; worker: Worker; sync: (patch: Extract<HostMessage, { t: "sync" }>["patch"], source: DomainActor) => void }>();
 let syncWired = false;
 
 function wireHostSync(): void {
@@ -105,23 +105,24 @@ function wireHostSync(): void {
     const changed = new Set<string>();
     for (const { pluginId, sync } of liveWorkers.values()) {
       const prefix = pluginStoragePrefix(pluginId);
-      if (key.startsWith(prefix)) sync({ storage: localKV.entries(prefix) });
+      if (key.startsWith(prefix)) sync({ storage: localKV.entries(prefix) }, origin);
       if (key === `${prefix}settings`) changed.add(pluginId);
     }
     for (const pluginId of changed) invalidateSyncTransportSessions(pluginId, origin);
   });
   onAppEvent("plugin-storage-changed", event => {
     const { pluginId } = event;
+    const source = actorFromEvent(event);
     for (const live of liveWorkers.values()) {
       if (live.pluginId !== pluginId) continue;
-      live.sync({ storage: localKV.entries(pluginStoragePrefix(pluginId)) });
+      live.sync({ storage: localKV.entries(pluginStoragePrefix(pluginId)) }, source);
     }
-    invalidateSyncTransportSessions(pluginId, actorFromEvent(event));
+    invalidateSyncTransportSessions(pluginId, source);
   });
   i18n.on("languageChanged", () => {
-    const locale = currentAppLocale();
+    const locale = currentAppLocale(), source = localeActor();
     for (const { sync } of liveWorkers.values()) {
-      sync({ locale });
+      sync({ locale }, source);
     }
   });
 }
@@ -288,7 +289,7 @@ export function startPluginWorker(
   let nextMigrationId = 1;
   const pendingMigrations = new Map<
     number,
-    { resolve: () => void; reject: (error: Error) => void; timeout: ReturnType<typeof setTimeout> }
+    { source: DomainActor; resolve: () => void; reject: (error: Error) => void; timeout: ReturnType<typeof setTimeout> }
   >();
   const failAllHealthChecks = (reason: string) => {
     for (const pending of pendingHealth.values()) {
@@ -362,8 +363,8 @@ export function startPluginWorker(
     let startupSettled = false;
     const ordinarySource = () => !startupSettled || runtime.lifecycle.phase === "migrating" ? activationActor : undefined;
     let handshaken = false;
-    const failRuntime = (reason: string) => {
-      const source = runtime.lifecycle.beginRetirement(ordinarySource() ?? options.serviceExecution?.origin ?? "system");
+    const failRuntime = (reason: string, failureSource?: DomainActor) => {
+      const source = runtime.lifecycle.beginRetirement(failureSource ?? ordinarySource() ?? options.serviceExecution?.origin ?? "system");
       const starting = !startupSettled;
       const currentInstance = liveWorkers.get(instanceId)?.worker === worker;
       startupSettled = true;
@@ -395,9 +396,9 @@ export function startPluginWorker(
       if (signal.aborted) { abort(); return; }
     }
     retireForTraffic = error => failRuntime(error instanceof Error ? error.message : "Plugin transport traffic exhausted");
-    if (!options.restoreStorage) liveWorkers.set(instanceId, { pluginId: manifest.id, worker, sync(patch) {
+    if (!options.restoreStorage) liveWorkers.set(instanceId, { pluginId: manifest.id, worker, sync(patch, source) {
       try { post({ t: "sync", patch: bookService && patch.storage ? { ...patch, storage: {} } : patch }); }
-      catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
+      catch (error) { failRuntime(error instanceof Error ? error.message : String(error), source); }
     } });
 
     worker.onerror = (event) => {
@@ -469,26 +470,28 @@ export function startPluginWorker(
               migrate(migration) {
                 try { assertRunning(); } catch (error) { return Promise.reject(error); }
                 const id = nextMigrationId++;
+                const source = activationActor ?? options.serviceExecution?.origin ?? causalActor("system");
                 try { parsePluginHostMessage({ t: "migrate", id, migration }); }
                 catch (error) { return Promise.reject(error); }
                 runtime.lifecycle.beginMigration();
                 try { post({ t: "sync", patch: { phase: "migrating", storage: storageSnapshot() } }); }
-                catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); return Promise.reject(error); }
+                catch (error) { failRuntime(error instanceof Error ? error.message : String(error), source); return Promise.reject(error); }
                 return new Promise<void>((migrationResolve, migrationReject) => {
                   const timeout = setTimeout(() => {
                     pendingMigrations.delete(id);
                     runtime.lifecycle.finishMigration();
                     try { post({ t: "sync", patch: { phase: "activating" } }); }
-                    catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
+                    catch (error) { failRuntime(error instanceof Error ? error.message : String(error), source); }
                     migrationReject(new Error("plugin data migration timed out"));
                   }, 30_000);
                   pendingMigrations.set(id, {
+                    source,
                     resolve: migrationResolve,
                     reject: migrationReject,
                     timeout,
                   });
                   try { post({ t: "migrate", id, migration }); }
-                  catch (error) { failRuntime(error instanceof Error ? error.message : String(error)); }
+                  catch (error) { failRuntime(error instanceof Error ? error.message : String(error), source); }
                 });
               },
               stageHostContribution(factory) {
@@ -791,7 +794,7 @@ export function startPluginWorker(
           try { post({ t: "sync", patch: { phase: "activating" } }); }
           catch (error) {
             pending.reject(error instanceof Error ? error : new Error(String(error)));
-            failRuntime(error instanceof Error ? error.message : String(error));
+            failRuntime(error instanceof Error ? error.message : String(error), pending.source);
             return;
           }
           if (message.ok) pending.resolve();
