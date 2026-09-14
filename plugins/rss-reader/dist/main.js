@@ -5193,7 +5193,7 @@ var plugin = {
       } catch (error) {
         console.warn("RSS removed-book cleanup failed", error);
       }
-    });
+    }, { ruleId: "removed-book-cleanup" });
     ctx.contributions.commands.register({
       id: "subscribe",
       title: "RSS: subscriptions",

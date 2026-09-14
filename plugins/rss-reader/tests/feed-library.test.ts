@@ -1,6 +1,6 @@
 import { registerAgentTools } from "../src/agent-tools";
 import { expect, test } from "bun:test";
-import type { PluginBookContent, PluginDocumentChange, PluginDocumentPageFilter, PluginToolDefinition } from "@read-aware/plugin-types";
+import type { PluginBookContent, PluginContext, PluginDisposable, PluginReactionEvent, PluginDocumentChange, PluginDocumentPageFilter, PluginToolDefinition } from "@read-aware/plugin-types";
 import plugin from "../src/index";
 import { parseFeed } from "../src/feed";
 import { ensureBook, forgetRemovedBook, loadFeedContent, openFeed, recoverFeedRemovals, refreshFeed, subscribe, unsubscribeFeed } from "../src/feed-library";
@@ -439,12 +439,14 @@ test("removed-book reaction uses its bound context and shares serialization with
   await Bun.sleep(0);
   const reaction = { id: "host-event", status: "ready" as const };
   let bindings = 0, reactionWrites = 0;
-  f.ctx.withEvent = event => {
-    expect(event.reaction).toBe(reaction); bindings++;
+  const originalWithEvent = f.ctx.withEvent;
+  f.ctx.withEvent = ((event: PluginReactionEvent | undefined, registration?: PluginDisposable) => {
+    if (registration) return originalWithEvent(event, registration);
+    expect(event?.reaction).toBe(reaction); bindings++;
     return { ...f.ctx, services: { ...f.ctx.services, storage: { ...f.ctx.services.storage,
-      applyDocuments: changes => { reactionWrites++; return f.ctx.services.storage.applyDocuments(changes); },
+      applyDocuments: (changes: PluginDocumentChange[]) => { reactionWrites++; return f.ctx.services.storage.applyDocuments(changes); },
     } } };
-  };
+  }) as PluginContext["withEvent"];
   const removal = f.removed({ type: "book.removed", payload: { bookId: "book-1" }, createdAt: "now", origin: "user", reaction });
   await Bun.sleep(0);
   expect(bindings).toBe(1); expect(reactionWrites).toBe(0);

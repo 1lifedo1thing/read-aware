@@ -39,7 +39,7 @@ const plugin: PluginModule = {
         if (!feed) return;
         ctx.services.ui.showToast(tr(ctx.locale, "unsubscribedFrom", { title: feed.title }));
       } catch (error) { console.warn("RSS removed-book cleanup failed", error); }
-    });
+    }, { ruleId: "removed-book-cleanup" });
     ctx.contributions.commands.register({
       id: "subscribe",
       title: "RSS: subscriptions",

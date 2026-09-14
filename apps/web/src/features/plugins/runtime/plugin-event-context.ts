@@ -1,4 +1,4 @@
-import type { PluginContext, PluginReactionEvent } from "@read-aware/plugin-types";
+import type { PluginContext, PluginDisposable, PluginReactionEvent } from "@read-aware/plugin-types";
 import type { DomainActor } from "../../../platform/domain-actor";
 import { PluginEventReactions } from "./plugin-event-reactions";
 
@@ -32,9 +32,13 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
     const subscribe = events.subscribe;
     events.subscribe = (...args: any[]) => {
       const index = name === "settings" ? 0 : 1, handler = args[index], subscription = {};
+      const release = reactions.bindRule(subscription, args[index + 1]?.ruleId);
       args[index] = (event: object) => reactions.deliver(subscription, event,
         reaction => handler({ ...event, reaction }));
-      return subscribe(...args);
+      try {
+        const registration = subscribe(...args) as PluginDisposable;
+        return { dispose: () => { try { registration.dispose(); } finally { release(); } } };
+      } catch (error) { release(); throw error; }
     };
   }
   const observations: [object | undefined, string, number][] = [

@@ -11,6 +11,31 @@ type CausalBranch = Readonly<{ root: string; steps: readonly string[] }>;
 const branches = new WeakMap<EventCause, readonly CausalBranch[]>();
 const MAX_REACTION_DEPTH = 32;
 
+/** Host-private durable envelope. Only restore data read from host-owned job
+ * records; never accept this through a plugin API or an event payload. */
+export type DurableActorSource = { version: 1; root: string; paths: Array<{ root: string; steps: string[] }> };
+export function saveActorSource(actor: DomainActor): DurableActorSource {
+  const cause = actorCause(causalActor(actor))!;
+  return { version: 1, root: cause.root, paths: branches.get(cause)!.map(path => ({ root: path.root, steps: [...path.steps] })) };
+}
+export function restoreActorSource(origin: EventOrigin, input: unknown): DomainActor {
+  const invalid = () => new AppError("plugin/invalid-cause", "Invalid durable event source");
+  const text = (value: unknown, max: number): value is string => typeof value === "string" && value.length > 0 && value.length <= max && !/[\u0000-\u001f]/u.test(value);
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw invalid();
+  const data = input as DurableActorSource;
+  if (Object.keys(data).some(key => !["version", "root", "paths"].includes(key)) || data.version !== 1 || !text(data.root, 128)
+    || !Array.isArray(data.paths) || !data.paths.length || data.paths.length > MAX_REACTION_DEPTH) throw invalid();
+  const paths = data.paths.map(path => {
+    if (!path || typeof path !== "object" || Array.isArray(path) || Object.keys(path).some(key => key !== "root" && key !== "steps")
+      || !text(path.root, 128) || !Array.isArray(path.steps) || path.steps.length > MAX_REACTION_DEPTH || path.steps.some(step => !text(step, 512))) throw invalid();
+    return Object.freeze({ root: path.root, steps: Object.freeze([...path.steps]) });
+  });
+  if (new Set(paths.map(path => path.root)).size !== paths.length) throw invalid();
+  const cause = issue(data.root, [...new Set(paths.flatMap(path => [...path.steps]))].slice(0, MAX_REACTION_DEPTH));
+  branches.set(cause, paths);
+  const actor = Object.freeze({ origin, cause }); actors.add(actor); return actor;
+}
+
 function issue(root: string, steps: readonly string[]): EventCause {
   const cause = Object.freeze({ root, steps: Object.freeze([...steps]) });
   issued.add(cause);

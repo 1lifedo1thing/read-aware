@@ -11,9 +11,10 @@ export class PluginEventReactions {
   private readonly entries = new Map<string, Entry>();
   private readonly work = new Set<Promise<unknown>>();
   private readonly rules = new WeakMap<object, string>();
+  private readonly named = new Map<string, object>();
 
   constructor(private readonly origin: EventOrigin, private readonly lifetime: AbortSignal) {
-    lifetime.addEventListener("abort", () => this.entries.clear(), { once: true });
+    lifetime.addEventListener("abort", () => { this.entries.clear(); this.named.clear(); }, { once: true });
   }
 
   /** Subscription identity belongs to this activation; it is not chosen by a
@@ -22,6 +23,17 @@ export class PluginEventReactions {
     let id = this.rules.get(subscription);
     if (!id) { id = crypto.randomUUID(); this.rules.set(subscription, id); }
     return id;
+  }
+  /** Stable within the plugin, including a later activation. The name selects
+   * identity only; delivery still requires an issued event and live lease. */
+  bindRule(subscription: object, name: unknown): () => void {
+    this.lifetime.throwIfAborted();
+    if (name === undefined) return () => {};
+    if (typeof name !== "string" || !/^[a-z][a-z0-9_.:-]{0,127}$/.test(name)) throw new AppError("plugin/invalid-argument", "Invalid event rule id");
+    if (this.named.has(name)) throw new AppError("plugin/invalid-argument", "Event rule id already registered");
+    this.named.set(name, subscription);
+    this.rules.set(subscription, `rule:${this.origin}:${name}`);
+    return () => { if (this.named.get(name) === subscription) this.named.delete(name); };
   }
 
   async deliver<T>(subscription: object, event: object, handler: (token: PluginReactionToken) => T | Promise<T>): Promise<T> {

@@ -1347,6 +1347,11 @@ export type DomainSubscribe<E extends DomainEventType> = <K extends E>(
      * `plugin:<id>`). Default false — by default you hear your own echoes.
      */
     ignoreSelf?: boolean;
+    /** Stable rule identity within this plugin (plugins 1.9). Reuse the same
+     * name after activation/restart; do not reuse it for a different rule.
+     * Lowercase identifier, up to 128 characters; unique while subscribed.
+     * Omit for an activation-local identity. This grants no write permission. */
+    ruleId?: string;
   },
 ) => PluginDisposable;
 
@@ -1744,7 +1749,7 @@ export type PluginSettingsDomain = {
   events: {
     subscribe(
       handler: (event: SettingsChangedEvent & PluginReactionEvent) => void,
-      options?: { ignoreSelf?: boolean },
+      options?: { ignoreSelf?: boolean; ruleId?: string },
     ): PluginDisposable;
   };
 };

@@ -135,7 +135,7 @@ export const units: Unit[] = [
     "不把 checkpoint/replay/事件账本操作暴露为普通 API；健康修复由宿主流程。新控制面只覆盖现有真实同步行为，不建设第二套同步引擎。",
     "断开/换 transport 关闭旧会话；本地/远端应用后的 D1–D6 快照可刷新；只看本地单元测试不能宣称跨设备正确。"),
   unit("S10", "Service", "plugins", "插件可用性与受控自管理", "EXT11-12 MORE06", "services.plugins",
-    "查询授权可见的插件 ID/版本/安装启用状态、贡献能力与 availability；安装/启停/升级/卸载请求交给 S3 宿主批准流程，实际事务由 host 生命周期所有。",
+    "plugins1.9新增领域事件subscribe可选ruleId，插件内稳定命名、活动重名拒绝，RSS0.22删除清理已采用；宿主因果序列化保留分支，任务数据库/执行器续接仍待实施。查询授权可见的插件 ID/版本/安装启用状态、贡献能力与 availability；安装/启停/升级/卸载请求交给 S3 宿主批准流程，实际事务由 host 生命周期所有。",
     "list_installed_plugins与list_plugin_contributions已接双scope：前者列安装态，后者列15种当前已注册扩展点的point/pluginId/key。发现不执行提供者、不返回其数据，也不保证本轮工具可见或可用；仍由既有宿主工具执行并鉴权，不能静默安装或增权。",
     "services.plugins1.1新增contributions/observeContributions，15种共享registry（含自有uriHandlers入口）与独立syncTransports合并身份投影；按point/pluginId/search过滤，默认50/最多100条、条目JSON16000字符预算，不截断key，nextOffset按实际条数推进。注册/替换/更新/注销串行合并观察，最多64个，退休清理；分页变化需重读，无稳定游标。只给point/pluginId/key，注册态非健康、UI可见或可调用保证，key也非通用参数/调用句柄。settingsOptions/voices/content/Agent回调和传输会话不被查询触发；不暴露配置、路径、凭据或数据。宿主现有条目发现已接；plugins1.8新增manifest.services版本化契约、listServices/callService，执行独立Worker且只持双方共同授权的声明权限/书域，设置路径/网络目的地取交集。书服务私有文档按书过滤/CAS，未分类KV/凭据/资产须global，启动与广播隔离全局KV镜像。取消/停用/更新/期限淘汰迟到结果并等待清理；Jumper0.10→Text Desk0.27书签分页消费和实际Bun双Worker通过，集中Tauri/SQLite待验。Agent list_plugin_services/call_plugin_service已接同源端口，逐次冻结参数/权限批准、书域/阅读政策约束；实际Bun Worker通过，真实批准UI/模型待集中验收。定向注册/权限/观察与双域Agent测试通过，真实Worker/业务插件/Tauri集中后置。",
     "只读目录不演变成依赖求解器/插件商店后端重写；缺消费者时先补插件，不把每个贡献都开放为跨插件 RPC。",
