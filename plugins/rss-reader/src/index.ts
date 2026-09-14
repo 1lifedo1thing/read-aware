@@ -50,7 +50,12 @@ const plugin: PluginModule = {
 
     // Declared in manifest.schedules: subscribed feeds stay fresh without a
     // manual refresh — hourly while the app is open, catch-up on launch.
-    ctx.services.schedules.bind(REFRESH_SCHEDULE, () => refreshScheduledFeeds(ctx));
+    ctx.services.schedules.bind(REFRESH_SCHEDULE, async (_run, delivery) => {
+      if (delivery?.reaction?.status === "cycle") return;
+      const reaction = ctx.withEvent(delivery);
+      assertPluginCapabilities(reaction);
+      await refreshScheduledFeeds(reaction);
+    });
 
     registerAgentTools(ctx);
   },

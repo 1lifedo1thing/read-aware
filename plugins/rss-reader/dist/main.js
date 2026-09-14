@@ -4885,12 +4885,12 @@ async function refreshScheduleView(ctx) {
   };
   return { ...render(), live: { subscribe(channel) {
     let active = true, revision = 0;
-    const subscription = ctx.services.schedules.observe(query, async (page) => {
-      if (!active)
+    const subscription = ctx.services.schedules.observe(query, async (page, delivery) => {
+      if (!active || delivery?.reaction?.status === "cycle")
         return;
       schedule = page.schedules.find((item) => item.id === REFRESH_SCHEDULE);
       try {
-        await ctx.services.ui.publishView(channel, { revision: ++revision, view: render() });
+        await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: render() });
       } catch (error) {
         console.warn("RSS schedule view publication failed", error);
       }
@@ -5201,7 +5201,13 @@ var plugin = {
       keywords: "rss atom feed subscribe",
       run: async () => ({ view: await rssPageView(ctx) })
     });
-    ctx.services.schedules.bind(REFRESH_SCHEDULE, () => refreshScheduledFeeds(ctx));
+    ctx.services.schedules.bind(REFRESH_SCHEDULE, async (_run, delivery) => {
+      if (delivery?.reaction?.status === "cycle")
+        return;
+      const reaction = ctx.withEvent(delivery);
+      assertPluginCapabilities(reaction);
+      await refreshScheduledFeeds(reaction);
+    });
     registerAgentTools(ctx);
   },
   async migrate(ctx, migration) {

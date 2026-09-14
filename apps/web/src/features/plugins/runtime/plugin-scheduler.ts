@@ -1,3 +1,4 @@
+import { restoreActorSource, type DomainActor } from "../../../platform/domain-actor";
 import { AppError, normalizeDeferredRequest, type PluginScheduleRun } from "@read-aware/core";
 import type { PluginScheduleDeclaration } from "@read-aware/plugin-types";
 import { localKV } from "../../../platform/local-store";
@@ -20,6 +21,7 @@ function read(pluginId: string): Record<string, ScheduleRecord> {
         || ![null, "running", "succeeded", "failed", "cancelled", "interrupted"].includes(record.lastOutcome)
         || ![record.lastStartedAt, record.lastFinishedAt, record.lastSuccessAt].every(value => value === null || (Number.isFinite(value) && value >= 0 && value <= 8.64e15))
         || (record.lastErrorCode !== null && typeof record.lastErrorCode !== "string")) throw new AppError("db/error", "Invalid stored schedule record");
+      if (record.deferredSource !== undefined) restoreActorSource("system", record.deferredSource);
       if (record.deferred != null) {
         const pending = record.deferred;
         try { normalizeDeferredRequest({ requestId: pending.requestId, delayMs: pending.delayMs, when: pending.when }); }
@@ -34,6 +36,7 @@ function read(pluginId: string): Record<string, ScheduleRecord> {
       paused: record.paused, lastStartedAt: record.lastStartedAt, lastFinishedAt: record.lastFinishedAt,
       lastSuccessAt: record.lastSuccessAt, lastOutcome: record.lastOutcome, lastErrorCode: record.lastErrorCode,
       deferred: record.deferred ? structuredClone(record.deferred) : null,
+      ...(record.deferredSource ? { deferredSource: structuredClone(record.deferredSource) } : {}),
     }]));
   }
   // Legacy stamps describe attempts, never successful outcomes.
@@ -48,7 +51,7 @@ function read(pluginId: string): Record<string, ScheduleRecord> {
   } catch (error) { log.warn("Ignoring malformed legacy schedule stamps", error); return {}; }
 }
 export const pluginSchedules = new PluginScheduleController({ read,
-  write: (pluginId, records) => localKV.setItemAsync(stateKey(pluginId), JSON.stringify(records)),
+  write: (pluginId, records, origin) => localKV.setItemAsync(stateKey(pluginId), JSON.stringify(records), origin),
 }, error => log.warn("Plugin schedule failed", error));
 export const inspectPluginSchedules = () => pluginSchedules.inspect();
 
@@ -83,8 +86,8 @@ function updateLoop() {
     }, 1000);
   }
 }
-export function registerPluginSchedule(pluginId: string, declaration: PluginScheduleDeclaration, run: (context: PluginScheduleRun) => void | Promise<void>, version = "1.0.0") {
-  return pluginSchedules.register(pluginId, declaration, run, version);
+export function registerPluginSchedule(pluginId: string, declaration: PluginScheduleDeclaration, run: (context: PluginScheduleRun) => void | Promise<void>, version = "1.0.0", origin: DomainActor = "system") {
+  return pluginSchedules.register(pluginId, declaration, run, version, origin);
 }
 
 // Timers and input listeners follow the final registry after activation settles.

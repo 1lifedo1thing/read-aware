@@ -861,15 +861,15 @@ export function buildPluginContext(
       schedules: {
         defer: (id, input, options) => {
           lifecycle.assertActive("services.schedules.defer");
-          return lifecycle.storageWrite("services.schedules.defer", () => pluginSchedules.defer(manifest.id, id, input, callSignal(options)));
+          return lifecycle.storageWrite("services.schedules.defer", () => pluginSchedules.defer(manifest.id, id, input, callSignal(options), operationActor));
         },
         cancelDeferred: (id, requestId, options) => {
           lifecycle.assertActive("services.schedules.cancelDeferred");
-          return lifecycle.storageWrite("services.schedules.cancelDeferred", () => pluginSchedules.cancelDeferred(manifest.id, id, requestId, callSignal(options)));
+          return lifecycle.storageWrite("services.schedules.cancelDeferred", () => pluginSchedules.cancelDeferred(manifest.id, id, requestId, callSignal(options), operationActor));
         },
         list: async (query = {}) => { lifecycle.assertActive("services.schedules.list"); return pluginSchedules.list({ ...query, pluginId: manifest.id }); },
-        observe: (query, handler) => track(() => ({ dispose: pluginSchedules.observe({ ...query, pluginId: manifest.id }, handler) })),
-        control: (id, action) => { lifecycle.assertActive("services.schedules.control"); return pluginSchedules.control({ pluginId: manifest.id, id, action }, lifecycle.signal); },
+        observe: (query, handler) => track(() => ({ dispose: pluginSchedules.observe({ ...query, pluginId: manifest.id }, handler, operationActor) })),
+        control: (id, action) => { lifecycle.assertActive("services.schedules.control"); return pluginSchedules.control({ pluginId: manifest.id, id, action }, lifecycle.signal, operationActor); },
         bind: (scheduleId, run) => {
           const declaration = manifest.schedules?.find(
             (entry) => entry.id === scheduleId,
@@ -880,7 +880,7 @@ export function buildPluginContext(
             );
           }
           return track(() => {
-            const registration = registerPluginSchedule(manifest.id, declaration, run, manifest.version);
+            const registration = registerPluginSchedule(manifest.id, declaration, run, manifest.version, operationActor);
             return { dispose: () => { registration.dispose(); lifecycle.trackCleanup(pluginSchedules.drainWrites(manifest.id)); } };
           });
         },

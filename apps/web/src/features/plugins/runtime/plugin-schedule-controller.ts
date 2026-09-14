@@ -1,13 +1,14 @@
+import { actorFromEvent, causalActor, copyEventCause, ObservationCauses, restoreActorSource, saveActorSource, stampEventCause, type DomainActor, type DurableActorSource } from "../../../platform/domain-actor";
 import { AppError, errorCode, normalizeDeferredRequest, type PluginDeferredRequest, type PluginDeferredReceipt,
   type PluginScheduleRun, type PluginDeferredState, type PluginScheduleControl, type PluginSchedulePage, type PluginScheduleQuery,
   type PluginScheduleReceipt, type PluginScheduleState } from "@read-aware/core";
 import { MIN_SCHEDULE_MINUTES, type PluginScheduleDeclaration } from "@read-aware/plugin-types";
 import { publishContributionChange, undoContributionReplacement } from "../state/contribution-activation";
 
-export type ScheduleRecord = Pick<PluginScheduleState, "paused" | "lastStartedAt" | "lastFinishedAt" | "lastSuccessAt" | "lastOutcome" | "lastErrorCode" | "deferred">;
+export type ScheduleRecord = Pick<PluginScheduleState, "paused" | "lastStartedAt" | "lastFinishedAt" | "lastSuccessAt" | "lastOutcome" | "lastErrorCode" | "deferred"> & { deferredSource?: DurableActorSource };
 type Task = { pluginId: string; version: string; declaration: PluginScheduleDeclaration; token: { disposed: boolean };
   run(context: PluginScheduleRun): void | Promise<void>; record: ScheduleRecord; active: boolean; writes?: number; flight?: Promise<PluginScheduleReceipt> };
-type Storage = { read(pluginId: string): Record<string, ScheduleRecord>; write(pluginId: string, records: Record<string, ScheduleRecord>): Promise<void> };
+type Storage = { read(pluginId: string): Record<string, ScheduleRecord>; write(pluginId: string, records: Record<string, ScheduleRecord>, origin?: DomainActor): Promise<void> };
 const empty = (): ScheduleRecord => ({ paused: false, lastStartedAt: null, lastFinishedAt: null, lastSuccessAt: null, lastOutcome: null, lastErrorCode: null });
 const validId = (id: unknown): id is string => typeof id === "string" && id.length > 0 && id.length <= 256;
 
@@ -20,7 +21,8 @@ export function isScheduleDue(lastRunIso: string | undefined, everyMinutes: numb
 export class PluginScheduleController {
   private tasks = new Map<string, Task>();
   private queues = new Map<string, Promise<unknown>>();
-  private listeners = new Set<() => void>();
+  private listeners = new Set<(source: object) => void>();
+  private changes = new ObservationCauses();
   private sweepCursor?: string;
   private writeReservation?: Promise<void>;
   constructor(private storage: Storage, private report: (error: unknown) => void, private now = Date.now) {}
@@ -53,13 +55,16 @@ export class PluginScheduleController {
   private assertWritable(): void {
     if (this.writeReservation) throw new AppError("backup/busy", "Schedule persistence is paused for backup");
   }
-  subscribe(handler: () => void) { this.listeners.add(handler); return () => { this.listeners.delete(handler); }; }
-  private changed() {
+  subscribe(handler: (source: object) => void) { this.listeners.add(handler); return () => { this.listeners.delete(handler); }; }
+  private changed(origin: DomainActor = "system") {
+    this.changes.add(stampEventCause({}, origin));
     publishContributionChange(this, () => {
-      for (const handler of this.listeners) { try { handler(); } catch (error) { this.report(error); } }
+      const source = this.changes.take({});
+      for (const handler of this.listeners) { try { handler(source); } catch (error) { this.report(error); } }
     });
   }
-  register(pluginId: string, input: PluginScheduleDeclaration, run: Task["run"], version = "1.0.0") {
+  register(pluginId: string, input: PluginScheduleDeclaration, run: Task["run"], version = "1.0.0", origin: DomainActor = "system") {
+    origin = causalActor(origin);
     if (typeof pluginId !== "string" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(pluginId) || !input || typeof input.id !== "string" || !/^[a-z][a-z0-9-]{0,63}$/.test(input.id)
       || typeof version !== "string" || !version || version.length > 128 || typeof input.label !== "string" || !input.label.trim() || input.label.length > 256
       || (input.mode === "deferred" ? input.everyMinutes !== undefined : input.mode !== undefined || !Number.isFinite(input.everyMinutes) || input.everyMinutes <= 0)
@@ -78,20 +83,21 @@ export class PluginScheduleController {
       // binding survives; a later binding must not overlap the old callback.
       if (task.active || task.flight || task.writes) this.tasks.set(key, task);
       else this.tasks.delete(key);
-      this.changed();
+      this.changed(origin);
     });
     Object.assign(task, { declaration: input.mode === "deferred" ? { ...input } : { ...input, everyMinutes: Math.max(input.everyMinutes, MIN_SCHEDULE_MINUTES) }, version, token, run, active: true });
-    this.tasks.set(key, task); this.changed();
-    return { dispose: () => {
+    this.tasks.set(key, task); this.changed(origin);
+    return { dispose: (retirement: DomainActor = "system") => {
       if (token.disposed) return;
       token.disposed = true;
       if (task.token !== token) return;
       task.active = false;
       if (!task.flight && !task.writes) this.tasks.delete(key);
-      this.changed();
+      this.changed(retirement);
     } };
   }
-  async defer(pluginId: string, id: string, raw: PluginDeferredRequest, signal?: AbortSignal): Promise<PluginDeferredReceipt> {
+  async defer(pluginId: string, id: string, raw: PluginDeferredRequest, signal?: AbortSignal, origin: DomainActor = "system"): Promise<PluginDeferredReceipt> {
+    origin = causalActor(origin);
     const input = normalizeDeferredRequest(raw), task = this.deferredTask(pluginId, id), token = task.token;
     this.assertWritable();
     let result!: PluginDeferredReceipt;
@@ -104,11 +110,12 @@ export class PluginScheduleController {
       if (previous?.state === "queued") throw new AppError("plugin/busy", "A deferred request is already queued");
       const request: PluginDeferredState = { ...input, ownerVersion: task.version, dueAt: this.now() + input.delayMs, state: "queued", errorCode: null };
       result = { status: "queued", request: { ...request } };
-      return { deferred: request };
-    }, () => { signal?.throwIfAborted(); this.assertCurrent(task, token); });
+      return { deferred: request, deferredSource: saveActorSource(origin) };
+    }, () => { signal?.throwIfAborted(); this.assertCurrent(task, token); }, origin);
     return result;
   }
-  async cancelDeferred(pluginId: string, id: string, requestId: string, signal?: AbortSignal): Promise<PluginDeferredReceipt> {
+  async cancelDeferred(pluginId: string, id: string, requestId: string, signal?: AbortSignal, origin: DomainActor = "system"): Promise<PluginDeferredReceipt> {
+    origin = causalActor(origin);
     if (typeof requestId !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(requestId)) throw new AppError("ui/invalid-target", "Invalid deferred request ID");
     const task = this.deferredTask(pluginId, id), token = task.token;
     this.assertWritable();
@@ -119,7 +126,7 @@ export class PluginScheduleController {
       }
       const request: PluginDeferredState = { ...record.deferred, state: "cancelled", errorCode: "plugin/cancelled" };
       result = { status: "cancelled", request: { ...request } }; return { deferred: request };
-    }, () => { signal?.throwIfAborted(); this.assertCurrent(task, token); });
+    }, () => { signal?.throwIfAborted(); this.assertCurrent(task, token); }, origin);
     return result;
   }
   private deferredTask(pluginId: string, id: string): Task {
@@ -138,31 +145,46 @@ export class PluginScheduleController {
     const page = tasks.slice(offset, offset + limit);
     return { schedules: page.map(task => this.snapshot(task)), total: tasks.length, nextOffset: offset + page.length < tasks.length ? offset + page.length : null };
   }
-  observe(query: PluginScheduleQuery, handler: (page: PluginSchedulePage) => unknown) {
+  observe(query: PluginScheduleQuery, handler: (page: PluginSchedulePage) => unknown, origin: DomainActor = "system") {
     const accepted = { ...query }; this.list(accepted);
     if (this.listeners.size >= 64) throw new AppError("ui/observer-limit", "Too many schedule observers");
+    const causes = new ObservationCauses(causalActor(origin));
+    let retry: object | undefined, delivered: string | undefined;
     let disposed = false, running = false, dirty = false;
     const publish = async () => {
       dirty = true; if (running || disposed) return;
       running = true;
-      try { do { dirty = false; try { await handler(this.list(accepted)); } catch (error) { this.report(error); } } while (dirty && !disposed); }
-      finally { running = false; }
+      try {
+        do {
+          dirty = false;
+          try {
+            const page = causes.take(this.list(accepted), retry), identity = JSON.stringify(page);
+            if (identity !== delivered) {
+              retry = copyEventCause(page, {});
+              await handler(page);
+              delivered = identity;
+            }
+            retry = undefined;
+          } catch (error) { this.report(error); }
+        } while (dirty && !disposed);
+      } finally { running = false; }
     };
-    const off = this.subscribe(() => { void publish(); }); void publish();
+    const off = this.subscribe(source => { causes.add(source); void publish(); }); void publish();
     return () => { disposed = true; off(); };
   }
-  async control(input: PluginScheduleControl, signal?: AbortSignal): Promise<PluginScheduleReceipt> {
+  async control(input: PluginScheduleControl, signal?: AbortSignal, origin: DomainActor = "system"): Promise<PluginScheduleReceipt> {
+    origin = causalActor(origin);
     signal?.throwIfAborted();
     if (!input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).some(key => !["pluginId", "id", "action"].includes(key))
       || !validId(input.pluginId) || !validId(input.id) || !["pause", "resume", "run"].includes(input.action)) throw new AppError("ui/invalid-target", "Invalid schedule control");
     const task = this.tasks.get(`${input.pluginId}:${input.id}`);
     if (!task?.active) throw new AppError("ui/unavailable", "Schedule is not bound");
     this.assertWritable();
-    if (input.action === "run") return this.execute(task, "manual", signal);
+    if (input.action === "run") return this.execute(task, "manual", signal, origin);
     const token = task.token;
     await this.save(task, { paused: input.action === "pause" }, () => {
       signal?.throwIfAborted(); this.assertCurrent(task, token);
-    });
+    }, origin);
     signal?.throwIfAborted(); this.assertCurrent(task, token);
     return { status: "completed", schedule: this.snapshot(task) };
   }
@@ -188,7 +210,8 @@ export class PluginScheduleController {
       }
     }
   }
-  private async execute(task: Task, trigger: PluginScheduleRun["trigger"], signal?: AbortSignal): Promise<PluginScheduleReceipt> {
+  private async execute(task: Task, trigger: PluginScheduleRun["trigger"], signal?: AbortSignal, origin?: DomainActor): Promise<PluginScheduleReceipt> {
+    origin = causalActor(origin ?? (trigger === "deferred" && task.record.deferredSource ? restoreActorSource("system", task.record.deferredSource) : "system"));
     this.assertWritable();
     if (task.flight) return { status: "already-running", schedule: this.snapshot(task) };
     if (!this.capacity(task)) throw new AppError("plugin/busy", "Schedule execution capacity is occupied");
@@ -196,7 +219,7 @@ export class PluginScheduleController {
     const token = task.token, run = task.run;
     const observed = this.deferredSnapshot(task);
     const deferred = task.declaration.mode === "deferred" && observed?.state === "queued" ? observed : null;
-    const context: PluginScheduleRun = { trigger, requestId: deferred?.requestId ?? null, startedAt: this.now() };
+    const context = stampEventCause<PluginScheduleRun>({ trigger, requestId: deferred?.requestId ?? null, startedAt: this.now() }, origin);
     const deferredPatch = (record: ScheduleRecord, state: PluginDeferredState["state"], code: string | null) =>
       deferred && record.deferred?.requestId === deferred.requestId ? { deferred: { ...record.deferred, state, errorCode: code } } : {};
     const work = Promise.resolve().then(async () => {
@@ -205,10 +228,10 @@ export class PluginScheduleController {
         return { lastStartedAt: context.startedAt, lastOutcome: "running", lastErrorCode: null, ...deferredPatch(record, "running", null) };
       }, () => {
         signal?.throwIfAborted(); this.assertCurrent(task, token);
-      });
+      }, origin);
       try {
         signal?.throwIfAborted(); this.assertCurrent(task, token);
-        await run(context);
+        try { await run(context); } finally { origin = actorFromEvent(context); }
         signal?.throwIfAborted(); this.assertCurrent(task, token);
       } catch (error) {
         const cancelled = signal?.aborted || !task.active || task.token !== token || errorCode(error) === "plugin/cancelled";
@@ -216,24 +239,25 @@ export class PluginScheduleController {
         this.report(error);
         if (task.active && task.token === token) {
           await this.save(task, record => ({ lastFinishedAt: this.now(), lastOutcome: cancelled ? "cancelled" : "failed", lastErrorCode: code,
-            ...deferredPatch(record, cancelled ? "cancelled" : "failed", code) }), () => this.assertCurrent(task, token));
+            ...deferredPatch(record, cancelled ? "cancelled" : "failed", code) }), () => this.assertCurrent(task, token), origin);
         }
         throw new AppError(code, "Plugin schedule callback did not complete");
       }
       await this.save(task, record => ({ lastFinishedAt: this.now(), lastSuccessAt: this.now(), lastOutcome: "succeeded", lastErrorCode: null,
-        ...deferredPatch(record, "succeeded", null) }), () => this.assertCurrent(task, token));
+        ...deferredPatch(record, "succeeded", null) }), () => this.assertCurrent(task, token), origin);
       signal?.throwIfAborted(); this.assertCurrent(task, token);
       return { status: "completed" as const, schedule: this.snapshot(task) };
     });
-    task.flight = work; this.changed();
+    task.flight = work; this.changed(origin);
     try { const receipt = await work; return { ...receipt, schedule: { ...receipt.schedule, running: false } }; }
     finally {
       task.flight = undefined;
       if (!task.active && !task.writes) this.tasks.delete(`${task.pluginId}:${task.declaration.id}`);
-      this.changed();
+      this.changed(origin);
     }
   }
-  private save(task: Task, patch: Partial<ScheduleRecord> | ((record: ScheduleRecord) => Partial<ScheduleRecord> | undefined), guard?: () => void): Promise<void> {
+  private save(task: Task, patch: Partial<ScheduleRecord> | ((record: ScheduleRecord) => Partial<ScheduleRecord> | undefined), guard?: () => void, origin: DomainActor = "system"): Promise<void> {
+    origin = causalActor(origin);
     task.writes = (task.writes ?? 0) + 1;
     const previous = this.queues.get(task.pluginId) ?? Promise.resolve();
     const reservation = this.writeReservation;
@@ -245,8 +269,8 @@ export class PluginScheduleController {
       if (!update) return;
       const records = this.storage.read(task.pluginId), next = { ...task.record, ...update };
       records[task.declaration.id] = next;
-      await this.storage.write(task.pluginId, records);
-      task.record = next; this.changed();
+      await this.storage.write(task.pluginId, records, origin);
+      task.record = next; this.changed(origin);
     });
     this.queues.set(task.pluginId, work);
     // Cleanup observes rejection only to avoid an unhandled derivative promise.
@@ -261,8 +285,9 @@ export class PluginScheduleController {
     if (!task.active || task.token !== token || this.tasks.get(`${task.pluginId}:${task.declaration.id}`) !== task) throw new AppError("plugin/cancelled", "Schedule owner retired");
   }
   private snapshot(task: Task): PluginScheduleState {
+    const { deferredSource: _source, ...record } = task.record;
     return { pluginId: task.pluginId, id: task.declaration.id, label: task.declaration.label, everyMinutes: task.declaration.everyMinutes ?? null,
-      ...task.record, deferred: this.deferredSnapshot(task), running: !!task.flight,
+      ...record, deferred: this.deferredSnapshot(task), running: !!task.flight,
       lastOutcome: !task.flight && task.record.lastOutcome === "running" ? "interrupted" : task.record.lastOutcome };
   }
   private deferredSnapshot(task: Task): PluginDeferredState | null {

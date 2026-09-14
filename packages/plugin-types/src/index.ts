@@ -2358,7 +2358,7 @@ export type PluginHostServices = {
     };
   };
   schedules: {
-    bind(scheduleId: string, run: (context: import("@read-aware/core").PluginScheduleRun) => void | Promise<void>): PluginDisposable;
+    bind(scheduleId: string, run: (context: import("@read-aware/core").PluginScheduleRun, delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable;
     /** Schedules 2: enqueue one declared deferred task. Persists before acknowledgement.
      * 1 second..7 days; idle means 5 seconds without host input. Never runs while closed.
      * The most recent request ID is retained for retry; changed input conflicts, another queued ID is busy.
@@ -2368,7 +2368,7 @@ export type PluginHostServices = {
     cancelDeferred(id: string, requestId: string, options?: PluginCallOptions): Promise<import("@read-aware/core").PluginDeferredReceipt>;
     /** Bound schedules owned by this plugin only, with the latest persisted attempt/outcome. */
     list(query?: Omit<import("@read-aware/core").PluginScheduleQuery, "pluginId">): Promise<import("@read-aware/core").PluginSchedulePage>;
-    observe(query: Omit<import("@read-aware/core").PluginScheduleQuery, "pluginId">, handler: (page: import("@read-aware/core").PluginSchedulePage) => unknown): PluginDisposable;
+    observe(query: Omit<import("@read-aware/core").PluginScheduleQuery, "pluginId">, handler: PluginObservationHandler<import("@read-aware/core").PluginSchedulePage>, options?: { ruleId?: string }): PluginDisposable;
     /** Pause/resume persist; run bypasses pause/cadence once. Neither pause nor cancellation undoes dispatched callback effects. */
     control(id: string, action: "pause" | "resume" | "run"): Promise<import("@read-aware/core").PluginScheduleReceipt>;
   };

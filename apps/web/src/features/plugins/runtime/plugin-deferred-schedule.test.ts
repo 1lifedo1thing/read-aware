@@ -1,3 +1,4 @@
+import { actorCause, causalActor, eventCause, reactionActor } from "../../../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { AppError, type PluginDeferredRequest, type PluginScheduleRun } from "@read-aware/core";
 import { PluginScheduleController, type ScheduleRecord } from "./plugin-schedule-controller";
@@ -35,9 +36,12 @@ test("deferred work requires enqueue, preserves its exact receipt, waits for due
 });
 
 test("queued work survives rebind and restart; changed plugin versions do not inherit old deferred intent", async () => {
-  const f = fixture(), binding = f.bind(); await f.controller.defer("test", "work", input()); binding.dispose(); f.advance();
+  const f = fixture(), binding = f.bind(), origin = reactionActor("plugin:test", "schedule:work", actorCause(causalActor("user"))!);
+  await f.controller.defer("test", "work", input(), undefined, origin); binding.dispose(); f.advance();
   const restored = f.make(); restored.register("test", declaration, context => { f.runs.push(context); });
   restored.sweep(); await settle(); expect(f.runs).toHaveLength(1);
+  expect(eventCause(f.runs[0]!)).toEqual(actorCause(origin));
+  expect(JSON.stringify(restored.list())).not.toContain("deferredSource");
   await restored.defer("test", "work", input("two"));
   const upgraded = f.make(); upgraded.register("test", declaration, () => { throw Error("Old task dispatched to new code"); }, "2.0.0");
   f.advance(); upgraded.sweep(true); await settle();

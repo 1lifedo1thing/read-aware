@@ -55,7 +55,7 @@ export function buildRuntimeDeps(): RuntimeDeps {
     changes: agentChanges,
     readingAiActions: { enabled: readingAiActions.enabled,
       run: (action, bookId, signal) => readingAiActions.run(action, bookId, signal, "agent") },
-    schedules: { list: async query => pluginSchedules.list(query), control: (input, signal) => pluginSchedules.control(input, signal) },
+    schedules: { list: async query => pluginSchedules.list(query), control: (input, signal) => pluginSchedules.control(input, signal, "agent") },
     sync: hostSync,
     maintenance: hostMaintenance,
     diagnostics: hostDiagnostics,

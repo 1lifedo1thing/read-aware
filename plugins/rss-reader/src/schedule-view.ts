@@ -42,10 +42,10 @@ export async function refreshScheduleView(ctx: RssPluginContext): Promise<Plugin
   };
   return { ...render(), live: { subscribe(channel) {
     let active = true, revision = 0;
-    const subscription = ctx.services.schedules.observe(query, async page => {
-      if (!active) return;
+    const subscription = ctx.services.schedules.observe(query, async (page, delivery) => {
+      if (!active || delivery?.reaction?.status === "cycle") return;
       schedule = page.schedules.find(item => item.id === REFRESH_SCHEDULE);
-      try { await ctx.services.ui.publishView(channel, { revision: ++revision, view: render() }); }
+      try { await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: render() }); }
       catch (error) { console.warn("RSS schedule view publication failed", error); }
     });
     return { dispose() { if (!active) return; active = false; subscription.dispose(); } };

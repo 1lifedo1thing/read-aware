@@ -13,7 +13,7 @@ function fixture() {
   const page = (): Page => ({ schedules: state.missing ? [] : [structuredClone(state.schedule)], total: state.missing ? 0 : 1, nextOffset: null });
   const controls: unknown[] = [], published: PluginView[] = [];
   let handler!: (page: Page) => Promise<void>, disposed = 0;
-  const ctx = { locale: "en", services: { schedules: {
+  const ctx = { withEvent: () => ctx, locale: "en", services: { schedules: {
     list: async (query: unknown) => { expect(query).toEqual({ limit: 64 }); if (state.fail) throw Object.assign(Error("read failed"), { code: "db/locked" }); return page(); },
     observe: (_query: unknown, next: typeof handler) => { handler = next; return { dispose() { disposed++; } }; },
     control: async (id: string, action: string) => {
@@ -80,7 +80,7 @@ test("compiled subscriptions command exposes schedule controls even with no feed
   if (root?.kind !== "list") throw Error("Expected subscriptions");
   const next = await root.actions!.find(action => action.id === "schedule")!.run();
   expect(next?.view?.kind).toBe("detail"); expect(f.controls).toHaveLength(0);
-  expect(manifest.requires.services.schedules).toBe("^2.0.0"); expect(manifest.requires.services.ui).toBe("^1.2.0");
+  expect(manifest.requires.services.schedules).toBe("^2.1.0"); expect(manifest.requires.services.ui).toBe("^1.2.0");
 });
 
 test("schedule labels cover all eight app locales without raw error messages", async () => {

@@ -1,5 +1,5 @@
 import type { PluginContext, PluginDisposable, PluginReactionEvent } from "@read-aware/plugin-types";
-import type { DomainActor } from "../../../platform/domain-actor";
+import { stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { PluginEventReactions } from "./plugin-event-reactions";
 
 /** In-realm equivalent of the Worker envelope. Each call revalidates the lease;
@@ -41,6 +41,17 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
       } catch (error) { release(); throw error; }
     };
   }
+  const bindSchedule = context.services.schedules.bind;
+  context.services.schedules.bind = (id, handler) => {
+    const subscription = {}, release = reactions.bindRule(subscription, `schedule:${id}`);
+    try {
+      const registration = bindSchedule(id, (run) => reactions.deliver(subscription, run, reaction => {
+        if (reaction.status === "ready") stampEventCause(run, reactions.actor(reaction));
+        return handler(run, { reaction });
+      }));
+      return { dispose: () => { try { registration.dispose(); } finally { release(); } } };
+    } catch (error) { release(); throw error; }
+  };
   const observations: [object | undefined, string, number][] = [
     [context.domains.settings?.queries, "observe", 1],
     [context.domains.annotations?.events, "observe", 1],
@@ -56,6 +67,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
     [context.domains.conversations?.events, "observeInvalidation", 0],
     [context.domains.conversations?.events, "observeRuntime", 0],
     [context.services.storage, "observeDocuments", 1],
+    [context.services.schedules, "observe", 1],
     [context.services.session, "observeEnvironment", 0],
     [context.services.ui.window, "observe", 0],
     [context.services.ui.workspace, "observe", 1],
@@ -73,7 +85,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
       const handler = args[index], subscription = {};
       args[index] = (snapshot: object | null, source?: object) => reactions.deliver(subscription, source ?? snapshot!,
         reaction => handler(snapshot, { reaction }));
-      if (namespace !== context.services.plugins && namespace !== context.services.ui.window && namespace !== context.services.ui.workspace && namespace !== context.services.ui.commands && key !== "observeImportTask" && key !== "observeContentState" && key !== "observeEnrichment" && key !== "observeTextTask" && key !== "observeRuntime" && key !== "observeSession" && key !== "observeTime" && key !== "observeEnvironment") return observe(...args);
+      if (namespace !== context.services.schedules && namespace !== context.services.plugins && namespace !== context.services.ui.window && namespace !== context.services.ui.workspace && namespace !== context.services.ui.commands && key !== "observeImportTask" && key !== "observeContentState" && key !== "observeEnrichment" && key !== "observeTextTask" && key !== "observeRuntime" && key !== "observeSession" && key !== "observeTime" && key !== "observeEnvironment") return observe(...args);
       const release = reactions.bindRule(subscription, args[index + 1]?.ruleId);
       try {
         const registration = observe(...args) as PluginDisposable;
