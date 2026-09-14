@@ -5,7 +5,7 @@ import { useAtomValue } from "jotai";
 import type { ReadingModeSnapshot } from "@read-aware/core";
 import { CaretLeft, ChatCircle, ListBullets } from "@phosphor-icons/react";
 import { cn } from "@read-aware/ui/cn";
-import { usePhoneViewport } from "@read-aware/ui/media";
+import { useReaderResponsiveLayout } from "../hooks/useReaderResponsiveLayout";
 import { Body, Dialog, IconButton, ScrollArea, Tooltip, useToast } from "@read-aware/ui";
 import { describeError, formatPercent, useLocale, useTranslation } from "../../../i18n";
 import { createLogger } from "../../../platform/logger";
@@ -119,8 +119,8 @@ export function ReaderShellOverlay({
 
   // TOC + chat panels persist per book (restored when the book reopens); the
   // appearance popover is transient and resets each session.
-  const isPhone = usePhoneViewport();
-  const { toc: tocOpen, chat: notesOpen, appearance: appearanceOpen, annotations: annotationsOpen, chatFocusRequestId, chatFocusOrigin, setPanel } = useReaderPanels(bookId, visible, isPhone, visibilityOrigin);
+  const { exclusive: isPhone, origin: layoutOrigin } = useReaderResponsiveLayout();
+  const { toc: tocOpen, chat: notesOpen, appearance: appearanceOpen, annotations: annotationsOpen, chatFocusRequestId, chatFocusOrigin, setPanel } = useReaderPanels(bookId, visible, isPhone, visibilityOrigin, layoutOrigin);
   const setTocOpen = (open: boolean) => setPanel("toc", open);
   const setNotesOpen = (open: boolean) => setPanel("chat", open);
   const setAppearanceOpen = (open: boolean) => setPanel("appearance", open);

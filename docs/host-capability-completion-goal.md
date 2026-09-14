@@ -27,6 +27,14 @@
 
 ## 当前交接
 
+- C04响应式面板：ReaderShellOverlay用宿主来源绑定的媒体查询选择窄屏/停靠布局，
+  与当前viewport尺寸匹配的原生窗口来源和布局值一起交给useReaderPanels发布。
+  窗口后续变化、断点反转、卸载使迟到读取失效；仅媒体查询变化而viewport未变时不复用旧窗口来源。
+  React挂载定向检查验证面板通知保留原始因果链、同规则反应拒绝及断点反转保留新状态，
+  日志 `/tmp/readaware-c04-responsive-check.log`；真实Tauri窗口链尚待集中验收。
+  原生读取失败/不匹配仍降为独立系统来源以保持布局可用，不算完整防环；Foliate内部ResizeObserver、
+  动画后续帧/同viewport变化、凭据与其他自动来源、持久任务因果续接及observeSession reaction继续保留。
+
 - C05同步批次：session2.4新增sync.now无参数条件查询，插件先检查service:sync，未授权只返回权限条件。
   HostSyncService条件与执行共用桌面/连接管理/账号/启用/认证检查，真实profile、凭据和已注册传输
   复用同步源准入；查询不打开引擎/传输、不探测网络、不返回凭据/账号/地址。远端健康保持unknown。

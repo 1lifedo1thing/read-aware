@@ -43,12 +43,12 @@ function usePanelIntent(bookId: string, channel: "panel" | "ask", intent: Reader
 }
 
 /** Native controls and external actors use the same bound presentation adapter. */
-export function useReaderPanels(bookId: string, visible: boolean, exclusive: boolean, controlsOrigin: DomainActor = "system") {
+export function useReaderPanels(bookId: string, visible: boolean, exclusive: boolean, controlsOrigin: DomainActor = "system", layoutOrigin?: DomainActor) {
   const sizes = useAtomValue(readerPanelSizesAtom);
   const layoutState = useSyncExternalStore(readerPanelLayoutStore.subscribe, readerPanelLayoutStore.getRenderSnapshot);
   const layout = useMemo(() => getReaderPanelLayout(bookId, layoutState.raw), [bookId, layoutState]);
   const [transient, setTransient] = useState(() => ({ bookId, annotations: false, appearance: false, origin: causalActor("system") }));
-  const environmentOrigin = useMemo(() => causalActor("system"), [exclusive]);
+  const environmentOrigin = useMemo(() => causalActor(layoutOrigin ?? "system"), [exclusive, layoutOrigin]);
   const [token, setToken] = useState(0);
   const [chatFocus, setChatFocus] = useState(() => ({ id: 0, origin: causalActor("system") }));
   const { toast } = useToast();
