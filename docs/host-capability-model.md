@@ -305,7 +305,7 @@
 **插件可用性与受控自管理**
 
 - 当前 catalog 身份：`services.plugins`。
-- [设计] 操作：plugins1.9新增领域事件subscribe可选ruleId，插件内稳定命名、活动重名拒绝，RSS0.22删除清理已采用；宿主因果序列化保留分支，任务数据库/执行器续接仍待实施。查询授权可见的插件 ID/版本/安装启用状态、贡献能力与 availability；安装/启停/升级/卸载请求交给 S3 宿主批准流程，实际事务由 host 生命周期所有。
+- [设计] 操作：plugins1.9新增领域事件subscribe可选ruleId，插件内稳定命名、活动重名拒绝，RSS0.22删除清理已采用；宿主因果序列化保留分支，jobs1.1任务数据库/执行器已接按任务保存恢复来源，真实Worker/Tauri待验。查询授权可见的插件 ID/版本/安装启用状态、贡献能力与 availability；安装/启停/升级/卸载请求交给 S3 宿主批准流程，实际事务由 host 生命周期所有。
 - [设计] Agent：list_installed_plugins与list_plugin_contributions已接双scope：前者列安装态，后者列15种当前已注册扩展点的point/pluginId/key。发现不执行提供者、不返回其数据，也不保证本轮工具可见或可用；仍由既有宿主工具执行并鉴权，不能静默安装或增权。
 - [设计] 插件：services.plugins1.1新增contributions/observeContributions，15种共享registry（含自有uriHandlers入口）与独立syncTransports合并身份投影；按point/pluginId/search过滤，默认50/最多100条、条目JSON16000字符预算，不截断key，nextOffset按实际条数推进。注册/替换/更新/注销串行合并观察，最多64个，退休清理；分页变化需重读，无稳定游标。只给point/pluginId/key，注册态非健康、UI可见或可调用保证，key也非通用参数/调用句柄。settingsOptions/voices/content/Agent回调和传输会话不被查询触发；不暴露配置、路径、凭据或数据。宿主现有条目发现已接；plugins1.8新增manifest.services版本化契约、listServices/callService，执行独立Worker且只持双方共同授权的声明权限/书域，设置路径/网络目的地取交集。书服务私有文档按书过滤/CAS，未分类KV/凭据/资产须global，启动与广播隔离全局KV镜像。取消/停用/更新/期限淘汰迟到结果并等待清理；Jumper0.10→Text Desk0.27书签分页消费和实际Bun双Worker通过，集中Tauri/SQLite待验。Agent list_plugin_services/call_plugin_service已接同源端口，逐次冻结参数/权限批准、书域/阅读政策约束；实际Bun Worker通过，真实批准UI/模型待集中验收。定向注册/权限/观察与双域Agent测试通过，真实Worker/业务插件/Tauri集中后置。
 - [设计] 限制/不建设：只读目录不演变成依赖求解器/插件商店后端重写；缺消费者时先补插件，不把每个贡献都开放为跨插件 RPC。
@@ -353,10 +353,10 @@
 **持久多步骤任务**
 
 - 当前 catalog 身份：`services.jobs`。
-- [设计] 操作：jobs1.0接不可变语义计划、SQLite修订检查点和控制意图；原子提交冻结派发身份，正文/图谱复用现有执行器及物理排空。
+- [设计] 操作：jobs1.1接不可变语义计划及创建时因果来源，检查点不得更换来源；恢复执行器按任务重建来源。SQLite修订检查点和控制意图；原子提交冻结派发身份，正文/图谱复用现有执行器及物理排空。
 - [设计] Agent：Agent启动/恢复逐次批准冻结语义计划，查询/列表/暂停/取消接同一书域owner；启动发现queued/running任务，退出排空；不开放任意代码或原生检查点。
-- [设计] 插件：插件根上下文逐步骤复核权限/书域/私有文档，激活后恢复、退休排空，服务Worker及过期反应上下文不能启动后台任务。Text Desk0.28可后台准备本页书籍并查看/暂停/恢复/取消。
-- [设计] 限制/不建设：未知重建结果不盲重放；图谱重建已接持久章节计划、在途生成结果及不可变事件回执核对；完整事件因果续接和真实Tauri重启验收待补。
+- [设计] 插件：插件逐步骤复核权限/书域/私有文档，激活后恢复、退休排空；具备全链稳定ruleId的事件上下文可启动持久任务，未命名反应、服务Worker及过期令牌拒绝。Text Desk0.28可后台准备本页书籍并查看/暂停/恢复/取消。
+- [设计] 限制/不建设：未知重建结果不盲重放；图谱重建已接持久章节计划、在途生成结果及不可变事件回执核对；新任务来源已持久并按任务恢复，旧无来源根任务保留旧行为；真实具名反应/Worker/Tauri重启验收待补。
 - [设计] 通过条件：持久化/取消关键检查与受影响类型；公共Worker与Tauri组合仍待验证。
 - [代码] 现状证据：[MORE01](./host-capability-matrix.md#MORE01) · [CON03](./host-capability-matrix.md#CON03) · [CON08](./host-capability-matrix.md#CON08)。
 

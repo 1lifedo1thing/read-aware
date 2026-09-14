@@ -30,7 +30,26 @@ pub async fn durable_job_get(owner: String, id: String, app: tauri::AppHandle) -
 }
 
 pub(crate) fn durable_job_create_inner(conn: &mut Connection, owner: &str, id: &str, plan: Value) -> Result<DurableJobRecord, CommandError> {
+    durable_job_create_with_source_inner(conn, owner, id, plan, None)
+}
+fn validate_source(source: &Value) -> Result<(), CommandError> {
+    let text = |value: &Value, max: usize| value.as_str().is_some_and(|s| !s.is_empty() && s.len() <= max && !s.chars().any(char::is_control));
+    let object = source.as_object().ok_or_else(|| invalid("Invalid job source"))?;
+    let paths = source["paths"].as_array().ok_or_else(|| invalid("Invalid job source paths"))?;
+    if object.keys().any(|key| !["version","root","paths"].contains(&key.as_str())) || source["version"] != 1
+        || !text(&source["root"],512) || paths.is_empty() || paths.len()>32 || source.to_string().len()>1024*1024 { return Err(invalid("Invalid job source")); }
+    let mut roots = std::collections::HashSet::new();
+    for path in paths {
+        let object = path.as_object().ok_or_else(|| invalid("Invalid job source branch"))?;
+        let steps = path["steps"].as_array().ok_or_else(|| invalid("Invalid job source steps"))?;
+        if object.keys().any(|key| !["root","steps"].contains(&key.as_str())) || !text(&path["root"],512)
+            || !roots.insert(path["root"].as_str().unwrap()) || steps.len()>32 || steps.iter().any(|step| !text(step,2048)) { return Err(invalid("Invalid job source branch")); }
+    }
+    Ok(())
+}
+pub(crate) fn durable_job_create_with_source_inner(conn: &mut Connection, owner: &str, id: &str, plan: Value, source: Option<Value>) -> Result<DurableJobRecord, CommandError> {
     identity(owner, id)?;
+    if let Some(value) = &source { validate_source(value)?; }
     let steps = plan.get("steps").and_then(Value::as_array).ok_or_else(|| invalid("Missing job steps"))?;
     if steps.is_empty() || steps.len() > 32 || plan.get("title").and_then(Value::as_str).map_or(true, |title| title.is_empty() || title.len() > 640) {
         return Err(invalid("Invalid job plan"));
@@ -39,22 +58,25 @@ pub(crate) fn durable_job_create_inner(conn: &mut Connection, owner: &str, id: &
     if json.len() > 1024 * 1024 { return Err(invalid("Job plan exceeds 1 MiB")); }
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     if let Some(previous) = durable_job_get_inner(&tx, owner, id)? {
-        if previous.plan != plan { return Err(invalid("Job identity was used for another plan")); }
+        if previous.plan != plan || previous.state.get("source") != source.as_ref() { return Err(invalid("Job identity was used for another plan or source")); }
         return Ok(previous);
     }
     let (count, bytes): (i64,i64) = tx.query_row("SELECT count(*),COALESCE(sum(length(plan_json)+length(state_json)),0) FROM durable_jobs WHERE owner=?1", [owner], |row| Ok((row.get(0)?,row.get(1)?)))?;
-    if count >= 256 || bytes + json.len() as i64 > 64 * 1024 * 1024 { return Err(CommandError::new("jobs/quota-exceeded", "Job storage is full")); }
+    let mut initial = serde_json::json!({"status":"queued","nextStep":0,"attempt":null,"results":[],"errorCode":null});
+    if let Some(value) = source { initial["source"] = value; }
+    let state_json = initial.to_string();
+    if count >= 256 || bytes + json.len() as i64 + state_json.len() as i64 > 64 * 1024 * 1024 { return Err(CommandError::new("jobs/quota-exceeded", "Job storage is full")); }
     tx.execute("INSERT INTO durable_jobs(owner,id,plan_json,state_json,revision,created_at,updated_at)
         VALUES (?1,?2,?3,?4,lower(hex(randomblob(16))),strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now'))",
-        params![owner,id,json,serde_json::json!({"status":"queued","nextStep":0,"attempt":null,"results":[],"errorCode":null}).to_string()])?;
+        params![owner,id,json,state_json])?;
     let record = durable_job_get_inner(&tx, owner, id)?.ok_or_else(|| invalid("Job creation lost its row"))?;
     tx.commit()?; Ok(record)
 }
 #[tauri::command]
-pub async fn durable_job_create(owner: String, id: String, plan: Value, app: tauri::AppHandle) -> Result<DurableJobRecord, CommandError> {
+pub async fn durable_job_create(owner: String, id: String, plan: Value, source: Option<Value>, app: tauri::AppHandle) -> Result<DurableJobRecord, CommandError> {
     crate::storage::blocking("durable_job_create", move || {
         let db = tauri::Manager::state::<Db>(&app); let mut conn = db.0.lock()?;
-        durable_job_create_inner(&mut conn, &owner, &id, plan)
+        durable_job_create_with_source_inner(&mut conn, &owner, &id, plan, source)
     }).await
 }
 
@@ -65,6 +87,7 @@ pub(crate) fn durable_job_checkpoint_inner(conn: &mut Connection, owner: &str, i
     let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
     let before = durable_job_get_inner(&tx, owner, id)?.ok_or_else(|| CommandError::new("jobs/not-found", "Job not found"))?;
     if before.revision != expected { return Err(CommandError::new("jobs/conflict", "Job checkpoint changed")); }
+    if state.get("source") != before.state.get("source") { return Err(invalid("Job source is immutable")); }
     let count = before.plan["steps"].as_array().unwrap().len();
     let next = state.get("nextStep").and_then(Value::as_u64).ok_or_else(|| invalid("Missing next step"))? as usize;
     let previous = before.state["nextStep"].as_u64().unwrap_or(0) as usize;
@@ -136,8 +159,11 @@ mod tests {
         let mut conn = Connection::open(&path).unwrap();
         apply_connection_pragmas(&conn).unwrap(); register_sql_functions(&conn).unwrap(); run_migrations(&mut conn).unwrap();
         let plan = serde_json::json!({"title":"Prepare","steps":[{"id":"text","kind":"library.text.prepare","bookId":"book"}]});
-        let first = durable_job_create_inner(&mut conn, "plugin:sample", "job", plan.clone()).unwrap();
-        let dispatch = serde_json::json!({"status":"running","nextStep":0,"attempt":{"stepIndex":0,"dispatchId":"request","phase":"dispatching","data":{"taskId":"task"}},"results":[],"errorCode":null});
+        let source = serde_json::json!({"version":1,"root":"root","paths":[{"root":"root","steps":["rule:plugin:sample:prepare"]}]});
+        let first = durable_job_create_with_source_inner(&mut conn, "plugin:sample", "job", plan.clone(), Some(source.clone())).unwrap();
+        let mut forged = first.state.clone(); forged.as_object_mut().unwrap().remove("source");
+        assert!(durable_job_checkpoint_inner(&mut conn, "plugin:sample", "job", &first.revision, forged).is_err());
+        let dispatch = serde_json::json!({"source":source,"status":"running","nextStep":0,"attempt":{"stepIndex":0,"dispatchId":"request","phase":"dispatching","data":{"taskId":"task"}},"results":[],"errorCode":null});
         let running = durable_job_checkpoint_inner(&mut conn, "plugin:sample", "job", &first.revision, dispatch.clone()).unwrap();
         drop(conn);
         let mut conn = Connection::open(&path).unwrap(); apply_connection_pragmas(&conn).unwrap(); register_sql_functions(&conn).unwrap();
@@ -145,9 +171,9 @@ mod tests {
         assert_eq!(reopened.state, dispatch); assert_eq!(reopened.plan, plan);
         assert!(durable_job_get_inner(&conn, "plugin:other", "job").unwrap().is_none());
         assert_eq!(durable_job_checkpoint_inner(&mut conn, "plugin:sample", "job", &first.revision, dispatch).unwrap_err().code, "jobs/conflict");
-        let completed = serde_json::json!({"status":"completed","nextStep":1,"attempt":null,"results":[{"stepId":"text","receipt":{"taskId":"task"}}],"errorCode":null});
+        let completed = serde_json::json!({"source":source,"status":"completed","nextStep":1,"attempt":null,"results":[{"stepId":"text","receipt":{"taskId":"task"}}],"errorCode":null});
         let done = durable_job_checkpoint_inner(&mut conn, "plugin:sample", "job", &running.revision, completed.clone()).unwrap();
-        assert_eq!(durable_job_create_inner(&mut conn, "plugin:sample", "job", plan).unwrap().revision, done.revision);
+        assert_eq!(durable_job_create_with_source_inner(&mut conn, "plugin:sample", "job", plan, Some(source)).unwrap().revision, done.revision);
         assert!(durable_job_checkpoint_inner(&mut conn, "plugin:sample", "job", &done.revision, completed).is_err());
     }
 }

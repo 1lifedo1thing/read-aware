@@ -27,6 +27,17 @@
 
 ## 当前交接
 
+- C08因果任务续接：新任务创建时将有界source与计划同事务保存，原生校验结构/配额，
+  同id重试必须同source，所有检查点必须保持source完全一致。公共快照不返回来源或原始检查点。
+  runner每次派发/恢复按保存source构造独立执行器；正文/图谱和事务事件/设置/私有文档观察
+  共用恢复来源，权限、书域、旧版本及写入回执检查仍走原路径，不从来源取得权限。
+  jobs1.1允许事件绑定上下文启动，祖先订阅必须全部具备稳定ruleId；未命名反应明确拒绝，
+  服务Worker仍不能创建持久任务。激活根与Agent新任务也从创建开始保存独立来源。
+  老的无source任务此前只允许激活根创建，继续按旧根执行，不声称恢复了不存在的历史来源。
+  SQLite重开/来源删除拒绝、runner中断恢复同根/防重复与取消不启动后续步骤通过，
+  Web/desktop类型通过；日志 `/tmp/readaware-c08-source-final-native.log`、`/tmp/readaware-c08-source-runner.log`、`/tmp/readaware-c08-source-final-types.log`。
+  真实命名订阅→Worker→SQLite→重启后写入反馈仍待集中验收；C04其他来源与C05余项保持。
+
 - C04/C08持久因果前置：发现原规则ID每激活随机变化，仅保存cause不能跨激活识别同规则。
   plugins1.9领域事件subscribe现支持可选ruleId，宿主按插件命名空间绑定，活动重名拒绝、退订释放，
   无ruleId仍为激活内身份。RSS Reader0.22删除书籍清理已采用稳定规则名。

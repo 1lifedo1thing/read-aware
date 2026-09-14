@@ -168,6 +168,7 @@
     "changesExpired": "已儲存的變化記錄已過期，或資料已還原。請重新載入目前資料後繼續。",
     "changesScopeChanged": "儲存的讀取位置屬於其他查詢或授權範圍。請依目前範圍重新開始。",
     "changesInvalid": "變化查詢無效或暫不支援，請檢查查詢領域和可讀設定路徑。",
+    "jobsUnstableSource": "此事件暫不能啟動持久工作，外掛的因果訂閱需要穩定的規則識別碼。",
     "changesUnavailable": "持久變化記錄需要在桌面應用程式中使用。",
     "transactionConflict": "資料或可用選項已變更，請重新預覽。",
     "transactionInvalid": "這項操作無法加入原子交易。",

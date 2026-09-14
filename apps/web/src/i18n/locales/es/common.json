@@ -168,6 +168,7 @@
     "changesExpired": "Los cambios caducaron o los datos se restauraron. Recarga los datos actuales.",
     "changesScopeChanged": "La posición pertenece a otra consulta o ámbito de acceso. Empieza de nuevo con el ámbito actual.",
     "changesInvalid": "La consulta no es válida o no se admite. Comprueba las áreas y los ajustes legibles.",
+    "jobsUnstableSource": "Este evento no puede iniciar una tarea guardada. Las suscripciones del plugin necesitan identificadores de regla estables.",
     "changesUnavailable": "Los cambios guardados están disponibles en la aplicación de escritorio.",
     "transactionConflict": "Los datos u opciones cambiaron. Prepara una nueva vista previa.",
     "transactionInvalid": "Esta operación no puede incluirse en la transacción.",

@@ -168,6 +168,7 @@
     "changesExpired": "Änderungen sind abgelaufen oder Daten wurden wiederhergestellt. Laden Sie die aktuellen Daten neu.",
     "changesScopeChanged": "Die Position gehört zu einer anderen Abfrage oder Zugriffsfreigabe. Beginnen Sie für den aktuellen Bereich neu.",
     "changesInvalid": "Diese Änderungsabfrage ist ungültig oder nicht unterstützt. Prüfen Sie Bereiche und lesbare Einstellungen.",
+    "jobsUnstableSource": "Dieses Ereignis kann keine gespeicherte Aufgabe starten. Die Plugin-Abonnements benötigen feste Regelkennungen.",
     "changesUnavailable": "Gespeicherte Änderungen sind in der Desktop-App verfügbar.",
     "transactionConflict": "Daten oder Optionen haben sich geändert. Erstellen Sie eine neue Vorschau.",
     "transactionInvalid": "Dieser Vorgang kann nicht Teil der Transaktion sein.",

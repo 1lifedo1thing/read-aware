@@ -2457,6 +2457,9 @@ export type PluginHostServices = {
     read(query: import("@read-aware/core").ChangesQuery, cursor: string, limit?: number, options?: PluginCallOptions): Promise<import("@read-aware/core").ChangesPage>;
   };
   jobs: {
+    /** jobs 1.1: event-bound starts preserve their source through restart. Every
+     * causal event subscription must have a stable ruleId. Unnamed reactions
+     * and isolated service invocations cannot create saved jobs. */
     start(plan: import("@read-aware/core").DurableJobPlan, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
     get(id: string, options?: PluginCallOptions): Promise<import("@read-aware/core").DurableJobSnapshot>;
     list(query?: { offset?: number; limit?: number }, options?: PluginCallOptions): Promise<{ jobs: import("@read-aware/core").DurableJobSnapshot[]; nextOffset: number | null }>;

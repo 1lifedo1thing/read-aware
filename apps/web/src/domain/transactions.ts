@@ -1,5 +1,5 @@
 import { AppError, normalizeAtomicOperations, type AtomicOperation, type AtomicPreview, type AtomicReceipt, type TransactionsPort, type SettingsAccessPolicy, type SettingChange } from "@read-aware/core";
-import type { DomainActor } from "../platform/domain-actor";
+import { actorOrigin, type DomainActor } from "../platform/domain-actor";
 import type { DomainEventDraft } from "../platform/domain-events";
 import { atomicAggregateRevisions, atomicReceipt, commitAtomicHostPlan, freezeAtomicHostPlan, type FrozenAtomicHostPlan, type AtomicHostPlan, type AtomicDocumentBytes } from "../platform/atomic-commit";
 import { bookMetadataPatch } from "../features/library/lib/book-metadata-patch";
@@ -14,7 +14,7 @@ export type TransactionAuthority = {
   acquire(operations: AtomicOperation[], signal?: AbortSignal): Promise<{ assert(): void | Promise<void>; dispose(): void }>;
   assertDocumentBook(bookId: string | null): void | Promise<void>;
   /** Existing document observer wraps dispatch to retain causes and pending reads. */
-  withDocumentWrite<T>(targets: { collection: string; id: string }[], work: () => Promise<T>): Promise<T>;
+  withDocumentWrite<T>(targets: { collection: string; id: string }[], work: () => Promise<T>, actor?: DomainActor): Promise<T>;
 };
 type Inverse = Pick<AtomicHostPlan, "events" | "settings" | "documents">;
 type Metadata = { version: 1; operations: AtomicOperation[]; before: unknown[]; inverse: Inverse; settingsChanges: SettingChange[]; inverseSettingsChanges: SettingChange[]; settingGuards?: AtomicHostPlan["settingGuards"]; undoOf?: string };
@@ -24,6 +24,12 @@ const conflict = () => new AppError("transaction/conflict", "State changed; prep
 /** One instance belongs to one Agent scope or plugin activation. Raw bytes and
  * inverse operations stay host-private; only semantic previews leave this owner. */
 export class TransactionSession implements TransactionsPort {
+  /** A recovered job keeps ordinary authorization but owns its immutable source. */
+  withActor(actor: DomainActor): TransactionSession {
+    if (actorOrigin(actor) !== actorOrigin(this.owner.actor)) throw new AppError("plugin/invalid-cause", "Transaction source belongs to another owner");
+    return new TransactionSession({ ...this.owner, actor,
+      withDocumentWrite: (targets, work) => this.owner.withDocumentWrite(targets, work, actor) });
+  }
   private plans = new Map<string, Prepared>();
   constructor(private readonly owner: TransactionAuthority) {
     if (owner.pluginId && owner.owner !== `plugin:${owner.pluginId}`) throw new AppError("transaction/invalid-operation", "Plugin receipt owner must match its private storage owner");

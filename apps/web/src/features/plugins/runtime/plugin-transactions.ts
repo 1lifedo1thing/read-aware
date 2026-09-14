@@ -50,7 +50,7 @@ export function createPluginTransactions(manifest: PluginManifest, access: Plugi
       } catch (error) { for (const fence of fences) fence.dispose(); throw error; }
     },
     assertDocumentBook: bookId => { assertLive(); access.assertReturnedBook(bookId, "transaction private document"); },
-    withDocumentWrite: (targets, work) => observer.write(targets, actor, work),
+    withDocumentWrite: (targets, work, source) => observer.write(targets, source ?? actor, work),
   });
   return session;
 }

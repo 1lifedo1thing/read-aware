@@ -1,4 +1,4 @@
-import type { DomainActor } from "../platform/domain-actor";
+import { actorOrigin, restoreActorSource, saveActorSource, type DomainActor } from "../platform/domain-actor";
 import type { ResourceAccess } from "../services/resource-access";
 import type { TransactionSession } from "./transactions";
 import type { DurableJobExecutor } from "./durable-jobs";
@@ -17,6 +17,12 @@ export function createDurableJobExecutor(options: {
   const transactions = durableTransactionStep(options.transactions);
   const books = durableBookSteps(options.actor, options.acquireBook);
   return {
+    source: () => saveActorSource(options.actor),
+    withSource: source => {
+      if (!source) return createDurableJobExecutor(options); // Legacy jobs were activation-root-only.
+      const actor = restoreActorSource(actorOrigin(options.actor), source);
+      return createDurableJobExecutor({ ...options, actor, transactions: options.transactions.withActor(actor) });
+    },
     authorize: options.authorize,
     report: options.report,
     prepare: (step, id, signal) => step.kind === "transaction" ? transactions.prepare(step, id, signal) : books.prepare(step),

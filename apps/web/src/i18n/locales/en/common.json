@@ -168,6 +168,7 @@
     "changesExpired": "Saved changes have expired or data was restored. Reload current data before continuing.",
     "changesScopeChanged": "The saved position belongs to a different query or access scope. Start again for the current scope.",
     "changesInvalid": "This change query is invalid or unsupported. Check its areas and readable settings paths.",
+    "jobsUnstableSource": "This event cannot start a saved task. Its plugin subscriptions need stable rule identifiers.",
     "changesUnavailable": "Saved changes are available in the desktop app.",
     "transactionConflict": "The data or available options changed. Prepare a new preview.",
     "transactionInvalid": "This operation cannot be included in the transaction.",

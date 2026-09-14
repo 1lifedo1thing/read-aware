@@ -168,6 +168,7 @@
     "changesExpired": "已保存的变化记录已过期，或数据已恢复。请重新载入当前数据后继续。",
     "changesScopeChanged": "保存的读取位置属于其他查询或授权范围。请按当前范围重新开始。",
     "changesInvalid": "变化查询无效或暂不支持，请检查查询领域和可读设置路径。",
+    "jobsUnstableSource": "该事件暂不能启动持久任务，插件的因果订阅需要稳定的规则标识。",
     "changesUnavailable": "持久变化记录需要在桌面应用中使用。",
     "transactionConflict": "数据或可用选项已变化，请重新预览。",
     "transactionInvalid": "这项操作无法加入原子事务。",

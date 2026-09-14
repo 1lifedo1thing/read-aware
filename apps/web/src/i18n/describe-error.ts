@@ -140,6 +140,7 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "changes/cursor-scope-changed": { key: "changesScopeChanged", retryable: false },
   "changes/invalid-query": { key: "changesInvalid", retryable: false },
   "changes/unavailable": { key: "changesUnavailable", retryable: false },
+  "jobs/unstable-source": { key: "jobsUnstableSource", retryable: false },
   "transaction/invalid-operation": { key: "transactionInvalid", retryable: false },
   "transaction/preview-expired": { key: "transactionPreviewExpired", retryable: false },
   "transaction/receipt-missing": { key: "transactionReceiptMissing", retryable: false },

@@ -423,7 +423,7 @@ export function buildPluginContext(
   const transactions = () => transactionSession ??= createPluginTransactions(manifest, objectAccess, lifecycle, documentObserver, operationActor, settingsAccess, transactionBudget);
   if (operationActor === selfOrigin && !serviceInvocation) activationJobs ??= createPluginJobs(manifest, objectAccess, lifecycle, transactions(), operationActor);
   const jobs = () => {
-    if (serviceInvocation || operationActor !== selfOrigin || !activationJobs) throw new AppError("plugin/permission-denied", "Persistent jobs require the activation root context");
+    if (serviceInvocation || !activationJobs) throw new AppError("plugin/permission-denied", "Persistent jobs require an activation owner");
     return activationJobs;
   };
   const transactionCall = <T,>(perform: () => Promise<T>): Promise<T> => {
@@ -888,7 +888,7 @@ export function buildPluginContext(
         read: (query, cursor, limit, options) => transactionCall(() => changes.read(query, cursor, limit, callSignal(options))),
       },
       jobs: {
-        start: (plan, options) => transactionCall(() => jobs().start(plan, callSignal(options))),
+        start: (plan, options) => transactionCall(() => jobs().start(plan, callSignal(options), operationActor)),
         get: async (id, options) => { const signal = callSignal(options); signal.throwIfAborted(); const value = await jobs().get(id); signal.throwIfAborted(); return value; },
         list: async (query, options) => { const signal = callSignal(options); signal.throwIfAborted(); const value = await jobs().list(query); signal.throwIfAborted(); return value; },
         control: (id, action, options) => transactionCall(() => { callSignal(options).throwIfAborted(); return jobs().control(id, action); }),

@@ -1,8 +1,11 @@
 import { AppError, errorCode, normalizeDurableJobPlan, type DurableJobPlan, type DurableJobStep, type DurableJobSnapshot, type DurableJobControl } from "@read-aware/core";
 import type { DurableJobStore, DurableJobRecord, DurableJobAttempt } from "../platform/durable-jobs";
+import { saveActorSource, type DomainActor, type DurableActorSource } from "../platform/domain-actor";
 
 type Outcome = { status: "complete"; receipt: unknown } | { status: "needs-attention"; code: string; settled?: boolean };
 export type DurableJobExecutor = {
+  source?(): DurableActorSource;
+  withSource?(source: DurableActorSource | undefined): DurableJobExecutor;
   authorize(plan: DurableJobPlan, signal: AbortSignal): Promise<{ assert(): void | Promise<void>; dispose(): void }>;
   /** Pure preparation only: persist its result before dispatching side effects. */
   prepare(step: DurableJobStep, dispatchId: string, signal: AbortSignal): Promise<unknown>;
@@ -30,13 +33,17 @@ export class DurableJobRunner {
   private closed = false;
   constructor(private readonly store: DurableJobStore, private readonly executor: DurableJobExecutor) {}
   get active(): boolean { return this.flights.size > 0; }
-  async start(input: DurableJobPlan, signal?: AbortSignal): Promise<DurableJobSnapshot> {
+  async start(input: DurableJobPlan, signal?: AbortSignal, actor?: DomainActor): Promise<DurableJobSnapshot> {
     if (this.closed) throw new AppError("jobs/unavailable", "Job owner retired");
     const plan = normalizeDurableJobPlan(input), controller = new AbortController();
+    const source = actor ? saveActorSource(actor) : this.executor.source?.();
+    if (source?.paths.some(path => path.steps.some(step => !step.startsWith("rule:plugin:")))) {
+      throw new AppError("jobs/unstable-source", "Saved reactions require stable ruleId on every causal subscription");
+    }
     const grant = await this.executor.authorize(plan, signal ?? controller.signal);
     try {
       signal?.throwIfAborted(); await grant.assert();
-      const record = await this.store.create(crypto.randomUUID(), plan, async () => { signal?.throwIfAborted(); await grant.assert(); });
+      const record = await this.store.create(crypto.randomUUID(), plan, async () => { signal?.throwIfAborted(); await grant.assert(); }, source);
       this.launch(record.id, false); return durableJobSnapshot(record);
     } finally { grant.dispose(); }
   }
@@ -98,7 +105,8 @@ export class DurableJobRunner {
         nextStep: next, attempt: null, results: [...state.results, { stepId: step.id, receipt }], errorCode: null }));
     };
     try {
-      grant = await this.executor.authorize(record.plan, signal);
+      const executor = this.executor.withSource?.(record.state.source) ?? this.executor;
+      grant = await executor.authorize(record.plan, signal);
       while (!terminal(record.state.status) && record.state.nextStep < record.plan.steps.length) {
         signal.throwIfAborted(); await grant.assert();
         const step = record.plan.steps[record.state.nextStep]!;
@@ -106,7 +114,7 @@ export class DurableJobRunner {
           await save(state => ({ ...state, status: "cancelled" })); return;
         }
         if (record.state.attempt && record.state.attempt.phase !== "prepared") {
-          const outcome = await this.executor.reconcile(step, record.state.attempt, signal, explicitResume);
+          const outcome = await executor.reconcile(step, record.state.attempt, signal, explicitResume);
           if (outcome.status === "complete") { await finishStep(outcome.receipt); if (record.state.status === "paused") return; continue; }
           if (outcome.status === "needs-attention") { await incomplete(outcome); return; }
           if (record.state.requestedAction === "cancel") {
@@ -121,7 +129,7 @@ export class DurableJobRunner {
         }
         if (!record.state.attempt) {
           const dispatchId = crypto.randomUUID();
-          const data = await this.executor.prepare(step, dispatchId, signal);
+          const data = await executor.prepare(step, dispatchId, signal);
           signal.throwIfAborted(); await grant.assert();
           await save(state => ({ ...state, status: "running", attempt: { stepIndex: record.state.nextStep, dispatchId, phase: "prepared", data }, errorCode: null }));
         }
@@ -130,7 +138,7 @@ export class DurableJobRunner {
         signal.throwIfAborted();
         if (record.state.requestedAction) throw new AppError("jobs/interrupted", "Job control requested");
         explicitResume = false;
-        const outcome = await this.executor.execute(step, record.state.attempt!, signal, async data => {
+        const outcome = await executor.execute(step, record.state.attempt!, signal, async data => {
           await save(state => ({ ...state, attempt: { ...state.attempt!, data: structuredClone(data) } }));
         });
         if (outcome.status !== "complete") { await incomplete(outcome); return; }

@@ -3,6 +3,7 @@ import { invoke } from "./ipc";
 import { isTauri } from "./environment";
 import { runDomainWrite } from "./domain-write-gate";
 import { withPluginDataWrites } from "./plugin-data-access";
+import type { DurableActorSource } from "./domain-actor";
 
 /** Host-private checkpoint, including reconciliation handles. Never exposed as
  * plugin JSON: public snapshots contain only progress and stable error codes. */
@@ -11,6 +12,7 @@ export type DurableJobAttempt = {
   data: unknown;
 };
 export type DurableJobState = {
+  source?: DurableActorSource;
   resumeRequested?: boolean;
   requestedAction?: "pause" | "cancel" | null;
   status: DurableJobStatus; nextStep: number; attempt: DurableJobAttempt | null;
@@ -18,7 +20,7 @@ export type DurableJobState = {
 };
 export type DurableJobRecord = { owner: string; id: string; plan: DurableJobPlan; state: DurableJobState; revision: string; createdAt: string; updatedAt: string };
 export interface DurableJobStore {
-  create(id: string, plan: DurableJobPlan, assertAuthorized?: () => void | Promise<void>): Promise<DurableJobRecord>;
+  create(id: string, plan: DurableJobPlan, assertAuthorized?: () => void | Promise<void>, source?: DurableActorSource): Promise<DurableJobRecord>;
   get(id: string): Promise<DurableJobRecord>;
   list(offset?: number, limit?: number): Promise<DurableJobRecord[]>;
   checkpoint(record: DurableJobRecord, state: DurableJobState): Promise<DurableJobRecord>;
@@ -32,9 +34,10 @@ export function nativeDurableJobStore(owner: string): DurableJobStore {
     return withPluginDataWrites(pluginId ? [pluginId] : [], () => runDomainWrite(perform));
   };
   return {
-    create: (id, plan, assertAuthorized) => {
+    create: (id, plan, assertAuthorized, source) => {
       const accepted = normalizeDurableJobPlan(plan);
-      return write(async () => { await assertAuthorized?.(); return invoke("durable_job_create", { owner, id, plan: accepted }); });
+      const savedSource = source ? structuredClone(source) : null;
+      return write(async () => { await assertAuthorized?.(); return invoke("durable_job_create", { owner, id, plan: accepted, source: savedSource }); });
     },
     get: async id => {
       ready();

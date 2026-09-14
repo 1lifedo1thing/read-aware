@@ -168,6 +168,7 @@
     "changesExpired": "Les changements ont expiré ou les données ont été restaurées. Rechargez les données actuelles.",
     "changesScopeChanged": "La position appartient à une autre requête ou portée d’accès. Recommencez pour la portée actuelle.",
     "changesInvalid": "Cette requête est invalide ou non prise en charge. Vérifiez les domaines et paramètres lisibles.",
+    "jobsUnstableSource": "Cet événement ne peut pas créer de tâche enregistrée. Les abonnements du plugin nécessitent des identifiants de règle stables.",
     "changesUnavailable": "Les changements enregistrés sont disponibles dans l’application de bureau.",
     "transactionConflict": "Les données ou options ont changé. Préparez un nouvel aperçu.",
     "transactionInvalid": "Cette opération ne peut pas faire partie de la transaction.",
