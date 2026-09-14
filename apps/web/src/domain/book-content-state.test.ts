@@ -51,6 +51,14 @@ test("source queries report local metadata, provider changes and invalidation wi
     await owner.context.domains.library!.commands!.books.invalidateVirtualBook({ providerId: "feed", key: "private-feed-key" });
     const invalidated = await query(); expect(invalidated.sourceRevision).not.toBe(first.sourceRevision);
     expect(readingRuntime.snapshot().sourceRevision).toBe(first.sourceRevision);
+    const reactions: string[] = [];
+    const causalObservation = owner.context.domains.library!.events.observeContentState(bookId, async (_event, delivery) => {
+      reactions.push(delivery?.reaction?.status ?? "missing");
+      if (reactions.length === 1) await owner.context.withEvent(delivery).domains.library!.commands!.books.invalidateVirtualBook({ providerId: "feed", key: "private-feed-key" });
+    }, { ruleId: "content-refresh" });
+    await tick(); await Bun.sleep(1050);
+    causalObservation.dispose();
+    expect(reactions).toEqual(["ready", "cycle"]);
     provider.dispose(); expect((await query()).availability).toBe("provider-unavailable");
     provider = register(); const replaced = await query(); expect(replaced.sourceRevision).not.toBe(invalidated.sourceRevision);
     bindVirtualBook(bookId, { pluginId: "content-owner", providerId: "feed", key: "another-private-key" }); await flushLocalKV();

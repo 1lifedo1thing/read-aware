@@ -1,3 +1,4 @@
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 /**
  * The virtual-book registry: which shelf entries are plugin-provided, and by
  * which content provider. Book records live in the normal library store
@@ -74,7 +75,9 @@ export async function invalidateOwnedVirtualBook(
   binding: VirtualBookBinding,
   exists: (bookId: string) => Promise<unknown>,
   signal?: AbortSignal,
+  origin: DomainActor = "system",
 ): Promise<{ bookId: string; revision: string }> {
+  origin = causalActor(origin);
   signal?.throwIfAborted();
   if (!binding.providerId.trim() || binding.providerId.length > 256 || !binding.key || binding.key.length > 8192) {
     throw new AppError("reader/invalid-target", "A provider and bounded content key are required");
@@ -87,7 +90,7 @@ export async function invalidateOwnedVirtualBook(
   if (resolveContentProvider(binding) !== provider || findVirtualBookId(binding) !== bookId) {
     throw new AppError("library/content-unavailable", "Virtual book binding or provider changed");
   }
-  return { bookId, revision: invalidateBookContent(bookId) };
+  return { bookId, revision: invalidateBookContent(bookId, origin) };
 }
 
 /** A failed deletion must keep its binding; cleanup failure is retryable, not success. */

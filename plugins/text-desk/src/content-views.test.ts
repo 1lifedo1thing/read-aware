@@ -1,3 +1,4 @@
+import { contentState } from "./content-state";
 import { expect, test } from "bun:test";
 import type { PluginContext, PluginDetailView, PluginLibraryDomain, PluginListView, PluginModule, PluginView } from "@read-aware/plugin-types";
 import { contentSections } from "./content-sections";
@@ -186,4 +187,28 @@ test("image description sends the owned image ID only on explicit action and can
   await view.onClose!({ reason: "closed" });
   expect((inputs[0] as { signal: AbortSignal }).signal.aborted).toBe(true);
   expect(f.calls[f.calls.length - 1]).toEqual(["release", "image-resource"]);
+});
+
+
+test("content source view reacts to availability and errors, skips cycles and releases observation", async () => {
+  type Observe = PluginLibraryDomain["events"]["observeContentState"];
+  let handler!: Parameters<Observe>[1], disposed = false, reactions = 0;
+  const updates: PluginDetailView[] = [];
+  const snapshot = { bookId: "book", source: "virtual" as const, availability: "provider-registered" as const, sourceRevision: "v1", contentVersion: null };
+  const ctx = { locale: "en", withEvent: () => { reactions++; return ctx; }, domains: { library: {
+    queries: { books: { getContentState: async () => snapshot } },
+    events: { observeContentState: (_id: string, next: typeof handler, options: Parameters<Observe>[2]) => {
+      expect(options).toEqual({ ruleId: "content-source-live" }); handler = next; return { dispose() { disposed = true; } };
+    } },
+  } }, services: { ui: { publishView: async (_channel: unknown, update: { view: PluginDetailView }) => { updates.push(update.view); } } } } as unknown as PluginContext;
+  const view = await contentState(ctx, "book", "Book"), subscription = view.live!.subscribe({ id: "source" });
+  const ready = { reaction: { id: "source", status: "ready" as const } };
+  await handler({ status: "ready", snapshot: { ...snapshot, availability: "provider-unavailable" } }, ready);
+  expect(JSON.stringify(updates[0])).toContain("Provider unavailable");
+  await handler({ status: "error", errorCode: "db/locked" }, ready);
+  expect(updates[1]!.content).toEqual([{ kind: "error", code: "db/locked" }]);
+  await handler({ status: "ready", snapshot }, { reaction: { id: "cycle", status: "cycle" } });
+  (await subscription).dispose();
+  await handler({ status: "ready", snapshot }, ready);
+  expect(updates).toHaveLength(2); expect(reactions).toBe(2); expect(disposed).toBe(true);
 });

@@ -1,5 +1,13 @@
 const locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 const labels = {
+  contentSource: ["Content source", "正文来源", "正文來源", "本文の提供元", "Источник текста", "Source du contenu", "Inhaltsquelle", "Origen del contenido"],
+  sourceFile: ["Book file", "书籍文件", "書籍檔案", "書籍ファイル", "Файл книги", "Fichier du livre", "Buchdatei", "Archivo del libro"],
+  sourcePlugin: ["Plugin", "插件", "外掛", "プラグイン", "Плагин", "Plugin", "Plugin", "Complemento"],
+  sourceLocal: ["Stored locally", "已保存在本机", "已儲存在本機", "端末に保存済み", "Сохранено локально", "Enregistré localement", "Lokal gespeichert", "Guardado localmente"],
+  sourceMissing: ["Source missing", "来源缺失", "來源缺失", "提供元がありません", "Источник отсутствует", "Source absente", "Quelle fehlt", "Falta el origen"],
+  sourceRegistered: ["Provider registered", "提供者已注册", "提供者已註冊", "提供元は登録済み", "Поставщик зарегистрирован", "Fournisseur enregistré", "Anbieter registriert", "Proveedor registrado"],
+  sourceUnavailable: ["Provider unavailable", "提供者不可用", "提供者無法使用", "提供元を利用できません", "Поставщик недоступен", "Fournisseur indisponible", "Anbieter nicht verfügbar", "Proveedor no disponible"],
+
   bookUpdates: ["Book updates", "书籍更新", "書籍更新", "本の更新", "Обновления книг", "Mises à jour des livres", "Buchänderungen", "Actualizaciones de libros"],
   updatesNeedBook: ["Open a book to check its updates.", "请先打开获授权的书籍。", "請先開啟獲授權的書籍。", "許可された本を開いてください。", "Откройте разрешённую книгу.", "Ouvrez un livre autorisé.", "Öffnen Sie ein freigegebenes Buch.", "Abre un libro autorizado."],
   updatesBaseline: ["Tracking started. Current books (up to 20) are shown below.", "已开始记录更新。下方显示当前书籍，最多 20 本。", "已開始記錄更新。下方顯示目前書籍，最多 20 本。", "更新の記録を開始しました。現在の本を最大20冊表示します。", "Отслеживание начато. Ниже до 20 текущих книг.", "Suivi démarré. Jusqu’à 20 livres actuels sont affichés.", "Erfassung gestartet. Unten stehen bis zu 20 aktuelle Bücher.", "Seguimiento iniciado. Se muestran hasta 20 libros actuales."],

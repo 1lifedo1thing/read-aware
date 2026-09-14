@@ -51,6 +51,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
     [context.domains.library?.events, "observeInvalidation", 0],
     [context.domains.library?.events, "observeTextTask", 2],
     [context.domains.library?.events, "observeEnrichment", 1],
+    [context.domains.library?.events, "observeContentState", 1],
     [context.domains.conversations?.events, "observeInvalidation", 0],
     [context.domains.conversations?.events, "observeRuntime", 0],
     [context.services.storage, "observeDocuments", 1],
@@ -71,7 +72,7 @@ export function attachPluginEventReactions(context: PluginContext, reactions: Pl
       const handler = args[index], subscription = {};
       args[index] = (snapshot: object | null, source?: object) => reactions.deliver(subscription, source ?? snapshot!,
         reaction => handler(snapshot, { reaction }));
-      if (namespace !== context.services.plugins && namespace !== context.services.ui.window && namespace !== context.services.ui.workspace && namespace !== context.services.ui.commands && key !== "observeEnrichment" && key !== "observeTextTask" && key !== "observeRuntime" && key !== "observeSession" && key !== "observeTime" && key !== "observeEnvironment") return observe(...args);
+      if (namespace !== context.services.plugins && namespace !== context.services.ui.window && namespace !== context.services.ui.workspace && namespace !== context.services.ui.commands && key !== "observeContentState" && key !== "observeEnrichment" && key !== "observeTextTask" && key !== "observeRuntime" && key !== "observeSession" && key !== "observeTime" && key !== "observeEnvironment") return observe(...args);
       const release = reactions.bindRule(subscription, args[index + 1]?.ruleId);
       try {
         const registration = observe(...args) as PluginDisposable;

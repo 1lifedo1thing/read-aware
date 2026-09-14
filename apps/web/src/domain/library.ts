@@ -308,6 +308,6 @@ export function createLibraryDomain(origin: DomainActor, lifetime?: AbortSignal,
     queries,
     commands,
     events: { observeInvalidation: handler => observeLibraryInvalidation(handler, lifetime, origin), subscribe: domainSubscribe(LIBRARY_EVENTS, actorOrigin(origin)), observeTextTask: (bookId, taskId, listener) => textTasks.observe(bookId, taskId, listener, origin),
-      observeEnrichment: createEnrichmentObserver(lifetime, origin), observeContentState: createContentStateObserver(lifetime) },
+      observeEnrichment: createEnrichmentObserver(lifetime, origin), observeContentState: createContentStateObserver(lifetime, undefined, origin) },
   };
 }

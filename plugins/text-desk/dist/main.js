@@ -1,6 +1,13 @@
 // src/strings.ts
 var locales = ["en", "zh-Hans", "zh-Hant", "ja", "ru", "fr", "de", "es"];
 var labels = {
+  contentSource: ["Content source", "正文来源", "正文來源", "本文の提供元", "Источник текста", "Source du contenu", "Inhaltsquelle", "Origen del contenido"],
+  sourceFile: ["Book file", "书籍文件", "書籍檔案", "書籍ファイル", "Файл книги", "Fichier du livre", "Buchdatei", "Archivo del libro"],
+  sourcePlugin: ["Plugin", "插件", "外掛", "プラグイン", "Плагин", "Plugin", "Plugin", "Complemento"],
+  sourceLocal: ["Stored locally", "已保存在本机", "已儲存在本機", "端末に保存済み", "Сохранено локально", "Enregistré localement", "Lokal gespeichert", "Guardado localmente"],
+  sourceMissing: ["Source missing", "来源缺失", "來源缺失", "提供元がありません", "Источник отсутствует", "Source absente", "Quelle fehlt", "Falta el origen"],
+  sourceRegistered: ["Provider registered", "提供者已注册", "提供者已註冊", "提供元は登録済み", "Поставщик зарегистрирован", "Fournisseur enregistré", "Anbieter registriert", "Proveedor registrado"],
+  sourceUnavailable: ["Provider unavailable", "提供者不可用", "提供者無法使用", "提供元を利用できません", "Поставщик недоступен", "Fournisseur indisponible", "Anbieter nicht verfügbar", "Proveedor no disponible"],
   bookUpdates: ["Book updates", "书籍更新", "書籍更新", "本の更新", "Обновления книг", "Mises à jour des livres", "Buchänderungen", "Actualizaciones de libros"],
   updatesNeedBook: ["Open a book to check its updates.", "请先打开获授权的书籍。", "請先開啟獲授權的書籍。", "許可された本を開いてください。", "Откройте разрешённую книгу.", "Ouvrez un livre autorisé.", "Öffnen Sie ein freigegebenes Buch.", "Abre un libro autorizado."],
   updatesBaseline: ["Tracking started. Current books (up to 20) are shown below.", "已开始记录更新。下方显示当前书籍，最多 20 本。", "已開始記錄更新。下方顯示目前書籍，最多 20 本。", "更新の記録を開始しました。現在の本を最大20冊表示します。", "Отслеживание начато. Ниже до 20 текущих книг.", "Suivi démarré. Jusqu’à 20 livres actuels sont affichés.", "Erfassung gestartet. Unten stehen bis zu 20 aktuelle Bücher.", "Seguimiento iniciado. Se muestran hasta 20 libros actuales."],
@@ -324,6 +331,37 @@ async function readingAvailability(ctx, target) {
     }]),
     { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await readingAvailability(ctx, guard), navigation: "replace" }) }
   ] };
+}
+
+// src/content-state.ts
+async function contentState(ctx, bookId, title) {
+  let state = await ctx.domains.library.queries.books.getContentState(bookId), failure;
+  const view = () => ({
+    kind: "detail",
+    title: `${title} / ${tr(ctx.locale, "contentSource")}`,
+    content: failure ? [{ kind: "error", code: failure }] : [{ kind: "keyValue", rows: [
+      { label: tr(ctx.locale, "contentSource"), value: tr(ctx.locale, state.source === "file" ? "sourceFile" : "sourcePlugin") },
+      { label: tr(ctx.locale, "status"), value: tr(ctx.locale, state.availability === "local" ? "sourceLocal" : state.availability === "missing" ? "sourceMissing" : state.availability === "provider-registered" ? "sourceRegistered" : "sourceUnavailable") }
+    ] }],
+    actions: [{ id: "refresh", label: tr(ctx.locale, "refresh"), run: async () => ({ view: await contentState(ctx, bookId, title), navigation: "replace" }) }]
+  });
+  return { ...view(), live: { subscribe(channel) {
+    let disposed = false, revision = 0;
+    const subscription = ctx.domains.library.events.observeContentState(bookId, async (event, delivery) => {
+      if (disposed || delivery?.reaction?.status === "cycle")
+        return;
+      if (event.status === "ready") {
+        state = event.snapshot;
+        failure = undefined;
+      } else
+        failure = event.errorCode;
+      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: view() });
+    }, { ruleId: "content-source-live" });
+    return { dispose() {
+      disposed = true;
+      subscription.dispose();
+    } };
+  } } };
 }
 
 // src/saved-jobs.ts
@@ -816,7 +854,7 @@ var PARAMETERLESS_HOST_COMMAND_IDS = [
 var HOST_COMMAND_IDS = [...PARAMETERLESS_HOST_COMMAND_IDS, "open-book", "open-collection"];
 // ../../packages/core/src/domains.ts
 var DOMAIN_CATALOG = {
-  library: { version: "1.32.0", pluginAccess: ["read", "write"] },
+  library: { version: "1.34.0", pluginAccess: ["read", "write"] },
   reading: { version: "2.24.0", pluginAccess: ["read", "write"] },
   annotations: { version: "2.2.0", pluginAccess: ["read", "write"] },
   conversations: { version: "1.6.0", pluginAccess: ["read", "write"] },
@@ -1686,6 +1724,7 @@ async function textDetail(ctx, bookId, title) {
   if (state.progress)
     rows.push({ label: tr(ctx.locale, "sections"), value: `${state.progress.completed} / ${state.progress.total}` }, { label: tr(ctx.locale, "failed"), value: String(state.progress.failed) }, { label: tr(ctx.locale, "unsupportedSections"), value: String(state.progress.unsupported) });
   return { kind: "detail", title, content: [{ kind: "keyValue", rows }], actions: [
+    { id: "content-source", label: tr(ctx.locale, "contentSource"), run: async () => ({ view: await contentState(ctx, bookId, title) }) },
     { id: "jumper-bookmarks", label: tr(ctx.locale, "jumperBookmarks"), icon: "book-bookmark", run: async () => ({ view: await jumperBookmarks(ctx, bookId, title) }) },
     { id: "preparation-prerequisites", label: tr(ctx.locale, "preparationPrerequisites"), run: async () => ({ view: await preparationAvailability(ctx, bookId, title) }) },
     { id: "search", label: tr(ctx.locale, "searchBook"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx, bookId) }) },

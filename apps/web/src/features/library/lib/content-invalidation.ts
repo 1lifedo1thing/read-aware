@@ -1,6 +1,15 @@
+import { createLogger } from "../../../platform/logger";
+import { stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { AppError } from "@read-aware/core";
 
+const log = createLogger("content-invalidation");
+
 // Process-local invalidation fences, separate from hashes of actual content.
+const listeners = new Set<(bookId: string, source: object) => void>();
+export function observeContentInvalidation(handler: (bookId: string, source: object) => void): () => void {
+  listeners.add(handler); return () => { listeners.delete(handler); };
+}
+
 const revisions = new Map<string, string>();
 const providerRevisions = new WeakMap<object, Map<string, string>>();
 
@@ -18,9 +27,11 @@ export function contentInvalidationRevision(bookId: string): string {
   return revisions.get(bookId) ?? "initial";
 }
 
-export function invalidateBookContent(bookId: string): string {
+export function invalidateBookContent(bookId: string, origin?: DomainActor): string {
   const revision = crypto.randomUUID();
   revisions.set(bookId, revision);
+  const source = stampEventCause({ bookId, revision }, origin);
+  for (const listener of [...listeners]) { try { listener(bookId, source); } catch (error) { log.warn("Content observer failed", error); } }
   return revision;
 }
 

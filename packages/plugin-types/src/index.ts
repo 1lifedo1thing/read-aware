@@ -1554,7 +1554,7 @@ export type PluginLibraryDomain = {
     /** Initial snapshot and coalesced monotonic revisions, including terminal failures. */
     observeImportTask(taskId: string, handler: (snapshot: import("@read-aware/core").BookImportTaskSnapshot) => void | Promise<void>): PluginDisposable;
     observeEnrichment(bookId: string, handler: PluginObservationHandler<import("@read-aware/core").BookEnrichmentObservation>, options?: { ruleId?: string }): PluginDisposable;
-    observeContentState(bookId: string, handler: (event: import("@read-aware/core").BookContentObservation) => unknown): PluginDisposable;
+    observeContentState(bookId: string, handler: PluginObservationHandler<import("@read-aware/core").BookContentObservation>, options?: { ruleId?: string }): PluginDisposable;
     /** Initial and coalesced reload hints, including remote projection changes.
      * Re-query authorized data; not an event log or a conditional-write token. */
     observeInvalidation(handler: PluginObservationHandler<import("@read-aware/core").ProjectionInvalidation>): PluginDisposable;

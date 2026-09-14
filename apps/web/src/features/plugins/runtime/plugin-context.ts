@@ -1359,7 +1359,7 @@ export function buildPluginContext(
           },
           invalidateVirtualBook: (input: { providerId: string; key: string }) => invalidateOwnedVirtualBook({
             pluginId: manifest.id, providerId: String(input.providerId), key: String(input.key),
-          }, library.queries.books.get, lifecycle.signal),
+          }, library.queries.books.get, lifecycle.signal, operationActor),
         },
         collections: library.commands.collections,
       };

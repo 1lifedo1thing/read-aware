@@ -1,3 +1,4 @@
+import { contentState } from "./content-state";
 import { savedJobs } from "./saved-jobs";
 import { bookUpdates } from "./book-updates";
 import { inferenceHistory } from "./inference-history";
@@ -24,6 +25,7 @@ export async function textDetail(ctx: PluginContext, bookId: string, title: stri
     { label: tr(ctx.locale, "unsupportedSections"), value: String(state.progress.unsupported) },
   );
   return { kind: "detail", title, content: [{ kind: "keyValue", rows }], actions: [
+    { id: "content-source", label: tr(ctx.locale, "contentSource"), run: async () => ({ view: await contentState(ctx, bookId, title) }) },
     { id: "jumper-bookmarks", label: tr(ctx.locale, "jumperBookmarks"), icon: "book-bookmark", run: async () => ({ view: await jumperBookmarks(ctx, bookId, title) }) },
     { id: "preparation-prerequisites", label: tr(ctx.locale, "preparationPrerequisites"), run: async () => ({ view: await preparationAvailability(ctx, bookId, title) }) },
     { id: "search", label: tr(ctx.locale, "searchBook"), icon: "magnifying-glass", run: () => ({ view: textSearchForm(ctx, bookId) }) },
