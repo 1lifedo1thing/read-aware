@@ -1,3 +1,6 @@
+import { actorCause, causalActor, eventCause } from "../../../platform/domain-actor";
+import { onLocalKVCommit } from "../../../platform/local-store";
+import { onSecretCommit } from "../../../platform/secret-store";
 import { beforeAll, beforeEach, describe, expect, test } from "bun:test";
 
 const storage = new Map<string, string>();
@@ -22,7 +25,7 @@ import {
   getStoredProviderSettings,
   getAIConfig,
   SUBSCRIPTION_MODELS,
-  saveAIConfig,
+  saveAIConfig, clearAIConfig,
 } from "./ai-config";
 import { hydrateSecrets, getSecret, setSecret, deleteSecret } from "../../../platform/secret-store";
 
@@ -250,4 +253,23 @@ describe("OpenRouter routing preferences", () => {
     });
     expect(getStoredProviderSettings("deepseek").openRouterRouting).toBeUndefined();
   });
+});
+
+test("configuration save and clear retain one cause across preferences and credential cleanup", () => {
+  setSecret("ai-api-key", "old-fixture");
+  const notices: object[] = [];
+  const offKV = onLocalKVCommit(value => notices.push(value));
+  const offSecret = onSecretCommit((_key, _source, value) => notices.push(value));
+  try {
+    const saved = causalActor("user");
+    saveAIConfig({ provider: "openai", model: "test", apiKey: "new-fixture" }, saved);
+    expect(notices.length).toBeGreaterThanOrEqual(3);
+    for (const notice of notices) expect(eventCause(notice)).toEqual(actorCause(saved));
+    notices.length = 0;
+    const cleared = causalActor("user");
+    clearAIConfig(cleared);
+    expect(notices.length).toBeGreaterThan(1);
+    for (const notice of notices) expect(eventCause(notice)).toEqual(actorCause(cleared));
+    expect(getSecret("ai-api-key.openai")).toBe("");
+  } finally { offKV(); offSecret(); }
 });

@@ -1,3 +1,4 @@
+import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 /**
  * AI Configuration storage and types for BYOK (Bring Your Own Key) model
  */
@@ -315,27 +316,29 @@ export function encodeAIConfig(config: AIConfig): string {
   return JSON.stringify({ provider, models } satisfies StoredAIConfig);
 }
 
-export function saveAIConfig(config: AIConfig): void {
+export function saveAIConfig(config: AIConfig, origin: DomainActor = "user"): void {
+  origin = causalActor(origin);
   const { provider, apiKey } = config;
-  localKV.setItem(CONFIG_KEY, encodeAIConfig(config));
+  localKV.setItem(CONFIG_KEY, encodeAIConfig(config), "local", origin);
   // Reactive settings rewrite this record as fields change. Avoid needless
   // encrypted-store IPC when the credential itself did not change.
   const slot = keySlot(provider);
   const storedApiKey = getSecret(slot);
   if (apiKey && storedApiKey !== apiKey) {
-    setSecret(slot, apiKey);
+    setSecret(slot, apiKey, "local", origin);
   } else if (!apiKey && storedApiKey) {
-    deleteSecret(slot);
+    deleteSecret(slot, "local", origin);
   }
   // The single-slot era key must not linger as a fallback for OTHER providers.
-  if (getSecret("ai-api-key")) deleteSecret("ai-api-key");
+  if (getSecret("ai-api-key")) deleteSecret("ai-api-key", "local", origin);
 }
 
-export function clearAIConfig(): void {
-  localKV.removeItem(CONFIG_KEY);
-  deleteSecret("ai-api-key");
+export function clearAIConfig(origin: DomainActor = "user"): void {
+  origin = causalActor(origin);
+  localKV.removeItem(CONFIG_KEY, "local", origin);
+  deleteSecret("ai-api-key", "local", origin);
   for (const provider of Object.keys(DEFAULT_MODELS) as AIProvider[]) {
-    deleteSecret(keySlot(provider));
+    deleteSecret(keySlot(provider), "local", origin);
   }
 }
 
