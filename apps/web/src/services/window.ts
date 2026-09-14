@@ -1,3 +1,4 @@
+import { invoke } from "../platform/ipc";
 import { AppError } from "@read-aware/core";
 import { isTauri, isMobileOS } from "../platform/environment";
 import { createLogger } from "../platform/logger";
@@ -19,11 +20,14 @@ async function native<T>(run: (window: import("@tauri-apps/api/window").Window) 
 
 export const hostWindow = new HostWindowService({
   supported: () => isTauri() && !isMobileOS(),
+  inputRevision: () => invoke<number | null>("window_input_revision"),
   read: () => native(async window => {
+    const before = await invoke<number | null>("window_input_revision");
     const [minimized, maximized, fullscreen, focused, size, scale] = await Promise.all([
       window.isMinimized(), window.isMaximized(), window.isFullscreen(), window.isFocused(), window.innerSize(), window.scaleFactor(),
     ]);
-    return { minimized, maximized, fullscreen, focused, viewport: { width: Math.round(size.width / scale), height: Math.round(size.height / scale) } };
+    const after = await invoke<number | null>("window_input_revision");
+    return { minimized, maximized, fullscreen, focused, inputRevision: before === after ? after : null, viewport: { width: Math.round(size.width / scale), height: Math.round(size.height / scale) } };
   }),
   apply: (request, signal) => native(async window => {
     signal?.throwIfAborted();

@@ -6,7 +6,8 @@ export type WindowViewport = { width: number; height: number };
 
 export type WindowAdapter = {
   supported(): boolean;
-  read(): Promise<HostWindowState & { viewport?: WindowViewport }>;
+  read(): Promise<HostWindowState & { viewport?: WindowViewport; inputRevision?: number | null }>;
+  inputRevision?(): Promise<number | null>;
   apply(request: HostWindowRequest, signal?: AbortSignal): Promise<void>;
   watch(changed: () => void): Promise<() => void>;
 };
@@ -20,6 +21,8 @@ export class HostWindowService implements HostWindowPort {
   private observed?: HostWindowSnapshot;
   private viewport: WindowViewport | null = null;
   private commandRevision = 0;
+  private inputRevision: number | null = null;
+  private layoutCommand?: { revision: number; origin: DomainActor };
   private layoutReading?: { revision: number; work: Promise<WindowViewport | null> };
   private reading?: Promise<HostWindowSnapshot>;
   private listeners = new Set<() => void>();
@@ -43,9 +46,13 @@ export class HostWindowService implements HostWindowPort {
     const state = native ? { supported: true as const, minimized: native.minimized, maximized: native.maximized,
       fullscreen: native.fullscreen, focused: native.focused } : { supported: false as const };
     const viewport = native?.viewport;
-    const source = causalActor(origin ?? "system");
+    const command = this.layoutCommand;
+    const inputChanged = native?.inputRevision != null && native.inputRevision !== this.inputRevision;
+    this.inputRevision = native?.inputRevision ?? null;
+    if (this.layoutCommand && this.layoutCommand.revision !== this.inputRevision) this.layoutCommand = undefined;
+    const source = causalActor(command && command.revision !== this.inputRevision ? "system" : origin ?? this.layoutCommand?.origin ?? "system");
     if (viewport && Number.isFinite(viewport.width) && Number.isFinite(viewport.height) && viewport.width > 0 && viewport.height > 0) {
-      if (viewport.width !== this.viewport?.width || viewport.height !== this.viewport?.height) {
+      if (inputChanged || viewport.width !== this.viewport?.width || viewport.height !== this.viewport?.height) {
         this.viewport = stampEventCause({ width: viewport.width, height: viewport.height }, source);
       }
     } else this.viewport = null;
@@ -74,6 +81,19 @@ export class HostWindowService implements HostWindowPort {
     return value ? copyEventCause(value, { ...value }) : null;
   }
 
+  /** A fresh native input generation can retain an already dispatched source
+   * even when geometry reads fail or lag a DOM animation frame. */
+  async layoutOrigin(): Promise<DomainActor | undefined> {
+    const command = this.layoutCommand;
+    if (!command || !this.adapter.inputRevision) return undefined;
+    try {
+      const revision = await this.adapter.inputRevision();
+      if (this.layoutCommand !== command) return undefined;
+      if (revision !== command.revision) { this.layoutCommand = undefined; return undefined; }
+      return command.origin;
+    } catch (error) { this.report(error); return undefined; }
+  }
+
   async snapshot(signal?: AbortSignal): Promise<HostWindowSnapshot> {
     signal?.throwIfAborted();
     if (!this.reading) {
@@ -98,6 +118,13 @@ export class HostWindowService implements HostWindowPort {
       // not relabel old state or geometry as an effect of the caller.
       await this.read();
       signal?.throwIfAborted();
+      const state = this.observed;
+      const unchanged = state?.supported && (request.action === "fullscreen" ? state.fullscreen === request.enabled
+        : request.action === "maximize" ? state.maximized && !state.minimized
+        : request.action === "minimize" ? state.minimized : !state.minimized && !state.maximized && !state.fullscreen);
+      // A no-op cannot replace an earlier effect's source. New native input
+      // invalidates this association; acknowledgement or elapsed time does not.
+      if (!unchanged) this.layoutCommand = this.inputRevision === null ? undefined : { revision: this.inputRevision, origin };
       try {
         try { await this.adapter.apply(request, signal); }
         catch (error) {

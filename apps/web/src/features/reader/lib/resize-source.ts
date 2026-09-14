@@ -16,14 +16,17 @@ export function sampleResize(element: HTMLElement): ResizeSample {
 export const sameResizeSample = (a: ResizeSample, b: ResizeSample) => a.width === b.width && a.height === b.height
   && a.viewport.width === b.viewport.width && a.viewport.height === b.viewport.height;
 
-/** Geometry, not elapsed time, binds a DOM resize to a native request's sampled
- * result. The caller must retire the sample if its element/view changes while
+/** Matching geometry or an unchanged native input generation binds DOM feedback
+ * to a dispatched window request. The caller retires the sample if its view changes while
  * this read waits behind the native window operation. Other element changes
  * keep the explicit render source supplied by their owner. */
 export async function resizeSource(before: ResizeSample, next: ResizeSample, renderOrigin: DomainActor | undefined,
-  readWindow: () => Promise<WindowViewport | null> = () => hostWindow.layout()): Promise<DomainActor> {
+  readWindow: () => Promise<WindowViewport | null> = () => hostWindow.layout(),
+  fallback: () => Promise<DomainActor | undefined> = () => hostWindow.layoutOrigin()): Promise<DomainActor> {
   if (before.viewport.width === next.viewport.width && before.viewport.height === next.viewport.height) return causalActor(renderOrigin ?? "system");
-  const native = await readWindow();
+  let native: WindowViewport | null;
+  try { native = await readWindow(); }
+  catch (error) { const origin = await fallback(); if (origin) return origin; throw error; }
   if (native && native.width === next.viewport.width && native.height === next.viewport.height) return actorFromEvent(native);
-  return causalActor("system");
+  return await fallback() ?? causalActor("system");
 }

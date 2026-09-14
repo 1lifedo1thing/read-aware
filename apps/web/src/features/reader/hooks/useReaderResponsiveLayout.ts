@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { PHONE_VIEWPORT_QUERY } from "@read-aware/ui/media";
-import { actorFromEvent, causalActor } from "../../../platform/domain-actor";
-import { hostWindow } from "../../../services/window";
+import { causalActor } from "../../../platform/domain-actor";
+import { resizeSource } from "../lib/resize-source";
 import { createLogger } from "../../../platform/logger";
 
 const log = createLogger("reader-responsive-layout");
@@ -29,9 +29,8 @@ export function useReaderResponsiveLayout() {
         setLayout({ exclusive: published, origin: causalActor("system") });
         return;
       }
-      void hostWindow.layout().then(native => {
+      void resizeSource({ ...before, viewport: before }, { ...next, viewport: next }, undefined).then(origin => {
         if (!active || request !== revision || window.innerWidth !== next.width || window.innerHeight !== next.height || media.matches !== next.exclusive) return;
-        const origin = native && native.width === next.width && native.height === next.height ? actorFromEvent(native) : causalActor("system");
         published = next.exclusive;
         setLayout({ exclusive: published, origin });
       }).catch(error => {

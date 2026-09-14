@@ -85,6 +85,25 @@ test("a layout read admitted after a new command never shares the earlier in-fli
   expect(eventCause(current!)).toBe(actorCause(source));
 });
 
+test("native input generations retain delayed geometry and failure provenance until independent input", async () => {
+  const f = fixture(), source = causalActor("plugin:window");
+  let inputRevision = 1;
+  const read = f.adapter.read;
+  f.adapter.read = async () => ({ ...await read(), inputRevision });
+  f.adapter.inputRevision = async () => inputRevision;
+  await f.service.control({ action: "maximize" }, undefined, source);
+  f.viewport.width = 1190;
+  expect(eventCause((await f.service.layout())!)).toBe(actorCause(source));
+  f.adapter.read = async () => { throw new AppError("ipc/unknown", "Geometry not available"); };
+  await expect(f.service.layout()).rejects.toMatchObject({ code: "ipc/unknown" });
+  expect(await f.service.layoutOrigin()).toBe(source);
+  inputRevision++;
+  expect(await f.service.layoutOrigin()).toBeUndefined();
+  f.adapter.read = async () => ({ ...await read(), inputRevision });
+  // The user can return to the same dimensions between two samples.
+  expect(eventCause((await f.service.layout())!)).not.toBe(actorCause(source));
+});
+
 test("window intents are bounded, typed, ordered and return observed state rather than a paint claim", async () => {
   const f = fixture();
   for (const bad of [null, {}, { action: "close" }, { action: "fullscreen" }, { action: "fullscreen", enabled: 1 },

@@ -10,5 +10,7 @@ test("resize source uses matching native client geometry and does not reuse it f
   expect(actorCause(await resizeSource(before, next, render, read))).toBe(actorCause(native));
   const other = { ...next, viewport: { width: 1000, height: 900 } };
   expect(actorCause(await resizeSource(before, other, render, read))).not.toBe(actorCause(native));
+  expect(await resizeSource(before, other, render, read, async () => native)).toBe(native);
+  expect(await resizeSource(before, next, render, async () => { throw Error("Geometry read failed"); }, async () => native)).toBe(native);
   expect(await resizeSource(before, { ...before, height: 450 }, render, () => { throw Error("No viewport change"); })).toBe(render);
 });

@@ -24,6 +24,7 @@ mod secrets;
 mod resources;
 mod storage;
 mod storefront;
+mod window_input;
 #[cfg(target_os = "macos")]
 mod wheel_phase;
 #[cfg(desktop)]
@@ -926,6 +927,8 @@ pub fn run() {
             // gestures (one page turn per physical swipe).
             #[cfg(target_os = "macos")]
             wheel_phase::install(app.handle().clone());
+            #[cfg(target_os = "macos")]
+            window_input::install();
 
             // No forced preference: the config painted light paper, so swap in
             // dark paper when the OS scheme is dark and a dark boot never
@@ -1175,6 +1178,7 @@ pub fn run() {
             book_pick_start,
             book_pick_poll,
             set_traffic_lights_visible,
+            window_input::window_input_revision,
             list_system_fonts,
             plugins::plugins_list,
             plugins::plugins_stage_dir,

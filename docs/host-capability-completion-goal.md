@@ -27,6 +27,19 @@
 
 ## 当前交接
 
+- C04 macOS窗口输入来源：新增原生window_input_revision，仅返回main窗口可用性及单调输入序号，
+  AppKit本地鼠标/拖拽/键盘/触控事件使序号前移；惯性滚动不作新输入。不收集键码、坐标或文本。
+  安装失败和其他平台返回未知，不以固定零值冒充原生输入证据。监视器与既有wheel-phase一致按app生命周期持有。
+  HostWindowService在真实命令派发前绑定输入序号和actor；后续原生采样序号一致时延续来源，
+  新输入使关联失效；即使两次采样尺寸相同也替换旧几何来源。no-op不重新绑定旧效果。
+  几何失败/与DOM动画帧不匹配时，独立重读原生输入序号后才允许沿用已知来源；
+  resizeSource的Foliate/图片/viewport消费者及响应式面板共用这条路径，既有过期样本淘汰保持。
+  Web/desktop类型及cargo check --lib --offline通过；窗口关键检查与响应式反转检查通过。
+  日志 `/tmp/readaware-window-input-types.log`、`/tmp/readaware-window-input-native.log`、
+  `/tmp/readaware-window-input-check.log`、`/tmp/readaware-window-input-responsive.log`。
+  这是接线/本地检查，尚未实际观察AppKit监视器和Tauri动画。其他平台和未经过本app输入的外部
+  窗口管理器/显示器变化仍不能证明来源；输入序号本身也读取失败时仍保留原回退边界，完整C04未闭合。
+
 - C04阅读会话反应入口：reading2.22 observeSession新增独立delivery凭证和可选稳定ruleId，
   在既有授权过滤后签发；书域过滤现在返回回调Promise，凭证保持到异步回调结束。
   当前快照的宿主来源跨Worker通知进入withEvent，循环反馈标为cycle，退休/回调结束拒绝旧凭证。
