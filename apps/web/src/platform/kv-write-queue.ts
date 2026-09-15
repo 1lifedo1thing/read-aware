@@ -33,8 +33,7 @@ export class KVWriteQueue {
   }) {}
 
   write(key: string, value: string | null, origin: KVWriteOrigin = "local", actor: DomainActor | null = null): Promise<void> {
-    const source = causalActor(actor ?? "system");
-    return this.enqueue(new Map([[key, value]]), () => this.deps.persist(key, value, origin, source), origin, source);
+    return this.enqueue(new Map([[key, value]]), cause => this.deps.persist(key, value, origin, cause), origin, actor);
   }
 
   /** Atomic user edits publish only after the entire native transaction commits. */
@@ -59,7 +58,7 @@ export class KVWriteQueue {
 
   private enqueue(
     values: ReadonlyMap<string, string | null>,
-    persist: () => Promise<void>,
+    persist: (cause: DomainActor) => Promise<void>,
     origin?: KVWriteOrigin,
     actor: DomainActor | null = null,
     source: KVCommit["source"] = origin ?? "restore",
@@ -77,7 +76,9 @@ export class KVWriteQueue {
     const done = this.tail.then(async () => {
       let failure: { error: unknown } | undefined;
       try {
-        await persist();
+        // Persistence and observations share one causal root, while an unknown
+        // public actor remains null rather than becoming a synthetic system edit.
+        await persist(cause);
         for (const { state, value } of entries) state.durable = value;
         if (origin) for (const { key, value } of entries) this.deps.committed(key, value, origin, cause);
       } catch (error) {

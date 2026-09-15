@@ -212,7 +212,13 @@ fn backup_event_plan_cancellation_and_malformed_target_never_publish_partial_pla
     let root = tempfile::tempdir().unwrap();
     let staging = tempfile::tempdir().unwrap();
     let mut target = database(&root.path().join("db"));
+    // Model an already-corrupted database. Normal writes now parse JSON in the
+    // change-feed trigger, so bypass triggers only while constructing the fixture.
+    let triggers = rusqlite::config::DbConfig::SQLITE_DBCONFIG_ENABLE_TRIGGER;
+    let enabled = target.db_config(triggers).unwrap();
+    target.set_db_config(triggers, false).unwrap();
     insert(&target, "bad", 1, "device", "not JSON");
+    target.set_db_config(triggers, enabled).unwrap();
     let source = source(&[("bad", 1, "device", "{}")]);
     let source_path = source.archive().directory().to_owned();
     assert_eq!(

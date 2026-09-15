@@ -2,7 +2,9 @@
 //! files survive until that decision has committed. Recovery takes the same DB
 //! write lock, so a second process cannot roll back an active restore.
 use crate::error::CommandError;
-use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
+use rusqlite::{
+    Connection, DatabaseName, OptionalExtension, Transaction, TransactionBehavior, TransactionState,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -192,12 +194,14 @@ impl FileRestore {
         mut check: impl FnMut() -> Result<(), CommandError>,
     ) -> Result<Self, CommandError> {
         check()?;
-        // Acquire a RESERVED lock even if a caller supplied a deferred tx. This
-        // no-row update changes no data and blocks concurrent recovery.
-        tx.execute(
-            "UPDATE app_kv SET value_json=value_json WHERE key=?1",
-            [format!("{MARKER}lock")],
-        )?;
+        // The caller must already hold the write lock that excludes recovery.
+        // Even a zero-row app_kv UPDATE can initialize sqlite_sequence through
+        // its triggers, invalidating the reviewed full-database revision.
+        if tx.transaction_state(Some(DatabaseName::Main))? != TransactionState::Write {
+            return Err(invalid(
+                "Restore file preparation requires a database write transaction",
+            ));
+        }
         if changes.len() > 100_000 {
             return Err(invalid("Too many restore files"));
         }

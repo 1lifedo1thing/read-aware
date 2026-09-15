@@ -479,18 +479,19 @@ export function collectInventory(): Inventory[] {
       : namedInitializer("apps/web/src/domain/events.ts",roster));
   }
   const featureMap = pairs([["agent ai", "AI01 AI03 MEM01"],["annotations", "ANN01"],["command", "UI03"],["library shelf", "LIB01 UI02"],["menus", "UI05"],["navigation", "UI01 SYS17"],["plugins", "EXT01 CON03"],["reader", "READ01 TXT01"],["settings", "CFG01 OPS08"],["stats", "STAT01"],["sync", "OPS01"],["update", "SYS16"]]);
-  for (const directory of readdirSync("apps/web/src/features", {withFileTypes:true}).filter(d=>d.isDirectory())) add("Feature owner", directory.name, featureMap[directory.name], "[代码+人工审计] 所属功能组入口；目录覆盖不等于每个 UI 分支测试通过");
+  // Filesystem enumeration order differs across runners; generated evidence must not.
+  for (const directory of readdirSync("apps/web/src/features", {withFileTypes:true}).filter(d=>d.isDirectory()).sort((a,b)=>a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) add("Feature owner", directory.name, featureMap[directory.name], "[代码+人工审计] 所属功能组入口；目录覆盖不等于每个 UI 分支测试通过");
   const expectedPlugins = pairs([["memory-desk", "MEM01 MEM04 MEM05 MEM09 MEM10 MEM11 READ01 EXT02 EXT05"],["dictionary", "EXT09 AI12 READ07 LIB01"],["rss-reader", "EXT10"],["editorial-themes", "EXT08"],["sentence-reader", "READ15 READ16"],["tts", "READ17 READ18"],["webdav-sync", "OPS04"],["jumper", "TXT02 TXT07 READ06 EXT02"],["annotation-desk", "ANN01 ANN04 ANN05 ANN08 ANN09 EXT02 EXT05 SYS10"],["listening-desk", "READ16 READ18 READ06 EXT02 MORE03"],["reading-goals", "AI11 MEM03 SET23 STAT02 STAT05 STAT03 EXT07 EXT02 EXT05 SYS01"],["workspace-profiles", "UI02 UI04 CFG01 CFG10 EXT02 EXT05 SYS02"],["text-desk", "TXT04 TXT05 TXT06 TXT07 TXT10 TXT11 TXT12 TXT13 LIB01 READ01 READ13 EXT01 EXT02 EXT05 EXT06 SYS09 SYS13"],["library-desk", "LIB01 LIB02 LIB03 LIB05 LIB06 LIB07 LIB08 LIB09 LIB10 LIB11 LIB15 LIB16 LIB17 LIB18 READ01 UI01 UI02 UI03 EXT02 EXT03 EXT05 EXT06 SYS09 SYS11 SYS13 MORE05"]]);
   expectedPlugins["text-desk"].push("AI07");
   expectedPlugins["library-desk"].push("MORE07");
   expectedPlugins["maintenance-desk"] = ["CFG08", "SYS15", "OPS03", "OPS08", "OPS11", "EXT02", "EXT05"];
   expectedPlugins["reading-goals"].push("SYS02");
   expectedPlugins["jumper"] = ["TXT02", "TXT07", "READ01", "READ06", "READ07", "READ13", "EXT02", "SYS02", "AI05"];
-  for (const directory of readdirSync("plugins",{withFileTypes:true}).filter(d=>d.isDirectory()).sort((a,b)=>a.name.localeCompare(b.name))) {
+  for (const directory of readdirSync("plugins",{withFileTypes:true}).filter(d=>d.isDirectory()).sort((a,b)=>a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) {
     const manifest = JSON.parse(readFileSync(`plugins/${directory.name}/manifest.json`,"utf8"));
     add("First-party source plugin", manifest.id, expectedPlugins[directory.name], `[代码] 源码版本 ${manifest.version}；源码存在不等于打包、安装、启用或模型可调用`);
     for (const field of manifest.settings ?? []) add("Plugin setting declaration", `plugins.${manifest.id}.${field.id}`, [field.kind === "secret" || field.inputMode === "password" ? "SYS04" : "CFG09"], `${field.kind}；${field.kind === "secret" || field.inputMode === "password" ? "不进入 Agent/普通 settings catalog" : "非敏感配置；字段存在不等于其功能有 Agent 工具"}`);
-    for (const file of readdirSync(`plugins/${directory.name}/src`,{recursive:true}).filter(name=>/\.(ts|tsx)$/.test(String(name)) && !/\.test\./.test(String(name)))) {
+    for (const file of readdirSync(`plugins/${directory.name}/src`,{recursive:true}).filter(name=>/\.(ts|tsx)$/.test(String(name)) && !/\.test\./.test(String(name))).sort()) {
       function visitRegistration(node: import("../apps/web/node_modules/typescript").Node) {
         if (ts.isCallExpression(node) && /\.contributions\.(agentTools|agentRetrievalProviders)\.register$/.test(node.expression.getText())) {
           const retrieval = node.expression.getText().includes("agentRetrievalProviders");

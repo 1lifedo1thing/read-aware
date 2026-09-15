@@ -1,6 +1,31 @@
 import { expect, test } from "bun:test";
+import { resolve } from "node:path";
 import { HOST_COMMAND_IDS } from "../packages/core/src/host-commands";
 import { assertUniqueSourceKeys, collectInventory } from "./host-capability-inventory";
+
+test("inventory evidence stays identical across filesystem enumeration orders", () => {
+  const expected = structuredClone(collectInventory());
+  // Keep the filesystem mock in its own process so sibling suites retain real IO.
+  const child = Bun.spawnSync([process.execPath, "-e", `
+    import fs from "node:fs";
+    import { mock } from "bun:test";
+    const readDirectory = fs.readdirSync;
+    let reordered = 0;
+    mock.module("node:fs", () => ({ ...fs, readdirSync: (...args) => {
+      const entries = readDirectory(...args);
+      reordered++;
+      return entries.reverse();
+    }}));
+    const { collectInventory } = await import("./scripts/host-capability-inventory.ts");
+    const inventory = collectInventory();
+    console.log(JSON.stringify({ inventory, reordered }));
+    process.exit(0);
+  `], { cwd: resolve(import.meta.dir, ".."), timeout: 20_000 });
+  expect(child.exitCode, child.stderr.toString()).toBe(0);
+  const actual = JSON.parse(child.stdout.toString());
+  expect(actual.reordered).toBeGreaterThan(1);
+  expect(actual.inventory).toEqual(expected);
+}, 30_000);
 
 test("source evidence keys cannot silently overwrite an unrelated capability source", () => {
   expect(() => assertUniqueSourceKeys()).not.toThrow();

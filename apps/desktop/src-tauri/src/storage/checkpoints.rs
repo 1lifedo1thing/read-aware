@@ -746,6 +746,9 @@ pub(crate) fn restore_bootstrap_checkpoint(
 
     let tx = conn.transaction()?;
     restore_tables_from_file(&tx, &file)?;
+    // A local event behind the frontier can delete this checkpoint below.
+    // Windows requires its SQLite file handle to be closed before removal.
+    drop(file);
     super::capability_changes::invalidate(&tx)?;
     sync_cursor_set_inner(
         &tx,

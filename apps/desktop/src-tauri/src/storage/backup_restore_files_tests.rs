@@ -55,6 +55,42 @@ fn assert_after(root: &Path) {
     assert_eq!(fs::read(root.join("secret.key")).unwrap(), vec![7; 32]);
 }
 #[test]
+fn backup_restore_files_requires_a_write_lock_without_changing_database_evidence() {
+    let root = tempfile::tempdir().unwrap();
+    setup(root.path());
+    let mut conn = db(&root.path().join("db"));
+    let sequences = |conn: &Connection| {
+        conn.prepare("SELECT name,seq FROM sqlite_sequence ORDER BY name")
+            .unwrap()
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+    };
+    let before = sequences(&conn);
+    let tx = conn.transaction().unwrap();
+    assert_eq!(
+        FileRestore::prepare(&tx, root.path(), changes(root.path()), || Ok(()))
+            .err()
+            .unwrap()
+            .code,
+        "backup/incomplete"
+    );
+    assert!(!root.path().join(DIRECTORY).exists());
+    tx.rollback().unwrap();
+    let tx = conn
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .unwrap();
+    let writes = tx.total_changes();
+    let _restore = FileRestore::prepare(&tx, root.path(), changes(root.path()), || Ok(())).unwrap();
+    assert_eq!(tx.total_changes(), writes);
+    assert_eq!(sequences(&tx), before);
+    assert_before(root.path());
+    tx.rollback().unwrap();
+}
+#[test]
 fn backup_restore_files_commit_and_rollback_follow_the_database_decision() {
     for commit in [false, true] {
         let root = tempfile::tempdir().unwrap();
@@ -104,7 +140,9 @@ fn backup_restore_files_cancellation_after_first_replacement_keeps_a_recoverable
     let root = tempfile::tempdir().unwrap();
     setup(root.path());
     let mut conn = db(&root.path().join("db"));
-    let tx = conn.transaction().unwrap();
+    let tx = conn
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .unwrap();
     let restore = FileRestore::prepare(&tx, root.path(), changes(root.path()), || Ok(())).unwrap();
     let error = restore
         .install(|| {
@@ -120,7 +158,9 @@ fn backup_restore_files_cancellation_after_first_replacement_keeps_a_recoverable
         .unwrap_err();
     assert_eq!(error.code, "backup/cancelled");
     tx.rollback().unwrap();
-    let tx = conn.transaction().unwrap();
+    let tx = conn
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .unwrap();
     assert!(FileRestore::prepare(&tx, root.path(), changes(root.path()), || Ok(())).is_err());
     tx.rollback().unwrap();
     recover(&mut conn, root.path()).unwrap();
@@ -133,7 +173,9 @@ fn backup_restore_files_recovery_waits_for_active_writer_and_retains_damaged_bas
     let mut conn = db(&root.path().join("db"));
     let mut other = db(&root.path().join("db"));
     other.busy_timeout(std::time::Duration::ZERO).unwrap();
-    let tx = conn.transaction().unwrap();
+    let tx = conn
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .unwrap();
     let restore = FileRestore::prepare(&tx, root.path(), changes(root.path()), || Ok(())).unwrap();
     restore.install(|| Ok(())).unwrap();
     assert!(recover(&mut other, root.path()).is_err());
@@ -166,7 +208,9 @@ fn backup_restore_files_rejects_changed_bytes_and_unsafe_destinations_before_liv
             "key-replacement" => selected[1].before = Some(digest(&[9; 32])),
             _ => selected[0].before = None,
         }
-        let tx = conn.transaction().unwrap();
+        let tx = conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .unwrap();
         assert!(FileRestore::prepare(&tx, root.path(), selected, || Ok(())).is_err());
         tx.rollback().unwrap();
         recover(&mut conn, root.path()).unwrap();
