@@ -13,13 +13,16 @@ const plugin: PluginModule = {
     assertCapabilities(ctx);
     registerBookmarkTools(ctx);
     const unavailable = { revision: 0, visible: true, enabled: false };
+    const always = { revision: 0, visible: true, enabled: true };
     const header = ctx.contributions.headerActions.register({ id: "jumper", title: "Jumper", icon: "magnifying-glass", state: unavailable,
       surface: "reader", presentation: "popup", view: () => jumperView(ctx) });
     const open = ctx.contributions.commands.register({ id: "open", title: "Jumper", icon: "magnifying-glass", state: unavailable,
-      keywords: "jump chapter text search navigation", run: async () => ({ view: await jumperView(ctx) }) });
+      keywords: "jump chapter page text search navigation", run: async () => ({ view: await jumperView(ctx) }) });
     ctx.contributions.commands.register({ id: "bookmarks", title: `Jumper: ${bookmarkCopy(ctx.locale).title}`, icon: "book-bookmark",
-      state: { revision: 0, visible: true, enabled: true }, keywords: "bookmark saved location passage",
+      state: always, keywords: "bookmark saved location passage",
       run: async () => ({ view: await bookmarksView(ctx) }) });
+    ctx.contributions.headerActions.register({ id: "bookmarks", title: bookmarkCopy(ctx.locale).title, icon: "book-bookmark", state: always,
+      surface: "reader", presentation: "popup", view: input => bookmarksView(ctx, input.book?.id) });
     const history = (["back", "forward"] as const).map(direction => ({ direction,
       registration: ctx.contributions.commands.register({ id: direction, title: `Jumper: ${tr(ctx.locale, direction)}`, state: unavailable,
         icon: direction === "back" ? "arrow-left" : "arrow-right",

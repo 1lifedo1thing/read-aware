@@ -62,7 +62,7 @@ test("missing chapters produce field validation without moving the reader", asyn
   const { ctx, jumps } = fixture();
   const view = await form(ctx);
   expect(await view.onSubmit({ mode: "chapter", query: "99" })).toEqual({ fieldErrors: { query: "该章节不存在。" } });
-  expect(await view.onSubmit({ mode: "ordinal", query: "1" })).toEqual({ fieldErrors: { query: "此目录标题没有可跳转的位置。" } });
+  expect(await view.onSubmit({ mode: "chapter", query: "1" })).toEqual({ fieldErrors: { query: "此目录标题没有可跳转的位置。" } });
   expect(jumps).toHaveLength(0);
 });
 
@@ -94,7 +94,7 @@ test("empty paged searches consume continuation and retain the pinned revision",
       ? { bookId: "book", contentVersion: "v1", hits: [], nextCursor: null, textStatus: "available", scannedSections: 2, totalSections: 2 }
       : { bookId: "book", contentVersion: "v1", hits: [], nextCursor: "next", textStatus: "partial", scannedSections: 1, totalSections: 2 };
   };
-  const task = (await (await form(ctx)).onSubmit({ mode: "text", query: "needle" }))!.view!;
+  const task = (await (await form(ctx)).onSubmit({ mode: "text", textQuery: "needle" }))!.view!;
   expect(task).toMatchObject({ kind: "blocks", blocks: [{ kind: "progress", value: null }] });
   await mount(task);
   const result = list({ view: updates[updates.length - 1]!.view });
@@ -179,8 +179,10 @@ test("back and forward retain the session guard without creating plugin-owned hi
   const guards: unknown[] = [];
   ctx.domains.reading.commands.back = async guard => { guards.push(guard); return { status: "completed", sessionId: "session", location }; };
   const view = await jumperView(ctx);
-  if (view.kind !== "blocks" || view.blocks[0].kind !== "actions") throw new Error("Expected history actions");
-  await view.blocks[0].actions[0].run();
+  const actions = view.kind === "blocks" ? view.blocks.find(block => block.kind === "actions") : undefined;
+  if (!actions || actions.kind !== "actions") throw new Error("Expected history actions");
+  expect(actions.actions.map(action => action.id)).toEqual(["bookmarks", "back", "forward"]);
+  await actions.actions.find(action => action.id === "back")!.run();
   expect(guards).toEqual([{ sessionId: "session" }]);
 });
 
@@ -210,4 +212,28 @@ test("stale locations discard hits and do not offer a guaranteed-failing retry o
   ctx.domains.library.queries.books.searchLocations = async () => { throw { code: "reader/stale-location" }; };
   await mount(textSearchView(ctx, { bookId: "book", query: "needle", cursor: "old" }));
   expect(updates[updates.length - 1]!.view).toMatchObject({ kind: "list", items: [], emptyText: "书籍内容已变化，请重新搜索。", actions: [] });
+});
+
+test("page mode resolves printed page labels through navigation targets", async () => {
+  const { ctx, jumps } = fixture();
+  const requests: unknown[] = [];
+  const target = (index: number, label: string, href: string) => ({ index, sectionIndex: 0, label, labelTruncated: false, linear: true, location: { ...location, href } });
+  const pages = new Map<string, { status: "available" | "absent"; items: ReturnType<typeof target>[] }>([
+    ["7", { status: "available", items: [target(6, "7", "page-7")] }],
+    ["9", { status: "available", items: [target(8, "9", "page-9a"), target(9, "9", "page-9b")] }],
+    ["none", { status: "available", items: [] }],
+  ]);
+  ctx.domains.library.queries.books.listNavigationTargets = (async (input: { label: string }) => {
+    requests.push(input);
+    return pages.get(input.label) ?? { status: "absent", items: [] };
+  }) as never;
+  expect(await (await form(ctx)).onSubmit({ mode: "page", pageQuery: "7" })).toEqual({ close: true });
+  expect(jumps.map(jump => jump.href)).toEqual(["page-7"]);
+  expect(await (await form(ctx)).onSubmit({ mode: "page", pageQuery: "none" })).toEqual({ fieldErrors: { pageQuery: "没有这个页码。" } });
+  expect(await (await form(ctx)).onSubmit({ mode: "page", pageQuery: "  " })).toEqual({ fieldErrors: { pageQuery: "请输入 1 至 300 个字符的页码。" } });
+  const ambiguous = list(await (await form(ctx)).onSubmit({ mode: "page", pageQuery: "9" }));
+  expect(ambiguous.items.map(item => [item.id, item.title])).toEqual([["8", "页码 9"], ["9", "页码 9"]]);
+  await ambiguous.items[1]!.onSelect!();
+  expect(jumps.map(jump => jump.href)).toEqual(["page-7", "page-9b"]);
+  expect(requests).toEqual(expect.arrayContaining([{ bookId: "book", contentVersion: "v1", kind: "pages", label: "7", limit: 40 }]));
 });

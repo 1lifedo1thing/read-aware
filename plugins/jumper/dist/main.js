@@ -62,23 +62,27 @@ var strings = {
   searching: ["Searching", "搜索中", "搜尋中", "検索中", "Поиск", "Recherche en cours", "Suche läuft", "Buscando"],
   cancel: ["Cancel", "取消", "取消", "キャンセル", "Отмена", "Annuler", "Abbrechen", "Cancelar"],
   cancelled: ["Search cancelled.", "搜索已取消。", "搜尋已取消。", "検索をキャンセルしました。", "Поиск отменён.", "Recherche annulée.", "Suche abgebrochen.", "Búsqueda cancelada."],
-  mode: ["Search in", "查找范围", "查找範圍", "検索対象", "Искать в", "Rechercher dans", "Suchen in", "Buscar en"],
+  mode: ["Jump to", "跳转到", "跳轉到", "移動先", "Перейти к", "Aller à", "Springen zu", "Ir a"],
   chapter: ["Chapter", "章节", "章節", "章", "Глава", "Chapitre", "Kapitel", "Capítulo"],
-  ordinal: ["TOC order", "目录序号", "目錄序號", "目次の順番", "Порядок оглавления", "Ordre du sommaire", "Inhaltsreihenfolge", "Orden del índice"],
-  text: ["Book text", "正文", "正文", "本文", "Текст книги", "Texte du livre", "Buchtext", "Texto del libro"],
-  query: ["Number, title, or text", "章节号、标题或文字", "章節號、標題或文字", "番号・見出し・文字列", "Номер, заголовок или текст", "Numéro, titre ou texte", "Nummer, Titel oder Text", "Número, título o texto"],
-  search: ["Find", "查找", "查找", "検索", "Найти", "Rechercher", "Suchen", "Buscar"],
+  text: ["Passage", "正文", "正文", "本文", "Фрагмент", "Passage", "Textstelle", "Pasaje"],
+  page: ["Page", "页码", "頁碼", "ページ", "Страница", "Page", "Seite", "Página"],
+  queryChapter: ["Chapter number or title", "章节号或标题", "章節號或標題", "章番号または見出し", "Номер или название главы", "Numéro ou titre du chapitre", "Kapitelnummer oder Titel", "Número o título del capítulo"],
+  queryText: ["Words to find in the book", "要在书中查找的文字", "要在書中查找的文字", "本の中で探す語句", "Слова для поиска в книге", "Mots à trouver dans le livre", "Wörter, die im Buch gesucht werden", "Palabras que buscar en el libro"],
+  queryPage: ["Printed page number, e.g. 42 or xiv", "原书页码，如 42 或 xiv", "原書頁碼，如 42 或 xiv", "本の印刷ページ番号（例：42、xiv）", "Номер страницы в книге, например 42 или xiv", "Numéro de page imprimé, ex. 42 ou xiv", "Gedruckte Seitenzahl, z. B. 42 oder xiv", "Número de página impreso, p. ej. 42 o xiv"],
+  search: ["Go", "前往", "前往", "移動", "Перейти", "Aller", "Los", "Ir"],
   back: ["Go back", "后退", "後退", "戻る", "Назад", "Reculer", "Zurück", "Atrás"],
   forward: ["Go forward", "前进", "前進", "進む", "Вперёд", "Avancer", "Vorwärts", "Adelante"],
   matchCase: ["Match case", "区分大小写", "區分大小寫", "大文字と小文字を区別", "Учитывать регистр", "Respecter la casse", "Groß-/Kleinschreibung", "Distinguir mayúsculas"],
   wholeWords: ["Whole words", "全词匹配", "全詞匹配", "単語全体", "Слова целиком", "Mots entiers", "Ganze Wörter", "Palabras completas"],
   invalid: ["Enter 1 to 500 characters.", "请输入 1 至 500 个字符。", "請輸入 1 至 500 個字元。", "1〜500文字を入力してください。", "Введите от 1 до 500 символов.", "Saisissez de 1 à 500 caractères.", "1 bis 500 Zeichen eingeben.", "Introduce entre 1 y 500 caracteres."],
+  invalidPage: ["Enter a page number of 1 to 300 characters.", "请输入 1 至 300 个字符的页码。", "請輸入 1 至 300 個字元的頁碼。", "1〜300文字のページ番号を入力してください。", "Введите номер страницы длиной от 1 до 300 символов.", "Saisissez un numéro de page de 1 à 300 caractères.", "Seitenzahl mit 1 bis 300 Zeichen eingeben.", "Introduce un número de página de 1 a 300 caracteres."],
   missing: ["Chapter not found.", "该章节不存在。", "該章節不存在。", "章が見つかりません。", "Глава не найдена.", "Chapitre introuvable.", "Kapitel nicht gefunden.", "Capítulo no encontrado."],
+  missingPage: ["No page with that number.", "没有这个页码。", "沒有這個頁碼。", "そのページ番号はありません。", "Страницы с таким номером нет.", "Aucune page avec ce numéro.", "Keine Seite mit dieser Nummer.", "No hay ninguna página con ese número."],
+  pagesUnavailable: ["This book has no printed page numbers.", "这本书没有原书页码。", "這本書沒有原書頁碼。", "この本には印刷ページ番号がありません。", "В этой книге нет номеров страниц.", "Ce livre n’a pas de numéros de page imprimés.", "Dieses Buch hat keine gedruckten Seitenzahlen.", "Este libro no tiene números de página impresos."],
   unavailable: ["This heading has no reading location.", "此目录标题没有可跳转的位置。", "此目錄標題沒有可跳轉的位置。", "この見出しには移動先がありません。", "У этого заголовка нет позиции для перехода.", "Ce titre n'a pas de destination.", "Diese Überschrift hat kein Sprungziel.", "Este título no tiene destino."],
-  noBook: ["No book is open.", "当前没有打开的书籍。", "目前沒有開啟的書籍。", "本が開かれていません。", "Книга не открыта.", "Aucun livre ouvert.", "Kein Buch geöffnet.", "No hay ningún libro abierto."],
+  chooseTarget: ["Several matches. Pick one.", "有多个匹配，请选择一个。", "有多個符合項目，請選擇一個。", "複数の候補があります。1つ選んでください。", "Несколько совпадений. Выберите одно.", "Plusieurs résultats. Choisissez-en un.", "Mehrere Treffer. Wählen Sie einen.", "Varias coincidencias. Elige una."],
+  noBook: ["Open a book to jump around in it.", "打开一本书后即可在书中跳转。", "開啟一本書後即可在書中跳轉。", "本を開くと、その中を移動できます。", "Откройте книгу, чтобы перемещаться по ней.", "Ouvrez un livre pour vous y déplacer.", "Öffnen Sie ein Buch, um darin zu springen.", "Abre un libro para moverte por él."],
   noHits: ["No matches.", "没有匹配结果。", "沒有符合的結果。", "一致する結果はありません。", "Совпадений нет.", "Aucun résultat.", "Keine Treffer.", "Sin coincidencias."],
-  more: ["Continue search", "继续搜索", "繼續搜尋", "検索を続ける", "Продолжить поиск", "Continuer la recherche", "Suche fortsetzen", "Continuar búsqueda"],
-  pending: ["No matches in this batch.", "本批次没有匹配结果。", "本批次沒有符合的結果。", "この範囲に一致する結果はありません。", "В этой части совпадений нет.", "Aucun résultat dans cette partie.", "Keine Treffer in diesem Abschnitt.", "Sin coincidencias en esta parte."],
   timedOut: ["Search timed out.", "搜索超时。", "搜尋逾時。", "検索がタイムアウトしました。", "Поиск превысил время ожидания.", "La recherche a expiré.", "Die Suche hat das Zeitlimit überschritten.", "La búsqueda agotó el tiempo."],
   scanLimit: ["Search stopped at its section limit.", "搜索已达到分节上限。", "搜尋已達到分節上限。", "セクション上限で検索を停止しました。", "Поиск остановлен на лимите разделов.", "Recherche arrêtée à la limite de sections.", "Suche am Abschnittslimit angehalten.", "Búsqueda detenida en el límite de secciones."],
   resultLimit: ["Search stopped at its result limit.", "搜索已达到结果上限。", "搜尋已達到結果上限。", "結果上限で検索を停止しました。", "Поиск остановлен на лимите результатов.", "Recherche arrêtée à la limite de résultats.", "Suche am Ergebnislimit angehalten.", "Búsqueda detenida en el límite de resultados."],
@@ -542,156 +546,6 @@ function textSearchView(ctx, input) {
   } } };
 }
 
-// src/navigation-strings.ts
-var en = {
-  navigation: "Navigation",
-  sections: "Source sections",
-  pages: "Book page labels",
-  section: "Source section",
-  page: "Page label",
-  screen: "Screen in this section",
-  empty: "No matching targets",
-  absent: "Page labels unavailable",
-  unlocated: "No reading location",
-  number: "Section number",
-  jump: "Go",
-  invalidSection: "Enter an existing positive section number",
-  invalidLabel: "Enter a page label of 1-300 characters",
-  findPage: "Find page label",
-  refresh: "Refresh",
-  nonLinear: "Non-linear section",
-  next: "Next screen",
-  previous: "Previous screen",
-  "next-section": "Next source section",
-  "previous-section": "Previous source section",
-  "next-chapter": "Next TOC heading",
-  "previous-chapter": "Previous TOC heading",
-  start: "Start of book",
-  end: "End of book"
-};
-var zh = {
-  navigation: "导航",
-  sections: "源分节",
-  pages: "原书页码",
-  section: "源分节",
-  page: "页码标签",
-  screen: "本分节屏幕页",
-  empty: "没有匹配目标",
-  absent: "暂无可用的页码标签",
-  unlocated: "没有可跳转的位置",
-  number: "分节序号",
-  jump: "跳转",
-  invalidSection: "请输入存在的正整数分节序号",
-  invalidLabel: "请输入 1-300 个字符的页码标签",
-  findPage: "查找页码标签",
-  refresh: "刷新",
-  nonLinear: "非线性分节",
-  next: "下一屏",
-  previous: "上一屏",
-  "next-section": "下一源分节",
-  "previous-section": "上一源分节",
-  "next-chapter": "下一目录标题",
-  "previous-chapter": "上一目录标题",
-  start: "书首",
-  end: "书尾"
-};
-var navigationWords = (locale) => locale === "zh-Hans" ? zh : en;
-
-// src/navigation.ts
-var steps = [
-  { id: "previous", icon: "arrow-left" },
-  { id: "next", icon: "arrow-right" },
-  { id: "previous-section", icon: "skip-back" },
-  { id: "next-section", icon: "skip-forward" },
-  { id: "previous-chapter", icon: "caret-left" },
-  { id: "next-chapter", icon: "caret-right" },
-  { id: "start", icon: "arrow-line-left" },
-  { id: "end", icon: "arrow-line-right" }
-];
-async function navigate(ctx, target) {
-  await ctx.domains.reading.commands.goTo(target);
-  return { close: true };
-}
-async function navigationView(ctx) {
-  const t = navigationWords(ctx.locale), session = await ctx.domains.reading.queries.session();
-  if (session.status !== "ready" || !session.bookId || !session.sessionId || !session.location) {
-    throw Object.assign(Error("Navigation requires a ready reader"), { code: "reader/unavailable" });
-  }
-  const source = { bookId: session.bookId, contentVersion: session.location.contentVersion };
-  const guard = { bookId: session.bookId, sessionId: session.sessionId };
-  const pagination = session.pagination;
-  return { kind: "detail", title: t.navigation, content: [
-    ...pagination ? [{ kind: "keyValue", rows: [
-      { label: t.section, value: `${pagination.section.index + 1} / ${pagination.section.count}` },
-      ...pagination.screen ? [{ label: t.screen, value: `${pagination.screen.index + 1} / ${pagination.screen.count}` }] : []
-    ] }] : [],
-    { kind: "list", items: [
-      { id: "sections", title: t.sections, icon: "list-bullets", onSelect: async () => ({ view: await navigationTargets(ctx, source, "sections") }) },
-      { id: "pages", title: t.pages, icon: "files", onSelect: async () => ({ view: await navigationTargets(ctx, source, "pages") }) },
-      ...steps.map((step) => ({ id: step.id, title: t[step.id], icon: step.icon, onSelect: async () => {
-        await ctx.domains.reading.commands.step(step.id, guard);
-        return { close: true };
-      } }))
-    ] }
-  ], actions: [{ id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await navigationView(ctx), navigation: "replace" }) }] };
-}
-async function navigationTargets(ctx, source, kind, offsets = [0], label) {
-  const t = navigationWords(ctx.locale);
-  const page = await ctx.domains.library.queries.books.listNavigationTargets({
-    ...source,
-    kind,
-    offset: offsets[offsets.length - 1],
-    limit: 40,
-    ...label === undefined ? {} : { label }
-  });
-  const go = async (next) => ({ view: await navigationTargets(ctx, source, kind, next, label), navigation: "replace" });
-  return {
-    kind: "list",
-    title: kind === "sections" ? t.sections : t.pages,
-    emptyText: page.status === "absent" ? t.absent : t.empty,
-    items: page.items.map((item) => ({
-      id: String(item.index),
-      title: item.label ? `${item.label}${item.labelTruncated ? "..." : ""}` : `${kind === "sections" ? t.section : t.page} ${item.index + 1}`,
-      icon: "file-text",
-      subtitle: [item.location ? "" : t.unlocated, item.linear === false ? t.nonLinear : ""].filter(Boolean).join(" / "),
-      ...item.location ? { onSelect: () => navigate(ctx, item.location) } : {}
-    })),
-    actions: [
-      { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => {
-        const toc = await ctx.domains.library.queries.books.getNavigationToc(source.bookId);
-        return { view: await navigationTargets(ctx, { bookId: toc.bookId, contentVersion: toc.contentVersion }, kind, [0], label), navigation: "replace" };
-      } },
-      ...page.status === "available" && (kind === "pages" || page.total > 0) ? [{ id: "find", label: kind === "sections" ? t.number : t.findPage, icon: "magnifying-glass", run: () => ({ view: kind === "sections" ? {
-        kind: "form",
-        title: t.sections,
-        submitLabel: t.jump,
-        fields: [{ id: "number", kind: "number", label: t.number, min: 1, max: page.total, step: 1 }],
-        onSubmit: async (values) => {
-          const number = values.number;
-          if (typeof number !== "number" || !Number.isSafeInteger(number) || number < 1 || number > page.total)
-            return { fieldErrors: { number: t.invalidSection } };
-          return navigate(ctx, { ...source, sectionIndex: number - 1 });
-        }
-      } : {
-        kind: "form",
-        title: t.findPage,
-        submitLabel: t.jump,
-        fields: [{ id: "label", kind: "text", label: t.page, value: label ?? "" }],
-        onSubmit: async (values) => {
-          if (typeof values.label !== "string" || !values.label.trim() || values.label.length > 300)
-            return { fieldErrors: { label: t.invalidLabel } };
-          return { view: await navigationTargets(ctx, source, "pages", [0], values.label) };
-        }
-      } }) }] : []
-    ],
-    pagination: {
-      page: offsets.length,
-      ...offsets.length > 1 ? { onPrevious: () => go(offsets.slice(0, -1)) } : {},
-      ...page.nextOffset === null ? {} : { onNext: () => go([...offsets, page.nextOffset]) }
-    }
-  };
-}
-
 // src/bookmarks.ts
 var BOOKMARKS = "bookmarks";
 var bookmarkCollection = (ctx) => ctx.services.storage.collection(BOOKMARKS);
@@ -786,65 +640,242 @@ async function openBookmark(ctx, bookmark) {
 }
 
 // src/bookmark-strings.ts
-var en2 = {
+var en = {
   title: "Bookmarks",
-  empty: "No bookmarks",
+  empty: "No bookmarks yet. Save the place you are reading to come back to it later.",
   name: "Name",
   save: "Save bookmark",
   saved: "Bookmark saved",
-  current: "Bookmark current location",
-  selection: "Bookmark selection",
+  current: "Save current location",
+  selection: "Save selection",
   location: "Reading location",
   range: "Selected passage",
   open: "Go to bookmark",
   rename: "Rename",
   renamed: "Bookmark renamed",
-  remove: "Delete bookmark",
+  remove: "Delete",
   removed: "Bookmark deleted",
   confirm: "Delete this bookmark",
-  invalidName: "Enter a name of 1-120 characters.",
-  required: "Confirm deletion.",
-  invalid: "Bookmark data unavailable",
-  missing: "Bookmark no longer exists",
-  stale: "Bookmarks changed. Refresh the list.",
-  conflict: "This bookmark changed. Refresh before trying again.",
+  invalidName: "Enter a name of 1–120 characters.",
+  required: "Confirm deletion first.",
+  invalid: "Unreadable bookmark",
+  missing: "This bookmark no longer exists.",
+  stale: "Bookmarks changed. Reload the list.",
+  conflict: "This bookmark changed in the meantime. Reload before trying again.",
   refresh: "Refresh",
   all: "All books",
-  thisBook: "Current book",
-  version: "Source version",
+  thisBook: "This book only",
   book: "Book",
-  kind: "Type"
+  kind: "Type",
+  savedAt: "Saved"
 };
-var zh2 = {
-  title: "书签",
-  empty: "暂无书签",
-  name: "名称",
-  save: "保存书签",
-  saved: "书签已保存",
-  current: "收藏当前位置",
-  selection: "收藏选区",
-  location: "阅读位置",
-  range: "选中段落",
-  open: "跳转到书签",
-  rename: "重命名",
-  renamed: "书签已重命名",
-  remove: "删除书签",
-  removed: "书签已删除",
-  confirm: "删除这条书签",
-  invalidName: "请输入 1-120 个字符的名称。",
-  required: "请确认删除。",
-  invalid: "书签数据不可用",
-  missing: "书签已不存在",
-  stale: "书签列表已变化，请刷新。",
-  conflict: "这条书签已变化，请刷新后再试。",
-  refresh: "刷新",
-  all: "全部书籍",
-  thisBook: "当前书籍",
-  version: "内容版本",
-  book: "书籍",
-  kind: "类型"
+var translations = {
+  en,
+  "zh-Hans": {
+    title: "书签",
+    empty: "还没有书签。保存正在读的位置，之后随时回来。",
+    name: "名称",
+    save: "保存书签",
+    saved: "书签已保存",
+    current: "保存当前位置",
+    selection: "保存选中段落",
+    location: "阅读位置",
+    range: "选中段落",
+    open: "跳转到书签",
+    rename: "重命名",
+    renamed: "书签已重命名",
+    remove: "删除",
+    removed: "书签已删除",
+    confirm: "删除这条书签",
+    invalidName: "请输入 1–120 个字符的名称。",
+    required: "请先确认删除。",
+    invalid: "无法读取的书签",
+    missing: "这条书签已不存在。",
+    stale: "书签列表已变化，请刷新。",
+    conflict: "这条书签在此期间有变化，请刷新后再试。",
+    refresh: "刷新",
+    all: "全部书籍",
+    thisBook: "仅当前书",
+    book: "书籍",
+    kind: "类型",
+    savedAt: "保存于"
+  },
+  "zh-Hant": {
+    title: "書籤",
+    empty: "還沒有書籤。儲存正在讀的位置，之後隨時回來。",
+    name: "名稱",
+    save: "儲存書籤",
+    saved: "書籤已儲存",
+    current: "儲存目前位置",
+    selection: "儲存選取段落",
+    location: "閱讀位置",
+    range: "選取段落",
+    open: "跳轉到書籤",
+    rename: "重新命名",
+    renamed: "書籤已重新命名",
+    remove: "刪除",
+    removed: "書籤已刪除",
+    confirm: "刪除這則書籤",
+    invalidName: "請輸入 1–120 個字元的名稱。",
+    required: "請先確認刪除。",
+    invalid: "無法讀取的書籤",
+    missing: "這則書籤已不存在。",
+    stale: "書籤清單已變化，請重新整理。",
+    conflict: "這則書籤在此期間有變化，請重新整理後再試。",
+    refresh: "重新整理",
+    all: "全部書籍",
+    thisBook: "僅目前的書",
+    book: "書籍",
+    kind: "類型",
+    savedAt: "儲存於"
+  },
+  ja: {
+    title: "ブックマーク",
+    empty: "ブックマークはまだありません。読んでいる場所を保存すると、あとで戻れます。",
+    name: "名前",
+    save: "ブックマークを保存",
+    saved: "ブックマークを保存しました",
+    current: "現在の位置を保存",
+    selection: "選択範囲を保存",
+    location: "読書位置",
+    range: "選択した箇所",
+    open: "ブックマークへ移動",
+    rename: "名前を変更",
+    renamed: "ブックマーク名を変更しました",
+    remove: "削除",
+    removed: "ブックマークを削除しました",
+    confirm: "このブックマークを削除する",
+    invalidName: "1〜120文字の名前を入力してください。",
+    required: "先に削除を確認してください。",
+    invalid: "読み取れないブックマーク",
+    missing: "このブックマークはもう存在しません。",
+    stale: "ブックマークが変わりました。一覧を再読み込みしてください。",
+    conflict: "このブックマークはその間に変更されました。再読み込みしてやり直してください。",
+    refresh: "更新",
+    all: "すべての本",
+    thisBook: "この本のみ",
+    book: "本",
+    kind: "種類",
+    savedAt: "保存日時"
+  },
+  ru: {
+    title: "Закладки",
+    empty: "Закладок пока нет. Сохраните место, где вы читаете, чтобы вернуться к нему позже.",
+    name: "Название",
+    save: "Сохранить закладку",
+    saved: "Закладка сохранена",
+    current: "Сохранить текущее место",
+    selection: "Сохранить выделение",
+    location: "Место чтения",
+    range: "Выделенный фрагмент",
+    open: "Перейти к закладке",
+    rename: "Переименовать",
+    renamed: "Закладка переименована",
+    remove: "Удалить",
+    removed: "Закладка удалена",
+    confirm: "Удалить эту закладку",
+    invalidName: "Введите название длиной от 1 до 120 символов.",
+    required: "Сначала подтвердите удаление.",
+    invalid: "Нечитаемая закладка",
+    missing: "Этой закладки больше нет.",
+    stale: "Закладки изменились. Обновите список.",
+    conflict: "Эта закладка тем временем изменилась. Обновите и попробуйте снова.",
+    refresh: "Обновить",
+    all: "Все книги",
+    thisBook: "Только эта книга",
+    book: "Книга",
+    kind: "Тип",
+    savedAt: "Сохранено"
+  },
+  fr: {
+    title: "Signets",
+    empty: "Aucun signet pour l’instant. Enregistrez l’endroit où vous lisez pour y revenir plus tard.",
+    name: "Nom",
+    save: "Enregistrer le signet",
+    saved: "Signet enregistré",
+    current: "Enregistrer la position actuelle",
+    selection: "Enregistrer la sélection",
+    location: "Position de lecture",
+    range: "Passage sélectionné",
+    open: "Aller au signet",
+    rename: "Renommer",
+    renamed: "Signet renommé",
+    remove: "Supprimer",
+    removed: "Signet supprimé",
+    confirm: "Supprimer ce signet",
+    invalidName: "Saisissez un nom de 1 à 120 caractères.",
+    required: "Confirmez d’abord la suppression.",
+    invalid: "Signet illisible",
+    missing: "Ce signet n’existe plus.",
+    stale: "Les signets ont changé. Rechargez la liste.",
+    conflict: "Ce signet a changé entre-temps. Rechargez avant de réessayer.",
+    refresh: "Actualiser",
+    all: "Tous les livres",
+    thisBook: "Ce livre seulement",
+    book: "Livre",
+    kind: "Type",
+    savedAt: "Enregistré"
+  },
+  de: {
+    title: "Lesezeichen",
+    empty: "Noch keine Lesezeichen. Speichern Sie die Stelle, an der Sie lesen, um später dorthin zurückzukehren.",
+    name: "Name",
+    save: "Lesezeichen speichern",
+    saved: "Lesezeichen gespeichert",
+    current: "Aktuelle Stelle speichern",
+    selection: "Auswahl speichern",
+    location: "Leseposition",
+    range: "Ausgewählte Textstelle",
+    open: "Zum Lesezeichen",
+    rename: "Umbenennen",
+    renamed: "Lesezeichen umbenannt",
+    remove: "Löschen",
+    removed: "Lesezeichen gelöscht",
+    confirm: "Dieses Lesezeichen löschen",
+    invalidName: "Geben Sie einen Namen mit 1–120 Zeichen ein.",
+    required: "Bestätigen Sie zuerst das Löschen.",
+    invalid: "Unlesbares Lesezeichen",
+    missing: "Dieses Lesezeichen existiert nicht mehr.",
+    stale: "Die Lesezeichen haben sich geändert. Laden Sie die Liste neu.",
+    conflict: "Dieses Lesezeichen hat sich inzwischen geändert. Laden Sie neu und versuchen Sie es erneut.",
+    refresh: "Aktualisieren",
+    all: "Alle Bücher",
+    thisBook: "Nur dieses Buch",
+    book: "Buch",
+    kind: "Typ",
+    savedAt: "Gespeichert"
+  },
+  es: {
+    title: "Marcadores",
+    empty: "Aún no hay marcadores. Guarda el lugar por el que vas para volver más tarde.",
+    name: "Nombre",
+    save: "Guardar marcador",
+    saved: "Marcador guardado",
+    current: "Guardar posición actual",
+    selection: "Guardar selección",
+    location: "Posición de lectura",
+    range: "Pasaje seleccionado",
+    open: "Ir al marcador",
+    rename: "Renombrar",
+    renamed: "Marcador renombrado",
+    remove: "Eliminar",
+    removed: "Marcador eliminado",
+    confirm: "Eliminar este marcador",
+    invalidName: "Escribe un nombre de 1 a 120 caracteres.",
+    required: "Confirma primero la eliminación.",
+    invalid: "Marcador ilegible",
+    missing: "Este marcador ya no existe.",
+    stale: "Los marcadores cambiaron. Recarga la lista.",
+    conflict: "Este marcador cambió mientras tanto. Recarga antes de reintentar.",
+    refresh: "Actualizar",
+    all: "Todos los libros",
+    thisBook: "Solo este libro",
+    book: "Libro",
+    kind: "Tipo",
+    savedAt: "Guardado"
+  }
 };
-var bookmarkCopy = (locale) => locale.startsWith("zh") ? zh2 : en2;
+var bookmarkCopy = (locale) => translations[locale] ?? translations[locale.split("-")[0]] ?? (locale.startsWith("zh") ? translations["zh-Hans"] : en);
 
 // src/live-bookmarks.ts
 async function liveBookmarks(ctx, query, read, render) {
@@ -894,14 +925,17 @@ async function liveBookmarks(ctx, query, read, render) {
 function message(ctx, text2, refresh = () => bookmarksView(ctx)) {
   const t = bookmarkCopy(ctx.locale);
   return { kind: "detail", title: t.title, content: [{ kind: "text", text: text2 }], actions: [
-    { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await refresh(), navigation: "reset" }) }
+    { id: "refresh", label: t.refresh, icon: "arrows-clockwise", priority: "primary", run: async () => ({ view: await refresh(), navigation: "reset" }) }
   ] };
+}
+async function done(ctx, toast) {
+  return { view: await bookmarksView(ctx), navigation: "reset", toast };
 }
 function nameForm(ctx, data, id, expectedRevision) {
   const t = bookmarkCopy(ctx.locale);
   return {
     kind: "form",
-    title: data.bookTitle,
+    title: expectedRevision === null ? t.save : t.rename,
     submitLabel: expectedRevision === null ? t.save : t.rename,
     fields: [{ id: "name", kind: "text", label: t.name, value: data.name }],
     onSubmit: async (values) => {
@@ -909,14 +943,16 @@ function nameForm(ctx, data, id, expectedRevision) {
       if (!name)
         return { fieldErrors: { name: t.invalidName } };
       const receipt = await writeBookmark(ctx, id, { ...data, name }, expectedRevision);
-      return { view: message(ctx, receipt.status === "conflict" ? t.conflict : expectedRevision === null ? t.saved : t.renamed), navigation: "replace" };
+      if (receipt.status === "conflict")
+        return { view: message(ctx, t.conflict), navigation: "replace" };
+      return done(ctx, expectedRevision === null ? t.saved : t.renamed);
     }
   };
 }
 async function saveBookmarkView(ctx, kind) {
   const data = await captureBookmark(ctx, kind), t = bookmarkCopy(ctx.locale);
-  return { kind: "blocks", blocks: [
-    { kind: "text", text: kind === "selection" ? t.range : t.location },
+  return { kind: "blocks", title: kind === "selection" ? t.selection : t.current, blocks: [
+    { kind: "keyValue", rows: [{ label: t.book, value: data.bookTitle }, { label: t.kind, value: kind === "selection" ? t.range : t.location }] },
     nameForm(ctx, data, crypto.randomUUID(), null)
   ] };
 }
@@ -931,7 +967,9 @@ function deleteForm(ctx, doc) {
       if (values.confirm !== true)
         return { fieldErrors: { confirm: t.required } };
       const receipt = await removeBookmark(ctx, doc);
-      return { view: message(ctx, receipt.status === "conflict" ? t.conflict : t.removed), navigation: "replace" };
+      if (receipt.status === "conflict")
+        return { view: message(ctx, t.conflict), navigation: "replace" };
+      return done(ctx, t.removed);
     }
   };
 }
@@ -944,22 +982,19 @@ async function bookmarkDetail(ctx, id) {
     if (!doc)
       return message(ctx, t.missing);
     const bookmark = parseBookmark(doc.data);
+    const actions = [];
+    if (bookmark)
+      actions.push({ id: "open", label: t.open, icon: "arrow-right", variant: "solid", priority: "primary", run: () => openBookmark(ctx, bookmark) }, { id: "rename", label: t.rename, icon: "pencil-simple", priority: "secondary", run: () => ({ view: nameForm(ctx, bookmark, doc.id, doc.revision) }) });
+    actions.push({ id: "remove", label: t.remove, icon: "trash", variant: "danger", priority: "secondary", run: () => ({ view: deleteForm(ctx, doc) }) }, { id: "refresh", label: t.refresh, icon: "arrows-clockwise", priority: "secondary", run: async () => ({ view: await bookmarkDetail(ctx, id), navigation: "replace" }) });
     return {
       kind: "detail",
       title: bookmark?.name ?? t.invalid,
       content: bookmark ? [{ kind: "keyValue", rows: [
         { label: t.book, value: bookmark.bookTitle },
         { label: t.kind, value: bookmark.kind === "selection" ? t.range : t.location },
-        { label: t.version, value: bookmark.target.contentVersion }
-      ] }] : [{ kind: "text", text: t.invalid }],
-      actions: [
-        ...bookmark ? [
-          { id: "open", label: t.open, icon: "arrow-right", run: () => openBookmark(ctx, bookmark) },
-          { id: "rename", label: t.rename, icon: "pencil-simple", run: () => ({ view: nameForm(ctx, bookmark, doc.id, doc.revision) }) }
-        ] : [],
-        { id: "remove", label: t.remove, icon: "trash", run: () => ({ view: deleteForm(ctx, doc) }) },
-        { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await bookmarkDetail(ctx, id), navigation: "replace" }) }
-      ]
+        { label: t.savedAt, value: new Date(doc.updatedAt).toLocaleString(ctx.locale) }
+      ] }] : [{ kind: "alert", variant: "destructive", message: t.invalid }],
+      actions
     };
   });
 }
@@ -975,6 +1010,31 @@ async function bookmarksView(ctx, bookId, cursors = [undefined], query) {
     const session = await ctx.domains.reading.queries.session();
     const ready = session.status === "ready" && session.location && session.bookId;
     const next = async (values) => ({ view: await bookmarksView(ctx, bookId, values, query), navigation: "replace" });
+    const actions = [];
+    if (ready) {
+      actions.push({ id: "save-location", label: t.current, icon: "plus", variant: "solid", priority: "primary", run: async () => ({ view: await saveBookmarkView(ctx, "location") }) });
+      if (session.selection?.range)
+        actions.push({ id: "save-selection", label: t.selection, icon: "highlighter", priority: "primary", run: async () => ({ view: await saveBookmarkView(ctx, "selection") }) });
+    }
+    actions.push({ id: "search", label: tr(ctx.locale, "searchQuery"), icon: "magnifying-glass", priority: "secondary", run: () => ({ view: {
+      kind: "form",
+      title: tr(ctx.locale, "searchQuery"),
+      submitLabel: tr(ctx.locale, "searchQuery"),
+      fields: [{ kind: "text", id: "query", label: tr(ctx.locale, "searchQuery"), value: query ?? "" }],
+      onSubmit: async (values) => {
+        const search = bookmarkSearchQuery(values.query);
+        if (search === null)
+          return { fieldErrors: { query: tr(ctx.locale, "invalidSearch") } };
+        return { view: await bookmarksView(ctx, bookId, [undefined], search || undefined), navigation: "replace" };
+      }
+    } }) });
+    if (query)
+      actions.push({ id: "clear-search", label: tr(ctx.locale, "clearSearch"), icon: "arrows-clockwise", priority: "secondary", run: async () => ({ view: await bookmarksView(ctx, bookId), navigation: "replace" }) });
+    if (bookId)
+      actions.push({ id: "all", label: t.all, icon: "books", priority: "secondary", run: async () => ({ view: await bookmarksView(ctx, undefined, [undefined], query), navigation: "replace" }) });
+    else if (ready)
+      actions.push({ id: "this-book", label: t.thisBook, icon: "book-open", priority: "secondary", run: async () => ({ view: await bookmarksView(ctx, session.bookId, [undefined], query), navigation: "replace" }) });
+    actions.push({ id: "refresh", label: t.refresh, icon: "arrows-clockwise", priority: "secondary", run: () => next([undefined]) });
     return {
       kind: "list",
       title: t.title,
@@ -985,32 +1045,12 @@ async function bookmarksView(ctx, bookId, cursors = [undefined], query) {
           id: doc.id,
           title: bookmark?.name ?? t.invalid,
           subtitle: bookmark?.bookTitle,
-          timestamp: doc.updatedAt,
           icon: "book-bookmark",
+          accessories: bookmark ? [{ kind: "tag", text: bookmark.kind === "selection" ? t.range : t.location }] : [],
           onSelect: async () => ({ view: await bookmarkDetail(ctx, doc.id) })
         };
       }),
-      actions: [
-        { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: () => next([undefined]) },
-        { id: "search", label: tr(ctx.locale, "search"), icon: "magnifying-glass", run: () => ({ view: {
-          kind: "form",
-          title: t.title,
-          submitLabel: tr(ctx.locale, "search"),
-          fields: [{ kind: "text", id: "query", label: tr(ctx.locale, "searchQuery"), value: query ?? "" }],
-          onSubmit: async (values) => {
-            const search = bookmarkSearchQuery(values.query);
-            if (search === null)
-              return { fieldErrors: { query: tr(ctx.locale, "invalidSearch") } };
-            return { view: await bookmarksView(ctx, bookId, [undefined], search || undefined), navigation: "replace" };
-          }
-        } }) },
-        ...query ? [{ id: "clear-search", label: tr(ctx.locale, "clearSearch"), icon: "x", run: async () => ({ view: await bookmarksView(ctx, bookId), navigation: "replace" }) }] : [],
-        ...ready ? [
-          { id: "save-location", label: t.current, icon: "plus", run: async () => ({ view: await saveBookmarkView(ctx, "location") }) },
-          ...session.selection?.range ? [{ id: "save-selection", label: t.selection, icon: "highlighter", run: async () => ({ view: await saveBookmarkView(ctx, "selection") }) }] : []
-        ] : [],
-        ...bookId ? [{ id: "all", label: t.all, icon: "books", run: async () => ({ view: await bookmarksView(ctx, undefined, [undefined], query), navigation: "replace" }) }] : ready ? [{ id: "this-book", label: t.thisBook, icon: "book-open", run: async () => ({ view: await bookmarksView(ctx, session.bookId, [undefined], query), navigation: "replace" }) }] : []
-      ],
+      actions,
       pagination: {
         page: cursors.length,
         ...cursors.length > 1 ? { onPrevious: () => next(cursors.slice(0, -1)) } : {},
@@ -1026,18 +1066,40 @@ async function jump(ctx, location) {
   return { close: true };
 }
 function chapterResults(ctx, entries) {
-  return { kind: "list", items: entries.map((entry) => ({
+  return { kind: "list", title: tr(ctx.locale, "chooseTarget"), items: entries.map((entry) => ({
     id: entry.id,
     title: entry.label || String(entry.ordinal),
     icon: "book-open",
-    subtitle: `${tr(ctx.locale, "ordinal")}: ${entry.ordinal}`,
     ...entry.location ? { onSelect: () => jump(ctx, entry.location) } : { subtitle: tr(ctx.locale, "unavailable") }
   })) };
+}
+function matchChapters(entries, query) {
+  const printed = findChapters(entries, query, "chapter");
+  if (printed.length || chapterNumber(query) === null)
+    return printed;
+  return findChapters(entries, query, "ordinal");
+}
+async function pageJump(ctx, bookId, label) {
+  const toc = await ctx.domains.library.queries.books.getNavigationToc(bookId);
+  const page = await ctx.domains.library.queries.books.listNavigationTargets({ bookId, contentVersion: toc.contentVersion, kind: "pages", label, limit: 40 });
+  if (page.status === "absent")
+    return { fieldErrors: { query: tr(ctx.locale, "pagesUnavailable") } };
+  const located = page.items.filter((item) => item.location);
+  if (!located.length)
+    return { fieldErrors: { query: tr(ctx.locale, "missingPage") } };
+  if (located.length === 1)
+    return jump(ctx, located[0].location);
+  return { view: { kind: "list", title: tr(ctx.locale, "chooseTarget"), items: located.map((item) => ({
+    id: String(item.index),
+    title: `${tr(ctx.locale, "page")} ${item.label ?? item.index + 1}`,
+    icon: "file-text",
+    onSelect: () => jump(ctx, item.location)
+  })) } };
 }
 async function jumperView(ctx) {
   const session = await ctx.domains.reading.queries.session();
   if (!session.bookId)
-    return { kind: "list", items: [], emptyText: tr(ctx.locale, "noBook") };
+    return { kind: "detail", title: "Jumper", content: [{ kind: "text", text: tr(ctx.locale, "noBook"), tone: "muted" }] };
   const bookId = session.bookId;
   const form = {
     kind: "form",
@@ -1045,27 +1107,34 @@ async function jumperView(ctx) {
     fields: [
       { kind: "choice", id: "mode", label: tr(ctx.locale, "mode"), value: "chapter", options: [
         { value: "chapter", label: tr(ctx.locale, "chapter"), icon: "book-open" },
-        { value: "ordinal", label: tr(ctx.locale, "ordinal"), icon: "list-bullets" },
-        { value: "text", label: tr(ctx.locale, "text"), icon: "magnifying-glass" }
+        { value: "text", label: tr(ctx.locale, "text"), icon: "magnifying-glass" },
+        { value: "page", label: tr(ctx.locale, "page"), icon: "file-text" }
       ] },
-      { kind: "text", id: "query", label: tr(ctx.locale, "query") },
+      { kind: "text", id: "query", label: tr(ctx.locale, "queryChapter"), placeholder: tr(ctx.locale, "queryChapter"), visibleWhen: { field: "mode", equals: "chapter" } },
+      { kind: "text", id: "textQuery", label: tr(ctx.locale, "queryText"), placeholder: tr(ctx.locale, "queryText"), visibleWhen: { field: "mode", equals: "text" } },
+      { kind: "text", id: "pageQuery", label: tr(ctx.locale, "queryPage"), placeholder: tr(ctx.locale, "queryPage"), visibleWhen: { field: "mode", equals: "page" } },
       { kind: "checkbox", id: "matchCase", label: tr(ctx.locale, "matchCase"), value: false, visibleWhen: { field: "mode", equals: "text" } },
       { kind: "checkbox", id: "wholeWords", label: tr(ctx.locale, "wholeWords"), value: false, visibleWhen: { field: "mode", equals: "text" } }
     ],
     onSubmit: async (values) => {
+      if (values.mode === "text") {
+        const query2 = String(values.textQuery ?? "").trim();
+        if (!query2 || query2.length > 500)
+          return { fieldErrors: { textQuery: tr(ctx.locale, "invalid") } };
+        return { view: textSearchView(ctx, { bookId, query: query2, limit: 20, matchCase: values.matchCase === true, wholeWords: values.wholeWords === true }) };
+      }
+      if (values.mode === "page") {
+        const label = String(values.pageQuery ?? "").trim();
+        if (!label || label.length > 300)
+          return { fieldErrors: { pageQuery: tr(ctx.locale, "invalidPage") } };
+        const result = await pageJump(ctx, bookId, label);
+        return result?.fieldErrors ? { fieldErrors: { pageQuery: result.fieldErrors.query } } : result;
+      }
       const query = String(values.query ?? "").trim();
       if (!query || query.length > 500)
         return { fieldErrors: { query: tr(ctx.locale, "invalid") } };
-      if (values.mode === "text")
-        return { view: textSearchView(ctx, {
-          bookId,
-          query,
-          limit: 20,
-          matchCase: values.matchCase === true,
-          wholeWords: values.wholeWords === true
-        }) };
       const toc = await ctx.domains.library.queries.books.getNavigationToc(bookId);
-      const entries = findChapters(toc.entries, query, values.mode === "ordinal" ? "ordinal" : "chapter");
+      const entries = matchChapters(toc.entries, query);
       if (!entries.length)
         return { fieldErrors: { query: tr(ctx.locale, "missing") } };
       if (entries.length === 1)
@@ -1073,8 +1142,10 @@ async function jumperView(ctx) {
       return { view: chapterResults(ctx, entries) };
     }
   };
-  const actions = [];
   const guard = { sessionId: session.sessionId ?? undefined };
+  const actions = [
+    { id: "bookmarks", label: bookmarkCopy(ctx.locale).title, icon: "book-bookmark", priority: "primary", run: async () => ({ view: await bookmarksView(ctx) }) }
+  ];
   for (const direction of ["back", "forward"]) {
     if (!(direction === "back" ? session.history.canGoBack : session.history.canGoForward))
       continue;
@@ -1082,25 +1153,14 @@ async function jumperView(ctx) {
       id: direction,
       label: tr(ctx.locale, direction),
       icon: direction === "back" ? "arrow-left" : "arrow-right",
+      priority: "secondary",
       run: async () => {
         await ctx.domains.reading.commands[direction](guard);
         return { close: true };
       }
     });
   }
-  return { kind: "blocks", blocks: [
-    ...actions.length ? [{ kind: "actions", actions }] : [],
-    form,
-    { kind: "actions", actions: [
-      {
-        id: "navigation",
-        label: navigationWords(ctx.locale).navigation,
-        icon: "list-bullets",
-        run: async () => ({ view: await navigationView(ctx) })
-      },
-      { id: "bookmarks", label: bookmarkCopy(ctx.locale).title, icon: "book-bookmark", run: async () => ({ view: await bookmarksView(ctx) }) }
-    ] }
-  ] };
+  return { kind: "blocks", title: "Jumper", blocks: [form, { kind: "actions", actions, align: "end" }] };
 }
 
 // src/bookmark-tools.ts
@@ -1270,6 +1330,7 @@ var plugin = {
     assertCapabilities(ctx);
     registerBookmarkTools(ctx);
     const unavailable = { revision: 0, visible: true, enabled: false };
+    const always = { revision: 0, visible: true, enabled: true };
     const header = ctx.contributions.headerActions.register({
       id: "jumper",
       title: "Jumper",
@@ -1284,16 +1345,25 @@ var plugin = {
       title: "Jumper",
       icon: "magnifying-glass",
       state: unavailable,
-      keywords: "jump chapter text search navigation",
+      keywords: "jump chapter page text search navigation",
       run: async () => ({ view: await jumperView(ctx) })
     });
     ctx.contributions.commands.register({
       id: "bookmarks",
       title: `Jumper: ${bookmarkCopy(ctx.locale).title}`,
       icon: "book-bookmark",
-      state: { revision: 0, visible: true, enabled: true },
+      state: always,
       keywords: "bookmark saved location passage",
       run: async () => ({ view: await bookmarksView(ctx) })
+    });
+    ctx.contributions.headerActions.register({
+      id: "bookmarks",
+      title: bookmarkCopy(ctx.locale).title,
+      icon: "book-bookmark",
+      state: always,
+      surface: "reader",
+      presentation: "popup",
+      view: (input) => bookmarksView(ctx, input.book?.id)
     });
     const history = ["back", "forward"].map((direction) => ({
       direction,

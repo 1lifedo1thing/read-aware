@@ -177,7 +177,7 @@ test("malformed and missing documents are explicit, and invalid data remains rem
   expect(invalid.actions!.map(a => a.id)).toEqual(["remove", "refresh"]);
   await form(view(await action(invalid, "remove"))).onSubmit({ confirm: true });
   expect(f.documents.size).toBe(0);
-  expect(JSON.stringify(await bookmarkDetail(f.ctx, "missing"))).toContain("Bookmark no longer exists");
+  expect(JSON.stringify(await bookmarkDetail(f.ctx, "missing"))).toContain("This bookmark no longer exists.");
 });
 
 test("write failure is not a saved result and does not close or drop the naming form", async () => {
@@ -200,7 +200,7 @@ test("live bookmark detail reflects rename, failure, recovery and deletion witho
   expect(latest(f.updates).actions?.map(a => a.id)).toEqual(["refresh"]);
   await f.emit(); expect(latest(f.updates).title).toBe("Changed by agent");
   f.documents.delete("saved"); await f.emit();
-  expect(JSON.stringify(latest(f.updates))).toContain("Bookmark no longer exists");
+  expect(JSON.stringify(latest(f.updates))).toContain("This bookmark no longer exists.");
   subscription.dispose(); expect(f.observers.size).toBe(0);
   const count = f.updates.length; await f.emit(); expect(f.updates).toHaveLength(count);
 });
@@ -233,7 +233,7 @@ test("compiled bookmark command works without an open reader, while the reader m
   f.session.status = "idle"; f.session.bookId = null; f.session.location = null;
   const list = view(await commands.get("bookmarks")!()) as PluginListView & Pick<PluginView, "live">;
   expect(list.items.map(item => item.id)).toEqual(["saved"]);
-  expect(list.actions!.map(item => item.id)).toEqual(["refresh", "search"]);
+  expect(list.actions!.map(item => item.id)).toEqual(["search", "refresh"]);
   const subscription = await list.live!.subscribe("channel" as never);
   f.seed("saved", { ...sample, name: "Compiled live bookmark" }); await f.emit();
   expect((latest(f.updates) as PluginListView).items[0]?.title).toBe("Compiled live bookmark");
