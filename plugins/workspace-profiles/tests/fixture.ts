@@ -11,6 +11,7 @@ export function fixture() {
   const values: Record<string, unknown> = { "shelf.layout": "list", "shelf.group": "none", "shelf.sort": "title", "appearance.theme": "light",
     "appearance.motion": "full", "reading.fontSize": 20, "reading.lineSpacing": 1.5, "reading.fontFamily": null,
     "appearance.contentTypography.fontFamily": null, "appearance.contentTypography.followReader": true };
+  const labels: Record<string, string> = { "shelf.layout": "Shelf layout", "appearance.theme": "App theme", "reading.fontSize": "Reading font size" };
   const doc = (id: string) => ({ id, data: structuredClone(documents.get(id)), revision: revisions.get(id) ?? "initial", updatedAt: "2026-09-11T00:00:00Z" });
   const storage = {
     collection: () => ({ get: async (id: string) => documents.has(id) ? doc(id) : null,
@@ -63,7 +64,8 @@ export function fixture() {
   const ctx = { locale: "en", domains: { settings: {
     queries: { snapshot: async () => {
       snapshots++;
-      return { settings: PROFILE_PATHS.map(path => ({ path, value: values[path], writable: true })) };
+      return { settings: PROFILE_PATHS.map(path => ({ path, label: labels[path] ?? path, value: values[path], writable: true,
+        ...(path === "shelf.layout" ? { options: [{ value: "grid", label: "Grid" }, { value: "list", label: "List" }] } : {}) })) };
     } },
     commands: { update: async (changes: Change[]) => {
       if (fail) throw Error("rejected stale option");

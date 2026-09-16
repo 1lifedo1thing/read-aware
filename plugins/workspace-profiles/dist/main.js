@@ -73,6 +73,23 @@ async function applyProfile(ctx, id, expectedRevision) {
     throw error;
   }
 }
+async function renameProfile(ctx, id, name, expectedRevision) {
+  const cleanName = profileName(name);
+  const doc = await profileCollection(ctx).get(id);
+  if (!doc || doc.revision !== expectedRevision)
+    return { status: "conflict" };
+  const profile = parseProfile(doc.data);
+  if (!profile)
+    return invalid("Invalid workspace profile");
+  const receipt = await ctx.services.storage.applyDocuments([{
+    kind: "put",
+    collection: "profiles",
+    id,
+    data: { ...profile, name: cleanName },
+    expectedRevision
+  }]);
+  return receipt.status === "conflict" ? { status: "conflict" } : { status: "renamed", id, name: cleanName };
+}
 async function deleteProfile(ctx, id, expectedRevision) {
   const receipt = await ctx.services.storage.applyDocuments([{ kind: "delete", collection: "profiles", id, expectedRevision }]);
   return { status: receipt.status === "conflict" ? "conflict" : "deleted", id };
@@ -80,6 +97,16 @@ async function deleteProfile(ctx, id, expectedRevision) {
 async function undoProfile(ctx, receiptId) {
   const preview = await ctx.services.transactions.previewUndo(receiptId);
   return ctx.services.transactions.commit(preview.id);
+}
+var SUMMARY_PATHS = ["shelf.layout", "appearance.theme", "reading.fontSize"];
+async function describeProfile(ctx, profile) {
+  const snapshot = await ctx.domains.settings.queries.snapshot({ target: { kind: "global" } });
+  const entries = profile.changes.map((change) => {
+    const descriptor = snapshot.settings.find((setting) => setting.path === change.path);
+    const option = descriptor?.options?.find((option2) => option2.value === change.value);
+    return { path: change.path, label: descriptor?.label ?? change.path, value: change.value, ...option ? { valueLabel: option.label } : {} };
+  });
+  return { entries, summary: SUMMARY_PATHS.flatMap((path) => entries.filter((entry) => entry.path === path)) };
 }
 
 // src/tools.ts
@@ -184,362 +211,280 @@ function registerProfileTools(ctx) {
 
 // src/strings.ts
 var en = {
-  undo: "Undo profile application",
-  undone: "Profile application undone",
   title: "Workspace Profiles",
+  description: "Save the current shelf, appearance and reading setup as a named profile and switch between them.",
   save: "Save current workspace",
-  name: "Name",
-  invalid: "Enter a name of 1-80 characters.",
-  empty: "No saved profiles",
+  name: "Profile name",
+  namePlaceholder: "Evening reading",
+  invalid: "Enter a name of 1–80 characters.",
+  empty: "No profiles yet. Save the current workspace to create one.",
   apply: "Apply",
-  remove: "Delete profile",
+  rename: "Rename",
+  remove: "Delete",
   refresh: "Refresh",
   saved: "Profile saved",
+  renamed: "Profile renamed",
   applied: "Profile applied",
-  conflict: "The profile or settings changed. Refresh before trying again.",
-  missing: "Profile no longer exists",
-  invalidProfile: "Invalid profile",
-  stalePage: "Profiles changed. Refresh the list.",
-  confirmDelete: "Permanently delete this profile",
-  confirmRequired: "Confirm deletion first.",
+  undo: "Undo",
+  undone: "Previous settings restored",
+  conflict: "This profile or your settings changed in the meantime. Reload and try again.",
+  missing: "This profile no longer exists.",
+  invalidProfile: "Unreadable profile",
+  stalePage: "The profile list changed. Reload it.",
+  confirmDelete: "Delete this profile permanently",
+  confirmRequired: "Confirm the deletion first.",
   deleted: "Profile deleted",
-  shortcut: "Keyboard shortcut",
-  binding: "Binding",
-  defaultBinding: "Default",
-  customBinding: "Custom",
-  key: "Key",
-  shortcutSaved: "Shortcut updated",
-  current: "Current workspace",
-  fonts: "Fonts",
   appDefault: "App default",
-  follow: "Content follows reader typography",
-  search: "Search fonts",
-  query: "Font name",
-  invalidSearch: "Maximum 120 characters",
-  noFonts: "No matching fonts",
-  previous: "Previous",
-  next: "Next",
-  saveFonts: "Apply font",
-  fontSaved: "Font settings saved",
-  saveFollow: "Save",
-  yes: "On",
-  no: "Off"
+  on: "On",
+  off: "Off",
+  savedAt: "Saved",
+  settings: "Settings",
+  back: "All profiles"
 };
-var zh = {
-  undo: "撤销应用预设",
-  undone: "已撤销应用预设",
-  title: "工作区预设",
-  save: "保存当前工作区",
-  name: "名称",
-  invalid: "请输入 1-80 个字符的名称。",
-  empty: "暂无预设",
-  apply: "应用",
-  remove: "删除预设",
-  refresh: "刷新",
-  saved: "预设已保存",
-  applied: "预设已应用",
-  conflict: "预设或设置已变化，请刷新后再试。",
-  missing: "预设已不存在",
-  invalidProfile: "无效预设",
-  stalePage: "预设列表已变化，请刷新。",
-  confirmDelete: "永久删除此预设",
-  confirmRequired: "请先确认删除。",
-  deleted: "预设已删除",
-  shortcut: "键盘快捷键",
-  binding: "绑定",
-  defaultBinding: "默认",
-  customBinding: "自定义",
-  key: "按键",
-  shortcutSaved: "快捷键已更新",
-  current: "当前工作区",
-  fonts: "字体",
-  appDefault: "应用默认",
-  follow: "应用内容跟随阅读排版",
-  search: "搜索字体",
-  query: "字体名称",
-  invalidSearch: "最多 120 个字符",
-  noFonts: "没有匹配的字体",
-  previous: "上一页",
-  next: "下一页",
-  saveFonts: "应用字体",
-  fontSaved: "字体设置已保存",
-  saveFollow: "保存",
-  yes: "开启",
-  no: "关闭"
+var translations = {
+  en,
+  "zh-Hans": {
+    title: "工作区预设",
+    description: "把当前书架、外观和阅读设置保存为一个命名预设，随时切换。",
+    save: "保存当前工作区",
+    name: "预设名称",
+    namePlaceholder: "夜间阅读",
+    invalid: "请输入 1–80 个字符的名称。",
+    empty: "还没有预设。保存当前工作区即可创建。",
+    apply: "应用",
+    rename: "重命名",
+    remove: "删除",
+    refresh: "刷新",
+    saved: "预设已保存",
+    renamed: "预设已重命名",
+    applied: "预设已应用",
+    undo: "撤销",
+    undone: "已恢复之前的设置",
+    conflict: "预设或你的设置在此期间有变化，请刷新后再试。",
+    missing: "这个预设已不存在。",
+    invalidProfile: "无法读取的预设",
+    stalePage: "预设列表已变化，请刷新。",
+    confirmDelete: "永久删除这个预设",
+    confirmRequired: "请先确认删除。",
+    deleted: "预设已删除",
+    appDefault: "应用默认",
+    on: "开",
+    off: "关",
+    savedAt: "保存于",
+    settings: "设置",
+    back: "全部预设"
+  },
+  "zh-Hant": {
+    title: "工作區預設",
+    description: "把目前書架、外觀和閱讀設定儲存為一個命名預設，隨時切換。",
+    save: "儲存目前工作區",
+    name: "預設名稱",
+    namePlaceholder: "夜間閱讀",
+    invalid: "請輸入 1–80 個字元的名稱。",
+    empty: "還沒有預設。儲存目前工作區即可建立。",
+    apply: "套用",
+    rename: "重新命名",
+    remove: "刪除",
+    refresh: "重新整理",
+    saved: "預設已儲存",
+    renamed: "預設已重新命名",
+    applied: "預設已套用",
+    undo: "復原",
+    undone: "已恢復先前的設定",
+    conflict: "預設或你的設定在此期間有變化，請重新整理後再試。",
+    missing: "這個預設已不存在。",
+    invalidProfile: "無法讀取的預設",
+    stalePage: "預設清單已變化，請重新整理。",
+    confirmDelete: "永久刪除這個預設",
+    confirmRequired: "請先確認刪除。",
+    deleted: "預設已刪除",
+    appDefault: "應用程式預設",
+    on: "開",
+    off: "關",
+    savedAt: "儲存於",
+    settings: "設定",
+    back: "全部預設"
+  },
+  ja: {
+    title: "ワークスペースプロファイル",
+    description: "現在の本棚・外観・読書設定に名前を付けて保存し、いつでも切り替えられます。",
+    save: "現在のワークスペースを保存",
+    name: "プロファイル名",
+    namePlaceholder: "夜の読書",
+    invalid: "1〜80文字の名前を入力してください。",
+    empty: "プロファイルはまだありません。現在のワークスペースを保存して作成します。",
+    apply: "適用",
+    rename: "名前を変更",
+    remove: "削除",
+    refresh: "更新",
+    saved: "プロファイルを保存しました",
+    renamed: "プロファイル名を変更しました",
+    applied: "プロファイルを適用しました",
+    undo: "元に戻す",
+    undone: "以前の設定に戻しました",
+    conflict: "その間にプロファイルまたは設定が変更されました。再読み込みしてやり直してください。",
+    missing: "このプロファイルはもう存在しません。",
+    invalidProfile: "読み取れないプロファイル",
+    stalePage: "プロファイル一覧が変わりました。再読み込みしてください。",
+    confirmDelete: "このプロファイルを完全に削除する",
+    confirmRequired: "先に削除を確認してください。",
+    deleted: "プロファイルを削除しました",
+    appDefault: "アプリの既定",
+    on: "オン",
+    off: "オフ",
+    savedAt: "保存日時",
+    settings: "設定",
+    back: "すべてのプロファイル"
+  },
+  de: {
+    title: "Arbeitsbereich-Profile",
+    description: "Speichern Sie Regal, Erscheinungsbild und Leseeinstellungen als benanntes Profil und wechseln Sie jederzeit.",
+    save: "Aktuellen Arbeitsbereich speichern",
+    name: "Profilname",
+    namePlaceholder: "Abendlektüre",
+    invalid: "Geben Sie einen Namen mit 1–80 Zeichen ein.",
+    empty: "Noch keine Profile. Speichern Sie den aktuellen Arbeitsbereich, um eines anzulegen.",
+    apply: "Anwenden",
+    rename: "Umbenennen",
+    remove: "Löschen",
+    refresh: "Aktualisieren",
+    saved: "Profil gespeichert",
+    renamed: "Profil umbenannt",
+    applied: "Profil angewendet",
+    undo: "Rückgängig",
+    undone: "Vorherige Einstellungen wiederhergestellt",
+    conflict: "Das Profil oder Ihre Einstellungen haben sich inzwischen geändert. Laden Sie neu und versuchen Sie es erneut.",
+    missing: "Dieses Profil existiert nicht mehr.",
+    invalidProfile: "Unlesbares Profil",
+    stalePage: "Die Profilliste hat sich geändert. Laden Sie sie neu.",
+    confirmDelete: "Dieses Profil dauerhaft löschen",
+    confirmRequired: "Bestätigen Sie zuerst das Löschen.",
+    deleted: "Profil gelöscht",
+    appDefault: "App-Standard",
+    on: "Ein",
+    off: "Aus",
+    savedAt: "Gespeichert",
+    settings: "Einstellungen",
+    back: "Alle Profile"
+  },
+  fr: {
+    title: "Profils d’espace de travail",
+    description: "Enregistrez l’étagère, l’apparence et les réglages de lecture actuels sous un nom et passez de l’un à l’autre.",
+    save: "Enregistrer l’espace de travail actuel",
+    name: "Nom du profil",
+    namePlaceholder: "Lecture du soir",
+    invalid: "Saisissez un nom de 1 à 80 caractères.",
+    empty: "Aucun profil pour l’instant. Enregistrez l’espace de travail actuel pour en créer un.",
+    apply: "Appliquer",
+    rename: "Renommer",
+    remove: "Supprimer",
+    refresh: "Actualiser",
+    saved: "Profil enregistré",
+    renamed: "Profil renommé",
+    applied: "Profil appliqué",
+    undo: "Annuler",
+    undone: "Réglages précédents restaurés",
+    conflict: "Le profil ou vos réglages ont changé entre-temps. Rechargez et réessayez.",
+    missing: "Ce profil n’existe plus.",
+    invalidProfile: "Profil illisible",
+    stalePage: "La liste des profils a changé. Rechargez-la.",
+    confirmDelete: "Supprimer définitivement ce profil",
+    confirmRequired: "Confirmez d’abord la suppression.",
+    deleted: "Profil supprimé",
+    appDefault: "Valeur par défaut",
+    on: "Activé",
+    off: "Désactivé",
+    savedAt: "Enregistré",
+    settings: "Réglages",
+    back: "Tous les profils"
+  },
+  es: {
+    title: "Perfiles de espacio de trabajo",
+    description: "Guarda la estantería, la apariencia y los ajustes de lectura actuales con un nombre y cambia entre ellos cuando quieras.",
+    save: "Guardar espacio de trabajo actual",
+    name: "Nombre del perfil",
+    namePlaceholder: "Lectura nocturna",
+    invalid: "Escribe un nombre de 1 a 80 caracteres.",
+    empty: "Aún no hay perfiles. Guarda el espacio de trabajo actual para crear uno.",
+    apply: "Aplicar",
+    rename: "Renombrar",
+    remove: "Eliminar",
+    refresh: "Actualizar",
+    saved: "Perfil guardado",
+    renamed: "Perfil renombrado",
+    applied: "Perfil aplicado",
+    undo: "Deshacer",
+    undone: "Ajustes anteriores restaurados",
+    conflict: "El perfil o tus ajustes cambiaron mientras tanto. Recarga e inténtalo de nuevo.",
+    missing: "Este perfil ya no existe.",
+    invalidProfile: "Perfil ilegible",
+    stalePage: "La lista de perfiles cambió. Recárgala.",
+    confirmDelete: "Eliminar este perfil de forma permanente",
+    confirmRequired: "Confirma primero la eliminación.",
+    deleted: "Perfil eliminado",
+    appDefault: "Valor predeterminado",
+    on: "Activado",
+    off: "Desactivado",
+    savedAt: "Guardado",
+    settings: "Ajustes",
+    back: "Todos los perfiles"
+  },
+  ru: {
+    title: "Профили рабочего пространства",
+    description: "Сохраните текущие настройки полки, оформления и чтения как именованный профиль и переключайтесь между ними.",
+    save: "Сохранить текущее пространство",
+    name: "Название профиля",
+    namePlaceholder: "Вечернее чтение",
+    invalid: "Введите название длиной от 1 до 80 символов.",
+    empty: "Профилей пока нет. Сохраните текущее пространство, чтобы создать первый.",
+    apply: "Применить",
+    rename: "Переименовать",
+    remove: "Удалить",
+    refresh: "Обновить",
+    saved: "Профиль сохранён",
+    renamed: "Профиль переименован",
+    applied: "Профиль применён",
+    undo: "Отменить",
+    undone: "Прежние настройки восстановлены",
+    conflict: "Профиль или ваши настройки тем временем изменились. Обновите и попробуйте снова.",
+    missing: "Этого профиля больше нет.",
+    invalidProfile: "Нечитаемый профиль",
+    stalePage: "Список профилей изменился. Обновите его.",
+    confirmDelete: "Удалить этот профиль навсегда",
+    confirmRequired: "Сначала подтвердите удаление.",
+    deleted: "Профиль удалён",
+    appDefault: "По умолчанию",
+    on: "Вкл.",
+    off: "Выкл.",
+    savedAt: "Сохранено",
+    settings: "Настройки",
+    back: "Все профили"
+  }
 };
-var copy = (locale) => locale.startsWith("zh") ? zh : en;
-var labels = {
-  "shelf.layout": ["Shelf layout", "书架布局"],
-  "shelf.group": ["Group books", "书籍分组"],
-  "shelf.sort": ["Sort books", "书籍排序"],
-  "appearance.theme": ["App theme", "应用主题"],
-  "appearance.motion": ["Motion", "动画"],
-  "reading.fontSize": ["Global reading font size", "全局阅读字号"],
-  "reading.lineSpacing": ["Global reading line spacing", "全局阅读行距"],
-  "reading.fontFamily": ["Global reading font", "全局阅读字体"],
-  "appearance.contentTypography.fontFamily": ["Independent content font", "独立应用内容字体"],
-  "appearance.contentTypography.followReader": ["Content follows reader typography", "应用内容跟随阅读排版"]
-};
-var settingLabel = (locale, path) => labels[path]?.[locale.startsWith("zh") ? 1 : 0] ?? path;
-
-// src/shortcut.ts
-async function shortcutView(ctx) {
-  const t = copy(ctx.locale);
-  const path = `shortcuts.plugin.${encodeURIComponent(`${ctx.manifest.id}:open`)}`;
-  const entry = (await ctx.domains.settings.queries.snapshot({ section: "shortcuts" })).settings.find((setting) => setting.path === path);
-  if (!entry?.writable)
-    throw Error("Workspace shortcut is unavailable");
-  const tokens = Array.isArray(entry.value) ? entry.value : [];
-  const modifiers = tokens.slice(0, -1);
-  return { kind: "form", title: t.shortcut, submitLabel: t.apply, fields: [
-    {
-      kind: "select",
-      id: "mode",
-      label: t.binding,
-      value: entry.shortcut?.overridden ? "custom" : "default",
-      options: [{ value: "default", label: t.defaultBinding }, { value: "custom", label: t.customBinding }]
-    },
-    { kind: "toggle", id: "mod", label: "Command / Ctrl", value: modifiers.includes("mod") },
-    { kind: "toggle", id: "alt", label: "Alt / Option", value: modifiers.includes("alt") },
-    { kind: "toggle", id: "shift", label: "Shift", value: modifiers.includes("shift") },
-    { kind: "text", id: "key", label: t.key, value: tokens[tokens.length - 1] ?? "" }
-  ], onSubmit: async (values) => {
-    const value = values.mode === "default" ? null : [...values.mod ? ["mod"] : [], ...values.alt ? ["alt"] : [], ...values.shift ? ["shift"] : [], String(values.key ?? "")];
-    await ctx.domains.settings.commands.update([{ path, value }]);
-    return { toast: t.shortcutSaved, close: true };
-  } };
-}
-
-// src/current.ts
-async function currentWorkspaceView(ctx) {
-  let snapshot = await ctx.domains.settings.queries.snapshot({ target: { kind: "global" } });
-  let error, revision = 0;
-  const content = () => ({ kind: "blocks", blocks: [
-    { kind: "heading", text: copy(ctx.locale).current },
-    ...error ? [{ kind: "error", code: error }] : [],
-    ...snapshot.settings.filter((setting) => PROFILE_PATHS.some((path) => path === setting.path)).map((setting) => ({
-      kind: "text",
-      text: `${settingLabel(ctx.locale, setting.path)}: ${String(setting.value)}`
-    }))
-  ] });
-  return { ...content(), live: { subscribe: (channel) => ctx.domains.settings.queries.observe({ target: { kind: "global" } }, async (state, delivery) => {
-    if (state.status === "ready") {
-      snapshot = state.snapshot;
-      error = undefined;
-    } else
-      error = state.code;
-    await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: content() });
-  }) } };
-}
-
-// src/fonts.ts
-var FONT_PATHS = ["reading.fontFamily", "appearance.contentTypography.fontFamily"];
-var followPath = "appearance.contentTypography.followReader";
-var target = { kind: "global" };
-function saved(ctx) {
-  const t = copy(ctx.locale);
-  return {
-    kind: "detail",
-    title: t.fonts,
-    content: [{ kind: "text", text: t.fontSaved }],
-    actions: [{ id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await fontsView(ctx), navigation: "replace" }) }]
-  };
-}
-async function fontsView(ctx) {
-  const t = copy(ctx.locale), snapshot = await ctx.domains.settings.queries.snapshot({ target });
-  const follow = snapshot.settings.find((s) => s.path === followPath);
-  return { kind: "list", title: t.fonts, items: FONT_PATHS.map((path) => {
-    const setting = snapshot.settings.find((s) => s.path === path);
-    if (!setting)
-      throw Object.assign(Error("Font setting unavailable"), { code: "settings/options-forbidden" });
-    return {
-      id: path,
-      title: settingLabel(ctx.locale, path),
-      subtitle: setting.value === null ? t.appDefault : String(setting.value),
-      icon: "text-aa",
-      ...setting.writable && (path !== FONT_PATHS[1] || follow?.writable) ? { onSelect: async () => ({ view: await fontCatalog(ctx, path) }) } : {}
-    };
-  }), actions: [
-    { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await fontsView(ctx), navigation: "replace" }) },
-    ...follow?.writable ? [{ id: "follow", label: t.follow, icon: "text-aa", run: () => ({ view: {
-      kind: "form",
-      title: t.fonts,
-      submitLabel: t.saveFollow,
-      fields: [{ id: "follow", kind: "toggle", label: t.follow, value: follow.value === true }],
-      onSubmit: async (values) => {
-        if (typeof values.follow !== "boolean")
-          return { fieldErrors: { follow: t.invalid } };
-        await ctx.domains.settings.commands.update([{ path: followPath, value: values.follow, target }]);
-        return { view: saved(ctx), navigation: "replace" };
-      }
-    } }) }] : []
-  ] };
-}
-async function fontCatalog(ctx, path, search = "", offsets = [0], revision) {
-  const t = copy(ctx.locale);
-  const page = await ctx.domains.settings.queries.options({ path, target, search, offset: offsets[offsets.length - 1], limit: 40, revision });
-  const go = async (next) => ({ view: await fontCatalog(ctx, path, search, next, page.revision), navigation: "replace" });
-  return {
-    kind: "list",
-    title: settingLabel(ctx.locale, path),
-    emptyText: t.noFonts,
-    items: page.options.map((option, index) => ({
-      id: String(page.offset + index),
-      title: option.label,
-      icon: "text-aa",
-      onSelect: () => ({ view: {
-        kind: "detail",
-        title: option.label,
-        content: [{ kind: "text", text: settingLabel(ctx.locale, path) }],
-        actions: [
-          { id: "apply", label: t.saveFonts, icon: "check", run: async () => {
-            await ctx.domains.settings.commands.update([
-              { path, value: option.value, target },
-              ...path === FONT_PATHS[1] ? [{ path: followPath, value: false, target }] : []
-            ]);
-            return { view: saved(ctx), navigation: "replace" };
-          } }
-        ]
-      } })
-    })),
-    actions: [
-      { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await fontCatalog(ctx, path, search), navigation: "replace" }) },
-      { id: "search", label: t.search, icon: "magnifying-glass", run: () => ({ view: {
-        kind: "form",
-        title: t.search,
-        submitLabel: t.search,
-        fields: [{ id: "query", kind: "text", label: t.query, value: search }],
-        onSubmit: async (values) => {
-          if (typeof values.query !== "string" || values.query.length > 120)
-            return { fieldErrors: { query: t.invalidSearch } };
-          return { view: await fontCatalog(ctx, path, values.query.trim()) };
-        }
-      } }) }
-    ],
-    pagination: {
-      page: offsets.length,
-      ...offsets.length > 1 ? { onPrevious: () => go(offsets.slice(0, -1)) } : {},
-      ...page.nextOffset === null ? {} : { onNext: () => go([...offsets, page.nextOffset]) }
-    }
-  };
-}
-
-// src/window.ts
-var en2 = {
-  title: "Window",
-  minimized: "Minimized",
-  maximized: "Maximized",
-  fullscreen: "Full screen",
-  focused: "Focused",
-  yes: "Yes",
-  no: "No",
-  unavailable: "Window controls unavailable",
-  refresh: "Refresh",
-  minimize: "Minimize",
-  maximize: "Maximize",
-  restore: "Restore window",
-  enter: "Enter full screen",
-  leave: "Exit full screen",
-  requested: "Window change requested",
-  unchanged: "Window is already in the requested state"
-};
-var zh2 = {
-  title: "窗口",
-  minimized: "已最小化",
-  maximized: "已最大化",
-  fullscreen: "全屏",
-  focused: "已聚焦",
-  yes: "是",
-  no: "否",
-  unavailable: "窗口控制不可用",
-  refresh: "刷新",
-  minimize: "最小化",
-  maximize: "最大化",
-  restore: "还原窗口",
-  enter: "进入全屏",
-  leave: "退出全屏",
-  requested: "已请求窗口变更",
-  unchanged: "窗口已处于目标状态"
-};
-var windowCopy = (locale) => locale.startsWith("zh") ? zh2 : en2;
-async function windowView(ctx) {
-  const window = ctx.services.ui.window, t = windowCopy(ctx.locale);
-  if (!window)
-    throw Object.assign(Error("Window service unavailable"), { code: "ui/unavailable" });
-  let snapshot = await window.snapshot();
-  let error;
-  const render = () => {
-    const available = snapshot.supported && !error;
-    const fullscreen = snapshot.supported && snapshot.fullscreen;
-    const request = async (input) => {
-      const availability = await ctx.services.session.operationAvailability({ operation: "window.control", request: input });
-      const blocked = availability.conditions.find((value) => value.state === "unavailable" || value.state === "unconfigured");
-      if (blocked)
-        return { view: {
-          kind: "detail",
-          title: t.title,
-          content: [{ kind: "error", code: blocked.errorCode ?? "ui/unavailable" }],
-          actions: [{ id: "refresh", label: t.refresh, run: async () => ({ view: await windowView(ctx), navigation: "replace" }) }]
-        } };
-      if (availability.conditions.some((value) => value.reason === "window-already-in-requested-state"))
-        return { toast: t.unchanged };
-      await window.control(input);
-      return { toast: t.requested };
-    };
-    return {
-      kind: "detail",
-      title: t.title,
-      content: error ? [{ kind: "error", code: error }] : !snapshot.supported ? [{ kind: "text", text: t.unavailable }] : [{ kind: "keyValue", rows: ["minimized", "maximized", "fullscreen", "focused"].map((key) => ({ label: t[key], value: snapshot.supported && snapshot[key] ? t.yes : t.no })) }],
-      actions: [
-        ...available ? [
-          { id: "minimize", label: t.minimize, run: () => request({ action: "minimize" }) },
-          { id: "maximize", label: t.maximize, run: () => request({ action: "maximize" }) },
-          { id: "restore", label: t.restore, run: () => request({ action: "restore" }) },
-          {
-            id: fullscreen ? "exit-fullscreen" : "enter-fullscreen",
-            label: fullscreen ? t.leave : t.enter,
-            run: () => request({ action: "fullscreen", enabled: !fullscreen })
-          }
-        ] : [],
-        { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await windowView(ctx), navigation: "replace" }) }
-      ]
-    };
-  };
-  return { ...render(), live: { subscribe(channel) {
-    let active = true, revision = 0;
-    const subscription = window.observe(async (value, delivery) => {
-      if (!active || delivery?.reaction?.status === "cycle")
-        return;
-      if (value.status === "ready") {
-        snapshot = value.snapshot;
-        error = undefined;
-      } else
-        error = value.code;
-      await ctx.withEvent(delivery).services.ui.publishView(channel, { revision: ++revision, view: render() });
-    }, { ruleId: "window-live" });
-    return { dispose() {
-      if (!active)
-        return;
-      active = false;
-      subscription.dispose();
-    } };
-  } } };
-}
+var copy = (locale) => translations[locale] ?? translations[locale.split("-")[0]] ?? (locale.startsWith("zh") ? translations["zh-Hans"] : en);
 
 // src/views.ts
+function valueText(ctx, entry) {
+  const t = copy(ctx.locale);
+  if (entry.value === null)
+    return t.appDefault;
+  if (typeof entry.value === "boolean")
+    return entry.value ? t.on : t.off;
+  return entry.valueLabel ?? String(entry.value);
+}
 function message(ctx, text2) {
   const t = copy(ctx.locale);
   return { kind: "detail", title: t.title, content: [{ kind: "text", text: text2 }], actions: [
-    { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await profilesView(ctx), navigation: "reset" }) }
+    { id: "back", label: t.back, icon: "cards", priority: "primary", run: async () => ({ view: await profilesView(ctx), navigation: "reset" }) }
   ] };
 }
-function saveView(ctx) {
+function saveForm(ctx) {
   const t = copy(ctx.locale);
   return {
     kind: "form",
     title: t.save,
     submitLabel: t.save,
-    fields: [{ kind: "text", id: "name", label: t.name, value: "" }],
+    fields: [{ kind: "text", id: "name", label: t.name, value: "", placeholder: t.namePlaceholder }],
     onSubmit: async (values) => {
       let name;
       try {
@@ -548,53 +493,87 @@ function saveView(ctx) {
         return { fieldErrors: { name: t.invalid } };
       }
       const result = await saveProfile(ctx, name);
-      return { view: message(ctx, result.status === "saved" ? t.saved : t.conflict), navigation: "replace" };
+      if (result.status !== "saved")
+        return { view: message(ctx, t.conflict), navigation: "replace" };
+      return { view: await profileView(ctx, result.id), navigation: "reset", toast: t.saved };
     }
   };
 }
-function deleteForm(ctx, doc) {
+function renameForm(ctx, doc, currentName) {
   const t = copy(ctx.locale);
   return {
     kind: "form",
-    title: parseProfile(doc.data)?.name ?? t.invalidProfile,
+    title: t.rename,
+    submitLabel: t.rename,
+    fields: [{ kind: "text", id: "name", label: t.name, value: currentName }],
+    onSubmit: async (values) => {
+      let name;
+      try {
+        name = profileName(values.name);
+      } catch {
+        return { fieldErrors: { name: t.invalid } };
+      }
+      const result = await renameProfile(ctx, doc.id, name, doc.revision);
+      if (result.status !== "renamed")
+        return { view: message(ctx, t.conflict), navigation: "replace" };
+      return { view: await profileView(ctx, doc.id), navigation: "replace", toast: t.renamed };
+    }
+  };
+}
+function deleteForm(ctx, doc, name) {
+  const t = copy(ctx.locale);
+  return {
+    kind: "form",
+    title: name,
     submitLabel: t.remove,
     fields: [{ id: "confirm", kind: "checkbox", label: t.confirmDelete, value: false }],
     onSubmit: async (values) => {
       if (values.confirm !== true)
         return { fieldErrors: { confirm: t.confirmRequired } };
       const result = await deleteProfile(ctx, doc.id, doc.revision);
-      return { view: message(ctx, result.status === "deleted" ? t.deleted : t.conflict), navigation: "replace" };
+      if (result.status !== "deleted")
+        return { view: message(ctx, t.conflict), navigation: "replace" };
+      return { view: await profilesView(ctx), navigation: "reset", toast: t.deleted };
     }
   };
 }
-async function profileView(ctx, id) {
-  const doc = await profileCollection(ctx).get(id);
+function appliedView(ctx, id, name, transactionId) {
   const t = copy(ctx.locale);
+  return { kind: "detail", title: name, content: [{ kind: "alert", variant: "success", message: t.applied }], actions: [
+    { id: "undo", label: t.undo, icon: "arrow-counter-clockwise", priority: "primary", run: async () => {
+      await undoProfile(ctx, transactionId);
+      return { view: await profilesView(ctx), navigation: "reset", toast: t.undone };
+    } },
+    { id: "back", label: t.back, icon: "cards", run: async () => ({ view: await profilesView(ctx), navigation: "reset" }) },
+    { id: "profile", label: name, icon: "cards", priority: "secondary", run: async () => ({ view: await profileView(ctx, id), navigation: "reset" }) }
+  ] };
+}
+async function profileView(ctx, id) {
+  const t = copy(ctx.locale);
+  const doc = await profileCollection(ctx).get(id);
   if (!doc)
     return message(ctx, t.missing);
   const profile = parseProfile(doc.data);
-  return { kind: "blocks", blocks: [
-    { kind: "heading", text: profile?.name ?? t.invalidProfile },
-    ...(profile?.changes ?? []).map((change) => ({ kind: "text", text: `${settingLabel(ctx.locale, change.path)}: ${change.value === null ? t.appDefault : String(change.value)}` })),
-    { kind: "actions", actions: [
-      ...profile ? [{ id: "apply", label: t.apply, icon: "check", run: async () => {
-        const result = await applyProfile(ctx, id, doc.revision);
-        return result.status === "applied" ? { view: {
-          kind: "detail",
-          title: t.applied,
-          content: [{ kind: "text", text: profile.name }],
-          actions: [
-            { id: "undo", label: t.undo, icon: "arrow-counter-clockwise", run: async () => {
-              await undoProfile(ctx, result.transactionId);
-              return { view: message(ctx, t.undone), navigation: "replace" };
-            } }
-          ]
-        }, navigation: "replace" } : { view: message(ctx, t.conflict), navigation: "replace" };
-      } }] : [],
-      { id: "delete", label: t.remove, icon: "trash", run: () => ({ view: deleteForm(ctx, doc) }) },
-      { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await profileView(ctx, id), navigation: "replace" }) }
-    ] }
-  ] };
+  const name = profile?.name ?? t.invalidProfile;
+  const description = profile ? await describeProfile(ctx, profile) : null;
+  const actions = [];
+  if (profile) {
+    actions.push({ id: "apply", label: t.apply, icon: "check", variant: "solid", priority: "primary", run: async () => {
+      const result = await applyProfile(ctx, id, doc.revision);
+      if (result.status !== "applied")
+        return { view: message(ctx, t.conflict), navigation: "replace" };
+      return { view: appliedView(ctx, id, profile.name, result.transactionId), navigation: "replace" };
+    } });
+    actions.push({ id: "rename", label: t.rename, icon: "pencil-simple", priority: "secondary", run: () => ({ view: renameForm(ctx, doc, profile.name) }) });
+  }
+  actions.push({ id: "delete", label: t.remove, icon: "trash", variant: "danger", priority: "secondary", run: () => ({ view: deleteForm(ctx, doc, name) }) }, { id: "refresh", label: t.refresh, icon: "arrows-clockwise", priority: "secondary", run: async () => ({ view: await profileView(ctx, id), navigation: "replace" }) });
+  return {
+    kind: "detail",
+    title: name,
+    metadata: [{ kind: "label", label: t.savedAt, value: new Date(doc.updatedAt).toLocaleString(ctx.locale), icon: "clock" }],
+    content: description ? [{ kind: "keyValue", rows: description.entries.map((entry) => ({ label: entry.label, value: valueText(ctx, entry) })) }] : [{ kind: "alert", variant: "destructive", message: t.invalidProfile }],
+    actions
+  };
 }
 async function profilesView(ctx, cursors = [undefined]) {
   const t = copy(ctx.locale);
@@ -602,31 +581,26 @@ async function profilesView(ctx, cursors = [undefined]) {
   if (page.status === "stale-cursor")
     return message(ctx, t.stalePage);
   const go = async (next) => ({ view: await profilesView(ctx, next), navigation: "replace" });
-  return {
-    kind: "list",
-    title: t.title,
-    emptyText: t.empty,
-    actions: [
-      { id: "save", label: t.save, icon: "plus", run: () => ({ view: saveView(ctx) }) },
-      { id: "current", label: t.current, icon: "rows", run: async () => ({ view: await currentWorkspaceView(ctx) }) },
-      { id: "fonts", label: t.fonts, icon: "text-aa", run: async () => ({ view: await fontsView(ctx) }) },
-      { id: "window", label: windowCopy(ctx.locale).title, icon: "rows", run: async () => ({ view: await windowView(ctx) }) },
-      { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await profilesView(ctx), navigation: "replace" }) },
-      { id: "shortcut", label: t.shortcut, icon: "rows", run: async () => ({ view: await shortcutView(ctx) }) }
-    ],
-    items: page.items.map((doc) => ({
+  const items = await Promise.all(page.items.map(async (doc) => {
+    const profile = parseProfile(doc.data);
+    const description = profile ? await describeProfile(ctx, profile) : null;
+    return {
       id: doc.id,
-      title: parseProfile(doc.data)?.name ?? t.invalidProfile,
-      timestamp: doc.updatedAt,
+      title: profile?.name ?? t.invalidProfile,
       icon: "cards",
+      subtitle: description?.summary.map((entry) => valueText(ctx, entry)).join(" · "),
+      timestamp: doc.updatedAt,
       onSelect: async () => ({ view: await profileView(ctx, doc.id) })
-    })),
-    pagination: {
-      page: cursors.length,
-      ...cursors.length > 1 ? { onPrevious: () => go(cursors.slice(0, -1)) } : {},
-      ...page.nextCursor ? { onNext: () => go([...cursors, page.nextCursor]) } : {}
-    }
-  };
+    };
+  }));
+  return { kind: "list", title: t.title, emptyText: t.empty, items, actions: [
+    { id: "save", label: t.save, icon: "plus", variant: "solid", priority: "primary", run: () => ({ view: saveForm(ctx) }) },
+    { id: "refresh", label: t.refresh, icon: "arrows-clockwise", priority: "secondary", run: async () => ({ view: await profilesView(ctx), navigation: "replace" }) }
+  ], pagination: {
+    page: cursors.length,
+    ...cursors.length > 1 ? { onPrevious: () => go(cursors.slice(0, -1)) } : {},
+    ...page.nextCursor ? { onNext: () => go([...cursors, page.nextCursor]) } : {}
+  } };
 }
 
 // src/index.ts

@@ -1,10 +1,10 @@
 {
   "id": "workspace-profiles",
   "name": "Workspace Profiles",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "schemaVersion": 1,
   "minAppVersion": "0.3.0",
-  "description": "Named shelf, app appearance and global reading presets.",
+  "description": "Save the current shelf, appearance and reading setup as a named profile and switch between them.",
   "author": "ReadAware",
   "main": "main.js",
   "permissions": [
@@ -19,7 +19,6 @@
       "appearance.motion",
       "reading.fontSize",
       "reading.lineSpacing",
-      "shortcuts.plugin.workspace-profiles%3Aopen",
       "reading.fontFamily",
       "appearance.contentTypography.fontFamily",
       "appearance.contentTypography.followReader"
@@ -32,7 +31,6 @@
       "appearance.motion",
       "reading.fontSize",
       "reading.lineSpacing",
-      "shortcuts.plugin.workspace-profiles%3Aopen",
       "reading.fontFamily",
       "appearance.contentTypography.fontFamily",
       "appearance.contentTypography.followReader"
@@ -50,9 +48,7 @@
     "services": {
       "plugins": "^1.3.0",
       "storage": "^2.1.0",
-      "ui": "^1.17.0",
-      "transactions": "^1.0.0",
-      "session": "^2.6.0"
+      "transactions": "^1.0.0"
     },
     "schemas": {
       "views": "^1.5.0"

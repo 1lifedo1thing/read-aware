@@ -79,6 +79,16 @@ export async function applyProfile(ctx: PluginContext, id: string, expectedRevis
     throw error;
   }
 }
+export async function renameProfile(ctx: PluginContext, id: string, name: string, expectedRevision: string) {
+  const cleanName = profileName(name);
+  const doc = await profileCollection(ctx).get(id);
+  if (!doc || doc.revision !== expectedRevision) return { status: "conflict" as const };
+  const profile = parseProfile(doc.data);
+  if (!profile) return invalid("Invalid workspace profile");
+  const receipt = await ctx.services.storage.applyDocuments([{ kind: "put", collection: "profiles", id,
+    data: { ...profile, name: cleanName }, expectedRevision }]);
+  return receipt.status === "conflict" ? { status: "conflict" as const } : { status: "renamed" as const, id, name: cleanName };
+}
 export async function deleteProfile(ctx: PluginContext, id: string, expectedRevision: string) {
   const receipt = await ctx.services.storage.applyDocuments([{ kind: "delete", collection: "profiles", id, expectedRevision }]);
   return { status: receipt.status === "conflict" ? "conflict" as const : "deleted" as const, id };
@@ -87,4 +97,24 @@ export async function deleteProfile(ctx: PluginContext, id: string, expectedRevi
 export async function undoProfile(ctx: PluginContext, receiptId: string) {
   const preview = await ctx.services.transactions.previewUndo(receiptId);
   return ctx.services.transactions.commit(preview.id);
+}
+
+/** The three settings that identify a profile at a glance in the list. */
+const SUMMARY_PATHS = ["shelf.layout", "appearance.theme", "reading.fontSize"] as const;
+export type ProfileDescription = {
+  entries: Array<{ path: string; label: string; value: Change["value"]; valueLabel?: string }>;
+  summary: ProfileDescription["entries"];
+};
+/**
+ * Pair a profile's stored values with the host settings catalog so the view
+ * shows the same localized labels as the Settings page instead of raw paths.
+ */
+export async function describeProfile(ctx: PluginContext, profile: Profile): Promise<ProfileDescription> {
+  const snapshot = await ctx.domains.settings.queries.snapshot({ target: { kind: "global" } });
+  const entries = profile.changes.map(change => {
+    const descriptor = snapshot.settings.find(setting => setting.path === change.path);
+    const option = descriptor?.options?.find(option => option.value === change.value);
+    return { path: change.path, label: descriptor?.label ?? change.path, value: change.value, ...(option ? { valueLabel: option.label } : {}) };
+  });
+  return { entries, summary: SUMMARY_PATHS.flatMap(path => entries.filter(entry => entry.path === path)) };
 }
