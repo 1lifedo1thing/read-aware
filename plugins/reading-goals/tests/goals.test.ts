@@ -40,14 +40,20 @@ test("context and opt-in candidates use the requested book, never the active rea
   expect(await candidates.propose({ ...input, scope: { kind: "global", threadId: "x" } })).toEqual([]);
 });
 
-test("host policy writes are independent of goal storage and failures are not presented as success", async () => {
+test("a memory suggestion while long-term memory is off shows the host setting notice, never writes it", async () => {
   const { ctx, state, saved } = fixture();
-  const [, form] = await forms(ctx);
-  await form!.onSubmit({ enabled: false });
+  state.memory = false;
+  const [form] = await forms(ctx);
+  expect(await form!.onSubmit({ goal: "Keep this", suggestMemory: true })).toMatchObject({ toast: "Goal saved", navigation: "replace" });
+  const view = await goalsView(ctx);
+  if (view.kind !== "blocks") throw new Error("Expected blocks");
+  expect(view.blocks.some(block => block.kind === "alert" && block.message.includes("Long-term memory is turned off"))).toBe(true);
+  expect(view.blocks[0]).toMatchObject({ kind: "heading", text: "book-1" });
   expect(state.memory).toBe(false); expect(saved.size).toBe(0);
-  state.failSettings = true;
-  await expect(form!.onSubmit({ enabled: true })).rejects.toThrow("settings failed");
-  expect(state.memory).toBe(false);
+  state.memory = true;
+  const enabled = await goalsView(ctx);
+  if (enabled.kind !== "blocks") throw new Error("Expected blocks");
+  expect(enabled.blocks.some(block => block.kind === "alert")).toBe(false);
 });
 
 test("clear removes only this book's goal and no-book is an explicit state", async () => {
@@ -62,8 +68,8 @@ test("clear removes only this book's goal and no-book is an explicit state", asy
   if (result?.view?.kind !== "form") throw Error("Expected clear confirmation");
   expect(await result.view.onSubmit({ confirm: false })).toHaveProperty("fieldErrors.confirm");
   expect(await readGoal(ctx, "book-1")).not.toBeNull();
-  await result.view.onSubmit({ confirm: true });
+  expect(await result.view.onSubmit({ confirm: true })).toMatchObject({ toast: "Goal cleared" });
   expect(await readGoal(ctx, "book-1")).toBeNull(); expect(saved.has("goal:book-2")).toBe(true);
   state.bookId = null;
-  expect(JSON.stringify(await goalsView(ctx))).toContain("No book is open");
+  expect(JSON.stringify(await goalsView(ctx))).toContain("Open a book to set a reading goal");
 });

@@ -30,8 +30,8 @@ test("all three tools register in both scopes, with writes requiring host approv
   await f.tools.get("set_reading_goal")!.execute({ bookId: "book-1", text: "Compiled goal", suggestMemory: true, expectedRevision: null });
   expect(await candidates.propose({ requestId: "compiled", scope: { kind: "book", bookId: "book-1" }, userText: "q", assistantText: "a" }))
     .toEqual([{ scope: "book", kind: "preference", content: "Compiled goal" }]);
-  await candidates.onResult!({ requestId: "compiled", discarded: 0, results: [{ index: 0, outcome: { status: "saved" } }] });
-  expect(JSON.stringify(await commands.get("memory-status")!.run())).toContain("Saved to memory");
+  expect([...commands.keys()]).toEqual(["open"]);
+  expect(JSON.stringify(await commands.get("open")!.run())).toContain("Compiled goal");
 });
 
 test("Agent writes feed the same next-turn context and opt-in candidates as UI", async () => {
@@ -60,7 +60,7 @@ test("UI edits reject a goal changed by the Agent and do not recapture the activ
   if (form?.kind !== "form") throw Error("Expected form");
   await f.tools.get("set_reading_goal")!.execute({ bookId: "book-1", text: "Agent edit", suggestMemory: false, expectedRevision: null });
   f.state.bookId = "book-2";
-  expect(JSON.stringify(await form.onSubmit({ goal: "Old form", suggestMemory: true }))).toContain("The goal changed");
+  expect(JSON.stringify(await form.onSubmit({ goal: "Old form", suggestMemory: true }))).toContain("This goal changed elsewhere");
   expect((await readGoal(f.ctx, "book-1"))!.text).toBe("Agent edit");
   f.missingBooks.add("book-2");
   await expect(writeGoal(f.ctx, "book-2", { text: "No book", suggestMemory: false }, null)).rejects.toMatchObject({ code: "library/book-not-found" });

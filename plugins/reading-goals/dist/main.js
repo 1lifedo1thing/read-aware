@@ -70,296 +70,186 @@ async function writeGoal(ctx, input, goal, expectedRevision) {
 // src/strings.ts
 var en = {
   title: "Reading Goals",
-  goal: "Reading goal",
-  remember: "Suggest this goal as book memory",
+  goal: "What do you want to get out of this book?",
+  goalPlaceholder: "Understand the author's main argument well enough to explain it to a friend.",
+  goalHelp: "The assistant sees this goal whenever you chat inside this book.",
+  remember: "Also suggest this goal for long-term memory",
   save: "Save goal",
   clear: "Clear goal",
-  memory: "Build long-term memory",
-  apply: "Apply",
-  noBook: "No book is open.",
+  noBook: "Open a book to set a reading goal for it.",
   invalid: "Enter a goal of 1 to 500 characters.",
-  refresh: "Refresh"
+  refresh: "Refresh",
+  saved: "Goal saved",
+  cleared: "Goal cleared",
+  conflict: "This goal changed elsewhere. Reload before trying again.",
+  confirm: "Clear the reading goal for this book",
+  required: "Confirm clearing first.",
+  memoryOff: "Long-term memory is turned off in Settings → AI, so the goal will not be suggested for memory until you turn it on.",
+  bookMissing: "This book is no longer in your library."
 };
 var copies = {
   en,
-  "zh-Hans": { title: "阅读目标", goal: "阅读目标", remember: "将此目标作为本书记忆候选", save: "保存目标", clear: "清除目标", memory: "构建长期记忆", apply: "应用", noBook: "当前没有打开的书籍。", invalid: "请输入 1 至 500 个字符的目标。", refresh: "刷新" },
-  "zh-Hant": { title: "閱讀目標", goal: "閱讀目標", remember: "將此目標作為本書記憶候選", save: "儲存目標", clear: "清除目標", memory: "建立長期記憶", apply: "套用", noBook: "目前沒有開啟的書籍。", invalid: "請輸入 1 至 500 個字元的目標。", refresh: "重新整理" },
-  ja: { title: "読書目標", goal: "読書目標", remember: "この目標を本のメモリ候補にする", save: "目標を保存", clear: "目標を削除", memory: "長期メモリを作成", apply: "適用", noBook: "本が開かれていません。", invalid: "1〜500文字の目標を入力してください。", refresh: "更新" },
-  de: { title: "Leseziele", goal: "Leseziel", remember: "Dieses Ziel als Buchgedächtnis vorschlagen", save: "Ziel speichern", clear: "Ziel löschen", memory: "Langzeitgedächtnis aufbauen", apply: "Anwenden", noBook: "Kein Buch geöffnet.", invalid: "Gib ein Ziel mit 1 bis 500 Zeichen ein.", refresh: "Aktualisieren" },
-  fr: { title: "Objectifs de lecture", goal: "Objectif de lecture", remember: "Proposer cet objectif comme mémoire du livre", save: "Enregistrer", clear: "Effacer l'objectif", memory: "Créer une mémoire à long terme", apply: "Appliquer", noBook: "Aucun livre ouvert.", invalid: "Saisissez un objectif de 1 à 500 caractères.", refresh: "Actualiser" },
-  es: { title: "Objetivos de lectura", goal: "Objetivo de lectura", remember: "Proponer este objetivo como memoria del libro", save: "Guardar objetivo", clear: "Borrar objetivo", memory: "Crear memoria a largo plazo", apply: "Aplicar", noBook: "No hay ningún libro abierto.", invalid: "Escribe un objetivo de entre 1 y 500 caracteres.", refresh: "Actualizar" },
-  ru: { title: "Цели чтения", goal: "Цель чтения", remember: "Предложить цель для памяти книги", save: "Сохранить цель", clear: "Удалить цель", memory: "Создавать долговременную память", apply: "Применить", noBook: "Книга не открыта.", invalid: "Введите цель длиной от 1 до 500 символов.", refresh: "Обновить" }
-};
-var feedbackEn = { saved: "Goal saved", cleared: "Goal cleared", conflict: "The goal changed. Refresh before trying again.", confirm: "Clear this reading goal", required: "Confirm clearing first." };
-var feedback = {
-  en: feedbackEn,
-  "zh-Hans": { saved: "目标已保存", cleared: "目标已清除", conflict: "目标已变化，请刷新后再试。", confirm: "清除此阅读目标", required: "请先确认清除。" },
-  "zh-Hant": { saved: "目標已儲存", cleared: "目標已清除", conflict: "目標已變更，請重新整理後再試。", confirm: "清除此閱讀目標", required: "請先確認清除。" },
-  ja: { saved: "目標を保存しました", cleared: "目標を削除しました", conflict: "目標が変更されました。更新してから再試行してください。", confirm: "この読書目標を削除", required: "削除を確認してください。" },
-  de: { saved: "Ziel gespeichert", cleared: "Ziel gelöscht", conflict: "Das Ziel wurde geändert. Bitte zuerst aktualisieren.", confirm: "Dieses Leseziel löschen", required: "Bitte das Löschen bestätigen." },
-  fr: { saved: "Objectif enregistré", cleared: "Objectif effacé", conflict: "L'objectif a changé. Actualisez avant de réessayer.", confirm: "Effacer cet objectif de lecture", required: "Confirmez d'abord la suppression." },
-  es: { saved: "Objetivo guardado", cleared: "Objetivo borrado", conflict: "El objetivo ha cambiado. Actualiza antes de reintentar.", confirm: "Borrar este objetivo de lectura", required: "Confirma primero el borrado." },
-  ru: { saved: "Цель сохранена", cleared: "Цель удалена", conflict: "Цель изменилась. Сначала обновите данные.", confirm: "Удалить эту цель чтения", required: "Сначала подтвердите удаление." }
+  "zh-Hans": {
+    title: "阅读目标",
+    goal: "你想从这本书里得到什么？",
+    goalPlaceholder: "把作者的核心论点搞清楚，能讲给朋友听。",
+    goalHelp: "在这本书里聊天时，助手会看到这个目标。",
+    remember: "同时把这个目标推荐进长期记忆",
+    save: "保存目标",
+    clear: "清除目标",
+    noBook: "打开一本书，再为它设定阅读目标。",
+    invalid: "请输入 1 至 500 个字符的目标。",
+    refresh: "刷新",
+    saved: "目标已保存",
+    cleared: "目标已清除",
+    conflict: "这个目标在别处被修改了，请刷新后再试。",
+    confirm: "清除这本书的阅读目标",
+    required: "请先确认清除。",
+    memoryOff: "长期记忆已在“设置 → AI”中关闭，打开之前不会推荐这个目标进记忆。",
+    bookMissing: "这本书已不在你的书库中。"
+  },
+  "zh-Hant": {
+    title: "閱讀目標",
+    goal: "你想從這本書得到什麼？",
+    goalPlaceholder: "把作者的核心論點弄清楚，能講給朋友聽。",
+    goalHelp: "在這本書裡聊天時，助理會看到這個目標。",
+    remember: "同時把這個目標推薦進長期記憶",
+    save: "儲存目標",
+    clear: "清除目標",
+    noBook: "開啟一本書，再為它設定閱讀目標。",
+    invalid: "請輸入 1 至 500 個字元的目標。",
+    refresh: "重新整理",
+    saved: "目標已儲存",
+    cleared: "目標已清除",
+    conflict: "這個目標在別處被修改了，請重新整理後再試。",
+    confirm: "清除這本書的閱讀目標",
+    required: "請先確認清除。",
+    memoryOff: "長期記憶已在「設定 → AI」中關閉，開啟之前不會推薦這個目標進記憶。",
+    bookMissing: "這本書已不在你的書庫中。"
+  },
+  ja: {
+    title: "読書目標",
+    goal: "この本から何を得たいですか？",
+    goalPlaceholder: "著者の主張を友人に説明できるくらい理解する。",
+    goalHelp: "この本の中でチャットするとき、アシスタントはこの目標を参照します。",
+    remember: "この目標を長期メモリにも提案する",
+    save: "目標を保存",
+    clear: "目標を削除",
+    noBook: "本を開いてから読書目標を設定してください。",
+    invalid: "1〜500文字の目標を入力してください。",
+    refresh: "更新",
+    saved: "目標を保存しました",
+    cleared: "目標を削除しました",
+    conflict: "この目標は別の場所で変更されました。再読み込みしてやり直してください。",
+    confirm: "この本の読書目標を削除する",
+    required: "先に削除を確認してください。",
+    memoryOff: "長期メモリは「設定 → AI」でオフになっています。オンにするまでこの目標はメモリに提案されません。",
+    bookMissing: "この本はもうライブラリにありません。"
+  },
+  de: {
+    title: "Leseziele",
+    goal: "Was möchten Sie aus diesem Buch mitnehmen?",
+    goalPlaceholder: "Das Hauptargument des Autors so gut verstehen, dass ich es einem Freund erklären kann.",
+    goalHelp: "Der Assistent sieht dieses Ziel bei jedem Gespräch in diesem Buch.",
+    remember: "Dieses Ziel auch für das Langzeitgedächtnis vorschlagen",
+    save: "Ziel speichern",
+    clear: "Ziel löschen",
+    noBook: "Öffnen Sie ein Buch, um ein Leseziel dafür festzulegen.",
+    invalid: "Geben Sie ein Ziel mit 1 bis 500 Zeichen ein.",
+    refresh: "Aktualisieren",
+    saved: "Ziel gespeichert",
+    cleared: "Ziel gelöscht",
+    conflict: "Dieses Ziel wurde anderswo geändert. Laden Sie neu und versuchen Sie es erneut.",
+    confirm: "Das Leseziel für dieses Buch löschen",
+    required: "Bestätigen Sie zuerst das Löschen.",
+    memoryOff: "Das Langzeitgedächtnis ist unter Einstellungen → KI ausgeschaltet. Bis Sie es einschalten, wird das Ziel nicht für das Gedächtnis vorgeschlagen.",
+    bookMissing: "Dieses Buch ist nicht mehr in Ihrer Bibliothek."
+  },
+  fr: {
+    title: "Objectifs de lecture",
+    goal: "Que voulez-vous retirer de ce livre ?",
+    goalPlaceholder: "Comprendre l’argument principal de l’auteur assez bien pour l’expliquer à un ami.",
+    goalHelp: "L’assistant voit cet objectif à chaque conversation dans ce livre.",
+    remember: "Proposer aussi cet objectif pour la mémoire à long terme",
+    save: "Enregistrer l’objectif",
+    clear: "Effacer l’objectif",
+    noBook: "Ouvrez un livre pour lui définir un objectif de lecture.",
+    invalid: "Saisissez un objectif de 1 à 500 caractères.",
+    refresh: "Actualiser",
+    saved: "Objectif enregistré",
+    cleared: "Objectif effacé",
+    conflict: "Cet objectif a été modifié ailleurs. Rechargez avant de réessayer.",
+    confirm: "Effacer l’objectif de lecture de ce livre",
+    required: "Confirmez d’abord l’effacement.",
+    memoryOff: "La mémoire à long terme est désactivée dans Réglages → IA ; l’objectif ne sera pas proposé pour la mémoire tant qu’elle est désactivée.",
+    bookMissing: "Ce livre n’est plus dans votre bibliothèque."
+  },
+  es: {
+    title: "Objetivos de lectura",
+    goal: "¿Qué quieres sacar de este libro?",
+    goalPlaceholder: "Entender el argumento principal del autor lo bastante bien como para explicárselo a un amigo.",
+    goalHelp: "El asistente ve este objetivo cada vez que conversas dentro de este libro.",
+    remember: "Proponer también este objetivo para la memoria a largo plazo",
+    save: "Guardar objetivo",
+    clear: "Borrar objetivo",
+    noBook: "Abre un libro para fijarle un objetivo de lectura.",
+    invalid: "Escribe un objetivo de 1 a 500 caracteres.",
+    refresh: "Actualizar",
+    saved: "Objetivo guardado",
+    cleared: "Objetivo borrado",
+    conflict: "Este objetivo cambió en otro lugar. Recarga antes de reintentar.",
+    confirm: "Borrar el objetivo de lectura de este libro",
+    required: "Confirma primero el borrado.",
+    memoryOff: "La memoria a largo plazo está desactivada en Ajustes → IA; el objetivo no se propondrá para la memoria hasta que la actives.",
+    bookMissing: "Este libro ya no está en tu biblioteca."
+  },
+  ru: {
+    title: "Цели чтения",
+    goal: "Что вы хотите вынести из этой книги?",
+    goalPlaceholder: "Понять главный аргумент автора настолько, чтобы объяснить его другу.",
+    goalHelp: "Ассистент видит эту цель в каждом разговоре внутри этой книги.",
+    remember: "Также предложить эту цель для долговременной памяти",
+    save: "Сохранить цель",
+    clear: "Удалить цель",
+    noBook: "Откройте книгу, чтобы задать для неё цель чтения.",
+    invalid: "Введите цель длиной от 1 до 500 символов.",
+    refresh: "Обновить",
+    saved: "Цель сохранена",
+    cleared: "Цель удалена",
+    conflict: "Эта цель была изменена в другом месте. Обновите и попробуйте снова.",
+    confirm: "Удалить цель чтения для этой книги",
+    required: "Сначала подтвердите удаление.",
+    memoryOff: "Долговременная память выключена в «Настройки → ИИ»; пока она выключена, цель не будет предлагаться для памяти.",
+    bookMissing: "Этой книги больше нет в вашей библиотеке."
+  }
 };
 function copy(locale) {
-  return { ...copies[locale] ?? copies[locale.split("-")[0]] ?? en, ...feedback[locale] ?? feedback[locale.split("-")[0]] ?? feedbackEn };
-}
-
-// src/time-strings.ts
-var en2 = {
-  title: "Reading time",
-  allBooks: "All books",
-  active: "Active reading",
-  settled: "Settled",
-  pending: "Pending sessions",
-  sampledAt: "Sampled at (UTC)",
-  day: "Calendar day",
-  empty: "No pending sessions",
-  refresh: "Refresh",
-  next: "Next page",
-  lastActivity: "Last activity (UTC)",
-  positionAt: "Position observed (UTC)",
-  noPosition: "No position",
-  lastSuccessful: "Last successful sample",
-  allTime: "All time",
-  today: "Today"
-};
-var copies2 = {
-  en: en2,
-  "zh-Hans": { title: "阅读时长", allBooks: "全部书籍", active: "有效阅读", settled: "已结算", pending: "待结算会话", sampledAt: "采样时间（UTC）", day: "日期", empty: "没有待结算会话", refresh: "刷新", next: "下一页", lastActivity: "最近活动（UTC）", positionAt: "位置观测（UTC）", noPosition: "无位置", lastSuccessful: "上次成功的采样", allTime: "全部时间", today: "今天" },
-  "zh-Hant": { title: "閱讀時間", allBooks: "全部書籍", active: "有效閱讀", settled: "已結算", pending: "待結算工作階段", sampledAt: "取樣時間（UTC）", day: "日期", empty: "沒有待結算工作階段", refresh: "重新整理", next: "下一頁", lastActivity: "最近活動（UTC）", positionAt: "位置觀測（UTC）", noPosition: "無位置", lastSuccessful: "上次成功的取樣", allTime: "全部時間", today: "今天" },
-  ja: { title: "読書時間", allBooks: "すべての本", active: "実読書時間", settled: "確定済み", pending: "未確定セッション", sampledAt: "取得時刻（UTC）", day: "日付", empty: "未確定セッションなし", refresh: "更新", next: "次のページ", lastActivity: "最終活動（UTC）", positionAt: "位置の観測（UTC）", noPosition: "位置なし", lastSuccessful: "最後に取得した値", allTime: "全期間", today: "今日" },
-  de: { title: "Lesezeit", allBooks: "Alle Bücher", active: "Aktive Lesezeit", settled: "Abgeschlossen", pending: "Offene Sitzungen", sampledAt: "Erfasst (UTC)", day: "Kalendertag", empty: "Keine offenen Sitzungen", refresh: "Aktualisieren", next: "Nächste Seite", lastActivity: "Letzte Aktivität (UTC)", positionAt: "Position erfasst (UTC)", noPosition: "Keine Position", lastSuccessful: "Letzte erfolgreiche Messung", allTime: "Gesamter Zeitraum", today: "Heute" },
-  fr: { title: "Temps de lecture", allBooks: "Tous les livres", active: "Lecture active", settled: "Consolidé", pending: "Sessions en attente", sampledAt: "Relevé (UTC)", day: "Jour", empty: "Aucune session en attente", refresh: "Actualiser", next: "Page suivante", lastActivity: "Dernière activité (UTC)", positionAt: "Position observée (UTC)", noPosition: "Aucune position", lastSuccessful: "Dernier relevé réussi", allTime: "Toute la période", today: "Aujourd’hui" },
-  es: { title: "Tiempo de lectura", allBooks: "Todos los libros", active: "Lectura activa", settled: "Consolidado", pending: "Sesiones pendientes", sampledAt: "Muestra (UTC)", day: "Día", empty: "Sin sesiones pendientes", refresh: "Actualizar", next: "Página siguiente", lastActivity: "Última actividad (UTC)", positionAt: "Posición observada (UTC)", noPosition: "Sin posición", lastSuccessful: "Última muestra válida", allTime: "Todo el tiempo", today: "Hoy" },
-  ru: { title: "Время чтения", allBooks: "Все книги", active: "Активное чтение", settled: "Учтено", pending: "Открытые сеансы", sampledAt: "Замер (UTC)", day: "День", empty: "Нет открытых сеансов", refresh: "Обновить", next: "Следующая страница", lastActivity: "Активность (UTC)", positionAt: "Позиция (UTC)", noPosition: "Нет позиции", lastSuccessful: "Последний успешный замер", allTime: "Всё время", today: "Сегодня" }
-};
-function timeCopy(locale) {
-  return copies2[locale] ?? copies2[locale.split("-")[0]] ?? en2;
-}
-
-// src/time-format.ts
-function timeDuration(ms) {
-  const seconds = Math.floor(ms / 1000);
-  return `${Math.floor(seconds / 3600)}:${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-// src/insights-strings.ts
-var en3 = {
-  title: "Reading trends",
-  period: "Period",
-  week: "Last 7 days",
-  month: "Last 30 days",
-  year: "Last 365 days",
-  all: "All time",
-  open: "Show trends",
-  total: "Reading time",
-  days: "Active days",
-  books: "Books read",
-  average: "Per active day",
-  change: "Change",
-  none: "Not available",
-  dates: "Date totals",
-  hours: "Reading hours (all time)",
-  achievements: "Milestones (all time)",
-  streak: "Current streak",
-  longest: "Longest streak",
-  best: "Best day",
-  next: "Next milestone",
-  reference: "Reference day",
-  refresh: "Refresh"
-};
-var copies3 = {
-  en: en3,
-  "zh-Hans": { title: "阅读趋势", period: "时间范围", week: "最近 7 天", month: "最近 30 天", year: "最近 365 天", all: "全部时间", open: "查看趋势", total: "阅读时长", days: "活跃天数", books: "阅读书数", average: "每活跃日", change: "变化", none: "暂无", dates: "按日期汇总", hours: "阅读时段（全部时间）", achievements: "里程碑（全部时间）", streak: "当前连续天数", longest: "最长连续天数", best: "最佳阅读日", next: "下一里程碑", reference: "参考日期", refresh: "刷新" },
-  "zh-Hant": { title: "閱讀趨勢", period: "時間範圍", week: "最近 7 天", month: "最近 30 天", year: "最近 365 天", all: "全部時間", open: "查看趨勢", total: "閱讀時間", days: "活躍天數", books: "閱讀書數", average: "每活躍日", change: "變化", none: "暫無", dates: "按日期彙總", hours: "閱讀時段（全部時間）", achievements: "里程碑（全部時間）", streak: "目前連續天數", longest: "最長連續天數", best: "最佳閱讀日", next: "下一里程碑", reference: "參考日期", refresh: "重新整理" },
-  ja: { title: "読書傾向", period: "期間", week: "過去7日", month: "過去30日", year: "過去365日", all: "全期間", open: "傾向を表示", total: "読書時間", days: "読書日数", books: "読んだ本", average: "読書日あたり", change: "変化", none: "なし", dates: "日付別合計", hours: "読書時間帯（全期間）", achievements: "到達点（全期間）", streak: "現在の連続日数", longest: "最長連続日数", best: "最も読んだ日", next: "次の到達点", reference: "基準日", refresh: "更新" },
-  de: { title: "Lesetrends", period: "Zeitraum", week: "Letzte 7 Tage", month: "Letzte 30 Tage", year: "Letzte 365 Tage", all: "Gesamte Zeit", open: "Trends anzeigen", total: "Lesezeit", days: "Aktive Tage", books: "Gelesene Bücher", average: "Pro aktivem Tag", change: "Änderung", none: "Nicht verfügbar", dates: "Datumssummen", hours: "Lesezeiten (gesamt)", achievements: "Meilensteine (gesamt)", streak: "Aktuelle Serie", longest: "Längste Serie", best: "Bester Tag", next: "Nächster Meilenstein", reference: "Referenztag", refresh: "Aktualisieren" },
-  fr: { title: "Tendances de lecture", period: "Période", week: "7 derniers jours", month: "30 derniers jours", year: "365 derniers jours", all: "Toute la période", open: "Voir les tendances", total: "Temps de lecture", days: "Jours actifs", books: "Livres lus", average: "Par jour actif", change: "Évolution", none: "Indisponible", dates: "Totaux par date", hours: "Heures de lecture (total)", achievements: "Jalons (total)", streak: "Série actuelle", longest: "Plus longue série", best: "Meilleur jour", next: "Prochain jalon", reference: "Jour de référence", refresh: "Actualiser" },
-  es: { title: "Tendencias de lectura", period: "Período", week: "Últimos 7 días", month: "Últimos 30 días", year: "Últimos 365 días", all: "Todo el tiempo", open: "Ver tendencias", total: "Tiempo de lectura", days: "Días activos", books: "Libros leídos", average: "Por día activo", change: "Cambio", none: "No disponible", dates: "Totales por fecha", hours: "Horas de lectura (total)", achievements: "Hitos (total)", streak: "Racha actual", longest: "Mayor racha", best: "Mejor día", next: "Próximo hito", reference: "Día de referencia", refresh: "Actualizar" },
-  ru: { title: "Тенденции чтения", period: "Период", week: "Последние 7 дней", month: "Последние 30 дней", year: "Последние 365 дней", all: "Всё время", open: "Показать тенденции", total: "Время чтения", days: "Активные дни", books: "Книг прочитано", average: "За активный день", change: "Изменение", none: "Нет данных", dates: "Итоги по датам", hours: "Часы чтения (всё время)", achievements: "Рубежи (всё время)", streak: "Текущая серия", longest: "Лучшая серия", best: "Лучший день", next: "Следующий рубеж", reference: "Опорная дата", refresh: "Обновить" }
-};
-function insightsCopy(locale) {
-  return copies3[locale] ?? copies3[locale.split("-")[0]] ?? en3;
-}
-
-// src/insights-view.ts
-var periods = ["week", "month", "year", "all"];
-function readingInsightsForm(ctx, bookId) {
-  const t = insightsCopy(ctx.locale);
-  return { kind: "form", title: t.title, submitLabel: t.open, fields: [
-    { kind: "choice", id: "period", label: t.period, value: "week", options: periods.map((value) => ({ value, label: t[value] })) }
-  ], onSubmit: async (values) => ({ view: await readingInsightsView(ctx, { bookId, period: values.period }) }) };
-}
-async function readingInsightsView(ctx, query) {
-  const t = insightsCopy(ctx.locale), reading = ctx.domains.reading;
-  let sample = await reading.queries.stats.insights(query);
-  const detail = (data, code) => ({ kind: "detail", title: t.title, content: [
-    { kind: "text", text: t[data.period] },
-    ...code ? [{ kind: "error", code }, { kind: "text", text: timeCopy(ctx.locale).lastSuccessful }] : [],
-    { kind: "metric", label: t.total, value: timeDuration(data.totalMs) },
-    { kind: "keyValue", rows: [
-      { label: t.reference, value: data.asOfDay },
-      { label: t.days, value: String(data.daysRead) },
-      { label: t.books, value: String(data.booksRead) },
-      { label: t.average, value: timeDuration(data.avgPerDayMs) },
-      { label: t.change, value: data.deltaRatio === null ? t.none : `${(data.deltaRatio * 100).toFixed(1)}%` }
-    ] }
-  ], actions: [
-    { id: "dates", label: t.dates, icon: "calendar", run: () => ({ view: {
-      kind: "list",
-      title: t.dates,
-      items: data.bars.map((bar) => ({ id: bar.key, title: bar.key, accessories: [{ kind: "text", text: timeDuration(bar.ms) }] }))
-    } }) },
-    { id: "hours", label: t.hours, icon: "clock", run: () => ({ view: {
-      kind: "list",
-      title: t.hours,
-      items: data.allTimeHourlyMs.map((ms, hour) => ({
-        id: String(hour),
-        title: `${String(hour).padStart(2, "0")}:00`,
-        accessories: [{ kind: "text", text: timeDuration(ms) }]
-      }))
-    } }) },
-    { id: "achievements", label: t.achievements, icon: "chart-line-up", run: () => ({ view: {
-      kind: "detail",
-      title: t.achievements,
-      content: [{ kind: "keyValue", rows: [
-        { label: t.total, value: timeDuration(data.achievements.totalMs) },
-        { label: t.streak, value: String(data.achievements.currentStreak) },
-        { label: t.longest, value: String(data.achievements.longestStreak) },
-        { label: t.best, value: data.achievements.bestDayKey ? `${data.achievements.bestDayKey}: ${timeDuration(data.achievements.bestDayMs)}` : t.none },
-        { label: t.next, value: data.achievements.nextMilestoneMs === null ? t.none : timeDuration(data.achievements.nextMilestoneMs) }
-      ] }]
-    } }) },
-    { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await readingInsightsView(ctx, query), navigation: "replace" }) }
-  ] });
-  return { ...detail(sample), live: { subscribe(channel) {
-    let disposed = false, revision = 0, dirty = false, running;
-    const refresh = () => {
-      dirty = true;
-      if (running)
-        return running;
-      running = (async () => {
-        while (dirty && !disposed) {
-          dirty = false;
-          let code;
-          try {
-            sample = await reading.queries.stats.insights(query);
-          } catch (error) {
-            code = typeof error?.code === "string" ? error.code : "reading/stats-unavailable";
-          }
-          if (!disposed)
-            await ctx.services.ui.publishView(channel, { revision: ++revision, view: detail(sample, code) });
-        }
-      })().catch((error) => {
-        console.warn("Reading trends publication failed", error);
-      }).finally(() => {
-        running = undefined;
-      });
-      return running;
-    };
-    const subscriptions = ["book.sessionRecorded", "book.timeRecorded"].map((type) => reading.events.subscribe(type, (event) => {
-      if (!query.bookId || event.payload.bookId === query.bookId)
-        refresh();
-    }));
-    refresh();
-    return { dispose() {
-      disposed = true;
-      subscriptions.forEach((subscription) => subscription.dispose());
-    } };
-  } } };
-}
-
-// src/time-view.ts
-function today() {
-  const now = new Date;
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-async function readingTimeView(ctx, query = {}) {
-  const reading = ctx.domains.reading, t = timeCopy(ctx.locale);
-  let sample = await reading.queries.stats.time({ ...query, limit: 10 });
-  const book = query.bookId ? await ctx.domains.library.queries.books.get(query.bookId) : null;
-  const title = book?.title ?? t.allBooks;
-  const pendingView = async (after) => {
-    const page = await reading.queries.stats.time({ ...query, after, limit: 25 });
-    return {
-      kind: "list",
-      title: t.pending,
-      emptyText: t.empty,
-      items: page.pending.map((bucket) => ({
-        id: `${bucket.bookId}/${bucket.localDay}/${bucket.localHour}`,
-        title: `${bucket.localDay} ${String(bucket.localHour).padStart(2, "0")}:00`,
-        subtitle: bucket.bookId,
-        accessories: [{ kind: "text", text: timeDuration(bucket.ms) }],
-        onSelect: () => ({ view: { kind: "detail", title: t.pending, content: [
-          { kind: "text", text: bucket.bookId },
-          { kind: "keyValue", rows: [
-            { label: t.pending, value: timeDuration(bucket.ms) },
-            { label: t.lastActivity, value: new Date(bucket.lastAt).toISOString() },
-            { label: t.positionAt, value: bucket.positionAt === null ? t.noPosition : new Date(bucket.positionAt).toISOString() }
-          ] }
-        ] } })
-      })),
-      actions: [
-        { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await pendingView(after), navigation: "replace" }) },
-        ...page.nextCursor ? [{ id: "next", label: t.next, icon: "arrow-right", run: async () => ({ view: await pendingView(page.nextCursor) }) }] : []
-      ]
-    };
-  };
-  const content = (snapshot, failure) => ({ kind: "detail", title: t.title, content: [
-    { kind: "text", text: title },
-    ...failure ? [{ kind: "error", code: failure }, { kind: "text", text: t.lastSuccessful }] : [],
-    { kind: "metric", label: t.active, value: timeDuration(snapshot.totalMs) },
-    { kind: "keyValue", rows: [
-      { label: t.settled, value: timeDuration(snapshot.settledMs) },
-      { label: t.pending, value: timeDuration(snapshot.pendingMs) },
-      { label: t.sampledAt, value: new Date(snapshot.observedAtEpochMs).toISOString() },
-      { label: t.day, value: query.localDay ?? t.allTime }
-    ] }
-  ], actions: [
-    { id: "insights", label: insightsCopy(ctx.locale).title, icon: "chart-line-up", run: () => ({ view: readingInsightsForm(ctx, query.bookId) }) },
-    { id: "pending", label: t.pending, icon: "clock", run: async () => ({ view: await pendingView() }) },
-    { id: "today", label: t.today, icon: "calendar", run: async () => ({ view: await readingTimeView(ctx, { bookId: query.bookId, localDay: today() }), navigation: "replace" }) },
-    { id: "all-time", label: t.allTime, icon: "clock", run: async () => ({ view: await readingTimeView(ctx, { bookId: query.bookId }), navigation: "replace" }) },
-    ...query.bookId ? [{ id: "all-books", label: t.allBooks, icon: "books", run: async () => ({ view: await readingTimeView(ctx, { localDay: query.localDay }) }) }] : []
-  ] });
-  return { ...content(sample), live: { subscribe(channel) {
-    let revision = 0;
-    return reading.events.observeTime({ ...query, limit: 10 }, async (event, delivery) => {
-      if (delivery?.reaction?.status === "cycle")
-        return;
-      const reaction = ctx.withEvent(delivery);
-      if (event.status === "ready")
-        sample = event.snapshot;
-      await reaction.services.ui.publishView(channel, { revision: ++revision, view: content(sample, event.status === "error" ? event.errorCode : undefined) });
-    });
-  } } };
+  return copies[locale] ?? copies[locale.split("-")[0]] ?? (locale.startsWith("zh") ? copies["zh-Hans"] : en);
 }
 
 // src/views.ts
-function receiptView(ctx, bookId, text) {
+function notice(ctx, text, bookId) {
   const t = copy(ctx.locale);
-  return { kind: "detail", title: t.title, content: [{ kind: "text", text }], actions: [
-    { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await goalsView(ctx, bookId), navigation: "replace" }) }
-  ] };
+  return { kind: "detail", title: t.title, content: [{ kind: "text", text, tone: "muted" }], actions: bookId ? [
+    { id: "refresh", label: t.refresh, icon: "arrows-clockwise", priority: "primary", run: async () => ({ view: await goalsView(ctx, bookId), navigation: "replace" }) }
+  ] : [] };
 }
 async function goalsView(ctx, bookId) {
   const t = copy(ctx.locale);
   const target = bookId ?? (await ctx.domains.reading.queries.session()).bookId;
   if (!target)
-    return { kind: "blocks", blocks: [{ kind: "text", text: t.noBook }] };
+    return notice(ctx, t.noBook);
   const book = await ctx.domains.library.queries.books.get(target);
   if (!book)
-    return { kind: "blocks", blocks: [{ kind: "text", text: t.noBook }] };
+    return notice(ctx, t.bookMissing);
   const { goal, revision } = await readGoalState(ctx, target);
-  const setting = await ctx.domains.settings.queries.read("ai.preferences.buildMemory");
-  const refresh = async () => ({ view: await goalsView(ctx, target), navigation: "replace" });
+  const memoryEnabled = (await ctx.domains.settings.queries.read("ai.preferences.buildMemory")).value === true;
+  const refresh = async (toast) => ({ view: await goalsView(ctx, target), navigation: "replace", ...toast ? { toast } : {} });
   const goalForm = {
     kind: "form",
-    title: book.title,
     submitLabel: t.save,
     fields: [
-      { kind: "textarea", id: "goal", label: t.goal, value: goal?.text ?? "", rows: 4 },
+      { kind: "textarea", id: "goal", label: t.goal, value: goal?.text ?? "", rows: 4, placeholder: t.goalPlaceholder, helperText: t.goalHelp },
       { kind: "checkbox", id: "suggestMemory", label: t.remember, value: goal?.suggestMemory ?? false }
     ],
     onSubmit: async (values) => {
@@ -369,43 +259,36 @@ async function goalsView(ctx, bookId) {
       if (typeof values.suggestMemory !== "boolean")
         return { fieldErrors: { suggestMemory: t.invalid } };
       const result = await writeGoal(ctx, target, { text, suggestMemory: values.suggestMemory }, revision);
-      return { view: receiptView(ctx, target, result.status === "saved" ? t.saved : t.conflict), navigation: "replace" };
+      if (result.status !== "saved")
+        return { view: notice(ctx, t.conflict, target), navigation: "replace" };
+      return refresh(t.saved);
     }
   };
-  const policyForm = {
-    kind: "form",
-    title: "ReadAware",
-    submitLabel: t.apply,
-    fields: [{ kind: "toggle", id: "enabled", label: t.memory, value: setting.value === true }],
-    onSubmit: async (values) => {
-      if (typeof values.enabled !== "boolean")
-        throw new Error("Invalid memory preference");
-      await ctx.domains.settings.commands.update([{ path: "ai.preferences.buildMemory", value: values.enabled }]);
-      return refresh();
-    }
-  };
-  return { kind: "blocks", blocks: [
-    { kind: "text", text: book.title },
-    goalForm,
-    { kind: "text", text: "ReadAware" },
-    policyForm,
-    { kind: "actions", actions: [
-      ...goal ? [{ id: "clear", label: t.clear, icon: "trash", run: () => ({ view: {
-        kind: "form",
-        title: book.title,
-        submitLabel: t.clear,
-        fields: [{ kind: "checkbox", id: "confirm", label: t.confirm, value: false }],
-        onSubmit: async (values) => {
-          if (values.confirm !== true)
-            return { fieldErrors: { confirm: t.required } };
-          const result = await writeGoal(ctx, target, null, revision);
-          return { view: receiptView(ctx, target, result.status === "cleared" ? t.cleared : t.conflict), navigation: "replace" };
-        }
-      } }) }] : [],
-      { id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: refresh },
-      { id: "time", label: timeCopy(ctx.locale).title, icon: "clock", run: async () => ({ view: await readingTimeView(ctx, { bookId: target }) }) }
-    ] }
-  ] };
+  const blocks = [
+    { kind: "heading", text: book.title, ...book.author ? { caption: book.author } : {} },
+    goalForm
+  ];
+  if (goal?.suggestMemory && !memoryEnabled)
+    blocks.push({ kind: "alert", message: t.memoryOff });
+  const actions = [];
+  if (goal)
+    actions.push({ id: "clear", label: t.clear, icon: "trash", variant: "danger", priority: "secondary", run: () => ({ view: {
+      kind: "form",
+      title: t.clear,
+      submitLabel: t.clear,
+      fields: [{ kind: "checkbox", id: "confirm", label: t.confirm, value: false }],
+      onSubmit: async (values) => {
+        if (values.confirm !== true)
+          return { fieldErrors: { confirm: t.required } };
+        const result = await writeGoal(ctx, target, null, revision);
+        if (result.status !== "cleared")
+          return { view: notice(ctx, t.conflict, target), navigation: "replace" };
+        return refresh(t.cleared);
+      }
+    } }) });
+  actions.push({ id: "refresh", label: t.refresh, icon: "arrows-clockwise", priority: "secondary", run: () => refresh() });
+  blocks.push({ kind: "actions", actions, align: "end" });
+  return { kind: "blocks", title: t.title, blocks };
 }
 
 // src/tools.ts
@@ -471,87 +354,22 @@ function registerGoalTools(ctx) {
   });
 }
 
-// src/memory-strings.ts
-var en4 = {
-  title: "Goal memory result",
-  noBook: "No book is open.",
-  none: "No result for this goal in this plugin session.",
-  pending: "Awaiting host result",
-  saved: "Saved to memory",
-  rejected: "Not saved",
-  skipped: "Not attempted",
-  failed: "Save failed",
-  invalid: "Invalid candidate",
-  scope: "Outside this conversation's memory scope",
-  duplicate: "Matching content already known",
-  limit: "Candidate limit reached",
-  refresh: "Refresh"
-};
-var translations = {
-  en: en4,
-  "zh-Hans": { title: "目标记忆结果", noBook: "尚未打开书籍。", none: "本次插件运行中尚无此目标的处理结果。", pending: "等待宿主结果", saved: "已存入记忆", rejected: "未存入", skipped: "未尝试写入", failed: "写入失败", invalid: "候选无效", scope: "不在本次对话的记忆范围内", duplicate: "已有相同内容", limit: "已达候选数量上限", refresh: "刷新" },
-  "zh-Hant": { title: "目標記憶結果", noBook: "尚未開啟書籍。", none: "本次外掛執行中尚無此目標的處理結果。", pending: "等待宿主結果", saved: "已存入記憶", rejected: "未存入", skipped: "未嘗試寫入", failed: "寫入失敗", invalid: "候選無效", scope: "不在本次對話的記憶範圍內", duplicate: "已有相同內容", limit: "已達候選數量上限", refresh: "重新整理" },
-  ja: { title: "目標の記憶結果", noBook: "本が開かれていません。", none: "今回のプラグイン起動中、この目標の結果はありません。", pending: "ホストの結果を待機中", saved: "記憶に保存済み", rejected: "未保存", skipped: "保存未実行", failed: "保存失敗", invalid: "無効な候補", scope: "この会話の記憶範囲外", duplicate: "同じ内容が記憶済み", limit: "候補数の上限に到達", refresh: "更新" },
-  ru: { title: "Результат памяти цели", noBook: "Книга не открыта.", none: "В этом сеансе плагина нет результата для этой цели.", pending: "Ожидание результата приложения", saved: "Сохранено в память", rejected: "Не сохранено", skipped: "Запись не выполнялась", failed: "Ошибка записи", invalid: "Недопустимое предложение", scope: "Вне области памяти этого разговора", duplicate: "Совпадающее содержание уже известно", limit: "Достигнут лимит предложений", refresh: "Обновить" },
-  de: { title: "Ergebnis der Zielerinnerung", noBook: "Kein Buch geöffnet.", none: "In dieser Plugin-Sitzung liegt kein Ergebnis für dieses Ziel vor.", pending: "Host-Ergebnis ausstehend", saved: "Als Erinnerung gespeichert", rejected: "Nicht gespeichert", skipped: "Nicht versucht", failed: "Speichern fehlgeschlagen", invalid: "Ungültiger Vorschlag", scope: "Außerhalb des Erinnerungsbereichs dieses Gesprächs", duplicate: "Passender Inhalt bereits bekannt", limit: "Vorschlagslimit erreicht", refresh: "Aktualisieren" },
-  fr: { title: "Résultat de mémoire de l'objectif", noBook: "Aucun livre ouvert.", none: "Aucun résultat pour cet objectif dans cette session du plugin.", pending: "En attente du résultat de l'hôte", saved: "Enregistré en mémoire", rejected: "Non enregistré", skipped: "Non tenté", failed: "Échec de l'enregistrement", invalid: "Proposition invalide", scope: "Hors du périmètre mémoire de cette conversation", duplicate: "Contenu correspondant déjà connu", limit: "Limite de propositions atteinte", refresh: "Actualiser" },
-  es: { title: "Resultado de memoria del objetivo", noBook: "No hay ningún libro abierto.", none: "No hay resultado para este objetivo en esta sesión del complemento.", pending: "Esperando el resultado del anfitrión", saved: "Guardado en memoria", rejected: "No guardado", skipped: "No intentado", failed: "Error al guardar", invalid: "Propuesta no válida", scope: "Fuera del ámbito de memoria de esta conversación", duplicate: "Contenido coincidente ya conocido", limit: "Límite de propuestas alcanzado", refresh: "Actualizar" }
-};
-function memoryCopy(locale) {
-  return translations[locale] ?? translations[locale.split("-")[0]] ?? en4;
-}
-
 // src/memory-status.ts
 function registerGoalMemory(ctx) {
-  const results = new Map;
-  let order = 0;
   const provider = {
     id: "reading-goal",
     contexts: ["book"],
-    async propose({ scope, requestId }) {
-      const requested = ++order;
+    async propose({ scope }) {
       if (scope.kind !== "book")
         return [];
       const state = await readGoalState(ctx, scope.bookId);
       if (!state.goal?.suggestMemory)
         return [];
-      if ((results.get(scope.bookId)?.order ?? 0) < requested) {
-        results.delete(scope.bookId);
-        results.set(scope.bookId, { requestId, revision: state.revision, order: requested });
-        if (results.size > 64)
-          results.delete(results.keys().next().value);
-      }
       return [{ scope: "book", kind: "preference", content: state.goal.text }];
-    },
-    onResult(receipt) {
-      const result = [...results.values()].find((value) => value.requestId === receipt.requestId);
-      if (result && !result.outcome)
-        result.outcome = receipt.results.find((item) => item.index === 0)?.outcome;
     }
   };
-  const view = async (target) => {
-    const t = memoryCopy(ctx.locale), bookId = target ?? (await ctx.domains.reading.queries.session()).bookId;
-    if (!bookId)
-      return { kind: "detail", title: t.title, content: [{ kind: "text", text: t.noBook }] };
-    const book = await ctx.domains.library.queries.books.get(bookId);
-    if (!book)
-      return { kind: "detail", title: t.title, content: [{ kind: "error", code: "library/book-not-found" }] };
-    const state = await readGoalState(ctx, bookId), result = results.get(bookId);
-    const current = state.goal?.suggestMemory && state.revision === result?.revision ? result : undefined;
-    const outcome = current?.outcome;
-    const status = !current ? t.none : !outcome ? t.pending : t[outcome.status];
-    return { kind: "detail", title: t.title, content: [
-      { kind: "text", text: book.title },
-      { kind: "text", text: status },
-      ...outcome?.status === "rejected" ? [{ kind: "text", text: t[outcome.reason] }] : [],
-      ...outcome?.status === "failed" ? [{ kind: "error", code: outcome.errorCode }] : []
-    ], actions: [{ id: "refresh", label: t.refresh, icon: "arrows-clockwise", run: async () => ({ view: await view(bookId), navigation: "replace" }) }] };
-  };
-  const title = memoryCopy(ctx.locale).title;
   ctx.contributions.memoryCandidateProviders.register(provider);
-  ctx.contributions.commands.register({ id: "memory-status", title, icon: "notebook", run: async () => ({ view: await view() }) });
-  ctx.contributions.headerActions.register({ id: "memory-status", title, icon: "notebook", surface: "reader", presentation: "popup", view: () => view() });
-  return { provider, view };
+  return provider;
 }
 
 // src/context-source.ts
@@ -589,11 +407,8 @@ var src_default = {
     if (!ctx.domains.reading || !ctx.domains.library || !agentContextProviders || !memoryCandidateProviders)
       throw new Error("Reading Goals capabilities unavailable");
     const title = copy(ctx.locale).title;
-    ctx.contributions.headerActions.register({ id: "goals", title, icon: "notebook", surface: "reader", presentation: "popup", view: () => goalsView(ctx) });
-    ctx.contributions.commands.register({ id: "open", title, icon: "notebook", run: async () => ({ view: await goalsView(ctx) }) });
-    ctx.contributions.headerActions.register({ id: "reading-time", title: timeCopy(ctx.locale).title, icon: "clock", surface: "shelf", presentation: "popup", view: () => readingTimeView(ctx) });
-    ctx.contributions.commands.register({ id: "time", title: timeCopy(ctx.locale).title, icon: "clock", run: async () => ({ view: await readingTimeView(ctx) }) });
-    ctx.contributions.commands.register({ id: "insights", title: insightsCopy(ctx.locale).title, icon: "chart-line-up", run: () => ({ view: readingInsightsForm(ctx) }) });
+    ctx.contributions.headerActions.register({ id: "goals", title, icon: "target", surface: "reader", presentation: "popup", view: () => goalsView(ctx) });
+    ctx.contributions.commands.register({ id: "open", title, icon: "target", keywords: "goal intention purpose", run: async () => ({ view: await goalsView(ctx) }) });
     registerGoalTools(ctx);
     agentContextProviders.register({ id: "reading-goal", contexts: ["book"], readingIntent: readingGoalSource(ctx), provide: async ({ scope }) => {
       const goal = scope.kind === "book" ? await readGoal(ctx, scope.bookId) : null;
