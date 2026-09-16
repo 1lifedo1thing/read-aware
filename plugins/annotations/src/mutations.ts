@@ -1,8 +1,8 @@
 import type { AnnotationMutation, AnnotationSnapshot, PluginFormView, PluginViewResult } from "@read-aware/plugin-types";
-import { assertAnnotationBooks, isBookAccessDenied, type DeskContext, type Refresh } from "./types";
+import { assertAnnotationBooks, isBookAccessDenied, type AnnotationContext, type Refresh } from "./types";
 import { tr } from "./strings";
 
-export async function commit(ctx: DeskContext, changes: AnnotationMutation[], field: string, refresh: Refresh, bookId?: string): Promise<PluginViewResult> {
+export async function commit(ctx: AnnotationContext, changes: AnnotationMutation[], field: string, refresh: Refresh, bookId?: string): Promise<PluginViewResult> {
   if (bookId !== undefined) {
     try {
       await assertAnnotationBooks(ctx, [bookId], "annotations.commands.applyChanges");
@@ -32,7 +32,7 @@ export async function commit(ctx: DeskContext, changes: AnnotationMutation[], fi
   }
 }
 
-export function colorForm(ctx: DeskContext, snapshots: AnnotationSnapshot[], refresh: Refresh): PluginFormView {
+export function colorForm(ctx: AnnotationContext, snapshots: AnnotationSnapshot[], refresh: Refresh): PluginFormView {
   const first = snapshots[0].annotation;
   const colors = ["yellow", "green", "blue", "pink"] as const;
   const styles = ["highlight", "underline"] as const;

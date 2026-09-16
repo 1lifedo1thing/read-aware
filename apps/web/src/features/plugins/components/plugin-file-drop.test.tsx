@@ -24,7 +24,7 @@ test("mounted drop target names its owner, blocks synthetic grants and double im
     pick: async () => { grants++; if (wait) await delayed.promise; return [{ id: `native-${grants}`, name: "book.epub", size: 3, mimeType: "application/epub+zip" }]; },
     release: async id => { released.push(id); },
   }, error => errors.push(error));
-  registerPluginFileDropOwner(lifetime.signal, "Library Desk", owner);
+  registerPluginFileDropOwner(lifetime.signal, "Annotations", owner);
   const view = normalizePluginView(decodePluginCallbacks(registry.encode({ kind: "markdown", markdown: "x", fileDrop: { onDrop: () => { delivered++; return null; } } }),
     (handle, args) => registry.invoke(handle, args), undefined, lifetime.signal));
   function Probe({ visible = true }: { visible?: boolean }) {
@@ -40,7 +40,7 @@ test("mounted drop target names its owner, blocks synthetic grants and double im
   try {
     await initI18n("en"); await act(async () => { root.render(<Probe />); });
     const zone = dom.window.document.querySelector("[data-plugin-file-drop]")!;
-    expect(zone.getAttribute("aria-label")).toContain("Library Desk");
+    expect(zone.getAttribute("aria-label")).toContain("Annotations");
     await act(async () => { dom.window.dispatchEvent(event("dragenter")); });
     expect(dom.window.document.querySelector("output")!.textContent).toBe("true");
     await act(async () => { zone.dispatchEvent(event("dragenter")); });

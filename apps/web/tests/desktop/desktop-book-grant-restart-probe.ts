@@ -7,10 +7,10 @@ import { updatePluginBookAccess, setPluginEnabled } from "../../src/features/plu
 /** Exercises the installed compiled consumer and actual durable grant writes. */
 export async function runFull2GrantRestartProbe(bookId: string) {
   if (!(await appDataDir()).replace(/[/\\]$/, "").endsWith("/com.readaware.app.validation-full2-e2e")) throw new Error("Requires Full2 isolation");
-  const id = "annotation-desk";
+  const id = "annotations";
   const store = getDefaultStore();
   const plugin = store.get(installedPluginsAtom).find(item => item.manifest.id === id);
-  if (!plugin?.enabled || !plugin.builtin) throw new Error("Requires enabled bundled Annotation Desk");
+  if (!plugin?.enabled || !plugin.builtin) throw new Error("Requires enabled bundled Annotations");
   const prior = getPluginBookAccess(id);
   const command = () => store.get(pluginCommandsAtom).find(item => item.pluginId === id && item.id === "open");
   const old = command();

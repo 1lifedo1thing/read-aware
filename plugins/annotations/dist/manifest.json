@@ -1,0 +1,35 @@
+{
+  "id": "annotations",
+  "name": "Annotations",
+  "version": "0.10.0",
+  "schemaVersion": 1,
+  "minAppVersion": "0.3.0",
+  "description": "Browse, edit, organize and export your highlights, notes and questions across the library.",
+  "author": "ReadAware",
+  "main": "main.js",
+  "permissions": [
+    "annotations:write",
+    "library:read",
+    "reading:write"
+  ],
+  "requires": {
+    "domains": {
+      "annotations": "^2.2.0",
+      "library": "^1.30.0",
+      "reading": "^2.21.0"
+    },
+    "contributions": {
+      "headerActions": "^1.0.0",
+      "commands": "^1.0.0",
+      "selectionActions": "^1.2.0"
+    },
+    "services": {
+      "session": "^2.9.0",
+      "ui": "^1.2.0",
+      "plugins": "^1.4.0"
+    },
+    "schemas": {
+      "views": "^1.11.0"
+    }
+  }
+}

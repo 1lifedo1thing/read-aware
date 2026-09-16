@@ -1,9 +1,11 @@
 {
-  "name": "@read-aware/plugin-annotation-desk",
+  "name": "@read-aware/plugin-annotations",
   "private": true,
-  "version": "0.9.0",
+  "version": "0.10.0",
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "bun run ../../scripts/build-plugin.ts",
     "test": "bun test",

@@ -1,13 +1,13 @@
 import { expect, test } from "bun:test";
 import type { PluginFormView, PluginModule, PluginSelectionAction, PluginView, PluginViewResult, SelectionActionInput } from "@read-aware/plugin-types";
 import { newNoteView, selectionCreationView } from "../src/creation";
-import { deskView } from "../src/views";
-import type { DeskContext } from "../src/types";
+import { annotationsView } from "../src/views";
+import type { AnnotationContext } from "../src/types";
 import { tr } from "../src/strings";
 
 const input: SelectionActionInput = { book: { id: "book", title: "Book" }, text: "Exact selected text",
   cfiRange: "captured-cfi", chapterHref: "chapter.xhtml", source: "selection" };
-type Commands = DeskContext["domains"]["annotations"]["commands"];
+type Commands = AnnotationContext["domains"]["annotations"]["commands"];
 function fixture() {
   const notes: Parameters<Commands["createNote"]>[0][] = [], highlights: Parameters<Commands["createHighlight"]>[0][] = [];
   const ctx = { locale: "en", domains: {
@@ -17,8 +17,8 @@ function fixture() {
     } }, library: { queries: { books: { list: async () => [{ id: "book", title: "Book" }, { id: "second", title: "Second" }],
       get: async (id: string) => id === "book" ? { id, title: "Book" } : null } } },
     reading: { queries: { session: async () => ({ bookId: "book" }) }, commands: {} },
-  }, services: { ui: {} } } as unknown as DeskContext;
-  const refresh = async () => ({ view: await deskView(ctx), navigation: "reset" as const });
+  }, services: { ui: {} } } as unknown as AnnotationContext;
+  const refresh = async () => ({ view: await annotationsView(ctx), navigation: "reset" as const });
   return { ctx, notes, highlights, refresh };
 }
 function form(view: PluginView): PluginFormView {
@@ -39,8 +39,8 @@ test("standalone note creation chooses from the captured books and keeps text in
   expect(await create.onSubmit({ bookId: "book", body: "x".repeat(100_001) })).toHaveProperty("fieldErrors.body");
   expect(f.notes).toEqual([]);
   const saved = await create.onSubmit({ bookId: "second", body: "  Keep formatting\n" });
-  expect(saved).toHaveProperty("navigation", "replace");
-  expect(view(saved).title).toBe("Annotation saved");
+  expect(saved).toMatchObject({ navigation: "reset", toast: "Annotation saved" });
+  expect(view(saved).kind).toBe("list");
   expect(f.notes).toEqual([{ bookId: "second", body: "  Keep formatting\n" }]);
 });
 
@@ -83,13 +83,24 @@ test("empty/oversize selection has no create action; missing anchors remain expl
 });
 
 test("create failures preserve the form; receipt needs no reread and later inspection cannot repeat the write", async () => {
-  const f = fixture(), create = form(selectionCreationView(f.ctx, input, "note", f.refresh));
-  const receipt = view(await create.onSubmit({ body: "Saved once" }));
-  if (receipt.kind !== "detail") throw Error("Expected receipt");
-  await expect(receipt.actions!.find(action => action.id === "inspect-created")!.run()).rejects.toThrow("Read failed");
+  const f = fixture();
+  // A list that fails to load after the write renders the live error surface with the saved toast: no create path remains.
+  f.ctx.domains.annotations.queries.page = async () => { throw Error("List reload failed"); };
+  const listCreate = form(selectionCreationView(f.ctx, input, "note", f.refresh));
+  const listResult = await listCreate.onSubmit({ body: "Saved once" });
+  expect(listResult).toMatchObject({ navigation: "reset", toast: "Annotation saved" });
+  expect(view(listResult)).toMatchObject({ kind: "detail", content: [{ kind: "error" }] });
+  expect(view(listResult)).not.toHaveProperty("actions");
   expect(f.notes).toHaveLength(1);
-  const refreshResult = await receipt.actions!.find(action => action.id === "annotations")!.run();
-  expect(view(refreshResult).kind).toBe("list");
+  // A refresh that throws outright falls back to the read-only receipt.
+  const create = form(selectionCreationView(f.ctx, input, "note", async () => { throw Error("Refresh failed"); }));
+  const receipt = view(await create.onSubmit({ body: "Saved twice" }));
+  if (receipt.kind !== "detail") throw Error("Expected receipt");
+  expect(receipt.title).toBe("Annotation saved");
+  expect(f.notes).toHaveLength(2);
+  await expect(receipt.actions!.find(action => action.id === "inspect-created")!.run()).rejects.toThrow("Read failed");
+  await expect(receipt.actions!.find(action => action.id === "annotations")!.run()).rejects.toThrow("Refresh failed");
+  expect(f.notes).toHaveLength(2);
   f.ctx.domains.annotations.commands.createNote = async () => { throw Error("Write failed"); };
   await expect(create.onSubmit({ body: "Retain draft" })).rejects.toThrow("Write failed");
 });
@@ -99,19 +110,19 @@ test("compiled plugin exposes both selection actions and the desk create flow wi
   f.ctx.contributions = {
     selectionActions: { register: (action: PluginSelectionAction) => { selections.push(action); return { dispose() {} }; } },
     headerActions: { register: () => ({ dispose() {} }) }, commands: { register: () => ({ dispose() {} }) },
-  } as unknown as DeskContext["contributions"];
+  } as unknown as AnnotationContext["contributions"];
   const plugin = (await import(new URL("../dist/main.js", import.meta.url).href)).default as PluginModule;
   await plugin.activate(f.ctx);
   expect(selections.map(action => [action.id, action.presentation])).toEqual([["create-note", "dialog"], ["create-highlight", "dialog"]]);
   const captured = view(await selections[0].run(input));
   await form(captured).onSubmit({ body: "Compiled note" });
   await form(view(await selections[1].run(input))).onSubmit({ color: "green", style: "underline" });
-  const root = await deskView(f.ctx);
+  const root = await annotationsView(f.ctx);
   if (root.kind !== "list") throw Error("Expected list");
   expect(view(await root.actions!.find(action => action.id === "new-note")!.run()).kind).toBe("form");
   expect(f.notes).toHaveLength(1); expect(f.highlights).toHaveLength(1);
   const manifest = await Bun.file(new URL("../dist/manifest.json", import.meta.url)).json();
-  expect(manifest.version).toBe("0.8.0");
+  expect(manifest.version).toBe("0.10.0");
   expect(manifest.permissions).toEqual(["annotations:write", "library:read", "reading:write"]);
   expect(manifest.requires.contributions.selectionActions).toBe("^1.2.0");
   expect(manifest.requires.services.plugins).toBe("^1.4.0");

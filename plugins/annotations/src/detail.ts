@@ -7,11 +7,11 @@ import {
   BOOK_ACCESS_DENIED,
   isBookAccessDenied,
   scopeErrorView,
-  type DeskContext,
+  type AnnotationContext,
   type Refresh,
 } from "./types";
 
-export async function detailView(ctx: DeskContext, id: string, refresh: Refresh, expectedBookId?: string): Promise<PluginView> {
+export async function detailView(ctx: AnnotationContext, id: string, refresh: Refresh, expectedBookId?: string): Promise<PluginView> {
   if (expectedBookId !== undefined) {
     try {
       await assertAnnotationBooks(ctx, [expectedBookId], "annotations.queries.inspect");
@@ -69,11 +69,11 @@ export async function detailView(ctx: DeskContext, id: string, refresh: Refresh,
   return { kind: "detail", title: tr(ctx.locale, item.kind), content,
     metadata: [{ kind: "label", label: tr(ctx.locale, "book"), value: book?.title ?? tr(ctx.locale, "missingBook"), icon: "book-open" }],
     actions: [
-      ...(book ? [{ id: "open", label: tr(ctx.locale, "open"), icon: "book-open", run: async () => {
+      ...(book ? [{ id: "open", label: tr(ctx.locale, "open"), icon: "book-open", variant: "solid" as const, priority: "primary" as const, run: async () => {
         await ctx.domains.reading.commands.goTo({ bookId: item.bookId, cfi: item.anchor, href: item.chapterHref });
         return { close: true };
       } }] : []),
-      { id: "review", label: tr(ctx.locale, "review"), icon: "list-bullets", run: async () => ({ view: await reviewView(ctx, [snapshot], refresh) }) },
-      { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await detailView(ctx, id, refresh, item.bookId), navigation: "replace" }) },
+      { id: "manage", label: tr(ctx.locale, "manage"), icon: "list-bullets", priority: "secondary", run: async () => ({ view: await reviewView(ctx, [snapshot], refresh) }) },
+      { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", priority: "secondary", run: async () => ({ view: await detailView(ctx, id, refresh, item.bookId), navigation: "replace" }) },
     ] };
 }

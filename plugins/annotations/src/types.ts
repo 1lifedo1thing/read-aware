@@ -11,7 +11,7 @@ import { tr } from "./strings";
 type Writer<K extends "annotations" | "reading"> = NonNullable<PluginContext["domains"][K]> & {
   commands: NonNullable<NonNullable<PluginContext["domains"][K]>["commands"]>;
 };
-export type DeskContext = PluginContext & { domains: PluginContext["domains"] & {
+export type AnnotationContext = PluginContext & { domains: PluginContext["domains"] & {
   annotations: Writer<"annotations">;
   reading: Writer<"reading">;
   library: NonNullable<PluginContext["domains"]["library"]>;
@@ -41,7 +41,7 @@ function accessError(operation: string, bookId?: string): Error & { code: string
  * activations always return a concrete book ID, so callers cannot accidentally
  * fall back to an unscoped query when the current reader has no book.
  */
-export async function grantedBookId(ctx: DeskContext, requestedBookId?: string): Promise<string | undefined> {
+export async function grantedBookId(ctx: AnnotationContext, requestedBookId?: string): Promise<string | undefined> {
   const grant = bookGrant(ctx);
   if (grant.mode === "all") return requestedBookId || undefined;
   if (grant.mode === "book") {
@@ -60,7 +60,7 @@ export async function grantedBookId(ctx: DeskContext, requestedBookId?: string):
 }
 
 /** Read only the books visible to this activation, without a restricted full-library scan. */
-export async function grantedBooks(ctx: DeskContext, requestedBookId?: string): Promise<PluginBook[]> {
+export async function grantedBooks(ctx: AnnotationContext, requestedBookId?: string): Promise<PluginBook[]> {
   const bookId = await grantedBookId(ctx, requestedBookId);
   if (bookId) {
     const book = await ctx.domains.library.queries.books.get(bookId);
@@ -71,7 +71,7 @@ export async function grantedBooks(ctx: DeskContext, requestedBookId?: string): 
 
 /** Verify every annotation in a batch belongs to one book the activation may use. */
 export async function assertAnnotationBooks(
-  ctx: DeskContext,
+  ctx: AnnotationContext,
   bookIds: readonly string[],
   operation = "annotation batch",
 ): Promise<string | undefined> {
@@ -94,8 +94,8 @@ export function scopeErrorView(ctx: PluginContext, error: unknown): PluginView {
   return { kind: "detail", title: tr(ctx.locale, "title"), content: [{ kind: "error", code }] };
 }
 
-export function assertCapabilities(ctx: PluginContext): asserts ctx is DeskContext {
+export function assertCapabilities(ctx: PluginContext): asserts ctx is AnnotationContext {
   if (!ctx.domains.annotations?.commands || !ctx.domains.reading?.commands || !ctx.domains.library) {
-    throw new Error("Annotation Desk requires annotations:write, reading:write and library:read");
+    throw new Error("Annotations requires annotations:write, reading:write and library:read");
   }
 }

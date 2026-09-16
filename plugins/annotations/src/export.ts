@@ -1,6 +1,6 @@
 import type { PluginAnnotation } from "@read-aware/plugin-types";
 import type { Books } from "./format";
-import type { DeskContext } from "./types";
+import type { AnnotationContext } from "./types";
 import { tr } from "./strings";
 
 export function csvCell(input: unknown): string {
@@ -24,7 +24,7 @@ export function annotationExport(items: PluginAnnotation[], books: Books, scope:
   return `\uFEFF${rows.map(row => row.map(csvCell).join(",")).join("\r\n")}`;
 }
 
-export async function exportAnnotations(ctx: DeskContext, items: PluginAnnotation[], books: Books, scope: "page" | "selection", format: "json" | "csv") {
+export async function exportAnnotations(ctx: AnnotationContext, items: PluginAnnotation[], books: Books, scope: "page" | "selection", format: "json" | "csv") {
   const at = new Date();
   const file = { filename: `readaware-annotations-${at.toISOString().slice(0, 10)}.${format}`,
     content: annotationExport(items, books, scope, format, at), mimeType: format === "json" ? "application/json" : "text/csv;charset=utf-8" };

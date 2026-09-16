@@ -14,8 +14,8 @@ import type {
 } from "@read-aware/plugin-types";
 import plugin from "../src/index";
 import { detailView } from "../src/detail";
-import { deskView } from "../src/views";
-import type { DeskContext } from "../src/types";
+import { annotationsView } from "../src/views";
+import type { AnnotationContext } from "../src/types";
 
 const at = "2026-09-13T00:00:00.000Z";
 const bookA: PluginBook = { id: "book-a", title: "Book A", format: "epub", collectionId: null, starred: false, addedAt: at, updatedAt: at };
@@ -82,8 +82,8 @@ function fixture(
             writes.push(changes);
             return { atomic: true, changes: changes.map(change => ({ annotationId: change.annotationId, revision: "new-revision" })) };
           },
-          createNote: async (input: Parameters<DeskContext["domains"]["annotations"]["commands"]["createNote"]>[0]) => ({ ...input, id: "created", kind: "note" as const, createdAt: at, updatedAt: at }),
-          createHighlight: async (input: Parameters<DeskContext["domains"]["annotations"]["commands"]["createHighlight"]>[0]) => ({ ...input, id: "created", kind: "highlight" as const, createdAt: at, updatedAt: at, text: input.text, color: input.color ?? "yellow", style: input.style ?? "highlight" }),
+          createNote: async (input: Parameters<AnnotationContext["domains"]["annotations"]["commands"]["createNote"]>[0]) => ({ ...input, id: "created", kind: "note" as const, createdAt: at, updatedAt: at }),
+          createHighlight: async (input: Parameters<AnnotationContext["domains"]["annotations"]["commands"]["createHighlight"]>[0]) => ({ ...input, id: "created", kind: "highlight" as const, createdAt: at, updatedAt: at, text: input.text, color: input.color ?? "yellow", style: input.style ?? "highlight" }),
         },
         events: { observe: () => ({ dispose() {} }), subscribe: () => ({ dispose() {} }) },
       },
@@ -101,14 +101,14 @@ function fixture(
       },
     },
     services: { ui: { exportFile: async () => true } },
-  } as unknown as DeskContext;
-  const refresh = async () => ({ view: await deskView(ctx), navigation: "reset" as const });
+  } as unknown as AnnotationContext;
+  const refresh = async () => ({ view: await annotationsView(ctx), navigation: "reset" as const });
   return { ctx, queries, writes, inspected, snapshots, refresh, get libraryLists() { return libraryLists; } };
 }
 
 test("all grants keep the global page and filter, while restricted grants bind one book", async () => {
   const all = fixture({ mode: "all" });
-  const allView = list(await deskView(all.ctx, { bookId: bookA.id, previous: [] }));
+  const allView = list(await annotationsView(all.ctx, { bookId: bookA.id, previous: [] }));
   expect(all.queries).toEqual([{ bookId: bookA.id, limit: 20 }]);
   const allFilter = form(resultView(await allView.actions!.find(action => action.id === "filter")!.run()));
   const allBookField = selectField(allFilter, "bookId");
@@ -116,7 +116,7 @@ test("all grants keep the global page and filter, while restricted grants bind o
   expect(all.libraryLists).toBe(1);
 
   const current = fixture({ mode: "current" });
-  const currentView = list(await deskView(current.ctx));
+  const currentView = list(await annotationsView(current.ctx));
   expect(current.queries).toEqual([{ bookId: bookA.id, limit: 20 }]);
   const currentFilter = form(resultView(await currentView.actions!.find(action => action.id === "filter")!.run()));
   const currentBookField = selectField(currentFilter, "bookId");
@@ -125,7 +125,7 @@ test("all grants keep the global page and filter, while restricted grants bind o
   expect(current.libraryLists).toBe(0);
 
   const fixed = fixture({ mode: "book", bookId: bookB.id });
-  const fixedView = list(await deskView(fixed.ctx));
+  const fixedView = list(await annotationsView(fixed.ctx));
   expect(fixed.queries).toEqual([{ bookId: bookB.id, limit: 20 }]);
   const fixedFilter = form(resultView(await fixedView.actions!.find(action => action.id === "filter")!.run()));
   expect(selectField(fixedFilter, "bookId")).toMatchObject({ value: bookB.id, options: [{ value: bookB.id, label: "Book B" }] });
@@ -134,7 +134,7 @@ test("all grants keep the global page and filter, while restricted grants bind o
 
 test("restricted detail and editor stay on the granted book and write with the existing CAS revision", async () => {
   const f = fixture({ mode: "book", bookId: bookB.id }, bookA.id);
-  const view = list(await deskView(f.ctx));
+  const view = list(await annotationsView(f.ctx));
   const detail = await view.items[0]!.onSelect!();
   const edit = editor(resultView(detail));
   await edit.onSave("Edited B", edit.revision);
@@ -153,7 +153,7 @@ test("restricted activation hides the whole-library shelf contribution and never
       selectionActions: { register: () => ({ dispose() {} }) },
       headerActions: { register: (action: { surface: string }) => { headers.push(action); return { dispose() {} }; } },
       commands: { register: () => ({ dispose() {} }) },
-    } as unknown as DeskContext["contributions"];
+    } as unknown as AnnotationContext["contributions"];
     await (plugin as PluginModule).activate(f.ctx);
     return { f, headers };
   };
@@ -163,14 +163,14 @@ test("restricted activation hides the whole-library shelf contribution and never
   expect((await registrations({ mode: "book", bookId: bookB.id })).headers.map(header => header.surface)).toEqual(["reader"]);
 
   const f = fixture({ mode: "book", bookId: bookB.id });
-  const denied = await deskView(f.ctx, { bookId: bookA.id, previous: [] });
+  const denied = await annotationsView(f.ctx, { bookId: bookA.id, previous: [] });
   expect(denied).toMatchObject({ kind: "detail", content: [{ kind: "error", code: "plugin/object-access-denied" }] });
   expect(f.queries).toEqual([]);
 });
 
 test("current grant with no active book reports an access error instead of a successful empty list", async () => {
   const f = fixture({ mode: "current" }, "");
-  const view = await deskView(f.ctx);
+  const view = await annotationsView(f.ctx);
   expect(view).toMatchObject({ kind: "detail", content: [{ kind: "error", code: "plugin/object-access-denied" }] });
   expect(f.queries).toEqual([]);
 });

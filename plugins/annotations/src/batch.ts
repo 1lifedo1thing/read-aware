@@ -3,9 +3,9 @@ import { preview, readBooks, subtitle, type Books } from "./format";
 import { exportAnnotations } from "./export";
 import { colorForm, commit } from "./mutations";
 import { tr } from "./strings";
-import { assertAnnotationBooks, isBookAccessDenied, scopeErrorView, type DeskContext, type Refresh } from "./types";
+import { assertAnnotationBooks, isBookAccessDenied, scopeErrorView, type AnnotationContext, type Refresh } from "./types";
 
-export async function reviewView(ctx: DeskContext, snapshots: AnnotationSnapshot[], refresh: Refresh): Promise<PluginView> {
+export async function reviewView(ctx: AnnotationContext, snapshots: AnnotationSnapshot[], refresh: Refresh): Promise<PluginView> {
   const items = snapshots.map(snapshot => snapshot.annotation);
   let bookId: string | undefined;
   try {
@@ -33,7 +33,7 @@ export async function reviewView(ctx: DeskContext, snapshots: AnnotationSnapshot
   ] };
 }
 
-export function selectionView(ctx: DeskContext, items: PluginAnnotation[], books: Books, refresh: Refresh): PluginFormView {
+export function selectionView(ctx: AnnotationContext, items: PluginAnnotation[], books: Books, refresh: Refresh): PluginFormView {
   return { kind: "form", title: tr(ctx.locale, "select"), submitLabel: tr(ctx.locale, "review"),
     fields: items.map((item, index) => ({ kind: "checkbox", id: `item-${index}`, label: preview(item) || tr(ctx.locale, item.kind),
       description: subtitle(ctx, item, books), value: false })),

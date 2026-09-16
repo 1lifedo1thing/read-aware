@@ -8,11 +8,24 @@ import {
   grantedBooks,
   isBookAccessDenied,
   scopeErrorView,
-  type DeskContext,
+  type AnnotationContext,
   type Refresh,
 } from "./types";
 
-function createdView(ctx: DeskContext, item: PluginAnnotation, refresh: Refresh): PluginView {
+/**
+ * After a successful write, return to a fresh list with a toast. The write
+ * already committed, so a failed reload falls back to a receipt that offers
+ * only reads — never a path that could repeat the create.
+ */
+async function createdResult(ctx: AnnotationContext, item: PluginAnnotation, refresh: Refresh): Promise<PluginViewResult> {
+  try {
+    return { ...await refresh(), navigation: "reset", toast: tr(ctx.locale, "created") };
+  } catch {
+    return { view: createdView(ctx, item, refresh), navigation: "replace" };
+  }
+}
+
+function createdView(ctx: AnnotationContext, item: PluginAnnotation, refresh: Refresh): PluginView {
   return { kind: "detail", title: tr(ctx.locale, "created"), content: [
     { kind: "text", text: item.kind === "note" ? item.body : item.text },
   ], metadata: [{ kind: "label", label: tr(ctx.locale, "kind"), value: tr(ctx.locale, item.kind) }], actions: [
@@ -22,7 +35,7 @@ function createdView(ctx: DeskContext, item: PluginAnnotation, refresh: Refresh)
   ] };
 }
 
-export async function newNoteView(ctx: DeskContext, refresh: Refresh, bookId?: string): Promise<PluginView> {
+export async function newNoteView(ctx: AnnotationContext, refresh: Refresh, bookId?: string): Promise<PluginView> {
   let scopedBookId: string | undefined;
   let books;
   try {
@@ -50,12 +63,11 @@ export async function newNoteView(ctx: DeskContext, refresh: Refresh, bookId?: s
       throw error;
     }
     const item = await ctx.domains.annotations.commands.createNote({ bookId: values.bookId as string, body: values.body });
-    // Show the write receipt first. A subsequent inspection failure must not invite a duplicate create.
-    return { view: createdView(ctx, item, refresh), navigation: "replace" };
+    return createdResult(ctx, item, refresh);
   } };
 }
 
-export function selectionCreationView(ctx: DeskContext, input: SelectionActionInput,
+export function selectionCreationView(ctx: AnnotationContext, input: SelectionActionInput,
   kind: "note" | "highlight", refresh: Refresh): PluginView {
   const captured = structuredClone(input);
   const grant = bookGrant(ctx);
@@ -96,7 +108,7 @@ export function selectionCreationView(ctx: DeskContext, input: SelectionActionIn
       if (!color || !style) return { fieldErrors: { [!color ? "color" : "style"]: tr(ctx.locale, "invalid") } };
       item = await ctx.domains.annotations.commands.createHighlight({ ...location, text: captured.text, color, style });
     }
-    return { view: createdView(ctx, item, refresh), navigation: "replace" };
+    return createdResult(ctx, item, refresh);
   } });
   return { kind: "detail", title: tr(ctx.locale, kind === "note" ? "newNote" : "newHighlight"), content,
     metadata: [{ kind: "label", label: tr(ctx.locale, "book"), value: captured.book.title, icon: "book-open" }] };

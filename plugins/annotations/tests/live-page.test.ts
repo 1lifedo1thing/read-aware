@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { AnnotationObservation, AnnotationPageQuery, PluginViewUpdate, PluginReactionEvent } from "@read-aware/plugin-types";
 import { liveAnnotationPage } from "../src/live-page";
-import type { DeskContext } from "../src/types";
+import type { AnnotationContext } from "../src/types";
 
 function fixture() {
   let handler!: (event: AnnotationObservation, delivery?: PluginReactionEvent) => unknown, stopped = false;
@@ -9,9 +9,9 @@ function fixture() {
   const page = { items: [], nextCursor: null, consistency: "live" as const };
   const ctx = { locale: "en", domains: { annotations: { queries: { page: async () => page }, events: {
     observe: (_query: unknown, callback: typeof handler) => { handler = callback; return { dispose() { stopped = true; } }; },
-  } } }, services: { ui: { publishView: async (_channel: unknown, update: PluginViewUpdate) => { updates.push(update); } } } } as unknown as DeskContext;
+  } } }, services: { ui: { publishView: async (_channel: unknown, update: PluginViewUpdate) => { updates.push(update); } } } } as unknown as AnnotationContext;
   const bound: (PluginReactionEvent | undefined)[] = [];
-  ctx.withEvent = ((event: PluginReactionEvent | undefined) => { bound.push(event); return ctx; }) as DeskContext["withEvent"];
+  ctx.withEvent = ((event: PluginReactionEvent | undefined) => { bound.push(event); return ctx; }) as AnnotationContext["withEvent"];
   return { ctx, page, updates, bound, emit: (event: AnnotationObservation, delivery?: PluginReactionEvent) => handler(event, delivery), stopped: () => stopped };
 }
 
@@ -21,7 +21,7 @@ test("automatic publication binds the delivery while repeated causal reactions s
   const bound = { ...f.ctx, services: { ...f.ctx.services, ui: { ...f.ctx.services.ui,
     publishView: async () => { calls.push("bound publication"); return { status: "applied" as const }; },
   } } };
-  f.ctx.withEvent = ((delivery: PluginReactionEvent | undefined) => { f.bound.push(delivery); return bound as DeskContext; }) as DeskContext["withEvent"];
+  f.ctx.withEvent = ((delivery: PluginReactionEvent | undefined) => { f.bound.push(delivery); return bound as AnnotationContext; }) as AnnotationContext["withEvent"];
   const sub = await view.live!.subscribe({ id: "channel" });
   const event = { status: "ready" as const, revision: 1, result: { kind: "page" as const, page: f.page } };
   const delivery = { reaction: { id: "host-lease", status: "ready" as const } };

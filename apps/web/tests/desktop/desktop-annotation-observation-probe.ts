@@ -12,7 +12,7 @@ import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-stor
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
-import manifest from "../../../../plugins/annotation-desk/manifest.json";
+import manifest from "../../../../plugins/annotations/manifest.json";
 
 const domain = createAnnotationsDomain("user"), workers = new Map<string, SandboxedPlugin>(), owned: PluginDisposable[] = [];
 let seed: { bookId: string; noteId: string; marker: string } | undefined;
@@ -30,7 +30,7 @@ export async function prepareAnnotationObservationProbe() {
     const declaration: PluginManifest = role === "desk" ? { ...manifest, id: "capability-annotation-observation-desk" } as PluginManifest
       : { id: `capability-annotation-observation-${role}`, name: "Annotation observation probe", version: "1.0.0", schemaVersion: 1,
         description: JSON.stringify(seed), permissions: role === "empty" ? [] : [`annotations:${role}`], requires: { domains: { annotations: "^2.0.0" } } };
-    const url = role === "desk" ? new URL("../../../../plugins/annotation-desk/dist/main.js", import.meta.url).href : new URL("./annotation-observation-probe.ts", import.meta.url).href;
+    const url = role === "desk" ? new URL("../../../../plugins/annotations/dist/main.js", import.meta.url).href : new URL("./annotation-observation-probe.ts", import.meta.url).href;
     const worker = await startPluginWorker(declaration, "0.5.4", owned, { moduleUrl: url });
     workers.set(role, worker); await worker.checkHealth(); worker.promote();
   }

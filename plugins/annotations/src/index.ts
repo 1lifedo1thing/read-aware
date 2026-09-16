@@ -1,7 +1,7 @@
 import type { PluginModule } from "@read-aware/plugin-types";
 import { tr } from "./strings";
 import { assertCapabilities, bookGrant } from "./types";
-import { deskView } from "./views";
+import { annotationsView } from "./views";
 import { selectionCreationView } from "./creation";
 
 const plugin: PluginModule = {
@@ -14,22 +14,22 @@ const plugin: PluginModule = {
       run: input => {
         const bookId = input.book.id;
         return { view: selectionCreationView(ctx, input, kind, async () => ({
-          view: await deskView(ctx, { bookId, previous: [] }), navigation: "reset",
+          view: await annotationsView(ctx, { bookId, previous: [] }), navigation: "reset",
         })) };
       },
     });
     // A shelf action is a whole-library entry. Keep it out of restricted
     // activations; their reader/command entries resolve to their granted book.
     if (bookGrant(ctx).mode === "all") ctx.contributions.headerActions.register({ id: "shelf", title, icon: "note-pencil", surface: "shelf", presentation: "page",
-      view: () => deskView(ctx) });
+      view: () => annotationsView(ctx) });
     ctx.contributions.headerActions.register({ id: "reader", title, icon: "note-pencil", surface: "reader", presentation: "popup",
-      view: input => deskView(ctx, { bookId: input.book?.id, previous: [] }) });
+      view: input => annotationsView(ctx, { bookId: input.book?.id, previous: [] }) });
     ctx.contributions.commands.register({ id: "open", title, icon: "note-pencil", keywords: "annotation note highlight organize export",
       run: async () => {
         const grant = bookGrant(ctx);
-        if (grant.mode === "book") return { view: await deskView(ctx, { bookId: grant.bookId, previous: [] }) };
+        if (grant.mode === "book") return { view: await annotationsView(ctx, { bookId: grant.bookId, previous: [] }) };
         const session = await ctx.domains.reading.queries.session();
-        return { view: await deskView(ctx, { bookId: session.bookId ?? undefined, previous: [] }) };
+        return { view: await annotationsView(ctx, { bookId: session.bookId ?? undefined, previous: [] }) };
       } });
   },
 };

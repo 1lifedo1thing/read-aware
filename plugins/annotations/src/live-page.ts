@@ -1,12 +1,12 @@
 import type { AnnotationPage, AnnotationPageQuery, PluginListView, PluginView } from "@read-aware/plugin-types";
 import { tr } from "./strings";
-import type { DeskContext } from "./types";
+import type { AnnotationContext } from "./types";
 
 const code = (error: unknown) => error && typeof error === "object" && "code" in error && typeof error.code === "string"
   ? error.code : "annotations/observation-failed";
 
 /** Only browsing is live. Selecting/editing opens a separate, revision-frozen view. */
-export async function liveAnnotationPage(ctx: DeskContext, input: AnnotationPageQuery,
+export async function liveAnnotationPage(ctx: AnnotationContext, input: AnnotationPageQuery,
   render: (page: AnnotationPage) => Promise<PluginListView>): Promise<PluginView> {
   const query = structuredClone(input);
   const failure = (errorCode: string): PluginView => ({ kind: "detail", title: tr(ctx.locale, "title"), content: [{ kind: "error", code: errorCode }] });

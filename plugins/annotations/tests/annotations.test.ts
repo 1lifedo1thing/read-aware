@@ -2,12 +2,12 @@ import { expect, test } from "bun:test";
 import type { AnnotationMutation, AnnotationPageQuery, AnnotationSnapshot, PluginAnnotation, PluginBook, PluginEditorView, PluginFormView,
   PluginListView, PluginView, PluginViewResult, ReadingTarget } from "@read-aware/plugin-types";
 import plugin from "../src/index";
-import { deskView } from "../src/views";
+import { annotationsView } from "../src/views";
 import { detailView } from "../src/detail";
 import { reviewView, selectionView } from "../src/batch";
 import { annotationExport, csvCell, exportAnnotations } from "../src/export";
 import { tr } from "../src/strings";
-import type { DeskContext } from "../src/types";
+import type { AnnotationContext } from "../src/types";
 import manifest from "../manifest.json";
 
 const at = "2026-09-09T00:00:00.000Z";
@@ -33,9 +33,9 @@ function fixture(items: PluginAnnotation[] = [note, highlight, ask]) {
     } } },
     library: { queries: { books: { get: async () => book, list: async () => [book] } } },
     reading: { queries: { session: async () => ({ bookId: "book" }) }, commands: { goTo: async (target: ReadingTarget) => { jumps.push(target); } } },
-  }, services: { session: { operationAvailability: async (query: { operation: string }) => ({ operation: query.operation, state: "unknown", conditions: [], remoteChecked: false }) }, ui: { exportFile: async () => true } } } as unknown as DeskContext;
+  }, services: { session: { operationAvailability: async (query: { operation: string }) => ({ operation: query.operation, state: "unknown", conditions: [], remoteChecked: false }) }, ui: { exportFile: async () => true } } } as unknown as AnnotationContext;
   let refreshes = 0;
-  const refresh = async () => { refreshes++; return { view: await deskView(ctx), navigation: "reset" as const }; };
+  const refresh = async () => { refreshes++; return { view: await annotationsView(ctx), navigation: "reset" as const }; };
   return { ctx, queries, writes, snapshots, inspected, jumps, refresh, get refreshes() { return refreshes; } };
 }
 function list(view: PluginView): PluginListView {
@@ -68,15 +68,22 @@ function action(view: PluginView, id: string) {
 
 test("pagination uses bounded native queries and opaque cursors without shared mutable history", async () => {
   const f = fixture();
-  const first = await deskView(f.ctx, { bookId: "book", kind: "note", query: "words", previous: [] });
-  const second = resultView(await action(first, "next").run());
+  const first = await annotationsView(f.ctx, { bookId: "book", kind: "note", query: "words", previous: [] });
+  expect(list(first).pagination).toMatchObject({ page: 1 });
+  expect(list(first).pagination?.onPrevious).toBeUndefined();
+  expect(list(first).title).toBe("A book · Note · words");
+  const second = resultView(await list(first).pagination!.onNext!());
   expect(f.queries).toEqual([
     { bookId: "book", kind: "note", query: "words", limit: 20 },
     { bookId: "book", kind: "note", query: "words", limit: 20, cursor: "opaque:cursor" },
   ]);
-  await action(second, "previous").run();
+  expect(list(second).pagination).toMatchObject({ page: 2 });
+  expect(list(second).pagination?.onNext).toBeUndefined();
+  await list(second).pagination!.onPrevious!();
   expect(f.queries[2].cursor).toBeUndefined();
-  expect(list(first).actions?.some(action => action.id === "previous")).toBe(false);
+  expect(list(first).actions?.map(action => [action.id, action.priority])).toEqual([
+    ["new-note", "primary"], ["filter", undefined], ["refresh", "secondary"], ["select", "secondary"], ["json", "secondary"], ["csv", "secondary"],
+  ]);
   await action(second, "refresh").run();
   expect(f.queries[3].cursor).toBeUndefined();
   expect(f.queries[3].bookId).toBe("book");
@@ -84,7 +91,7 @@ test("pagination uses bounded native queries and opaque cursors without shared m
 
 test("filter changes reset pagination, validate book/type/query and retain exact full-text query", async () => {
   const f = fixture();
-  const view = await deskView(f.ctx, { cursor: "opaque", previous: [undefined] });
+  const view = await annotationsView(f.ctx, { cursor: "opaque", previous: [undefined] });
   const filter = form(resultView(await action(view, "filter").run()), "query");
   expect(await filter.onSubmit({ query: "x".repeat(501) })).toHaveProperty("fieldErrors.query");
   expect(await filter.onSubmit({ bookId: "missing", query: "" })).toHaveProperty("fieldErrors.bookId");
@@ -97,16 +104,17 @@ test("filter changes reset pagination, validate book/type/query and retain exact
 test("load errors render a live error surface rather than an empty library", async () => {
   const f = fixture();
   f.ctx.domains.annotations.queries.page = async () => { throw new Error("locked"); };
-  const view = await deskView(f.ctx);
+  const view = await annotationsView(f.ctx);
   expect(view).toMatchObject({ kind: "detail", content: [{ kind: "error", code: "annotations/observation-failed" }] });
   expect(view.live).toBeDefined();
 });
 
 test("empty pages have filters/refresh but no invalid zero-item selection or export", async () => {
   const f = fixture([]);
-  const view = list(await deskView(f.ctx));
+  const view = list(await annotationsView(f.ctx));
   expect(view.items).toEqual([]);
-  expect(view.actions?.map(action => action.id)).toEqual(["new-note", "filter", "refresh", "next"]);
+  expect(view.actions?.map(action => action.id)).toEqual(["new-note", "filter", "refresh"]);
+  expect(view.pagination?.onNext).toBeFunction();
 });
 
 test("note writes use the inspected revision and reset to a fresh list after completion", async () => {
@@ -250,7 +258,8 @@ test("cancelled native export never claims success, failed export propagates", a
 });
 
 test("locale fallback distinguishes traditional Chinese and package declares all dependencies", async () => {
-  expect(tr("zh-TW", "title")).toBe("標註整理器");
+  expect(tr("zh-TW", "title")).toBe("標註");
+  expect(tr("zh-CN", "manage")).toBe("管理");
   expect(tr("fr-CA", "book")).toBe("Livre");
   expect(tr("unknown", "book")).toBe("Book");
   expect(manifest.requires.domains.annotations).toBe("^2.2.0");
@@ -263,7 +272,7 @@ test("locale fallback distinguishes traditional Chinese and package declares all
     selectionActions: { register: action => { selections.push(action); return { dispose() {} }; } },
     headerActions: { register: action => { headers.push(action as typeof headers[number]); return { dispose() {} }; } },
     commands: { register: command => { commands.push(command); return { dispose() {} }; } },
-  } as DeskContext["contributions"];
+  } as AnnotationContext["contributions"];
   await plugin.activate(f.ctx);
   expect(headers.map(({ surface, presentation }) => [surface, presentation])).toEqual([["shelf", "page"], ["reader", "popup"]]);
   expect(commands.map(command => command.id)).toEqual(["open"]);

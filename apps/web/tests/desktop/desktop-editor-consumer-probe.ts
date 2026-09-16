@@ -20,8 +20,8 @@ export async function runFull2EditorConsumerProbe(bookId: string) {
     return session;
   };
   const edit = async (): Promise<PluginEditorView> => {
-    const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === "annotation-desk" && item.id === "open");
-    if (!command) throw new Error("Bundled Annotation Desk is unavailable");
+    const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === "annotations" && item.id === "open");
+    if (!command) throw new Error("Bundled Annotations is unavailable");
     const list = own(await command.run());
     const deadline = Date.now() + 10_000;
     while (Date.now() < deadline) {
@@ -38,7 +38,7 @@ export async function runFull2EditorConsumerProbe(bookId: string) {
       }
       await new Promise(resolve => setTimeout(resolve, 25));
     }
-    throw new Error("Owned note did not appear in Annotation Desk");
+    throw new Error("Owned note did not appear in Annotations");
   };
   try {
     const editor = await edit();
@@ -56,7 +56,7 @@ export async function runFull2EditorConsumerProbe(bookId: string) {
     const rejected = await staleEditor.onSave("Must not overwrite concurrent edit", staleEditor.revision);
     if (!rejected || !("fieldErrors" in rejected) || !rejected.fieldErrors?.editor) throw new Error("Stale editor did not surface a field error");
     if (JSON.stringify(await domain.queries.inspect(note.id)) !== JSON.stringify(concurrent)) throw new Error("Stale save overwrote concurrent annotation");
-    return { profile, consumer: "bundled annotation-desk Worker", exactSave: true, cancelUnchanged: true, conflictVisibleInResult: true, concurrentUnchanged: true, boundary: "Worker callbacks and native persisted state; rendering, draft UI and keyboard pending" };
+    return { profile, consumer: "bundled annotations Worker", exactSave: true, cancelUnchanged: true, conflictVisibleInResult: true, concurrentUnchanged: true, boundary: "Worker callbacks and native persisted state; rendering, draft UI and keyboard pending" };
   } finally {
     for (const session of sessions.reverse()) session.dispose("unmounted");
     const current = await domain.queries.inspect(note.id);

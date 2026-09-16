@@ -17,17 +17,18 @@ async function isolated() {
 export async function prepareAnnotationComposition() {
   await isolated();
   if (bookId || wasEnabled !== undefined) throw Error("Composition already prepared");
-  const plugin = getDefaultStore().get(installedPluginsAtom).find(item => item.manifest.id === "annotation-desk");
-  if (!plugin?.builtin) throw Error("Expected RepoDist Annotation Desk");
+  const plugin = getDefaultStore().get(installedPluginsAtom).find(item => item.manifest.id === "annotations");
+  if (!plugin?.builtin) throw Error("Expected RepoDist Annotations");
   wasEnabled = plugin.enabled;
-  if (!plugin.enabled) await setPluginEnabled("annotation-desk", true);
+  if (!plugin.enabled) await setPluginEnabled("annotations", true);
   const prepared = await prepareLibraryContent();
   bookId = prepared.bookId;
   return { ...prepared, annotationVersion: plugin.manifest.version };
 }
-export async function openAnnotationComposition(id: "annotation-desk" | "text-desk") {
+export async function openAnnotationComposition() {
   await isolated();
   if (!bookId) throw Error("Prepare composition first");
+  const id = "annotations";
   const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === id && item.id === "open");
   if (!command) throw Error("Registered command missing");
   await runPluginContribution(id, id, () => command.run(), { presentation: "dialog", owner: command.run });
@@ -39,7 +40,7 @@ export async function inspectAnnotationComposition() {
   return { bookId, session,
     annotations: await createAnnotationsDomain("user").queries.page({ bookId, limit: 20 }),
     plugins: getDefaultStore().get(installedPluginsAtom)
-      .filter(item => ["annotation-desk", "text-desk"].includes(item.manifest.id))
+      .filter(item => item.manifest.id === "annotations")
       .map(item => ({ id: item.manifest.id, version: item.manifest.version, enabled: item.enabled, error: item.error })) };
 }
 export async function cleanupAnnotationComposition() {
@@ -47,7 +48,7 @@ export async function cleanupAnnotationComposition() {
   const session = readingRuntime.snapshot();
   if (session.bookId === bookId && session.sessionId) await readingRuntime.close(undefined, { bookId, sessionId: session.sessionId });
   const result = await cleanupLibraryContent();
-  if (wasEnabled === false) await setPluginEnabled("annotation-desk", false);
+  if (wasEnabled === false) await setPluginEnabled("annotations", false);
   bookId = undefined; wasEnabled = undefined;
   return result;
 }

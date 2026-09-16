@@ -9,7 +9,8 @@ var strings = {
   bodyRequired: ["Enter note text.", "请输入笔记内容。", "請輸入筆記內容。", "ノートを入力してください。", "Введите текст заметки.", "Saisissez le texte de la note.", "Notiztext eingeben.", "Escribe el texto de la nota."],
   selectionLimit: ["Select between 1 and 100,000 characters.", "请选择 1 至 100,000 个字符。", "請選取 1 至 100,000 個字元。", "1～100,000 文字を選択してください。", "Выберите от 1 до 100 000 символов.", "Sélectionnez entre 1 et 100 000 caractères.", "Zwischen 1 und 100.000 Zeichen auswählen.", "Selecciona entre 1 y 100.000 caracteres."],
   unanchored: ["No exact text anchor is available.", "当前没有精确的文本定位。", "目前沒有精確的文字定位。", "正確なテキスト位置がありません。", "Точная привязка к тексту недоступна.", "Aucun ancrage exact dans le texte.", "Keine genaue Textverankerung verfügbar.", "No hay un anclaje exacto al texto."],
-  title: ["Annotation Desk", "标注整理器", "標註整理器", "注釈デスク", "Аннотации", "Annotations", "Anmerkungen", "Anotaciones"],
+  title: ["Annotations", "标注", "標註", "注釈", "Аннотации", "Annotations", "Anmerkungen", "Anotaciones"],
+  manage: ["Manage", "管理", "管理", "管理", "Управление", "Gérer", "Verwalten", "Gestionar"],
   book: ["Book", "书籍", "書籍", "本", "Книга", "Livre", "Buch", "Libro"],
   allBooks: ["All books", "全部书籍", "全部書籍", "すべての本", "Все книги", "Tous les livres", "Alle Bücher", "Todos los libros"],
   kind: ["Type", "类型", "類型", "種類", "Тип", "Type", "Typ", "Tipo"],
@@ -18,7 +19,8 @@ var strings = {
   highlight: ["Highlight", "高亮", "螢光標記", "ハイライト", "Выделение", "Surlignage", "Markierung", "Resaltado"],
   ask: ["Question", "提问", "提問", "質問", "Вопрос", "Question", "Frage", "Pregunta"],
   query: ["Search text", "搜索文字", "搜尋文字", "検索語", "Поиск текста", "Rechercher du texte", "Text suchen", "Buscar texto"],
-  filter: ["Apply filters", "筛选", "篩選", "絞り込む", "Применить фильтры", "Filtrer", "Filtern", "Filtrar"],
+  filter: ["Filter", "筛选", "篩選", "絞り込み", "Фильтр", "Filtrer", "Filtern", "Filtrar"],
+  applyFilters: ["Apply filters", "应用筛选", "套用篩選", "絞り込みを適用", "Применить фильтры", "Appliquer les filtres", "Filter anwenden", "Aplicar filtros"],
   invalidQuery: ["Use at most 500 characters.", "最多输入 500 个字符。", "最多輸入 500 個字元。", "500 文字以内で入力してください。", "Не более 500 символов.", "500 caractères maximum.", "Maximal 500 Zeichen.", "Máximo 500 caracteres."],
   invalid: ["Choose a valid option.", "请选择有效选项。", "請選擇有效選項。", "有効な項目を選択してください。", "Выберите допустимый вариант.", "Choisissez une option valide.", "Bitte gültige Option wählen.", "Elige una opción válida."],
   accessDenied: ["This book is outside the plugin's granted access.", "这本书不在插件获准访问范围内。", "這本書不在外掛獲准的存取範圍內。", "この本はプラグインに許可された範囲外です。", "Эта книга не входит в разрешённую область плагина.", "Ce livre n’est pas autorisé pour ce plugin.", "Dieses Buch liegt außerhalb des Zugriffsbereichs des Plugins.", "Este libro está fuera del acceso concedido al complemento."],
@@ -114,7 +116,7 @@ function scopeErrorView(ctx, error) {
 }
 function assertCapabilities(ctx) {
   if (!ctx.domains.annotations?.commands || !ctx.domains.reading?.commands || !ctx.domains.library) {
-    throw new Error("Annotation Desk requires annotations:write, reading:write and library:read");
+    throw new Error("Annotations requires annotations:write, reading:write and library:read");
   }
 }
 
@@ -409,12 +411,12 @@ async function detailView(ctx, id, refresh, expectedBookId) {
     content,
     metadata: [{ kind: "label", label: tr(ctx.locale, "book"), value: book?.title ?? tr(ctx.locale, "missingBook"), icon: "book-open" }],
     actions: [
-      ...book ? [{ id: "open", label: tr(ctx.locale, "open"), icon: "book-open", run: async () => {
+      ...book ? [{ id: "open", label: tr(ctx.locale, "open"), icon: "book-open", variant: "solid", priority: "primary", run: async () => {
         await ctx.domains.reading.commands.goTo({ bookId: item.bookId, cfi: item.anchor, href: item.chapterHref });
         return { close: true };
       } }] : [],
-      { id: "review", label: tr(ctx.locale, "review"), icon: "list-bullets", run: async () => ({ view: await reviewView(ctx, [snapshot], refresh) }) },
-      { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: async () => ({ view: await detailView(ctx, id, refresh, item.bookId), navigation: "replace" }) }
+      { id: "manage", label: tr(ctx.locale, "manage"), icon: "list-bullets", priority: "secondary", run: async () => ({ view: await reviewView(ctx, [snapshot], refresh) }) },
+      { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", priority: "secondary", run: async () => ({ view: await detailView(ctx, id, refresh, item.bookId), navigation: "replace" }) }
     ]
   };
 }
@@ -456,6 +458,13 @@ async function liveAnnotationPage(ctx, input, render) {
 }
 
 // src/creation.ts
+async function createdResult(ctx, item, refresh) {
+  try {
+    return { ...await refresh(), navigation: "reset", toast: tr(ctx.locale, "created") };
+  } catch {
+    return { view: createdView(ctx, item, refresh), navigation: "replace" };
+  }
+}
 function createdView(ctx, item, refresh) {
   return { kind: "detail", title: tr(ctx.locale, "created"), content: [
     { kind: "text", text: item.kind === "note" ? item.body : item.text }
@@ -508,7 +517,7 @@ async function newNoteView(ctx, refresh, bookId) {
       throw error;
     }
     const item = await ctx.domains.annotations.commands.createNote({ bookId: values.bookId, body: values.body });
-    return { view: createdView(ctx, item, refresh), navigation: "replace" };
+    return createdResult(ctx, item, refresh);
   } };
 }
 function selectionCreationView(ctx, input, kind, refresh) {
@@ -564,7 +573,7 @@ function selectionCreationView(ctx, input, kind, refresh) {
         return { fieldErrors: { [!color ? "color" : "style"]: tr(ctx.locale, "invalid") } };
       item = await ctx.domains.annotations.commands.createHighlight({ ...location, text: captured.text, color, style });
     }
-    return { view: createdView(ctx, item, refresh), navigation: "replace" };
+    return createdResult(ctx, item, refresh);
   } });
   return {
     kind: "detail",
@@ -581,7 +590,7 @@ async function filterView(ctx, state) {
     const scopedBookId = allBooks ? undefined : await grantedBookId(ctx, state.bookId);
     const books = await grantedBooks(ctx, scopedBookId);
     const kinds = ["highlight", "note", "ask"];
-    return { kind: "form", title: tr(ctx.locale, "filter"), submitLabel: tr(ctx.locale, "filter"), fields: [
+    return { kind: "form", title: tr(ctx.locale, "filter"), submitLabel: tr(ctx.locale, "applyFilters"), fields: [
       {
         kind: "select",
         id: "bookId",
@@ -612,7 +621,7 @@ async function filterView(ctx, state) {
       if (values.kind && !kind)
         return { fieldErrors: { kind: tr(ctx.locale, "invalid") } };
       const nextBookId = allBooks ? bookId || undefined : scopedBookId;
-      return { view: await deskView(ctx, { bookId: nextBookId, kind, query: values.query.trim() || undefined, previous: [] }), navigation: "reset" };
+      return { view: await annotationsView(ctx, { bookId: nextBookId, kind, query: values.query.trim() || undefined, previous: [] }), navigation: "reset" };
     } };
   } catch (error) {
     if (isBookAccessDenied(error))
@@ -620,7 +629,7 @@ async function filterView(ctx, state) {
     throw error;
   }
 }
-async function deskView(ctx, state = { previous: [] }) {
+async function annotationsView(ctx, state = { previous: [] }) {
   const requested = structuredClone(state);
   try {
     const bookId = await grantedBookId(ctx, requested.bookId);
@@ -642,39 +651,48 @@ async function deskView(ctx, state = { previous: [] }) {
       const next = { ...state, cursor: undefined, previous: [] };
       if (bookGrant(ctx).mode === "current")
         delete next.bookId;
-      return { view: await deskView(ctx, next), navigation: "reset" };
+      return { view: await annotationsView(ctx, next), navigation: "reset" };
     };
     const actions = [
-      { id: "new-note", label: tr(ctx.locale, "newNote"), icon: "note-pencil", run: async () => ({ view: await newNoteView(ctx, refresh, state.bookId) }) },
+      {
+        id: "new-note",
+        label: tr(ctx.locale, "newNote"),
+        icon: "note-pencil",
+        variant: "solid",
+        priority: "primary",
+        run: async () => ({ view: await newNoteView(ctx, refresh, state.bookId) })
+      },
       { id: "filter", label: tr(ctx.locale, "filter"), icon: "magnifying-glass", run: async () => ({ view: await filterView(ctx, state) }) },
-      { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", run: refresh }
+      { id: "refresh", label: tr(ctx.locale, "refresh"), icon: "arrows-clockwise", priority: "secondary", run: refresh }
     ];
     if (page.items.length)
-      actions.push({ id: "select", label: tr(ctx.locale, "select"), icon: "check", run: () => ({ view: selectionView(ctx, page.items, books, refresh) }) }, ...["json", "csv"].map((format) => ({
+      actions.push({ id: "select", label: tr(ctx.locale, "select"), icon: "check", priority: "secondary", run: () => ({ view: selectionView(ctx, page.items, books, refresh) }) }, ...["json", "csv"].map((format) => ({
         id: format,
         label: tr(ctx.locale, format === "json" ? "pageJson" : "pageCsv"),
         icon: "download-simple",
+        priority: "secondary",
         run: () => exportAnnotations(ctx, page.items, books, "page", format)
       })));
+    const pagination = { page: previous.length + 1 };
     if (previous.length)
-      actions.push({ id: "previous", label: tr(ctx.locale, "previous"), icon: "arrow-left", run: async () => ({
-        view: await deskView(ctx, { ...state, cursor: previous[previous.length - 1], previous: previous.slice(0, -1) }),
+      pagination.onPrevious = async () => ({
+        view: await annotationsView(ctx, { ...state, cursor: previous[previous.length - 1], previous: previous.slice(0, -1) }),
         navigation: "replace"
-      }) });
+      });
     if (page.nextCursor)
-      actions.push({ id: "next", label: tr(ctx.locale, "next"), icon: "arrow-right", run: async () => ({
-        view: await deskView(ctx, { ...state, cursor: page.nextCursor, previous: [...previous, state.cursor] }),
+      pagination.onNext = async () => ({
+        view: await annotationsView(ctx, { ...state, cursor: page.nextCursor, previous: [...previous, state.cursor] }),
         navigation: "replace"
-      }) });
+      });
     return {
       kind: "list",
       title: [
         state.bookId ? books.get(state.bookId)?.title ?? tr(ctx.locale, "missingBook") : tr(ctx.locale, "allBooks"),
         state.kind ? tr(ctx.locale, state.kind) : undefined,
-        state.query,
-        String(previous.length + 1)
+        state.query
       ].filter(Boolean).join(" · "),
       actions,
+      pagination,
       emptyText: tr(ctx.locale, "empty"),
       items: page.items.map((item) => ({
         id: item.id,
@@ -702,7 +720,7 @@ var plugin = {
         run: (input) => {
           const bookId = input.book.id;
           return { view: selectionCreationView(ctx, input, kind, async () => ({
-            view: await deskView(ctx, { bookId, previous: [] }),
+            view: await annotationsView(ctx, { bookId, previous: [] }),
             navigation: "reset"
           })) };
         }
@@ -714,7 +732,7 @@ var plugin = {
         icon: "note-pencil",
         surface: "shelf",
         presentation: "page",
-        view: () => deskView(ctx)
+        view: () => annotationsView(ctx)
       });
     ctx.contributions.headerActions.register({
       id: "reader",
@@ -722,7 +740,7 @@ var plugin = {
       icon: "note-pencil",
       surface: "reader",
       presentation: "popup",
-      view: (input) => deskView(ctx, { bookId: input.book?.id, previous: [] })
+      view: (input) => annotationsView(ctx, { bookId: input.book?.id, previous: [] })
     });
     ctx.contributions.commands.register({
       id: "open",
@@ -732,9 +750,9 @@ var plugin = {
       run: async () => {
         const grant = bookGrant(ctx);
         if (grant.mode === "book")
-          return { view: await deskView(ctx, { bookId: grant.bookId, previous: [] }) };
+          return { view: await annotationsView(ctx, { bookId: grant.bookId, previous: [] }) };
         const session = await ctx.domains.reading.queries.session();
-        return { view: await deskView(ctx, { bookId: session.bookId ?? undefined, previous: [] }) };
+        return { view: await annotationsView(ctx, { bookId: session.bookId ?? undefined, previous: [] }) };
       }
     });
   }
