@@ -18,6 +18,7 @@
     },
     "back": "返回",
     "close": "關閉",
+    "more": "更多操作",
     "submit": "提交",
     "editorTooLong": "最多輸入 {{max}} 個字元。",
     "editorStale": "文字已在其他地方修改。請重新載入後再儲存。",

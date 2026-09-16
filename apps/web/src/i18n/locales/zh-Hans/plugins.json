@@ -18,6 +18,7 @@
     },
     "back": "返回",
     "close": "关闭",
+    "more": "更多操作",
     "submit": "提交",
     "editorTooLong": "最多输入 {{max}} 个字符。",
     "editorStale": "文字已在其他地方修改。请重新加载后再保存。",

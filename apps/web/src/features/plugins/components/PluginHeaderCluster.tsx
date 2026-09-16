@@ -187,12 +187,12 @@ function PluginHeaderPopupButton({
           {renderPluginIcon(action.icon, 16)}
         </span>
       }
-      panelClassName="w-80 max-w-[calc(100vw-2rem)] p-3"
+      panelClassName="w-[28rem] max-w-[calc(100vw-2rem)] p-4"
     >
       <PluginViewRenderer
         view={view}
         onClose={() => setOpen(false)}
-        className="max-h-80"
+        className="max-h-[min(32rem,70vh)]"
       />
     </Popover>
   );

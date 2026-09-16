@@ -45,6 +45,12 @@ type PluginViewRendererProps = {
   onRequestRefresh?: () => void;
   /** Adds host Close + detail actions in a fixed dialog footer. */
   dialogFooter?: boolean;
+  /**
+   * Title the hosting container already shows (a dialog names its plugin).
+   * A root view whose title merely repeats it renders no second heading;
+   * pushed views keep their own titles next to the back control.
+   */
+  containerTitle?: string;
   /** Stable identity of the hosting view; lets a timeline persist its tab. */
   viewStateKey?: string;
   /**
@@ -64,6 +70,7 @@ export function PluginViewRenderer({
   onDepthChange,
   onRequestRefresh,
   dialogFooter = false,
+  containerTitle,
   viewStateKey,
   scroll = "contained",
   className,
@@ -76,6 +83,7 @@ export function PluginViewRenderer({
   }, [onDepthChange, stack.length]);
 
   const current = stack.length > 0 ? stack[stack.length - 1] : null;
+  const title = current?.title && !(stack.length === 1 && current.title === containerTitle) ? current.title : undefined;
   useLayoutEffect(() => { session.acknowledgeRender(current); }, [session, current]);
   const liveFailure = liveError ? describeError(liveError, { fallback: t("viewer.liveFailed") }) : null;
 
@@ -160,7 +168,7 @@ export function PluginViewRenderer({
         {liveFailure && <InlineError onRetry={liveFailure.retryable ? session.retryLive : undefined} retryLabel={t("common:errorBoundary.retry")}>
           {liveFailure.body}
         </InlineError>}
-        {(stack.length > 1 || current.title) && (
+        {(stack.length > 1 || title) && (
           <Stack direction="horizontal" gap="xs" align="center" className="shrink-0">
             {stack.length > 1 && (
               <IconButton
@@ -171,8 +179,8 @@ export function PluginViewRenderer({
                 icon={<CaretLeft size={16} weight="regular" aria-hidden="true" />}
               />
             )}
-            {current.title && (
-              <Body className="truncate text-sm font-semibold text-fg">{current.title}</Body>
+            {title && (
+              <Body className="truncate text-sm font-semibold text-fg">{title}</Body>
             )}
           </Stack>
         )}

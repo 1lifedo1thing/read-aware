@@ -96,7 +96,7 @@ export function PluginDetailViewBody({
                 actions={view.actions}
                 busy={busy}
                 align="end"
-                display="icons"
+                display="toolbar"
                 onResult={onResult}
               />
             )}

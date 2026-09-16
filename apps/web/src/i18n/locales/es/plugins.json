@@ -18,6 +18,7 @@
     },
     "back": "Atrás",
     "close": "Cerrar",
+    "more": "Más acciones",
     "submit": "Enviar",
     "editorTooLong": "Usa como máximo {{max}} caracteres.",
     "editorStale": "El texto cambió en otro lugar. Vuelve a cargarlo antes de guardarlo.",

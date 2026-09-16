@@ -16,7 +16,7 @@ export function PluginTableViewBody({ view, busy, onResult }: {
   const selectable = view.rows.some(row => row.onSelect);
   return (
     <Stack gap="sm" className="min-w-0 max-w-full">
-      {view.actions?.length ? <PluginActionGroup actions={view.actions} busy={busy} align="end" display="icons" onResult={onResult} /> : null}
+      {view.actions?.length ? <PluginActionGroup actions={view.actions} busy={busy} align="end" display="toolbar" onResult={onResult} /> : null}
       <div className="max-w-full overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         role="region" tabIndex={0} aria-label={view.title ?? t("viewer.table.label")}>
         <table className="w-full table-fixed border-collapse text-sm" style={{ minWidth: `${view.columns.length * 9 + (selectable ? 3 : 0)}rem` }}

@@ -18,6 +18,7 @@
     },
     "back": "Back",
     "close": "Close",
+    "more": "More actions",
     "submit": "Submit",
     "editorTooLong": "Use at most {{max}} characters.",
     "editorStale": "This text changed elsewhere. Reload before saving.",

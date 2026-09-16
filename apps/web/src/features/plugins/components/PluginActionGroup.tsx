@@ -1,5 +1,8 @@
-import { Button, IconButton, Stack, Tooltip } from "@read-aware/ui";
+import { DotsThree } from "@phosphor-icons/react";
+import { Button, DropdownMenu, Stack } from "@read-aware/ui";
+import { useTranslation } from "../../../i18n";
 import { renderPluginIcon } from "../lib/plugin-icons";
+import { splitToolbarActions } from "../lib/plugin-actions";
 import type { PluginAction } from "../lib/plugin-types";
 import type { PluginResultRunner } from "./plugin-view-types";
 
@@ -7,7 +10,14 @@ type PluginActionGroupProps = {
   actions: PluginAction[];
   busy: boolean;
   align?: "start" | "end";
-  display?: "buttons" | "icons";
+  /**
+   * `buttons`: every action as a labeled button — dialog footers and inline
+   * `actions` blocks, where the plugin composes the row itself.
+   * `toolbar`: a view-level command row — primary actions inline as labeled
+   * buttons, everything else behind one "More" menu, so a long action list
+   * never becomes a strip of icon-only buttons.
+   */
+  display?: "buttons" | "toolbar";
   onResult: PluginResultRunner;
 };
 
@@ -18,6 +28,11 @@ export function PluginActionGroup({
   display = "buttons",
   onResult,
 }: PluginActionGroupProps) {
+  const { t } = useTranslation("plugins");
+  const { inline, overflow } = display === "toolbar"
+    ? splitToolbarActions(actions)
+    : { inline: actions, overflow: [] as PluginAction[] };
+
   return (
     <Stack
       direction="horizontal"
@@ -26,35 +41,39 @@ export function PluginActionGroup({
       justify={align === "end" ? "end" : "start"}
       wrap
     >
-      {actions.map((action) => {
-        if (display === "icons") {
-          return (
-            <Tooltip key={action.id} content={action.label} align="end">
-              <IconButton
-                label={action.label}
-                size="sm"
-                tone={action.variant === "danger" ? "danger" : "default"}
-                icon={renderPluginIcon(action.icon, 16)}
-                disabled={busy}
-                onClick={() => void onResult(action.run)}
-              />
-            </Tooltip>
-          );
-        }
-
-        return (
-          <Button
-            key={action.id}
-            size="sm"
-            variant={action.variant ?? "outline"}
-            disabled={busy}
-            onClick={() => void onResult(action.run)}
-          >
-            {action.icon && renderPluginIcon(action.icon, 14)}
-            {action.label}
-          </Button>
-        );
-      })}
+      {inline.map((action) => (
+        <Button
+          key={action.id}
+          size="sm"
+          variant={action.variant ?? "outline"}
+          disabled={busy}
+          onClick={() => void onResult(action.run)}
+        >
+          {action.icon && renderPluginIcon(action.icon, 14)}
+          {action.label}
+        </Button>
+      ))}
+      {overflow.length > 0 && (
+        <DropdownMenu
+          align={align === "end" ? "right" : "left"}
+          triggerLabel={t("viewer.more")}
+          trigger={
+            <span
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-border-strong text-fg hover:border-fg-subtle hover:bg-fg/5"
+              aria-disabled={busy || undefined}
+            >
+              <DotsThree size={18} weight="bold" aria-hidden="true" />
+            </span>
+          }
+          items={overflow.map((action) => ({
+            label: action.label,
+            icon: action.icon ? renderPluginIcon(action.icon, 15) : undefined,
+            destructive: action.variant === "danger",
+            disabled: busy,
+            onClick: () => void onResult(action.run),
+          }))}
+        />
+      )}
     </Stack>
   );
 }

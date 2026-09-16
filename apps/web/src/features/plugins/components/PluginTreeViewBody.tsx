@@ -14,7 +14,7 @@ export function PluginTreeViewBody({ view, busy, onResult }: {
   const { t } = useTranslation("plugins");
   const tree = usePluginTree(view, busy, onResult);
   return <Stack gap="sm" className="min-w-0 max-w-full">
-    {view.actions?.length ? <PluginActionGroup actions={view.actions} busy={busy} align="end" display="icons" onResult={onResult} /> : null}
+    {view.actions?.length ? <PluginActionGroup actions={view.actions} busy={busy} align="end" display="toolbar" onResult={onResult} /> : null}
     <div role="tree" aria-label={view.title} aria-busy={busy} className="min-w-0"
       onFocusCapture={() => { tree.ownsFocus.current = true; }}
       onBlurCapture={event => {

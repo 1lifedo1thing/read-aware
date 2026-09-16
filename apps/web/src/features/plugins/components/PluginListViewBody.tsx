@@ -197,7 +197,7 @@ export function PluginListViewBody({
       actions={view.actions}
       busy={busy}
       align="end"
-      display="icons"
+      display="toolbar"
       onResult={onResult}
     />
   ) : null;

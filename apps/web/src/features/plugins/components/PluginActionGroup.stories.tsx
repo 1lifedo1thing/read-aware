@@ -25,19 +25,49 @@ export const AlignedEnd: Story = {
   args: { align: "end" },
 };
 
-/** Icon-only display, for dense headers; the label moves into a tooltip. */
-export const IconButtons: Story = {
-  args: { display: "icons" },
+/**
+ * Toolbar display, used for view-level action rows: a short set stays inline
+ * as labeled buttons, so three actions look the same as the buttons display.
+ */
+export const ToolbarShort: Story = {
+  args: { display: "toolbar", align: "end" },
+};
+
+/**
+ * A long unprioritized set: the host keeps the first two inline and folds the
+ * rest behind one "More" menu instead of rendering a strip of icon buttons.
+ */
+export const ToolbarOverflow: Story = {
+  args: {
+    display: "toolbar",
+    align: "end",
+    actions: Array.from({ length: 7 }, (_, i) => ({
+      id: `a${i}`,
+      label: ["Refresh", "Saved covers", "Import book", "Browse folder", "Duplicates", "Collections", "Cleanup"][i]!,
+      icon: ["arrows-clockwise", "image", "plus", "folder", "books", "folder", "trash"][i],
+      run: () => undefined,
+    })),
+  },
+};
+
+/** Explicit priorities: primary stays inline wherever declared, secondary always folds. */
+export const ToolbarPrioritized: Story = {
+  args: {
+    display: "toolbar",
+    align: "end",
+    actions: [
+      { id: "refresh", label: "Refresh", icon: "arrows-clockwise", priority: "secondary", run: () => undefined },
+      { id: "filter", label: "Filter", icon: "magnifying-glass", run: () => undefined },
+      { id: "new", label: "New note", icon: "note-pencil", variant: "solid", priority: "primary", run: () => undefined },
+      { id: "export", label: "Export", icon: "export", run: () => undefined },
+      { id: "delete", label: "Delete all", icon: "trash", variant: "danger", priority: "secondary", run: () => undefined },
+    ],
+  },
 };
 
 /** A danger variant is the strongest emphasis a plugin can ask for. */
 export const WithDangerAction: Story = {
   args: { actions: destructiveActions },
-};
-
-/** Icon display carries the danger tone through to the icon button. */
-export const IconButtonsWithDanger: Story = {
-  args: { actions: destructiveActions, display: "icons" },
 };
 
 /** While a result is running every action is disabled, not hidden. */

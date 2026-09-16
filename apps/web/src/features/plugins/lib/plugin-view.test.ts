@@ -73,6 +73,23 @@ describe("normalizePluginView", () => {
     expect(view.actions?.[0].variant).toBe("ghost");
   });
 
+  test("carries an action's toolbar priority through and rejects unknown values", () => {
+    const view = normalizePluginView({
+      kind: "list",
+      items: [],
+      actions: [
+        { id: "new", label: "New", priority: "primary", run: noOp },
+        { id: "refresh", label: "Refresh", priority: "secondary", run: noOp },
+        { id: "export", label: "Export", run: noOp },
+      ],
+    });
+    if (view.kind !== "list") throw new Error("unexpected view");
+    expect(view.actions?.map((action) => action.priority)).toEqual(["primary", "secondary", undefined]);
+    expect(() =>
+      normalizePluginView({ kind: "list", items: [], actions: [{ id: "x", label: "X", priority: "tertiary", run: noOp }] }),
+    ).toThrow(PluginViewError);
+  });
+
   test("rejects a detail control whose value is outside its host-rendered options", () => {
     expect(() =>
       normalizePluginView({

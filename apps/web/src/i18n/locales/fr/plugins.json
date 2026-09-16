@@ -18,6 +18,7 @@
     },
     "back": "Retour",
     "close": "Fermer",
+    "more": "Autres actions",
     "submit": "Envoyer",
     "editorTooLong": "Utilisez au plus {{max}} caractères.",
     "editorStale": "Ce texte a changé ailleurs. Rechargez-le avant de l’enregistrer.",

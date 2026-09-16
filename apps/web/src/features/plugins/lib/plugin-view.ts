@@ -105,6 +105,12 @@ function normalizeAction(input: unknown, context: string): PluginAction {
       "outline",
       `${context}.variant`,
     ),
+    priority: value.priority === undefined ? undefined : oneOf(
+      value.priority,
+      ["primary", "secondary"] as const,
+      "primary",
+      `${context}.priority`,
+    ),
     run: value.run as PluginAction["run"],
   };
 }

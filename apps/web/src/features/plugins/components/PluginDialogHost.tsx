@@ -1,7 +1,7 @@
 /**
  * The one modal container for plugin views opened by selection actions and
  * palette commands. The dialog title names the owning plugin (provenance stays
- * visible); the view's own title renders inside. Compact and height-capped,
+ * visible); the view's own title renders inside unless it only repeats it. Compact and height-capped,
  * matching the app's dialog conventions.
  *
  * A failed contribution renders an in-place error state (localized from the
@@ -58,6 +58,7 @@ export function PluginDialogHost() {
             view={request.view}
             onClose={close}
             dialogFooter
+            containerTitle={request.pluginName}
             viewStateKey={request.pluginId}
             className="max-h-[min(24rem,60vh)]"
           />
