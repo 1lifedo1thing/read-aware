@@ -1,4 +1,4 @@
-import { prepareMemoryFeedbackProbe, cleanupMemoryFeedbackProbe, memoryFeedbackActor, openMemoryDomainDesk } from "./desktop-memory-feedback-probe";
+import { prepareMemoryFeedbackProbe, cleanupMemoryFeedbackProbe, memoryFeedbackActor } from "./desktop-memory-feedback-probe";
 import { createMemoryPort } from "../../src/features/ai/agent/ports/memory-port";
 import { runConsolidation, type RunConsolidationInput } from "../../../../packages/agent/src/memory/consolidation";
 
@@ -38,7 +38,6 @@ export async function maintenanceMerge() {
     return { committed: true, snapshots: await snapshots() };
   } catch (error) { return { code: error && typeof error === "object" && "code" in error ? error.code : null, snapshots: await snapshots() }; }
 }
-export { openMemoryDomainDesk };
 export async function cleanupMemoryMaintenanceProbe() {
   const result = await cleanupMemoryFeedbackProbe(); seed = undefined; return result;
 }

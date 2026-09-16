@@ -304,7 +304,7 @@ fn edit_sql_failure_rolls_back_and_reuses_the_uncommitted_decision() {
     let old = change(&mut conn, "original", "Original", 1);
     conn.execute_batch("CREATE TRIGGER fail BEFORE UPDATE ON user_profile BEGIN SELECT RAISE(ABORT,'profile fault'); END;").unwrap();
     let mut edit = event("edit", json!({"summary":"New"}), 2);
-    edit.origin = Some("plugin:memory-desk".into());
+    edit.origin = Some("plugin:reading-goals".into());
     assert!(profile_commit_inner(&mut conn, &edit, &old.revision).is_err());
     assert_eq!(snapshot(&mut conn).revision, old.revision);
     assert_eq!(count(&conn, "domain_events"), 1);
@@ -322,7 +322,7 @@ fn edit_sql_failure_rolls_back_and_reuses_the_uncommitted_decision() {
             |r| r.get(0),
         )
         .unwrap();
-    assert_eq!(origin, "plugin:memory-desk");
+    assert_eq!(origin, "plugin:reading-goals");
 }
 
 #[test]
@@ -338,7 +338,7 @@ fn normal_edits_count_utf16_and_restore_keeps_large_archive_text_without_actor_o
             .code,
         "memory/invalid-input"
     );
-    for origin in ["system", "agent", "plugin:memory-desk"] {
+    for origin in ["system", "agent", "plugin:reading-goals"] {
         oversized.origin = Some(origin.into());
         assert_eq!(
             profile_restore_inner(&mut conn, &oversized, &revision)

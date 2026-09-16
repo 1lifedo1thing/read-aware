@@ -9,9 +9,7 @@ import { buildNavigationTools } from "../../../../packages/agent/src/tools/navig
 import { createAgentTurnState } from "../../../../packages/agent/src/tools/turn-state";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
-import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
-import textDeskManifest from "../../../../plugins/text-desk/manifest.json";
 
 const owned: string[] = [], disposables: PluginDisposable[] = [], workers: SandboxedPlugin[] = [], ids: string[] = [];
 let seed: { bookId: string; pdfId: string } | undefined;
@@ -44,7 +42,6 @@ export async function prepareRangeProbe() {
   for (const permission of ["none", "read", "write"] as const) await start({ id: `capability-range-${permission}`, name: "Range probe", version: "1.0.0", schemaVersion: 1,
     description: JSON.stringify(seed), permissions: permission === "none" ? [] : [`library:${permission}`],
     requires: permission === "none" ? {} : { domains: { library: "^1.7.0" } } }, new URL("./range-probe.ts", import.meta.url).href);
-  await start({ ...textDeskManifest, id: "capability-range-desk" } as PluginManifest, new URL("../../../../plugins/text-desk/dist/main.js", import.meta.url).href);
   return seed;
 }
 export async function runRangeProbe() {
@@ -74,10 +71,6 @@ export async function runRangeProbe() {
   try { await library.queries.books.readRange({ range: first }, abort.signal); cancelled = "unexpected-success"; }
   catch (error) { cancelled = error instanceof Error ? error.name : "unknown"; }
   return { seed, worker, agent, global, cancelled, before, after: await deps.reader.getSession() };
-}
-export async function openRangeDesk() {
-  await isolated(); const entry = command("capability-range-desk");
-  await runPluginContribution(entry.pluginId, "Text Desk", entry.run, { presentation: "dialog", owner: entry.run });
 }
 export async function cleanupRangeProbe() {
   await isolated();

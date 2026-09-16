@@ -3,6 +3,7 @@ import { getDefaultStore } from "jotai";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
 import { installedPluginsAtom, pluginCommandsAtom, readerModesAtom } from "../../src/features/plugins/state/plugin-store";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
+import { buildPluginContext } from "../../src/features/plugins/runtime/plugin-context";
 import { setPluginEnabled } from "../../src/features/plugins/runtime/plugin-host";
 import { readingRuntime } from "../../src/domain/reading-runtime";
 import type { ReadingModeConfiguration } from "@read-aware/core";
@@ -54,23 +55,34 @@ export async function agentMode(input: ReadingModeConfiguration) {
 export async function cancelAgentMode() {
   await isolated(); modeAbort?.abort(new Error("Mode diagnostic cancelled"));
 }
+/** Plugin-path actor for reading mode commands: a real in-page plugin context with reading:write, no compiled UI in between. */
+let readingActor: ReturnType<typeof buildPluginContext> | undefined;
+function readingCommands() {
+  if (!readingActor) {
+    readingActor = buildPluginContext({ id: "capability-segmentation-reading", name: "Segmentation reading actor", version: "1.0.0", schemaVersion: 1,
+      permissions: ["reading:write"], requires: { domains: { reading: "^2.22.0" } } }, "0.5.4", disposables);
+    readingActor.lifecycle.promote();
+  }
+  const reading = readingActor.context.domains.reading;
+  if (!reading?.commands) throw new Error("Reading actor lacks reading:write");
+  return { queries: reading.queries, commands: reading.commands };
+}
+async function modeGuard() {
+  const reading = readingCommands();
+  const session = await reading.queries.session();
+  return { reading, session, guard: { sessionId: session.sessionId ?? undefined, bookId: session.bookId ?? undefined } };
+}
 export async function pluginMode(active: boolean, unitId: string) {
   await isolated();
-  const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === "listening-desk" && command.id === "open");
-  const result = await command?.run();
-  if (!result || result.view?.kind !== "blocks") throw new Error("Listening Desk view unavailable");
-  const form = result.view.blocks.find(block => block.kind === "form" && block.fields.some(field => field.id === "active"));
-  if (form?.kind !== "form") throw new Error("Listening Desk mode form unavailable");
-  return form.onSubmit({ active, unitId });
+  const { reading, session, guard } = await modeGuard();
+  if (!session.mode.modeKey) throw new Error("No reading mode is selected");
+  await reading.commands.configureMode({ active, unitId, modeKey: session.mode.modeKey }, guard);
+  return readingRuntime.snapshot();
 }
 export async function pluginSelectMode(selectModeKey: string) {
   await isolated();
-  const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === "listening-desk" && command.id === "open");
-  const result = await command?.run();
-  if (result?.view?.kind !== "blocks") throw new Error("Listening Desk view unavailable");
-  const form = result.view.blocks.find(block => block.kind === "form" && block.fields.some(field => field.id === "selectModeKey"));
-  if (form?.kind !== "form") throw new Error("Listening Desk provider form unavailable");
-  await form.onSubmit({ selectModeKey });
+  const { reading, session, guard } = await modeGuard();
+  await reading.commands.configureMode({ active: session.mode.requestedActive, modeKey: session.mode.modeKey ?? undefined, selectModeKey }, guard);
   return readingRuntime.snapshot();
 }
 export async function closeProbeBook() {
@@ -88,25 +100,21 @@ export async function modeNavigation(action: "return-to-unit" | "away" | "next-u
   } finally { if (modeAbort === abort) modeAbort = undefined; }
 }
 export async function pluginUnitStep(direction: "next" | "previous") {
-  return pluginModeAction(`${direction}-unit`);
+  await isolated();
+  const { reading, guard } = await modeGuard();
+  const result = await reading.commands.stepMode(direction, guard);
+  return { outcome: result.outcome, snapshot: readingRuntime.snapshot() };
 }
 export async function pluginReturnToUnit() {
-  return pluginModeAction("return-to-unit");
-}
-async function pluginModeAction(actionId: string) {
   await isolated();
-  const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === "listening-desk" && command.id === "open");
-  const result = await command?.run();
-  if (result?.view?.kind !== "blocks") throw new Error("Listening Desk view unavailable");
-  const row = result.view.blocks.find(block => block.kind === "actions");
-  const action = row?.kind === "actions" ? row.actions.find(action => action.id === actionId) : null;
-  if (!action) throw new Error("Listening Desk mode action unavailable");
-  await action.run();
+  const { reading, guard } = await modeGuard();
+  await reading.commands.returnToMode(guard);
   return readingRuntime.snapshot();
 }
 export async function cleanupSegmentationProbe() {
   await isolated();
   await worker?.terminate(); worker = undefined;
+  if (readingActor) { readingActor.lifecycle.stop(); await readingActor.lifecycle.drainCleanups(); readingActor = undefined; }
   for (const disposable of disposables.reverse()) disposable.dispose(); disposables = [];
   if (restoreSentenceReader) { await setPluginEnabled("sentence-reader", true); restoreSentenceReader = false; }
   return { remainingCommands: getDefaultStore().get(pluginCommandsAtom).filter(command => command.pluginId === id).length,

@@ -1,6 +1,6 @@
 import { createAgentRuntime, type AgentRuntime } from "@read-aware/agent";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
-import { prepareMemoryFeedbackProbe, cleanupMemoryFeedbackProbe, memoryFeedbackActor, openMemoryDomainDesk } from "./desktop-memory-feedback-probe";
+import { prepareMemoryFeedbackProbe, cleanupMemoryFeedbackProbe, memoryFeedbackActor } from "./desktop-memory-feedback-probe";
 import { commitDomainEvents, mintEventRows } from "../../src/platform/domain-events";
 import { createIpcSyncStore } from "../../src/platform/sync/sync-store";
 
@@ -37,7 +37,6 @@ export async function memoryIdleExternalWrite(kind: "plugin" | "remote" | "age")
   now = Date.now(); return { aged };
 }
 export function memoryIdleSetTime(value: number) { now = value; return now; }
-export { openMemoryDomainDesk };
 export async function cleanupMemoryIdleProbe() {
   const result = await cleanupMemoryFeedbackProbe(); runtime = undefined; seed = undefined; return result;
 }

@@ -9,11 +9,9 @@ import { getBookTextSnapshot } from "../../src/features/library/lib/book-text-st
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
-import { seedTextStateBooks, extractRealTextProbe, cleanupTextStateProbe, startTextDeskProbe } from "./desktop-text-state-probe";
+import { seedTextStateBooks, extractRealTextProbe, cleanupTextStateProbe } from "./desktop-text-state-probe";
 import { registerActiveBookContent, withBookContent } from "../../src/features/library/lib/book-content-source";
 import { retainBook } from "../../src/features/reader/lib/book-lifetime";
-import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
-import textDeskManifest from "../../../../plugins/text-desk/manifest.json";
 import { getDesktopBlob, getDesktopBlobInfo, putDesktopBlob } from "../../src/platform/blob-store";
 
 const workers = new Map<string, SandboxedPlugin>();
@@ -50,7 +48,6 @@ export async function startTextSearchProbe() {
     if (result.content[0]?.type !== "text") throw Error("Expected Agent text result");
     actors[`agent-${kind}`] = JSON.parse(result.content[0].text);
   }
-  await startTextDeskProbe();
   return { ...seed, actors, coldBefore, coldAfter: await getBookTextSnapshot(books.short!) };
 }
 
@@ -72,7 +69,7 @@ export async function cleanupTextSearchProbe() {
     searchContributions: ids.reduce((count, id) => count + inspectContributions(id).length, 0) };
 }
 
-/** Real imported parser and compiled Worker; only the section read timing is held. */
+/** Real imported parser; only the section read timing is held for the synthetic actors that follow. */
 export async function startTextSearchLifecycleProbe() {
   await isolated();
   if (heldSearch || workers.size) throw Error("Clean the previous search probe first");
@@ -101,13 +98,7 @@ export async function startTextSearchLifecycleProbe() {
     finally { unregister(); await releaseOwner(); }
   });
   await Promise.race([registered, state.task]);
-  const id = "capability-search-lifecycle-desk";
-  const worker = await startPluginWorker({ ...textDeskManifest, id } as PluginManifest, "0.5.4", disposables,
-    { moduleUrl: new URL("../../../../plugins/text-desk/dist/main.js", import.meta.url).href });
-  workers.set(id, worker); await worker.checkHealth(); worker.promote();
-  const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === id && item.id === "open")!;
-  await runPluginContribution(id, "Text Desk search lifecycle", command.run, { presentation: "dialog", owner: command.run });
-  return { ...seed, pluginId: id };
+  return seed;
 }
 
 export async function textSearchLifecycleStatus(releaseRead = false) {

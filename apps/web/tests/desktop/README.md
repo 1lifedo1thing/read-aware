@@ -1,9 +1,21 @@
 # Desktop Acceptance
 
 These modules are test drivers and Worker probes, not installable plugins and
-not part of the application source tree. The 107 original modules were moved
-here together; their source imports and Worker URLs retain their original
-targets. Historical JSON evidence retains the paths used when it was recorded.
+not part of the application source tree. The original modules were moved here
+together; their source imports and Worker URLs retain their original targets.
+Historical JSON evidence retains the paths used when it was recorded.
+
+On 2026-09-15 the first-party Library Desk, Maintenance Desk, Memory Desk and
+Text Desk plugins were removed. Probes that only drove those desk views were
+deleted, and the remaining probes stopped starting the compiled desk Workers;
+host behaviour (memory domain, digests, graph tasks, ranges, text state and
+tasks, reading time, annotations, classification, feedback, observation) is
+still exercised through the synthetic inline plugin actors and Agent tools.
+On 2026-09-16 Listening Desk was removed as well (the native reader owns
+playback and mode controls), Annotation Desk was renamed Annotations
+(`plugins/annotations`, id `annotations`), and the compiled-plugin probes
+follow the new path and id.
+The directory currently holds 136 modules.
 
 ## Stage One Checks
 

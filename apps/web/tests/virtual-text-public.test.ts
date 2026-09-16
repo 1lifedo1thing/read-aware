@@ -6,9 +6,8 @@ import { bindVirtualBook } from "../src/features/plugins/lib/virtual-books";
 import { buildPluginContext } from "../src/features/plugins/runtime/plugin-context";
 import { getPersistedChapters } from "../src/domain/library";
 import { createBookTextPort } from "../src/features/ai/agent/ports/book-text-port";
-import { textDetail } from "../../../plugins/text-desk/src/views";
 
-test("registered virtual content flows through public text tasks, Text Desk and Agent with invalidation and retirement fences", async () => withDom(async () => {
+test("registered virtual content flows through public text tasks, plugin text state and Agent with invalidation and retirement fences", async () => withDom(async () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
   const bookId = crypto.randomUUID(), registryKey = "read-aware-virtual-books";
   const bytes = new Map<string, Uint8Array>(), history = new Map<string, string>();
@@ -36,7 +35,6 @@ test("registered virtual content flows through public text tasks, Text Desk and 
     bindVirtualBook(bookId, { pluginId: "virtual-index", providerId: "feed", key: "one" }); await flushLocalKV();
     const library = consumer.context.domains.library!, book = library.queries.books;
     expect(await book.getTextState(bookId)).toMatchObject({ status: "unprepared", contentVersion: null }); expect(loads).toBe(0);
-    const detail = await textDetail(consumer.context, bookId, "Feed"); expect(detail.actions!.some(a => a.id === "prepare")).toBe(true);
     const task = await library.commands!.books.prepareText(bookId);
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => reject(Error("Text task did not settle")), 2000);

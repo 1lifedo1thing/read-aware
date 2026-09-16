@@ -18,7 +18,6 @@ import { seedTextStateBooks, cleanupTextStateProbe } from "./desktop-text-state-
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
-import libraryDeskManifest from "../../../../plugins/library-desk/manifest.json";
 
 const workers = new Map<string, SandboxedPlugin>(), disposables: PluginDisposable[] = [];
 let ids: string[] = [], root: Root | undefined, surface: HTMLDivElement | undefined, abort: AbortController | undefined;
@@ -59,7 +58,6 @@ export async function startRemovalRecoveryConsumers() {
       requires: { domains: { library: "^1.6.0" } } }, new URL("./batch-removal-probe.ts", import.meta.url).href);
     permissions[role] = parseProbeToast((await command(id, "inspect").run())!.toast!);
   }
-  await start({ ...libraryDeskManifest, id: "capability-batch-desk" } as PluginManifest, new URL("../../../../plugins/library-desk/dist/main.js", import.meta.url).href);
   return permissions;
 }
 export async function runPluginBatchRemoval(action: "remove" | "retry" | "invalid" | "cleanup-list" | "cleanup-next", actor = "capability-batch-write") {

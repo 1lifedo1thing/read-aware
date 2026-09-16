@@ -11,7 +11,6 @@ import { retainBook } from "../../src/features/reader/lib/book-lifetime";
 import type { FoliateBook } from "../../src/features/reader/lib/foliate-engine";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { buildBookTextTools } from "../../../../packages/agent/src/tools/book-text-tools";
-import textDeskManifest from "../../../../plugins/text-desk/manifest.json";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
@@ -112,11 +111,6 @@ export async function sourceInvalidationTextProbe(bookId: string) {
     await putDesktopBlob(`bookfile:${bookId}`, changed);
     return { missing, changed: await getBookTextSnapshot(bookId) };
   } finally { await putDesktopBlob(`bookfile:${bookId}`, bytes); }
-}
-
-export async function startTextDeskProbe() {
-  await isolated(); await start(textDeskManifest as PluginManifest, new URL("../../../../plugins/text-desk/dist/main.js", import.meta.url).href);
-  return { contributions: inspectContributions("text-desk").length };
 }
 
 export async function cleanupTextStateProbe() {

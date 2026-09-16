@@ -8,9 +8,7 @@ import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { buildAgentTools } from "../../../../packages/agent/src/tools/registry";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
-import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
-import manifest from "../../../../plugins/library-desk/manifest.json";
 
 const workers = new Map<string, SandboxedPlugin>(), owned: PluginDisposable[] = [], books: string[] = [];
 let collectionId: string | undefined;
@@ -38,7 +36,6 @@ export async function prepareWorkspaceProbe() {
     permissions: role === "empty" ? [] : role === "read" ? ["library:read"] : role === "write" ? ["library:write"] : ["library:write", "reading:write"],
     ...(role === "reader" ? { settingsAccess: { read: ["shelf.*"], write: ["shelf.*"] } } : {}),
     requires: { services: { ui: "^1.6.0" }, domains: { library: "^1.6.0", reading: "^2.0.0" } } }, new URL("./workspace-probe.ts", import.meta.url).href);
-  await start({ ...manifest, id: "capability-workspace-desk" } as PluginManifest, new URL("../../../../plugins/library-desk/dist/main.js", import.meta.url).href);
   return { path, collectionId, bookIds: [...books] };
 }
 export async function workspaceActor(role: "empty" | "read" | "write" | "reader", action = "inspect") {
@@ -63,12 +60,6 @@ export async function agentHostCommand(request?: HostCommandRequest, scope: "boo
 }
 export async function workspaceProbeState() { return { path: await isolated(), state: workspace.snapshot(), books: await library.queries.books.list(), collectionId }; }
 export async function openWorkspaceBook() { await isolated(); return buildRuntimeDeps().reader.openBook(books[0]); }
-export async function openWorkspaceDesk() {
-  await isolated();
-  const command = getDefaultStore().get(pluginCommandsAtom).find(c => c.pluginId === "capability-workspace-desk" && c.id === "open");
-  if (!command) throw Error("Desk command unavailable");
-  await runPluginContribution(command.pluginId, manifest.name, () => command.run(), { presentation: "dialog", owner: command.run });
-}
 export async function moveWorkspaceBook() { await isolated(); await library.commands.collections.assignBooks([books[0]], null); }
 export async function cleanupWorkspaceProbe() {
   await isolated(); await buildRuntimeDeps().reader.close();

@@ -13,9 +13,7 @@ import { buildMemoryTools } from "../../../../packages/agent/src/tools/memory-to
 import { createAgentTurnState } from "../../../../packages/agent/src/tools/turn-state";
 import { headerActionsAtom, pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
-import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
-import manifest from "../../../../plugins/memory-desk/manifest.json";
 
 const workers = new Map<string, SandboxedPlugin>(), owned: PluginDisposable[] = [], memoryIds: string[] = [];
 let bookId: string | undefined, marker: string | undefined;
@@ -51,7 +49,6 @@ export async function prepareMemoryDomainProbe() {
   }
   for (const granted of [false, true]) await start({ id: `capability-memory-domain-${granted ? "read" : "empty"}`, name: "Memory domain probe", version: "1.0.0", schemaVersion: 1,
     description: JSON.stringify({ bookId, marker }), permissions: granted ? ["memory:read"] : [], requires: { domains: { memory: "^2.0.0" } } }, new URL("./memory-domain-probe.ts", import.meta.url).href);
-  await start({ ...manifest, id: "capability-memory-domain-desk" } as PluginManifest, new URL("../../../../plugins/memory-desk/dist/main.js", import.meta.url).href);
   return { path, bookId, marker, memoryIds, chapters: chapters.map((chapter, index) => ({ index, hrefs: chapter.hrefs })) };
 }
 export async function memoryDomainActor(role: "empty" | "read", action: string) {
@@ -69,10 +66,6 @@ export async function memoryDomainAgent(kind: "graph" | "memory", global = false
   const tool = (kind === "graph" ? buildGraphTools(scope, buildRuntimeDeps(), state) : buildMemoryTools(scope, buildRuntimeDeps())).find(tool => tool.name === (kind === "graph" ? "query_book_graph" : "search_memory"))!;
   const result = await tool.execute("memory-domain-e2e", kind === "graph" ? { bookId } : { bookId, query: marker });
   return result.content[0]?.type === "text" ? JSON.parse(result.content[0].text) as unknown : null;
-}
-export async function openMemoryDomainDesk() {
-  await isolated(); const command = getDefaultStore().get(pluginCommandsAtom).find(c => c.pluginId === "capability-memory-domain-desk" && c.id === "open");
-  if (!command) throw Error("Missing desk"); await runPluginContribution(command.pluginId, manifest.name, () => command.run(), { presentation: "dialog", owner: command.run });
 }
 export async function reclassifyMemoryDomainProbe(narrativity: "narrative" | "expository") {
   await isolated(); if (!bookId) throw Error("Missing owned book");

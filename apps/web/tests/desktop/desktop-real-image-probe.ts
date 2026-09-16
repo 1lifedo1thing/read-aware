@@ -1,5 +1,4 @@
 import { appDataDir } from "@tauri-apps/api/path";
-import { getDefaultStore } from "jotai";
 import { createLibraryDomain } from "../../src/domain/library";
 import { invoke } from "../../src/platform/ipc";
 import { localKV } from "../../src/platform/local-store";
@@ -10,13 +9,10 @@ import { modelCatalog } from "../../src/features/ai/lib/model-catalog";
 import { getAgentRuntime, discardAgentThread } from "../../src/features/ai/agent/agent-runtime";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { clearConversation, loadConversation } from "../../src/features/ai/lib/conversation-store";
-import { installedPluginsAtom, pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
-import { setPluginEnabled } from "../../src/features/plugins/runtime/plugin-host";
-import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
 
 const backupKey = "capability-real-image-probe.backup";
 let modelId = "openai/gpt-4.1-mini";
-type Backup = { config: string | null; key: string; bookId?: string; textDeskEnabled: boolean };
+type Backup = { config: string | null; key: string; bookId?: string };
 let backup: Backup | undefined;
 let controller: AbortController | undefined;
 
@@ -35,9 +31,7 @@ export async function prepareRealImageProbe(keyEndpoint: string, visionModel = "
   if (backup || await invoke("secret_get", { key: backupKey })) throw Error("Clean previous image probe first");
   const url = new URL(keyEndpoint);
   if (url.origin !== "http://127.0.0.1:19847") throw Error("Requires the one-use local credential endpoint");
-  const plugin = getDefaultStore().get(installedPluginsAtom).find(item => item.manifest.id === "text-desk");
-  if (!plugin?.builtin) throw Error("Requires compiled first-party Text Desk");
-  backup = { config: localKV.getItem(AI_CONFIG_KEY), key: getSecret("ai-api-key.openrouter"), textDeskEnabled: plugin.enabled };
+  backup = { config: localKV.getItem(AI_CONFIG_KEY), key: getSecret("ai-api-key.openrouter") };
   await saveBackup();
   try {
     const response = await appHttpFetch(url.href, { method: "POST" });
@@ -51,7 +45,6 @@ export async function prepareRealImageProbe(keyEndpoint: string, visionModel = "
     modelId = visionModel;
     await localKV.setItemAsync(AI_CONFIG_KEY, encodeAIConfig({ provider: "openrouter", apiKey: key, model: modelId,
       fastModel: modelId, thinkingLevel: "off", fastThinkingLevel: "off" }));
-    if (!plugin.enabled) await setPluginEnabled("text-desk", true);
 
     const canvas = document.createElement("canvas"); canvas.width = 360; canvas.height = 240;
     const painter = canvas.getContext("2d")!;
@@ -67,7 +60,7 @@ export async function prepareRealImageProbe(keyEndpoint: string, visionModel = "
     const book = await createLibraryDomain("user").commands.books.importBook({ fileName: "image-input.fb2", data: new TextEncoder().encode(source) });
     backup.bookId = book.id; await saveBackup();
     await buildRuntimeDeps().reader.openBook(book.id);
-    return { bookId: book.id, model: modelId, input: model.input, textDeskVersion: plugin.manifest.version,
+    return { bookId: book.id, model: modelId, input: model.input,
       expected: "white background; dark blue triangle upper left; yellow circle upper right; magenta rectangle lower center", width: 360, height: 240 };
   } catch (error) { await cleanupRealImageProbe(); throw error; }
 }
@@ -101,13 +94,6 @@ export async function realImageAgentTurn(text = "请实际查看本书的插图�
   } finally { clearTimeout(timeout); controller = undefined; }
 }
 
-export async function openRealImageTextDesk() {
-  await isolated(); if (!backup?.bookId) throw Error("Prepare image probe first");
-  const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === "text-desk" && item.id === "open");
-  if (!command) throw Error("Text Desk command unavailable");
-  await runPluginContribution("text-desk", "text-desk", () => command.run(), { presentation: "dialog", owner: command.run });
-}
-
 export async function cleanupRealImageProbe() {
   await isolated(); controller?.abort();
   const saved = await invoke<string | null>("secret_get", { key: backupKey });
@@ -121,11 +107,9 @@ export async function cleanupRealImageProbe() {
     await buildRuntimeDeps().reader.close();
     if (book) await createLibraryDomain("user").commands.books.remove(backup.bookId);
   }
-  await setPluginEnabled("text-desk", false);
   if (backup.config === null) await localKV.removeItemAsync(AI_CONFIG_KEY);
   else await localKV.setItemAsync(AI_CONFIG_KEY, backup.config);
   await setSecretAsync("ai-api-key.openrouter", backup.key, "remote");
-  if (backup.textDeskEnabled) await setPluginEnabled("text-desk", true);
   const configRestored = localKV.getItem(AI_CONFIG_KEY) === backup.config;
   const keyRestored = getSecret("ai-api-key.openrouter") === backup.key;
   await invoke("secret_delete", { key: backupKey }); backup = undefined;

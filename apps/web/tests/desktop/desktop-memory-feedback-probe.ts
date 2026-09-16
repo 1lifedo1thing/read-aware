@@ -1,7 +1,7 @@
 import { parseProbeToast } from "./probe-toast";
 import { getDefaultStore } from "jotai";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
-import { prepareMemoryDomainProbe, cleanupMemoryDomainProbe, openMemoryDomainDesk } from "./desktop-memory-domain-probe";
+import { prepareMemoryDomainProbe, cleanupMemoryDomainProbe } from "./desktop-memory-domain-probe";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
@@ -42,7 +42,6 @@ export async function memoryFeedbackAgent(action: "correct" | "forget" | "setPin
     return { result, requests };
   } catch (error) { return { code: error && typeof error === "object" && "code" in error ? error.code : null, requests }; }
 }
-export { openMemoryDomainDesk };
 export async function cleanupMemoryFeedbackProbe() {
   for (const worker of workers.splice(0)) await worker.terminate();
   for (const item of owned.splice(0).reverse()) item.dispose();

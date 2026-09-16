@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { getDefaultStore } from "jotai";
 import type { DigestFlavor } from "@read-aware/core";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
-import { prepareMemoryDomainProbe, cleanupMemoryDomainProbe, openMemoryDomainDesk } from "./desktop-memory-domain-probe";
+import { prepareMemoryDomainProbe, cleanupMemoryDomainProbe } from "./desktop-memory-domain-probe";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
@@ -57,7 +57,6 @@ export async function endClassificationApproval() {
   root?.unmount(); root = undefined; container?.remove(); container = undefined; part = undefined;
   return outcome;
 }
-export { openMemoryDomainDesk };
 export async function cleanupClassificationPublicProbe() {
   await endClassificationApproval();
   for (const worker of workers.splice(0)) await worker.terminate();

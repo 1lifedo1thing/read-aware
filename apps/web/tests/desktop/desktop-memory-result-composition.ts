@@ -1,9 +1,8 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import { getDefaultStore } from "jotai";
 import type { Id } from "@read-aware/core";
-import type { PluginDisposable, PluginManifest, PluginListView } from "@read-aware/plugin-types";
+import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
 import goalManifest from "../../../../plugins/reading-goals/manifest.json";
-import deskManifest from "../../../../plugins/memory-desk/manifest.json";
 import { runMemoryBuild } from "../../../../packages/agent/src/memory/build-policy";
 import { persistExtensionMemory } from "../../../../packages/agent/src/runtime/extension-memory";
 import { buildMemoryTools } from "../../../../packages/agent/src/tools/memory-tools";
@@ -19,7 +18,7 @@ import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plug
 import { pluginDocsDelete } from "../../src/features/plugins/runtime/plugin-backend";
 import { getPluginMemoryCandidates } from "../../src/features/plugins/runtime/plugin-tools";
 
-const goalId = "capability-memory-result-goals", deskId = "capability-memory-result-desk";
+const goalId = "capability-memory-result-goals";
 const workers = new Map<string, SandboxedPlugin>(), disposables: PluginDisposable[] = [];
 let bookId: Id | undefined, marker = "";
 async function isolated() {
@@ -43,7 +42,6 @@ export async function prepareMemoryResultComposition() {
     payload: { memoryId: crypto.randomUUID(), kind: "fact" as const, scope: "book" as const, bookId: ownedBook(),
       content: `Composition memory item ${String(index + 1).padStart(3, "0")}`, importance: 0.5 } })));
   await start(goalId, goalManifest as PluginManifest, new URL("../../../../plugins/reading-goals/dist/main.js", import.meta.url).href);
-  await start(deskId, deskManifest as PluginManifest, new URL("../../../../plugins/memory-desk/dist/main.js", import.meta.url).href);
   await createReadingDomain("agent").commands.openBook(ownedBook());
   return inspectMemoryResultComposition();
 }
@@ -52,7 +50,7 @@ export async function inspectMemoryResultComposition() {
   const rows = await buildRuntimeDeps().memory.listMemories();
   const own = rows.filter(row => row.scope === `book:${ownedBook()}`);
   return { bookId, marker, count: own.length, goalRows: own.filter(row => row.kind === "preference").map(row => ({ id: row.id, content: row.content })),
-    versions: { goals: goalManifest.version, desk: deskManifest.version } };
+    versions: { goals: goalManifest.version } };
 }
 export async function openMemoryResultGoal(status = false) {
   await isolated(); ownedBook(); const item = command(goalId, status ? "memory-status" : "open");
@@ -68,15 +66,6 @@ export async function processMemoryResultGoal() {
       memory: deps.memory, operation, log: deps.log });
   });
   return inspectMemoryResultComposition();
-}
-export async function openMemoryResultPage() {
-  await isolated(); const id = ownedBook(), item = command(deskId, "open");
-  await runPluginContribution(deskId, deskManifest.name, async () => {
-    const home = (await item.run())!.view as PluginListView;
-    const books = (await home.items.find(item => item.id === "books")!.onSelect!())!.view as PluginListView;
-    const book = (await books.items.find(item => item.id === id)!.onSelect!())!.view as PluginListView;
-    return book.items.find(item => item.id === "memory")!.onSelect!();
-  }, { presentation: "dialog", owner: item.run });
 }
 export async function memoryResultAgentPages() {
   await isolated();
@@ -102,7 +91,7 @@ export async function cleanupMemoryResultComposition() {
   await commitDomainEvents(...rows.map(row => ({ type: "memory.forgotten" as const, origin: "user" as const, payload: { memoryId: row.id, reason: "user" as const } })));
   await pluginDocsDelete(goalId, "goals", id);
   await createLibraryDomain("user").commands.books.remove(id);
-  const result = { ...await inspectMemoryResultComposition(), contributions: inspectContributions(goalId).length + inspectContributions(deskId).length,
+  const result = { ...await inspectMemoryResultComposition(), contributions: inspectContributions(goalId).length,
     book: await createLibraryDomain("user").queries.books.get(id) };
   bookId = undefined; return result;
 }

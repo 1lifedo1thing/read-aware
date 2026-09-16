@@ -67,13 +67,6 @@ export async function agentPlayback(action: "start" | "stop") {
   return tools.find(tool => tool.name === "control_read_aloud")!.execute("playback-e2e", { action });
 }
 
-export async function toggleListeningDesk(enabled: boolean) {
-  await isolated();
-  await setPluginEnabled("listening-desk", enabled);
-  return { playback: readingRuntime.snapshot().playback,
-    commands: getDefaultStore().get(pluginCommandsAtom).filter(command => command.pluginId === "listening-desk").map(command => command.id) };
-}
-
 export async function cleanupPlaybackProbe() {
   await isolated();
   await worker?.terminate(); worker = undefined;

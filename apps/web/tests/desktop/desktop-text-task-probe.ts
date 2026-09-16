@@ -13,7 +13,7 @@ import type { FoliateBook } from "../../src/features/reader/lib/foliate-engine";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
-import { seedTextStateBooks, cleanupTextStateProbe, startTextDeskProbe } from "./desktop-text-state-probe";
+import { seedTextStateBooks, cleanupTextStateProbe } from "./desktop-text-state-probe";
 
 const workers = new Map<string, { worker: SandboxedPlugin; disposables: PluginDisposable[] }>();
 let books: Record<string, string> = {};
@@ -159,7 +159,6 @@ export async function runTextTaskProbe() {
   }
   await textTaskCommand(b, "rebuild"); const realRebuild = await settled(b);
   assert(realRebuild.status === "completed" && realRebuild.textState.chapterCount === 1, "Real FB2 rebuild failed");
-  await startTextDeskProbe();
   return { dataDir, books, permissions, activationRejected, first, second, cancelled, completed, events, foreign, retired, lastCancelled, busy,
     shutdown: { survivor, unsubscribed, stoppedReceipt, lateBlob: null }, agent, realRebuild };
 }
@@ -172,15 +171,18 @@ export async function cleanupTextTaskProbe() {
   return { ...cleanup, taskContributions: ids.map(id => ({ id, count: inspectContributions(id).length })) };
 }
 
-/** Leave an actual Text Desk request behind a deterministic extraction barrier for UI verification. */
-export async function stageLiveTextDeskProbe() {
+/** Leave a real plugin-context text task behind a deterministic extraction barrier for UI verification. */
+export async function stageLiveTextTaskProbe() {
   const dataDir = await isolated(); assert(!Object.keys(books).length, "Clean up previous probe first");
   books = (await seedTextStateBooks()).books;
-  await holdExtraction(); await startTextDeskProbe();
-  return { dataDir, books };
+  await holdExtraction();
+  const id = "capability-task-live";
+  await actor(id, "library:write");
+  const receipt = await textTaskCommand(id, "start"); await until(() => reads === 1);
+  return { dataDir, books, pluginId: id, receipt };
 }
 
-export async function finishLiveTextDeskExtraction() {
+export async function finishLiveTextTaskExtraction() {
   await isolated(); releaseBarrier?.();
   await until(() => reads === 3);
   await releaseExtraction();

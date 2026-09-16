@@ -1,6 +1,5 @@
 import { getDefaultStore } from "jotai";
 import type {
-  PluginAction,
   PluginDisposable,
   PluginFormView,
   PluginListView,
@@ -21,12 +20,11 @@ import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plug
 import { PluginViewSession } from "../../src/features/plugins/lib/plugin-view-session";
 import type { RegisteredCommand } from "../../src/features/plugins/lib/plugin-types";
 import jumperManifest from "../../../../plugins/jumper/manifest.json";
-import textDeskManifest from "../../../../plugins/text-desk/manifest.json";
 import { assertFull2BookAccessProfile } from "./desktop-book-access-fixture";
 
 /**
- * D3 exercises the compiled first-party consumers through the host Worker
- * boundary. It owns only the temporary result-limit book; the two Full2 books
+ * D3 exercises the compiled first-party Jumper consumer through the host
+ * Worker boundary. It owns only the temporary result-limit book; the two Full2 books
  * are supplied by the acceptance profile and are never removed here.
  */
 const SEARCH_QUERY = "Full2 access probe";
@@ -47,7 +45,7 @@ type ProbeFixture = {
   secondBookId: string;
   resultBookId: string;
   originalBookId?: string;
-  workerIds: { jumper: string; textDesk: string };
+  workerIds: { jumper: string };
 };
 
 let fixture: ProbeFixture | undefined;
@@ -117,13 +115,6 @@ function findForm(value: unknown): PluginFormView | undefined {
     }
   }
   return candidate.block === undefined ? undefined : findForm(candidate.block);
-}
-
-function findAction(view: PluginView, id: string): PluginAction {
-  if (view.kind !== "detail") throw new Error(`Expected detail view for ${id}`);
-  const action = view.actions?.find(item => item.id === id);
-  if (!action) throw new Error(`Detail view has no ${id} action`);
-  return action;
 }
 
 function watchView(view: PluginView): WatchedView {
@@ -200,42 +191,6 @@ async function jumperSearch(bookId: string, query: string, matchCase = false, wh
   }
 }
 
-async function textDeskSearch(bookId: string, query: string, matchCase = false, wholeWords = false): Promise<PluginView> {
-  if (!fixture) throw new Error("Prepare the bounded search probe first");
-  const command = await commandFor(fixture.workerIds.textDesk, "open");
-  const rootResult = await command.run();
-  try {
-    const root = requireView(rootResult, "Text Desk open command");
-    if (root.kind !== "list") throw new Error("Text Desk open view is not a book list");
-    const item = root.items.find(candidate => candidate.id === bookId);
-    if (!item?.onSelect) throw new Error(`Text Desk book ${bookId} is not on the first page`);
-    const detailResult = await item.onSelect();
-    try {
-      const detail = requireView(detailResult, "Text Desk book detail");
-      const actionResult = await findAction(detail, "find-passage").run();
-      try {
-        const form = requireView(actionResult, "Text Desk passage form");
-        if (form.kind !== "form") throw new Error("Text Desk passage form is not a form view");
-        const result = await form.onSubmit({ query, matchCase, wholeWords });
-        return requireView(result, "Text Desk range search");
-      } finally {
-        releasePluginCallbacks(actionResult);
-      }
-    } finally {
-      releasePluginCallbacks(detailResult);
-    }
-  } finally {
-    releasePluginCallbacks(rootResult);
-  }
-}
-
-async function searchView(consumer: "jumper" | "textDesk", bookId: string, query: string,
-  matchCase = false, wholeWords = false): Promise<PluginView> {
-  return consumer === "jumper"
-    ? jumperSearch(bookId, query, matchCase, wholeWords)
-    : textDeskSearch(bookId, query, matchCase, wholeWords);
-}
-
 /** Holds the real Foliate parser at section read, as the text-search driver does. */
 async function holdParserRead(bookId: string): Promise<ParserGate> {
   let releaseGate!: () => void;
@@ -280,8 +235,8 @@ async function holdParserRead(bookId: string): Promise<ParserGate> {
   return state;
 }
 
-async function assertProgressAndResult(consumer: "jumper" | "textDesk", bookId: string) {
-  const view = await searchView(consumer, bookId, SEARCH_QUERY);
+async function assertProgressAndResult(consumer: "jumper", bookId: string) {
+  const view = await jumperSearch(bookId, SEARCH_QUERY);
   const watched = watchView(view);
   try {
     await waitUntil(() => currentView(watched)?.kind === "list", `${consumer} result`);
@@ -295,12 +250,12 @@ async function assertProgressAndResult(consumer: "jumper" | "textDesk", bookId: 
   }
 }
 
-async function assertCancelReplace(consumer: "jumper" | "textDesk", bookId: string) {
+async function assertCancelReplace(consumer: "jumper", bookId: string) {
   const gate = await holdParserRead(bookId);
   let cancelledView: PluginView | undefined;
   let cancelled: WatchedView | undefined;
   try {
-    cancelledView = await searchView(consumer, bookId, SEARCH_QUERY);
+    cancelledView = await jumperSearch(bookId, SEARCH_QUERY);
     cancelled = watchView(cancelledView);
     await waitUntil(() => gate.entered > 0, `${consumer} parser read admission`);
     cancelled.session.dispose("replaced");
@@ -319,7 +274,7 @@ async function assertCancelReplace(consumer: "jumper" | "textDesk", bookId: stri
     await gate.task.catch(() => undefined);
   }
 
-  const replacement = await searchView(consumer, bookId, SEARCH_QUERY);
+  const replacement = await jumperSearch(bookId, SEARCH_QUERY);
   const replaced = watchView(replacement);
   try {
     await waitUntil(() => currentView(replaced)?.kind === "list", `${consumer} replacement result`);
@@ -332,8 +287,8 @@ async function assertCancelReplace(consumer: "jumper" | "textDesk", bookId: stri
   }
 }
 
-async function assertResultLimit(consumer: "jumper" | "textDesk", bookId: string) {
-  const view = await searchView(consumer, bookId, RESULT_QUERY, true, true);
+async function assertResultLimit(consumer: "jumper", bookId: string) {
+  const view = await jumperSearch(bookId, RESULT_QUERY, true, true);
   const watched = watchView(view);
   try {
     await waitUntil(() => currentView(watched)?.kind === "list", `${consumer} result-limit result`);
@@ -353,14 +308,14 @@ async function assertResultLimit(consumer: "jumper" | "textDesk", bookId: string
 
 async function runBudgetStage(record: ProbeRunRecord) {
   if (!fixture) throw new Error("Prepare the bounded search probe first");
-  for (const consumer of ["jumper", "textDesk"] as const) {
+  for (const consumer of ["jumper"] as const) {
     if (Object.hasOwn(record.budget, consumer)) continue;
     await reading.commands.openBook(fixture.resultBookId, AbortSignal.timeout(20_000));
     record.budget[consumer] = await assertResultLimit(consumer, fixture.resultBookId);
   }
 }
 
-/** Prepare the Full2-only driver and start the actual compiled plugin Workers. */
+/** Prepare the Full2-only driver and start the actual compiled Jumper Worker. */
 export async function prepareDesktopBoundedSearchProbe() {
   if (fixture) throw new Error("Clean up the previous bounded search probe first");
   const profile = await assertFull2BookAccessProfile();
@@ -383,17 +338,14 @@ export async function prepareDesktopBoundedSearchProbe() {
     secondBookId: books[1]!.id,
     resultBookId: resultBook.id,
     originalBookId: before.bookId ?? undefined,
-    workerIds: { jumper: "", textDesk: "" },
+    workerIds: { jumper: "" },
   };
   runRecord = { fixtureId: resultBook.id, completed: {}, budget: {} };
   try {
     await reading.commands.openBook(fixture.firstBookId, AbortSignal.timeout(20_000));
     fixture.workerIds.jumper = await startWorker(jumperManifest as PluginManifest,
       new URL("../../../../plugins/jumper/dist/main.js", import.meta.url).href);
-    fixture.workerIds.textDesk = await startWorker(textDeskManifest as PluginManifest,
-      new URL("../../../../plugins/text-desk/dist/main.js", import.meta.url).href);
     await commandFor(fixture.workerIds.jumper, "open");
-    await commandFor(fixture.workerIds.textDesk, "open");
     return {
       profile,
       full2Books: [fixture.firstBookId, fixture.secondBookId],
@@ -403,7 +355,6 @@ export async function prepareDesktopBoundedSearchProbe() {
       workerIds: fixture.workerIds,
       compiledModules: {
         jumper: "plugins/jumper/dist/main.js",
-        textDesk: "plugins/text-desk/dist/main.js",
       },
     };
   } catch (error) {
@@ -415,11 +366,11 @@ export async function prepareDesktopBoundedSearchProbe() {
 /** Run progress/result, cancellation/replacement, and non-empty budget checks. */
 export async function runDesktopBoundedSearchProbe() {
   await assertFull2BookAccessProfile();
-  if (!fixture || !fixture.workerIds.jumper || !fixture.workerIds.textDesk) {
+  if (!fixture || !fixture.workerIds.jumper) {
     throw new Error("Prepare the bounded search probe first");
   }
   const record = runRecord ??= { fixtureId: fixture.resultBookId, completed: {}, budget: {} };
-  for (const consumer of ["jumper", "textDesk"] as const) {
+  for (const consumer of ["jumper"] as const) {
     if (Object.hasOwn(record.completed, consumer)) continue;
     await reading.commands.openBook(fixture.firstBookId, AbortSignal.timeout(20_000));
     record.completed[consumer] = {
@@ -440,7 +391,7 @@ export async function runDesktopBoundedSearchProbe() {
 /** Resume only the budget stage after completed consumer evidence is recorded. */
 export async function runDesktopBoundedSearchBudgetProbe() {
   await assertFull2BookAccessProfile();
-  if (!fixture || !fixture.workerIds.jumper || !fixture.workerIds.textDesk) {
+  if (!fixture || !fixture.workerIds.jumper) {
     throw new Error("Prepare the bounded search probe first");
   }
   const record = runRecord ??= { fixtureId: fixture.resultBookId, completed: {}, budget: {} };

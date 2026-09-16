@@ -1,9 +1,5 @@
 import { appDataDir } from "@tauri-apps/api/path";
-import { getDefaultStore } from "jotai";
 import { createLibraryDomain } from "../../src/domain/library";
-import { installedPluginsAtom, pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
-import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
-import { setPluginEnabled } from "../../src/features/plugins/runtime/plugin-host";
 import { getDesktopBlob, putDesktopBlob } from "../../src/platform/blob-store";
 import { commitDomainEvents } from "../../src/platform/domain-events";
 import { createAnnotationsDomain } from "../../src/domain/annotations";
@@ -13,8 +9,6 @@ import { PDFDocument, StandardFonts } from "pdf-lib";
 import { emitAppEvent } from "../../src/platform/app-events";
 import { parseFileName } from "../../src/features/library/lib/book-file-name";
 
-const plugins = ["library-desk", "text-desk"] as const;
-const enabled = new Map<string, boolean>();
 let bookId: string | undefined;
 let marker: string | undefined;
 const duplicateIds: string[] = [];
@@ -29,14 +23,8 @@ async function isolated() {
 
 export async function prepareLibraryContent() {
   const path = await isolated();
-  if (marker || enabled.size) throw Error("Acceptance already owns resources");
+  if (marker) throw Error("Acceptance already owns resources");
   marker = `Composition ${crypto.randomUUID().slice(0, 8)}`;
-  for (const id of plugins) {
-    const installed = getDefaultStore().get(installedPluginsAtom).find(plugin => plugin.manifest.id === id);
-    if (!installed?.builtin) throw Error(`Expected debug RepoDist ${id}`);
-    enabled.set(id, installed.enabled);
-    if (!installed.enabled) await setPluginEnabled(id, true);
-  }
   const canvas = document.createElement("canvas");
   canvas.width = 240; canvas.height = 160;
   const painter = canvas.getContext("2d")!;
@@ -51,16 +39,7 @@ export async function prepareLibraryContent() {
 <body name="notes"><section id="note-one"><title><p>1</p></title><p>Acceptance footnote: the source is a local test book.</p></section></body><binary id="picture" content-type="image/png">${png}</binary></FictionBook>`;
   const book = await createLibraryDomain("user").commands.books.importBook({ fileName: `${marker}.fb2`, data: new TextEncoder().encode(source) });
   bookId = book.id;
-  return { path, marker, bookId, plugins: getDefaultStore().get(installedPluginsAtom).filter(plugin => plugins.includes(plugin.manifest.id as typeof plugins[number]))
-    .map(plugin => ({ id: plugin.manifest.id, version: plugin.manifest.version, enabled: plugin.enabled, error: plugin.error })) };
-}
-
-export async function openLibraryContent(id: typeof plugins[number]) {
-  await isolated();
-  if (!enabled.has(id)) throw Error("Plugin not owned by acceptance");
-  const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === id && item.id === "open");
-  if (!command) throw Error("Plugin command unavailable");
-  await runPluginContribution(id, id, () => command.run(), { presentation: "dialog", owner: command.run });
+  return { path, marker, bookId };
 }
 
 export async function inspectLibraryContent() {
@@ -160,7 +139,6 @@ export async function prepareAutomaticPdfEnrichment() {
 
 export async function cleanupLibraryContent() {
   await isolated();
-  for (const id of enabled.keys()) await setPluginEnabled(id, false);
   const library = createLibraryDomain("user");
   for (const collection of await library.queries.collections.list()) {
     if (marker && collection.name.startsWith(marker)) await library.commands.collections.remove(collection.id);
@@ -171,7 +149,6 @@ export async function cleanupLibraryContent() {
   duplicateIds.length = 0;
   enrichmentId = undefined;
   enrichmentSource = undefined;
-  for (const [id, wasEnabled] of enabled) if (wasEnabled) await setPluginEnabled(id, true);
-  enabled.clear(); marker = undefined;
+  marker = undefined;
   return { removed, remaining: (await library.queries.books.list()).map(book => ({ id: book.id, title: book.title })) };
 }

@@ -1,7 +1,7 @@
 import { parseProbeToast } from "./probe-toast";
 import { getDefaultStore } from "jotai";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
-import { prepareMemoryDomainProbe, cleanupMemoryDomainProbe, openMemoryDomainDesk, memoryDomainAgent } from "./desktop-memory-domain-probe";
+import { prepareMemoryDomainProbe, cleanupMemoryDomainProbe, memoryDomainAgent } from "./desktop-memory-domain-probe";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
@@ -42,7 +42,7 @@ export async function retireMemoryObserver() {
   await workers.get("read")?.terminate(); workers.delete("read");
   return inspectContributions("capability-memory-observation-read").length;
 }
-export { openMemoryDomainDesk, memoryDomainAgent };
+export { memoryDomainAgent };
 export async function cleanupMemoryObservationProbe() {
   for (const worker of workers.values()) await worker.terminate(); workers.clear();
   for (const item of owned.splice(0).reverse()) item.dispose();
