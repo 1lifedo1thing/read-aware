@@ -45,14 +45,6 @@ test("import task controls have explicit actor mappings and are absent from book
   }
 });
 
-test("maintenance composition is a source consumer, not a new Agent tool or bundled plugin", () => {
-  const inventory = collectInventory();
-  expect(inventory.find(item => item.family === "First-party source plugin" && item.name === "maintenance-desk")?.rows)
-    .toEqual(["CFG08", "SYS15", "OPS03", "OPS08", "OPS11", "EXT02", "EXT05"]);
-  expect(inventory.some(item => item.family === "Native bundled plugin" && item.name === "maintenance-desk")).toBe(false);
-  expect(inventory.some(item => item.family === "Plugin Agent contribution" && item.name.includes("maintenance_desk"))).toBe(false);
-});
-
 test("Jumper bookmark tools are inventoried as global plugin extensions, not new host APIs", () => {
   const tools = collectInventory().filter(item => item.family === "Plugin Agent contribution" && item.name.startsWith("plugin_jumper_"));
   expect(tools.map(item => item.name)).toEqual(["plugin_jumper_list_bookmarks", "plugin_jumper_inspect_bookmark_location", "plugin_jumper_save_bookmark", "plugin_jumper_manage_bookmark"]);
@@ -152,8 +144,4 @@ test("memory query and consumer inventories stay distinct from bundled or model 
   }
   expect(inventory.find(item => item.family === "Plugin ctx" && item.name === "domains.memory.queries.classification")?.rows).toEqual(["MEM09"]);
   expect(inventory.find(item => item.family === "Plugin ctx" && item.name === "domains.memory.commands.classify")?.rows).toEqual(["MEM09"]);
-  expect(inventory.find(item => item.family === "First-party source plugin" && item.name === "memory-desk")?.rows).toContain("MEM05");
-  expect(inventory.find(item => item.family === "First-party source plugin" && item.name === "memory-desk")?.rows).toContain("MEM11");
-  expect(inventory.some(item => item.family === "Native bundled plugin" && item.name === "memory-desk")).toBe(false);
-  expect(inventory.some(item => item.family === "Plugin Agent contribution" && item.name.includes("memory-desk"))).toBe(false);
 });

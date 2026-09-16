@@ -96,8 +96,9 @@ back. Normal onboarding takes a fresh snapshot and uses the same conditional
 summary write; its subsequent memory seeds remain separate transactions.
 
 Public reads remain bounded and writes conditional on the observed revision.
-The existing Memory Desk consumer now requires memory 2; this is a coordinated
-breaking contract, not an adapter that silently accepts profile1 decisions.
+Existing memory 1.x consumers must explicitly move to memory 2; this is a
+coordinated breaking contract, not an adapter that silently accepts profile1
+decisions.
 Entity resolve/merge still need bounded read/conditional write APIs with explicit
 memory authorization and ownership/cancellation checks. Full interview/seed
 orchestration and consolidation are not implemented by summary migration.

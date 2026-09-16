@@ -179,7 +179,7 @@
         <p>文档导航更新于 2026-09-15。下列版本说明保留各自的实现与验证边界；当前接线查
         <a href="../capabilities/host-capability-matrix.html">能力矩阵</a>，当前执行范围只看
         <a href="../capabilities/host-capability-acceptance.md">C01–C09 集中验收</a>，当前阶段查
-        <a href="../capabilities/host-capability-delivery.md">当前交接</a>。旧版本的待验说明不自动成为新待办；原始验收报告和运行工件只保留在 Git 历史中。
+        <a href="../capabilities/host-capability-delivery.md">当前交接</a>。旧版本的待验说明不自动成为新待办；原始验收报告和运行工件只保留在 Git 历史中。2026-09-16：Listening Desk 已整体移除（原生阅读器已提供播放/模式控制，Reading 2.5 控制器仍由原生阅读器与 Agent 消费），Annotation Desk 更名为 Annotations，其余四个组合插件（Annotations、Reading Goals、Workspace Profiles、Jumper）重写为单一任务界面；下文引用旧版本号的说明属于历史组合证据。
         <a href="../archive/capabilities/plugin-capability-baseline.html">早期基线</a> 已归档，不能据此直接判断旧 GAP 当前是否关闭。</p>
         <div class="search-row"><label for="search">查找架构条目<input id="search" type="search" placeholder="Domain、权限、更新…"></label><button id="search-clear" aria-label="清空搜索" title="清空搜索"><i data-lucide="x"></i></button></div>
         <p id="search-result" aria-live="polite"></p>
@@ -219,13 +219,13 @@
           </div></details>
         <details class="ep" data-search-section="annotation observation conditional ANN09 标注 观察 同步 草稿 所见版本"><summary>Annotations 2：所有改写按所见版本提交，列表持续观察</summary><div class="ep-body">
           <p>events.observe(page/inspect) 提供初始快照、变化、错误与恢复，包含无本地广播的同步投影；读与回调结算后一秒重读，64 个订阅上限，关闭/退役释放。Agent 按需读取同源结果，不新增常驻模型订阅。</p>
-          <p>Annotations 2 删除五个无条件改写/删除入口，统一走所见版本 applyChanges；旧 ^1.x 插件明确拒绝，不偷偷刷新令牌。Agent 删除同样绑定批准时版本。Annotation Desk 0.3 已迁移，真实编译插件的冲突草稿保持不变；恢复/重放仍是宿主内部路径。</p>
-          <p>Annotation Desk 0.4 已组合书籍笔记、选区引文笔记及四色高亮/下划线，无新增宿主接口或权限。真实桌面已跑通 Text Desk 搜索选中原文、选区菜单创建笔记/蓝色下划线、编辑及确认批量删除；原文引文保持，正文标记随创建/删除更新，600/900宽画面已验。25项基础测试通过；导出、其他样式/格式、重启和完整Agent回合本批未验，既有创建不做源版本条件写，Range缺口仍在。<a href="./plugin-system.md#annotation-desk-creation-composition">创建契约</a></p>
+          <p>Annotations 2 删除五个无条件改写/删除入口，统一走所见版本 applyChanges；旧 ^1.x 插件明确拒绝，不偷偷刷新令牌。Agent 删除同样绑定批准时版本。Annotations（原 Annotation Desk，2026-09-16 更名）0.3 已迁移，真实编译插件的冲突草稿保持不变；恢复/重放仍是宿主内部路径。</p>
+          <p>Annotations（原 Annotation Desk）0.4 已组合书籍笔记、选区引文笔记及四色高亮/下划线，无新增宿主接口或权限；0.10 起列表经宿主 pagination 控件翻页，创建后回到列表并提示。真实桌面已跑通插件搜索选中原文（该消费者夹具已退役）、选区菜单创建笔记/蓝色下划线、编辑及确认批量删除；原文引文保持，正文标记随创建/删除更新，600/900宽画面已验。25项基础测试通过；导出、其他样式/格式、重启和完整Agent回合本批未验，既有创建不做源版本条件写，Range缺口仍在。<a href="./plugin-system.md#annotation-desk-creation-composition">创建契约</a></p>
           <p>原生 Notes、书籍详情、全局标注弹层和正文标记共用串行观察；读失败清旧内容、操作和计数，恢复重画，切书/关闭释放。真实全局 Delete 已验远端先改后删冲突、新内容保留、重读后成功；SQLite 故障恢复与实际 Worker/Agent 条件批次已验。legacy 远端事件、全局/整书载荷、Range 及打包跨平台仍缺，书目单独变更不触发插件列表，不承诺即时交付或自主模型验证。<a href="./plugin-system.md#annotation-conditional-contract">版本迁移</a> · <a href="./plugin-system.md#annotation-query-observations">观察契约</a></p>
           <p>存储与封面命令的数据库等待已移入阻塞工作池，封面协议异步响应。macOS 原生已验锁中保存忙碌态、取消重开、旧保存成功后新草稿保留，以及超时错误与重试；取消不回滚已受理写。启动/窗口退出、最大载荷与跨平台不在此保证内。<a href="./plugin-system.md#storage-execution-boundary">执行边界与证据</a></p>
         </div></details>
           <details class="ep" data-search-section="host commands observe open-book UI03 partial 宿主 命令 观察 开书 部分 回执"><summary>UI 1.6：18 个共享命令增加授权状态观察</summary><div class="ep-body">
-            <p>Agent 按需查询同源状态；Library Desk 0.6 实时更新选中/可用状态，保留搜索，错误保留旧行并暂停操作。资源选择仍冻结点击时的 revision；书库写权限不替代字段或阅读权限。</p>
+            <p>Agent 按需查询同源状态；插件可实时更新选中/可用状态并保留搜索，错误保留旧行并暂停操作（原第一方消费者夹具已于 2026-09-15 退役）。资源选择仍冻结点击时的 revision；书库写权限不替代字段或阅读权限。</p>
             <p>观察覆盖工作区、已提交书架设置和语言，串行合并、稳定错误、退订释放。设置保存后才导航，部分完成不假称回滚；开书等待阅读就绪，不清无关覆盖层。</p>
             <p>macOS debug 已验 Worker 过滤/退订、真实阅读和编译插件实时更新。SQL 失败现在由调用方单次呈现，旧存储写仍有全局提示；慢读/恢复为单元证据。导入、跨插件、其余原生入口、目标级可用性和打包跨平台仍缺，UI03 保持部分。<a href="./plugin-system.md#host-command-discovery-and-execution">完整契约</a></p>
           </div></details>
@@ -244,67 +244,67 @@
           </div></details>
           <details class="ep" data-search-section="listNavigationTargets page-list 页码 分节 索引"><summary>Library 1.14：源分节与书籍页码标签可以分页发现</summary><div class="ep-body">
             <p>插件和 Agent 共用版本化导航目录，列出全部源分节或解析器提供的页码表；按原始标签精确查找，重复标签保留多个目标。位置可直接交给现有导航，不读正文、不加载外链。</p>
-            <p>无页码表与未匹配标签分开；EPUB/PDF 标签同源，当前分节屏幕计数不推算全书页数。Jumper 0.4 已组合40项源目录、精确页码查找、分节序号输入及八种原生步进；重复标签不猜目标，分页固定版本，步进固定会话。19项插件测试及构建/类型检查通过，真实格式/Worker/Tauri组合后置。<a href="./plugin-system.md#navigation-target-catalog-library-114">完整契约</a> · <a href="./plugin-system.md#jumper-source-navigation-composition">Jumper组合</a></p>
+            <p>无页码表与未匹配标签分开；EPUB/PDF 标签同源，当前分节屏幕计数不推算全书页数。Jumper 0.4 曾组合40项源目录、精确页码查找、分节序号输入及八种原生步进；2026-09-16 的 0.12 将章节/页码/正文合并为单一导航表单，页码模式仍消费该目录，步进入口已移除。真实格式/Worker/Tauri组合后置。<a href="./plugin-system.md#navigation-target-catalog-library-114">完整契约</a> · <a href="./plugin-system.md#jumper-source-navigation-composition">Jumper组合</a></p>
             <p>Jumper 0.5 已组合位置/选区书签、命名/改名/确认删除及40项分页，未开书也可从命令查看。复用版本化位置和私有文档条件写，不新建宿主表；旧位置不猜测修复。29项插件测试及构建/类型通过，重启/真实选区与桌面返回待验；本批无书签Agent工具或跨设备承诺。</p>
             <p>0.6 已补四个全局Agent工具，查询/检查位置后，保存及跳转/改名/删除由宿主确认；位置变化或写版本冲突不执行替代操作。新增agent:tools授权，不新增宿主接口。38项插件测试及既有批准回归通过；真实批准、模型回合与桌面组合仍待验，0.5的Agent缺口由本批取代。</p>
           </div></details>
           <details class="ep" data-search-section="workspace navigation selection UI01 UI02 工作区 导航 搜索 选择集"><summary>UI 1.3：Agent 和插件共享应用导航与书架选择</summary><div class="ep-body">
             <p>同一服务打开书架、集合、Context、统计、设置和命令搜索，观察实际界面及分页选择集。离开阅读器另需阅读控制权限；不公开 DOM、原子状态、正文或凭据。</p>
-            <p>Library Desk 0.3 把跨集合勾选分组，用户选定一组后才在书架显示；搜索表单直接打开原生命令面板。删除仍需独立操作。旧请求、过期状态和失效目标明确失败，导航等目标组件提交才确认，不冒充动画结束或数据持久化。</p>
+            <p>跨集合勾选按组返回，用户选定一组后才在书架显示；插件搜索表单可直接打开原生命令面板。删除仍需独立操作。旧请求、过期状态和失效目标明确失败，导航等目标组件提交才确认，不冒充动画结束或数据持久化。</p>
             <p>macOS debug 已验双端权限、真实 FB2 切换、两项选择/分页、移出后的协调和编译插件界面。查询默认 100/最大 1000，64 个观察者上限；模型输出保留分页游标并明确搜索预览。大规模、远端竞态、全部焦点流程、打包和跨平台未验。<a href="./plugin-system.md#workspace-navigation-and-selection">完整契约</a></p>
           </div></details>
           <details class="ep" data-search-section="reading insights trends STAT02 STAT05 阅读 趋势 成就 小时"><summary>Reading 2.8：两端共享趋势、成就与正式会话事件</summary><div class="ep-body">
-            <p>Agent 与 Reading Goals 0.3 读取同一已结算统计，组合最近 7/30/365 天、日期总量、连续阅读和成就。年度柱状图现在严格匹配 365 天窗口；开发版统计页不再自动写入模拟历史。</p>
+            <p>Agent 读取已结算统计；原 Reading Goals 0.3 洞察视图曾组合最近 7/30/365 天、日期总量、连续阅读和成就（2026-09-16 的 0.7 重写后移除，仅作历史证据）。年度柱状图现在严格匹配 365 天窗口；开发版统计页不再自动写入模拟历史。</p>
             <p>小时分布与成就是全部历史口径，不能当成某周的小时分布。全部时间图最多 36 个月；参考日期不是历史快照，聚合可含已删书记录。正式 sessionRecorded 的公开类型与运行时名单同源。</p>
             <p>macOS debug 已验双端权限、结算后自动刷新、失败保留旧值及恢复。插件子视图为快照，尚非覆盖远端/删除/跨日的完整观察；大历史负载、打包和跨平台未验。<a href="./plugin-system.md#settled-reading-insights">完整契约</a></p>
           </div></details>
           <details class="ep" data-search-section="reading time pending STAT03 阅读 时长 待结算"><summary>Reading 2.7：Agent 与插件共享已结算和待结算时长</summary><div class="ep-body">
             <p>同一数据库快照读取两部分，总时长不会因会话结算而重复增加。支持按书、记录日期过滤及有界分页；Agent 输出秒数和 ISO 时间，插件还可观察更新。只开放读取，不开放计时写入或强制结算。</p>
-            <p>Reading Goals 0.2 组合时长详情、日期切换和待结算列表。读取失败保留上次成功样本，通过 views 1.2 内联错误显示宿主本地化文案；恢复后自动续更，关闭即退订。</p>
+            <p>原 Reading Goals 0.2 曾组合时长详情、日期切换和待结算列表（2026-09-16 的 0.7 重写后移除，仅作历史证据）。读取失败保留上次成功样本，通过 views 1.2 内联错误显示宿主本地化文案；恢复后自动续更，关闭即退订。</p>
             <p>macOS debug 已验双端查询、真实阅读 tick、结算、失败恢复和窄窗菜单。数据只含已持久样本，通常约 20 秒写入一次，不外推秒表，也不代表跨设备已同步；打包、跨平台和长时负载未验。<a href="./plugin-system.md#persisted-reading-time">完整契约</a></p>
           </div></details>
           <p class="intro">插件只看到权限允许的 actor view。所有写入都经过正式命令，并记录来源。</p>
-          <details class="ep" data-search-section="Library Desk organize duplicate merge collections 书目 收藏 集合 合并"><summary>Library Desk 0.8：书目、集合与重复书合并已有实际使用方</summary><div class="ep-body">
+          <details class="ep" data-search-section="organize duplicate merge collections 书目 收藏 集合 合并"><summary>Library 1.10：书目、集合与重复书合并公开路径（消费者夹具已退役）</summary><div class="ep-body">
             <p>书目编辑与收藏分开写；集合可创建、重命名、确认移除及批量分配。移动先冻结书籍名单并分页审阅。重复书合并保留完整审阅版本，明确确认后条件提交，冲突不自动换组重试；回执显示重定向，查询保留书时重新解析身份。</p>
-            <p>修正清空作者被忽略的问题，未新增 API。30项基础检查通过；隔离桌面真实 Worker 已验作者修改/清空、收藏、集合创建/分配/重命名/移除及未确认不写入。合并、重启、跨设备竞态与前景键盘/视觉仍未验，普通写入不承诺 CAS。<a href="./plugin-system.md#library-desk-organization">详细边界</a></p>
+            <p>修正清空作者被忽略的问题，未新增 API。隔离桌面真实 Worker 曾由已退役的第一方夹具验证作者修改/清空、收藏、集合创建/分配/重命名/移除及未确认不写入；当前无插件消费者。合并、重启、跨设备竞态与前景键盘/视觉仍未验，普通写入不承诺 CAS。</p>
           </div></details>
-          <details class="ep" data-search-section="Library Desk import cover resource 封面 导入 导出 补齐"><summary>Library Desk 0.7：导入、封面与原文件组合已接好</summary><div class="ep-body">
+          <details class="ep" data-search-section="import cover resource 封面 导入 导出 补齐"><summary>Library 1.11 / Resources：导入、封面与原文件组合路径（消费者夹具已退役）</summary><div class="ep-body">
             <p>只用既有公开 API：选文件后先检查解析器初始化，明确导入才写书库；结果区分新增与重复。单本详情可观察补齐状态、请求重试、预览和复制保存封面、导出本地原件。复制需独立剪贴板权限，新标签提供简体中文及英文回退。</p>
-            <p>接通不等于端到端通过。21项插件检查、类型与构建通过；帧关闭及导出结算释放资源，取消保存不报成功。原生文件选择、真实粘贴、格式及关闭中操作留集中 Tauri 验收，本批不启动桌面。<a href="./plugin-system.md#library-desk-asset-composition">组合边界</a></p>
+            <p>接通不等于端到端通过。帧关闭及导出结算释放资源，取消保存不报成功。原生文件选择、真实粘贴、格式及关闭中操作留集中 Tauri 验收；当前无插件消费者。</p>
           </div></details>
-          <details class="ep" data-search-section="batch removal delete_books Library Desk 批量 删除 清理 重试"><summary>Library 1.6：批量删除与重启后清理恢复双端接通</summary><div class="ep-body">
+          <details class="ep" data-search-section="batch removal delete_books 批量 删除 清理 重试"><summary>Library 1.6：批量删除与重启后清理恢复双端接通</summary><div class="ep-body">
             <p>Agent 全局 delete_books 一次批准固定的 1–1000 个 ID；插件 removeMany 经 library:write 调用。记录/事件原子提交，文件失败仍明确报告记录已删。retryRemovalCleanup 只重试文件，不再写删除事件；任一书已恢复则整次拒绝文件清理。</p>
-            <p>Library Desk 0.2 和 Agent 可重新查询宿主持久清理队列，不必保留旧回执。删除事务同时登记，恢复书籍取消登记；启动逐项重试，失败保留且不阻塞后续。详情显示完整标题与 ID，手动重试不新增删除事件。</p>
+            <p>插件和 Agent 可重新查询宿主持久清理队列，不必保留旧回执。删除事务同时登记，恢复书籍取消登记；启动逐项重试，失败保留且不阻塞后续。详情显示完整标题与 ID，手动重试不新增删除事件。</p>
             <p>macOS debug 已验重启、新消费者查询、两端重试及菜单操作；只处理源文件/封面，不是完整擦除或通用任务系统。迁移 31 前的孤立文件不回填；大批量、打包和跨平台未验。<a href="./plugin-system.md#durable-book-file-cleanup">完整契约</a></p>
           </div></details>
           <details class="ep"><summary>Library 1.3：正文状态与请求控制双端接通</summary><div class="ep-body">
             <p>Agent get_book_text_status 与插件 getTextState 共享七种准备状态、三种文本存在性和源版本。查询不启动抽取或下载；全部节成功且最终索引落盘才就绪。短正文可以有字而没有索引章节，缺文件和失败不再误报无文字。</p>
             <p>v5 断点只复用成功节，保留失败，区分最后一节读完与最终索引保存；旧记录惰性失效。Agent 和插件可请求准备、重建、观察及取消自己的任务；取消只释放自身租约，其他使用者继续工作，已派发读写不回滚。任务回执不代表完成，也不代表已取得抽取租约。</p>
-            <p>Text Desk 0.3 组合列表、状态、确认重建、请求详情与取消、明确开书；请求详情实时推送，列表仍显式刷新。插件任务限当前激活代，Agent 两 scope 共用进程所有者；每个所有者至多 16 活跃、64 保留请求，每任务 16 观察者，慢回调合并最新快照。</p>
+            <p>插件可组合列表、状态、确认重建、请求详情与取消、明确开书；请求详情实时推送，列表仍显式刷新（原第一方消费者夹具已退役）。插件任务限当前激活代，Agent 两 scope 共用进程所有者；每个所有者至多 16 活跃、64 保留请求，每任务 16 观察者，慢回调合并最新快照。</p>
             <p>macOS 隔离 debug 已验权限 Worker、共享取消/退役、观察退订、重建冲突、真实 FB2、Agent 双 scope 与编译插件界面。暂停/优先级、耐久任务/超时、虚拟索引、全部格式、打包及跨平台仍缺；TXT05 仍为部分。<a href="./plugin-system.md#derived-text-requests">完整契约</a></p>
           </div></details>
           <details class="ep" data-search-section="readRange Range passage 文本 范围 版本 生命周期 TXT10 TXT13"><summary>Library 1.7：搜索范围可读取，Agent 与插件同源校验</summary><div class="ep-body">
-            <p>Text Desk 0.6 组合精确搜索、选区/句段详情和明确跳转；范围读取不移动阅读器。DOM 用版本化 CFI，PDF 用页定位和唯一文本引用，歧义或过期不猜位置；上下文只限同一分节。</p>
+            <p>插件可组合精确搜索、选区/句段详情和明确跳转；范围读取不移动阅读器。DOM 用版本化 CFI，PDF 用页定位和唯一文本引用，歧义或过期不猜位置；上下文只限同一分节。</p>
             <p>Agent 保留原剧透边界，插件遵循领域授权。内容查询取消先拒绝调用，退出仍等真实读取释放资源。真实 macOS Worker、双 scope 工具、FB2/PDF 插件导航与慢读退役已验；未捕获删除后失败的瞬时 toast。</p>
             <p>输出有界不等于解析内存有界；标注写入及跨模式 Range 尚未统一，TXT10/TXT13 保留部分。最大载荷、全格式、打包与跨平台未验。<a href="./plugin-system.md#versioned-range-reads">完整契约</a></p>
           </div></details>
           <details class="ep" data-search-section="selection 选区 捕获 Reading 2.9 selectionActions 1.2 Range"><summary>Reading 2.9：真实选区签发版本化范围，旧标注不补签</summary><div class="ep-body">
             <p>会话查询/观察返回选区预览和原始内容版本；selectionActions 1.2 同时提供选区与当前句段范围。PDF 用页位置与带上下文的引用，不能定位时明确不可用。切书、导航和 Escape 清除选区。</p>
-            <p>Agent 保留隐私与剧透限制，插件仍需领域授权。Text Desk 0.6 已从真实 FB2/PDF 选区及句段菜单读取详情；Worker、实际 Agent 工具与观察清空已在 macOS debug 验证，不是自主模型或 OS 拖选验证。</p>
+            <p>Agent 保留隐私与剧透限制，插件仍需领域授权。已退役的消费者夹具曾从真实 FB2/PDF 选区及句段菜单读取详情；Worker、实际 Agent 工具与观察清空已在 macOS debug 验证，不是自主模型或 OS 拖选验证。</p>
             <p>旧标注来源版本与 Range 写入仍缺；未证实迟到非空选区、全部格式、最大载荷与跨平台。公共选择命令见下方。<a href="./plugin-system.md#captured-selection-ranges">完整契约</a></p>
           </div></details>
           <details class="ep" data-search-section="selection control 选区 控制 Reading 2.10"><summary>Reading 2.10：选择等待提交，清除绑定所见选区</summary><div class="ep-body">
             <p>Agent 与插件共用源验证、导航及 React 提交回执；旧版本拒绝，旧选区 id 不能误清新选择。Agent 命令只返回身份，受限会话同时移除位置中的文字引用；取消不承诺撤销已经呈现的界面。</p>
-            <p>真实 FB2/PDF Worker、Agent 工具与编译 Text Desk 0.7 已验选择/清除；插件搜索第二个 PDF 命中后选中，关闭对话框后工具栏仍可见。原生在途取消、全部格式和打包/跨平台未验，READ13 保持部分。<a href="./plugin-system.md#selection-control">完整契约</a></p>
+            <p>真实 FB2/PDF Worker、Agent 工具与编译消费者夹具（已退役）已验选择/清除；插件搜索第二个 PDF 命中后选中，关闭对话框后工具栏仍可见。原生在途取消、全部格式和打包/跨平台未验，READ13 保持部分。<a href="./plugin-system.md#selection-control">完整契约</a></p>
           </div></details>
           <details class="ep" data-search-section="references footnotes 脚注 链接 引用 Library 1.12"><summary>Library 1.12：双端查询书内引用，读取有界纯文本预览</summary><div class="ep-body">
             <p>按版本和分节列举链接/内联脚注，同源解析后返回目标位置与可续读文本。Agent 在加载前同时核对来源和目标的阅读范围；外链只报告，不加载或打开，插件不获得 DOM。</p>
             <p>UI 1.8 已接当前书的原生预览开关：显示等待 DOM 提交，关闭只认自有 ID；新请求、用户操作及会话退休拒绝迟到结果。插件需书库读与阅读写权限，Agent 保留原阅读边界。</p>
-            <p>Text Desk 0.10 已组合分节/引用分页、精确续读、原文跳转和原生预览；真实 Worker/FB2 已验脚注读取及原生浮层绘制。外链只展示；PDF 非 DOM 链接、大型分节预算仍缺，其他格式和前景焦点未验。TXT11 保持部分。<a href="./plugin-system.md#book-reference-queries">完整契约</a></p>
+            <p>公开 API 可组合分节/引用分页、精确续读、原文跳转和原生预览；真实 Worker/FB2 已验脚注读取及原生浮层绘制。外链只展示；PDF 非 DOM 链接、大型分节预算仍缺，其他格式和前景焦点未验。TXT11 保持部分。<a href="./plugin-system.md#book-reference-queries">完整契约</a></p>
           </div></details>
           <details class="ep" data-search-section="searchText derived prose 正文 检索 多查询"><summary>Library 1.4：Agent 与插件共享本书和跨书正文检索</summary><div class="ep-body">
             <p>1–12 个查询变体、每个至多 1024 字符，返回至多 100 个章内片段。指定书可以准备正文；跨书只读本地已持久索引，不触发批量抽取。缺书、非法参数和读取失败明确拒绝；结果不是可导航的 CFI/Range，也不是全书架穷尽或相关性排名。</p>
-            <p>Text Desk 0.4 引入此流程（现为 0.5）：搜索表单、精确/词元匹配列表、片段详情和明确开书。真实 macOS Worker 已验权限与错误，Agent 原有剧透围栏保留；跨书搜索后未准备的书仍未准备。派生检索分页、扫描预算、节内取消、打包及跨平台尚未完成。<a href="./plugin-system.md#derived-prose-search">完整契约</a></p>
+            <p>已退役的消费者夹具引入此流程：搜索表单、精确/词元匹配列表、片段详情和明确开书。真实 macOS Worker 已验权限与错误，Agent 原有剧透围栏保留；跨书搜索后未准备的书仍未准备。派生检索分页、扫描预算、节内取消、打包及跨平台尚未完成。<a href="./plugin-system.md#derived-prose-search">完整契约</a></p>
           </div></details>
           <details class="ep" data-search-section="virtual refresh invalidateVirtualBook reload 内容 刷新 失效 重载"><summary>Library 1.16 / Reading 2.16：内容更新可观察，重载仍需明确请求</summary><div class="ep-body">
             <p>内容插件保存新数据后可通知自有来源失效；后续查询重新加载，不再借用旧阅读器内容，在途旧结果明确拒绝。通知不拉网、不自动打断阅读；返回的进程失效代不是持久内容哈希。</p>
@@ -319,11 +319,11 @@
           <details class="ep" data-search-section="image lightbox zoom pan rotate 图片 灯箱 缩放 平移 旋转"><summary>UI 1.12：已有图片灯箱可由插件和 Agent 操作</summary><div class="ep-body">
             <p>读取当前灯箱状态，按准确 ID 缩放、平移、旋转、复位或关闭；与原生手势和按钮共用实现。reading 读权限只能观察，写权限才能操作，书内 Agent 不能控制另一书籍。没有图片 URL、字节或描述，不会借此获取图片内容。</p>
             <p>更新等待匹配 React 提交，关闭等待视图移除；换图/换书拒绝旧操作，取消不回滚已发生变化。定向与挂载 React 测试通过，真实 Worker/Tauri 留集中验收。Library 1.13 与 UI 1.13 已接书内图片发现、资源读取和程序化打开，不等于已支持书页手动缩放。<a href="./plugin-system.md#native-image-viewer-controls-ui-112">完整契约</a></p>
-            <p>Text Desk 0.11.1 已组合实时状态、缩放、旋转、复位、四向平移与关闭。实际桌面发现外层插件窗口挡图，现用 Views 1.9 关闭本次插件界面后交回原生图片，不影响其他插件。真实 Worker/Tauri 已验全部控制及 900/600 逻辑像素宽画面；36项插件测试通过，无新增数据权限或 Agent 工具。页头入口、焦点、Escape 和完整模型回合未验。</p>
+            <p>公开控制可组合实时状态、缩放、旋转、复位、四向平移与关闭（消费者夹具已退役）。实际桌面发现外层插件窗口挡图，现用 Views 1.9 关闭本次插件界面后交回原生图片，不影响其他插件。真实 Worker/Tauri 已验全部控制及 900/600 逻辑像素宽画面；无新增数据权限或 Agent 工具。页头入口、焦点、Escape 和完整模型回合未验。</p>
           </div></details>
           <details class="ep" data-search-section="book images listImages openImageResource 图片 资源"><summary>Library 1.13：书内图片目录与临时资源已双端接通</summary><div class="ep-body">
             <p>插件与 Agent 可以按书籍版本和分节列出图片、取得内嵌图片资源，复用 EPUB/FB2/MOBI6/KF8/漫画解析器。目录包含源位置与有界替代文字，不读取图片字节；获取资源不加载外链，保留书库授权、阅读边界与调用方隔离。</p>
-            <p>最多 16 MiB，一小时临时引用；ready 不等于解码。Text Desk 0.10 真实 Worker/FB2 已验图片像素、原生 PNG 保存、复制回执及灯箱初始绘制。后台动画停滞的空白截图不计通过；粘贴、前景焦点、缩放旋转画面和其他格式未验，PDF 对象与 CSS/srcset 仍缺。<a href="./plugin-system.md#text-desk-content-composition">组合边界</a></p>
+            <p>最多 16 MiB，一小时临时引用；ready 不等于解码。真实 Worker/FB2（消费者夹具已退役）已验图片像素、原生 PNG 保存、复制回执及灯箱初始绘制。后台动画停滞的空白截图不计通过；粘贴、前景焦点、缩放旋转画面和其他格式未验，PDF 对象与 CSS/srcset 仍缺。</p>
           </div></details>
           <details class="ep" data-search-section="show_book_image image open 灯箱 打开 图片"><summary>UI 1.13：图片查询结果可以直接打开现有灯箱</summary><div class="ep-body">
             <p>插件 image.open 与 Agent show_book_image 接受当前书的版本化图片描述符，保留书库读、阅读写与 Agent 阅读边界。不接受任意 URL，不加载外链，不导航或创建持久资源。</p>
@@ -332,11 +332,12 @@
           <details class="ep" data-search-section="window minimize maximize fullscreen 窗口 最小化 最大化 全屏"><summary>UI 1.11：主窗口状态与受限操作已双端接通</summary><div class="ep-body">
             <p>插件 window.snapshot / observe / control 与 Agent get_app_window / control_app_window 共用主窗口服务，自绘标题栏和拖拽边缘也消费它。支持最小化、最大化、还原、设置全屏，并读取聚焦状态；不返回标题、路径、坐标或其他窗口。</p>
             <p>操作必须来自明确用户意图，有序派发；requested 是原生命令回执，不是动画或保存完成。订阅共享原生事件与一秒复核，退休释放监听并取消未派发请求，不撤销已发生的变化。关闭/退出尚缺保存协调，仍不开放。定向测试已过，真实桌面与 Worker 留集中验收。<a href="./plugin-system.md#main-window-controls-ui-111">完整契约</a></p>
-            <p>Workspace Profiles 0.5 已组合独立窗口实时页及最小化/最大化/还原/全屏命令，不把窗口状态写入预设；失败隐藏旧控件，离开退订，回执只报已请求。24项插件测试、构建与类型检查通过，无新权限或宿主/Agent接口；真实窗口行为与文档视觉留集中验收。</p>
+            <p>原 Workspace Profiles 0.5 曾组合独立窗口实时页及最小化/最大化/还原/全屏命令，不把窗口状态写入预设（2026-09-16 的 0.11 重写后移除，仅作历史证据）；失败隐藏旧控件，离开退订，回执只报已请求。24项插件测试、构建与类型检查通过，无新权限或宿主/Agent接口；真实窗口行为与文档视觉留集中验收。</p>
           </div></details>
           <details class="ep" data-search-section="table pagination sort 表格 分页 排序"><summary>Views 1.5：列表分页与语义表格已接通</summary><div class="ep-body">
             <p>列表和表格共用上一页/下一页，支持未知总页数，空页也能返回。表格最多 16 列、每页 200 行，可按数据源排序和打开行详情；仅接收文本、有限数值或空值，不开放 HTML。列表搜索和时间过滤只作用于当前页。</p>
             <p>翻页与排序默认替换完整视图，不堆积返回历史；沿用错误提示、忙碌禁用和退休清理，失败保留旧页。插件仍需原有数据授权，不增加 Agent 工具。基础与挂载测试通过；真实 Worker/Tauri 组合、窄窗和键盘焦点待集中验收。Tree 与资源位图已由 1.6/1.7 接入，编辑器 schema 仍缺。<a href="./plugin-system.md#paged-lists-and-tables-views-15">完整契约</a></p>
+            <p>动作优先级：PluginAction 可声明 priority 为 primary 或 secondary。列表、表格、树形和详情工具栏由宿主拆分：primary（及未声明优先级的 solid 动作）始终内联，secondary 始终进入“更多”菜单；未声明优先级且不超过三个动作时全部内联，否则未声明的动作按声明顺序填满共两个内联位后其余折叠。优先级只决定位置，不改变启用、确认、忙碌与键盘/焦点行为。<a href="./plugin-system.md#action-priority-and-toolbar-overflow">工具栏契约</a></p>
           </div></details>
           <details class="ep" data-search-section="tree hierarchy keyboard 树形 层级 键盘"><summary>Views 1.6：声明式树形视图已接通</summary><div class="ep-body">
             <p>根视图、组合块和 live 快照支持最多500节点/12层的树，包含初始展开、节点动作和分页。宿主处理展开、方向键、首尾定位与名称键入；节点身份全树唯一，标题纯文本。</p>
@@ -352,16 +353,16 @@
             <p>直接提示与动作结果都可传稳定错误码，由宿主本地化。只有宿主判定可重试且插件提供回调时才显示按钮；未知错误不泄漏原文，也不能强行声明可重试。点击只执行一次，不自动重试、不增加权限、不解释返回导航。</p>
             <p>错误提示六秒到期，全局最多 16 条；关闭、退休或桥接移除释放回调。已点击的异步回调最多保留十秒句柄，不代表取消业务任务。普通文字仍是通知。定向测试和类型检查已过，真实 Worker/Tauri 待集中验收；统一进度、取消与批准仍未完成。<a href="./plugin-system.md#structured-error-toasts-ui-110--views-14">完整契约</a></p>
           </div></details>
-          <details class="ep" data-search-section="progress cancel 进度 等待 取消 Memory Desk"><summary>Views 1.8：未知进度与忙碌时仍可用的取消按钮</summary><div class="ep-body">
+          <details class="ep" data-search-section="progress cancel 进度 等待 取消"><summary>Views 1.8：未知进度与忙碌时仍可用的取消按钮</summary><div class="ep-body">
             <p>已有进度块增加未知状态与停止动作。未知时不编造百分比；数值必须在正的最大值以内。取消按钮不被主操作忙碌禁用，单次在途去重，沿用视图回调所有权与本地化错误，不把点击成功当成任务已停止。</p>
-            <p>Memory Desk 0.7已用它呈现图谱任务的等待/取消状态，真实报告和重试保持不变。基础序列化、挂载与插件测试通过；真实Worker/Tauri留集中验收。它不是通用TaskRef、重试、截止或持久队列，EXT07/CON06仍部分。<a href="./plugin-system.md#cancellable-progress-views-18">完整契约</a></p>
+            <p>图谱任务的等待/取消状态可用它呈现，真实报告和重试保持不变（消费者夹具已退役）。基础序列化与挂载测试通过；真实Worker/Tauri留集中验收。它不是通用TaskRef、重试、截止或持久队列，EXT07/CON06仍部分。<a href="./plugin-system.md#cancellable-progress-views-18">完整契约</a></p>
           </div></details>
-          <details class="ep" data-search-section="live views 实时 视图 推送 Text Desk close all"><summary>UI 1.2 / views 1.9：实时视图与自有界面关闭</summary><div class="ep-body">
+          <details class="ep" data-search-section="live views 实时 视图 推送 close all"><summary>UI 1.2 / views 1.9：实时视图与自有界面关闭</summary><div class="ep-body">
             <p>插件通过 live.subscribe 取得宿主签发的可见帧通道，再 publishView 完整画面。通道限当前激活代和视图；旧版本报 stale，外部或退休通道报 inactive。更新保留帧身份与现有草稿协调，不改变导航，不开放 DOM 或额外数据权限。</p>
-            <p>Views 1.9 增加 close: all，关闭当前动作所属的整组插件界面及嵌套窗口，不能关闭其他插件或原生图片；普通 close 仍只关闭当前层。过期回调不能关闭替换后的窗口，离开释放回调与观察。Text Desk 图片交接已在真实桌面验证。<a href="./plugin-system.md#owning-presentation-dismissal-views-19">关闭契约</a></p>
+            <p>Views 1.9 增加 close: all，关闭当前动作所属的整组插件界面及嵌套窗口，不能关闭其他插件或原生图片；普通 close 仍只关闭当前层。过期回调不能关闭替换后的窗口，离开释放回调与观察。图片交接曾由已退役的消费者夹具在真实桌面验证。<a href="./plugin-system.md#owning-presentation-dismissal-views-19">关闭契约</a></p>
             <p>离开、嵌套弹窗或关闭立即撤通道，返回重新订阅当前值；迟到确认仍会释放。回调在画面提交后释放，中间快照不累积；失败保留旧画面并显示安全错误。每激活最多 16 通道；accepted 不是绘制完成，退订不是取消业务任务。</p>
             <p>新增 onClose，已接受的视图离栈时区分返回、替换、重置、关闭、根刷新与卸载；被子页遮住或实时更新不触发。通知不阻止关闭，不接受返回导航，也不是保存或焦点回执；外层直接移除容器只报告卸载。退休/崩溃不保证送达，异步回调最多保留十秒句柄。本批只过定向测试，真实 Worker/桌面组合待验。</p>
-            <p>真实 macOS debug 已验回调、草稿、逆序、跨插件、嵌套与退出；Text Desk 从阅读菜单打开后，无需刷新便由 Running 0/3 到 Completed 3/3。动态贡献状态见下一项；宿主 Agent 统一可用性、全表单/焦点/大数据、打包和跨平台仍缺，MORE05 保留部分。<a href="./plugin-system.md#live-plugin-views">完整契约</a></p>
+            <p>真实 macOS debug 已验回调、草稿、逆序、跨插件、嵌套与退出；编译消费者夹具（已退役）从阅读菜单打开后，无需刷新便由 Running 0/3 到 Completed 3/3。动态贡献状态见下一项；宿主 Agent 统一可用性、全表单/焦点/大数据、打包和跨平台仍缺，MORE05 保留部分。<a href="./plugin-system.md#live-plugin-views">完整契约</a></p>
           </div></details>
           <details class="ep" data-search-section="approval confirmation 插件 确认 删词 退订"><summary>AgentTools 1.2：插件工具可要求宿主逐次确认</summary><div class="ep-body">
             <p>声明 required 后，宿主先展示插件身份、工具说明和完整参数，再执行获准的参数快照。拒绝、取消、过期或注册失效不调用插件；确认不增加权限，也不回滚已经执行的写入。</p>
@@ -380,7 +381,7 @@
           <p>Settings 1.2 沿用单次更新的 SQLite 原子提交与双端持久回执，快照按授权过滤；失败回滚且不发成功事件。新增九项真实偏好：阅读对齐、固定版式配色、更新说明提示、内容字体四字段、默认标注色和更新通道。内容字体可跟随全局阅读设置或独立配置；默认色只影响新标注，更新通道只影响下次检查且不漫游。macOS debug 已验实际字体、FB2 标注、PDF 画布、已打开的更新面板与失败回滚；更新后重启、跨平台与这九项的打包验收仍未完成，完整带版本变更流也仍缺。</p>
           <details class="ep"><summary>Settings 1.3：书架偏好双端接通，Workspace Profiles 保存组合预设</summary><div class="ep-body">
             <p>布局、分组、排序进入同一设置域，真实书架跟随更新和失败回滚。插件 snapshot 等待此前命令与本地写入结算，按权限一次读取；这不是跨后续修改的事务或版本锁。</p>
-            <p>Workspace Profiles 0.4 新预设保存十项本机偏好，加入阅读字体、独立内容字体与跟随开关；旧七项预设原样可用。应用一次原子提交，保留本书覆盖；不改隐私、凭证或选择集。字体新路径只有基础验证，不沿用旧桌面证据宣称通过。</p>
+            <p>Workspace Profiles 0.4 曾让新预设保存十项本机偏好，加入阅读字体、独立内容字体与跟随开关；2026-09-16 的 0.11 重写保留已结算设置快照、路径授权与原子应用，移除字体枚举、快捷键表单、窗口页和当前工作区实时观察。应用一次原子提交，保留本书覆盖；不改隐私、凭证或选择集。字体新路径只有基础验证，不沿用旧桌面证据宣称通过。</p>
             <p>0.6 将 Agent 读取与保存/应用/删除分开，写操作接宿主确认；保存复核所见工作区，应用/删除锁定预设版本。UI 删除也需确认，列表接分页和失效刷新，无需新增宿主接口。34项插件测试与构建/类型通过，新确认和条件写组合待集中桌面验收。<a href="./plugin-system.md#workspace-profiles-approved-operations">接线与边界</a></p>
             <p>隔离 macOS debug 已验工具、编译 Worker 与菜单/表单；并发、权限和失败写由聚焦测试覆盖。未验真实模型、安装审批、重启、打包及跨平台；开发重建曾触发模块加载失败后恢复，截图含诊断提示，不宣称启动无错误。</p>
           </div></details>
@@ -392,7 +393,7 @@
           <details class="ep" data-search-section="font system options 字体 系统 选项 分页"><summary>Settings 1.8：插件和 Agent 可搜索本机字体，不再猜名字</summary><div class="ep-body">
             <p>按设置路径查询选项，阅读/内容字体包含预设、插件与本机系统字体；返回值可直接交给原有设置命令。仅授予发现权限时不泄露当前值、字体文件或目录，也不触发下载。</p>
             <p>宿主每页默认25、最多100项，Agent默认20、最多50；后续页保留revision，目录变化须重查。系统枚举与原生选择器共用会话缓存，失败显示错误和重试，不当作没有字体；安装/删除OS字体后需重启。</p>
-            <p>Workspace Profiles 0.4 已组合目录搜索、40项分页、选中预览与应用；独立字体连同关闭跟随一次保存，可单独恢复跟随。16项插件测试、构建/类型与清单验证通过；真实字体效果、升级授权及Tauri组合待集中验收，不新增宿主 API。<a href="./plugin-system.md#workspace-profiles-font-composition">组合边界</a></p>
+            <p>原 Workspace Profiles 0.4 曾组合字体目录搜索、40项分页、选中预览与应用（0.11 已移除，仅作历史证据）；独立字体连同关闭跟随一次保存，可单独恢复跟随。16项插件测试、构建/类型与清单验证通过；真实字体效果、升级授权及Tauri组合待集中验收，不新增宿主 API。<a href="./plugin-system.md#workspace-profiles-font-composition">组合边界</a></p>
           </div></details>
           <details class="ep" data-search-section="resetReading defaults inherit 重置 默认 来源 覆盖"><summary>Settings 1.7：恢复阅读默认与重新跟随全局是不同操作</summary><div class="ep-body">
             <p>两端已接整套阅读偏好重置，并可查询全局/本书来源、活动/停用覆盖和内置默认。恢复本书默认会保留一套本书覆盖；inherit 则删除覆盖，今后随全局变化。all-books 可明确清除全部覆盖，不影响其他领域或阅读位置。</p>
@@ -400,12 +401,12 @@
           </div></details>
           <details class="ep" data-search-section="settings observation 设置观察"><summary>Settings 1.6：原生、Agent、插件、同步覆盖与恢复共用已提交快照</summary><div class="ep-body">
             <p>queries.observe 按授权观察实际提交值和目录变化；Agent 读取同一进程内 revision。失败写不广播成功，慢消费者合并最新值；来源区分本地、远端、恢复、目录和混合。旧原生调用者无法归因时明确为 null，不冒充用户操作。</p>
-            <p>读取等待 KV 与凭据写成功或回滚，凭据只暴露已配置状态。Workspace Profiles 0.4 的当前工作区订阅十项预设值，错误保留旧样本，离开退订；新增字体路径的真实组合验收后置。</p>
+            <p>读取等待 KV 与凭据写成功或回滚，凭据只暴露已配置状态。原 Workspace Profiles 0.4 的当前工作区曾订阅十项预设值（0.11 已移除该观察，仅作历史证据）；新增字体路径的真实组合验收后置。</p>
             <p>隔离 macOS debug 已验真实设置点击、双端权限、来源/目录变化、编译插件实时刷新、SQLite 拒绝和恢复。凭据现仅在本地持久成功后封装发布，远端覆盖成功后通知且不回发；原生加密存储故障已验证。旧事件、完整来源审计、全部草稿/效果、凭据持久 outbox、真实网络、打包和跨平台仍缺。<a href="./plugin-system.md#settled-settings-observation">完整契约</a>。</p>
           </div></details>
           <details class="ep"><summary>Settings 1.5：快捷键双端接通，冲突统一暂停而非抢先执行</summary><div class="ep-body">
             <p>16 项内置与当前注册插件命令使用同一有效绑定。授权决定可读、可写与冲突详情；批量交换按最终状态验证，失败整体不提交，恢复默认是删除覆盖而非禁用。</p>
-            <p>Workspace Profiles 0.2 只申请自身命令的路径，通过模式、修饰键开关和按键表单重绑。冲突保留表单和原绑定，宿主显示稳定错误码对应的本地化提示，不显示原始异常。</p>
+            <p>原 Workspace Profiles 0.2 曾只申请自身命令的路径，通过模式、修饰键开关和按键表单重绑（0.11 已移除该表单，仅作历史证据）。冲突保留表单和原绑定，宿主显示稳定错误码对应的本地化提示，不显示原始异常。</p>
             <p>原生编辑页也已走同一设置域，重绑、单项/全部重置等待持久化。停用插件遗留绑定可按授权查询、修改和清除，原生界面归入不可用命令，不假装仍可执行。</p>
             <p>重新激活引入冲突时，全局、插件与阅读器统一暂停冲突绑定，重绑或停用后恢复。原生页标明冲突；conflicted 状态不因冲突方路径无权读取而消失，路径仍保密。不依赖监听顺序，不自动改写绑定。</p>
             <p>隔离 macOS debug 已验三端更新、冲突恢复与 SQLite 清理；正文 iframe 合成按键已验冲突不翻页、恢复后翻页、插件打开不重复翻页。失败持久化由 React/IPC 测试覆盖；全来源已提交观察另见 settings 1.6，来源身份完整性、真实模型、全键盘路由、打包及跨平台未完成，UI04 保持部分。<a href="./plugin-system.md#keyboard-shortcut-settings">契约与边界</a>。</p>
@@ -415,7 +416,7 @@
             <p>10个正文查询和16个阅读控制增加末参数options.signal，保留原会话guard及权限。Worker只发送请求级取消，宿主注入实际控制器；取消一个搜索或导航不必停用整个插件，也不影响兄弟请求。</p>
             <p>diagnostics1.1 的 verifyProjections 只返回一致性与计数，原生重放必须完成回滚；不开放修复。另有 requestReport、sync1.1 requestFlow、maintenance1.2 requestBackup 和 settings1.9 refreshModelCatalog 支持单次取消，已确认的保存/发送/账户操作不能靠取消回滚，共享目录刷新也不强杀。</p>
             <p>精确位置搜索的DOM取文、DOM/PDF匹配及多查询正文搜索已接协作取消：扫描分批让出线程，无命中也能响应取消；两种搜索各自复用原匹配规则。约8毫秒调度片不是硬截止，不强杀文档/PDF解析或原生字符串操作，也不是总内存预算。定向匹配与定时器取消测试通过。</p>
-            <p>Jumper 0.3 / Text Desk 0.9 不改宿主即可组合搜索等待、取消和live视图：首次显示才搜索，关闭/隐藏取消在途请求，迟到结果不回写；返回已完成页保留结果，已取消页需明确重搜。分页保留版本，失败显示稳定错误码，可恢复故障才提供重试。源码组合与构建通过，编译Worker/Tauri交互仍待集中验收。</p>
+            <p>Jumper 0.3 不改宿主即可组合搜索等待、取消和live视图：首次显示才搜索，关闭/隐藏取消在途请求，迟到结果不回写；返回已完成页保留结果，已取消页需明确重搜。分页保留版本，失败显示稳定错误码，可恢复故障才提供重试。源码组合与构建通过，编译Worker/Tauri交互仍待集中验收。</p>
             <p>读等待先结束，实际源读未结算仍占每realm32个名额，退休继续排空；不是强杀解析器或回滚已呈现/保存效果。资源获取、持久写、跨页任务进度和统一重试仍另有缺口。基础及Bun Worker验证通过，真实业务插件/Tauri组合后置。</p>
           </div></details>
           <details class="ep"><summary>Diagnostics 1.1：导出、发送与最终结果已接双端</summary><div class="ep-body">
@@ -427,13 +428,13 @@
             <p>插件查询、观察和 Agent 会话查询共用 visibleTextState，区分有文字、已渲染但空、暂不可用及截断。PDF从已就绪文字层读取与视口相交的文字段，排除隐藏及屏外缓存页；最多12000字符、扫描20000文本节点，不再因没有Range便假报空。自动阅读游标同源，隐私和原回合剧透限制保持。</p>
             <p>这是文字段级读取，不是逐字形裁剪、遮挡识别或OCR；非PDF固定版式无文字层仍不支持。基础DOM/会话/正式插件/Agent过滤测试通过，真实PDF缩放、滚动、双页与Tauri组合留集中验收。</p>
           </div></details>
-          <p>Reading 2.5 已共享模式提供者选择、启停、单元步进/返回和朗读控制，Listening Desk 与 Agent 消费同一控制器；Jumper 与 Agent 已消费版本化精确搜索落点。通用选区/Range 编辑与临时强调仍未完整开放。文件 hash 识别过期位置；取消等待不代表撤销引擎移动。PDF 等待栅格绘制，后台 WKWebView 暂停绘制时可能超时。</p>
-          <details><summary>Listening Desk 0.10：实时朗读状态与全书共享面板宽度</summary><p>独立状态页组合会话、环境和面板观察，不呈现正文或选区，不混用跨会话状态；模式编辑表单保持独立。目录/聊天宽度通过已有接口逐项保存，限定240–640整数CSS像素，不把首选宽度当实际尺寸，不自动打开或聚焦面板。</p><p>15项插件测试、构建和类型通过，无新增权限或宿主/Agent接口。真实音频、Worker/Tauri、宽度持久化及窄窗/升级待集中验收。<a href="./plugin-system.md#listening-desk-live-status-and-panel-widths">完整契约</a></p></details>
-          <details class="ep"><summary>Reading 2.6：双端共享阅读控制层显示状态</summary><div class="ep-body"><p>Agent set_reader_controls、插件 setControls 和原生空格/点击/滚动共用同一状态；只读权限可查询和观察，写权限才能显示或隐藏。Listening Desk 0.8 按快照提供操作，成功后才关闭视图，不改变书页、偏好或播放。</p><p>完成表示 React DOM 提交，不代表动画或屏幕绘制结束。旧会话、新意图和退出使等待失效；取消丢弃未提交状态，十秒无提交报超时。单独调用的插件取消句柄、packaged 与跨平台仍未验收。</p></div></details>
+          <p>Reading 2.5 已共享模式提供者选择、启停、单元步进/返回和朗读控制，原生阅读器与 Agent 消费同一控制器（Listening Desk 插件已于 2026-09-16 移除）；Jumper 与 Agent 已消费版本化精确搜索落点。通用选区/Range 编辑与临时强调仍未完整开放。文件 hash 识别过期位置；取消等待不代表撤销引擎移动。PDF 等待栅格绘制，后台 WKWebView 暂停绘制时可能超时。</p>
+          <details><summary>Listening Desk 0.10（插件已于 2026-09-16 移除，历史证据）：实时朗读状态与全书共享面板宽度</summary><p>该插件已移除，当前无第一方插件消费者；下列为当时的组合。独立状态页组合会话、环境和面板观察，不呈现正文或选区，不混用跨会话状态；模式编辑表单保持独立。目录/聊天宽度通过已有接口逐项保存，限定240–640整数CSS像素，不把首选宽度当实际尺寸，不自动打开或聚焦面板。</p><p>15项插件测试、构建和类型通过，无新增权限或宿主/Agent接口。真实音频、Worker/Tauri、宽度持久化及窄窗/升级待集中验收。<a href="./plugin-system.md#listening-desk-live-status-and-panel-widths">完整契约</a></p></details>
+          <details class="ep"><summary>Reading 2.6：双端共享阅读控制层显示状态</summary><div class="ep-body"><p>Agent set_reader_controls、插件 setControls 和原生空格/点击/滚动共用同一状态；只读权限可查询和观察，写权限才能显示或隐藏。原 Listening Desk 0.8（插件已移除）曾按快照提供操作，成功后才关闭视图，不改变书页、偏好或播放。</p><p>完成表示 React DOM 提交，不代表动画或屏幕绘制结束。旧会话、新意图和退出使等待失效；取消丢弃未提交状态，十秒无提交报超时。单独调用的插件取消句柄、packaged 与跨平台仍未验收。</p></div></details>
           <details class="ep"><summary>UI 1.9：面板开关与有界宽度共用服务</summary><div class="ep-body"><p>Agent 查询/操作与插件 reader.snapshot / observe / setPanel 共用目录、注释、外观、聊天状态。reading:read 可观察，reading:write 才能操作；不开放 DOM 或面板内容。新增 setWidth 与 Agent set_reader_panel_width，调整全书共享的目录/聊天首选宽度（240..640 整数 CSS px）；快照报告 docked/exclusive，窄窗忽略首选宽度，不伪报实际测量值。</p><p>快照可能含待保存值；命令成功另等保存与新 DOM commit。宽度与原生拖拽共用有序补丁及回滚订阅，不打开面板或改变焦点；取消不撤销已派发写。窄窗目录/聊天开关互斥保存，外观/注释为临时面板。不是动画、焦点或数据加载完成保证；UI 1.14另接reader.focus与双域focus_reader，可交还正文/目录/聊天输入的语义焦点。只操作当前可见区域，隐藏或前台dialog/menu阻挡时返回not-focused，不关弹窗或开面板；检查当次DOM焦点但不保证OS激活、旧元素或iframe光标恢复。views 1.3已有离栈通知，实际插件关闭后回焦留集中验收。</p><p>宽度有定向服务、权限、Agent与React验证；焦点有服务/授权/Agent/夹具几何DOM基础验证，真实 Tauri/Worker/拖拽留集中验收。旧开关的 macOS debug 已验真实 Worker、数据库拒绝/重试及窄宽窗/PDF 外观，不覆盖新宽度接口。物理触控板、单调用 Worker 取消、packaged/跨平台仍未验。</p></div></details>
           <details class="ep"><summary>模式配置：落盘才成功，保存失败恢复先前选择</summary><div class="ep-body">
             <p>书内状态与提供者单位偏好同批提交，回执等待精确写结果和首次位置保存；失败返回原数据库 code，不把回滚误判为新意图。旧 revision/provider/unit 的位置写不再派发，配置成功后才保存位置。</p>
-            <p>隔离 macOS debug 已验 Agent、Listening Desk Worker 的双端故障与恢复、重开位置和慢分段取消；原生错误文案已检查。SQLite 锁曾阻塞 MCP，延迟回执的时序证据来自独立 IPC/React 测试，不宣称锁等待时 UI 流畅。</p>
+            <p>隔离 macOS debug 已验 Agent、当时的 Listening Desk Worker（插件已移除）的双端故障与恢复、重开位置和慢分段取消；原生错误文案已检查。SQLite 锁曾阻塞 MCP，延迟回执的时序证据来自独立 IPC/React 测试，不宣称锁等待时 UI 流畅。</p>
             <p>单元步进/返回也已等待目标位置落盘；失败保留 db code，下一次明确操作可重试，不会污染整段模式会话。自动朗读在保存失败时停止，不播下一段。隔离 Agent、Listening Desk、原生按钮与本地 PCM 声源已验故障/恢复；页面已移动不伪装回滚，ready 仅表示索引完成。</p>
             <p>旧偏好读取已无写副作用；新设置、书内配置和旧记录删除同批提交，删除失败两端报错且保留原记录。既有值优先，不同模式的旧记录不会被抢走。隔离桌面已验失败、恢复与重开。</p>
             <p>仍缺跟随和跨提供者取消补偿；已提交偏好不是全部可撤销。打包、跨平台与远端 TTS 未验；故障截图含多条 toast，不宣称完整键盘或零噪声 UX。</p>
@@ -454,14 +455,14 @@
           <div class="callout">
             <strong>Appearance 不是 Domain。</strong>它是 Settings 的一个 section。选择主题属于 Settings，提供主题属于 Theme Contribution。
           </div>
-          <p>Conversations 已接线程管理和待确认草稿/发送/重试；只有宿主聊天按钮能批准执行。Memory Desk 0.9 已组合创建/选择、状态观察、停止/确认清空和自有请求查询/取消，并增加 Agent 页头入口。选择不等于导航，待确认/已采用/已启动不冒充回答完成。</p>
+          <p>Conversations 已接线程管理和待确认草稿/发送/重试；只有宿主聊天按钮能批准执行。插件可组合创建/选择、状态观察、停止/确认清空和自有请求查询/取消，并消费 Agent 页头入口（原第一方消费者夹具已退役）。选择不等于导航，待确认/已采用/已启动不冒充回答完成。</p>
           <p>真实桌面已验摘要分页、原生采用草稿、拒绝发送、自有请求状态和确认清空；前两项操作未增加消息或调用模型。测试对话由隔离夹具创建，不冒充模型输出；重试、生成中停止、Agent 页头及升级授权尚未验。</p>
-          <p>41项插件测试、构建和类型检查通过，含真实请求状态机及编译贡献回调；测试中的批准为脚本，不是原生点击。需升级 conversations:write 授权，真实聊天批准、持久化和模型回合留集中桌面验收。<a href="./plugin-system.md#memory-desk-conversation-controls">组合边界</a></p>
+          <p>写控制需 conversations:write 授权；真实聊天批准、持久化和模型回合留集中桌面验收。</p>
           <p>Memory 1.7 已接画像查询、观察与条件替换，Agent 双域可读取并在宿主展示完整候选后批准保存；插件需 memory:write，自身界面负责确认。摘要最多16000字符单元，旧版本拒绝覆盖，保存成功才回执；空文本清摘要但不删除记忆、历史或备份。同章下一用户轮也更新画像提示词，保留对话。不开放原始KV，现有本机存储不是跨进程/跨设备CAS或事件投影。完整访谈与种子记忆编排仍缺；基础测试通过，真实Worker/Tauri组合留集中验收。</p>
           <p>停止/清空等待最后回合写入，清空不撤销长期记忆、事件历史或工具副作用，不承诺多步原子回滚。Agent 清空须批准，执行中的线程不能用工具停止/清空自身；请求查询只给自有摘要，不能伪造 role 历史。</p>
-          <details class="ep" data-search-section="Memory Desk profile conversation summary 画像 对话 摘要"><summary>Memory Desk 0.8：画像编辑与书内、全局对话摘要已有实际使用方</summary><div class="ep-body">
+          <details class="ep" data-search-section="profile conversation summary 画像 对话 摘要"><summary>Memory 1.7 / Conversations 1.4：画像编辑与对话摘要组合路径（消费者夹具已退役）</summary><div class="ep-body">
             <p>只用现有 API：画像分页绑定版本，编辑读取完整候选并勾选确认，空文本清空；冲突保留草稿，保存回执与刷新分离。对话摘要新增 conversations:read 授权，纯文本分页复用同一快照，不生成摘要或调用模型。</p>
-            <p>33项基础测试、类型检查与构建通过。新增视图显式刷新，不冒充实时观察；超16000字符旧画像只读，摘要分页不限制宿主总响应。新标签简体中文及英文回退。实际 Worker、持久化及升级授权留集中桌面验收。<a href="./plugin-system.md#memory-desk-profile-and-conversation-composition">组合边界</a></p>
+            <p>此类视图应显式刷新，不冒充实时观察；超16000字符旧画像只读，摘要分页不限制宿主总响应。实际 Worker、持久化及升级授权留集中桌面验收；当前无插件消费者。</p>
           </div></details>
           <details class="ep"><summary>Conversations 1.4：插件和 Agent 可查询同一份滚动摘要</summary><div class="ep-body">
             <p>插件 getInsights 按书籍或全局线程 ID 读取，需对话读权限；全局 Agent 的 get_conversation_insights 可指定 bookId/threadId，默认当前线程。不存在返回 null，损坏返回错误；不触发模型、不读完整转录，也不开放内部摘要写入。</p>
@@ -528,7 +529,7 @@
             </div></details>
             <details class="ep">
               <summary>环境：双端共享元数据，网络提示不代表服务就绪</summary>
-              <div class="ep-body"><p>Agent 的 get_host_environment 与插件 environment/observeEnvironment 共用带 revision 的平台、语言、时区与网络提示；首次立即快照，变化刷新，末个观察者释放监听。元数据不含书籍或账号，不绕过 reading 授权。</p><p>Listening Desk 0.7 按需显示离线提示，不禁用本地朗读。隔离 macOS debug 已验双端、零权限 Worker 和实际插件返回；网络切换为受控注入，不冒充真实断网。格式/账号/模型就绪和 packaged/跨平台仍缺。</p></div>
+              <div class="ep-body"><p>Agent 的 get_host_environment 与插件 environment/observeEnvironment 共用带 revision 的平台、语言、时区与网络提示；首次立即快照，变化刷新，末个观察者释放监听。元数据不含书籍或账号，不绕过 reading 授权。</p><p>原 Listening Desk 0.7（插件已于 2026-09-16 移除）曾按需显示离线提示，不禁用本地朗读。隔离 macOS debug 已验双端、零权限 Worker 和实际插件返回；网络切换为受控注入，不冒充真实断网。格式/账号/模型就绪和 packaged/跨平台仍缺。</p></div>
             </details>
             <details class="ep"><summary>旧阅读事件旁路已删除；Dictionary 按授权查询当前书</summary><div class="ep-body"><p>Session 2.0 不再提供 subscribe，旧 ^1 合约明确拒绝。Reading 的即时快照和观察成为唯一阅读状态入口。Dictionary 1.2 声明 reading/library 读取权限，按需取标题并复核会话，不再漏掉迟启用或沿用换书前的标题；查词缓存也区分书籍标题。</p><p>隔离 macOS debug 已验零权限无阅读入口、只读 Worker 的迟启用/换书/关闭、实际 Dictionary Worker 的缓存上下文；不含远端模型、词卡呈现或安装升级。origin/reason、完整撤权与跨平台仍未验收。</p></div></details>
             <details class="ep">
@@ -539,14 +540,14 @@
         </div>
       </section>
 
-      <section data-search-section="memory Memory Desk manage_memory classify_book classification 分类 重分类 记忆 图谱 search bookGraph inspect mutate 纠错 置顶 遗忘 防剧透">
+      <section data-search-section="memory manage_memory classify_book classification 分类 重分类 记忆 图谱 search bookGraph inspect mutate 纠错 置顶 遗忘 防剧透">
         <div class="section-inner">
           <h2>记忆读取已接通，来源与授权仍有边界</h2>
-          <details class="ep"><summary>Memory 1.5：查询、反馈、分类与任务，Memory Desk 0.6 实际消费</summary><div class="ep-body">
-            <p>search 读取有效个人、跨书或本书记忆；bookGraph 提供章节摘要、实体与关系。Memory Desk 0.6 组合书库、记忆和导航，支持查询、来源查看、复核后打开原文，以及纠错、置顶、遗忘与分类纠正。源码十五个插件，Rust 编译内置仍六个，本插件不在内置清单。</p>
+          <details class="ep"><summary>Memory 1.5：查询、反馈、分类与任务（插件消费者夹具已退役）</summary><div class="ep-body">
+            <p>search 读取有效个人、跨书或本书记忆；bookGraph 提供章节摘要、实体与关系。插件可组合书库、记忆和导航：查询、来源查看、复核后打开原文，以及纠错、置顶、遗忘与分类纠正；原第一方消费者夹具已于 2026-09-15 退役。源码十个插件（2026-09-16 移除 Listening Desk 后），Rust 编译内置仍六个。</p>
             <p>图谱与提示词纪要共享先按分类/阅读边界过滤再合并；未分类书按叙事保护。Agent 用回合游标，插件用宿主位置；global/cross-book 保留既有全图政策，元数据读取失败不跳过保护。</p>
             <p>同章重分类、读完状态或游标边界变化，会在下一轮刷新提示词但保留对话；选区不扩大权限，读取降级后下轮重试。真实 SQLite AgentThread 与编译插件已验叙事/概念切换；不回收已发送内容，其他正文策略与来源版本仍缺。<a href="./plugin-system.md#memory-prompt-policy">策略与验证边界</a></p>
-            <p>损坏 JSON、非法别名/备注及未知分类整次报 db/error，不伪装成空图。Memory Desk 清旧图并自动恢复；提示词降级有日志。<a href="./plugin-system.md#chapter-memory-integrity">投影完整性证据</a></p>
+            <p>损坏 JSON、非法别名/备注及未知分类整次报 db/error，不伪装成空图。消费者应清旧图并自动恢复；提示词降级有日志。<a href="./plugin-system.md#chapter-memory-integrity">投影完整性证据</a></p>
           </div></details>
           <details class="ep"><summary>memory:read 不是按书授权，来源 href 也不是内容版本证明</summary><div class="ep-body">
             <p>查询 scopes 只是过滤，授权仍可读取全部记忆，记忆记录本身不按章节防剧透。搜索最多 100 条、图谱最多 200 实体、每实体 40 关系；图谱截断会提示，但尚无完整分页、细粒度授权或通用质量评分。</p>
@@ -558,16 +559,16 @@
           </div></details>
           <details class="ep"><summary>查询观察：变化和失败都可见，编辑草稿不被刷新覆盖</summary><div class="ep-body">
             <p>events.observe 立即读取 search/inspect/bookGraph/classification，每次读取和回调完成后一秒再读，只推送变化、错误和恢复；最多 64 个订阅，关闭/退役释放并丢弃迟到结果。每次重算图谱边界，非逐写事件日志或即时撤回。</p>
-            <p>Memory Desk 列表、记录、人物和章节详情自动更新；失败清旧内容与动作，恢复续读，正常列表更新保留搜索。编辑表单冻结草稿与版本。真实 macOS debug 已验 Worker、原生 remote apply、Agent 同源读取、SQL 故障恢复、边界收紧和退订；非联网同步或自主模型证明。<a href="./plugin-system.md#memory-observation">观察契约与证据</a></p>
+            <p>插件列表、记录、人物和章节详情可自动更新；失败清旧内容与动作，恢复续读，正常列表更新保留搜索。编辑表单冻结草稿与版本。真实 macOS debug 已验 Worker、原生 remote apply、Agent 同源读取、SQL 故障恢复、边界收紧和退订；非联网同步或自主模型证明。<a href="./plugin-system.md#memory-observation">观察契约与证据</a></p>
           </div></details>
           <details class="ep"><summary>图谱补齐已区分失败和完成，公开任务入口仍未接</summary><div class="ep-body">
             <p>内部 DigestReport 区分已提交、空章、失败、欠账与未知边界；完整追平有限扫描一次，不再因前章失败饿死后章，重试跳过已成功章。早章重建只用更早章的实体锚，非 stop 的模型答复不落库。</p>
-            <p>bdg1 章节与分类版本在原生事务复核：同章竞争、分类改回和过旧事件时间都不能覆盖新结果，其他章节不互相冲突；失败回滚事件/投影/同步队列，成功后才广播。取消会等已派发写回执，但不等全部读/模型物理 IO。已验脚本推理、SQL 失败重试与双端图查询和 Memory Desk 显示；不是自主模型或公开任务 E2E。内容版本与跨设备协调仍缺；公共任务已另行接入。<a href="./plugin-system.md#digest-conditional">条件提交与验证边界</a></p>
-            <p>manage_book_graph 与 memory 1.5 共用图谱任务；每次最多尝试 1–1000 章，默认 20，重试继承或显式修改上限。空章和失败也计数，重试优先未尝试章节，不是 token 或费用上限。Agent 批准展示对象与上限，Memory Desk 0.6 支持数字输入、停止原因、逐章错误和重新确认；两端各限 1 章、再处理下一章已实机验证，重试公平顺序另有单测。每 actor 16 活动 / 64 保留任务、取消等写回执、不先删旧摘要的约束不变。测试配置已验重载后加密备份恢复，不是任务耐久化。来源版本、token/费用预算、完整聊天与跨平台验收仍缺，双端保持部分。<a href="./plugin-system.md#book-graph-tasks">任务契约与原生证据</a></p>
-            <p>BookDigestQueue 让同书后台生成按序执行，后一个重读已存摘要，避免重复推理；不同书独立。总容量 64，排队可取消，正在写入则等回执再让位。macOS 原生已验跨运行实例共享队列与 Memory Desk 显示；不代表耐久任务、跨设备互斥或公共任务入口已完成。<a href="./plugin-system.md#digest-scheduling">本机调度边界</a></p>
+            <p>bdg1 章节与分类版本在原生事务复核：同章竞争、分类改回和过旧事件时间都不能覆盖新结果，其他章节不互相冲突；失败回滚事件/投影/同步队列，成功后才广播。取消会等已派发写回执，但不等全部读/模型物理 IO。已验脚本推理、SQL 失败重试与双端图查询和编译消费者夹具（已退役）显示；不是自主模型或公开任务 E2E。内容版本与跨设备协调仍缺；公共任务已另行接入。<a href="./plugin-system.md#digest-conditional">条件提交与验证边界</a></p>
+            <p>manage_book_graph 与 memory 1.5 共用图谱任务；每次最多尝试 1–1000 章，默认 20，重试继承或显式修改上限。空章和失败也计数，重试优先未尝试章节，不是 token 或费用上限。Agent 批准展示对象与上限，插件可提供数字输入、停止原因、逐章错误和重新确认（夹具已退役）；两端各限 1 章、再处理下一章已实机验证，重试公平顺序另有单测。每 actor 16 活动 / 64 保留任务、取消等写回执、不先删旧摘要的约束不变。测试配置已验重载后加密备份恢复，不是任务耐久化。来源版本、token/费用预算、完整聊天与跨平台验收仍缺，双端保持部分。<a href="./plugin-system.md#book-graph-tasks">任务契约与原生证据</a></p>
+            <p>BookDigestQueue 让同书后台生成按序执行，后一个重读已存摘要，避免重复推理；不同书独立。总容量 64，排队可取消，正在写入则等回执再让位。macOS 原生已验跨运行实例共享队列与编译消费者夹具显示；不代表耐久任务、跨设备互斥或公共任务入口已完成。<a href="./plugin-system.md#digest-scheduling">本机调度边界</a></p>
           </div></details>
           <details class="ep"><summary>分类更改需版本条件，Agent 每次批准，插件表单保留冲突草稿</summary><div class="ep-body">
-            <p>classification 查询需 memory:read，classify 需 memory:write；只能改叙事/说明性，不能传自动填空标记。bcl1 版本在事务内复核。Agent classify_book 两 scope 已接，书内仅本书；Memory Desk 0.4 观察分类并要求确认边界变化。插件确认是 UX，不是新的宿主授权票据。</p>
+            <p>classification 查询需 memory:read，classify 需 memory:write；只能改叙事/说明性，不能传自动填空标记。bcl1 版本在事务内复核。Agent classify_book 两 scope 已接，书内仅本书；插件可观察分类并要求确认边界变化；插件确认是 UX，不是新的宿主授权票据。</p>
             <p>说明性分类不设章节剧透边界；自动分类只填空，不覆盖用户的新选择。旧摘要逐步重建，不取消在途任务或擦除历史；旧事件/旧客户端兼容边界保留。原生已验真实 Worker、生产工具与批准组件、编译表单、冲突草稿、读故障恢复和退订；批准组件为隔离挂载，不冒充完整聊天或自主模型。<a href="./plugin-system.md#book-classification">分类契约与证据</a></p>
           </div></details>
         </div>
@@ -577,7 +578,7 @@
         <div class="wrap">
           <h2>Agent 智能扩展</h2>
           <p class="intro">插件只能提供有边界的数据与候选，不能接管系统提示词或直接写长期记忆。</p>
-          <details class="ep"><summary>记忆构建开关已接通，取消必须等已派发写回执</summary><div class="ep-body"><p>buildMemory 关闭立即禁止新写，重开不复活旧操作；七类受保护写必须全部返回后，外层才结束取消并退订，迟到数据库失败仍记日志。写可能已提交，不能假称撤销；读/模型仍可放弃等待。原生已验回执延迟、SQL 失败、重试和编译 Memory Desk，未把测试回执门当作真实网络或公共任务 UI。<a href="./plugin-system.md#memory-commit-drain">取消与写入边界</a></p><p>聊天/历史和旧记忆仍可读取。Reading Goals 按书保存目标并提供上下文，用户选择后才提出记忆候选；清除目标不删除已提升记忆。源码十五个插件、内置六个，本插件不在内置清单。0.4 已接双端查询/设置/清除目标工具，写操作经宿主确认并比较版本，与 UI 共用私有文档；旧目标首次按书迁移，清除保留无正文墓碑。新协议的升级/批准/持久化尚待集中验收，不能沿用旧证据。<a href="./plugin-system.md#reading-goals-agent-operations">目标工具与边界</a>。已有 macOS debug 双端证据，安装重启、打包/跨平台及完整控件验收仍缺。<a href="./plugin-system.md#host-memory-build-policy">完整边界</a></p></div></details>
+          <details class="ep"><summary>记忆构建开关已接通，取消必须等已派发写回执</summary><div class="ep-body"><p>buildMemory 关闭立即禁止新写，重开不复活旧操作；七类受保护写必须全部返回后，外层才结束取消并退订，迟到数据库失败仍记日志。写可能已提交，不能假称撤销；读/模型仍可放弃等待。原生已验回执延迟、SQL 失败、重试和编译消费者夹具，未把测试回执门当作真实网络或公共任务 UI。<a href="./plugin-system.md#memory-commit-drain">取消与写入边界</a></p><p>聊天/历史和旧记忆仍可读取。Reading Goals 按书保存目标并提供上下文，用户选择后才提出记忆候选；清除目标不删除已提升记忆。源码十一个插件、内置六个，本插件不在内置清单。0.4 已接双端查询/设置/清除目标工具，写操作经宿主确认并比较版本，与 UI 共用私有文档；旧目标首次按书迁移，清除保留无正文墓碑。新协议的升级/批准/持久化尚待集中验收，不能沿用旧证据。<a href="./plugin-system.md#reading-goals-agent-operations">目标工具与边界</a>。已有 macOS debug 双端证据，安装重启、打包/跨平台及完整控件验收仍缺。<a href="./plugin-system.md#host-memory-build-policy">完整边界</a></p></div></details>
           <details class="ep"><summary>文本隐私已接 Agent 和插件结构化推理，任意字符串仍有边界</summary><div class="ep-body"><p>Agent 自动附件、历史与 viewport/grounding 按设置过滤。LLM 1.1 的 readingContext 由宿主组装；必需正文被禁止则在请求前拒绝，结构错误明确报错，收紧以 ai/context-changed 取消在途请求和重试。重开只允许新请求。</p><p>Dictionary 1.3 已迁移：选区与周边正文不再自行拼入 prompt，设置竞态不写误导缓存；本地缓存仍可读。macOS debug 双端三模式四组合、实际 Dictionary Worker 缓存/拒绝、结构化重试与三个并发请求取消已有证据。任意 prompt/HTTP/TTS、独立检索与旧衍生内容不受全局清除；完整 UI、打包/跨平台仍未验，SET24/25 保持部分。<a href="./plugin-system.md#host-reading-context-policy">精确边界</a></p></div></details>
           <div class="table-shell">
             <table>
@@ -611,13 +612,9 @@
             <p>maintenance 1.3 为插件和双 scope Agent 提供更新状态及七个宿主管理入口，新增 AI 测试按钮定位；更新联网检查需插件 network 授权，与原生更新共用状态和互斥控制。频道变更使旧结果失效，失败不当作已是最新。</p>
             <p>opened 只表示控件已挂载和定位，不点击控件、不代表操作完成。安装权限、文件选择与 DELETE 确认仍由用户完成；日志、路径、凭据和备份字节不交给调用方。logging 已接插件自有输出，诊断与备份最终回执另见对应流程；组合及 Tauri 验收待集中进行。</p>
           </details>
-          <details><summary>Maintenance Desk：真实桌面已验证一组流程，并修复两处使用问题</summary>
-            <p>0.3 新增同步状态、实时观察、独立积压、立即同步、账户用量及连接/断开/删除/套餐/账单流程，复用sync1.1并新增独立同步授权。账户按需联网读取，最终确认保留原生；记录实际回执，不把已有同步或打开账单页当作完成。30项插件测试、构建和类型通过，实际登录/删除/付费、跨设备同步及授权升级待集中验收。</p>
-            <p>0.2 只用公开 API，新增已安装插件及贡献项搜索、40项分页与实时状态，以及软件更新读取、显式检查和原生管理入口；不自动启停、安装或重启，也不跨插件执行。新增路径20项插件测试及构建/类型检查通过，Worker/Tauri新流程与文档视觉留集中验收。</p>
-            <p>既有模型目录、连接测试、v1 备份、诊断及投影校验仍保留，不增加宿主或 Agent 接口。源码十五个插件、release 内置仍六个；debug RepoDist 会发现所有已构建插件，不等于正式安装或发布。</p>
-            <p>原生流程关闭插件弹窗后继续等用户操作，重开可看最近二十条结果；结果页实时更新。只保存会话内状态、错误码和计数，不读配置、凭据或报告/备份内容。一次一个操作，取消只结束等待、不撤销已开始效果，停用和重启不保留记录。</p>
-            <p>隔离 macOS Tauri 的真实 Worker 已验目录刷新与分页、AI 测试交接和取消、原生备份保存及导入选择取消、诊断两种预览取消、本机投影差异回传。修复分页提示框导致的横向滚动，以及备份成功提示误称默认文件名和“全部导出”。测试应用已关闭，正式数据未动。</p>
-            <p>投影校验发现已有差异，未修复；未调用模型、导入备份、发送报告或验证正式安装/CSP。900/1280 宽度有布局测量，部分多弹窗截图失真不算视觉证据；实际合并恢复、完整 Agent 与跨平台验收仍待做。</p>
+          <details><summary>维护类消费者夹具（已退役）曾在真实桌面验证一组流程</summary>
+            <p>原第一方维护夹具只用公开 API 组合同步状态/积压/立即同步、账户用量与连接/断开/删除/套餐/账单流程、已安装插件与贡献项目录、软件更新读取与原生管理入口，以及模型目录、连接测试、v1 备份、诊断和投影校验；不增加宿主或 Agent 接口。2026-09-15 该夹具随其他三个能力矩阵消费者夹具从源码移除，当前这些路径无插件消费者，Agent 双域入口保留。</p>
+            <p>隔离 macOS Tauri 的真实 Worker 曾验目录刷新与分页、AI 测试交接和取消、原生备份保存及导入选择取消、诊断两种预览取消、本机投影差异回传，并修复分页提示框横向滚动和备份成功提示文案；投影校验发现的既有差异未修复。实际合并恢复、完整 Agent 与跨平台验收仍待做。源码十个插件、release 内置仍六个；debug RepoDist 会发现所有已构建插件，不等于正式安装或发布。</p>
           </details>
           <details><summary>Maintenance 1.3：连接测试由用户点击，插件和 Agent 可等待结果</summary>
             <p>requestConnectionTest 与双域 request_ai_connection_test 只定位原生按钮，不填写配置或自动测试。用户完成配置并亲自点击后，沿用主模型和宿主推理策略，可能产生服务商费用；调用方只得到 responded、empty、cancelled 或错误，不收到密钥、端点、模型身份或回复。</p>

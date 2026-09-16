@@ -18,6 +18,21 @@
 > records the current phase. Versioned implementation notes below describe their
 > stated scope and evidence; their old pending items are not a second work queue.
 > Original acceptance reports and runtime artifacts are retained only in Git history.
+>
+> 2026-09-15: the four capability-matrix consumer fixtures (Library Desk,
+> Maintenance Desk, Memory Desk, Text Desk) were removed from the source tree.
+> Their composition sections were deleted from this reference; remaining
+> mentions describe them as retired fixtures whose code and evidence live only
+> in Git history. Jumper's `bookmark-page` service keeps the Agent
+> `call_plugin_service` path as its consumer.
+>
+> 2026-09-16: Listening Desk was removed outright; the native reader already
+> exposes playback and mode controls, and the Reading 2.5 controllers remain
+> consumed by the native reader and Agent tools. Annotation Desk was renamed
+> Annotations, and the four remaining composition plugins (Annotations, Reading
+> Goals, Workspace Profiles, Jumper) were rewritten as single-task surfaces.
+> Sections below that cite earlier versions of these plugins are historical
+> composition evidence, not current behavior.
 > The [original baseline](../archive/capabilities/plugin-capability-baseline.md)
 > is historical. Do not infer that every old GAP is still open or now closed.
 
@@ -188,8 +203,8 @@ start a replacement with wider access. Backup restore preserves device grants;
 source plugins require fresh consent, and the selected grant is applied in the
 same SQLite transaction as restoration.
 
-Annotation Desk scopes its lists, creation, editor saves and batches to this
-metadata. Restricted forms omit the all-books option and reject stale or mixed
+The Annotations plugin (renamed from Annotation Desk on 2026-09-16) scopes its
+lists, creation, editor saves and batches to this metadata. Restricted forms omit the all-books option and reject stale or mixed
 book operations. Deterministic host, Worker protocol, consumer and native backup
 checks cover this implementation; real Tauri authorization, revocation and editor
 acceptance remain pending in the current bounded goal.
@@ -369,11 +384,10 @@ are refused. Cancellation, book changes, disable/update and deadlines invalidate
 late results; capacity is released after physical cleanup. Cancellation does not
 undo accepted writes or remote effects. Do not blindly retry an unknown outcome.
 
-Jumper 0.10 exports `bookmark-page` version 1.0.0. Text Desk 0.27 consumes it from
-book details, preserves the observed reference while paging and offers explicit
-refresh after service replacement or a stale document cursor. The compiled
-consumer and actual Bun caller/host/provider Worker chain are checked; Tauri/SQLite
-acceptance remains pending. Agent `list_plugin_services` discovers the same contracts;
+Jumper 0.10 exports `bookmark-page` version 1.0.0. Its first-party plugin caller
+was a capability fixture retired on 2026-09-15 together with its Bun
+caller/host/provider Worker chain check; the remaining consumer is the Agent
+`call_plugin_service` path below. Tauri/SQLite acceptance remains pending. Agent `list_plugin_services` discovers the same contracts;
 `call_plugin_service` requires per-call user approval of frozen arguments and grants.
 Book conversations cannot target other books. Approval explains full-book/unread
 content access and potentially irreversible effects. Restricted automatic reading
@@ -448,9 +462,9 @@ uses an acknowledged call, so a cycle, expired lease or invalid handle is an
 error visible to the caller. The acknowledgement means registration retirement;
 already-started provider cleanup follows the existing lifecycle drain contract.
 The original handle starts independent operations, including when registration
-itself was created from a bound context. Maintenance Desk 0.5 uses the bound
-context to publish contribution-directory changes; user actions in the view
-continue to use the activation context.
+itself was created from a bound context. A plugin can use the bound context to
+publish contribution-directory changes while user actions in the view continue
+to use the activation context.
 
 The host also retains the selected registration's source when fonts, themes,
 or text-unit modes are replaced or removed. A later unrelated registry update
@@ -510,62 +524,6 @@ book in book scope; state queries show the last 20 scoped requests and a
 truncation flag. Streaming output remains in native chat, not a public role-write
 API. Focused checks passed; integrated plugin/Tauri acceptance is pending.
 
-### Memory Desk Conversation Controls
-
-[代码] Memory Desk 0.9 consumes existing Conversations 1.4 runtime, thread
-commands and retained turn requests, plus HeaderActions 1.2's Agent header target.
-Its grant changes from `conversations:read` to `conversations:write` (including
-read). No host API, model tool or unrestricted history writer is added. The
-existing shelf/reader entry remains; the Agent header opens controls for the
-specific global thread supplied by the host, not an inferred conversation.
-
-- Summary details link to controls for their exact book/global target. Global
-  summaries also offer selected-thread controls, new global draft and all owned
-  request history. New/select report the actual returned identity, without
-  navigating or claiming a new persisted transcript. A new draft becomes a
-  transcript only after its first message, under the existing host contract.
-- Control views query and observe runtime metadata: mounted/loading/generating/
-  idle and message count. Leaving releases the subscription; late callbacks do
-  not publish. Read-only contexts omit write controls. Request buttons are shown
-  for mounted idle sessions; the host still revalidates actual readiness and
-  retry eligibility at request and acceptance time.
-- Draft/send forms accept nonblank text up to 65536 UTF-16 units; retry requires
-  confirmation and submits no replacement text. A successful request closes the
-  plugin surface and reports its actual status, exposing the native approval
-  surface. It does not adopt a draft, click Send, call a model, or await output.
-  Failure rejects without closing the form. Native approval owns pending to
-  adopted/started transitions; started never means inference has finished.
-- Owned request lists display 40 records per page, newest first, optionally
-  filtered to the exact target. They use explicit refresh, not polling. Details
-  show action, target and status only, without transcript/request text. Cancel
-  acts on the captured request ID and renders the actual receipt: if already
-  started/adopted, it must not report cancelled. Expired/evicted records are not
-  fabricated from local cache. Retention/expiry remain the existing host limits.
-- Stop waits for the host turn drain; clear requires a separate checkbox that
-  names the frozen target and states that long-term memories/event history stay.
-  Neither action claims rollback of prior tool effects or an atomic multi-step
-  clear. Success is based on the command receipt; refreshing runtime is a
-  separate action, not a prerequisite for reporting a completed write.
-
-[验证] 41 plugin tests / 241 assertions, build/typecheck and manifest validation
-pass. Tests execute real host `ConversationTurnRequests` with controlled surface
-callbacks and the compiled plugin command/Agent-header contributions: no send,
-draft adoption or retry occurs until scripted host acceptance. They cover failure,
-live disposal, frozen clear, delayed stop, started-versus-cancelled receipts and
-paging. This is Bun integration, not actual WebKit/Tauri approval clicks, profile
-upgrade grants, chat persistence or a real model turn. New labels use simplified
-Chinese/English fallback. Desktop composition and document visual checks remain
-concentrated acceptance work.
-
-[验证] The 2026-09-11 isolated macOS Tauri composition exercised compiled
-Memory Desk 0.9 against a real SQLite fixture conversation: 5400-character
-summary paging (1-4000, then 4001-5400), native Use draft approval, native
-send-request dismissal, retained adopted/dismissed statuses, and guarded clear.
-Unchecked clear preserved both messages; checked clear removed them. Adopting
-the draft and dismissing send each left message count at two, with no inference.
-The fixture assistant message was scripted, not model output. This does not
-cover retry/streaming/stop, Agent-header entry, upgrade grants or model turns.
-
 ### Stored Conversation Summaries (Conversations 1.4)
 
 [代码] `queries.getInsights({kind:"book"|"global",id})` returns the stored
@@ -610,8 +568,9 @@ book/session guard. Source hashes reject stale locations; virtual sources withou
 a durable revision use session-scoped versions. The Agent uses the same controller.
 Reading 2.5 additionally exposes mode/provider discovery and configuration,
 versioned mode positions, unit stepping/return, and playback start/stop with
-shared session snapshots. Listening Desk consumes these commands; Agent tools
-use the same owners. Library precise search returns versioned navigable
+shared session snapshots. The native reader and Agent tools consume these
+commands through the same owners; the Listening Desk plugin that once composed
+them was removed on 2026-09-16. Library precise search returns versioned navigable
 locations, used by Jumper and Agent navigation. Generic selection/Range editing
 and temporary overlays remain incomplete, rather than all mode/playback/search
 capabilities being absent.
@@ -978,7 +937,8 @@ navigation are controlled fixtures, not SQLite/Worker/native restart proof.
 Cross-book/restart return, native selection and all-format behavior remain for
 concentrated Tauri acceptance; document visual checks are deferred.
 
-[代码] Jumper 0.4 consumes existing Library 1.17 and Reading 2.14 without new
+[代码] Jumper 0.4 (its section/step navigation was folded into the single
+navigation form of 0.12 on 2026-09-16; historical) consumed existing Library 1.17 and Reading 2.14 without new
 host/Agent APIs or permissions. Its original chapter/title/TOC-ordinal search,
 cancellable text search and shared back/forward remain the first screen; a
 Navigation action adds source-section/page-label catalogs and eight native steps.
@@ -1095,7 +1055,7 @@ model tools use the existing shared conditional command and bind destructive
 approval to the observed object version. Plugin write authorization is still
 not the same as per-operation Agent approval.
 
-[代码] Annotation Desk **0.3.0** declares `annotations: ^2.0.0`. Its existing
+[代码] Annotation Desk (renamed Annotations on 2026-09-16) **0.3.0** declares `annotations: ^2.0.0`. Its existing
 frozen detail/batch snapshots remain unchanged; this migration does not replace
 stale drafts or add hidden retries. All source native/Worker test consumers are
 migrated. Eight localized public sample manifests now request annotations 2 and
@@ -1122,7 +1082,8 @@ payloads and full remote event delivery remain separate gaps.
 
 ### Annotation Desk Creation Composition
 
-[代码] Annotation Desk 0.4 adds New note to its existing paged desk and registers
+[代码] Annotation Desk 0.4 (renamed Annotations on 2026-09-16; creation now returns
+to the list with a toast) added New note to its existing paged desk and registered
 `create-note` / `create-highlight` selection actions as host dialogs. It consumes
 the existing annotations 2 createNote/createHighlight commands and adds only a
 SelectionActions 1.2 requirement; permissions and host/Agent APIs are unchanged.
@@ -1154,8 +1115,8 @@ gestures, real SQLite persistence, Worker/Tauri rendering or a complete Agent
 turn. Those combinations and document visuals remain concentrated acceptance.
 
 [验证] The 2026-09-11 native composition
-now covers Text Desk search/result/Select passage -> native selection More ->
-Annotation Desk creation, against an owned FB2 and real SQLite. An anchored note
+covered plugin search/result/Select passage (a consumer fixture since retired)
+-> native selection More -> Annotation Desk creation, against an owned FB2 and real SQLite. An anchored note
 was created and conditionally edited without changing its quote/CFI; a second
 book-only note had no invented anchor. A blue underline created through the
 same selection menu appeared on the exact source text and remained after Escape
@@ -1202,9 +1163,10 @@ did not emit local domain events. It does not replay every intermediate state,
 promise immediate revocation, interrupt a hung native read/callback, or provide a
 frozen snapshot across different queries. Legacy event subscribe is unchanged.
 
-[代码] Annotation Desk 0.3 combines annotations 2.0, UI 1.2 and views 1.1 for live
-browsing at 20 rows/page. Page/cursor history is captured per view; new filters
-reset it. Read failure replaces stale contents and actions with a localized
+[代码] Annotation Desk 0.3 (renamed Annotations on 2026-09-16) combines annotations
+2.0, UI 1.2 and views 1.1 for live browsing at 20 rows/page. Page/cursor history
+is captured per view; new filters reset it. Since 0.10 the list pages through the
+host `pagination` control instead of its own previous/next actions. Read failure replaces stale contents and actions with a localized
 error; recovery repopulates the list. A failed joined book-title lookup also
 leaves the callback unacknowledged so an unchanged annotation page can recover.
 Book metadata changes alone do not invalidate an unchanged annotation page.
@@ -1676,18 +1638,11 @@ status. Setup/parser/write errors outside checkpoints are in-process state, not
 durable task history across restart. Old inaccurate digest references are not
 retroactively repaired by this change.
 
-[代码] Text Desk 0.2 composes book listing, read-only state, reader header/command
-views and explicit `reading.openBook`. Each page queries status for at most 20
-books; book listing itself is not native-paged. Failed status rows remain visible,
-detail failures propagate to the host error surface, refresh replaces the view,
-and Open closes only after navigation succeeds. It is a source plugin, not added
-to the Rust bundled list. It additionally consumes the task controls below.
-
 [环境] Isolated macOS debug Tauri verified both actual Agent scopes, three real
 Worker permission views, no derived blob after status-only inspection, injected
 section failure with native persistence and successful-only retry, real short
-FB2/normal FB2/blank PDF extraction, source removal/hash invalidation and the
-compiled Text Desk menu/detail/open flow. Fault injection is at the parser
+FB2/normal FB2/blank PDF extraction, source removal/hash invalidation and a
+compiled consumer menu/detail/open flow (fixture since retired). Fault injection is at the parser
 section boundary, not a native disk permission failure. Repository tests cover
 write failure, deletion/source races, concurrent PDF work and final-checkpoint
 restart. Durable setup error history, virtual indexing, all formats, release and cross-platform tests
@@ -1749,7 +1704,8 @@ time still only in the tracker is not extrapolated. Pending means local,
 provisional time not yet in the event-sourced settled projection, not proof of
 cross-device synchronization or continuous wall-clock reading.
 
-[代码] Reading Goals 0.2 composes the query and observer with the shelf menu,
+[代码] Reading Goals 0.2 (time view removed by the 0.7 rewrite on 2026-09-16;
+historical) composed the query and observer with the shelf menu,
 command palette, book-goal detail action, day/all-time filters, pending keyset
 list/detail and UI 1.2 live publication. Main detail updates automatically;
 pending list uses explicit refresh. It requires views 1.2, which adds the
@@ -1828,7 +1784,8 @@ The Agent reads current facts on its next tool call; this is not a model event
 subscription. Same-source typing does not establish remote change delivery,
 durable replay or exactly-once semantics (see capability CON07).
 
-[代码] Reading Goals 0.3 composes the period form, date-total list, all-time hour
+[代码] Reading Goals 0.3 (insights view removed by the 0.7 rewrite on 2026-09-16;
+historical) composed the period form, date-total list, all-time hour
 list, milestones and refresh using this query. The main detail subscribes to
 sessionRecorded/timeRecorded, filters book scope, coalesces overlapping refreshes
 and rereads after subscribing. It never accumulates event payloads as another
@@ -1903,20 +1860,16 @@ eviction. Supplying taskId returns the exact snapshot instead of a page. An
 alternate host without the optional preparation port does not advertise these
 tools. This is not an LLM end-to-end test or per-conversation task isolation.
 
-[代码] Text Desk 0.3 requires library:write and reading:write. Prepare returns a
-request detail; Rebuild requires a checkbox confirmation with host field errors;
-My requests lists this activation's handles. Cancel says "this request", never
-"all extraction"; Refresh rereads the handle and replaces the view. Failures show
-safe localized labels, never raw error messages. Request details now compose
-`observeTextTask` with UI 1.2 / views 1.1 live publication. Closing the detail
-disposes observation, not the task. Lists remain explicitly refreshed. There is
-no polling or DOM access. This plugin does not contribute extra Agent tools because
-the host already supplies the shared ones.
+[代码] A consumer needs library:write and reading:write for prepare/rebuild.
+Request details compose `observeTextTask` with UI 1.2 / views 1.1 live
+publication; closing a detail disposes observation, not the task. The first-party
+consumer fixture was retired on 2026-09-15; the host already supplies the shared
+Agent tools.
 
 [环境] Isolated macOS debug verifies actual permission-gated Workers, activation
 rejection, shared cancellation, foreign/retired handle denial, busy rebuild,
 Worker shutdown, observation disposal, real FB2 rebuild, both Agent scopes and
-compiled Text Desk menu/confirmation/refresh/cancel views. Held-section injection
+compiled consumer menu/confirmation/refresh/cancel views (fixture since retired). Held-section injection
 uses the registered content boundary; storage and bridges are real. Unit tests
 add source/write races, caps, slow-observer coalescing, failure propagation and
 64-task Agent pagination. Explicit pause/resume/prioritization, durable history,
@@ -1964,13 +1917,11 @@ E2E. Library 1.13 supplies TXT12 image discovery/resource reads; UI 1.13 adds
 programmatic viewer opening below. READ12
 remains partial rather than claiming manual fixed-layout page zoom exists.
 
-[代码] Text Desk 0.11 composes the existing image snapshot/observation/control
-service without new host or Agent APIs or permissions. `image-controls` is a
-standalone command for the current viewer. Book image rows open their preview
-in an existing host modal, including when entered from a pinned reader popup;
-the preview's Image controls action opens that versioned image with a ready
-book/session guard, then pushes the inspector. Missing/external/unsupported
-receipts do not push controls. Direct Open image viewer remains available.
+[代码] The image snapshot/observation/control service composes without new host
+or Agent APIs or permissions: a standalone viewer-controls command, previews in an
+existing host modal, and a ready book/session guard before opening a versioned
+image. Missing/external/unsupported receipts must not push controls. The
+first-party consumer fixture was retired on 2026-09-15.
 
 The inspector displays actual zoom, rotation and normalized horizontal/vertical
 offsets as percentages of the viewer stage, not source-image pixels. Actions
@@ -1984,14 +1935,13 @@ and closure; leaving disposes it and ignores late callbacks. Command failures
 propagate stable host errors without false success. No transform or viewer is
 persisted, and leaving the inspector does not close an opened native image.
 
-[验证] 36 Text Desk tests / 309 assertions, build, typecheck and manifest
-validation pass, including compiled command/preview entrypoints, all control
-requests, replacement rejection, observation disposal and eight-locale copy.
-Service responses in these tests are controlled fixtures. Concentrated native
-acceptance found that closing just the child inspector left the outer plugin
-dialog covering the image. Text Desk 0.11.1 requires Views 1.9 and uses
-`close: "all"` for Show image, completed image close, image opening and image
-passage navigation. No new data permission or Agent tool is added.
+[验证] The retired consumer fixture's 36 tests / 309 assertions covered compiled
+command/preview entrypoints, all control requests, replacement rejection,
+observation disposal and eight-locale copy against controlled service responses.
+Concentrated native acceptance found that closing just the child inspector left
+the outer plugin dialog covering the image; consumers therefore require Views 1.9
+and use `close: "all"` for Show image, completed image close, image opening and
+image passage navigation. No new data permission or Agent tool is added.
 
 [验证] Actual compiled Worker/Tauri controls now reveal the decoded 240x160
 fixture image, update zoom/rotation/all four pan directions, reset, and close
@@ -2011,8 +1961,8 @@ detached child's late result cannot close its replacement; the root dialog's
 close callback also matches its request identity. This is an explicit result
 operation, not a global window handle or a change to ordinary close semantics.
 Views 1.9 negotiation lets plugins require the new behavior. Nested serialized
-callback, stale-result, local-close and cross-presentation tests pass; Text Desk
-0.11.1 supplies the actual native image handoff consumer above.
+callback, stale-result, local-close and cross-presentation tests pass; the native
+image handoff consumer above was the since-retired fixture.
 
 ### Embedded Book Image Resources (Library 1.13 / Resources 1.2)
 
@@ -2162,7 +2112,8 @@ response-budget tests pass, with desktop grants checked against local Tauri ACL.
 This is not native Window-manager, actual Worker, packaged or cross-platform E2E;
 those remain for concentrated composition testing.
 
-[代码] Workspace Profiles 0.5 consumes this existing UI 1.11 service from its
+[代码] Workspace Profiles 0.5 (window view removed by the 0.11 rewrite on
+2026-09-16; historical) consumed this existing UI 1.11 service from its
 shelf header and registered command. Its separate Window view reads the four
 flags, observes updates while mounted, and offers explicit minimize, maximize,
 restore and enter/exit-fullscreen actions. The full-screen boolean is captured
@@ -2420,16 +2371,17 @@ settlement proves the task stopped. The plugin must cancel its real operation
 and publish resulting states with the existing live-view channel. No extra
 permissions, automatic retry, TaskRef, deadline or durable queue is introduced.
 
-[代码] Memory Desk 0.7 consumes this block for queued/running/cancelling graph
-tasks. These snapshots have no reliable live denominator, so it shows unknown
+[代码] A consumer can use this block for queued/running/cancelling graph tasks.
+These snapshots have no reliable live denominator, so it should show unknown
 progress rather than turning maxChapters into a percentage. Only queued/running
 states offer the existing `cancelGraphTask`; cancelling removes the stop action,
 and terminal states remove the waiting bar while retaining reports/retry actions.
-Its manifest requires views ^1.8.0. Graph ownership and model approvals are unchanged.
+The first-party consumer fixture was retired on 2026-09-15. Graph ownership and
+model approvals are unchanged.
 
 [验证] Normalization, callback serialization/retirement, cancellation alongside
-foreground work, mounted StrictMode controls and Memory Desk task-state tests
-pass. Stories cover determinate/indeterminate/cancellable display. Real Worker,
+foreground work, mounted StrictMode controls and the (since-retired) consumer task-state tests
+passed. Stories cover determinate/indeterminate/cancellable display. Real Worker,
 native layout and physical cancellation remain for concentrated Tauri acceptance.
 EXT07 and CON06 remain partial because this is presentation, not a unified task
 execution protocol. No new Agent tool is introduced.
@@ -2491,12 +2443,11 @@ belongs to that frame and the private Worker activation AbortSignal attached by
 the bridge, not a plugin-supplied ID. A plugin cannot publish into another actor's
 frame. At most 16 channels may be active per activation (`plugin/busy` beyond
 that). Source authors must publish their current snapshot on each subscription
-to close the initial-query/subscribe gap; Text Desk's immediate task observation
-does so. Hidden parent frames, nested modal presentation, suspension and close
+to close the initial-query/subscribe gap, as immediate task observation does. Hidden parent frames, nested modal presentation, suspension and close
 retire channels immediately and invoke the subscription disposer asynchronously.
 Back/resume creates a fresh channel. A late subscription acknowledgement is still
 disposed. Stopping a view source does not cancel business work unless its own
-explicit disposer contract says so; Text Desk only stops observing.
+explicit disposer contract says so; a task observer only stops observing.
 
 [代码] `revision` is a nonnegative safe integer, monotonically increasing within
 one channel; the initial accepted revision may be zero. The receipt is
@@ -2528,9 +2479,9 @@ the field schema or view kind fundamentally changes.
 isolated macOS debug tests using actual WebKit Workers and the app renderer:
 foreign publication, stale revision, updated button callback, retained user draft,
 push/back/modal source disposal, fresh resubscription, invalid content, late ACK,
-closed channel and activation retirement. Compiled Text Desk 0.3 opened from the
-reader More menu and advanced from Running 0/3 to Completed 3/3 without Refresh;
-the cancel action disappeared. Only a registered section getter was held; native
+closed channel and activation retirement. A compiled consumer (fixture since
+retired) opened from the reader More menu and advanced from Running 0/3 to
+Completed 3/3 without Refresh; the cancel action disappeared. Only a registered section getter was held; native
 book source, task repository, SQLite/blob persistence and RPC remained real.
 1200x800 and 800x650 screenshots were inspected. Unit tests additionally bound
 100 successive update callback graphs and cover invalid disposers and subscription
@@ -2652,18 +2603,19 @@ abort does not undo a dispatched database transaction. Book scope deliberately
 does not expose this global administration tool. Plugin domain grants allow direct
 writes and do not imply per-operation host approval.
 
-[代码] Library Desk 0.2 composes queries, live list selection, full-title review,
-batch deletion, durable cleanup discovery and safe retry through public APIs. It requires library 1.6
-and library:write. List refreshes keep the current search query; explicit navigation
-uses the host frame identity. Older refresh results and disposed views cannot
-publish over newer content. Its review is plugin UX, not a host authorization
-ticket. It is a source plugin, not one of the six Rust bundled plugins.
+[代码] Queries, live list selection, full-title review, batch deletion, durable
+cleanup discovery and safe retry compose through public APIs with library 1.6
+and library:write. List refreshes should keep the current search query; explicit
+navigation uses the host frame identity. Older refresh results and disposed views
+cannot publish over newer content. Plugin review is plugin UX, not a host
+authorization ticket. The first-party consumer fixture was retired on 2026-09-15.
 
 [环境] Native evidence covers
 isolated macOS debug Tauri: no/read/write Worker grants, invalid input, both actors'
 second-event rollback, pending file release, file-only retry without new events,
 restored-book preflight preserving both files, Agent rejection/cancellation/success,
-and actual shelf-menu Library Desk review/delete/retry at 1200x800 and 800x650.
+and actual shelf-menu review/delete/retry of the since-retired consumer fixture
+at 1200x800 and 800x650.
 Agent tests invoke the production tool/ports and real approval component in a
 fixture surface, not an autonomous model or persisted chat turn. This is not full
 data erasure: private plugin documents, chats, memories, derived indexes and remote
@@ -2706,15 +2658,15 @@ unchanged, but its actual record deletion also creates durable recovery intent.
 in keyset pages of 100, releasing the mutex between entries. A failed entry logs
 and remains pending without starving later pages. Stale projections defer the pass.
 This is not a periodic scheduler or general durable task service; explicit retry
-and the next startup are the remaining recovery opportunities. Library Desk's
-Pending file cleanup action lists 50 entries per page, displays the full stored
-title and ID in detail, and retries only that ID. Its refresh action re-queries;
-discovery does not depend on the plugin retaining the original removal receipt.
+and the next startup are the remaining recovery opportunities. A consumer's
+pending file cleanup view can list 50 entries per page, display the full stored
+title and ID in detail, and retry only that ID; discovery does not depend on the
+plugin retaining the original removal receipt.
 
 [环境] Recovery evidence
 records isolated macOS debug restarts, fresh no/read/write Worker consumers,
-production Agent discovery/approved file-only retry, and real Library Desk menu
-discovery/detail/retry. Binding loss for a synthetic virtual book does not erase
+production Agent discovery/approved file-only retry, and real consumer-fixture
+menu discovery/detail/retry (fixture since retired). Binding loss for a synthetic virtual book does not erase
 the host cleanup intent. That virtual case injects intent acknowledgement failure
 without source bytes; it is not a virtual-file I/O test. General RSS private-cache
 cleanup, binding persistence recovery, late blob writers, cross-device races,
@@ -2772,19 +2724,19 @@ tool is registered in global and book scopes and uses the same host implementati
   remain logged and reported. This is not a guarantee that a hung parser finishes
   by a deadline, nor a retrofit of every unrelated plugin query.
 
-[代码/消费者] Text Desk **0.5** requires library 1.7. Its per-book Find a
-passage form accepts an exact query (1–500 characters), case/whole-word options,
-and paginated search batches. Selecting a result reads a versioned passage
-without moving the reader; the explicit Open passage action navigates to that
-range. Duplicate excerpts have section/occurrence labels. Details show a quote,
-bounded surrounding text, offsets and continuation; stale/failed reads reject
-instead of constructing a successful detail. Existing derived-index search
-remains separate and does not pretend its offsets are ranges.
+[代码/消费者] A per-book Find a passage form accepts an exact query (1–500
+characters), case/whole-word options, and paginated search batches. Selecting a
+result reads a versioned passage without moving the reader; an explicit Open
+passage action navigates to that range. Duplicate excerpts carry section/occurrence
+labels. Details show a quote, bounded surrounding text, offsets and continuation;
+stale/failed reads reject instead of constructing a successful detail. Existing
+derived-index search remains separate and does not pretend its offsets are ranges.
+The first-party consumer fixture was retired on 2026-09-15.
 
 [环境] Range evidence records real
 macOS debug Tauri, native imported FB2/PDF, permission-gated module Workers,
-eight concurrent reads per format/permission, actual Agent tools/fence and the
-compiled Text Desk UI. Native navigation reached the second PDF occurrence
+eight concurrent reads per format/permission, actual Agent tools/fence and a
+compiled consumer UI (fixture since retired). Native navigation reached the second PDF occurrence
 with `visibleText: needle`; actual reader state was unchanged by range-only
 reads. A held native parser load outlasted the old two-second quiescence timeout:
 RPC cancelled first, shutdown remained pending, and the final lease released
@@ -2835,9 +2787,10 @@ not permission. `read_book_range` retains its separate source/fence validation.
 Plugins require reading access for session queries/observations and library
 access for source reads; a contribution input does not grant either domain.
 
-[代码/环境] Text Desk 0.6 composes the captured range from its selection/guide
-menu contribution, or reads the current selection from its header view action,
-then uses ordinary range detail and explicit navigation. No range gives a
+[代码/环境] A consumer composes the captured range from a selection/guide
+menu contribution, or reads the current selection from a header view action,
+then uses ordinary range detail and explicit navigation (the first-party fixture
+was retired on 2026-09-15). No range gives a
 non-actionable unavailable detail, not a guessed search or restamped anchor.
 Native evidence covers real FB2/PDF
 DOM selections, module Workers with no/read/write grants, session observation,
@@ -2877,8 +2830,8 @@ UTF-16 limit rather than rejecting otherwise valid 8193-12000-unit references.
 [环境] Native evidence covers
 real FB2/PDF module Worker select/clear, no/read grant absence, stale clear
 preserving a newer selection, actual Agent tool select/clear and stale version
-rejection. Compiled Text Desk 0.7 composes search/read/select and a captured-ID
-clear action; native dialog button clicks selected the second PDF match, then
+rejection. A compiled consumer (fixture since retired) composed search/read/select
+and a captured-ID clear action; native dialog button clicks selected the second PDF match, then
 the dialog exited with its selection toolbar still visible. Both owned books,
 their annotations, cleanup intents and live blob paths were removed through
 formal commands and checked with read-only SQLite. Existing books were untouched.
@@ -2926,7 +2879,7 @@ conversation matchers now live in core, with existing Agent exports retained.
   and total scan/memory budgets remain gaps; exact searchLocations has its own
   existing page cursor.
 
-[代码] Introduced in Text Desk 0.4 (now 0.5, requiring library 1.7), this flow composes the existing library,
+[代码] Introduced by a since-retired consumer fixture (requiring library 1.7), this flow composes the existing library,
 reader, form/list/detail surfaces: shelf-index search, selected-book search,
 newline-separated variants, 40-hit result limit, exact/partial labels, plain-text
 snippet detail and explicit Open book. Opening a book does not pretend to jump
@@ -3170,9 +3123,10 @@ or non-ready surface uses `reader/unavailable`, and no commit within ten seconds
 uses `reader/timeout`. Agent abort and plugin instance termination cancel waiting.
 Cancelled uncommitted intent is discarded and late acknowledgements ignored;
 cancellation does not undo an already committed UI change. Plugins do not yet
-have an independent per-call AbortSignal. Listening Desk 0.8 consumes the snapshot
-and guarded command, closing its view only after success. It remains an on-demand
-view rather than a live subscriber, and does not add a redundant model tool.
+have an independent per-call AbortSignal. Listening Desk 0.8 (plugin removed
+2026-09-16; historical) consumed the snapshot and guarded command, closing its
+view only after success. It was an on-demand view rather than a live subscriber,
+and did not add a redundant model tool.
 
 [验证] Controller, real React DOM, Agent tool and plugin view tests cover completion,
 concurrency, stale guards, cancellation, timeouts, observer reentrancy, disposal and
@@ -3277,7 +3231,7 @@ errors are isolated. Receipts do not prove CSS animation, screen rasterization,
 annotation/chat data loading or actual focus completion. Worker per-call abort
 is still not exposed.
 
-Listening Desk 0.9 added UI 1.1 and composes four guarded panel actions with
+Listening Desk 0.9 (plugin removed 2026-09-16; historical) added UI 1.1 and composed four guarded panel actions with
 reading mode, playback, history and controls. It closes its own view only on
 success; a stale session guard leaves the view available for Refresh and retry.
 [验证] Unit/React/actor tests and historical isolated macOS debug Tauri tests cover
@@ -3286,7 +3240,8 @@ appearance. Packaged and Windows/Linux panel behavior remain unverified.
 
 ### Listening Desk Live Status and Panel Widths
 
-[代码] Listening Desk 0.10 keeps the existing mode forms, history, controls and
+[代码] Listening Desk 0.10 (plugin removed 2026-09-16; the Reading 2.5 controller
+remains consumed by the native reader and Agent) kept the existing mode forms, history, controls and
 four panel actions. A separate live detail view composes observeSession,
 observeEnvironment and reader.observe, using UI publishView. It displays reader/
 mode/playback status, stable error blocks, backend/fallback, current-section unit
@@ -3481,7 +3436,7 @@ failure now propagates instead of being swallowed and potentially bypassing the
 fence; missing books reject `reader/book-not-found`. System-prompt chapter digest
 assembly now uses the same flavor and boundary filter. This does not unify every
 prose, grounding or output-guard policy. Result notes/fence are diagnostic prose;
-Memory Desk renders localized state strings instead of exposing raw errors.
+consumers render localized state strings instead of exposing raw errors.
 
 [代码/生命周期] Requests are normalized/copied before asynchronous work; plugin
 activation lifetime is checked before and after reads. Retired owners reject
@@ -3489,20 +3444,19 @@ activation lifetime is checked before and after reads. Retired owners reject
 not physical cancellation of already running SQLite reads. Database failures
 propagate through stable error handling rather than returning empty lists.
 
-[代码/组合] Memory Desk 0.1 used memory:read, library:read, reading:write;
-0.2 upgrades to memory:write for conditional feedback. Both versions use
-declarative views, shelf/reader header actions and an open command. It provides
-personal/cross-book/book memory queries, 40-book pages (search filters the current
-page), up to 100 memory results, graph/name/chapter queries, profile provenance
-and source navigation. Overview/profile truncation is displayed; a source click
-rechecks the current graph boundary, requires stored chapterHref, awaits reading
-ready, then closes its own view. Missing provenance reports reader/target-not-found.
-The plugin adds no Agent tool, network permission or LLM call. Source
-roster now contains 15 plugins; Rust BUNDLED remains six, excluding Memory Desk and Maintenance Desk.
+[代码/组合] The first-party memory consumer fixture (retired 2026-09-15) used
+memory:read, library:read, reading:write, then memory:write for conditional
+feedback, with declarative views, shelf/reader header actions and an open command:
+personal/cross-book/book memory queries, 40-book pages, up to 100 memory results,
+graph/name/chapter queries, profile provenance and source navigation with a
+graph-boundary recheck, stored chapterHref and reading-ready wait before opening.
+Missing provenance reports reader/target-not-found. It added no Agent tool,
+network permission or LLM call. Source roster now contains 11 plugins; Rust
+BUNDLED remains six.
 
 [环境/验证] Isolated macOS debug Tauri tests use real SQLite, module Workers,
-production Agent tools (not autonomous inference), compiled Memory Desk and a
-synthetic three-chapter FB2.
+production Agent tools (not autonomous inference), the compiled consumer fixture
+(since retired) and a synthetic three-chapter FB2.
 They cover denied/granted authority, explicit scopes, pre-merge spoiler protection,
 unknown/live boundary, flavor reclassification, rejected caller spoiler claims,
 localized SQLite read failure retaining the old view, retry and source navigation.
@@ -3624,8 +3578,8 @@ a competing committed Winner then survived a late generator. Mutating caller
 input after starting save did not change the persisted Winner. Pre-dispatch
 cancel left broadcasts at 4. An owned SQL trigger caused db/error with both
 event/outbox counts 15 to 15 and no broadcast; removing it allowed retry.
-Agent/Worker graph results agreed, and compiled Memory Desk displayed Winner
-and Rebuilt1 without future Hidden names. Native screenshot inspected; owned
+Agent/Worker graph results agreed, and the compiled consumer fixture displayed
+Winner and Rebuilt1 without future Hidden names. Native screenshot inspected; owned
 records/Workers/trigger cleaned. This is not public-task or autonomous-model
 E2E, nor packaged/Windows/Linux/remote-sync validation. Memory remains 1.3.
 
@@ -3667,55 +3621,12 @@ The leader commits chapter 0 while its receipt delivery is held; a follower and
 a cancelled queued request make no model calls. Cancelling the leader leaves the
 follower waiting until the real port receipt is released. The follower then
 generates only chapter 1; a fresh pass attempts zero chapters. Agent and Worker
-graph queries agree; compiled Memory Desk shows Queued0/Queued1 and excludes future
-names. Native screenshot inspected and owned records/Workers cleaned. Unit tests
+graph queries agree; the compiled consumer fixture showed Queued0/Queued1 and
+excluded future names. Native screenshot inspected and owned records/Workers cleaned. Unit tests
 also cover different-book progress, failures, FIFO, capacity/recovery, queued
 cancellation, late reads and request mutation. This is scripted inference and
 receipt gating, not stalled SQLite, autonomous models, public-task UI,
 packaged/Windows/Linux or real remote-sync verification.
-
-<a id="book-graph-tasks"></a>
-### Memory Desk Profile and Conversation Composition
-
-[代码] Memory Desk 0.8 consumes existing Memory 1.7 and Conversations 1.4 without
-adding a host or Agent API. Its manifest adds `conversations:read`; viewing
-conversation summaries does not borrow `memory:write` authorization. Existing
-graph generation permissions remain unchanged. New labels use simplified
-Chinese or English fallback.
-
-- The home view adds user profile and global conversation summaries; each book
-  adds its own conversation summary. Merely opening these views does not invoke
-  a model, generate a summary, change a conversation or write memory.
-- Profile pages request 4000 UTF-16 units. Subsequent/previous pages carry the
-  displayed revision and exact returned offsets; Refresh restarts at the newest
-  first page. Missing and present-empty profiles have distinct states. Reads
-  propagate failures rather than presenting them as absence.
-- Edit reloads the complete profile with limit 16000 at the displayed revision.
-  The form freezes that revision and requires a separate checkbox to replace
-  the text, including explicit empty-text clearing. It never substitutes the
-  first page for the full profile. Legacy profiles longer than 16000 remain
-  readable but do not expose this bounded editor. Read-only contexts omit Edit.
-- Conflict/write failure rejects without navigation or automatic rebase/retry,
-  leaving the host form draft intact. The completion view reports the actual
-  `changed` receipt; Refresh is a separate read, so a failed follow-up query
-  cannot make a completed write look unsuccessful. No new cross-device CAS,
-  durable profile projection or multi-record memory transaction is implied.
-- Global thread lists display 40 rows per page and clamp after deletion. Book
-  and global targets are explicit `kind/id`; only selecting a row reads its
-  stored summary. A summary's complete returned string is captured once and
-  displayed as plain text in 4000-unit pages without splitting surrogate pairs.
-  Back/Next reuse that snapshot; Refresh obtains a new one. Null and empty
-  strings differ. This bounds the displayed page, not the host response/string
-  memory, and adds neither provenance timestamps nor summary freshness claims.
-- These new views use explicit refresh rather than background observations;
-  existing memory/graph live views are unchanged.
-
-[验证] 33 plugin tests / 194 assertions, plugin typecheck and build pass, including
-the compiled command's real contribution callbacks with a controlled Bun context.
-Profile revision/confirmation/clear/failure, summary paging/Unicode/plain-text,
-book/global targets and locale fallback are covered. This is not WebKit Worker,
-real profile persistence, upgrade permission approval or full chat proof. Native
-composition and document visual checks remain concentrated acceptance work.
 
 ### Memory 1.7: User Profile Reads and Conditional Writes
 
@@ -3801,6 +3712,7 @@ Worker/Tauri plugin editing and model-driven interview flows remain for the
 concentrated acceptance phase. A full onboarding/seed-memory workflow, profile
 event projection (MEM08), and formal bundles (MEM13) remain separate gaps.
 
+<a id="book-graph-tasks"></a>
 ### Memory 1.5: Public Graph Tasks and Chapter Budgets
 
 [代码] `queries.listGraphTasks(bookId)` and `getGraphTask(bookId,taskId)` read only
@@ -3871,15 +3783,15 @@ requests generate-book-graph approval with book identity and operation; decline
 does not enqueue. Input is copied before approval. Reads/cancel need no model-cost
 approval. This is not a tool to recursively invoke the chat Agent.
 
-[代码/环境] Memory Desk 0.5 combines graph queries, library navigation, task
-observation, explicit cost confirmation and live task list/detail/cancel/retry.
-Public task evidence records six
+[代码/环境] The since-retired consumer fixture combined graph queries, library
+navigation, task observation, explicit cost confirmation and live task
+list/detail/cancel/retry. Public task evidence records six
 Workers, real SQLite and native OpenAI-compatible SSE to a scripted loopback
 provider. Read-only/no-LLM permissions were denied; another actor's list was empty.
 Failed rebuild retained Ada while the other chapter updated; retry attempted only
 the failed chapter. Agent queued behind plugin work, queued/active cancellation
 terminated without late saves, and Worker retirement aborted two held requests.
-Compiled Memory Desk was clicked through confirmation validation, partial/error
+The compiled fixture was clicked through confirmation validation, partial/error
 display and successful retry; both native screenshots were inspected. Agent
 approval was scripted through the real port, not clicked in the approval component
 or generated by an autonomous model. Agent/Worker graph reads agreed and excluded
@@ -3897,9 +3809,10 @@ configuration was not proven. Successful second setup cleaned its captured state
 No formal application data was used. This is an environment limitation, not proof
 of a shipped task restart/recovery contract.
 
-[代码/环境] Memory Desk 0.6 requires memory 1.5 and composes a numeric chapter-limit
-field, renewed confirmation, inherited/overridden retry limits, limit and unavailable
-reason display, one-based empty/failed chapter numbers and host-localized errors.
+[代码/环境] A memory 1.5 consumer can compose a numeric chapter-limit field,
+renewed confirmation, inherited/overridden retry limits, limit and unavailable
+reason display, one-based empty/failed chapter numbers and host-localized errors
+(the first-party fixture was retired on 2026-09-15).
 Agent `manage_book_graph` accepts maxChapters only for start/rebuild/retry. The
 permission request carries the resolved limit through the production chat mapper;
 all eight localized descriptions include the task subject and limit. Previously
@@ -3907,7 +3820,7 @@ the graph permission description omitted subject interpolation, hiding the book 
 operation. Graph interactions now follow the existing suppressed tool-row policy.
 Budget evidence verifies real Worker
 limits and inherited retry, actual Agent approval component decline/approve/retry,
-and compiled Memory Desk limit 1 followed by retry limit 2. Each pair generated
+and the compiled fixture's limit 1 followed by retry limit 2. Each pair generated
 only chapter 0 then chapter 1; future chapter 2 remained untouched. Three native
 screenshots were inspected. The new retry ordering for empty/failed predecessors
 was added after this native run and is unit-tested, not claimed as native proof.
@@ -3961,8 +3874,9 @@ change while approval is pending still conflicts. A tool must not reclassify
 merely to evade spoiler policy. Manual correction remains available with
 automatic memory building disabled. This is not a general inference task.
 
-[代码] Memory Desk 0.4 (requires memory ^1.3.0) composes the existing book picker
-with classification detail/observation and a conditional form. Changing the
+[代码] A memory ^1.3.0 consumer composes the existing book picker with
+classification detail/observation and a conditional form (the first-party fixture
+was retired on 2026-09-15). Changing the
 classification requires a checkbox acknowledging its spoiler-boundary effect.
 The form captures the viewed revision and selected classification; background
 updates do not rebase it. A failed write leaves the draft and checkbox intact.
@@ -3987,7 +3901,7 @@ The production Agent tool and interaction port used the real ChatInteractionProm
 mounted in a controlled native fixture root: actual buttons declined, approved,
 and approved after a concurrent write that correctly conflicted. This is component/
 tool integration, not a full AgentThread/chat transcript or autonomous model run.
-Compiled Memory Desk 0.4 changed the persisted classification, retained a
+The compiled consumer fixture changed the persisted classification, retained a
 conflicting draft, cleared a corrupt SQLite read and recovered after finally
 restoring the owned row. Four screenshots were inspected; SQLite confirmed
 actor origins, owned-book removal and three forgotten synthetic memories.
@@ -4037,15 +3951,16 @@ Existing-memory management is independent of the memory-building switch; it does
 not run an LLM or promote a new fact. Permission titles/descriptions, plugin
 consent and stable errors are localized in eight languages.
 
-[代码] Memory Desk 0.2 reads inspect on entry, shows full content/ID/scope and
-adds correction, pin/unpin and forget. Each action captures the displayed revision;
+[代码] A feedback consumer reads inspect on entry, shows full content/ID/scope and
+adds correction, pin/unpin and forget (the first-party fixture was retired on
+2026-09-15). Each action captures the displayed revision;
 SQL failure or conflict preserves the form draft, not an auto-rebased overwrite.
 The user returns, refreshes and decides again. Forget requires a confirmation
 checkbox; correction uses a textarea. Pin/unpin is reversible, correction can be
 edited again. Forget only excludes this record from active retrieval, retaining
 event history and not removing prior prompts or external copies. There is no
-public restore operation. Old 0.1 installs need approval of the added write grant;
-the native fixture does not prove the full upgrade-consent flow.
+public restore operation. Adding a write grant needs installation approval; the native fixture did not
+prove the full upgrade-consent flow.
 
 [环境] Native evidence: real Worker
 read/write separation, stale revision rejection, Agent approval/decline and
@@ -4085,8 +4000,8 @@ invalid field, not persisted content. This validates structure, not factual
 accuracy, relationship endpoints across chapters, total payload budgets, or the
 association between an old digest and a replaced source file.
 
-[代码] Explicit Agent/Worker queries propagate the failure. Memory Desk 0.3's
-existing live view clears old content/actions and recovers automatically after a
+[代码] Explicit Agent/Worker queries propagate the failure. A consumer's
+live view should clear old content/actions and recover automatically after a
 valid read. Optional prompt digest loading logs the failure and omits the whole
 digest section so chat can continue; this is not a claim that the graph is empty.
 A degraded digest load does not settle the chapter-session cache; the next user
@@ -4094,8 +4009,8 @@ turn retries without requiring a new session or explicit reset.
 
 [环境] Native evidence
 covers real SQLite malformed JSON, alias type and unknown-flavor faults on an
-owned synthetic FB2, actual Agent tool and Worker calls, compiled Memory Desk
-error clearing and automatic recovery. Three native screenshots were inspected.
+owned synthetic FB2, actual Agent tool and Worker calls, and the compiled consumer
+fixture's error clearing and automatic recovery. Three native screenshots were inspected.
 AgentThread failure logging/recovery uses an in-memory port and faux provider,
 not native model inference. No packaged/cross-platform or automatic repair claim.
 
@@ -4130,7 +4045,7 @@ log, omit the digest section, and leave the cache unsettled for the next turn.
 
 [环境] Native evidence uses a
 real AgentThread with production SQLite ports and scripted inference, plus real
-Worker queries and compiled Memory Desk. Narrative/expository/narrative changes
+Worker queries and the compiled consumer fixture. Narrative/expository/narrative changes
 in the same chapter produce corresponding prompt samples with 1/3/5 messages,
 not a reset transcript; the plugin switches Ada/Concept without refresh. Future
 selection, lost cursor and an unclassified row were also exercised. Two native
@@ -4181,8 +4096,9 @@ between polls may coalesce, scope-excluded changes produce no payload, and
 unchanged results need not emit even if an underlying event was appended. Native
 query reads and graph metadata assembly are not a new cross-table snapshot/CAS.
 
-[代码] Memory Desk 0.3 composes observe with UI publishView and live views for
-memory lists, records, graph overviews, named profiles and chapters. Initial or
+[代码] A consumer composes observe with UI publishView and live views for
+memory lists, records, graph overviews, named profiles and chapters (the
+first-party fixture was retired on 2026-09-15). Initial or
 later read failures show an inline coded error and remove old content/actions;
 recovery resumes without clicking refresh. Successful list updates retain local
 search. Entering an edit/forget form ends that frame's observer; its draft and
@@ -4259,7 +4175,7 @@ checkpoint. No extra observer/timer or plugin maintenance authority was added.
 [环境] Native evidence verifies a
 real Worker correction during scripted judgment, stale merge/reinforcement
 rejection, second-event SQL failure with whole-batch rollback, successful retry,
-and subsequent editing through compiled Memory Desk. Rust tests independently
+and subsequent editing through the compiled consumer fixture. Rust tests independently
 cover event/outbox rollback and payload/read-set restrictions. Model answers were
 scripted, not autonomous inference; packaged/Windows/Linux and distributed races
 are unverified. The Pin/Correct icon fallback discovered there is now fixed by
@@ -4267,8 +4183,8 @@ registering the existing `push-pin`/`pencil-simple` names in the host icon catal
 
 [环境] Idle evidence uses a real
 AgentRuntime with production SQLite ports restricted to one owned fixture row,
-actual Worker writes, native `applyRemote`, and compiled Memory Desk pin/correct
-actions. Each change reruns evaluation and then settles. With an injected clock,
+actual Worker writes, native `applyRemote`, and the compiled consumer fixture's
+pin/correct actions. Each change reruns evaluation and then settles. With an injected clock,
 30 days minus 1 ms skips, the exact boundary decays; an owned SQL rejection leaves
 importance and event count unchanged, then retries successfully at the same
 clock. These direct idle calls do not test five-minute wall-clock scheduling or
@@ -4532,7 +4448,8 @@ until promotion and retire with the owner. Captured reads check cancellation
 before and after waiting; queued plugin writes check it before dispatch. Already
 dispatched persistence is not rolled back by retirement.
 
-Workspace Profiles **0.3** combines this observer with UI 1.2 live publication.
+Workspace Profiles **0.3** (current-workspace view removed by the 0.11 rewrite on
+2026-09-16; historical) combined this observer with UI 1.2 live publication.
 Current workspace shows seven preset values, updates without refresh, retains
 the last sample beside a localized read error, clears errors on recovery, and
 unsubscribes on leaving. Profile CRUD and explicit shortcut editing are unchanged.
@@ -4651,7 +4568,8 @@ older 0.1 desktop evidence does not prove the 0.6 protocol.
 
 ### Workspace Profiles Font Composition
 
-[代码] Workspace Profiles 0.4 uses existing Settings 1.8 options and Views 1.5
+[代码] Workspace Profiles 0.4 (font enumeration removed by the 0.11 rewrite on
+2026-09-16; historical) used existing Settings 1.8 options and Views 1.5
 pagination. It adds exact read/write grants for `reading.fontFamily`,
 `appearance.contentTypography.fontFamily` and
 `appearance.contentTypography.followReader`, not wildcard settings access.
@@ -4768,7 +4686,8 @@ conflict space, not a new focus-sensitive priority system. The native editor
 shows a localized persistent InlineError on each conflicted row and removes it
 when the shared catalog no longer reports that conflict.
 
-[代码] Workspace Profiles 0.2 adds a native-rendered shortcut form using only
+[代码] Workspace Profiles 0.2 (shortcut form removed by the 0.11 rewrite on
+2026-09-16; historical) added a native-rendered shortcut form using only
 its own exact command path grant. Default/custom mode, modifier toggles and a
 key field submit one settings command. Its seven-field saved presets remain
 unchanged. Plugin action failures now carry only the stable error code to the
@@ -4882,20 +4801,21 @@ output uses an explicit 256-character search preview with `queryTruncated`.
 JSON-expanded identifiers can shorten a selection page to stay below the 16000
 character tool budget; total and a usable continuation cursor are preserved.
 
-Library Desk **0.3** composes collection queries, workspace observation, native
-navigation and a search form with the existing live-view protocol. Cross-collection
+A consumer composes collection queries, workspace observation, native navigation
+and a search form with the existing live-view protocol (the first-party fixture
+was retired on 2026-09-15). Cross-collection
 checkbox selection first becomes explicit collection groups; choosing one group
 shows only that group's IDs on the shelf. A successful navigation closes the
 plugin dialog; failure leaves it open. The workspace header observes the native
 selection count, while the collection list is a snapshot refreshed by reopening.
-Its 0.3 manifest requires UI ^1.3.0 and reading:write as well as library:write;
-normal installation/update consent remains required for the expanded grant.
+This requires UI ^1.3.0 and reading:write as well as library:write; normal
+installation/update consent remains required for the expanded grant.
 
 [环境] Desktop evidence
 covers isolated macOS debug Tauri: real permission-gated Workers, both production
 Agent scopes, a two-book native selection/page, hidden/missing-target rejection,
 native command-result navigation, reader-close authorization, settings over a
-real FB2 reader, moved-book reconciliation, and compiled Library Desk group/search
+real FB2 reader, moved-book reconciliation, and the compiled consumer fixture's group/search
 UI. Unit tests additionally hold/reject DB reads, defer UI-replica publication,
 cancel/supersede owners, withhold destination commit and stress observer delivery.
 This does not prove autonomous model decisions, full installation consent,
@@ -5003,7 +4923,7 @@ enumeration, focus observer or target-specific enabled check.
 - Agent list/execute still query this same service on demand. There is no new
   perpetual model loop or claim that every host operation has dynamic availability.
 
-[代码] Library Desk **0.6** extends Workspace > Host commands: searchable host titles
+[代码] A host-command consumer (the first-party fixture, retired 2026-09-15) composed Workspace > Host commands: searchable host titles
 and IDs, current checked values, unavailable reasons, explicit refresh, guarded
 execution, close only on full completion. Partial completion stays open with a
 saved-setting statement and host-localized error. Refresh never automatically
@@ -5014,7 +4934,7 @@ keeps the last rows, adds a host-localized inline error and removes stale action
 recovery restores actions. Resource pickers remain query-time snapshots, and
 execution revalidates stale state. Book/collection commands compose library
 queries with searchable resource pickers, then execute the selected real ID with
-the revision of the clicked command snapshot, not a later live update. Its manifest requires UI ^1.6, views ^1.2 and
+the revision of the clicked command snapshot, not a later live update. It required UI ^1.6, views ^1.2 and
 read/write grants for exactly `shelf.layout`, `shelf.sort`, `shelf.group`.
 
 [环境] Native evidence covers isolated
@@ -5025,7 +4945,7 @@ and list-layout execution. Deferred writes, partial receipts, retirement and
 all 16 basic operation mappings are additionally unit-tested.
 Current routing evidence adds real
 Worker resource schemas/grants/missing targets, book/global Agent resource calls,
-native palette dynamic results and compiled Library Desk 0.5 resource pickers.
+native palette dynamic results and the compiled consumer fixture's resource pickers.
 A targeted SQLite failure kept the native palette open with no successful setting
 event; recovery produced one settings.changed with origin=user and closed it.
 That failure exposed duplicate storage/command toasts. The subsequent
@@ -5203,8 +5123,8 @@ SQLite transaction itself: cancellation stays pending with one policy subscripti
 and only receipt release lets the operation reject/unsubscribe. A trigger-induced
 native failure keeps event/outbox counts 8 to 8 and broadcasts unchanged; its
 released late failure is logged as db/error while the caller gets ai/memory-disabled.
-Fresh retry succeeds. Agent/Worker graph queries agree and compiled Memory Desk
-shows the committed Drained entity. Unit tests independently gate seven write
+Fresh retry succeeds. Agent/Worker graph queries agree and the compiled consumer fixture
+showed the committed Drained entity. Unit tests independently gate seven write
 destinations, drain sibling success/failure, block retained operations and retain
 prompt hung-read/model cancellation. This is not a public-task UI or physical
 network-cancellation test; packaged/Windows/Linux/remote sync remain unverified.
@@ -5223,7 +5143,9 @@ and exact `ai.preferences.buildMemory` access. Context follows the request's boo
 not whichever book is currently open; memory suggestion is opt-in. Clear removes
 the private goal, not already promoted memories. Forms capture their target book
 and save goal and host policy independently. Version 0.4 also registers the goal
-tools described below; no new host domain or plugin-ID branch was needed.
+tools described below; no new host domain or plugin-ID branch was needed. Since
+0.7 (2026-09-16) the plugin is a single per-book goal form: it no longer renders
+reading-time or insights views and does not consume those statistics.
 
 [环境] The real Worker, native chat UI and controlled loopback inference verified
 goal context, candidate promotion, disabled memory with retained chat history,
@@ -5907,157 +5829,6 @@ entry is connected; logging 1.0 supplies plugin-owned diagnostic output, while
 diagnostics 1.1 adds host-confirmed export/send final flow receipts. Focused checks cover wiring, not real desktop update/diagnostics
 execution; composition/Tauri acceptance remains pending.
 
-### Maintenance Desk Composition Plugin
-
-[代码] `plugins/maintenance-desk` 0.3.0 consumes public plugin APIs only. It
-adds a shelf header popup and command, not a host domain or Agent tool. Its
-manifest requires settings 1.9, maintenance 1.3, diagnostics 1.1, UI 1.2,
-logging 1.0, plugins 1.1, sync 1.1 and views 1.8; grants are `service:network`, `service:diagnostics`, `service:sync`
-and discover-only `ai.connection.primaryModel`. No current configuration,
-credentials, book data, backup bytes, paths or diagnostic bundle is read.
-The source roster is fifteen; Rust BUNDLED remains six. Maintenance Desk is not
-in that release roster or published. Debug `RepoDist` discovers all built checkout
-plugins as builtin, including this one; that is not a normal user installation.
-
-- Version 0.3 composes all existing sync service entrypoints without host/Agent
-  API changes. Snapshot/observe read local status, backend kind, connection-busy,
-  last-sync timestamp, phase/counts, cycle-start backlog, last-cycle totals and
-  remaining history. Current backlog is a separate explicit read, not a reuse
-  of cycle-start counts. Progress is indeterminate, not an invented percentage.
-  Failed reads reject to the host error surface. Observation retires with the
-  view or activation; query results are not durable sync receipts.
-- Synchronize now has an explicit review before `requestSync`; the shared
-  journal records completed versus already-running. Cancelling this wait cannot
-  stop the shared synchronization, and its pending slot remains until the
-  public call settles. Completion does not prove remote devices caught up or
-  projections are consistent. No follow-up read can erase a successful receipt.
-- `connectionOptions` adds registered ref/label choices after a default Relay
-  choice (omitted transportRef), paged locally in groups of 40 from one fetched
-  directory. Selection freezes the exact ref and label; refresh reloads the
-  directory. Native `requestFlow` handles connect/disconnect/delete-account/
-  upgrade/billing. Plugin review does not approve the native operation: it
-  starts an activation-owned wait with its own signal, closes the plugin popup,
-  and records completed/cancelled/external-opened in the existing 20-entry
-  journal. External-opened is not purchase or billing-change success. Delete
-  review names remote account/data deletion and retention of local books;
-  final identity, credentials, passphrase and deletion confirmation stay native.
-- `account` is only requested by an explicit online-read action for a connected
-  Relay account. It displays tier, three usage counters and four limits; null
-  limits mean unlimited, zero remains zero. A null account is unavailable,
-  not a failed read or zero usage. Billing is offered only when hasBilling;
-  native checks still control eligibility. `openSettings` closes the plugin
-  after opened and never automatically logs in or purchases. Account/backlog
-  views use explicit refresh and do not poll remote services. Supported/busy/
-  connection state gates actions, while the host revalidates at execution.
-- [验证] Version 0.3: 30 plugin tests / 178 assertions, build, typecheck and
-  formal manifest validation pass. Compiled command, all five native flow
-  requests, synchronization receipts, cancellation, observation retirement,
-  quota values and failed reads are exercised with controlled Bun contexts.
-  No real login, deletion, purchase, remote account read or synchronization was
-  executed. Upgrade grant consent, Worker/Tauri, cross-device effects and document
-  visual checks remain for concentrated acceptance. No release roster change.
-- Version 0.2 adds installed metadata and registered contribution directories:
-  `plugins.list/observe/contributions/observeContributions`, 40-row offset pages,
-  host-side search up to 200 characters, all contributions or exact plugin ID.
-  Live changes replace the visible page; refresh restarts at offset zero, and
-  previous-page navigation remains available after a directory shrinks. Pages
-  are not revision-pinned. Plugin details are selected metadata snapshots:
-  id/name/version/builtin/enabled/activationFailed, not a health assertion.
-  Contribution point/pluginId/key identities have no invoke action. Observers
-  dispose on frame closure or plugin deactivation; failed reads reject to the
-  host error surface rather than becoming empty directories.
-- Software updates compose `maintenance.snapshot/observe/checkForUpdates`.
-  Opening only reads; an explicit network-authorized check renders its returned
-  snapshot without a follow-up query. Unsupported platforms are distinguished
-  from up-to-date; busy states omit check. Phase, versions, selected channel,
-  last successfully checked channel and error stage come from the host. Progress
-  uses the host's 0-100 value or null, never an invented percentage. These flows
-  do not enter the backup/diagnostics journal. `openSettings(plugins/updates)`
-  closes the plugin only after opened; it neither clicks native controls nor
-  reports installation, enablement or restart success. No new grants or APIs.
-- [验证] Version 0.2: 20 plugin tests / 125 assertions, build, typecheck and
-  formal manifest validation pass, including compiled command entry, paging,
-  live disposal, check receipt and native handoff calls. Contexts are controlled
-  Bun fixtures, not WebKit Workers. New management/update paths, real upgrade
-  behavior and document visual checks remain for concentrated native acceptance.
-- Catalog provider choices are twelve explicit public IDs, not the active
-  account: openai, anthropic, openrouter, google, deepseek, xai, groq, mistral,
-  moonshotai, zai, zai-coding-cn, ollama-cloud. No custom/Relay/Codex catalog.
-- The form queries cached metadata, with search limited to 120 characters and
-  25-row pages. Next/previous retain provider/search/revision. Stale pages show
-  an error and offer a first-page reload. Only an explicit refresh action calls
-  the shared remote refresh; errors retain a recovery path, never claim empty
-  catalog success. Details show ID, input types, reasoning and token limits.
-- Connection testing, v1 backup import/export, report export/send and local
-  projection verification each have a review step. Native flows then close
-  the plugin popup without awaiting their receipt inside that view callback;
-  host buttons, file selection and final confirmation still belong to the user.
-  Verification remains in the plugin's live result view and performs no repair.
-- `operations.ts` owns one pending operation and up to twenty newest entries
-  per activation. Reopening Recent operations reads retained status; a live
-  subscription updates an open result view. Unsubscribing does not abort native
-  work. Cancel aborts only the wait and retains the busy slot until its promise
-  settles; a late successful receipt cannot overwrite cancellation. Host-side
-  exclusivity still controls any native operation continuing after RPC settlement.
-- Results retain operation/time, stable error codes, receipt status or projection
-  counts only. Finished entries can be cleared without removing the pending
-  entry. Deactivation aborts waits and clears the journal; there is no durable
-  task, restart recovery or replay. Backup import may reload the app before a
-  result can be revisited. Errors render through host-localized error blocks;
-  live publication failures use the public best-effort logger.
-- Review copy explicitly distinguishes a primary-model response from saved
-  settings/all model features, v1 from a full backup, report endpoint receipt
-  from developer review, and local projection verification from repair or
-  cross-device health. Import may partially overwrite data; cancellation cannot
-  undo it. Existing backup/report personal-data warnings remain applicable.
-
-[环境/验证] Focused controlled-port tests cover public entry registration,
-review-before-effects, close/reopen receipt ownership, all native request
-directions, live counts, cancellation/retirement, bounded history, errors,
-catalog revision paging and explicit refresh. The build and production manifest
-validator are checked separately. These are not actual Worker/Tauri/native-file,
-provider-network or desktop E2E results; concentrated desktop acceptance remains
-pending. No host API was added for this consumer.
-
-[环境/验证] The subsequent macOS debug acceptance
-uses the real compiled Worker and production host in isolated
-`com.readaware.app.capability-e2e`, not a plain browser. Explicit public-catalog
-refresh returned 39 OpenAI rows and two pages. AI test handoff and wait cancellation
-worked without inference. Real projection verification reported 1906 replayed
-events and one drifted table (one live-only and one replay-only row); this is a
-detected existing difference, not a repaired or healthy database claim.
-
-Actual macOS Save produced two v1 files under chosen temporary names and the
-plugin retained `exported`. Actual Open-panel cancellation returned `cancelled`.
-Both diagnostic directions opened their respective preview and final action,
-then cancellation returned to the plugin; neither report was sent/exported.
-The test-owned backup files were removed after JSON metadata checks. Existing
-isolated books and the formal user profile were untouched. Cleanup retired the
-Worker and restored its original enabled state; test app/driver/frontend stopped.
-
-Two UI defects were fixed from this run: existing start/end tooltip alignment
-prevents pagination's hidden labels widening its scroll area (402 -> 379 px,
-matching clientWidth); export success no longer asserts a default filename the
-user may have changed, or says everything was backed up. All eight locales now
-name the v1 library backup. The corrected save toast was observed in native CUA.
-List geometry was checked at 900x650 and 1280x800; a usable wide screenshot confirms
-the catalog. Some stacked-dialog/animation MCP captures are blank or stale and
-are excluded from visual proof. Actual backup merge, inference, report delivery,
-Agent execution, release packaging/CSP and cross-platform verification remain
-unverified; this does not close the overall capability goal.
-
-Reproduction: start the existing `tauri.capability-e2e.conf.json` debug config,
-then import the guarded `runtime/fixtures/desktop-maintenance-desk.ts` module in
-the Tauri WebView and call `prepareMaintenanceDesk()` / `openMaintenanceDesk()`.
-Use the mounted plugin/native buttons, not synthetic receipt handlers. For CUA
-native dialogs, the bare CLI executable was not discoverable; the same debug
-binary was placed in a temporary `.app` with matching `CFBundleExecutable`,
-`CFBundleIdentifier`, `CFBundleName`, package type APPL, version and high-resolution
-flag in `Contents/Info.plist`. It still uses port 5184 and the same isolated data,
-not release assets. Quit the bare instance before launching that wrapper. Call
-`cleanupMaintenanceDesk()` after pending native actions settle; it restores the
-original enabled state and does not uninstall debug RepoDist or delete books.
-
 ### Native AI Connection Test (Maintenance 1.3)
 
 [代码] `services.maintenance.requestConnectionTest(options?)` and both scopes'
@@ -6434,7 +6205,7 @@ the subscription; the last observer releases listeners and the timer. No
 exactly-once or durable replay is promised. Plugins needing these methods declare
 `requires.services.session: "^2.0.0"`.
 
-[代码/环境] Listening Desk 0.7 consumes this service for a localized offline hint
+[代码/环境] Listening Desk 0.7 (plugin removed 2026-09-16; historical) consumed this service for a localized offline hint
 on view refresh. It does not disable Start on that hint, including system voice.
 The shared store, actual Agent tool and zero-permission Worker were tested in
 isolated macOS debug Tauri; the built Listening Desk Worker returned the localized
@@ -6589,6 +6360,26 @@ The versioned schema families are:
 A new UI need extends a bounded schema or creates a real contribution point. It
 does not justify arbitrary web content or a plugin-owned React tree.
 
+### Action Priority and Toolbar Overflow
+
+[代码] `PluginAction.priority?: "primary" | "secondary"` (`packages/plugin-types`)
+ranks a view's toolbar actions. List, table, tree and detail toolbars split their
+actions with `splitToolbarActions`
+(`apps/web/src/features/plugins/lib/plugin-actions.ts`); the host renders the
+inline row and one "More" overflow menu:
+
+- `primary` actions, and unprioritized actions with `variant: "solid"`, are
+  always inline, in declaration order.
+- `secondary` actions are always in the overflow menu.
+- With no explicit priorities and at most three actions, everything stays inline.
+- Otherwise unprioritized actions fill the remaining inline slots (two in total,
+  counting primaries) in declaration order; the rest overflow in declaration order.
+
+Priority only decides placement. It does not change enablement, confirmation,
+busy handling, keyboard access or focus, which the host owns for both the row and
+the menu. Annotations 0.10 marks New note primary and refresh, select and export
+secondary; Jumper, Reading Goals and Workspace Profiles rely on the defaults.
+
 ## 12. Lifecycle
 
 ### Discovery and activation
@@ -6690,9 +6481,11 @@ user configuration.
 
 ## 13. First-Party Coverage
 
-The fifteen source plugins use the registry-backed contract. Rust currently bundles
-six; source presence is not installation or enablement. Theme Schedule is in the
-adjacent distribution repository, not an additional source plugin in this checkout:
+The ten source plugins use the registry-backed contract (four capability-matrix
+consumer fixtures were removed on 2026-09-15; Listening Desk was removed on
+2026-09-16). Rust currently bundles six; source presence is not installation or
+enablement. Theme Schedule is in the adjacent distribution repository, not an
+additional source plugin in this checkout:
 
 | Plugin | Primary capabilities |
 | --- | --- |
@@ -6703,165 +6496,18 @@ adjacent distribution repository, not an additional source plugin in this checko
 | Text to Speech | voice/options providers, storage, secrets, network, settings schema |
 | Theme Schedule | Settings domain, options/commands, storage/UI, committed schedule, settings schema |
 | WebDAV Sync | sync transport, storage, secrets, network, settings schema |
-| Jumper | reader header, navigation TOC, cancellable live precise search, shared locations/history; 0.4 source sections/page labels and native step composition |
-| Annotation Desk | book notes and selection notes/highlights (0.4), live paged annotations, frozen conditional edits, export, views |
-| Listening Desk | reading mode/provider control, unit navigation, playback/history, environment offline hint |
-| Reading Goals | book goals, context provider, opt-in memory candidates, exact host memory setting, durable storage/views |
-| Workspace Profiles | settled settings snapshots, exact path grants, atomic presets, private documents, shelf header/command views and Agent tool |
-| Text Desk | versioned section/reference/image browsing, bounded note previews, image resource display/save/copy and native preview handoffs; live native image controls (0.11); text preparation/tasks, cancellable search, snippets, reader header/command and explicit navigation |
-| Library Desk | metadata/favorite edits, collection create/rename/remove and reviewed assignment, conditional duplicate merge and redirect receipts (0.8); import review, cover/original assets, enrichment, workspace commands, batch removal and cleanup retry |
-| Memory Desk | memory search, protected chapter graphs, source navigation and conditional correction/pin/unpin/forget (0.2); shared Agent queries and manage_memory, no duplicate plugin tool |
-| Maintenance Desk | public model catalogs, native connection-test/backup/diagnostic handoffs and projection verification (0.1); receipt journal, no new host or Agent APIs |
+| Jumper | one navigation form (chapter/page/text; page mode uses `listNavigationTargets` pages), cancellable live precise search, shared locations with back/forward history, named bookmarks with list pagination and global bookmark tools |
+| Annotations | paged annotation list through host pagination, note/highlight creation returning to the list with a toast, live detail with conditional edits, batch review, export |
+| Reading Goals | single per-book goal form, agent context provider, opt-in memory candidate provider, honors the host `ai.preferences.buildMemory` setting, private documents and goal tools |
+| Workspace Profiles | settled settings snapshots, exact path grants, atomic apply through settings commands, rename/delete, host-localized setting labels, shelf header/command popup, Agent tool |
 
 The host never switches on these plugin IDs. Product-specific behavior belongs
 in their packages and registered capabilities.
 
-### Text Desk Content Composition
+### Jumper Live Search Composition
 
-[环境/验证] Subsequent grouped native acceptance
-uses the real Text Desk 0.10 Worker and native FB2 parser: section/image/reference
-selection, an empty image section, 240x160 decoded resource pixels, actual macOS
-PNG save, native copy receipt, and native lightbox/footnote handoff pass. Retained
-screenshots show the initial native image and note; paste, foreground focus,
-zoom/rotation paint, other formats and in-flight closure remain unverified.
-Background visibility paused plugin dialog animations, so blank captures are
-excluded. Owned fixture records/assets were removed and plugin states restored.
-
-[代码] Text Desk 0.10 adds no host or Agent interface. Its manifest requires
-Library 1.17, Reading 2.11, UI 1.13, Resources 1.2, Clipboard 1.1 and Views 1.8;
-copying images adds `service:clipboard`. It does not request network access.
-New labels use the existing eight-locale catalog.
-
-- Book detail offers notes/links and images independently of text extraction.
-  `getNavigationToc` supplies the content version; `listNavigationTargets` lists
-  20 source sections per page. Rows use actual `sectionIndex`, not TOC ordinal
-  or extracted chapter number. Explicit refresh starts a fresh version; ordinary
-  next/back retains the captured version and propagates stale-source failures.
-- `listReferences` / `listImages` list 20 entries within the selected section.
-  Listing does not open bytes or move the reader. Search is within that page,
-  not an exhaustive whole-book media search. Unsupported source DOM is distinct
-  from an empty supported section.
-- `readReference` requests at most 4000 UTF-16 units per page; exact returned
-  offsets are retained for next/back rather than recalculated. Plain text and
-  HTTP(S) target strings are displayed as data. External, blocked, missing and
-  unsupported targets do not get open/fetch actions. Resolved source locations
-  navigate only on explicit click, using their original content version.
-- Native note and image actions ensure the matching reading session, then call
-  `previewReference` / `reader.image.open` with that session guard. Only `opened`
-  closes the plugin surface; `not-opened` reports its status. This reuses the
-  existing native note/viewer controls, not a plugin renderer or another engine.
-- Selecting an image uses `openImageResource`. `ready` supplies a resource image
-  block plus native-viewer, save, copy and optional source-location actions.
-  Missing/external/unsupported receipts get explicit states without fetch.
-  Save cancellation is not success. Copy waits for the host receipt and requires
-  the separate clipboard permission. Closing the accepted preview frame releases
-  its reference; expiry/activation retirement remains the fallback for an
-  unaccepted frame. Host raster decoding still applies: ready bytes do not prove
-  that a particular image format can be decoded or visually displayed.
-
-[验证] 28 Text Desk tests / 156 assertions, plugin build/typecheck and controlled
-compiled-entry composition pass. Coverage includes source-vs-TOC indices,
-version/offset pagination, non-resolved states, resource cleanup, native handoff
-guards and failure receipts. No desktop launched for this batch: actual WebKit
-Worker, parser formats, image pixels, native preview focus/layering, save/paste
-and closure during native operations remain concentrated Tauri E2E work. Existing
-PDF object/CSS image and non-DOM reference gaps are not marked solved by adding
-a consumer. Document visual checks were not rerun.
-
-### Library Desk Organization
-
-[环境/验证] Subsequent grouped native acceptance
-uses the real compiled Library Desk 0.8 Worker and isolated SQLite-backed FB2.
-Author edit/clear, favorite, collection create/rename, confirmed assignment and
-confirmed collection removal pass with fresh native queries. Unchecked assignment
-does not write; removing the collection retains its book. Duplicate merge, title
-edit, restart, concurrent writes and foreground keyboard/visual flows remain
-unverified. Fixture entry invokes the registered command, not the header gesture.
-
-[代码] Library Desk 0.8 adds public-API consumers for Library metadata, favorites,
-collections and duplicate management, without adding a host or Agent API. It
-retains 0.7's capability and permission requirements; new labels use simplified
-Chinese or English fallback.
-
-- A single selected book opens a freshly queried organization view. Metadata
-  submits only changed title/author fields; title must remain nonblank. Favorite
-  is a separate single write, not a multi-command transaction. The shared host
-  metadata normalizer now distinguishes omitted author from explicit empty
-  author, so clearing an author produces `book.metadataEdited` with `author: ""`.
-  Empty title retains the existing host behavior; unchanged fields emit no event.
-- Collections can be created, renamed, inspected for member count and removed.
-  Removal has a separate explicit checkbox confirmation; it removes the
-  collection/membership, never calls book deletion. Moving selected books freezes
-  their IDs/titles, shows 20 review rows per page, requires an explicit destination
-  and confirmation, and supports `null` to ungroup. A deleted destination is
-  rejected when rechecked before submission. This is not an atomic compare-and-set
-  guard against deletion after that check.
-- These ordinary writes retain their existing void completion contract and
-  last-write behavior. Result frames do not perform another read that could
-  disguise a completed write as a failed mutation; Refresh is a separate read.
-  They do not promise cross-device CAS, a rollback or that all reviewed books
-  still existed at dispatch. Concurrent missing-target/no-op handling in the
-  legacy host paths remains a limitation, unlike the conditional merge below.
-- Duplicate groups use live offset pages of 20. Opening a group calls
-  `previewMerge`; the returned keeper, members and revision are copied for review.
-  Member pagination uses the same frozen group. A separate checkbox confirms
-  the irreversible merge, submitting only keeper ID and that exact revision.
-  `ui/superseded` propagates without automatic re-preview/retry; returning to
-  review and explicitly refreshing obtains a new group requiring confirmation.
-- A committed merge displays paged `from`/`to` redirects from its receipt without
-  another query or synthetic success. The retained-book action uses `resolveId`
-  before reading current book metadata, so a subsequent merge does not make the
-  receipt's old keeper ID the assumed current identity.
-
-[验证] 28 plugin tests plus two host metadata-normalization tests (30 tests,
-136 assertions) pass; plugin build/typecheck and web typecheck pass. The compiled
-entry runs its actual contribution callbacks in a controlled Bun context, not
-WebKit Worker/Tauri. No real book records changed and no desktop launched for
-this batch. Native merge/collection confirmation, actual event projection and
-restart, multi-device races and visual checks remain concentrated acceptance
-work. Existing mutation limitations are documented, not declared solved merely
-because a consumer now exists.
-
-### Library Desk Asset Composition
-
-[代码] Library Desk 0.7 uses only public Library 1.11, Resources 1.1,
-Clipboard 1.1, UI 1.6 and Views 1.7. It adds no host or Agent API. Library write
-includes read access; copying covers additionally requires `service:clipboard`.
-New asset labels support simplified Chinese and English, with English fallback.
-
-- Import uses `listFormats` to filter the native single-file picker, then
-  `inspectResource` for parser initialization. It does not claim full-book
-  readability. Only `parsed` enables an explicit import action. The final
-  `importResource` receipt distinguishes `imported` from `duplicate`; the
-  committed result is shown before any optional follow-up detail query.
-- Closing/replacing the accepted import review releases its picked reference.
-  A thrown inspection releases immediately; a failed import retains the review
-  for retry. No direct file paths, book bytes or Tauri imports enter the plugin.
-- A single selected book exposes details using `getEnrichment` and
-  `observeEnrichment`. Failed observations retain prior data with an error block
-  and remove effect actions until recovery. Retirement disposes observation.
-  Explicit retry only requests missing metadata/unchecked covers on supported
-  local books; queued/running is not reported as completed.
-- Cover preview acquires an owner-scoped `openCover` reference on demand and
-  renders the existing `image` block at an uncropped 2:3 ratio. Save and copy
-  use `resources.save` and `clipboard.writeImage`; closing that accepted frame
-  releases the reference. A hidden parent is not a closed frame. Host resource
-  expiry/activation cleanup remains authoritative if a frame is never accepted.
-- Original export acquires a fresh `openBook` reference and releases it in
-  `finally` after save success, cancellation or failure. It never fetches a
-  missing original. Native save cancellation produces no success toast.
-
-[验证] 21 plugin tests (93 assertions), plugin typecheck/build and a compiled
-entry running in a controlled Bun context pass. These test actual contribution
-callbacks and resource ownership flows, not the WebKit Worker or native file
-picker/clipboard/parser. New asset/import flows remain pending concentrated
-Tauri E2E, including representative formats, real paste/save and closing while
-native operations are pending. The LIB09 wiring marker is now connected because
-the previously claimed missing image presentation already exists; this is not an
-E2E completion claim. No desktop launch or document visual rerun in this batch.
-
-[代码] Jumper 0.3 and Text Desk 0.9 consume Library 1.17, UI 1.2 and Views 1.8
-without host changes. Valid search submission pushes a live indeterminate
+[代码] Jumper 0.3 consumes Library 1.17, UI 1.2 and Views 1.8 without host
+changes. Valid search submission pushes a live indeterminate
 progress frame immediately; its first visible subscription starts the query
 with a fresh per-frame AbortController. Search does not run before mounting.
 The cancel action aborts only this call and publishes an explicit cancelled
@@ -6873,10 +6519,10 @@ Late success/failure cannot overwrite cancellation or publish to a retired
 channel; an old subscription disposer cannot cancel its replacement.
 
 [代码] Jumper exact search now uses the bounded helper described below; result
-selection still waits for goTo before closing. Text Desk library-wide search keeps
-the selected-book/shelf distinction, 40-hit limit and snippets; book-title reads
-begin only after a successful, uncancelled search, and late title reads are
-discarded if the frame closes. The title-list API has no per-call signal.
+selection still waits for goTo before closing. A library-wide search consumer
+should keep the selected-book/shelf distinction, 40-hit limit and snippets, begin
+book-title reads only after a successful, uncancelled search, and discard late
+title reads if the frame closes. The title-list API has no per-call signal.
 Errors render a host-localized stable code, never the raw message. Only
 db/locked, library/text-extraction-failed and library/text-busy expose a retry
 of the same input; other failures use the host error surface and stack Back.
@@ -6889,7 +6535,7 @@ No generic durable TaskRef or physical rollback is implied.
 
 [代码] `searchAllBookLocations(reader, input, options?)`, exported by
 `@read-aware/plugin-types`, consumes `books.searchLocations` pages serially.
-Jumper and Text Desk exact passage search use it in their live progress views.
+Jumper exact passage search uses it in its live progress view.
 It pins the content version, reports scanned/total sections and hit count per
 page, and returns a terminal status: `completed`, `scan-limit`, `result-limit`,
 `timed-out`, `cancelled`, or `stale`. Stale results contain no old locations.
@@ -6908,9 +6554,9 @@ when partial hits exist. Closing/replacing the frame aborts its operation and
 suppresses late publication. Explicit retries create a fresh operation; no
 activation-independent persistence, generic TaskRef or automatic retry is added.
 
-[验证] Six helper checks, eleven Jumper checks and four Text Desk passage checks,
-related typechecks and plugin builds pass. Both tracked compiled consumers are
-updated. These are implementation checks; real Tauri/Worker progress, result
+[验证] Six helper checks, eleven Jumper checks, related typechecks and plugin
+builds pass; the second tracked compiled consumer was a fixture retired on
+2026-09-15. These are implementation checks; real Tauri/Worker progress, result
 navigation and cancellation remain pending concentrated acceptance.
 
 ## 14. Extension Procedure
@@ -7017,10 +6663,10 @@ mutation until their namespace decision is settled, keeping rollback bytes live.
 Registry paths are derived and checked by owner; open verifies size/hash and
 rejects symlinks. No arbitrary file paths or blob keys are public.
 
-Library Desk 0.9 saves, reopens, exports and deletes private cover copies. Its
-three global Agent tools return metadata and require approval for changes or
-export; saving a copy does not modify the library cover. Native file/SQLite,
-controlled host/Worker cancellation protocol and compiled plugin tests cover the
+The private cover copy consumer and its three global Agent tools (metadata
+reads, approval-gated changes and export) were a first-party fixture retired on
+2026-09-15; saving a copy never modified the library cover. Native file/SQLite
+and controlled host/Worker cancellation protocol checks cover the host
 implementation; actual Tauri/Worker and full restore UI acceptance are pending.
 
 
@@ -7039,7 +6685,7 @@ is FIFO within each tier; waiting background work gets a turn after four normal
 dispatches. Both priorities respect reader activity cooldown. Cancelling a
 running parser does not release capacity until it settles. These are process
 local controls, not durable task history or forced parser interruption.
-Text Desk 0.13 and the Agent priority tool consume the same public path.
+The Agent priority tool consumes this public path.
 
 
 ### Virtual book text indexes (Library 1.23)
@@ -7049,8 +6695,7 @@ Read-only status does not call the provider. An active source without a resolved
 content hash is `unprepared`; a missing binding or retired provider is
 `unavailable`. Preparation acquires content through the existing guarded parser
 path, derives the actual content hash, and persists normal section checkpoints
-and the final chapter index. Text Desk 0.14 and Agent chapter/TOC reads consume
-this path.
+and the final chapter index. Agent chapter/TOC reads consume this path.
 
 The provider must announce saved content changes through `invalidateVirtualBook`.
 Invalidation, rebinding or a new provider registration invalidates the known
@@ -7072,8 +6717,7 @@ sessions clear it and cancel old expiry notifications. It describes rendering
 and movement, not human presence, CPU load or durable event history.
 
 The existing reading grant and Worker/session observation path applies; actors
-cannot emit demand events. Text Desk 0.15 has a live activity view, and Agent
-session queries return the same metadata within their existing scope/privacy
+cannot emit demand events. Agent session queries return the same metadata within their existing scope/privacy
 checks. Unit and controlled public-port/plugin checks pass; actual desktop and
 Worker rendering behavior remains in the concentrated acceptance phase.
 
@@ -7089,8 +6733,7 @@ before releasing its actual scheduling slot. Late completion cannot overwrite
 the timeout, and resume does not revive a terminal request. Start a new request
 to continue from saved checkpoints.
 
-Text Desk 0.16 displays deadlines and supplies a validated 1–120 minute form;
-Agent preparation exposes the same timeout option. Timer/lease/late-result and
+Agent preparation exposes the timeout option (1–120 minutes). Timer/lease/late-result and
 public consumer checks pass. App suspension, background throttling and actual
 Worker/Tauri behavior remain pending; task history is still process local.
 
@@ -7112,8 +6755,7 @@ propagates failure. Progress notifications are not all persisted. Plugin metadat
 uses a host-reserved private collection, covered by existing namespace backup,
 rollback and uninstall, with write exclusion and lifecycle drain. Host actors use
 local KV; neither history is preference-roamed. Records contain no chapter text.
-Text Desk 0.17 supplies paging, details and an explicit fresh continuation;
-Agent tools expose the same owner boundary and format time limits with units.
+Agent tools expose the owner boundary and format time limits with units.
 Actual Tauri/Worker and disk restart acceptance remains pending.
 
 
@@ -7128,7 +6770,7 @@ completion. Acknowledgement metadata does not replay an old captured UI value.
 
 `sessionId` remains the generation identity. Observers receive coalescible latest
 snapshots, not every event, human-presence detection or a complete causal audit.
-Text Desk 0.18 displays the update category and source; Agent session reads retain
+Agent session reads retain
 existing book/privacy fences. Actual new Worker/Tauri acceptance is pending.
 
 
@@ -7237,27 +6879,27 @@ pending concentrated acceptance; these limits are not a system-wide URI sandbox.
 
 [代码] `services.session.operationAvailability({ operation: "llm.infer", model: "fast" | "smart", images?: boolean }, options?)` reads settled local configuration without executing inference, migrating credentials or probing the provider. Missing `service:llm` returns only the permission condition. Authorized callers receive condition states for account configuration, model selection, endpoint validity and image input; no credential, model ID or endpoint address is returned. Invalid input rejects; failed configuration reads return unknown with a stable error code. Remote health remains unknown, even with a cached catalog or an online hint.
 
-[代码] Both Agent scopes expose the same query through `get_operation_availability`. The plugin inference boundary rechecks after image reads, before resolving the current runtime and dispatching. Locally missing/unsupported prerequisites refuse the call; unknown remote health permits trying it and does not predict success. Text Desk0.24 exposes the Smart image-inference conditions and a fresh query action. The first slice covered inference; the reading operations below are now also connected. Other semantic operations remain pending C05.
+[代码] Both Agent scopes expose the same query through `get_operation_availability`. The plugin inference boundary rechecks after image reads, before resolving the current runtime and dispatching. Locally missing/unsupported prerequisites refuse the call; unknown remote health permits trying it and does not predict success. The first slice covered inference; the reading operations below are now also connected. Other semantic operations remain pending C05.
 
-[验证] Public permission/disclosure checks, actual Bun Worker call/cancellation transport, Agent scopes, compiled Text Desk consumer and controlled inference/configuration checks cover this path. Real Tauri, stored credentials and actual provider acceptance remain pending for concentrated validation.
+[验证] Public permission/disclosure checks, actual Bun Worker call/cancellation transport, Agent scopes and controlled inference/configuration checks cover this path. Real Tauri, stored credentials and actual provider acceptance remain pending for concentrated validation.
 
 [代码] Session2.2 also accepts `reading.playback` with `bookId`, optional `sessionId`, and `action: start|stop`, or `reading.mode.configure` with the same target and `active/modeKey/selectModeKey/unitId`. Plugin queries require reading:write and object authorization before inspecting the target; the book Agent cannot query other books. An inactive target reveals no current-book/provider details. Actual bound controllers supply the same local conditions used by start/configure, including live system voice presence, selected mode/unit and format. Registration or voice presence never verifies provider execution/audio output; unknown permits an attempt. Stop/deactivation remain possible without start prerequisites. No content, synthesis or segmentation is read or executed by the query.
 
-[消费者/验证] Text Desk0.25's reading conditions page exposes mode/start/stop actions with the inspected book/session guard; refreshing never silently retargets another book. Controlled source changes after a query are rejected at execution, current-book queries retire on scope changes, and adapter read failures remain unknown. Actual React binding, Bun Worker transport, Agent scopes and compiled consumer have local evidence; Tauri/audio/provider acceptance remains pending.
+[消费者/验证] Reading-condition consumers expose mode/start/stop actions with the inspected book/session guard; refreshing must never silently retarget another book. Controlled source changes after a query are rejected at execution, current-book queries retire on scope changes, and adapter read failures remain unknown. Actual React binding, Bun Worker transport and Agent scopes have local evidence; Tauri/audio/provider acceptance remains pending.
 
 
 [代码] Session2.3 accepts `library.text.prepare` with `bookId`, optional `rebuild`, `priority` and `timeoutMs` (same defaults/bounds as prepareText). Plugin discovery first requires library:write and the book grant. The host queries the actual caller's task owner for capacity and the shared text repository for source/rebuild prerequisites. It never parses, downloads, opens a provider/transport, or writes task history. Missing local sources check the same local sync admission used by actual downloads; valid registration/configuration still leaves execution unknown. An absent book is unavailable; source/configuration read failures are unknown with sanitized codes. Start and extraction recheck current conditions; discovery reserves no capacity.
 
 [代码] Library1.31 also supports current-book task start, priority, pause, resume and cancel. A host-owned fence spans initial reads/history admission and remains attached through running/paused states; a book/session change cancels that request and prevents new extraction. Terminal states release the observer. Other leases and already dispatched I/O can drain. Host access objects are not accepted from Worker arguments; plugin retirement still owns cleanup. This is not cross-restart task recovery.
 
-[消费者/验证] Text Desk0.26 exposes preparation and rebuild prerequisites from book details. Refresh/actions keep the inspected book; unknown permits an attempt and known missing conditions hide execution. Rebuild still requires its confirmation form. Controlled repository/task/source/download admission, public permission/scope cancellation, Agent and compiled consumer checks cover the new path. Actual Bun Worker covers the query shape/cancellation; it is not Tauri/SQLite/download/provider acceptance, which remains pending.
+[消费者/验证] Preparation and rebuild prerequisites can be queried from book details. Refresh/actions keep the inspected book; unknown permits an attempt and known missing conditions hide execution. Rebuild still requires its confirmation form. Controlled repository/task/source/download admission, public permission/scope cancellation, Agent checks cover the new path. Actual Bun Worker covers the query shape/cancellation; it is not Tauri/SQLite/download/provider acceptance, which remains pending.
 
 
 ### 持久任务 jobs 1.0
 
 插件可通过 `ctx.services.jobs.start/get/list/control` 保存并控制最多32步的语义计划，
 目前步骤包含原子事务、正文准备和书图谱任务。每步沿用对应领域和对象权限；
-任务属于创建插件，列表按当前授权过滤。Text Desk 0.28 使用它后台准备当前页书籍。
+任务属于创建插件，列表按当前授权过滤。
 任务在插件激活后恢复，退出时等待已派发工作收尾；暂停、取消和显式恢复意图持久保存。
 未知执行结果先核对，不能把取消当回滚。图谱重建保存章节计划与生成结果，恢复核对事件回执并复用条件提交；真实桌面重启验收尚待补齐。
 后台任务目前要求激活根上下文，服务 Worker 与反应上下文不开放此入口；完整因果续接待补。Agent 已接同类任务工具，启动及恢复须逐次批准完整语义计划，书会话仅能操作本书。
