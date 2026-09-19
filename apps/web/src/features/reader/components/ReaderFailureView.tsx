@@ -24,8 +24,8 @@ export function ReaderFailureView({ title, bookTitle, message, action, onBack }:
           <Heading className="font-serif font-normal leading-display">{title}</Heading>
           {bookTitle && <Body className="break-words text-sm leading-6 text-fg-muted">{bookTitle}</Body>}
         </div>
-        <InlineError compact className="flex text-sm leading-6">
-          {message}
+        <InlineError>
+          <Body className="text-sm leading-6 text-fg-muted">{message}</Body>
         </InlineError>
         <div className="flex flex-wrap items-center gap-3">
           {action && <Button autoFocus onClick={action.onClick}>{action.label}</Button>}
