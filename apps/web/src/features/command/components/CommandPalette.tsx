@@ -120,6 +120,7 @@ export function CommandPalette({ isOpen, onClose, ctx, extraItems, workspaceToke
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <SearchField
             ref={inputRef}
+            variant="plain"
             label={t("search.placeholder")}
             value={query}
             maxLength={4096}

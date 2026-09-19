@@ -33,8 +33,6 @@ mod window_state;
 use std::sync::Mutex;
 
 use tauri::Manager;
-#[cfg(target_os = "macos")]
-use tauri_plugin_decorum::WebviewWindowExt;
 
 /// Cheap descriptor for a picker result. The webview needs the size for
 /// duplicate detection and shelf metadata, but must not read the file to learn
@@ -720,11 +718,13 @@ pub fn run() {
     // must stay first on desktop): every later plugin's init logs land in the
     // file from the first run.
     let builder = builder.plugin(build_log_plugin());
-    // Desktop-only window chrome (macOS traffic-light repositioning); the
-    // crate is not compiled for Android/iOS, where the webview is fullscreen.
+    // Decorum supplies Windows' snap overlay. On macOS its resize delegate
+    // resets traffic lights to hard-coded offsets, overriding our position.
+    // Tauri owns their placement through trafficLightPosition instead.
+    #[cfg(target_os = "windows")]
+    let builder = builder.plugin(tauri_plugin_decorum::init());
     #[cfg(desktop)]
     let builder = builder
-        .plugin(tauri_plugin_decorum::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init());
     // `mut` is only exercised by the desktop-only MCP-bridge block below.
@@ -916,12 +916,6 @@ pub fn run() {
                     .background_color(paper_color(theme == "dark"));
             }
             let window = builder.build()?;
-
-            // macOS: the native title bar is hidden (titleBarStyle "Overlay"), so
-            // nudge the traffic lights down to sit centered in our custom top bar.
-            // Decorum keeps the inset across window resizes.
-            #[cfg(target_os = "macos")]
-            let _ = window.set_traffic_lights_inset(16.0, 23.5);
 
             // macOS: real trackpad gesture phases for the reader's wheel
             // gestures (one page turn per physical swipe).

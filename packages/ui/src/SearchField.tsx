@@ -6,15 +6,21 @@ type SearchFieldProps = {
   /** Accessible name; search fields intentionally have no visible label. */
   label: string;
   size?: "sm" | "md";
+  /** Plain fields inherit the surrounding search surface's border and spacing. */
+  variant?: "outlined" | "plain";
 } & Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "aria-label" | "size">;
 
 export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(
-  function SearchField({ label, size = "md", className, ...props }, ref) {
+  function SearchField({ label, size = "md", variant = "outlined", className, ...props }, ref) {
     return (
       <label
         className={cn(
-          "flex items-center gap-2 rounded-md border border-border bg-[var(--ra-main-surface-color)] transition-colors focus-within:border-fg-subtle",
-          size === "sm" ? "px-2.5 py-1.5" : "px-3 py-2",
+          "flex items-center gap-2 transition-colors",
+          variant === "outlined" && cn(
+            "rounded-md border border-border bg-[var(--ra-main-surface-color)] focus-within:border-fg-subtle",
+            size === "sm" ? "px-2.5 py-1.5" : "px-3 py-2",
+          ),
+          variant === "plain" && "rounded-none border-0 bg-transparent p-0",
           className,
         )}
       >
@@ -28,7 +34,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(
           type="search"
           aria-label={label}
           className={cn(
-            "w-full bg-transparent font-sans text-fg outline-none placeholder:text-fg-subtle",
+            "w-full appearance-none rounded-none bg-transparent font-sans text-fg outline-none placeholder:text-fg-subtle",
             size === "sm" ? "text-sm" : "text-base",
           )}
           {...props}
