@@ -53,9 +53,9 @@ export function SearchSelect({ label, value, options, onChange, searchLabel, emp
               className="flex min-h-0 flex-col overflow-hidden rounded-md border border-border bg-[var(--ra-main-surface-color)] text-fg shadow-lg"
               {...picker.getFloatingProps()}
             >
-              <div className="shrink-0 border-b border-border p-2">
+              <div className="shrink-0 border-b border-border px-3 py-2">
                 <SearchField
-                  ref={picker.inputRef} size="sm" label={searchLabel} placeholder={searchLabel}
+                  ref={picker.inputRef} size="sm" variant="plain" label={searchLabel} placeholder={searchLabel}
                   value={picker.query} onChange={(event) => picker.search(event.target.value)} onKeyDown={picker.onKeyDown}
                   role="combobox" aria-autocomplete="list" aria-expanded aria-controls={listId}
                   aria-activedescendant={picker.rows.length ? `${listId}-${picker.active}` : undefined}
