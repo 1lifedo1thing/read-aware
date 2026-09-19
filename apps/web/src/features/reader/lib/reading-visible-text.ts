@@ -23,7 +23,12 @@ function prefix(text: string, limit: number): string {
 function read(view: FoliateView): ReadingVisibleText {
   const range = view.lastLocation?.range;
   if (!view.isFixedLayout && range) {
-    const text = range.toString();
+    const renderer = view.renderer;
+    // A continuous chapter can straddle source documents. Its visible text
+    // includes both sides of a file seam while each CFI stays in its source.
+    const text = renderer && "getVisibleRanges" in renderer && renderer.scrolled
+      ? renderer.getVisibleRanges().map(({ range }) => range.toString()).join("\n")
+      : range.toString();
     return { text: prefix(text, MAX_CHARS), state: { status: text.trim() ? "available" : "empty",
       source: "range", truncated: text.length > MAX_CHARS } };
   }

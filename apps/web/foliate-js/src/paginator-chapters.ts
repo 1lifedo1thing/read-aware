@@ -8,11 +8,14 @@ const blocks = 'h1, h2, h3, h4, h5, h6, p, section, article, div'
 export class ChapterRanges {
     readonly starts: (Element | null)[] = [null]
     readonly ranges: Range[] = []
+    startsAtBeginning = false
     index = 0
     constructor(readonly doc: Document, targets: readonly ResolvedNavigation[]) {
         const elements = new Set<Element>()
         for (const target of targets) {
-            const element = anchorElement(anchorValue(doc, target.anchor))
+            const anchor = anchorValue(doc, target.anchor)
+            if (anchor === 0) this.startsAtBeginning = true
+            const element = anchorElement(anchor)
             const block = element?.closest(blocks) ?? element
             if (block && block !== doc.body && doc.body.contains(block)) elements.add(block)
         }
@@ -25,6 +28,7 @@ export class ChapterRanges {
             const previous = before.toString().trim() || [...doc.body.querySelectorAll('img, svg, video, canvas')]
                 .some(image => !!(image.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING))
             if (previous) this.starts.push(element)
+            else this.startsAtBeginning = true
         }
         for (let i = 0; i < this.starts.length; i++) {
             const range = doc.createRange()

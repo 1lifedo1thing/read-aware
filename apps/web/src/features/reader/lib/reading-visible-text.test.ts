@@ -99,10 +99,10 @@ test("actual session adapter publishes PDF text/state to plugin queries and clea
   try {
     expect(readingRuntime.snapshot()).toMatchObject({ visibleText: "visible", visibleTextState: { status: "available", source: "pdf-text-layer" } });
     expect(await plugin.context.domains.reading!.queries.session()).toMatchObject({ visibleText: "visible", visibleTextState: { status: "available", source: "pdf-text-layer" } });
-    f.layer.dataset.readawareTextState = "loading"; f.view.dispatchEvent(new Event("relocate"));
+    f.layer.dataset.readawareTextState = "loading"; f.view.dispatchEvent(new CustomEvent("relocate", { detail: { context: {} } }));
     expect(readingRuntime.snapshot()).toMatchObject({ visibleText: "", visibleTextState: { status: "unavailable", reason: "not-ready" } });
     detach();
-    f.layer.dataset.readawareTextState = "ready"; f.view.dispatchEvent(new Event("relocate"));
+    f.layer.dataset.readawareTextState = "ready"; f.view.dispatchEvent(new CustomEvent("relocate", { detail: { context: {} } }));
     expect(readingRuntime.snapshot()).toMatchObject({ visibleText: "", visibleTextState: { status: "unavailable" } });
   } finally { plugin.lifecycle.stop(); detach(); readingRuntime.closed(); f.dom.window.close(); }
 });

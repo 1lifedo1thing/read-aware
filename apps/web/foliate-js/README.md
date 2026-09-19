@@ -52,6 +52,10 @@ resolution are public runtime contracts.
   document listeners, cancels stale work, and releases its renderer sections.
 - Href resolution may be asynchronous. Chapter marks resolve in parallel off
   the first-page critical path; stale work cannot update a replacement book.
+- In scrolled flow, one TOC chapter can own several original source iframes in
+  a single scroll surface. Source documents and CFIs remain separate; visible
+  ranges, annotations and styles cover every resident part. Page turns cross
+  TOC chapter boundaries, and closing or replacing a chapter releases all parts.
 
 ## Validation
 

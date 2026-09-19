@@ -12,7 +12,7 @@ type Styles = string | [string, string] | null | undefined
 
 type TouchState = { x: number; y: number; t: number; vx: number; vy: number; pinched?: boolean }
 
-type DisplayTarget = ResolvedNavigation & { src?: string; release?: () => void; onLoad?: (detail: LoadDetail) => void }
+type SectionEntry = { index: number; view: SectionView; release: () => void }
 
 const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
@@ -80,8 +80,16 @@ export class Paginator extends HTMLElement {
     #header: HTMLElement
     #footer: HTMLElement
     #view: SectionView | null = null
+    #entries: SectionEntry[] = []
+    #building: number | undefined
+    #chapterComplete = false
+    #layingOut = false
+    #deferredLayout = false
+    #pendingRender: Promise<void> = Promise.resolve()
+    #anchorIndex = -1
+    #touchDocs = new WeakSet<Document>()
+    #selectionDocs = new WeakSet<Document>()
     #chapterStarts: ReadonlyMap<number, readonly ResolvedNavigation[]> = new Map()
-    #releaseSection: (() => void) | undefined
     #vertical = false
     #rtl = false
     #margin = 0
@@ -165,6 +173,11 @@ export class Paginator extends HTMLElement {
             grid-column: 1 / -1;
             grid-row: 1 / -1;
             overflow: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        :host([flow="scrolled"]) #top.vertical #container {
+            flex-direction: row;
         }
         /* ReadAware patch: the scroll-mode scroller lives in this closed shadow
            root, out of reach of the app's global scrollbar CSS — so mirror that
@@ -255,6 +268,8 @@ export class Paginator extends HTMLElement {
         this.addEventListener('touchend', this.#onTouchEnd.bind(this))
         this.addEventListener('load', event => {
             const { doc } = (event as CustomEvent<LoadDetail>).detail
+            if (this.#touchDocs.has(doc)) return
+            this.#touchDocs.add(doc)
             for (const name of ['pointerdown', 'wheel', 'touchstart', 'keydown']) doc.addEventListener(name, input, { capture: true, passive: true })
             doc.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
             doc.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
@@ -290,6 +305,8 @@ export class Paginator extends HTMLElement {
         }, 700)
         this.addEventListener('load', event => {
             const { doc } = (event as CustomEvent<LoadDetail>).detail
+            if (this.#selectionDocs.has(doc)) return
+            this.#selectionDocs.add(doc)
             let isPointerSelecting = false
             doc.addEventListener('pointerdown', () => isPointerSelecting = true)
             doc.addEventListener('pointerup', () => isPointerSelecting = false)
@@ -393,18 +410,57 @@ export class Paginator extends HTMLElement {
                     `break-${x}: ${y ?? ''}column`))
         }, { signal: this.#transformController.signal })
     }
-    #createView() {
-        if (this.#view) {
-            this.#view.destroy()
-            this.#container.removeChild(this.#view.element)
-        }
-        this.#view = new SectionView({
+    #dropEntry(entry: SectionEntry) {
+        entry.view.destroy()
+        entry.view.element.remove()
+        entry.release()
+        this.#entries = this.#entries.filter(item => item !== entry)
+    }
+    #keepEntry(keep?: SectionEntry) {
+        for (const entry of this.#entries) if (entry !== keep) this.#dropEntry(entry)
+        this.#chapterComplete = false
+        this.#view = keep?.view ?? null
+    }
+    #activate(entry: SectionEntry, context: object = {}, announce = false) {
+        const changed = this.#view !== entry.view
+        this.#view = entry.view
+        this.#index = entry.index
+        if ((changed || announce) && entry.view.ready && entry.view.document)
+            this.dispatchEvent(new CustomEvent('load', { detail: { doc: entry.view.document, index: entry.index, context } }))
+    }
+    #createView(index: number, release: () => void): SectionEntry {
+        const view = new SectionView({
             container: this,
-            chapterStarts: this.#chapterStarts.get(this.#index),
-            onExpand: () => this.#scrollToAnchor(this.#anchor, 'anchor', this.#anchorContext),
+            chapterStarts: this.#chapterStarts.get(index),
+            onExpand: () => {
+                if (this.#building !== undefined || this.#layingOut || !this.#entries.some(entry => entry.view === view)) return
+                this.#updateChapterEdges()
+                const anchor = this.#entries.find(entry => entry.index === this.#anchorIndex)
+                if (anchor) this.#activate(anchor, this.#anchorContext)
+                void this.#scrollToAnchor(this.#anchor, 'anchor', this.#anchorContext)
+            },
         })
-        this.#container.append(this.#view.element)
-        return this.#view
+        const entry = { index, view, release }
+        const next = this.#entries.find(item => item.index > index)
+        this.#container.insertBefore(view.element, next?.view.element ?? null)
+        this.#entries.push(entry)
+        this.#entries.sort((a, b) => a.index - b.index)
+        return entry
+    }
+    #updateChapterEdges() {
+        for (const [i, entry] of this.#entries.entries()) {
+            entry.view.setChapterEdges(!this.scrolled || i === 0, !this.scrolled || i === this.#entries.length - 1)
+            entry.view.setScrollExtent(0)
+        }
+    }
+    #viewOffset(view = this.#view) {
+        if (!this.scrolled) return 0
+        let offset = 0
+        for (const entry of this.#entries) {
+            if (entry.view === view) break
+            offset += entry.view.element.getBoundingClientRect()[this.sideProp]
+        }
+        return offset
     }
     #beforeRender({ vertical, rtl, background }: BeforeRender): Layout {
         this.#vertical = vertical
@@ -484,12 +540,36 @@ export class Paginator extends HTMLElement {
     }
     render(context = this.#anchorContext) {
         if (!this.#view) return
+        if (this.#building !== undefined) {
+            this.#deferredLayout = true
+            this.#anchorContext = context
+            return
+        }
+        const changeFlow = this.#view.isScrolled !== this.scrolled
+        const anchor = this.#lastVisibleRange?.cloneRange() ?? this.#anchor
+        const active = this.#entries.find(entry => entry.view === this.#view)
+        if (!this.scrolled && active) this.#keepEntry(active)
         this.#anchorContext = context
-        this.#view.render(this.#beforeRender({
-            vertical: this.#vertical,
-            rtl: this.#rtl,
-        }))
-        this.#scrollToAnchor(this.#anchor, 'anchor', this.#anchorContext)
+        this.#layingOut = true
+        try {
+            const layout = this.#beforeRender({ vertical: this.#vertical, rtl: this.#rtl })
+            for (const { view } of this.#entries) view.render(layout)
+            this.#updateChapterEdges()
+        } finally { this.#layingOut = false }
+        if (changeFlow && this.scrolled && this.#chapterStarts.size) {
+            this.#chapterComplete = false
+            this.#pendingRender = this.#goTo({ index: this.#index, anchor, context })
+            void this.#pendingRender.catch((error: unknown) => console.error('Could not render continuous chapter', error))
+        } else void this.#scrollToAnchor(this.#anchor, 'anchor', this.#anchorContext)
+    }
+    waitForCurrentRender() { return this.#pendingRender }
+    #finishBuild(navigation: number) {
+        if (this.#building !== navigation) return
+        this.#building = undefined
+        if (this.#deferredLayout) {
+            this.#deferredLayout = false
+            this.render(this.#anchorContext)
+        }
     }
     get scrolled() {
         return this.getAttribute('flow') === 'scrolled'
@@ -508,6 +588,7 @@ export class Paginator extends HTMLElement {
         return this.#container.getBoundingClientRect()[this.sideProp]
     }
     get viewSize() {
+        if (this.scrolled) return this.#entries.reduce((size, { view }) => size + view.element.getBoundingClientRect()[this.sideProp], 0)
         return this.#view?.element.getBoundingClientRect()[this.sideProp] ?? 0
     }
     get start() {
@@ -598,14 +679,14 @@ export class Paginator extends HTMLElement {
         })
     }
     // allows one to process rects as if they were LTR and horizontal
-    #getRectMapper(): RectMapper {
-        const offset = this.#view?.contentOffset ?? 0
+    #getRectMapper(view = this.#view): RectMapper {
+        const offset = view?.contentOffset ?? 0
         if (this.scrolled) {
-            const size = this.#view?.fullSize ?? this.viewSize
-            const margin = this.#margin
+            const size = view?.contentSize ?? this.viewSize
+            const margin = (view?.leadingMargin ?? this.#margin) + this.#viewOffset(view)
             return this.#vertical
                 ? ({ left, right }) =>
-                    ({ left: size - right - margin - offset, right: size - left - margin - offset })
+                    ({ left: size - right + margin - offset, right: size - left + margin - offset })
                 : ({ top, bottom }) => ({ left: top + margin - offset, right: bottom + margin - offset })
         }
         const pxSize = this.#view?.fullSize ?? this.pages * this.size
@@ -619,7 +700,8 @@ export class Paginator extends HTMLElement {
     async #scrollToRect(rect: DOMRect, reason: RelocateReason | null, context: object) {
         if (this.scrolled) {
             const offset = this.#getRectMapper()(rect).left - this.#margin
-            this.#view?.setScrollExtent(offset + this.size)
+            const last = this.#entries.at(-1)?.view
+            last?.setScrollExtent(offset + this.size - this.#viewOffset(last))
             return this.#scrollTo(offset, reason, false, context)
         }
         const offset = this.#getRectMapper()(rect).left
@@ -655,10 +737,14 @@ export class Paginator extends HTMLElement {
         return this.#scrollTo(offset, reason, smooth, context)
     }
     async scrollToAnchor(anchor: Anchor, select?: boolean, context?: object) {
-        return this.#scrollToAnchor(this.#view?.selectChapter(anchor) ?? anchor, select ? 'selection' : 'navigation', context)
+        const doc = typeof anchor === 'number' ? this.#view?.document
+            : 'startContainer' in anchor ? anchor.startContainer.ownerDocument : anchor.ownerDocument
+        const entry = this.#entries.find(entry => entry.view.document === doc)
+        if (entry) return this.#goTo({ index: entry.index, anchor, select, context })
     }
     async #scrollToAnchor(anchor: Anchor, reason: RelocateReason = 'anchor', context: object = {}) {
         this.#anchor = anchor
+        this.#anchorIndex = this.#index
         this.#anchorContext = context
         const rects = typeof anchor !== 'number' ? uncollapse(anchor)?.getClientRects() : undefined
         // if anchor is an element or a range
@@ -674,8 +760,10 @@ export class Paginator extends HTMLElement {
         // if anchor is a fraction
         if (typeof anchor !== 'number') return
         if (this.scrolled) {
-            this.#view?.setScrollExtent(0)
-            await this.#scrollTo(anchor * this.viewSize, reason, false, context)
+            this.#entries.at(-1)?.view.setScrollExtent(0)
+            const size = this.#view?.element.getBoundingClientRect()[this.sideProp] ?? 0
+            const offset = this.#viewOffset() + anchor * size
+            await this.#scrollTo(offset, reason, false, context)
             return
         }
         const { pages } = this
@@ -693,20 +781,39 @@ export class Paginator extends HTMLElement {
             : getVisibleRange(doc, this.start - size, this.end - size, this.#getRectMapper())
         return this.#view?.clampRange(range) ?? range
     }
+    getVisibleRanges(): { index: number; range: Range }[] {
+        if (!this.scrolled) {
+            const range = this.#getVisibleRange()
+            return range ? [{ index: this.#index, range }] : []
+        }
+        const start = this.start + this.#margin, end = this.end - this.#margin
+        return this.#entries.flatMap(({ view, index }) => {
+            const doc = view.document, offset = this.#viewOffset(view)
+            if (!doc || offset >= end || offset + view.element.getBoundingClientRect()[this.sideProp] <= start) return []
+            return [{ index, range: view.clampRange(getVisibleRange(doc, start, end, this.#getRectMapper(view))) }]
+        })
+    }
     #afterScroll(reason: RelocateReason | null, context: object = {}) {
+        if (this.scrolled) {
+            const position = this.start + this.#margin
+            const entry = this.#entries.find(({ view }) => this.#viewOffset(view) + view.element.getBoundingClientRect()[this.sideProp] > position)
+                ?? this.#entries.at(-1)
+            if (entry) this.#activate(entry, context)
+        }
         const range = this.#getVisibleRange()
         if (!range) return
         this.#lastVisibleRange = range
         // don't set new anchor if relocation was to scroll to anchor
         if (reason !== 'selection' && reason !== 'navigation' && reason !== 'anchor') {
             this.#anchor = range
+            this.#anchorIndex = this.#index
             this.#anchorContext = context
         } else this.#justAnchored = true
 
         const index = this.#index
         const detail: RelocateDetail = { reason, range, index, context }
         const offset = this.#view?.contentOffset ?? 0
-        if (this.scrolled) detail.fraction = (offset + this.start) / (this.#view?.fullSize || this.viewSize)
+        if (this.scrolled) detail.fraction = Math.max(0, offset + this.start - this.#viewOffset()) / (this.#view?.fullSize || this.viewSize)
         else if (this.pages > 0) {
             const { page, pages } = this
             this.#header.style.visibility = page > 1 ? 'visible' : 'hidden'
@@ -716,85 +823,97 @@ export class Paginator extends HTMLElement {
         }
         this.dispatchEvent(new CustomEvent('relocate', { detail }))
     }
-    async #display(promise: MaybePromise<DisplayTarget>, navigation: number) {
-        const { index, src, anchor, onLoad, select, release, context = {} } = await promise
-        if (navigation !== this.#navigation) { release?.(); return }
-        this.#index = index
-        const hasFocus = this.#view?.document?.hasFocus()
-        if (src) {
-            this.#anchor = 0
-            this.#anchorContext = context
-            const view = this.#createView()
-            this.#releaseSection?.()
-            this.#releaseSection = release
-            const afterLoad = (doc: Document) => {
+    async #loadSection(index: number, navigation: number, context: object, replace = false): Promise<SectionEntry | undefined> {
+        const section = this.sections[index]
+        const src = await section.load()
+        let released = false
+        const release = () => { if (!released) { released = true; section.unload?.() } }
+        if (navigation !== this.#navigation) { release(); return }
+        if (typeof src !== 'string') { release(); throw new Error('Reflowable section must load a document URL') }
+        if (replace) this.#keepEntry()
+        const entry = this.#createView(index, release)
+        const { view } = entry
+        if (!this.#view) this.#activate(entry)
+        try {
+            await view.load(src, doc => {
                 if (navigation !== this.#navigation) return
                 if (doc.head) {
-                    const $styleBefore = doc.createElement('style')
-                    doc.head.prepend($styleBefore)
-                    const $style = doc.createElement('style')
-                    doc.head.append($style)
-                    this.#styleMap.set(doc, [$styleBefore, $style])
+                    const before = doc.createElement('style'), after = doc.createElement('style')
+                    doc.head.prepend(before)
+                    doc.head.append(after)
+                    this.#styleMap.set(doc, [before, after])
                 }
-                onLoad?.({ doc, index, context })
-            }
-            const beforeRender = this.#beforeRender.bind(this)
-            try { await view.load(src, afterLoad, beforeRender) }
-            catch (error) {
-                if (this.#view === view) {
-                    view.destroy()
-                    view.element.remove()
-                    this.#view = null
-                    this.#releaseSection?.()
-                    this.#releaseSection = undefined
-                }
-                // A superseding navigation or close deliberately cancels this view.
-                if (navigation !== this.#navigation) return
-                throw error
-            }
-            if (navigation !== this.#navigation) return
-            this.dispatchEvent(new CustomEvent('create-overlayer', {
-                detail: {
-                    doc: view.document, index, context,
-                    attach: (overlayer: Overlayer) => view.overlayer = overlayer,
-                },
-            }))
-            this.#view = view
+                this.#applyStyles(view)
+                this.dispatchEvent(new CustomEvent('load', { detail: { doc, index, context } }))
+            }, direction => this.#beforeRender(this.#view === view ? direction : { vertical: this.#vertical, rtl: this.#rtl }))
+            if (navigation !== this.#navigation) { this.#dropEntry(entry); return }
+            this.dispatchEvent(new CustomEvent('create-overlayer', { detail: {
+                doc: view.document, index, context,
+                attach: (overlayer: Overlayer) => view.overlayer = overlayer,
+            } }))
+            view.refreshStyles()
+            return entry
+        } catch (error) {
+            this.#dropEntry(entry)
+            if (this.#view === view) this.#view = null
+            if (navigation === this.#navigation) throw error
         }
-        const doc = this.#view?.document
-        if (!doc) return
-        await this.scrollToAnchor((typeof anchor === 'function'
-            ? anchor(doc) : anchor) ?? 0, select, context)
-        if (hasFocus) this.focusView(context)
+    }
+    async #assembleChapter(primary: SectionEntry, navigation: number, context: object) {
+        if (!this.scrolled || !this.#chapterStarts.size || this.#chapterComplete) return
+        // Retry an incomplete load from its requested source, releasing any
+        // partial continuation rather than duplicating its iframe or lease.
+        this.#keepEntry(primary)
+        // A chapter may end in one spine file and resume in the next. Keep all
+        // its original iframes in one scroll surface, stopping at TOC boundaries.
+        for (const dir of [-1, 1] as const) {
+            let edge = primary
+            while (navigation === this.#navigation && this.scrolled) {
+                if (dir < 0 ? edge.view.startsChapter : edge.view.hasChapter(1)) break
+                const index = this.#adjacentIndex(dir, edge.index)
+                if (index === undefined) break
+                const next = await this.#loadSection(index, navigation, context)
+                if (!next) return
+                next.view.selectChapter(dir < 0 ? 1 : 0)
+                if (dir > 0 && next.view.startsChapter) { this.#dropEntry(next); break }
+                edge = next
+            }
+        }
+        if (navigation !== this.#navigation) return
+        this.#chapterComplete = true
+        this.#updateChapterEdges()
+        this.#activate(primary, context)
     }
     #canGoToIndex(index: number): boolean {
         return Number.isInteger(index) && index >= 0 && index <= this.sections.length - 1
     }
     async #goTo({ index, anchor, select, context = {} }: ResolvedNavigation, navigation = ++this.#navigation) {
         if (!this.#canGoToIndex(index)) return
-        if (index === this.#index && this.#view?.ready) await this.#display({ index, anchor, select, context }, navigation)
-        else {
-            const onLoad = (detail: LoadDetail) => {
-                this.setStyles(this.#styles, context)
-                this.dispatchEvent(new CustomEvent('load', { detail }))
+        const hasFocus = this.#view?.document?.hasFocus()
+        this.#building = navigation
+        try {
+            let entry = this.#entries.find(entry => entry.index === index && entry.view.ready)
+            if (!entry) {
+                entry = await this.#loadSection(index, navigation, context, true)
             }
-            const section = this.sections[index]
-            await this.#display(Promise.resolve(section.load())
-                .then(src => {
-                    if (typeof src !== 'string') {
-                        section.unload?.()
-                        throw new Error('Reflowable section must load a document URL')
-                    }
-                    let released = false
-                    const release = () => {
-                        if (!released) { released = true; section.unload?.() }
-                    }
-                    return { index, src, anchor, onLoad, select, release, context }
-                }), navigation)
-        }
+            if (!entry || navigation !== this.#navigation) return
+            this.#activate(entry, context)
+            const doc = entry.view.document
+            if (!doc) return
+            const chapter = entry.view.chapterIndex
+            const localAnchor = entry.view.selectChapter((typeof anchor === 'function' ? anchor(doc) : anchor) ?? 0)
+            if (!this.scrolled || chapter !== entry.view.chapterIndex) this.#keepEntry(entry)
+            await this.#assembleChapter(entry, navigation, context)
+            if (navigation !== this.#navigation) return
+            this.#updateChapterEdges()
+            this.#activate(entry, context, true)
+            await this.#scrollToAnchor(localAnchor, select ? 'selection' : 'navigation', context)
+            if (hasFocus) this.focusView(context)
+        } finally { this.#finishBuild(navigation) }
     }
     async goTo(target: MaybePromise<ResolvedNavigation | null | undefined>) {
         if (this.#locked) return
+        this.#pendingRender = Promise.resolve()
         const navigation = ++this.#navigation
         const resolved = await target
         if (navigation === this.#navigation && resolved && this.#canGoToIndex(resolved.index))
@@ -824,13 +943,21 @@ export class Paginator extends HTMLElement {
         return this.#scrollToPage(page, 'page', true, context).then(() => page >= pages - 1)
     }
     get atStart() {
+        if (this.scrolled) {
+            const first = this.#entries[0]
+            return !!first && !first.view.hasChapter(-1) && this.#adjacentIndex(-1, first.index) == null && this.start <= 1
+        }
         return !this.#view?.hasChapter(-1) && this.#adjacentIndex(-1) == null && this.page <= 1
     }
     get atEnd() {
+        if (this.scrolled) {
+            const last = this.#entries.at(-1)
+            return !!last && !last.view.hasChapter(1) && this.#adjacentIndex(1, last.index) == null && this.end >= this.viewSize - 2
+        }
         return !this.#view?.hasChapter(1) && this.#adjacentIndex(1) == null && this.page >= this.pages - 2
     }
-    #adjacentIndex(dir: -1 | 1): number | undefined {
-        for (let index = this.#index + dir; this.#canGoToIndex(index); index += dir)
+    #adjacentIndex(dir: -1 | 1, from = this.#index): number | undefined {
+        for (let index = from + dir; this.#canGoToIndex(index); index += dir)
             if (this.sections[index]?.linear !== 'no') return index
     }
     async #turnPage(dir: -1 | 1, distance?: number, context: object = {}) {
@@ -844,11 +971,22 @@ export class Paginator extends HTMLElement {
         } finally { this.#locked = false }
     }
     async #goToAdjacent(dir: -1 | 1, context: object = {}) {
-        if (this.#view?.turnChapter(dir)) {
-            await this.#scrollToAnchor(dir < 0 ? 1 : 0, 'navigation', context)
+        const edge = this.scrolled ? dir < 0 ? this.#entries[0] : this.#entries.at(-1)
+            : this.#entries.find(entry => entry.view === this.#view)
+        if (edge?.view.turnChapter(dir)) {
+            const navigation = ++this.#navigation
+            this.#building = navigation
+            try {
+                this.#keepEntry(edge)
+                this.#activate(edge, context)
+                await this.#assembleChapter(edge, navigation, context)
+                if (navigation !== this.#navigation) return
+                this.#activate(edge, context, true)
+                await this.#scrollToAnchor(dir < 0 ? 1 : 0, 'navigation', context)
+            } finally { this.#finishBuild(navigation) }
             return
         }
-        const index = this.#adjacentIndex(dir)
+        const index = this.#adjacentIndex(dir, edge?.index)
         if (index !== undefined) await this.#goTo({ index, anchor: dir < 0 ? 1 : 0, context })
     }
     prev(distance?: number, context?: object) {
@@ -874,38 +1012,39 @@ export class Paginator extends HTMLElement {
         return this.goTo({ index })
     }
     getContents(): Content[] {
-        if (this.#view?.document) return [{
-            index: this.#index,
-            overlayer: this.#view.overlayer,
-            doc: this.#view.document,
-        }]
-        return []
+        // Keep the reading-position document first for existing consumers;
+        // annotations and selection can address every resident source document.
+        const entries = [...this.#entries].sort((a, b) => Number(b.view === this.#view) - Number(a.view === this.#view))
+        return entries.flatMap(({ index, view }) => view.ready && view.document ? [{ index, overlayer: view.overlayer, doc: view.document }] : [])
     }
     setStyles(styles: Styles, context: object = {}) {
         this.#styles = styles
-        const view = this.#view
-        const doc = this.#view?.document
+        this.#styleRevision++
+        this.#anchorContext = context
+        for (const { view } of this.#entries) this.#applyStyles(view)
+    }
+    #applyStyles(view: SectionView) {
+        const doc = view.document
         if (!doc) return
         const $$styles = this.#styleMap.get(doc)
         if (!$$styles) return
         const [$beforeStyle, $style] = $$styles
-        const [before, after] = Array.isArray(styles) ? styles : ['', styles ?? '']
+        const [before, after] = Array.isArray(this.#styles) ? this.#styles : ['', this.#styles ?? '']
         if ($beforeStyle.textContent === before && $style.textContent === after) return
-        const revision = ++this.#styleRevision
-        this.#anchorContext = context
+        const revision = this.#styleRevision
         $beforeStyle.textContent = before
         $style.textContent = after
 
         // NOTE: needs `requestAnimationFrame` in Chromium
         requestAnimationFrame(() => {
-            if (this.#view === view && revision === this.#styleRevision) {
-                this.#background.style.background = getBackground(doc)
-                view?.refreshStyles()
+            if (this.#entries.some(entry => entry.view === view) && revision === this.#styleRevision) {
+                if (this.#view === view) this.#background.style.background = getBackground(doc)
+                view.refreshStyles()
             }
         })
 
         // needed because the resize observer doesn't work in Firefox
-        doc.fonts?.ready.then(() => { if (this.#view === view && revision === this.#styleRevision) view?.refreshStyles() })
+        doc.fonts?.ready.then(() => { if (this.#entries.some(entry => entry.view === view) && revision === this.#styleRevision) view.refreshStyles() })
     }
     focusView(context: object = {}) {
         const doc = this.#view?.document
@@ -921,11 +1060,9 @@ export class Paginator extends HTMLElement {
         this.#navigation++
         this.#transformController?.abort()
         this.#observer.disconnect()
-        this.#view?.destroy()
-        this.#view?.element.remove()
-        this.#view = null
-        this.#releaseSection?.()
-        this.#releaseSection = undefined
+        this.#keepEntry()
+        this.#building = undefined
+        this.#deferredLayout = false
         this.#mediaQuery.removeEventListener('change', this.#mediaQueryListener)
     }
 }

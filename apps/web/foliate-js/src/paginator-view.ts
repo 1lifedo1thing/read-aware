@@ -33,6 +33,8 @@ export class SectionView {
     #contentOffset = 0
     #fullSize = 0
     #chapterOffsets: number[] = [0]
+    #firstPart = true
+    #lastPart = true
     readonly chapterStarts: readonly ResolvedNavigation[]
     constructor({ container, onExpand, chapterStarts = [] }: { container: HTMLElement; onExpand: () => void; chapterStarts?: readonly ResolvedNavigation[] }) {
         this.container = container
@@ -71,6 +73,7 @@ export class SectionView {
     get ready() {
         return !this.#destroyed && this.#layout !== undefined
     }
+    get isScrolled() { return !this.#column }
     async load(src: string, afterLoad?: (doc: Document) => void, beforeRender?: (input: BeforeRender) => Layout) {
         if (typeof src !== 'string') throw new Error(`${src} is not string`)
         if (this.#destroyed) throw new DOMException('Page view was destroyed', 'AbortError')
@@ -209,6 +212,14 @@ export class SectionView {
     get contentOffset() { return this.#contentOffset }
     get fullSize() { return this.#fullSize }
     get contentSize() { return this.#contentSize }
+    get chapterIndex() { return this.#chapters?.index ?? 0 }
+    get startsChapter() { return this.chapterIndex > 0 || !!this.#chapters?.startsAtBeginning }
+    get leadingMargin() { return this.#firstPart ? this.#layout?.margin ?? 0 : 0 }
+    setChapterEdges(first: boolean, last: boolean) {
+        this.#firstPart = first
+        this.#lastPart = last
+        this.#applyChapterWindow()
+    }
     hasChapter(dir: -1 | 1) { return this.#chapters?.hasAdjacent(dir) ?? false }
     turnChapter(dir: -1 | 1) {
         if (!this.#chapters?.hasAdjacent(dir)) return false
@@ -252,12 +263,28 @@ export class SectionView {
             return Math.max(0, column ? Math.floor((offset + .5) / pitch) * pitch : offset)
         })
         const index = this.#chapters?.index ?? 0
-        const start = this.#chapterOffsets[index] ?? 0
-        const end = Math.max(start, this.#chapterOffsets[index + 1] ?? this.#contentSize)
+        let start = this.#chapterOffsets[index] ?? 0
+        let end = this.#chapterOffsets[index + 1] ?? this.#contentSize
+        // Internal source edges are not page edges. Clip their body padding
+        // without changing the source layout used by CFIs and annotations.
+        const doc = this.document
+        if (!column && doc?.defaultView) {
+            const style = doc.defaultView.getComputedStyle(doc.body)
+            if (!this.#firstPart && index === 0)
+                start += parseFloat(vertical ? style.paddingRight : style.paddingTop) || 0
+            if (!this.#lastPart && index === starts.length - 1)
+                end -= parseFloat(vertical ? style.paddingLeft : style.paddingBottom) || 0
+        }
+        end = Math.max(start, end)
         this.#contentOffset = start
         const length = Math.max(1, end - start)
         const size = column ? Math.ceil(length / this.#size) * this.#size : length
         this.#element.style[side] = `${size + (column ? this.#size * 2 : 0)}px`
+        if (!column) {
+            const before = this.leadingMargin, after = this.#lastPart ? this.#layout.margin : 0
+            this.#element.style.padding = vertical ? `0 ${before}px 0 ${after}px` : `${before}px 0 ${after}px`
+            if (this.#overlayer) this.#overlayer.element.style.margin = this.#element.style.padding
+        }
         // The iframe retains the complete source layout. Clip its chapter and
         // translate it into a bounded scroll surface; source DOM and CFIs stay intact.
         const shift = (this.#contentSize - size) / 2 - start

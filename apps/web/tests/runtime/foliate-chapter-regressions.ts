@@ -5,6 +5,7 @@ import { markReaderChapterStarts, prepareReaderChapterStarts } from "../../src/f
 import { buildReaderContentCss } from "../../src/features/settings/lib/reader-css";
 import { DEFAULT_READER_SETTINGS } from "../../src/features/settings/lib/reader-settings";
 import { BUILTIN_READER_PALETTES } from "../../src/features/settings/lib/reader-theme";
+import { readingVisibleText } from "../../src/features/reader/lib/reading-visible-text";
 
 type Result = { name: string; passed: boolean; details?: string };
 
@@ -53,6 +54,7 @@ export async function runChapterRegressions(ViewClass: typeof View): Promise<Res
         renderer.setLayoutAttributes({ flow: mode === "scroll" ? "scrolled" : "paginated", "max-column-count": mode === "paginated-double" ? "2" : "1", "max-inline-size": "700px" });
         renderer.setStyles(buildReaderContentCss({ ...DEFAULT_READER_SETTINGS, fontFamily: "system:serif", readingMode: mode }, { palette: BUILTIN_READER_PALETTES.warm }));
         const settle = async () => {
+          await renderer.waitForCurrentRender();
           await renderer.getContents()[0]!.doc.fonts.ready;
           await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         };
@@ -88,10 +90,21 @@ export async function runChapterRegressions(ViewClass: typeof View): Promise<Res
         assert(text().startsWith("Chapter two"), "Sequential reading skipped the next chapter");
         assert((view.lastLocation?.fraction ?? 0) > firstFraction, "Progress reset at an in-file chapter boundary");
         assert(renderer.getContents()[0]?.index === 0, "Chapter title lost its original source index");
-        await renderer.next(); await settle();
-        assert(renderer.getContents()[0]?.index === 1 && text().startsWith("Chapter two continues"), "Cross-file chapter continuation was skipped or a blank step was added");
-        await renderer.prev(); await settle();
-        assert(renderer.getContents()[0]?.index === 0 && text().startsWith("Chapter two"), "Backwards source crossing mixed chapter one with chapter two");
+        if (mode === "scroll") {
+          assert(renderer.getContents().length === 2, "A scroll chapter is still split at the source file boundary");
+          const visible = readingVisibleText(view).text;
+          assert(visible.includes("Chapter two continues"), "The chapter title and its continuation do not share a viewport");
+          assert(!visible.includes("Chapter three"), "Continuous reading crossed a TOC chapter boundary");
+          await view.goTo("1#three");
+          await renderer.prev(); await settle();
+          assert(renderer.getContents().length === 2 && !readingVisibleText(view).text.includes("Chapter three"), "Returning to a chapter lost its continuation");
+          await view.goTo("0#two");
+        } else {
+          await renderer.next(); await settle();
+          assert(renderer.getContents()[0]?.index === 1 && text().startsWith("Chapter two continues"), "Cross-file chapter continuation was skipped or a blank step was added");
+          await renderer.prev(); await settle();
+          assert(renderer.getContents()[0]?.index === 0 && text().startsWith("Chapter two"), "Backwards source crossing mixed chapter one with chapter two");
+        }
         await renderer.prev();
         assert(!text().includes("Chapter two") && renderer.getContents()[0]?.index === 0, "Previous chapter turn failed");
         await view.goTo("0#minor"); await settle();
@@ -109,7 +122,8 @@ export async function runChapterRegressions(ViewClass: typeof View): Promise<Res
         await view.goTo({ index: 0, anchor: 0 });
         assert(text().startsWith("Preface"), "Source fraction 0 no longer selects the first chapter");
         await view.goTo({ index: 0, anchor: 1 });
-        assert(text().startsWith("Chapter two"), "Source fraction 1 no longer selects the final chapter");
+        assert(mode === "scroll" ? renderer.getContents().length === 2 && !text().includes("Chapter one")
+          : text().startsWith("Chapter two"), "Source fraction 1 no longer selects the final chapter");
         results.push({ name, passed: true });
       } catch (error) { results.push({ name, passed: false, details: String(error) }); }
       finally { await view.close(); view.remove(); urls.forEach(url => URL.revokeObjectURL(url)); }

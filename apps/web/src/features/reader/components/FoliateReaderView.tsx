@@ -1951,8 +1951,8 @@ export function FoliateReaderView({
         setIsFixedLayout(fixedLayout);
 
         // Apply the chosen reading mode. Both the reflowable paginator and the
-        // fixed-layout PDF renderer honor these attributes; each keeps only the
-        // current section/spread live, so memory stays bounded.
+        // fixed-layout PDF renderer honor these attributes. Scroll mode keeps
+        // the current chapter's source documents; other modes keep a section/spread.
         const { flow, maxColumnCount } = layoutForReadingMode(readingMode);
         // Before the first navigation, so the opening render already draws the
         // page in the reader's palette instead of flashing white and redrawing.

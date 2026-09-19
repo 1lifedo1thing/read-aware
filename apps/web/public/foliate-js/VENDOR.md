@@ -259,6 +259,18 @@ explicit/contextual `any`, unsafe double assertions, and suppression comments.
   LTR/RTL/vertical text, forward/backward turns, CFI restoration, annotation
   alignment, fractions, resizing and mode changes in native WebKit. Re-apply
   after any upstream update.
+- **Continuous scroll chapters across spine files:** the paginator loads a
+  chapter's linear source continuations into one scroll container, without
+  rewriting DOM paths or merging publisher stylesheets. Only the chapter's
+  outer edges receive reader margins. Scrolling across a source seam updates
+  the active CFI without reloading or turning a page; visible text includes
+  all intersecting source ranges. Styles, relayout and annotation layers apply
+  to every part. Failed continuations reject navigation and can be retried;
+  superseding navigation and close release pending and resident sources.
+  `tests/runtime/foliate-scroll-chapter-regressions.ts` covers real scrolling,
+  multi-source bookmarks, source leases, failure/retry, resize during loading,
+  supersession and close. Paginated flow retains its source-page behavior.
+  Re-apply after any upstream update.
 - `vendor/` remains the pinned upstream distribution artifacts (including the
   official legacy PDF.js replacement described above).
 
