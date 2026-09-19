@@ -4,7 +4,7 @@
 // demand (see curated-font-loader.ts).
 //
 // Network goes through curl (honoring the local proxy); Node only parses. Run:
-//   node apps/web/scripts/gen-curated-fonts.mjs
+//   bun apps/web/scripts/gen-curated-fonts.mjs
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -24,7 +24,7 @@ const curlEnv = {
 };
 
 function fetchText(url) {
-  return execFileSync("curl", ["-sL", "-A", UA, url], {
+  return execFileSync("curl", ["-fsSL", "--max-time", "60", "-A", UA, url], {
     env: curlEnv,
     encoding: "utf8",
     maxBuffer: 1024 * 1024 * 64,
@@ -33,20 +33,18 @@ function fetchText(url) {
 
 // Latin curated families, fetched from Google Fonts (gstatic woff2). We keep the
 // `latin` and `latin-ext` subsets — enough for Western European reading.
-// Weights cover the reader's weight presets (300/400/500/600) plus 700 for bold
-// text, capped by what each family ships upstream: Lora starts at 400 and
-// Atkinson Hyperlegible only has 400/700 — missing weights fall back to the
-// nearest face at render time.
+// Weights cover 300–900 where available. Lora starts at 400 and stops at
+// 700; Atkinson Hyperlegible has 400/700. Keep curated-font-catalog.ts in sync.
 const GOOGLE = [
   {
     id: "inter",
     family: "Inter",
-    q: "Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700",
+    q: "Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800;1,900",
   },
   {
     id: "literata",
     family: "Literata",
-    q: "Literata:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700",
+    q: "Literata:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800;1,900",
   },
   {
     id: "lora",

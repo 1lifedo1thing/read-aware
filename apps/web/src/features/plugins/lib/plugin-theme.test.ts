@@ -101,6 +101,19 @@ const VALID_FONT = {
 describe("validateThemeContributions", () => {
   const fontIds = new Set(["garamond"]);
 
+  test("accepts the heavier reader typography presets", () => {
+    for (const fontWeight of ["semibold", "extra-bold", "black"] as const) {
+      const [theme] = validateThemeContributions([{
+        ...VALID_THEME,
+        reader: {
+          ...VALID_THEME.reader,
+          typography: { ...VALID_THEME.reader.typography, fontWeight },
+        },
+      }], fontIds);
+      expect(theme.reader?.typography?.fontWeight).toBe(fontWeight);
+    }
+  });
+
   test("accepts a complete theme", () => {
     const [theme] = validateThemeContributions([VALID_THEME], fontIds);
     expect(theme.id).toBe("nocturne");

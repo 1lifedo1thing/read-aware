@@ -112,7 +112,10 @@
     "light": "Тонкий",
     "regular": "Обычный",
     "medium": "Средний",
-    "bold": "Жирный"
+    "semibold": "Полужирный",
+    "bold": "Жирный",
+    "extra-bold": "Очень жирный",
+    "black": "Сверхжирный"
   },
   "lineSpacingOption": {
     "compact": "Компактный",

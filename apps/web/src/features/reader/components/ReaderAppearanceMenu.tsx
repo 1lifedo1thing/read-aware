@@ -14,6 +14,7 @@ import {
   textAlignOptions,
 } from "../../settings/lib/reader-setting-options";
 import { applyReaderThemeSelection } from "../../settings/lib/reader-theme";
+import { resolveReaderFontWeight } from "../../settings/lib/reader-settings";
 import { usePluginReaderThemeOptions } from "../../settings/hooks/usePluginReaderThemeOptions";
 import { pluginThemesAtom } from "../../plugins/state/plugin-store";
 import { FontField } from "../../settings/components/FontField";
@@ -136,8 +137,8 @@ export function ReaderAppearanceFields({ bookId, fixedLayout = false }: Pick<Rea
             />
             <ChoiceGroup
               label={t("fontWeight")}
-              value={prefs.fontWeight}
-              options={fontWeightOptions(t)}
+              value={resolveReaderFontWeight(prefs.fontWeight, prefs.fontFamily)}
+              options={fontWeightOptions(t, prefs.fontFamily)}
               onChange={(fontWeight) => updatePrefs({ ...prefs, fontWeight })}
             />
             <ChoiceGroup

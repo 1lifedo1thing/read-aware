@@ -10,6 +10,7 @@ import { FontField } from "../components/FontField";
 import { SettingsGroup } from "../components/SettingsGroup";
 import { SettingsPage } from "../components/SettingsPage";
 import { getReaderPreviewStyle } from "../lib/reader-css";
+import { resolveReaderFontWeight } from "../lib/reader-settings";
 import { applyReaderThemeSelection } from "../lib/reader-theme";
 import { useReaderPalette } from "../hooks/useReaderPalette";
 import { useRegisteredPluginFont } from "../hooks/usePluginFonts";
@@ -70,8 +71,8 @@ export function ReadingPanel() {
           />
           <ChoiceGroup
             label={t("reading.fontWeight")}
-            value={prefs.fontWeight}
-            options={fontWeightOptions(tReader)}
+            value={resolveReaderFontWeight(prefs.fontWeight, prefs.fontFamily)}
+            options={fontWeightOptions(tReader, prefs.fontFamily)}
             onChange={(fontWeight) => setPrefs({ ...prefs, fontWeight })}
           />
           <ChoiceGroup

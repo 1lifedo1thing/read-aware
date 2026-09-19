@@ -112,7 +112,10 @@
     "light": "Leicht",
     "regular": "Normal",
     "medium": "Mittel",
-    "bold": "Fett"
+    "semibold": "Halbfett",
+    "bold": "Fett",
+    "extra-bold": "Extrafett",
+    "black": "Schwer"
   },
   "lineSpacingOption": {
     "compact": "Kompakt",

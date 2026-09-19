@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import {
   curatedFontId,
+  READER_FONT_WEIGHTS,
+  resolveReaderFontWeight,
   isPluginFont,
   systemFontFamily,
   type ReaderFontFamily,
@@ -68,25 +70,13 @@ export function resolveReaderFontStack(
   return DEFAULT_FONT_STACK;
 }
 
-/**
- * Numeric CSS weight behind each preset. "bold" is 600 (not 700) so bold body
- * text stays a notch lighter than strong/heading text; fonts without the exact
- * face render the nearest available weight.
- */
-const FONT_WEIGHT_MAP = {
-  light: 300,
-  regular: 400,
-  medium: 500,
-  bold: 600,
-} as const satisfies Record<ReaderFontWeight, number>;
-
-/**
- * The numeric weights a session must have faces for: the body preset itself,
- * 400 as the regular/italic anchor, and 700 for strong text and headings.
- * Drives the curated-font loader so only these weights get downloaded.
- */
-export function readerFontWeightsNeeded(fontWeight: ReaderFontWeight): number[] {
-  return [...new Set([FONT_WEIGHT_MAP[fontWeight], 400, 700])].sort((a, b) => a - b);
+/** Download the actual body face plus regular and the publisher's bold face. */
+export function readerFontWeightsNeeded(
+  fontWeight: ReaderFontWeight,
+  fontFamily?: ReaderFontFamily,
+): number[] {
+  const weight = READER_FONT_WEIGHTS[resolveReaderFontWeight(fontWeight, fontFamily)];
+  return [...new Set([weight, 400, 700])].sort((a, b) => a - b);
 }
 
 const FONT_SIZE_MAP = {
@@ -261,7 +251,7 @@ export function buildReaderContentCss(
   const fontFaceCss = assets.fontFaceCss ?? "";
   const fontFamily = resolveReaderFontStack(settings.fontFamily, assets.pluginFont);
   const fontSize = FONT_SIZE_MAP[settings.fontSize];
-  const fontWeight = FONT_WEIGHT_MAP[settings.fontWeight];
+  const fontWeight = READER_FONT_WEIGHTS[resolveReaderFontWeight(settings.fontWeight, settings.fontFamily)];
   const lineHeight = LINE_HEIGHT_MAP[settings.lineSpacing];
   const paragraphSpacing = PARAGRAPH_SPACING_MAP[settings.paragraphSpacing];
   const { bodyPadding } = readerLayoutSpacing(settings.pageMargins, settings.readingMode);
@@ -289,6 +279,12 @@ export function buildReaderContentCss(
       line-height: ${lineHeight} !important;
     }
 ${textAlignCss(settings.textAlign)}
+    ${fontWeight > 700 ? `
+    /* Heavy body presets must not make semantic emphasis lighter than prose. */
+    body :where(b, strong, h1, h2, h3, h4, h5, h6) {
+      font-weight: ${fontWeight} !important;
+    }
+    ` : ""}
     /* Publisher stylesheets routinely declare font-family directly on p / h1 /
        div / classes (often naming an embedded font), which beats inheritance
        from body — so the picked font must be forced onto every element, not
@@ -545,7 +541,7 @@ ${textAlignCss(settings.textAlign)}
     }
 
     th {
-      font-weight: 600 !important;
+      font-weight: ${Math.max(600, fontWeight)} !important;
     }
 
     figcaption {
@@ -578,7 +574,7 @@ export function getReaderPreviewStyle(
     color: theme.text,
     fontFamily: resolveReaderFontStack(settings.fontFamily, assets.pluginFont),
     fontSize: FONT_SIZE_MAP[settings.fontSize],
-    fontWeight: FONT_WEIGHT_MAP[settings.fontWeight],
+    fontWeight: READER_FONT_WEIGHTS[resolveReaderFontWeight(settings.fontWeight, settings.fontFamily)],
     lineHeight: LINE_HEIGHT_MAP[settings.lineSpacing],
     // The preview text is ours, so `book` — "whatever the publisher chose" —
     // has no publisher to defer to; it shows the unforced default.

@@ -106,3 +106,13 @@ export const ScrollingMode: Story = {
 export const ParkedBookOverride: Story = {
   decorators: [appearance({}, { scope: "global", settings: { fontSize: "small" } })],
 };
+
+/** A family with three real weights should not offer duplicate-looking choices. */
+export const WenKaiWeights: Story = {
+  decorators: [appearance({ fontFamily: "curated:lxgw", fontWeight: "bold" })],
+};
+
+/** The full weight range wraps inside the same popover. */
+export const HeavyWeights: Story = {
+  decorators: [appearance({ fontFamily: "curated:inter", fontWeight: "black" })],
+};

@@ -112,7 +112,10 @@
     "light": "Fine",
     "regular": "Normale",
     "medium": "Moyenne",
-    "bold": "Grasse"
+    "semibold": "Demi-gras",
+    "bold": "Grasse",
+    "extra-bold": "Extra-gras",
+    "black": "Très gras"
   },
   "lineSpacingOption": {
     "compact": "Compact",

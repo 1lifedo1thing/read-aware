@@ -393,7 +393,14 @@ export type PluginReaderFontSize =
   | "x-large"
   | "xx-large"
   | "xxx-large";
-export type PluginReaderFontWeight = "light" | "regular" | "medium" | "bold";
+export type PluginReaderFontWeight =
+  | "light"
+  | "regular"
+  | "medium"
+  | "semibold"
+  | "bold"
+  | "extra-bold"
+  | "black";
 export type PluginReaderLineSpacing = "compact" | "comfortable" | "relaxed";
 export type PluginReaderParagraphSpacing = "tight" | "normal" | "loose";
 

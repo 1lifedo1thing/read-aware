@@ -133,7 +133,7 @@ export function useReaderTypography({
         ? findRegisteredByRef(settings.fontFamily, pluginFonts)
         : null;
       const fontFaceCss = id
-        ? await ensureCuratedFontFaceCss(id, readerFontWeightsNeeded(settings.fontWeight)).catch(
+        ? await ensureCuratedFontFaceCss(id, readerFontWeightsNeeded(settings.fontWeight, settings.fontFamily)).catch(
             () => "",
           )
         : pluginFont

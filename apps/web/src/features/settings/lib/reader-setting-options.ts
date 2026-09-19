@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import type {
   FixedLayoutColor,
+  ReaderFontFamily,
   ReaderFontSize,
   ReaderFontWeight,
   ReaderLineSpacing,
@@ -10,6 +11,8 @@ import type {
   ReaderThemePreference,
   ReadingMode,
 } from "./reader-settings";
+
+import { readerFontWeightPresets } from "./reader-settings";
 
 /**
  * Shared option lists for the reader appearance controls. Consumed by both the
@@ -31,8 +34,9 @@ export function fontSizeOptions(
 
 export function fontWeightOptions(
   t: TFunction<"reader">,
+  fontFamily?: ReaderFontFamily,
 ): { value: ReaderFontWeight; label: string }[] {
-  return (["light", "regular", "medium", "bold"] as const).map((value) => ({
+  return readerFontWeightPresets(fontFamily).map((value) => ({
     value,
     label: t(`fontWeightOption.${value}`),
   }));

@@ -112,7 +112,10 @@
     "light": "細め",
     "regular": "標準",
     "medium": "中太",
-    "bold": "太め"
+    "semibold": "セミボールド",
+    "bold": "太め",
+    "extra-bold": "エクストラボールド",
+    "black": "ブラック"
   },
   "lineSpacingOption": {
     "compact": "狭い",

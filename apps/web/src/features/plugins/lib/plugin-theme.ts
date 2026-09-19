@@ -139,7 +139,7 @@ const MAX_FONT_FILES = 512;
 const FONT_SIZES = new Set([
   "xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large", "xxx-large",
 ]);
-const FONT_WEIGHTS = new Set(["light", "regular", "medium", "bold"]);
+const FONT_WEIGHTS = new Set(["light", "regular", "medium", "semibold", "bold", "extra-bold", "black"]);
 const LINE_SPACINGS = new Set(["compact", "comfortable", "relaxed"]);
 const PARAGRAPH_SPACINGS = new Set(["tight", "normal", "loose"]);
 const READER_PALETTE_KEYS = ["bg", "text", "selection", "rule", "faint", "muted"] as const;

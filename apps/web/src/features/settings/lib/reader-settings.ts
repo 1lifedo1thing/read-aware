@@ -2,6 +2,7 @@ import { hasCoarsePointer } from "../../../platform/environment";
 import { localKV } from "../../../platform/local-store";
 import { copyEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { isPluginRef } from "../../plugins/lib/plugin-theme";
+import { getCuratedFont } from "./curated-font-catalog";
 
 export const READER_PREFERENCES_KEY = "read-aware-reader-settings";
 const STORAGE_KEY = READER_PREFERENCES_KEY;
@@ -78,12 +79,44 @@ export type ReaderFontSize =
   | "x-large"
   | "xx-large"
   | "xxx-large";
+/** Body-text presets use the standard CSS weight names and values. */
+export const READER_FONT_WEIGHTS = {
+  light: 300,
+  regular: 400,
+  medium: 500,
+  semibold: 600,
+  bold: 700,
+  "extra-bold": 800,
+  black: 900,
+} as const;
+export type ReaderFontWeight = keyof typeof READER_FONT_WEIGHTS;
+
+/** Built-in fonts expose only real faces; installed/plugin fonts use CSS matching. */
+export function readerFontWeightPresets(fontFamily?: ReaderFontFamily): ReaderFontWeight[] {
+  const id = fontFamily && curatedFontId(fontFamily);
+  const weights = id ? getCuratedFont(id)?.weights : undefined;
+  return (Object.keys(READER_FONT_WEIGHTS) as ReaderFontWeight[]).filter(
+    (preset) => !weights || weights.includes(READER_FONT_WEIGHTS[preset]),
+  );
+}
+
 /**
- * Body-text weight presets. Each maps to a numeric CSS weight in
- * `reader-css.ts`; fonts that lack a face for the exact number render the
- * nearest available weight (standard CSS font matching).
+ * Keep a stored preference across font switches, while controls and rendering
+ * agree on the available face. All curated families supply 400 and 700: CSS
+ * matches 500 downward to 400, and weights above 500 upward first.
  */
-export type ReaderFontWeight = "light" | "regular" | "medium" | "bold";
+export function resolveReaderFontWeight(
+  preferred: ReaderFontWeight,
+  fontFamily?: ReaderFontFamily,
+): ReaderFontWeight {
+  const presets = readerFontWeightPresets(fontFamily);
+  if (presets.includes(preferred)) return preferred;
+  const weight = READER_FONT_WEIGHTS[preferred];
+  if (weight <= 500) {
+    return presets.findLast((preset) => READER_FONT_WEIGHTS[preset] <= weight) ?? presets[0]!;
+  }
+  return presets.find((preset) => READER_FONT_WEIGHTS[preset] >= weight) ?? presets.at(-1)!;
+}
 export type ReaderLineSpacing = "compact" | "comfortable" | "relaxed";
 export type ReaderParagraphSpacing = "tight" | "normal" | "loose";
 /**
@@ -262,8 +295,8 @@ export function normalizeTextAlign(value: unknown): ReaderTextAlign {
 
 /** Coerce a persisted font-weight preset to a valid value. */
 export function normalizeFontWeight(value: unknown): ReaderFontWeight {
-  if (value === "light" || value === "regular" || value === "medium" || value === "bold") {
-    return value;
+  if (typeof value === "string" && Object.hasOwn(READER_FONT_WEIGHTS, value)) {
+    return value as ReaderFontWeight;
   }
   return DEFAULT_READER_SETTINGS.fontWeight;
 }

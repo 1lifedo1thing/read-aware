@@ -35,7 +35,7 @@ export function useCuratedFontFace(
 ): CuratedFontFaceState {
   const id = curatedFontId(fontFamily);
   // Serialized so the effect keys on the set's value, not array identity.
-  const weightsKey = readerFontWeightsNeeded(fontWeight).join(",");
+  const weightsKey = readerFontWeightsNeeded(fontWeight, fontFamily).join(",");
   const [status, setStatus] = useState<CuratedFontStatus>("idle");
   const [progress, setProgress] = useState(0);
   const [attempt, setAttempt] = useState(0);

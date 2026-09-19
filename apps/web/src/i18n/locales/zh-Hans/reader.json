@@ -112,7 +112,10 @@
     "light": "细",
     "regular": "标准",
     "medium": "中等",
-    "bold": "加粗"
+    "semibold": "半粗",
+    "bold": "加粗",
+    "extra-bold": "特粗",
+    "black": "极粗"
   },
   "lineSpacingOption": {
     "compact": "紧凑",

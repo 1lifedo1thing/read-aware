@@ -732,7 +732,7 @@ export function buildSettingDefinitions(
           "reading.fontWeight",
           "Font weight",
           "fontWeight",
-          ["light", "regular", "medium", "bold"],
+          ["light", "regular", "medium", "semibold", "bold", "extra-bold", "black"],
         ],
         [
           "reading.lineSpacing",
