@@ -43,7 +43,7 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
       } } });
     const root = createRoot(dom.window.document.getElementById("root")!);
     const rendered: { css: string; context: object }[] = [], layouts: object[] = [], pageColors: object[] = [];
-    const renderer = { setStyles(css: string, context: object) { rendered.push({ css, context }); },
+    const renderer = { setStyles(css: string, context: object) { rendered.push({ css, context }); }, getContents() { return []; },
       setPageColors(_colors: object, context: object) { pageColors.push(context); },
       setLayoutAttributes(_values: object, context: object) { layouts.push(context); } } as unknown as FoliateRenderer;
     const events = new EventTarget();

@@ -30,6 +30,7 @@ import { fixedLayoutPageColors } from "../lib/fixed-layout-colors";
 import type { FoliateRenderer, FoliateView } from "../lib/foliate-engine";
 import { actorFromEvent, eventCause, mergeEventCauses, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { readingRenderContext } from "../lib/reading-render-context";
+import { normalizeReaderTextSizes } from "../lib/reader-document-layout";
 
 type Options = {
   readerSettings: ReaderSettings;
@@ -145,6 +146,9 @@ export function useReaderTypography({
         buildReaderContentCss(settings, { palette, fontFaceCss, pluginFont }),
         context,
       );
+      // Re-evaluate fixed publisher sizes too: a readable 14px note can become
+      // too small when the reader increases their body font to 24px.
+      for (const { doc } of renderer.getContents()) normalizeReaderTextSizes(doc);
     },
     [viewRef, pluginFonts, pluginThemes],
   );

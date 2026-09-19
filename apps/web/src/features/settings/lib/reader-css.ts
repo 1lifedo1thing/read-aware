@@ -313,7 +313,7 @@ ${textAlignCss(settings.textAlign)}
        value changes and not one paragraph moves. font-size and font-weight
        deliberately do NOT: publishers express those relatively (em) or
        semantically (.bold), so flattening them would erase the book's
-       emphasis rather than restore the reader's control. The heading and pre
+       emphasis. Overly small reading text gets a targeted floor below. The heading and pre
        line-heights below still win — same specificity, later in the sheet.
 
        text-align is not here either, but for the opposite reason: it is a
@@ -334,6 +334,41 @@ ${textAlignCss(settings.textAlign)}
 
     body > * {
       max-width: 100% !important;
+    }
+
+    /* The document pass marks actual reading text below this floor, including
+       publisher spans used for quotes/notes without semantic markup. */
+    body [data-ra-small-text] {
+      font-size: calc(${fontSize} * 0.85) !important;
+    }
+
+    /* Converted books sometimes enlarge a superscript to compensate for a
+       tiny parent, then shrink/enlarge its descendants again. Keep it relative
+       to the corrected text, without touching SVG or MathML typography. */
+    body :where(sup, sub):not(:where(svg *, math *)) {
+      font-size: 0.75em !important;
+      line-height: 0 !important;
+    }
+
+    body :where(sup, sub) :where(*):not(:where(svg *, math *)) {
+      font-size: inherit !important;
+    }
+
+    /* TOC chapters can share a source file; file boundaries are not chapter
+       boundaries. Attribute-only markers preserve the original CFI paths. */
+    body [data-ra-chapter-start] {
+      break-after: avoid !important;
+    }
+
+    body a[data-ra-chapter-start] {
+      display: block !important;
+      margin-bottom: 0 !important;
+    }
+
+    body [data-ra-chapter-start="next"] {
+      ${settings.readingMode === "scroll"
+        ? "margin-block-start: 4rem !important; padding-block-start: 2rem !important;"
+        : "break-before: column !important;"}
     }
 
     ::selection {

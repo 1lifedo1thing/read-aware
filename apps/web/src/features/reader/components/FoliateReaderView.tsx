@@ -114,6 +114,7 @@ import { detectBookLanguage } from "../lib/book-language";
 import { rememberReaderBookLanguage } from "../../settings/lib/reader-languages";
 import { getReaderPreferences, readerPreferencesForLanguage } from "../../settings/lib/reader-settings";
 import { getReaderOverrides } from "../../settings/lib/reader-overrides";
+import { prepareReaderChapterStarts, markReaderChapterStarts, normalizeReaderTextSizes } from "../lib/reader-document-layout";
 
 type FoliateReaderViewProps = {
   selectedBook?: LibraryBook | null;
@@ -1936,6 +1937,8 @@ export function FoliateReaderView({
           }
         }
         if (selectedBook && sessionId) cleanups.push(registerActiveBookContent(selectedBook.id, parsedBook, contentVersion, contentProvider, invalidation, initialBook.virtual?.key));
+        const chapterStarts = await prepareReaderChapterStarts(parsedBook);
+        if (cancelled) return;
         if (selectedBook) textUnitNavigatorRef.current.handleContentVersion(selectedBook.id, contentVersion, openingActor);
         await view.open(parsedBook);
         if (cancelled) return;
@@ -2072,6 +2075,10 @@ export function FoliateReaderView({
         const onLoad = (event: Event) => {
           if (cancelled) return;
           const { doc, index } = (event as CustomEvent<FoliateLoadDetail>).detail;
+          if (!fixedLayout) {
+            markReaderChapterStarts(doc, index, chapterStarts);
+            normalizeReaderTextSizes(doc);
+          }
           // The fixed-layout renderer keeps section documents alive in its
           // spread cache and re-announces 'load' whenever one becomes current
           // again — listeners attach once per document (a duplicate keydown
