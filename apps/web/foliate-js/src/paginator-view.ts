@@ -1,5 +1,6 @@
 import type { Overlayer } from "./overlayer.js"
 import { getDirection, getBackground, setStylesImportant } from "./paginator-geometry.js"
+import { imageBlockSpacing, isImageOnlyDocument } from "./paginator-media.js"
 
 
 export type Layout = { width: number; height: number; margin: number; gap: number; columnWidth: number; flow?: string | null }
@@ -72,6 +73,7 @@ export class SectionView {
                 try {
                     const doc = this.document
                     if (!doc) throw new Error('Page document is inaccessible')
+                    doc.documentElement.toggleAttribute('data-foliate-image-page', isImageOnlyDocument(doc))
                     afterLoad?.(doc)
 
                     // It must be visible for Firefox to compute page styles.
@@ -88,7 +90,7 @@ export class SectionView {
                     this.#observer.observe(doc.body)
 
                     // Firefox's iframe resize observer can miss font-driven changes.
-                    doc.fonts.ready.then(() => this.expand())
+                    doc.fonts.ready.then(() => this.refreshStyles())
                     resolve()
                 } catch (error) { reject(error) }
                 finally { cleanup() }
@@ -167,13 +169,14 @@ export class SectionView {
         const vertical = this.#vertical
         const doc = this.document
         if (!doc?.defaultView) return
-        for (const el of doc.body.querySelectorAll<HTMLElement | SVGElement>('img, svg, video')) {
+        for (const el of doc.body.querySelectorAll<HTMLElement | SVGElement>('img, svg, video, canvas')) {
+            if (el.parentElement?.closest('svg')) continue
             // preserve max size if they are already set
             const { maxHeight, maxWidth } = doc.defaultView.getComputedStyle(el)
             setStylesImportant(el, {
                 'max-height': vertical
                     ? (maxHeight !== 'none' && maxHeight !== '0px' ? maxHeight : '100%')
-                    : `${height - margin * 2}px`,
+                    : `${Math.max(1, height - (this.#column ? imageBlockSpacing(el, doc.defaultView) : margin * 2))}px`,
                 'max-width': vertical
                     ? `${width - margin * 2}px`
                     : (maxWidth !== 'none' && maxWidth !== '0px' ? maxWidth : '100%'),
@@ -183,6 +186,11 @@ export class SectionView {
                 'box-sizing': 'border-box',
             })
         }
+    }
+    refreshStyles() {
+        if (this.#destroyed) return
+        this.setImageSize()
+        this.expand()
     }
     expand() {
         // READAWARE: see render() — no document, nothing to measure.

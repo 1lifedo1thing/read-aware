@@ -888,11 +888,14 @@ export class Paginator extends HTMLElement {
 
         // NOTE: needs `requestAnimationFrame` in Chromium
         requestAnimationFrame(() => {
-            if (this.#view === view && revision === this.#styleRevision) this.#background.style.background = getBackground(doc)
+            if (this.#view === view && revision === this.#styleRevision) {
+                this.#background.style.background = getBackground(doc)
+                view?.refreshStyles()
+            }
         })
 
         // needed because the resize observer doesn't work in Firefox
-        doc.fonts?.ready.then(() => { if (this.#view === view && revision === this.#styleRevision) view?.expand() })
+        doc.fonts?.ready.then(() => { if (this.#view === view && revision === this.#styleRevision) view?.refreshStyles() })
     }
     focusView(context: object = {}) {
         const doc = this.#view?.document

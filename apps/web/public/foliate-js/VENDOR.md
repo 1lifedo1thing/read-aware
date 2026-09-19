@@ -230,6 +230,15 @@ explicit/contextual `any`, unsafe double assertions, and suppression comments.
   real asynchronous contracts, resolves chapter marks off the first-paint path,
   and shares parser lifetimes explicitly with background extraction. These are
   source-level changes, not prototype patches or global DOM interception.
+- **Reflowable artwork sizing:** `paginator-media.ts` recognizes image-only
+  documents without removing CFI nodes, allowing the application's reader CSS
+  to neutralize cover-layout tables and whitespace spacers. Horizontal paginated
+  images reserve their own margins and ancestor spacing within the actual page
+  height; style/font changes recalculate that limit. This prevents SVG covers
+  splitting into a second column and table-wrapped covers leaving empty frames.
+  `tests/runtime/foliate-media-regressions.ts` covers both structures, ordinary
+  illustrations/data tables, typography, resizing, and all three reading flows
+  in native WebKit. Re-apply after any upstream update.
 - `vendor/` remains the pinned upstream distribution artifacts (including the
   official legacy PDF.js replacement described above).
 
