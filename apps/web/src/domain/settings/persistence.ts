@@ -9,6 +9,7 @@ import { SHORTCUT_BINDINGS_KEY } from "../../features/settings/lib/shortcut-bind
 import { AI_PREFERENCES_KEY } from "../../features/settings/lib/ai-preferences";
 import { READER_PREFERENCES_KEY } from "../../features/settings/lib/reader-settings";
 import { READER_OVERRIDES_KEY } from "../../features/settings/lib/reader-overrides";
+import { READER_LANGUAGES_KEY } from "../../features/settings/lib/reader-languages";
 import { setLocalKVBatch } from "../../platform/local-store";
 import { CONTENT_TYPOGRAPHY_KEY } from "../../features/settings/lib/content-typography";
 import { DEFAULT_COLOR_KEY } from "../../features/annotations/lib/annotation-prefs";
@@ -34,7 +35,7 @@ export async function settingsChangeKeys(domain: SettingsDomain, paths: readonly
     else if (path.startsWith("shortcuts.")) key = SHORTCUT_BINDINGS_KEY;
     else if (path.startsWith("reading.")) {
       key = READER_PREFERENCES_KEY;
-      if (bookId) keys.add(READER_OVERRIDES_KEY);
+      if (bookId) { keys.add(READER_OVERRIDES_KEY); keys.add(READER_LANGUAGES_KEY); }
     } else if (path.startsWith("ai.preferences.")) key = AI_PREFERENCES_KEY;
     else if (path.startsWith("ai.connection.")) key = AI_CONFIG_KEY;
     else if (path.startsWith("menus.")) key = MENU_CONFIG_KEY;

@@ -27,6 +27,7 @@
   "applyTo": "Anwenden auf",
   "scopeHintBook": "Änderungen betreffen nur dieses Buch.",
   "scopeHintGlobal": "Änderungen betreffen jedes Buch, das deinen globalen Einstellungen folgt.",
+  "scopeHintGlobalFonts": "Schrift und Schriftstärke werden pro Buchsprache gespeichert. Andere Einstellungen gelten für alle Bücher mit globalen Einstellungen.",
   "pageColor": "Seitenfarbe",
   "fontSize": "Schriftgröße",
   "fontWeight": "Schriftstärke",

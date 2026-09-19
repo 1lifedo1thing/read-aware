@@ -8,6 +8,7 @@
  * an EPUB. Nothing here touches the vendored engine.
  */
 import { decodeTextBook } from "./decode-text";
+import { inferBookLanguage } from "./book-language";
 import type { FoliateBook } from './foliate-engine';
 import { escapeHtml, wrapSectionHtml } from "./section-document";
 import {
@@ -44,7 +45,7 @@ export function buildPlainTextFoliateBook(bytes: Uint8Array, fileName: string): 
 
   return assembleBook(built, {
     title: stripExtension(fileName),
-    language: guessLanguage(text),
+    language: inferBookLanguage(text) ?? "und",
     sectionStyle: TEXT_SECTION_STYLE,
   });
 }
@@ -56,7 +57,7 @@ export function buildHtmlFoliateBook(bytes: Uint8Array, fileName: string): Folia
     .querySelector('meta[name="author" i]')
     ?.getAttribute("content")
     ?.trim();
-  const language = doc.documentElement.getAttribute("lang")?.trim() || "en";
+  const language = doc.documentElement.getAttribute("lang")?.trim() || inferBookLanguage(doc.body.textContent ?? "") || "und";
 
   return assembleBook(splitHtmlBody(doc), {
     title: title || stripExtension(fileName),
@@ -165,18 +166,4 @@ function assembleBook(
 
 function stripExtension(fileName: string): string {
   return fileName.replace(/\.[^./\\]+$/, "") || fileName;
-}
-
-/**
- * Enough language signal for the reader's typography (CJK gets different line
- * breaking and justification than Latin script).
- */
-function guessLanguage(text: string): string {
-  const sample = text.slice(0, 4096);
-  let cjk = 0;
-  for (const char of sample) {
-    const code = char.codePointAt(0)!;
-    if (code >= 0x3400 && code <= 0x9fff) cjk++;
-  }
-  return cjk > sample.length * 0.1 ? "zh" : "en";
 }

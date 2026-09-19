@@ -35,6 +35,7 @@ import {
   shortcutBindingsAtom,
   contentTypographyAtom,
   readerOverridesAtom,
+  readerBookLanguagesAtom,
   readerPreferencesAtom,
 } from "../../state/ui";
 import { menuConfigAtom } from "../../features/menus/state/menu-config";
@@ -113,6 +114,7 @@ function readDraft(): SettingsDraft {
     appearance: store.get(appSettingsAtom),
     reading: store.get(readerPreferencesAtom),
     readerOverrides: store.get(readerOverridesAtom),
+    bookLanguages: store.get(readerBookLanguagesAtom),
     contentTypography: store.get(contentTypographyAtom),
     defaultMarkColor: getDefaultMarkColor(),
     updateChannel: getUpdateChannel(),

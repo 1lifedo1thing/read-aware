@@ -11,6 +11,7 @@ import { SHORTCUT_BINDINGS_KEY } from "../../features/settings/lib/shortcut-bind
 import { AI_PREFERENCES_KEY } from "../../features/settings/lib/ai-preferences";
 import { READER_PREFERENCES_KEY } from "../../features/settings/lib/reader-settings";
 import { READER_OVERRIDES_KEY } from "../../features/settings/lib/reader-overrides";
+import { READER_LANGUAGES_KEY } from "../../features/settings/lib/reader-languages";
 import { CONTENT_TYPOGRAPHY_KEY } from "../../features/settings/lib/content-typography";
 import { DEFAULT_COLOR_KEY } from "../../features/annotations/lib/annotation-prefs";
 import { CHANNEL_KV_KEY } from "../../features/update/lib/update-channel";
@@ -19,7 +20,7 @@ import { SettingsObservationHub } from "./observation";
 import { copyEventCause } from "../../platform/domain-actor";
 
 const keys = new Set([AI_CONFIG_KEY, MENU_CONFIG_KEY, APP_SETTINGS_KEY, GENERAL_SETTINGS_KEY, SHELF_VIEW_KEY,
-  SHORTCUT_BINDINGS_KEY, AI_PREFERENCES_KEY, READER_PREFERENCES_KEY, READER_OVERRIDES_KEY, CONTENT_TYPOGRAPHY_KEY, DEFAULT_COLOR_KEY, CHANNEL_KV_KEY]);
+  SHORTCUT_BINDINGS_KEY, AI_PREFERENCES_KEY, READER_PREFERENCES_KEY, READER_OVERRIDES_KEY, READER_LANGUAGES_KEY, CONTENT_TYPOGRAPHY_KEY, DEFAULT_COLOR_KEY, CHANNEL_KV_KEY]);
 const log = createLogger("settings-observation");
 export const settingsObservation = new SettingsObservationHub(error => log.warn("Settings observer failed", error));
 let started = false;

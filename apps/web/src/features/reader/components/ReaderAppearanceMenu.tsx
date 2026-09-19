@@ -86,7 +86,7 @@ export function ReaderAppearanceFields({ bookId, fixedLayout = false }: Pick<Rea
             onChange={setScope}
           />
           <Caption className="mt-1.5 block text-fg-subtle">
-            {scope === "book" ? t("scopeHintBook") : t("scopeHintGlobal")}
+            {scope === "book" ? t("scopeHintBook") : t(fixedLayout ? "scopeHintGlobal" : "scopeHintGlobalFonts")}
           </Caption>
         </div>
 

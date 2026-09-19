@@ -99,6 +99,7 @@ function cloneDraft(draft: SettingsDraft): SettingsDraft {
     shortcuts: { ...draft.shortcuts, bindings: { ...draft.shortcuts.bindings } },
     appearance: { ...draft.appearance },
     reading: { ...draft.reading },
+    bookLanguages: draft.bookLanguages,
     contentTypography: { ...draft.contentTypography },
     defaultMarkColor: draft.defaultMarkColor,
     updateChannel: draft.updateChannel,

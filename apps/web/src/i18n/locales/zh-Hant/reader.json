@@ -27,6 +27,7 @@
   "applyTo": "套用至",
   "scopeHintBook": "變更僅影響這本書。",
   "scopeHintGlobal": "變更會影響所有跟隨全域設定的書籍。",
+  "scopeHintGlobalFonts": "字體和字重自動套用至同語言的書籍；其他設定套用至所有使用全域設定的書籍。",
   "pageColor": "頁面顏色",
   "fontSize": "字級大小",
   "fontWeight": "字重",

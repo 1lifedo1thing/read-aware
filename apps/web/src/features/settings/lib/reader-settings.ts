@@ -3,6 +3,7 @@ import { localKV } from "../../../platform/local-store";
 import { copyEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { isPluginRef } from "../../plugins/lib/plugin-theme";
 import { getCuratedFont } from "./curated-font-catalog";
+import { normalizeBookLanguage } from "../../reader/lib/book-language";
 
 export const READER_PREFERENCES_KEY = "read-aware-reader-settings";
 const STORAGE_KEY = READER_PREFERENCES_KEY;
@@ -189,10 +190,45 @@ export type ReaderSettings = {
   fixedLayoutColor: FixedLayoutColor;
 };
 
-/** Persisted reader preferences. Differs only in that `theme` may be `auto`. */
+export type ReaderFontPreferences = Pick<ReaderSettings, "fontFamily" | "fontWeight">;
+
+/** Global preferences also remember font choices by the book's primary language. */
 export type ReaderSettingsPreferences = Omit<ReaderSettings, "theme"> & {
   theme: ReaderThemePreference;
+  languageFonts?: Record<string, ReaderFontPreferences>;
 };
+
+/** Book overrides receive a flat snapshot, never another copy of the language table. */
+export function readerPreferencesForLanguage(prefs: ReaderSettingsPreferences, language?: string): ReaderSettingsPreferences {
+  const { languageFonts, ...base } = prefs;
+  const font = languageFonts?.[normalizeBookLanguage(language) ?? "und"];
+  return copyEventCause(prefs, { ...base, ...font });
+}
+
+/** In-book global font edits affect this language; every other control stays shared. */
+export function updateReaderLanguagePreferences(
+  global: ReaderSettingsPreferences, language: string | undefined, next: ReaderSettingsPreferences,
+): ReaderSettingsPreferences {
+  const current = readerPreferencesForLanguage(global, language);
+  const { languageFonts: _ignored, ...base } = next;
+  const changed = next.fontFamily !== current.fontFamily || next.fontWeight !== current.fontWeight;
+  return {
+    ...global, ...base, fontFamily: global.fontFamily, fontWeight: global.fontWeight,
+    ...(changed ? { languageFonts: { ...global.languageFonts,
+      [normalizeBookLanguage(language) ?? "und"]: { fontFamily: next.fontFamily, fontWeight: next.fontWeight },
+    } } : {}),
+  };
+}
+
+function normalizeLanguageFonts(value: unknown): Record<string, ReaderFontPreferences> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const entries = Object.entries(value).flatMap(([key, font]) => {
+    const language = key === "und" ? key : normalizeBookLanguage(key);
+    if (!language || !font || typeof font !== "object" || Array.isArray(font)) return [];
+    return [[language, { fontFamily: normalizeFontFamily(font.fontFamily), fontWeight: normalizeFontWeight(font.fontWeight) }] as const];
+  });
+  return entries.length ? Object.fromEntries(entries) : undefined;
+}
 
 export const DEFAULT_READER_SETTINGS: ReaderSettings = {
   theme: "warm",
@@ -306,7 +342,9 @@ export function getReaderPreferences(): ReaderSettingsPreferences {
     const raw = localKV.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_READER_PREFERENCES;
     const parsed = JSON.parse(raw) as Partial<ReaderSettingsPreferences>;
+    const languageFonts = normalizeLanguageFonts(parsed.languageFonts);
     return {
+      ...(languageFonts ? { languageFonts } : {}),
       theme: normalizeReaderTheme(parsed.theme),
       fontFamily: normalizeFontFamily(parsed.fontFamily),
       fontSize: normalizeFontSize(parsed.fontSize),
@@ -351,5 +389,6 @@ export function toEffectiveReaderSettings(
   prefs: ReaderSettingsPreferences,
   appTheme: "light" | "dark",
 ): ReaderSettings {
-  return copyEventCause(prefs, { ...prefs, theme: resolveReaderTheme(prefs.theme, appTheme) });
+  const { languageFonts: _ignored, ...settings } = prefs;
+  return copyEventCause(prefs, { ...settings, theme: resolveReaderTheme(prefs.theme, appTheme) });
 }

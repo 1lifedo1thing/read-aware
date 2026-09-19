@@ -2,10 +2,13 @@ import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import {
   readerOverridesAtom,
+  readerBookLanguagesAtom,
   readerPreferencesAtom,
   resolvedAppThemeStateAtom,
 } from "../../../state/ui";
 import {
+  readerPreferencesForLanguage,
+  updateReaderLanguagePreferences,
   type ReaderSettings,
   type ReaderSettingsPreferences,
 } from "../../settings/lib/reader-settings";
@@ -15,7 +18,7 @@ import { projectReaderAppearance, type ReaderAppearanceProjection } from "../lib
 export type { ReaderAppearanceScope };
 
 type UseReaderAppearanceResult = {
-  /** Where edits land: `global` (all inheriting books) or `book` (this book). */
+  /** Global fonts are shared by book language; other global settings by all books. */
   scope: ReaderAppearanceScope;
   /** The preferences the controls bind to — global prefs or the book override. */
   prefs: ReaderSettingsPreferences;
@@ -27,8 +30,8 @@ type UseReaderAppearanceResult = {
 
 /**
  * Resolves the appearance a given book reads with and routes edits to the right
- * place. In `global` scope the controls reflect (and mutate) the shared global
- * preferences; in `book` scope they reflect (and mutate) that book's override.
+ * place. Global font choices follow the book's language automatically, while
+ * other controls stay shared. Book scope reads/writes the book's own snapshot.
  * Both the reader surface and the appearance popover call this with the same
  * book id, so they stay in sync through the shared atoms.
  */
@@ -36,18 +39,21 @@ export function useReaderAppearance(bookId: string): UseReaderAppearanceResult {
   const [globalPrefs, setGlobalPrefs] = useAtom(readerPreferencesAtom);
   const [overrides, setOverrides] = useAtom(readerOverridesAtom);
   const appTheme = useAtomValue(resolvedAppThemeStateAtom);
+  const languages = useAtomValue(readerBookLanguagesAtom);
+  const language = languages[bookId];
+  const languagePrefs = useMemo(() => readerPreferencesForLanguage(globalPrefs, language), [globalPrefs, language]);
   const committed = useRef<ReaderAppearanceProjection | undefined>(undefined);
 
   const override = overrides[bookId];
   const scope: ReaderAppearanceScope = override?.scope === "book" ? "book" : "global";
-  const prefs = scope === "book" && override ? override.settings : globalPrefs;
+  const prefs = scope === "book" && override ? override.settings : languagePrefs;
   // Keep a stable reference so consumers that key effects on the settings object
   // (e.g. the reader re-injecting CSS) only react to genuine changes, not to
   // every render — a fresh object each render would reset reader scroll position.
   const projection = useMemo(
     () => projectReaderAppearance({ bookId, scope, prefs, source: scope === "book" ? overrides : globalPrefs,
-      scopeSource: overrides, theme: appTheme }, committed.current),
-    [bookId, scope, prefs, overrides, globalPrefs, appTheme],
+      language, languageSource: languages, scopeSource: overrides, theme: appTheme }, committed.current),
+    [bookId, scope, prefs, overrides, globalPrefs, appTheme, language, languages],
   );
   useLayoutEffect(() => { committed.current = projection; }, [projection]);
   const effective = projection.value;
@@ -56,8 +62,8 @@ export function useReaderAppearance(bookId: string): UseReaderAppearanceResult {
     (next: ReaderAppearanceScope) => {
       const existing = overrides[bookId];
       if (next === "book") {
-        // Seed from the stored snapshot if present, otherwise from current global.
-        const settings = existing?.settings ?? globalPrefs;
+        // Seed from the stored snapshot, or this language's current global settings.
+        const settings = existing?.settings ?? languagePrefs;
         setOverrides({ ...overrides, [bookId]: { scope: "book", settings } });
         return;
       }
@@ -65,7 +71,7 @@ export function useReaderAppearance(bookId: string): UseReaderAppearanceResult {
       if (!existing) return;
       setOverrides({ ...overrides, [bookId]: { ...existing, scope: "global" } });
     },
-    [bookId, globalPrefs, overrides, setOverrides],
+    [bookId, languagePrefs, overrides, setOverrides],
   );
 
   const updatePrefs = useCallback(
@@ -74,9 +80,9 @@ export function useReaderAppearance(bookId: string): UseReaderAppearanceResult {
         setOverrides({ ...overrides, [bookId]: { scope: "book", settings: next } });
         return;
       }
-      setGlobalPrefs(next);
+      setGlobalPrefs(updateReaderLanguagePreferences(globalPrefs, language, next));
     },
-    [bookId, overrides, scope, setGlobalPrefs, setOverrides],
+    [bookId, overrides, scope, globalPrefs, language, setGlobalPrefs, setOverrides],
   );
 
   return { scope, prefs, effective, setScope, updatePrefs };

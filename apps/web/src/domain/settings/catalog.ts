@@ -17,6 +17,8 @@ import type { AIPreferences } from "../../features/settings/lib/ai-preferences";
 import { AI_FEATURE_KEYS } from "../../features/settings/lib/ai-preferences";
 import type { GeneralSettings } from "../../features/settings/lib/general-settings";
 import type { ReaderOverrides } from "../../features/settings/lib/reader-overrides";
+import type { ReaderBookLanguages } from "../../features/settings/lib/reader-languages";
+import { readerPreferencesForLanguage } from "../../features/settings/lib/reader-settings";
 import type {
   ReaderFontFamily,
   ReaderSettingsPreferences,
@@ -68,6 +70,8 @@ export type SettingsDraft = {
   appearance: AppSettings;
   reading: ReaderSettingsPreferences;
   readerOverrides: ReaderOverrides;
+  /** Derived source-language hints, not writable settings. */
+  bookLanguages?: ReaderBookLanguages;
   contentTypography: ContentTypographySettings;
   defaultMarkColor: Highlight["color"];
   updateChannel: UpdateChannel;
@@ -240,7 +244,7 @@ function readingPrefs(
 ): ReaderSettingsPreferences {
   if (target.kind !== "book") return draft.reading;
   const override = draft.readerOverrides[target.bookId];
-  return override?.scope === "book" ? override.settings : draft.reading;
+  return override?.scope === "book" ? override.settings : readerPreferencesForLanguage(draft.reading, draft.bookLanguages?.[target.bookId]);
 }
 
 function writeReading(
@@ -254,6 +258,12 @@ function writeReading(
   }
   if (target.kind === "all-books") {
     draft.reading = update(draft.reading);
+    if (draft.reading.languageFonts) {
+      draft.reading.languageFonts = Object.fromEntries(Object.entries(draft.reading.languageFonts).map(([language, font]) => {
+        const next = update({ ...draft.reading, ...font });
+        return [language, { fontFamily: next.fontFamily, fontWeight: next.fontWeight }];
+      }));
+    }
     for (const [bookId, override] of Object.entries(draft.readerOverrides)) {
       draft.readerOverrides[bookId] = {
         ...override,
@@ -265,7 +275,7 @@ function writeReading(
   const bookId = target.bookId.trim();
   if (!bookId) throw new Error("book target requires bookId");
   const existing = draft.readerOverrides[bookId];
-  const base = existing?.scope === "book" ? existing.settings : draft.reading;
+  const base = existing?.scope === "book" ? existing.settings : readerPreferencesForLanguage(draft.reading, draft.bookLanguages?.[bookId]);
   draft.readerOverrides[bookId] = { scope: "book", settings: update(base) };
 }
 

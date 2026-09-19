@@ -1,4 +1,5 @@
 import { atom, getDefaultStore } from "jotai";
+import { READER_LANGUAGES_KEY, getReaderBookLanguages } from "../features/settings/lib/reader-languages";
 import { causalActor, stampEventCause, type DomainActor } from "../platform/domain-actor";
 import {
   APP_SETTINGS_KEY,
@@ -170,6 +171,8 @@ export const aiPreferencesAtom = atom(
 );
 
 const readerPreferencesBaseAtom = atom<ReaderSettingsPreferences>(stampEventCause({ ...getReaderPreferences() }));
+const readerBookLanguagesBaseAtom = atom(stampEventCause(getReaderBookLanguages()));
+export const readerBookLanguagesAtom = atom(get => get(readerBookLanguagesBaseAtom));
 
 export const readerPreferencesAtom = atom(
   (get) => get(readerPreferencesBaseAtom),
@@ -250,6 +253,7 @@ onLocalKVChange((key, _value, origin) => {
     case SHELF_VIEW_KEY: store.set(shelfViewBaseAtom, getShelfView()); break;
     case SHORTCUT_BINDINGS_KEY: store.set(shortcutBindingsBaseAtom, getShortcutBindings()); break;
     case READER_PREFERENCES_KEY: store.set(readerPreferencesBaseAtom, stampEventCause({ ...getReaderPreferences() }, origin)); break;
+    case READER_LANGUAGES_KEY: store.set(readerBookLanguagesBaseAtom, stampEventCause(getReaderBookLanguages(), origin)); break;
     case READER_OVERRIDES_KEY: store.set(readerOverridesBaseAtom, stampEventCause(getReaderOverrides(), origin)); break;
     case GENERAL_SETTINGS_KEY: {
       const settings = getGeneralSettings();

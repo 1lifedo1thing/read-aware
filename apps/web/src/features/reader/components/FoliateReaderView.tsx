@@ -11,7 +11,7 @@ import { appShortcutForEvent, isAppSurfaceShortcut } from "../../settings/lib/sh
 import type { LibraryBook, ReaderProgress } from "../../library/lib/library-types";
 import { emitAppEvent } from "../../../platform/app-events";
 import { createLogger } from "../../../platform/logger";
-import { causalActor, type DomainActor } from "../../../platform/domain-actor";
+import { causalActor, stampEventCause, type DomainActor } from "../../../platform/domain-actor";
 import { resolveReaderModeUnit } from "../../plugins/lib/reader-mode";
 import {
   getNormalizedSelectionText,
@@ -110,6 +110,10 @@ import { assertContentNotInvalidated, contentInvalidationRevision, virtualSource
 import type {
   RegisteredReaderMode,
 } from "../../plugins/lib/plugin-types";
+import { detectBookLanguage } from "../lib/book-language";
+import { rememberReaderBookLanguage } from "../../settings/lib/reader-languages";
+import { getReaderPreferences, readerPreferencesForLanguage } from "../../settings/lib/reader-settings";
+import { getReaderOverrides } from "../../settings/lib/reader-overrides";
 
 type FoliateReaderViewProps = {
   selectedBook?: LibraryBook | null;
@@ -1919,6 +1923,18 @@ export function FoliateReaderView({
         }
         releaseBook ??= retainBook(parsedBook);
         if (cancelled) { await releaseBook(); return; }
+        if (selectedBook && !isFixedLayoutBook(parsedBook)) {
+          const language = await detectBookLanguage(parsedBook);
+          if (cancelled) return;
+          rememberReaderBookLanguage(selectedBook.id, language, openingActor);
+          // Seed the very first stylesheet before React's shared-language update
+          // arrives. Book overrides still win; opening must not flash the fallback font.
+          const override = getReaderOverrides()[selectedBook.id];
+          const font = override?.scope === "book" ? override.settings : readerPreferencesForLanguage(getReaderPreferences(), language);
+          if (readerSettingsRef.current.fontFamily !== font.fontFamily || readerSettingsRef.current.fontWeight !== font.fontWeight) {
+            readerSettingsRef.current = stampEventCause({ ...readerSettingsRef.current, fontFamily: font.fontFamily, fontWeight: font.fontWeight }, openingActor);
+          }
+        }
         if (selectedBook && sessionId) cleanups.push(registerActiveBookContent(selectedBook.id, parsedBook, contentVersion, contentProvider, invalidation, initialBook.virtual?.key));
         if (selectedBook) textUnitNavigatorRef.current.handleContentVersion(selectedBook.id, contentVersion, openingActor);
         await view.open(parsedBook);

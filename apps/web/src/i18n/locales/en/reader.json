@@ -27,6 +27,7 @@
   "applyTo": "Apply to",
   "scopeHintBook": "Changes affect this book only.",
   "scopeHintGlobal": "Changes affect every book that follows your global settings.",
+  "scopeHintGlobalFonts": "Fonts and weights are remembered for books in the same language. Other settings apply to all books using global settings.",
   "pageColor": "Page Color",
   "fontSize": "Font Size",
   "fontWeight": "Font Weight",

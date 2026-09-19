@@ -17,7 +17,7 @@ export type VirtualBookContent = {
 };
 
 export async function buildVirtualFoliateBook(content: VirtualBookContent): Promise<FoliateBook> {
-  const language = content.language ?? "en";
+  const language = content.language ?? "und";
   const ids = content.sections.map((section, index) => section.id || `sec-${index}`);
   const docs = content.sections.map((section) =>
     wrapSectionHtml(section.html, section.title, language),

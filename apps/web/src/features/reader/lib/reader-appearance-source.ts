@@ -7,6 +7,8 @@ export type ReaderAppearanceInput = {
   prefs: ReaderSettingsPreferences;
   source: object;
   scopeSource: object;
+  language?: string;
+  languageSource?: object;
   theme: { value: "light" | "dark" };
 };
 export type ReaderAppearanceProjection = { input: ReaderAppearanceInput; value: ReaderSettings };
@@ -20,6 +22,7 @@ export function projectReaderAppearance(input: ReaderAppearanceInput, previous?:
   if (!previous || previous.input.bookId !== input.bookId) sources.push(input.source);
   else {
     if (previous.input.scope !== input.scope) sources.push(input.scopeSource);
+    else if (input.scope === "global" && previous.input.language !== input.language && input.languageSource) sources.push(input.languageSource);
     else if (JSON.stringify(previous.input.prefs) !== JSON.stringify(input.prefs)) sources.push(input.source);
     if (input.prefs.theme === "auto" && previous.input.theme.value !== input.theme.value) sources.push(input.theme);
   }
