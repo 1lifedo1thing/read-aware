@@ -239,6 +239,14 @@ explicit/contextual `any`, unsafe double assertions, and suppression comments.
   `tests/runtime/foliate-media-regressions.ts` covers both structures, ordinary
   illustrations/data tables, typography, resizing, and all three reading flows
   in native WebKit. Re-apply after any upstream update.
+- **Scrolled anchors near section ends:** `paginator.ts` and `paginator-view.ts`
+  provide temporary trailing scroll room when a chapter, search result, or CFI
+  target would otherwise be prevented from reaching the viewport start by the
+  source file's end. The space stays outside the document and measured content extent,
+  preserving CFIs and next-section navigation. Fraction navigation and paginated
+  layout retire it. Native paginator regressions cover horizontal/vertical
+  alignment, repeated layout, end navigation, section turns, and flow changes.
+  Re-apply after any upstream update.
 - `vendor/` remains the pinned upstream distribution artifacts (including the
   official legacy PDF.js replacement described above).
 

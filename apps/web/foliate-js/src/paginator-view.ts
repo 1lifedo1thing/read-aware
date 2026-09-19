@@ -136,6 +136,7 @@ export class SectionView {
 
         const doc = this.document
         if (!doc) return
+        this.#element.style.margin = '0'
         setStylesImportant(doc.documentElement, {
             'box-sizing': 'border-box',
             'column-width': `${Math.trunc(columnWidth)}px`,
@@ -191,6 +192,17 @@ export class SectionView {
         if (this.#destroyed) return
         this.setImageSize()
         this.expand()
+    }
+    // A target near the end of a source file still needs to reach the top of
+    // the viewport. Keep this temporary scroll room outside the iframe and
+    // outside viewSize, so it neither changes CFIs nor adds a blank reading
+    // step before the next source section.
+    setScrollExtent(minimum: number) {
+        if (this.#column || this.#destroyed) return
+        const side = this.#vertical ? 'width' : 'height'
+        const extra = Math.max(0, minimum - this.#element.getBoundingClientRect()[side])
+        this.#element.style.marginBottom = this.#vertical ? '0' : `${extra}px`
+        this.#element.style.marginLeft = this.#vertical ? `${extra}px` : '0'
     }
     expand() {
         // READAWARE: see render() — no document, nothing to measure.

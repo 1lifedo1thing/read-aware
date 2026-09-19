@@ -163,6 +163,57 @@ export async function runPaginatorRegressions(PaginatorClass: typeof Paginator):
     } finally { dispose(renderer, [url]); }
   });
 
+  for (const vertical of [false, true]) await check(`${vertical ? "vertical" : "horizontal"} scroll: a chapter near EOF aligns at the viewport start without a blank next step`, async () => {
+    const styles = `body { margin:0; font:18px/28px serif; ${vertical ? "writing-mode:vertical-rl;" : ""} } p,h2 { margin:0; }`;
+    const first = URL.createObjectURL(new Blob([
+      `<!doctype html><html><head><style>${styles}</style></head><body><p>${"Previous chapter text. ".repeat(600)}</p><h2 id="chapter">New chapter</h2><p>Short opening fragment.</p></body></html>`,
+    ], { type: "text/html" }));
+    const second = page("The chapter continues in the next source file.", styles);
+    const renderer = mount();
+    const events: RelocateDetail[] = [];
+    renderer.addEventListener("relocate", event => events.push((event as CustomEvent<RelocateDetail>).detail));
+    try {
+      renderer.setLayoutAttributes({ flow: "scrolled", margin: "40px" });
+      renderer.open({ sections: [first, second].map((url, index) => ({ id: index, size: 1000, load: () => url })) });
+      await renderer.goTo({ index: 0 });
+      const doc = renderer.getContents()[0]!.doc;
+      await doc.fonts.ready;
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const contentSize = renderer.viewSize;
+      const chapter = doc.getElementById("chapter")!;
+      const target = { index: 0, anchor: (doc: Document) => doc.getElementById("chapter") };
+      const verify = () => {
+        const rect = chapter.getBoundingClientRect();
+        const offset = vertical ? renderer.viewSize - rect.right - 80 : rect.top;
+        // The configured outer margin is 40px per side; viewSize includes it.
+        if (Math.abs(renderer.start - offset) > 1) throw new Error(`Target was clamped: ${renderer.start} vs ${offset}`);
+        if (!events.at(-1)?.range?.toString().trim().startsWith("New chapter")) throw new Error("Previous chapter remains above the selected chapter");
+        equal(renderer.viewSize, contentSize);
+      };
+      await renderer.goTo(target);
+      verify();
+      renderer.render(); renderer.render();
+      verify();
+      // Fraction/end navigation must not land in the temporary trailing space.
+      await renderer.goTo({ index: 0, anchor: 1 });
+      if (renderer.end > contentSize + 1) throw new Error("End navigation landed after the content");
+      await renderer.goTo(target);
+      verify();
+      await renderer.next();
+      equal(renderer.getContents()[0]?.index, 1);
+      await renderer.prev();
+      equal(renderer.getContents()[0]?.index, 0);
+      const previous = renderer.getContents()[0]!.doc;
+      if (!events.at(-1)?.range?.toString().includes("Short opening fragment.")) throw new Error("Returning to the previous section lost its last text");
+      // Switching flow retires the trailing space, keeping paged geometry finite.
+      await renderer.goTo(target);
+      renderer.setAttribute("flow", "paginated");
+      if (!Number.isFinite(renderer.pages) || renderer.pages <= 2 || previous !== renderer.getContents()[0]?.doc) throw new Error("Flow switch broke the current section");
+      const view = previous.defaultView?.frameElement?.parentElement;
+      if (!view || parseFloat(view.style.marginBottom) !== 0 || parseFloat(view.style.marginLeft) !== 0) throw new Error("Scroll-only space leaked into pagination");
+    } finally { dispose(renderer, [first, second]); }
+  });
+
   await check("scrolled images have finite limits and vertical/RTL pages retain readable geometry", async () => {
     const canvas = document.createElement("canvas");
     canvas.width = 1000;

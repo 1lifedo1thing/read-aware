@@ -616,6 +616,7 @@ export class Paginator extends HTMLElement {
     async #scrollToRect(rect: DOMRect, reason: RelocateReason | null, context: object) {
         if (this.scrolled) {
             const offset = this.#getRectMapper()(rect).left - this.#margin
+            this.#view?.setScrollExtent(offset + this.size)
             return this.#scrollTo(offset, reason, false, context)
         }
         const offset = this.#getRectMapper()(rect).left
@@ -670,6 +671,7 @@ export class Paginator extends HTMLElement {
         // if anchor is a fraction
         if (typeof anchor !== 'number') return
         if (this.scrolled) {
+            this.#view?.setScrollExtent(0)
             await this.#scrollTo(anchor * this.viewSize, reason, false, context)
             return
         }
