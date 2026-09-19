@@ -1943,6 +1943,7 @@ export function FoliateReaderView({
         await view.open(parsedBook);
         if (cancelled) return;
         if (view.renderer) view.renderer.inputBridge = readingNativeInput;
+        if (view.renderer && "setChapterStarts" in view.renderer) view.renderer.setChapterStarts(chapterStarts);
 
         const book = view.book;
         const fixedLayout = book ? isFixedLayoutBook(book) : false;

@@ -58,6 +58,7 @@ export async function runDocumentLayoutRegressions(ViewClass: typeof View): Prom
       await view.open(book);
       const renderer = view.renderer;
       if (!renderer || !("setStyles" in renderer)) throw new Error("Missing paginator");
+      renderer.setChapterStarts(starts);
       const spacing = readerLayoutSpacing("wide", mode);
       renderer.setLayoutAttributes({ flow: mode === "scroll" ? "scrolled" : "paginated", margin: spacing.margin, gap: spacing.gap,
         "max-column-count": mode === "paginated-double" ? "2" : "1", "max-inline-size": "960px" });
@@ -99,7 +100,7 @@ export async function runDocumentLayoutRegressions(ViewClass: typeof View): Prom
       await view.goTo("two");
       const visible = view.lastLocation?.range?.toString().trim() ?? "";
       assert(visible.includes("Chapter two"), `TOC navigation did not reveal the chapter heading: ${visible.slice(0,80)}`);
-      if (mode !== "paginated-double") assert(visible.startsWith("Chapter two"), "TOC navigation landed before the chapter break");
+      assert(visible.startsWith("Chapter two"), "TOC navigation landed before the chapter break");
       results.push({ name: `${mode}: chapter boundaries, readable notes/quotes, typography updates and stable CFI`, passed: true });
     } catch (error) { results.push({ name: mode, passed: false, details: String(error) }); }
     finally { await view.close(); view.remove(); URL.revokeObjectURL(url); }

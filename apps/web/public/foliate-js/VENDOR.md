@@ -247,6 +247,18 @@ explicit/contextual `any`, unsafe double assertions, and suppression comments.
   layout retire it. Native paginator regressions cover horizontal/vertical
   alignment, repeated layout, end navigation, section turns, and flow changes.
   Re-apply after any upstream update.
+- **Independent TOC chapters:** the reader supplies its existing resolved
+  chapter starts to the paginator before first navigation. `paginator-chapters.ts`
+  keeps source-document ranges; `paginator-view.ts` clips and translates each
+  chapter into its own scroll/pagination surface, together with its annotation
+  layer. The iframe retains the original DOM and source coordinates, so CFIs,
+  highlights, links and source-weighted progress remain stable. Adjacent turns
+  visit in-file chapters before crossing spine files, including chapters that
+  continue in another file. Nested TOC subsections stay within their chapter.
+  `tests/runtime/foliate-chapter-regressions.ts` covers all three reading modes,
+  LTR/RTL/vertical text, forward/backward turns, CFI restoration, annotation
+  alignment, fractions, resizing and mode changes in native WebKit. Re-apply
+  after any upstream update.
 - `vendor/` remains the pinned upstream distribution artifacts (including the
   official legacy PDF.js replacement described above).
 

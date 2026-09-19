@@ -1,6 +1,8 @@
 import type { Overlayer } from "./overlayer.js"
 import { getDirection, getBackground, setStylesImportant } from "./paginator-geometry.js"
 import { imageBlockSpacing, isImageOnlyDocument } from "./paginator-media.js"
+import type { Anchor, ResolvedNavigation } from './book.js'
+import { ChapterRanges } from './paginator-chapters.js'
 
 
 export type Layout = { width: number; height: number; margin: number; gap: number; columnWidth: number; flow?: string | null }
@@ -24,9 +26,18 @@ export class SectionView {
     #layout: Layout | undefined
     #destroyed = false
     #cancelLoad: (() => void) | undefined
-    constructor({ container, onExpand }: { container: HTMLElement; onExpand: () => void }) {
+    #chapters: ChapterRanges | undefined
+    // Source geometry stays independent of the visible chapter's extent.
+    // contentSize excludes padding; fullSize includes the reader's margins.
+    #contentSize = 0
+    #contentOffset = 0
+    #fullSize = 0
+    #chapterOffsets: number[] = [0]
+    readonly chapterStarts: readonly ResolvedNavigation[]
+    constructor({ container, onExpand, chapterStarts = [] }: { container: HTMLElement; onExpand: () => void; chapterStarts?: readonly ResolvedNavigation[] }) {
         this.container = container
         this.onExpand = onExpand
+        this.chapterStarts = chapterStarts
         this.#iframe.setAttribute('part', 'filter')
         this.#element.append(this.#iframe)
         Object.assign(this.#element.style, {
@@ -43,6 +54,7 @@ export class SectionView {
             overflow: 'hidden',
             border: '0',
             display: 'none',
+            flex: '0 0 auto',
             width: '100%', height: '100%',
         })
         // `allow-scripts` is needed for events because of WebKit bug
@@ -75,6 +87,7 @@ export class SectionView {
                     if (!doc) throw new Error('Page document is inaccessible')
                     doc.documentElement.toggleAttribute('data-foliate-image-page', isImageOnlyDocument(doc))
                     afterLoad?.(doc)
+                    this.#chapters = new ChapterRanges(doc, this.chapterStarts)
 
                     // It must be visible for Firefox to compute page styles.
                     this.#iframe.style.display = 'block'
@@ -193,6 +206,71 @@ export class SectionView {
         this.setImageSize()
         this.expand()
     }
+    get contentOffset() { return this.#contentOffset }
+    get fullSize() { return this.#fullSize }
+    get contentSize() { return this.#contentSize }
+    hasChapter(dir: -1 | 1) { return this.#chapters?.hasAdjacent(dir) ?? false }
+    turnChapter(dir: -1 | 1) {
+        if (!this.#chapters?.hasAdjacent(dir)) return false
+        this.#chapters.index += dir
+        this.#applyChapterWindow()
+        return true
+    }
+    clampRange(range: Range) { return this.#chapters?.clamp(range) ?? range }
+    // Public fractions address the source section, whereas internal scrolling
+    // addresses the selected chapter. Element/Range anchors keep their identity.
+    selectChapter(anchor: Anchor): Anchor {
+        if (!this.#chapters || this.#chapters.starts.length === 1) return anchor
+        const sourceOffset = typeof anchor === 'number'
+            ? this.#column ? Math.round(anchor * Math.max(0, this.#contentSize / this.#size - 1)) * this.#size
+                : anchor * this.#fullSize
+            : 0
+        if (typeof anchor === 'number') this.#chapters.index = anchor >= 1
+            ? this.#chapterOffsets.length - 1
+            : Math.max(0, this.#chapterOffsets.findLastIndex(offset => offset <= sourceOffset))
+        else this.#chapters.select(anchor)
+        this.#applyChapterWindow()
+        if (typeof anchor !== 'number') return anchor
+        if (anchor >= 1) return 1
+        const verticalAxis = this.#column ? this.#vertical : !this.#vertical
+        const extent = this.#element.getBoundingClientRect()[verticalAxis ? 'height' : 'width']
+        const distance = this.#column ? extent - this.#size * 3 : extent
+        return distance > 0 ? Math.max(0, Math.min(1, (sourceOffset - this.#contentOffset) / distance)) : 0
+    }
+    #applyChapterWindow() {
+        if (!this.#layout) return
+        const vertical = this.#vertical, column = this.#column
+        const y = column ? vertical : !vertical
+        const reverse = !y && (column ? this.#rtl : vertical)
+        const side = y ? 'height' : 'width'
+        const starts = this.#chapters?.starts ?? [null]
+        const pitch = this.#size / Math.max(1, Math.round(this.#size / (this.#layout.columnWidth + this.#layout.gap)))
+        this.#chapterOffsets = starts.map(element => {
+            if (!element) return 0
+            const rect = element.getClientRects()[0] ?? element.getBoundingClientRect()
+            const offset = y ? rect.top : reverse ? this.#contentSize - rect.right : rect.left
+            return Math.max(0, column ? Math.floor((offset + .5) / pitch) * pitch : offset)
+        })
+        const index = this.#chapters?.index ?? 0
+        const start = this.#chapterOffsets[index] ?? 0
+        const end = Math.max(start, this.#chapterOffsets[index + 1] ?? this.#contentSize)
+        this.#contentOffset = start
+        const length = Math.max(1, end - start)
+        const size = column ? Math.ceil(length / this.#size) * this.#size : length
+        this.#element.style[side] = `${size + (column ? this.#size * 2 : 0)}px`
+        // The iframe retains the complete source layout. Clip its chapter and
+        // translate it into a bounded scroll surface; source DOM and CFIs stay intact.
+        const shift = (this.#contentSize - size) / 2 - start
+        this.#iframe.style.transform = `translate${y ? 'Y' : 'X'}(${reverse ? -shift : shift}px)`
+        const trailing = Math.max(0, this.#contentSize - end)
+        const clip = y ? `inset(${start}px 0 ${trailing}px 0)`
+            : reverse ? `inset(0 ${start}px 0 ${trailing}px)` : `inset(0 ${trailing}px 0 ${start}px)`
+        this.#iframe.style.clipPath = clip
+        if (this.#overlayer) {
+            this.#overlayer.element.style.transform = `translate${y ? 'Y' : 'X'}(${reverse ? size + start - this.#contentSize : -start}px)`
+            this.#overlayer.element.style.clipPath = clip
+        }
+    }
     // A target near the end of a source file still needs to reach the top of
     // the viewport. Keep this temporary scroll room outside the iframe and
     // outside viewSize, so it neither changes CFIs nor adds a blank reading
@@ -220,6 +298,8 @@ export class SectionView {
             const contentSize = contentStart + contentRect[side]
             const pageCount = Math.ceil(contentSize / this.#size)
             const expandedSize = pageCount * this.#size
+            this.#contentSize = expandedSize
+            this.#fullSize = expandedSize + this.#size * 2
             this.#element.style.padding = '0'
             this.#iframe.style[side] = `${expandedSize}px`
             this.#element.style[side] = `${expandedSize + this.#size * 2}px`
@@ -239,6 +319,8 @@ export class SectionView {
             const contentSize = documentElement.getBoundingClientRect()[side]
             const expandedSize = contentSize
             const { margin } = this.#layout
+            this.#contentSize = expandedSize
+            this.#fullSize = expandedSize + margin * 2
             const padding = this.#vertical ? `0 ${margin}px` : `${margin}px 0`
             this.#element.style.padding = padding
             this.#iframe.style[side] = `${expandedSize}px`
@@ -253,6 +335,7 @@ export class SectionView {
                 this.#overlayer.redraw()
             }
         }
+        this.#applyChapterWindow()
         this.onExpand()
     }
     set overlayer(overlayer) {

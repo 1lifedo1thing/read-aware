@@ -80,6 +80,7 @@ export class Paginator extends HTMLElement {
     #header: HTMLElement
     #footer: HTMLElement
     #view: SectionView | null = null
+    #chapterStarts: ReadonlyMap<number, readonly ResolvedNavigation[]> = new Map()
     #releaseSection: (() => void) | undefined
     #vertical = false
     #rtl = false
@@ -365,6 +366,10 @@ export class Paginator extends HTMLElement {
         if (changed) this.render(context)
     }
     #transformController: AbortController | undefined
+    /** Configure resolved TOC chapter starts before the first navigation. */
+    setChapterStarts(starts: ReadonlyMap<number, readonly ResolvedNavigation[]>) {
+        this.#chapterStarts = starts
+    }
     open(book: Book) {
         this.#transformController?.abort()
         this.#transformController = new AbortController()
@@ -395,6 +400,7 @@ export class Paginator extends HTMLElement {
         }
         this.#view = new SectionView({
             container: this,
+            chapterStarts: this.#chapterStarts.get(this.#index),
             onExpand: () => this.#scrollToAnchor(this.#anchor, 'anchor', this.#anchorContext),
         })
         this.#container.append(this.#view.element)
@@ -544,11 +550,7 @@ export class Paginator extends HTMLElement {
 
         this.#scrollToPage(page, 'snap').then(() => {
             const dir = page <= 0 ? -1 : page >= pages - 1 ? 1 : null
-            const index = dir && this.#adjacentIndex(dir)
-            if (dir && index != null) return this.#goTo({
-                index,
-                anchor: dir < 0 ? () => 1 : () => 0,
-            })
+            if (dir) return this.#goToAdjacent(dir)
         })
     }
     #onTouchStart(e: TouchEvent) {
@@ -597,21 +599,22 @@ export class Paginator extends HTMLElement {
     }
     // allows one to process rects as if they were LTR and horizontal
     #getRectMapper(): RectMapper {
+        const offset = this.#view?.contentOffset ?? 0
         if (this.scrolled) {
-            const size = this.viewSize
+            const size = this.#view?.fullSize ?? this.viewSize
             const margin = this.#margin
             return this.#vertical
                 ? ({ left, right }) =>
-                    ({ left: size - right - margin, right: size - left - margin })
-                : ({ top, bottom }) => ({ left: top + margin, right: bottom + margin })
+                    ({ left: size - right - margin - offset, right: size - left - margin - offset })
+                : ({ top, bottom }) => ({ left: top + margin - offset, right: bottom + margin - offset })
         }
-        const pxSize = this.pages * this.size
+        const pxSize = this.#view?.fullSize ?? this.pages * this.size
         return this.#rtl
             ? ({ left, right }) =>
-                ({ left: pxSize - right, right: pxSize - left })
+                ({ left: pxSize - right - offset, right: pxSize - left - offset })
             : this.#vertical
-                ? ({ top, bottom }) => ({ left: top, right: bottom })
-                : f => f
+                ? ({ top, bottom }) => ({ left: top - offset, right: bottom - offset })
+                : ({ left, right }) => ({ left: left - offset, right: right - offset })
     }
     async #scrollToRect(rect: DOMRect, reason: RelocateReason | null, context: object) {
         if (this.scrolled) {
@@ -652,7 +655,7 @@ export class Paginator extends HTMLElement {
         return this.#scrollTo(offset, reason, smooth, context)
     }
     async scrollToAnchor(anchor: Anchor, select?: boolean, context?: object) {
-        return this.#scrollToAnchor(anchor, select ? 'selection' : 'navigation', context)
+        return this.#scrollToAnchor(this.#view?.selectChapter(anchor) ?? anchor, select ? 'selection' : 'navigation', context)
     }
     async #scrollToAnchor(anchor: Anchor, reason: RelocateReason = 'anchor', context: object = {}) {
         this.#anchor = anchor
@@ -684,11 +687,11 @@ export class Paginator extends HTMLElement {
     #getVisibleRange() {
         const doc = this.#view?.document
         if (!doc) return null
-        if (this.scrolled) return getVisibleRange(doc,
-            this.start + this.#margin, this.end - this.#margin, this.#getRectMapper())
         const size = this.#rtl ? -this.size : this.size
-        return getVisibleRange(doc,
-            this.start - size, this.end - size, this.#getRectMapper())
+        const range = this.scrolled ? getVisibleRange(doc,
+            this.start + this.#margin, this.end - this.#margin, this.#getRectMapper())
+            : getVisibleRange(doc, this.start - size, this.end - size, this.#getRectMapper())
+        return this.#view?.clampRange(range) ?? range
     }
     #afterScroll(reason: RelocateReason | null, context: object = {}) {
         const range = this.#getVisibleRange()
@@ -702,12 +705,14 @@ export class Paginator extends HTMLElement {
 
         const index = this.#index
         const detail: RelocateDetail = { reason, range, index, context }
-        if (this.scrolled) detail.fraction = this.start / this.viewSize
+        const offset = this.#view?.contentOffset ?? 0
+        if (this.scrolled) detail.fraction = (offset + this.start) / (this.#view?.fullSize || this.viewSize)
         else if (this.pages > 0) {
             const { page, pages } = this
             this.#header.style.visibility = page > 1 ? 'visible' : 'hidden'
-            detail.fraction = (page - 1) / (pages - 2)
-            detail.size = 1 / (pages - 2)
+            const fullContentSize = this.#view?.contentSize || (pages - 2) * this.size
+            detail.fraction = (offset + (page - 1) * this.size) / fullContentSize
+            detail.size = this.size / fullContentSize
         }
         this.dispatchEvent(new CustomEvent('relocate', { detail }))
     }
@@ -819,10 +824,10 @@ export class Paginator extends HTMLElement {
         return this.#scrollToPage(page, 'page', true, context).then(() => page >= pages - 1)
     }
     get atStart() {
-        return this.#adjacentIndex(-1) == null && this.page <= 1
+        return !this.#view?.hasChapter(-1) && this.#adjacentIndex(-1) == null && this.page <= 1
     }
     get atEnd() {
-        return this.#adjacentIndex(1) == null && this.page >= this.pages - 2
+        return !this.#view?.hasChapter(1) && this.#adjacentIndex(1) == null && this.page >= this.pages - 2
     }
     #adjacentIndex(dir: -1 | 1): number | undefined {
         for (let index = this.#index + dir; this.#canGoToIndex(index); index += dir)
@@ -834,14 +839,17 @@ export class Paginator extends HTMLElement {
         try {
         const prev = dir === -1
         const shouldGo = await (prev ? this.#scrollPrev(distance, context) : this.#scrollNext(distance, context))
-        const index = shouldGo ? this.#adjacentIndex(dir) : undefined
-        if (index !== undefined) await this.#goTo({
-            index,
-            anchor: prev ? () => 1 : () => 0,
-            context,
-        })
+        if (shouldGo) await this.#goToAdjacent(dir, context)
         if (shouldGo || !this.hasAttribute('animated')) await wait(100)
         } finally { this.#locked = false }
+    }
+    async #goToAdjacent(dir: -1 | 1, context: object = {}) {
+        if (this.#view?.turnChapter(dir)) {
+            await this.#scrollToAnchor(dir < 0 ? 1 : 0, 'navigation', context)
+            return
+        }
+        const index = this.#adjacentIndex(dir)
+        if (index !== undefined) await this.#goTo({ index, anchor: dir < 0 ? 1 : 0, context })
     }
     prev(distance?: number, context?: object) {
         return this.#turnPage(-1, distance, context)
