@@ -806,9 +806,10 @@
     "rotate": "Reset access token",
     "rotated": "Access token reset. Copy the new connection to reconnect your AI apps.",
     "copied": "Connection copied, including the access token. Share it only with AI apps you trust.",
-    "skillHint": "Save this file as readaware/SKILL.md in your AI app’s skills folder, then configure the copied connection. The Skill contains no credentials.",
-    "saveSkill": "Save Skill",
-    "copySkill": "Copy Skill",
-    "skillCopied": "Skill copied."
+    "skillHint": "Paste the installation prompt into your AI app. It will install the Skill from GitHub; provide the connection configuration separately.",
+    "copyInstallPrompt": "Copy installation prompt",
+    "viewSkill": "View Skill on GitHub",
+    "installPromptCopied": "Installation prompt copied.",
+    "installPrompt": "Install the ReadAware skill from this official source:\n{{url}}\n\nFetch the SKILL.md file and install it as readaware/SKILL.md in the skills directory supported by your AI app. Use your app’s skill installation mechanism when available; ask for the destination only if it cannot be determined. Preserve any existing local customizations.\n\nThe Skill accesses ReadAware through its local read-only HTTP API. Install it without configuring MCP. Connection credentials are not included in this prompt; if READAWARE_API_URL and READAWARE_API_TOKEN are not already configured, ask me to provide the connection configuration from ReadAware → Settings → AI → Local API. Keep the token out of the Skill file and your replies. Once configured, check /v1/health from this computer and report whether the connection works. If the GitHub file cannot be fetched, report the failure instead of inventing its contents."
   }
 }

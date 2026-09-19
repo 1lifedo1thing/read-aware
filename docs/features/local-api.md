@@ -4,9 +4,10 @@ ReadAware 提供本机只读 HTTP API，让其他 AI 使用自己的 HTTP 工具
 入口是 **Settings → AI → Local API**；默认关闭，开启后需要保持桌面应用运行。
 正式版监听 `127.0.0.1:19280`，DEV 版监听 `127.0.0.1:19281`，端口占用时明确报错。
 
-在设置里保存或复制 [ReadAware Skill](../../apps/web/src/assets/skills/readaware/SKILL.md)，
-将其放到外部 AI 的 `readaware/SKILL.md`，再单独配置“复制连接配置”得到的地址和访问令牌。
-Skill 是随应用发布的唯一接口使用说明，不包含凭据，不依赖 MCP。
+[ReadAware Skill 正文](../../skills/readaware/SKILL.md) 保存在 GitHub 仓库的 `skills/readaware/SKILL.md`。
+设置中的“复制安装提示词”让外部 AI 从 GitHub 获取正文，并按自身支持的方式安装到
+`readaware/SKILL.md`；“在 GitHub 查看 Skill”可查看完整正文。应用不再内嵌或复制 Skill 正文。
+安装提示词不包含凭据；另用“复制连接配置”提供地址和访问令牌，不依赖 MCP。
 远程 AI 的执行环境必须能在这台电脑上发送请求；云端的 localhost 无法直接访问本机。
 
 当前开放书库元数据、目录、分段正文、正文搜索、批注、阅读记录和显式 scope 的记忆分页。
@@ -31,4 +32,4 @@ Skill 是随应用发布的唯一接口使用说明，不包含凭据，不依�
 这是本机已有数据的样本，不代表首次文本提取耗时或跨设备性能保证。
 验证了缺少/错误令牌、外部 Host、浏览器 Origin、写请求、凭据路由和非法参数均被拒绝。
 另验证了应用重启保留连接、令牌重置拒绝旧连接、关闭服务停止监听、端口占用明确失败，
-以及设置内复制连接和复制 Skill。此记录不代表 Windows/Linux 或打包发布版本验收。
+以及设置内复制连接。安装入口随后改为复制 GitHub 安装提示词。此记录不代表 Windows/Linux 或打包发布版本验收。

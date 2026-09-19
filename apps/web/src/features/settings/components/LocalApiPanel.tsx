@@ -26,8 +26,8 @@ export function LocalApiPanel() {
       </>}
       <Caption>{t("localApi.skillHint")}</Caption>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" disabled={state.busy} onClick={() => void state.saveSkill()}>{t("localApi.saveSkill")}</Button>
-        <Button variant="ghost" size="sm" disabled={state.busy} onClick={() => void state.copySkill()}>{t("localApi.copySkill")}</Button>
+        <Button variant="outline" size="sm" disabled={state.busy} onClick={() => void state.copyInstallPrompt()}>{t("localApi.copyInstallPrompt")}</Button>
+        <Button variant="ghost" size="sm" disabled={state.busy} onClick={() => void state.openSkill()}>{t("localApi.viewSkill")}</Button>
       </div>
     </Stack>
   </SettingsGroup>;

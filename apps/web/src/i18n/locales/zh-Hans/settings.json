@@ -802,9 +802,10 @@
     "rotate": "重置访问令牌",
     "rotated": "访问令牌已重置。请复制新的连接配置，重新连接 AI 应用。",
     "copied": "已复制包含访问令牌的连接配置，请仅提供给你信任的 AI 应用。",
-    "skillHint": "将文件保存为 AI 应用技能目录下的 readaware/SKILL.md，再配置复制的连接信息。Skill 不包含任何凭据。",
-    "saveSkill": "保存 Skill",
-    "copySkill": "复制 Skill",
-    "skillCopied": "Skill 已复制。"
+    "skillHint": "将安装提示词粘贴给你的 AI 应用，它会从 GitHub 安装 Skill；连接配置请单独提供。",
+    "copyInstallPrompt": "复制安装提示词",
+    "viewSkill": "在 GitHub 查看 Skill",
+    "installPromptCopied": "安装提示词已复制。",
+    "installPrompt": "请从以下官方地址安装 ReadAware skill：\n{{url}}\n\n获取 SKILL.md，将其安装到当前 AI 应用支持的技能目录，路径为 readaware/SKILL.md。优先使用当前应用已有的技能安装方式；仅在无法确定目标目录时向我询问。保留已有技能中的本地自定义修改。\n\n这个 Skill 通过本地只读 HTTP API 访问 ReadAware，无需配置 MCP。此提示词不包含连接凭据；如果尚未配置 READAWARE_API_URL 和 READAWARE_API_TOKEN，请让我从 ReadAware → 设置 → AI → 本地 API 复制连接配置并提供。不要把令牌写入 Skill 文件或回复中。配置完成后，在这台电脑上请求 /v1/health，确认并报告连接是否成功。如果无法获取 GitHub 文件，请报告失败，不要编造 Skill 内容。"
   }
 }

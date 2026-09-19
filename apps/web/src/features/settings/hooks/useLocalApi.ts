@@ -5,7 +5,9 @@ import { readLocalApiStatus, setLocalApiEnabled, readLocalApiToken, rotateLocalA
   supportsLocalApi, type LocalApiStatus } from "../../../platform/local-api";
 import { createLogger } from "../../../platform/logger";
 import { hostIO } from "../../../services/host-io";
-import skill from "../../../assets/skills/readaware/SKILL.md?raw";
+
+const SKILL_SOURCE_URL = "https://raw.githubusercontent.com/ahpxex/read-aware/main/skills/readaware/SKILL.md";
+const SKILL_PAGE_URL = "https://github.com/ahpxex/read-aware/blob/main/skills/readaware/SKILL.md";
 
 const log = createLogger("local-api-settings");
 export function useLocalApi() {
@@ -54,12 +56,10 @@ export function useLocalApi() {
       await hostIO.writeClipboard(`export READAWARE_API_URL='${status!.baseUrl}'\nexport READAWARE_API_TOKEN='${token}'`);
       toast({ description: t("localApi.copied") });
     }),
-    saveSkill: () => run(async () => {
-      await hostIO.exportFile({ filename: "SKILL.md", content: skill, mimeType: "text/markdown" });
-    }),
-    copySkill: () => run(async () => {
-      await hostIO.writeClipboard(skill);
-      toast({ description: t("localApi.skillCopied") });
+    openSkill: () => run(() => hostIO.openExternal(SKILL_PAGE_URL)),
+    copyInstallPrompt: () => run(async () => {
+      await hostIO.writeClipboard(t("localApi.installPrompt", { url: SKILL_SOURCE_URL }));
+      toast({ description: t("localApi.installPromptCopied") });
     }),
   };
 }
