@@ -22,6 +22,7 @@ import {
 import { Eye, EyeSlash } from "@phosphor-icons/react";
 import { cn } from "@read-aware/ui/cn";
 import { Trans, useTranslation } from "../../../i18n";
+import { useExternalLink } from "../../../hooks/useExternalLink";
 import { useReactiveSetting } from "../../../hooks/useReactiveSetting";
 import { useSyncAccountInfo } from "../hooks/useSyncAccountInfo";
 import { useSyncConnection } from "../hooks/useSyncConnection";
@@ -66,6 +67,7 @@ function parsePositiveInteger(value: string): number | undefined {
 
 export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
   const { t } = useTranslation("settings");
+  const openExternalLink = useExternalLink();
   const connectionTestRef = useMaintenanceSurface("ai-connection");
   const [initialConfig] = useState(() => getAIConfig());
   const initialProvider = initialConfig?.provider ?? "openai";
@@ -392,12 +394,14 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
               i18nKey="aiConfig.getKey.generic"
               values={{ provider: PROVIDER_LABELS[provider] }}
               components={{
-                link: (
+                // Trans treats the HTML void tag "link" as empty, losing its clickable text.
+                keyLink: (
                   <a
                     href={keyUrl}
+                    onClick={openExternalLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline hover:text-fg"
+                    className="underline underline-offset-4 hover:text-fg"
                   />
                 ),
               }}

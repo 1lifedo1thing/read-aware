@@ -1,6 +1,7 @@
 import { Eye, EyeSlash } from "@phosphor-icons/react";
 import { WEB_PROVIDERS } from "@read-aware/agent";
 import { Button, Caption, IconButton, InlineError, Select, Stack, TextField, Toggle } from "@read-aware/ui";
+import { useExternalLink } from "../../../hooks/useExternalLink";
 import { useTranslation } from "../../../i18n";
 import { useSearchConfig } from "../hooks/useSearchConfig";
 import { SettingsRow } from "./SettingsRow";
@@ -8,6 +9,7 @@ import { SettingsRow } from "./SettingsRow";
 export function SearchConfigPanel() {
   const { t } = useTranslation("settings");
   const state = useSearchConfig();
+  const openExternalLink = useExternalLink();
   return <Stack gap="lg">
     {state.readError && <InlineError>{state.readError}</InlineError>}
     <SettingsRow borderless title={t("search.enabled")} description={t("search.description")}
@@ -21,7 +23,7 @@ export function SearchConfigPanel() {
       trailingAction={<IconButton size="sm" label={state.showKey ? t("aiConfig.hide") : t("aiConfig.show")}
         onClick={() => state.setShowKey(!state.showKey)} icon={state.showKey ? <EyeSlash /> : <Eye />} />} />
     <Caption>{t("search.keyHint")}{" "}<a className="underline underline-offset-4" href={WEB_PROVIDERS[state.config.provider].keyUrl}
-      target="_blank" rel="noreferrer">{t("search.getKey")}</a></Caption>
+      onClick={openExternalLink} target="_blank" rel="noreferrer">{t("search.getKey")}</a></Caption>
     <div><Button variant="outline" size="sm" disabled={state.testing || !state.config.apiKey.trim()} onClick={() => void state.test()}>
       {state.testing ? t("search.testing") : t("search.test")}
     </Button></div>

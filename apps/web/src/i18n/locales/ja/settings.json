@@ -247,7 +247,7 @@
       "openai": "APIキーは<link>OpenAIダッシュボード</link>から取得できます",
       "anthropic": "APIキーは<link>Anthropicコンソール</link>から取得できます",
       "openrouter": "APIキーは<link>OpenRouter</link>から取得できます",
-      "generic": "{{provider}} のコンソールで API キーを取得：<link>開く</link>。"
+      "generic": "{{provider}} のコンソールで API キーを取得：<keyLink>開く</keyLink>。"
     },
     "test": "接続をテスト",
     "testing": "テスト中...",

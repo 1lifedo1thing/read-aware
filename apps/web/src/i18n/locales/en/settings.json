@@ -247,7 +247,7 @@
       "openai": "Get your API key from <link>OpenAI Dashboard</link>",
       "anthropic": "Get your API key from <link>Anthropic Console</link>",
       "openrouter": "Get your API key from <link>OpenRouter</link>",
-      "generic": "Get your {{provider}} API key from <link>the provider console</link>."
+      "generic": "Get your {{provider}} API key from <keyLink>the provider console</keyLink>."
     },
     "test": "Test Connection",
     "testing": "Testing...",

@@ -247,7 +247,7 @@
       "openai": "Hol dir deinen API-Schlüssel im <link>OpenAI-Dashboard</link>",
       "anthropic": "Hol dir deinen API-Schlüssel in der <link>Anthropic-Konsole</link>",
       "openrouter": "Hol dir deinen API-Schlüssel bei <link>OpenRouter</link>",
-      "generic": "Hol deinen {{provider}}-API-Schlüssel aus <link>der Anbieter-Konsole</link>."
+      "generic": "Hol deinen {{provider}}-API-Schlüssel aus <keyLink>der Anbieter-Konsole</keyLink>."
     },
     "test": "Verbindung testen",
     "testing": "Wird getestet...",

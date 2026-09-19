@@ -247,7 +247,7 @@
       "openai": "Obtén tu clave de API en <link>el panel de OpenAI</link>",
       "anthropic": "Obtén tu clave de API en <link>la consola de Anthropic</link>",
       "openrouter": "Obtén tu clave de API en <link>OpenRouter</link>",
-      "generic": "Consigue tu clave de API de {{provider}} en <link>la consola del proveedor</link>."
+      "generic": "Consigue tu clave de API de {{provider}} en <keyLink>la consola del proveedor</keyLink>."
     },
     "test": "Probar conexión",
     "testing": "Probando...",

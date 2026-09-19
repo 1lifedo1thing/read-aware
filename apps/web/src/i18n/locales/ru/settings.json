@@ -247,7 +247,7 @@
       "openai": "Получите API-ключ в <link>панели OpenAI</link>",
       "anthropic": "Получите API-ключ в <link>консоли Anthropic</link>",
       "openrouter": "Получите API-ключ в <link>OpenRouter</link>",
-      "generic": "Получите API-ключ {{provider}} в <link>консоли провайдера</link>."
+      "generic": "Получите API-ключ {{provider}} в <keyLink>консоли провайдера</keyLink>."
     },
     "test": "Проверить подключение",
     "testing": "Проверка...",

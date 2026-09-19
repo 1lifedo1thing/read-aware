@@ -247,7 +247,7 @@
       "openai": "從 <link>OpenAI Dashboard</link> 取得你的 API 金鑰",
       "anthropic": "從 <link>Anthropic Console</link> 取得你的 API 金鑰",
       "openrouter": "從 <link>OpenRouter</link> 取得你的 API 金鑰",
-      "generic": "從 {{provider}} 主控台取得 API 金鑰：<link>前往</link>。"
+      "generic": "從 {{provider}} 主控台取得 API 金鑰：<keyLink>前往</keyLink>。"
     },
     "test": "測試連線",
     "testing": "測試中...",

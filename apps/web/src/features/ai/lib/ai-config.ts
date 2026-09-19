@@ -378,16 +378,21 @@ export const PROVIDER_LABELS: Record<AIProvider, string> = {
   custom: "Custom (OpenAI-compatible)",
 };
 
-/** Where to get an API key, per provider (used by the Settings hint links). */
-export const PROVIDER_KEY_URLS: Partial<Record<AIProvider, string>> = {
+/** Official key-management pages, checked against provider docs. Explicit null
+ * means no fixed BYOK console; new providers must choose a URL or opt out. */
+export const PROVIDER_KEY_URLS: Record<AIProvider, string | null> = {
   openai: "https://platform.openai.com/api-keys",
-  anthropic: "https://console.anthropic.com/settings/keys",
+  anthropic: "https://platform.claude.com/settings/keys",
   openrouter: "https://openrouter.ai/keys",
+  zai: "https://z.ai/manage-apikey/apikey-list",
+  "zai-coding-cn": "https://bigmodel.cn/usercenter/proj-mgmt/apikeys",
   google: "https://aistudio.google.com/apikey",
   deepseek: "https://platform.deepseek.com/api_keys",
-  xai: "https://console.x.ai",
+  xai: "https://console.x.ai/team/default/api-keys",
   groq: "https://console.groq.com/keys",
-  mistral: "https://console.mistral.ai/api-keys",
-  moonshotai: "https://platform.moonshot.ai/console/api-keys",
+  mistral: "https://console.mistral.ai/home?profile_dialog=api-keys",
+  moonshotai: "https://platform.kimi.ai/console/api-keys",
   "ollama-cloud": "https://ollama.com/settings/keys",
+  readaware: null,
+  custom: null,
 };
