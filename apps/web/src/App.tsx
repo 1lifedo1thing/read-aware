@@ -22,8 +22,6 @@ import type { LibraryBook } from "./features/library/lib/library-types";
 import { AppHeader } from "./features/navigation/components/AppHeader";
 import { usePrimaryDestinations } from "./features/navigation/hooks/usePrimaryDestinations";
 import { useAgentHeaderActions } from "./features/agent/hooks/useAgentHeaderActions";
-import { SyncIndicator } from "./features/sync/components/SyncIndicator";
-import { SyncReauthNotice } from "./features/sync/components/SyncReauthNotice";
 import { UpdateIndicator } from "./features/update/components/UpdateIndicator";
 import { WhatsNewDialog } from "./features/update/components/WhatsNewDialog";
 import { useSoftwareUpdate } from "./features/update/hooks/useSoftwareUpdate";
@@ -487,13 +485,7 @@ function App() {
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenSearch={() => setSearchModalOpen(true)}
             onTopNavChange={setActiveTopNav}
-            leadingStatus={
-              <>
-                <SyncIndicator />
-                <SyncReauthNotice />
-                <UpdateIndicator />
-              </>
-            }
+            leadingStatus={<UpdateIndicator />}
             viewControl={
               activeTopNav === "shelf" ? <ShelfManagementMenu /> : undefined
             }

@@ -420,9 +420,7 @@
       "signedOut": "登入已失效——重新登入後繼續同步"
     },
     "reauth": {
-      "notice": "同步登入已失效",
-      "action": "重新登入",
-      "dismiss": "關閉登入提示"
+      "action": "重新登入"
     },
     "connect": {
       "emailLabel": "電子郵件",
@@ -510,10 +508,6 @@
       "backfill": "正在補齊歷史… {{done}}/{{total}}",
       "checkpoint": "正在儲存檢查點…",
       "backfillRemaining": "歷史仍在補齊：剩餘 {{count}} 筆變更"
-    },
-    "indicator": {
-      "label": "同步狀態",
-      "errorDismiss": "暫時忽略同步錯誤"
     },
     "deleteAll": {
       "title": "刪除全部資料",

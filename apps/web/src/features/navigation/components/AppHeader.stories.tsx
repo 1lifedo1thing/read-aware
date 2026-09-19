@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { ArrowsClockwise, Export, Trash } from "@phosphor-icons/react";
 import { IconButton } from "@read-aware/ui";
 import { seed, withAtoms } from "../../../story-support/atoms";
-import { SyncReauthNoticeView } from "../../sync/components/SyncReauthNoticeView";
 import { headerActionsAtom } from "../../plugins/state/plugin-store";
 import type { RegisteredHeaderAction } from "../../plugins/lib/plugin-types";
 import type { HeaderActionEntry } from "../lib/header-actions";
@@ -177,10 +176,10 @@ export const WithViewControl: Story = {
   },
 };
 
-/** A quiet status beside the window controls — here, the re-login notice. */
+/** A quiet status beside the window controls — here, an available update. */
 export const WithLeadingStatus: Story = {
   args: {
-    leadingStatus: <SyncReauthNoticeView onOpenSettings={() => {}} onDismiss={() => {}} />,
+    leadingStatus: <span className="text-caption text-fg-muted">Update available</span>,
   },
 };
 
@@ -198,7 +197,7 @@ export const WithPluginActions: Story = {
 export const Crowded: Story = {
   args: {
     isImporting: true,
-    leadingStatus: <SyncReauthNoticeView onOpenSettings={() => {}} onDismiss={() => {}} />,
+    leadingStatus: <span className="text-caption text-fg-muted">Update available</span>,
     viewControl: (
       <IconButton
         size="sm"

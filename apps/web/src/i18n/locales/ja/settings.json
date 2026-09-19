@@ -420,9 +420,7 @@
       "signedOut": "サインインが無効になりました——再サインインすると同期を再開します"
     },
     "reauth": {
-      "notice": "同期のサインインが無効です",
-      "action": "再サインイン",
-      "dismiss": "サインインの通知を閉じる"
+      "action": "再サインイン"
     },
     "connect": {
       "emailLabel": "メールアドレス",
@@ -510,10 +508,6 @@
       "backfill": "履歴を補完中… {{done}}/{{total}}",
       "checkpoint": "チェックポイントを保存中…",
       "backfillRemaining": "履歴を補完中：残り {{count}} 件"
-    },
-    "indicator": {
-      "label": "同期の状態",
-      "errorDismiss": "同期エラーをしばらく非表示にする"
     },
     "deleteAll": {
       "title": "すべてのデータを削除",

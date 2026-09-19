@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { ArrowsClockwise } from "@phosphor-icons/react";
 import { IconButton } from "@read-aware/ui";
 import { seed, withAtoms } from "../../../story-support/atoms";
-import { SyncReauthNoticeView } from "../../sync/components/SyncReauthNoticeView";
 import { headerActionsAtom } from "../../plugins/state/plugin-store";
 import type { RegisteredHeaderAction } from "../../plugins/lib/plugin-types";
 import { AppHeader } from "./AppHeader";
@@ -123,7 +122,7 @@ export const Crowded: Story = {
   args: {
     isImporting: true,
     viewControl,
-    leadingStatus: <SyncReauthNoticeView onOpenSettings={() => {}} onDismiss={() => {}} />,
+    leadingStatus: <span className="text-caption text-fg-muted">Update available</span>,
   },
   decorators: [withAtoms(seed(headerActionsAtom, pluginActions))],
 };

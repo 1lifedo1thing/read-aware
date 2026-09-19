@@ -36,7 +36,6 @@ import { refreshRoamingPreferences, republishRoamingSecrets } from "../roaming-p
 import { afterSecretWrites, deleteSecretAsync, getSecret, setSecretAsync } from "../secret-store";
 import { fromBase64 } from "../sync-envelope";
 import { classifySyncError } from "./classify-sync-error";
-import { clearReauthNoticeDismissal } from "./reauth-notice";
 import { createRelayClient, RelayError, RelayMisdirectedError, type RelayClient } from "./relay-client";
 import {
   createSyncEngine,
@@ -733,9 +732,6 @@ export async function persistConnection(options: {
     // offline) get sealed into the log now, so they roam without waiting for
     // their next edit.
     await republishRoamingSecrets();
-    // A fresh session opens a fresh epoch: if THIS one ever dies, the "sign in
-    // again" notice must prompt anew, whatever the user dismissed before.
-    clearReauthNoticeDismissal(origin);
     restartSyncScheduler(origin);
   });
 }
@@ -755,7 +751,6 @@ export async function disconnectSync(origin: DomainActor = "user"): Promise<void
     }
     await deleteSecretAsync("sync.session", "local", origin);
     await deleteSecretAsync("sync.master-key", "local", origin);
-    clearReauthNoticeDismissal(origin);
     await setSyncProfile({
       ...profile,
       syncEnabled: false,

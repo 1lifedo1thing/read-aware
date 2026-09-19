@@ -428,9 +428,7 @@
       "signedOut": "Sesión cerrada: inicia sesión de nuevo para reanudar la sincronización"
     },
     "reauth": {
-      "notice": "La sesión de sincronización caducó",
-      "action": "Iniciar sesión de nuevo",
-      "dismiss": "Cerrar el aviso de inicio de sesión"
+      "action": "Iniciar sesión de nuevo"
     },
     "connect": {
       "emailLabel": "Correo",
@@ -518,10 +516,6 @@
       "backfill": "Completando el historial… {{done}}/{{total}}",
       "checkpoint": "Guardando un punto de control…",
       "backfillRemaining": "El historial sigue completándose: quedan {{count}} cambios"
-    },
-    "indicator": {
-      "label": "Estado de sincronización",
-      "errorDismiss": "Silenciar el error de sincronización por ahora"
     },
     "deleteAll": {
       "title": "Eliminar todos los datos",

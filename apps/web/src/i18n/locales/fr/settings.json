@@ -428,9 +428,7 @@
       "signedOut": "Déconnecté — reconnectez-vous pour reprendre la synchronisation"
     },
     "reauth": {
-      "notice": "Connexion de synchro expirée",
-      "action": "Se reconnecter",
-      "dismiss": "Fermer le rappel de connexion"
+      "action": "Se reconnecter"
     },
     "connect": {
       "emailLabel": "E-mail",
@@ -518,10 +516,6 @@
       "backfill": "Récupération de l’historique… {{done}}/{{total}}",
       "checkpoint": "Enregistrement d’un point de contrôle…",
       "backfillRemaining": "Historique en cours de récupération : {{count}} modifications restantes"
-    },
-    "indicator": {
-      "label": "État de la synchronisation",
-      "errorDismiss": "Masquer temporairement l'erreur de synchronisation"
     },
     "deleteAll": {
       "title": "Supprimer toutes les données",

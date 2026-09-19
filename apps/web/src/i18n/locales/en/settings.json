@@ -424,9 +424,7 @@
       "signedOut": "Signed out — sign in again to resume syncing"
     },
     "reauth": {
-      "notice": "Sync sign-in expired",
-      "action": "Sign in again",
-      "dismiss": "Dismiss sign-in reminder"
+      "action": "Sign in again"
     },
     "connect": {
       "emailLabel": "Email",
@@ -514,10 +512,6 @@
       "backfill": "Filling in history… {{done}}/{{total}}",
       "checkpoint": "Saving a checkpoint…",
       "backfillRemaining": "History still filling in: {{count}} changes to go"
-    },
-    "indicator": {
-      "label": "Sync status",
-      "errorDismiss": "Silence the sync error for now"
     },
     "deleteAll": {
       "title": "Delete all data",

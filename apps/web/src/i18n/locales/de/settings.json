@@ -424,9 +424,7 @@
       "signedOut": "Abgemeldet — erneut anmelden, um die Synchronisierung fortzusetzen"
     },
     "reauth": {
-      "notice": "Sync-Anmeldung abgelaufen",
-      "action": "Erneut anmelden",
-      "dismiss": "Anmeldehinweis schließen"
+      "action": "Erneut anmelden"
     },
     "connect": {
       "emailLabel": "E-Mail",
@@ -514,10 +512,6 @@
       "backfill": "Verlauf wird nachgeladen… {{done}}/{{total}}",
       "checkpoint": "Prüfpunkt wird gespeichert…",
       "backfillRemaining": "Verlauf wird noch nachgeladen: {{count}} Änderungen ausstehend"
-    },
-    "indicator": {
-      "label": "Synchronisierungsstatus",
-      "errorDismiss": "Fehlerhinweis vorübergehend ausblenden"
     },
     "deleteAll": {
       "title": "Alle Daten löschen",

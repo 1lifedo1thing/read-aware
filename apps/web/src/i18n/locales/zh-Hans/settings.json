@@ -420,9 +420,7 @@
       "signedOut": "登录已失效——重新登录后继续同步"
     },
     "reauth": {
-      "notice": "同步登录已失效",
-      "action": "重新登录",
-      "dismiss": "关闭登录提示"
+      "action": "重新登录"
     },
     "connect": {
       "emailLabel": "邮箱",
@@ -510,10 +508,6 @@
       "backfill": "正在补齐历史… {{done}}/{{total}}",
       "checkpoint": "正在保存检查点…",
       "backfillRemaining": "历史仍在补齐：剩余 {{count}} 条变更"
-    },
-    "indicator": {
-      "label": "同步状态",
-      "errorDismiss": "暂时忽略同步错误"
     },
     "deleteAll": {
       "title": "删除全部数据",
