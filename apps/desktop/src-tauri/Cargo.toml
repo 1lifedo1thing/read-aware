@@ -110,7 +110,8 @@ url = "2"
 # Dev-only bridge that lets the Tauri MCP server drive/inspect the webview.
 # Linked in all desktop builds (so its capability permission resolves) but only
 # initialized under debug_assertions — see lib.rs.
-tauri-plugin-mcp-bridge = "0.11"
+# Local fork keeps background automation from raising the app's windows.
+tauri-plugin-mcp-bridge = { version = "0.13.0", path = "/Users/ahpx/Lab/mcp-server-tauri/packages/tauri-plugin-mcp-bridge" }
 # Windows: snap overlay for the custom maximize button. Do not initialize on
 # macOS; Tauri's trafficLightPosition owns traffic-light placement there.
 tauri-plugin-decorum = "1"
