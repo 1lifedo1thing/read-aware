@@ -29,7 +29,7 @@ export async function prepareBookmarkComposition(bookId: string) {
   if (!book?.title.startsWith("Composition ")) throw Error("Requires an owned composition test book");
   ownedBook = bookId;
   originalWindow = await hostWindow.snapshot();
-  for (const id of ["jumper", "workspace-profiles"]) {
+  for (const id of ["jumper"]) {
     const plugin = getDefaultStore().get(installedPluginsAtom).find(item => item.manifest.id === id);
     if (!plugin?.builtin) throw Error("Requires RepoDist plugins");
     enabled.set(id, plugin.enabled);
@@ -41,10 +41,10 @@ export async function inspectBookmarkComposition() {
   await isolated();
   return { bookId: ownedBook, window: await hostWindow.snapshot(),
     documents: ownedBook ? await pluginDocsList("jumper", "bookmarks", { bookId: ownedBook, limit: 100 }) : [],
-    plugins: getDefaultStore().get(installedPluginsAtom).filter(item => ["jumper", "workspace-profiles"].includes(item.manifest.id))
+    plugins: getDefaultStore().get(installedPluginsAtom).filter(item => item.manifest.id === "jumper")
       .map(item => ({ id: item.manifest.id, enabled: item.enabled, version: item.manifest.version, error: item.error })) };
 }
-export async function openCompositionCommand(pluginId: "jumper" | "workspace-profiles", id: string) {
+export async function openCompositionCommand(pluginId: "jumper", id: string) {
   await isolated();
   if (!ownedBook || !enabled.has(pluginId)) throw Error("Prepare composition first");
   const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === pluginId && item.id === id);

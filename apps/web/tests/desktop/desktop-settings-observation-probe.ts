@@ -12,10 +12,8 @@ import { pluginCommandsAtom, registerThemeContribution } from "../../src/feature
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { contributionKey } from "../../src/features/plugins/lib/plugin-types";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
-import { runPluginContribution } from "../../src/features/plugins/lib/run-result";
 import { buildSettingsTools } from "../../../../packages/agent/src/tools/settings-tools";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
-import profileManifest from "../../../../plugins/workspace-profiles/manifest.json";
 
 const prefix = "read-aware-settings-observation-proof";
 const workers: SandboxedPlugin[] = [], owned: PluginDisposable[] = [];
@@ -36,9 +34,6 @@ export async function prepareSettingsObservationProbe() {
     const worker = await startPluginWorker(manifest, "0.5.4", owned, { moduleUrl: new URL("./settings-observation-probe.ts", import.meta.url).href });
     workers.push(worker); await worker.checkHealth(); worker.promote();
   }
-  const worker = await startPluginWorker({ ...profileManifest, id: "capability-settings-observation-profiles" } as PluginManifest, "0.5.4", owned,
-    { moduleUrl: new URL("../../../../plugins/workspace-profiles/dist/main.js", import.meta.url).href });
-  workers.push(worker); await worker.checkHealth(); worker.promote();
   return { path, snapshot: await createSettingsDomain("agent").queries.snapshot({ section: "appearance" }) };
 }
 export async function settingsObservationActor(role: "empty" | "read" | "write", command = "inspect") {
@@ -65,11 +60,6 @@ export async function toggleObservedCatalog() {
   if (theme) { theme.dispose(); theme = undefined; }
   else theme = registerThemeContribution({ id: "test", key: contributionKey("capability-settings-observation-theme", "test"), pluginId: "capability-settings-observation-theme", pluginName: "Observation Theme", name: "Observation Theme", polarity: "light", app: {} });
   return !!theme;
-}
-export async function openObservedProfiles() {
-  await isolated();
-  const command = getDefaultStore().get(pluginCommandsAtom).find(c => c.pluginId === "capability-settings-observation-profiles" && c.id === "open")!;
-  await runPluginContribution(command.pluginId, "Workspace Profiles", () => command.run(), { presentation: "dialog", owner: command.run });
 }
 export async function cleanupSettingsObservationProbe() {
   const path = await isolated(); theme?.dispose(); theme = undefined;

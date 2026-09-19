@@ -33,6 +33,10 @@
 > Goals, Workspace Profiles, Jumper) were rewritten as single-task surfaces.
 > Sections below that cite earlier versions of these plugins are historical
 > composition evidence, not current behavior.
+>
+> 2026-09-19: Workspace Profiles was removed outright; its code, desktop
+> probes and evidence live only in Git history, and sections citing it are
+> historical.
 > The [original baseline](../archive/capabilities/plugin-capability-baseline.md)
 > is historical. Do not infer that every old GAP is still open or now closed.
 
@@ -4615,7 +4619,7 @@ atom. This is not a second command-execution API.
 - Built-ins use `shortcuts.<id>`. Plugin commands use
   `shortcuts.plugin.<encoded-contribution-key>`: percent-encode the entire key,
   including dots and `!~*'()`, as one opaque segment. For example,
-  `shortcuts.plugin.workspace-profiles%3Aopen`. Discover the exact path rather
+  `shortcuts.plugin.jumper%3Aopen`. Discover the exact path rather
   than interpreting a command label or decoding arbitrary input. Manifest
   path validation accepts uppercase percent escapes; grants still match exact
   paths or explicitly requested path prefixes.
@@ -6378,7 +6382,7 @@ inline row and one "More" overflow menu:
 Priority only decides placement. It does not change enablement, confirmation,
 busy handling, keyboard access or focus, which the host owns for both the row and
 the menu. Annotations 0.10 marks New note primary and refresh, select and export
-secondary; Jumper, Reading Goals and Workspace Profiles rely on the defaults.
+secondary; Jumper and Reading Goals rely on the defaults.
 
 ## 12. Lifecycle
 
@@ -6499,7 +6503,6 @@ additional source plugin in this checkout:
 | Jumper | one navigation form (chapter/page/text; page mode uses `listNavigationTargets` pages), cancellable live precise search, shared locations with back/forward history, named bookmarks with list pagination and global bookmark tools |
 | Annotations | paged annotation list through host pagination, note/highlight creation returning to the list with a toast, live detail with conditional edits, batch review, export |
 | Reading Goals | single per-book goal form, agent context provider, opt-in memory candidate provider, honors the host `ai.preferences.buildMemory` setting, private documents and goal tools |
-| Workspace Profiles | settled settings snapshots, exact path grants, atomic apply through settings commands, rename/delete, host-localized setting labels, shelf header/command popup, Agent tool |
 
 The host never switches on these plugin IDs. Product-specific behavior belongs
 in their packages and registered capabilities.
