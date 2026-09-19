@@ -3,7 +3,7 @@ import { IconButton } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 
 type ReaderPageTurnControlsProps = {
-  /** Shown only in paginated layouts; scroll mode turns by scrolling. */
+  /** Shown only in single-page mode; spreads keep the page edges clear. */
   visible: boolean;
   onPrev: () => void;
   onNext: () => void;
@@ -12,8 +12,8 @@ type ReaderPageTurnControlsProps = {
 /**
  * Explicit page-turn affordances pinned to the reader's left and right edges.
  * Tapping book content no longer turns the page — a stray click while reading
- * shouldn't cost you your place — so in paginated modes these buttons (and the
- * keyboard shortcuts) are how the mouse turns pages. Each button lives inside a
+ * shouldn't cost you your place — so single-page mode offers these buttons
+ * alongside wheel, swipe and keyboard navigation. Each button lives inside a
  * non-interactive edge strip, so the surrounding gutter still falls through to
  * the shell toggle underneath.
  *

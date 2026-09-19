@@ -13,7 +13,7 @@ import {
   buildReaderContentCss,
   computeReaderMaxInlineSize,
   readerFontWeightsNeeded,
-  readerGapForMargins,
+  readerLayoutSpacing,
 } from "../../settings/lib/reader-css";
 import { curatedFontId, isPluginFont } from "../../settings/lib/reader-settings";
 import type { ReaderSettings, ReadingMode } from "../../settings/lib/reader-settings";
@@ -94,9 +94,10 @@ export function useReaderTypography({
     // actually show — halving it in portrait would just shrink the one column.
     const effectiveColumns = width > height ? maxColumnCount : 1;
     const margins = settingsRef.current.pageMargins;
+    const { gap, margin } = readerLayoutSpacing(margins, readingModeRef.current);
     const px = computeReaderMaxInlineSize(width, margins, effectiveColumns);
     if ("setLayoutAttributes" in renderer) renderer.setLayoutAttributes({
-      "max-inline-size": `${px}px`, gap: readerGapForMargins(margins),
+      "max-inline-size": `${px}px`, gap, margin,
     }, readingRenderContext(origin));
   }, [
     isFixedLayoutRef,

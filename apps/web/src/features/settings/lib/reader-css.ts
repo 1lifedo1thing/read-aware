@@ -9,6 +9,7 @@ import {
   type ReaderPageMargins,
   type ReaderSettings,
   type ReaderTextAlign,
+  type ReadingMode,
 } from "./reader-settings";
 import { curatedFallback, getCuratedFont, type CuratedFontKind } from "./curated-fonts";
 import type { ReaderPalette } from "./reader-theme";
@@ -154,9 +155,25 @@ const READER_MARGIN_PRESETS = {
   { measureFraction: number | "fill"; gap: string; horizontalPadding: string }
 >;
 
-/** foliate `gap` attribute value for a margin preset. */
-export function readerGapForMargins(margins: ReaderPageMargins): string {
-  return READER_MARGIN_PRESETS[margins].gap;
+// Spreads share the viewport between two pages. Give each column more room
+// without changing the user's chosen margin preset or the single-page measure.
+const READER_SPREAD_MARGIN_PRESETS = {
+  narrow: { gap: "1%", horizontalPadding: "0.25rem" },
+  medium: { gap: "2%", horizontalPadding: "0.5rem" },
+  wide: { gap: "3%", horizontalPadding: "0.75rem" },
+} as const satisfies Record<ReaderPageMargins, { gap: string; horizontalPadding: string }>;
+
+/** Keep the paginator's outer spacing and injected body padding in sync. */
+export function readerLayoutSpacing(margins: ReaderPageMargins, mode: ReadingMode) {
+  const spread = mode === "paginated-double";
+  const preset = spread ? READER_SPREAD_MARGIN_PRESETS[margins] : READER_MARGIN_PRESETS[margins];
+  return {
+    gap: preset.gap,
+    margin: spread ? "20px" : "48px",
+    bodyPadding: spread
+      ? `1rem ${preset.horizontalPadding} 1.5rem`
+      : `2rem ${preset.horizontalPadding} 4rem`,
+  };
 }
 
 /**
@@ -247,7 +264,7 @@ export function buildReaderContentCss(
   const fontWeight = FONT_WEIGHT_MAP[settings.fontWeight];
   const lineHeight = LINE_HEIGHT_MAP[settings.lineSpacing];
   const paragraphSpacing = PARAGRAPH_SPACING_MAP[settings.paragraphSpacing];
-  const horizontalMargin = READER_MARGIN_PRESETS[settings.pageMargins].horizontalPadding;
+  const { bodyPadding } = readerLayoutSpacing(settings.pageMargins, settings.readingMode);
   const theme = assets.palette;
 
   // Must lead the sheet: @namespace is only honored before style rules (after
@@ -263,7 +280,7 @@ export function buildReaderContentCss(
 
     body {
       box-sizing: border-box !important;
-      padding: 2rem ${horizontalMargin} 4rem !important;
+      padding: ${bodyPadding} !important;
       color: ${theme.text} !important;
       background: ${theme.bg} !important;
       font-family: ${fontFamily} !important;

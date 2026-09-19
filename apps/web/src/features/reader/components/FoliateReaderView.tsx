@@ -86,7 +86,7 @@ import { useReaderPagination } from "../hooks/useReaderPagination";
 import { useReaderTextActions } from "../hooks/useReaderTextActions";
 import {
   computeReaderMaxInlineSize,
-  readerGapForMargins,
+  readerLayoutSpacing,
 } from "../../settings/lib/reader-css";
 import { useReaderPalette } from "../../settings/hooks/useReaderPalette";
 import type { ReaderSettings, ReadingMode } from "../../settings/lib/reader-settings";
@@ -1649,7 +1649,7 @@ export function FoliateReaderView({
       }
 
       // A tap on book content only toggles the reader shell — it never turns
-      // the page. Page turns are explicit (the edge buttons or keyboard), so a
+      // the page. Page turns use the wheel, swipe, keyboard or page controls, so a
       // stray click while reading can't cost you your place.
       cancelPendingShellToggle();
 
@@ -1966,8 +1966,9 @@ export function FoliateReaderView({
           const height = readerRootRef.current?.clientHeight ?? window.innerHeight;
           const effectiveColumns = width > height ? maxColumnCount : 1;
           const margins = readerSettingsRef.current.pageMargins;
+          const { gap, margin } = readerLayoutSpacing(margins, readingMode);
           if (view.renderer && "setLayoutAttributes" in view.renderer) view.renderer.setLayoutAttributes({
-            gap: readerGapForMargins(margins),
+            gap, margin,
             "max-inline-size": `${computeReaderMaxInlineSize(width, margins, effectiveColumns)}px`,
           }, openingContext);
         }
@@ -2233,10 +2234,10 @@ export function FoliateReaderView({
     // still a new jump to make.
   }, [fractionNavigationRequest?.fraction, fractionNavigationRequest?.requestId, goToFraction]);
 
-  // Paginated layouts turn by explicit controls; scroll mode uses the native
-  // scroller and crosses pages at its edges.
+  // Spreads leave the page edges clear; wheel, swipe and keyboard turn pages.
+  // Single-page mode retains its explicit edge controls.
   const showPageTurnControls =
-    readingMode !== "scroll" && !isLoading && !error;
+    readingMode === "paginated-single" && !isLoading && !error;
 
   return (
     <section ref={readerRootRef} className="relative h-full w-full overflow-hidden">
