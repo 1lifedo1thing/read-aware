@@ -1,5 +1,6 @@
 import { DotsThree } from "@phosphor-icons/react";
-import { Button, DropdownMenu, Stack } from "@read-aware/ui";
+import { Button, buttonClassName, DropdownMenu, Stack } from "@read-aware/ui";
+import { cn } from "@read-aware/ui/cn";
 import { useTranslation } from "../../../i18n";
 import { renderPluginIcon } from "../lib/plugin-icons";
 import { splitToolbarActions } from "../lib/plugin-actions";
@@ -58,8 +59,15 @@ export function PluginActionGroup({
           align={align === "end" ? "right" : "left"}
           triggerLabel={t("viewer.more")}
           trigger={
+            // The "More" control sits in the same row as the labeled outline
+            // buttons, so it borrows the Button look verbatim (square corners
+            // included) instead of a hand-rolled bordered square.
             <span
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-border-strong text-fg hover:border-fg-subtle hover:bg-fg/5"
+              className={buttonClassName({
+                variant: "outline",
+                size: "sm",
+                className: cn("w-8 px-0", busy && "pointer-events-none opacity-40"),
+              })}
               aria-disabled={busy || undefined}
             >
               <DotsThree size={18} weight="bold" aria-hidden="true" />
