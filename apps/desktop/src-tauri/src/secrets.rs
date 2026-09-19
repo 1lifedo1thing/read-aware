@@ -43,7 +43,7 @@ use std::sync::Mutex;
 use aes_gcm::aead::{Aead, KeyInit, OsRng};
 use aes_gcm::{AeadCore, Aes256Gcm, Key, Nonce};
 use base64::Engine;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 use tauri::Manager;
 
 use crate::storage::{DataDir, Db};
@@ -212,7 +212,7 @@ fn get_inner(app: &tauri::AppHandle, key: &str) -> Result<Option<String>, Comman
             params![format!("{KV_PREFIX}{key}")],
             |row| row.get(0),
         )
-        .ok()
+        .optional()?
     };
     match sealed {
         Some(value) => decrypt(&app.state::<DataDir>().0, &value).map(Some),

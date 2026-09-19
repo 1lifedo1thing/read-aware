@@ -186,7 +186,9 @@
     "searchInvalidInput": "请使用有效的查询词或公开网页地址。",
     "searchProvider": "搜索服务商返回了异常响应。",
     "searchFetchFailed": "无法读取此网页，可能需要登录或不允许自动访问。",
-    "searchTooLarge": "此网页过大，请尝试更小的资料来源。"
+    "searchTooLarge": "此网页过大，请尝试更小的资料来源。",
+    "localApiBind": "本地 API 端口已被占用。请关闭占用此端口的服务，然后重新启动 API。",
+    "localApiUnavailable": "本地 API 尚未就绪。请保持 ReadAware 开启后重试。"
   },
   "crashPrompt": {
     "title": "ReadAware 上次运行出了问题",

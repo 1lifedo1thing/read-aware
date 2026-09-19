@@ -186,7 +186,9 @@
     "searchInvalidInput": "Use a valid query or public web URL.",
     "searchProvider": "The search provider returned an unexpected response.",
     "searchFetchFailed": "This page could not be read. It may require login or block automated access.",
-    "searchTooLarge": "This page is too large to read. Try a smaller source."
+    "searchTooLarge": "This page is too large to read. Try a smaller source.",
+    "localApiBind": "The Local API port is in use. Close the other service using this port, then start the API again.",
+    "localApiUnavailable": "Local API is not ready. Keep ReadAware open and try again."
   },
   "crashPrompt": {
     "title": "ReadAware had a problem last time",

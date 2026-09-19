@@ -25,6 +25,7 @@
 ## 功能契约
 
 - [阅读建档](./features/onboarding.md)：访谈、候选确认、画像与记忆共同保存。
+- [本地 API 与 Agent Skill](./features/local-api.md)：其他 AI 通过本机只读 HTTP 访问阅读数据。
 - [阅读 AI 动作](./features/reading-ai-actions.md)：解释、查词、翻译和章节总结。
 - [完整备份](./features/full-backup.md)：数据覆盖、选择、合并及失败恢复。
 - [桌面系统集成](./features/desktop-integration.md)：开机启动、文件关联和系统文件接收。

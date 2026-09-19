@@ -3,6 +3,7 @@ import { Button, Stack, Toggle } from "@read-aware/ui";
 import { aiPreferencesAtom } from "../../../state/ui";
 import { useTranslation } from "../../../i18n";
 import { AIConfigPanel } from "../components/AIConfigPanel";
+import { LocalApiPanel } from "../components/LocalApiPanel";
 import { SearchConfigPanel } from "../components/SearchConfigPanel";
 import { SettingsGroup } from "../components/SettingsGroup";
 import { SettingsPage } from "../components/SettingsPage";
@@ -32,6 +33,7 @@ export function AIPanel() {
       <SettingsGroup title={t("search.title")}>
         <SearchConfigPanel />
       </SettingsGroup>
+      <LocalApiPanel />
     </SettingsPage>
   );
 }

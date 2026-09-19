@@ -26,6 +26,17 @@ export const ERR_FS_PERMISSION = "fs/permission";
 export const ERR_FS_NO_SPACE = "fs/no-space";
 export const ERR_DB_LOCKED = "db/locked";
 export const ERR_DB_ERROR = "db/error";
+/** Local read-only HTTP transport. */
+export const ERR_LOCAL_API_BIND = "local-api/bind";
+export const ERR_LOCAL_API_UNAVAILABLE = "local-api/unavailable";
+export const ERR_LOCAL_API_INVALID_INPUT = "local-api/invalid-input";
+export const ERR_LOCAL_API_FORBIDDEN = "local-api/forbidden";
+export const ERR_LOCAL_API_UNAUTHORIZED = "local-api/unauthorized";
+export const ERR_LOCAL_API_READ_ONLY = "local-api/read-only";
+export const ERR_LOCAL_API_BUSY = "local-api/busy";
+export const ERR_LOCAL_API_TIMEOUT = "local-api/timeout";
+export const ERR_LOCAL_API_TOO_LARGE = "local-api/too-large";
+export const ERR_LOCAL_API_NOT_FOUND = "local-api/not-found";
 export const ERR_SECRETS_UNAVAILABLE = "secrets/unavailable";
 /** Local records were cleared, but file cleanup must finish before normal use. */
 export const ERR_DATA_WIPE_INCOMPLETE = "data/wipe-incomplete";

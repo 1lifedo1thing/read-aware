@@ -788,5 +788,23 @@
     "test": "测试 Search 和 Fetch",
     "testing": "正在测试…",
     "testSuccess": "Search 和 Fetch 均连接成功。"
+  },
+  "localApi": {
+    "title": "本地 API",
+    "enabled": "允许其他 AI 应用读取 ReadAware",
+    "description": "读取本机的书籍、批注、阅读进度和已保存的记忆。仅提供只读访问，不包含已存储的密钥等凭据。",
+    "address": "API 地址",
+    "running": "运行中 · 连接期间请保持 ReadAware 开启。",
+    "stopped": "未运行。",
+    "start": "启动 API",
+    "refresh": "重新读取状态",
+    "copyConnection": "复制连接配置",
+    "rotate": "重置访问令牌",
+    "rotated": "访问令牌已重置。请复制新的连接配置，重新连接 AI 应用。",
+    "copied": "已复制包含访问令牌的连接配置，请仅提供给你信任的 AI 应用。",
+    "skillHint": "将文件保存为 AI 应用技能目录下的 readaware/SKILL.md，再配置复制的连接信息。Skill 不包含任何凭据。",
+    "saveSkill": "保存 Skill",
+    "copySkill": "复制 Skill",
+    "skillCopied": "Skill 已复制。"
   }
 }

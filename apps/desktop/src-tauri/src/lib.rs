@@ -21,6 +21,7 @@ mod plugins;
 mod plugin_updates;
 mod plugin_sandbox_policy;
 mod secrets;
+mod local_api;
 mod resources;
 mod storage;
 mod storefront;
@@ -758,6 +759,7 @@ pub fn run() {
         .manage(android_update::AndroidUpdateState::default())
         .manage(desktop_update::DesktopUpdateState::default())
         .manage(exit_coordination::ExitCoordination::default())
+        .manage(local_api::LocalApi::default())
         .manage(external_open::ExternalOpenQueue::new(launch_open_paths))
         .manage(storage::BlobReadSessions::default())
         .manage(storage::BlobWriteSessions::default())
@@ -1021,6 +1023,12 @@ pub fn run() {
             storage::blob_write_commit,
             storage::blob_write_abort,
             secrets::secret_get,
+            local_api::local_api_attach,
+            local_api::local_api_status,
+            local_api::local_api_set_enabled,
+            local_api::local_api_token,
+            local_api::local_api_rotate_token,
+            local_api::local_api_complete,
             storage::restored_credentials_pending,
             storage::restored_credentials_enqueue_current,
             storage::restored_credentials_publish,

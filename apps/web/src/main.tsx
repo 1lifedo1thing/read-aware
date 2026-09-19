@@ -74,6 +74,9 @@ void (async () => {
   mountApp();
   log.info("mounted");
 
+  void import("./platform/local-api").then(({ startLocalApiBridge }) => startLocalApiBridge())
+    .catch(error => log.error("Local API initialization failed", error));
+
   // Coordinated close/quit: the native close button and app exit wait for reading
   // traces, plugin quiescence, dispatched events and the KV queue before the window goes.
   const [{ registerShutdownOwners }, { installNativeCloseCoordination }] = await Promise.all([

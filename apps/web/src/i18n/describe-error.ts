@@ -83,6 +83,8 @@ type CopyEntry = {
 const AI_SETTINGS: ErrorAction = "open-ai-settings";
 
 const CODE_COPY: Record<string, CopyEntry> = {
+  "local-api/bind": { key: "localApiBind", retryable: false },
+  "local-api/unavailable": { key: "localApiUnavailable", retryable: true },
   "search/not-configured": { key: "searchNotConfigured", retryable: false, action: AI_SETTINGS },
   "search/auth": { key: "searchAuth", retryable: false, action: AI_SETTINGS },
   "search/access": { key: "searchAccess", retryable: false },

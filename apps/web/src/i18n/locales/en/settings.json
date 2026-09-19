@@ -792,5 +792,23 @@
     "test": "Test Search and Fetch",
     "testing": "Testing…",
     "testSuccess": "Search and Fetch both connected successfully."
+  },
+  "localApi": {
+    "title": "Local API",
+    "enabled": "Allow other AI apps to read ReadAware",
+    "description": "Read books, annotations, reading progress and saved memories on this computer. Access is read-only and excludes stored credentials.",
+    "address": "API address",
+    "running": "Running · Keep ReadAware open while connected.",
+    "stopped": "Not running.",
+    "start": "Start API",
+    "refresh": "Reload status",
+    "copyConnection": "Copy connection",
+    "rotate": "Reset access token",
+    "rotated": "Access token reset. Copy the new connection to reconnect your AI apps.",
+    "copied": "Connection copied, including the access token. Share it only with AI apps you trust.",
+    "skillHint": "Save this file as readaware/SKILL.md in your AI app’s skills folder, then configure the copied connection. The Skill contains no credentials.",
+    "saveSkill": "Save Skill",
+    "copySkill": "Copy Skill",
+    "skillCopied": "Skill copied."
   }
 }
