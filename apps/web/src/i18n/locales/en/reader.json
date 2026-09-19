@@ -170,9 +170,9 @@
   },
   "fileMissing": {
     "no-sync": "This book's file isn't on this device, and sync is off. Import the original file to read it here.",
-    "not-on-relay": "This book's file never finished uploading from the device it was imported on. Open ReadAware there to let it upload, or import the original file here.",
+    "not-on-relay": "This book’s file is missing from this device and was not found on the sync service. Import the original file, or sync it from a device that still has it.",
     "unauthenticated": "Sign in to your sync account again to download this book's file.",
-    "unreachable": "This book's file is in your cloud library, but the sync server can't be reached right now.",
+    "unreachable": "This book’s file is missing from this device, and the sync service could not be reached. Check your connection and try again, or import the original file from the library.",
     "undecodable": "The downloaded file couldn't be decrypted with this device's sync passphrase.",
     "reimport": "Import the file"
   },
@@ -181,5 +181,8 @@
     "noteSaveFailed": "Couldn't save the note",
     "updateFailed": "Couldn't update the highlight",
     "deleteFailed": "Couldn't delete the annotation"
-  }
+  },
+  "openErrorTitle": "Could not open this book",
+  "navigationErrorTitle": "Could not go to that location",
+  "continueReading": "Continue reading"
 }

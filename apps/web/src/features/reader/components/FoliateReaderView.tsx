@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TFunction } from "i18next";
 import { useAtom, useSetAtom } from "jotai";
-import { Body, Button, Spinner } from "@read-aware/ui";
+import { Spinner } from "@read-aware/ui";
 import { AppError } from "@read-aware/core";
 import { cn } from "@read-aware/ui/cn";
+import { ReaderFailureView } from "./ReaderFailureView";
 import { describeError, useTranslation } from "../../../i18n";
 import { textUnitModeSettingsAtom } from "../../../state/ui";
 import { appShortcutForEvent, isAppSurfaceShortcut } from "../../settings/lib/shortcut-dispatch";
@@ -119,6 +120,7 @@ type FoliateReaderViewProps = {
   shellVisible?: boolean;
   /** Leave the reader for the shelf — offered on the end-of-book screen. */
   onCloseReader?: () => void;
+  onRetryOpen?: () => void;
   onContentClick?: () => void;
   /** Dismiss the reader shell. Fired once a scroll travels far enough (scroll
    *  mode) or as soon as a page turn lands (paginated mode). */
@@ -345,6 +347,7 @@ export function FoliateReaderView({
   readerSettings = DEFAULT_READER_SETTINGS,
   shellVisible = false,
   onCloseReader,
+  onRetryOpen,
   onContentClick,
   onContentScroll,
   onReadingActivity,
@@ -502,11 +505,12 @@ export function FoliateReaderView({
   const [lookBackAsked, setLookBackAsked] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; kind: "load" | "navigation"; retryable: boolean } | null>(null);
   /** Log the raw failure, hand back localized copy (never the raw message). */
-  const describeReaderFailure = useCallback((raw: unknown) => {
+  const describeReaderFailure = useCallback((raw: unknown, kind: "load" | "navigation" = "navigation") => {
     log.error("reader failure", raw);
-    return describeError(raw, { fallback: tRef.current("reader:loadError") }).body;
+    const failure = describeError(raw, { fallback: tRef.current("reader:loadError") });
+    return { message: failure.body, kind, retryable: failure.retryable };
   }, []);
   // Only surface the loader once a load is genuinely slow, so fast opens (the
   // common case) fade straight in without a flashed indicator.
@@ -2185,7 +2189,7 @@ export function FoliateReaderView({
         if (book && !cancelled) onBookReadyRef.current?.(book);
       } catch (nextError) {
         if (sessionId && !cancelled) readingRuntime.fail(sessionId, nextError, openingActor);
-        if (!cancelled) setError(describeReaderFailure(nextError));
+        if (!cancelled) setError(describeReaderFailure(nextError, "load"));
         await view?.close().catch(error => log.warn('Could not close failed reader', error));
         await releaseBook?.().catch(error => log.warn('Could not close failed book', error));
       } finally {
@@ -2375,29 +2379,21 @@ export function FoliateReaderView({
       />
 
       {showLoader && (
-        <div className="absolute inset-0 flex items-center justify-center bg-inherit">
+        <div className="absolute inset-0 flex items-center justify-center bg-paper">
           <Spinner size="md" label={t("opening", { name: initialBook?.fileName ?? t("book") })} />
         </div>
       )}
 
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-inherit px-8 text-center">
-          <div className="max-w-md space-y-4" role="alert">
-            <Body className="text-sm text-fg-muted">{error}</Body>
-            {/* A navigation failure leaves the page beneath intact — dismiss
-                resumes reading; a load failure needs a way back out. */}
-            <div className="flex items-center justify-center gap-2">
-              <Button size="sm" variant="outline" onClick={() => setError(null)}>
-                {t("common:actions.dismiss")}
-              </Button>
-              {onCloseReader && (
-                <Button size="sm" variant="ghost" onClick={onCloseReader}>
-                  {t("reader:backToLibrary")}
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
+        <ReaderFailureView
+          title={t(error.kind === "load" ? "openErrorTitle" : "navigationErrorTitle")}
+          bookTitle={selectedBook?.title ?? initialBook?.fileName}
+          message={error.message}
+          action={error.kind === "navigation"
+            ? { label: t("continueReading"), onClick: () => setError(null) }
+            : error.retryable && onRetryOpen ? { label: t("tryAgain"), onClick: onRetryOpen } : undefined}
+          onBack={onCloseReader}
+        />
       )}
 
       <NoteEditor

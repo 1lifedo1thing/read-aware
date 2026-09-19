@@ -21,6 +21,7 @@ import type { LoadedBook, TocEntry } from "../lib/reader-types";
 import { getVirtualBookBinding } from "../../plugins/lib/virtual-books";
 import { AppError } from "@read-aware/core";
 import { readingRuntime } from "../../../domain/reading-runtime";
+import { hostSync } from "../../../services/sync";
 import { useReaderControls } from "./useReaderControls";
 
 type ReaderSource =
@@ -35,7 +36,7 @@ type ReaderSource =
  * the same bytes heals the existing record in place via the sha dedup gate).
  */
 export type ReaderLoadError =
-  | { kind: "generic"; message: string }
+  | { kind: "generic"; message: string; retryable?: boolean }
   | { kind: "file-missing"; reason: BookFileMissingReason };
 
 type UseReaderSessionOptions = {
@@ -202,9 +203,11 @@ export function useReaderSession({
         if (readerLoadRequestIdRef.current !== requestId) return;
         log.error("opening book failed", error);
         readingRuntime.fail(sessionId, error);
+        const failure = describeError(error, { fallback: t("shelf:errors.generic") });
         setReaderLoadError({
           kind: "generic",
-          message: describeError(error, { fallback: t("shelf:errors.generic") }).body,
+          message: failure.body,
+          retryable: failure.retryable,
         });
         setIsReaderLoading(false);
       }
@@ -239,6 +242,10 @@ export function useReaderSession({
   const toggleShell = useCallback(() => {
     setShellVisible((visible) => !visible);
   }, [setShellVisible]);
+
+  const openSyncSettings = useCallback(() => {
+    void hostSync.openSettings(undefined, "user").catch(reportError);
+  }, [reportError]);
 
   const hideShell = useCallback((origin: DomainActor = "user") => {
     setShellVisible(false, origin);
@@ -314,6 +321,7 @@ export function useReaderSession({
     totalPages: readerPage.total,
     openReader,
     closeReader,
+    openSyncSettings,
     toggleShell,
     hideShell,
     handleReaderPageChange,

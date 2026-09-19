@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Body, Button, Spinner } from "@read-aware/ui";
+import { Spinner } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import type { BookFormat, LibraryBook, ReaderProgress } from "../../library/lib/library-types";
 import type { ReaderLoadError } from "../hooks/useReaderSession";
@@ -12,6 +12,8 @@ import { useReaderFocusTarget } from "../hooks/useReaderFocusTarget";
 import { useReadingTimeTracker } from "../hooks/useReadingTimeTracker";
 import { FoliateReaderView } from "./FoliateReaderView";
 import { ReaderShellOverlay } from "./ReaderShellOverlay";
+import { ReaderFailureView } from "./ReaderFailureView";
+import { readerRecoveryAction } from "../lib/reader-failure";
 import type { LoadedBook, ReadingCursor, TocEntry } from "../lib/reader-types";
 import type { FoliateBook } from "../lib/foliate-engine";
 import type { DomainActor } from "../../../platform/domain-actor";
@@ -46,6 +48,7 @@ type ReaderWorkspaceProps = {
   /** Open the import picker — re-importing the same file heals a book whose
    *  bytes never reached this device (sha-keyed dedup binds them back). */
   onReimportBook: () => void;
+  onOpenSyncSettings: () => void;
   onToggleShell: () => void;
   onHideShell: (origin?: DomainActor) => void;
   onReaderPageChange: (current: number, total: number) => void;
@@ -78,6 +81,7 @@ export function ReaderWorkspace({
   onCloseReader,
   onRetryOpen,
   onReimportBook,
+  onOpenSyncSettings,
   onToggleShell,
   onHideShell,
   onReaderPageChange,
@@ -90,11 +94,19 @@ export function ReaderWorkspace({
   onChapterSelect,
   onAnnotationSelect,
 }: ReaderWorkspaceProps) {
-  const { t } = useTranslation("reader");
+  const { t } = useTranslation(["reader", "common"]);
   const contentFocus = useRef<HTMLDivElement | null>(null);
   useReaderFocusTarget(selectedBook.id, "content", contentFocus);
   const { effective: readerSettings } = useReaderAppearance(selectedBook.id);
   const themeBg = useReaderPalette(readerSettings.theme).bg;
+  const recovery = readerLoadError ? readerRecoveryAction(readerLoadError) : null;
+  const recoveryAction = recovery === "retry"
+    ? { label: t("tryAgain"), onClick: () => onRetryOpen(selectedBook) }
+    : recovery === "import"
+      ? { label: t("fileMissing.reimport"), onClick: onReimportBook }
+      : recovery === "settings"
+        ? { label: t("common:actions.openSettings"), onClick: onOpenSyncSettings }
+        : undefined;
   // Only surface the source loader once opening is genuinely slow, so fast opens
   // show nothing (themed background) instead of a flashed line of text.
   const showSourceLoader = useDelayedFlag(!readerSource && !readerLoadError, 250);
@@ -164,6 +176,7 @@ export function ReaderWorkspace({
           readerSettings={readerSettings}
           shellVisible={overlayVisible}
           onCloseReader={onCloseReader}
+          onRetryOpen={() => onRetryOpen(selectedBook)}
           onContentClick={onToggleShell}
           onContentScroll={onHideShell}
           onReadingActivity={recordActivity}
@@ -190,35 +203,15 @@ export function ReaderWorkspace({
       ) : null}
 
       {!readerSource && (
-        <div className="absolute inset-0 flex items-center justify-center px-8 text-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-paper px-8">
           {readerLoadError ? (
-            <div className="max-w-md space-y-4">
-              <Body className="text-sm text-fg-muted">
-                {readerLoadError.kind === "generic"
-                  ? readerLoadError.message
-                  : t(`fileMissing.${readerLoadError.reason}`)}
-              </Body>
-              <div className="flex items-center justify-center gap-2">
-                {/* Retry leads only where retrying can succeed (a transient
-                    fetch failure); a file the cloud never had needs the
-                    original file back instead — re-importing it heals this
-                    book in place through the sha dedup gate. */}
-                {readerLoadError.kind === "file-missing" &&
-                (readerLoadError.reason === "no-sync" ||
-                  readerLoadError.reason === "not-on-relay") ? (
-                  <Button size="sm" variant="outline" onClick={onReimportBook}>
-                    {t("fileMissing.reimport")}
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={() => onRetryOpen(selectedBook)}>
-                    {t("tryAgain")}
-                  </Button>
-                )}
-                <Button size="sm" variant="ghost" onClick={onCloseReader}>
-                  {t("backToLibrary")}
-                </Button>
-              </div>
-            </div>
+            <ReaderFailureView
+              title={t("openErrorTitle")}
+              bookTitle={selectedBook.title}
+              message={readerLoadError.kind === "generic" ? readerLoadError.message : t(`fileMissing.${readerLoadError.reason}`)}
+              action={recoveryAction}
+              onBack={onCloseReader}
+            />
           ) : (
             showSourceLoader && (
               <Spinner size="md" label={t("opening", { name: selectedBook.title })} />

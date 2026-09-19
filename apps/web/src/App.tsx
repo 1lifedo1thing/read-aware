@@ -447,6 +447,7 @@ function App() {
                 onCloseReader={closeBook}
                 onRetryOpen={handleOpenBook}
                 onReimportBook={library.openImportPicker}
+                onOpenSyncSettings={reader.openSyncSettings}
                 onToggleShell={reader.toggleShell}
                 onHideShell={reader.hideShell}
                 onReaderPageChange={reader.handleReaderPageChange}

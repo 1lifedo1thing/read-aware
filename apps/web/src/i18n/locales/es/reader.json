@@ -170,9 +170,9 @@
   },
   "fileMissing": {
     "no-sync": "El archivo de este libro no está en este dispositivo y la sincronización está desactivada. Importa el archivo original para leerlo aquí.",
-    "not-on-relay": "El archivo de este libro nunca terminó de subirse desde el dispositivo donde se importó. Abre ReadAware allí para que se suba, o importa el archivo original aquí.",
+    "not-on-relay": "El archivo de este libro no está en este dispositivo ni se encontró en el servicio de sincronización. Importa el archivo original o sincronízalo desde un dispositivo que aún lo tenga.",
     "unauthenticated": "Vuelve a iniciar sesión en tu cuenta de sincronización para descargar el archivo de este libro.",
-    "unreachable": "El archivo de este libro está en tu biblioteca en la nube, pero ahora mismo no se puede contactar con el servidor de sincronización.",
+    "unreachable": "El archivo de este libro no está en este dispositivo y no se pudo conectar con el servicio de sincronización. Comprueba la conexión e inténtalo de nuevo, o importa el archivo original desde la biblioteca.",
     "undecodable": "El archivo descargado no se pudo descifrar con la frase de sincronización de este dispositivo.",
     "reimport": "Importar el archivo"
   },
@@ -181,5 +181,8 @@
     "noteSaveFailed": "No se pudo guardar la nota",
     "updateFailed": "No se pudo actualizar el subrayado",
     "deleteFailed": "No se pudo eliminar la anotación"
-  }
+  },
+  "openErrorTitle": "No se pudo abrir este libro",
+  "navigationErrorTitle": "No se pudo ir a esa ubicación",
+  "continueReading": "Continuar leyendo"
 }

@@ -170,9 +170,9 @@
   },
   "fileMissing": {
     "no-sync": "這本書的檔案不在此裝置上，且未開啟同步。重新匯入原檔案即可在此閱讀。",
-    "not-on-relay": "這本書的檔案尚未從匯入它的裝置上傳完成。在那台裝置上開啟 ReadAware 讓它上傳，或在這裡重新匯入原檔案。",
+    "not-on-relay": "此裝置缺少這本書的檔案，同步服務中也未找到。請匯入原始檔案，或從仍保存該檔案的裝置同步。",
     "unauthenticated": "重新登入同步帳號後即可下載這本書的檔案。",
-    "unreachable": "這本書的檔案在雲端書庫中，但目前無法連接同步伺服器。",
+    "unreachable": "此裝置缺少這本書的檔案，暫時無法連線至同步服務取得。請檢查連線後重試，或返回書庫匯入原始檔案。",
     "undecodable": "已下載的檔案無法用此裝置的同步口令解密。",
     "reimport": "重新匯入檔案"
   },
@@ -181,5 +181,8 @@
     "noteSaveFailed": "無法儲存筆記",
     "updateFailed": "無法更新螢光標記",
     "deleteFailed": "無法刪除標註"
-  }
+  },
+  "openErrorTitle": "暫時無法開啟這本書",
+  "navigationErrorTitle": "無法跳轉到該位置",
+  "continueReading": "繼續閱讀"
 }

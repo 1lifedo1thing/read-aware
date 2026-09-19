@@ -60,6 +60,7 @@ const meta = {
     onCloseReader: () => {},
     onRetryOpen: () => {},
     onReimportBook: () => {},
+    onOpenSyncSettings: () => {},
     onToggleShell: () => {},
     onHideShell: () => {},
     onReaderPageChange: () => {},
@@ -114,7 +115,7 @@ export const FileMissingNotOnRelay: Story = {
   },
 };
 
-/** A dead session: retry is the right offer once signed back in. */
+/** A dead session: go to settings to sign in, rather than retrying unchanged. */
 export const FileMissingUnauthenticated: Story = {
   args: {
     isReaderLoading: false,
