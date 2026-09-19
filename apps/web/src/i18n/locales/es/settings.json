@@ -483,7 +483,12 @@
       "freshRemote": "Este servidor aún no contiene datos sincronizados: este dispositivo establecerá su frase de cifrado.",
       "existingRemote": "Este servidor ya contiene datos cifrados. Introduce la misma frase con la que se crearon.",
       "wrongPassphrase": "Esa frase no coincide con los datos de este servidor.",
-      "connectedVia": "{{label}} · a través del plugin {{plugin}}"
+      "connectedVia": "{{label}} · a través del plugin {{plugin}}",
+      "manualHint": "Solo sincroniza cuando pulsas Sincronizar ahora",
+      "openPluginSettings": "Abrir ajustes del plugin",
+      "pluginUnavailable": "Conectado mediante el plugin {{plugin}}, que está desactivado o falta. Desconéctate para sincronizar de otra forma.",
+      "otherBackend": "La sincronización ya está conectada a otro servicio. Desconéctalo primero en Datos y sincronización.",
+      "openDataSync": "Abrir Datos y sincronización"
     },
     "tier": {
       "free": "Gratis",

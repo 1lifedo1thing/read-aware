@@ -19,7 +19,11 @@ export class HostActionFlow<R extends Request, S extends string> {
   private requesting = false;
   private running = false;
   constructor(private config: {
-    navigate(signal?: AbortSignal, origin?: DomainActor): Promise<unknown>;
+    /** Bring the owning settings surface on screen. The normalized request
+     *  rides along so a flow whose dialogs live on different sections (the
+     *  relay's Data & Sync group vs. a plugin transport's own settings page)
+     *  can pick the section per request. */
+    navigate(signal?: AbortSignal, origin?: DomainActor, request?: R): Promise<unknown>;
     normalize(input: R): R;
     completion(action: R["action"], value: unknown): S | "cancelled";
     epoch?(): unknown;
@@ -52,7 +56,7 @@ export class HostActionFlow<R extends Request, S extends string> {
     if (this.occupied) throw new AppError("ui/unavailable", "A host action flow is already active");
     this.requesting = true;
     try {
-      await this.config.navigate(signal, origin);
+      await this.config.navigate(signal, origin, request);
       signal?.throwIfAborted();
       if (this.running) throw new AppError("ui/unavailable", "A native action started during navigation");
       const surface = this.surface;

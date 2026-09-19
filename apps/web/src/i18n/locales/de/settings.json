@@ -479,7 +479,12 @@
       "freshRemote": "Dieser Server enthält noch keine Sync-Daten — dieses Gerät legt die Verschlüsselungs-Passphrase fest.",
       "existingRemote": "Dieser Server enthält bereits verschlüsselte Daten. Bitte dieselbe Passphrase eingeben, mit der sie erstellt wurden.",
       "wrongPassphrase": "Die Passphrase passt nicht zu den Daten auf diesem Server.",
-      "connectedVia": "{{label}} · über das Plugin {{plugin}}"
+      "connectedVia": "{{label}} · über das Plugin {{plugin}}",
+      "manualHint": "Synchronisiert nur, wenn Sie auf „Jetzt synchronisieren“ tippen",
+      "openPluginSettings": "Plugin-Einstellungen öffnen",
+      "pluginUnavailable": "Verbunden über das Plugin {{plugin}}, das deaktiviert ist oder fehlt. Trennen Sie die Verbindung, um anders zu synchronisieren.",
+      "otherBackend": "Die Synchronisierung ist bereits mit einem anderen Dienst verbunden. Trennen Sie ihn zuerst unter „Daten & Sync“.",
+      "openDataSync": "Daten & Sync öffnen"
     },
     "tier": {
       "free": "Kostenlos",

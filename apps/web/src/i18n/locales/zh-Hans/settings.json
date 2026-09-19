@@ -475,7 +475,12 @@
       "freshRemote": "这个服务器上还没有同步数据——将由本设备设定加密口令。",
       "existingRemote": "这个服务器上已有加密数据。请输入创建时使用的同一口令。",
       "wrongPassphrase": "口令与该服务器上的数据不匹配。",
-      "connectedVia": "{{label}} · 由 {{plugin}} 插件提供"
+      "connectedVia": "{{label}} · 由 {{plugin}} 插件提供",
+      "manualHint": "仅在点击“立即同步”时同步",
+      "openPluginSettings": "打开插件设置",
+      "pluginUnavailable": "通过 {{plugin}} 插件连接，但该插件已停用或缺失。断开连接后可改用其他方式同步。",
+      "otherBackend": "同步已连接到其他后端。请先在“数据与同步”中断开连接。",
+      "openDataSync": "打开数据与同步"
     },
     "tier": {
       "free": "免费",

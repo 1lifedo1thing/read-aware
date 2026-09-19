@@ -16,18 +16,23 @@ const log = createLogger("sync");
 const LANDING_LOCALE: Record<string, string> = { "zh-Hans": "zh", "zh-Hant": "zh-hant", ja: "ja", fr: "fr", de: "de", ru: "ru", es: "es" };
 
 /** Settings owns all secrets, confirmations and user-facing failures. The
- * shared controller correlates only the action and its final outcome. */
+ * shared controller correlates only the action and its final outcome.
+ *
+ * This is the Data & Sync (relay) owner: sign-in, disconnect, account
+ * deletion and billing. A plugin transport's connect/disconnect is owned by
+ * `useTransportSyncFlows` on that plugin's settings page; the flow
+ * controller navigates there (`syncFlowSection`), so a transport request
+ * reaching this surface means that page is not mounted. */
 export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, purchaseAllowed: boolean) {
   const { t, i18n } = useTranslation("settings");
   const { toast } = useToast();
   const [connectOpen, setConnectOpen] = useState(false);
-  const [transportDialogRef, setTransportDialogRef] = useState<string | null>(null);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [working, setWorking] = useState(false);
 
   const close = () => {
-    setConnectOpen(false); setTransportDialogRef(null);
+    setConnectOpen(false);
     setDisconnectOpen(false); setDeleteAccountOpen(false);
   };
   const change = (action: HostSyncFlow, open: boolean, set: (open: boolean) => void) => {
@@ -71,17 +76,21 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
   latest.current = {
     close,
     open: request => {
-      if (working || getSyncConnectionBusy() || connectOpen || transportDialogRef || disconnectOpen || deleteAccountOpen) throw new AppError("ui/unavailable", "A native sync dialog is already active");
+      if (working || getSyncConnectionBusy() || connectOpen || disconnectOpen || deleteAccountOpen) throw new AppError("ui/unavailable", "A native sync dialog is already active");
       const status = getSyncStatusSnapshot();
       const blocked = syncFlowConditions(request, status, getSyncConnectionBusy(), sync.transports, purchaseAllowed).find(value => value.state === "unavailable");
       if (blocked) throw new AppError(blocked.errorCode === "sync/transport-unavailable" ? "sync/transport-unavailable" : "ui/unavailable", blocked.reason);
       if (request.action === "connect") {
-        if (request.transportRef) {
-          setTransportDialogRef(request.transportRef);
-        } else setConnectOpen(true);
+        if (request.transportRef) throw new AppError("ui/unavailable", "Transport connect is owned by the plugin's settings page");
+        setConnectOpen(true);
+      } else if (request.action === "disconnect") {
+        // Disconnecting a transport belongs to its plugin page; only a binding
+        // whose plugin is gone (no registered transport) is torn down here.
+        if (status.backend === "transport" && status.transportRef && sync.transports.some(item => item.ref === status.transportRef))
+          throw new AppError("ui/unavailable", "Transport disconnect is owned by the plugin's settings page");
+        setDisconnectOpen(true);
       } else {
-        if (request.action === "disconnect") setDisconnectOpen(true);
-        else if (request.action === "delete-account") setDeleteAccountOpen(true);
+        if (request.action === "delete-account") setDeleteAccountOpen(true);
         else void billing(request.action, actorFromEvent(request));
       }
     },
@@ -90,11 +99,6 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
 
   return {
     connectOpen, setConnectOpen: (open: boolean) => change("connect", open, setConnectOpen),
-    transportDialogRef, setTransportDialogRef: (ref: string | null) => {
-      if (working || getSyncConnectionBusy()) return;
-      if (ref === null) hostSyncFlows.dismiss("connect");
-      setTransportDialogRef(ref);
-    },
     disconnectOpen, setDisconnectOpen: (open: boolean) => change("disconnect", open, setDisconnectOpen),
     deleteAccountOpen, setDeleteAccountOpen: (open: boolean) => change("delete-account", open, setDeleteAccountOpen),
     working,
@@ -106,7 +110,6 @@ export function useSyncAccountFlows(sync: ReturnType<typeof useSyncConnection>, 
     openPortal: () => billing("billing"), openUpgrade: () => billing("upgrade"),
     sync: { ...sync,
       finishConnect: (...args: Parameters<typeof sync.finishConnect>) => hostSyncFlows.run("connect", (_signal, origin) => sync.finishConnect(args[0], args[1], origin), true),
-      connectTransport: (...args: Parameters<typeof sync.connectTransport>) => hostSyncFlows.run("connect", (_signal, origin) => sync.connectTransport(args[0], args[1], origin), true),
     },
   };
 }

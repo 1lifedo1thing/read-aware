@@ -3,12 +3,14 @@
  * the same form the Plugins-panel dialog shows, rendered inline. The section
  * exists only while the plugin is enabled and declares settings.
  */
-import { useEffect, useMemo, useReducer } from "react";
+import { useEffect, useMemo, useReducer, useSyncExternalStore } from "react";
 import { onAppEvent } from "../../../platform/app-events";
+import { listSyncTransports, onSyncTransportsChanged } from "../../../platform/sync/transport-registry";
 import { PluginViewRenderer } from "../../plugins/components/PluginViewRenderer";
 import { buildPluginSettingsView } from "../../plugins/lib/plugin-settings";
 import type { PluginManifest } from "../../plugins/lib/plugin-types";
 import { SettingsPage } from "../components/SettingsPage";
+import { TransportSyncGroup } from "./TransportSyncGroup";
 
 export function PluginSettingsSectionPanel({
   manifest,
@@ -34,6 +36,15 @@ export function PluginSettingsSectionPanel({
     const built = buildPluginSettingsView(manifest);
     return built ? { ...built, title: undefined } : null;
   }, [manifest, revision]);
+  // A plugin that provides a sync backend (`sync:transport`) gets its whole
+  // sync surface here — connect, status, sync now, disconnect — instead of
+  // in Data & Sync. Registry-driven, so the group appears only while the
+  // plugin's activation actually registered a transport.
+  const providesTransport = useSyncExternalStore(
+    onSyncTransportsChanged,
+    () => listSyncTransports().some((transport) => transport.pluginId === manifest.id),
+    () => false,
+  );
   return (
     <SettingsPage title={manifest.name} description={manifest.description}>
       {view && (
@@ -44,6 +55,7 @@ export function PluginSettingsSectionPanel({
           scroll="flow"
         />
       )}
+      {providesTransport && <TransportSyncGroup pluginId={manifest.id} />}
     </SettingsPage>
   );
 }

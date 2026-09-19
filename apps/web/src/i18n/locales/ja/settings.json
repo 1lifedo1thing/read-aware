@@ -475,7 +475,12 @@
       "freshRemote": "このサーバーにはまだ同期データがありません。このデバイスが暗号化パスフレーズを設定します。",
       "existingRemote": "このサーバーには暗号化されたデータがあります。作成時と同じパスフレーズを入力してください。",
       "wrongPassphrase": "パスフレーズがこのサーバーのデータと一致しません。",
-      "connectedVia": "{{label}} · {{plugin}} プラグイン提供"
+      "connectedVia": "{{label}} · {{plugin}} プラグイン提供",
+      "manualHint": "「今すぐ同期」を押したときだけ同期します",
+      "openPluginSettings": "プラグイン設定を開く",
+      "pluginUnavailable": "{{plugin}} プラグイン経由で接続していますが、そのプラグインは無効か見つかりません。別の方法で同期するには接続を解除してください。",
+      "otherBackend": "同期はすでに別のバックエンドに接続されています。まず「データと同期」で接続を解除してください。",
+      "openDataSync": "データと同期を開く"
     },
     "tier": {
       "free": "無料",

@@ -6,8 +6,12 @@
  * E2E passphrase ritual. The probe runs first and also answers whether the
  * remote already holds key material, so the passphrase step can say honestly
  * whether this device SETS the passphrase or must MATCH an existing one.
- * Server address and credentials live in the plugin's own settings; this
- * dialog deliberately never asks for them.
+ * Server address and credentials live in the plugin's own settings (this
+ * dialog opens from that same page) and it deliberately never asks for them.
+ *
+ * A transport has no automatic cadence, so a successful connect requests the
+ * first cycle itself — the user just asked for this remote; making them find
+ * "Sync now" next would be a second ask for the same intent.
  */
 import { useEffect, useRef, useState } from "react";
 import { Button, Caption, Dialog, Spinner, TextField, useToast } from "@read-aware/ui";
@@ -107,6 +111,9 @@ export function TransportConnectDialog({
         title: t("dataSync.noticeDone"),
         description: t("dataSync.connect.connected"),
       });
+      // Outcome lands in the status row (error state, last sync time); the
+      // scheduler already logged the failure with its cause.
+      void sync.requestSyncNow().catch(() => {});
     } catch (error) {
       if (error instanceof SyncConnectionBusyError) return;
       if (error instanceof WrongPassphraseError) {

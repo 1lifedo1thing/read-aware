@@ -1,5 +1,5 @@
 import { invoke } from "../platform/ipc";
-import { AppError } from "@read-aware/core";
+import { AppError, type HostSyncFlowRequest, type WorkspaceSettingsSection } from "@read-aware/core";
 import { classifySyncError } from "../platform/sync/classify-sync-error";
 import { isTauri } from "../platform/environment";
 import { createLogger } from "../platform/logger";
@@ -7,7 +7,7 @@ import { getSyncConnectionBusy, getSyncConnectionOperationRevision, subscribeSyn
 import { getRemoteBlobFetchConditions, getSyncConnectionGeneration, getSyncStatusSnapshot, subscribeSyncStatus, syncNow, syncRelayClient } from "../platform/sync/sync-scheduler";
 import { HostSyncService } from "./sync-controller";
 import { SyncFlowController } from "./sync-flow-controller";
-import { listSyncTransports } from "../platform/sync/transport-registry";
+import { findSyncTransport, listSyncTransports } from "../platform/sync/transport-registry";
 import { contributionText } from "../features/plugins/lib/plugin-i18n";
 import { workspace } from "./workspace";
 
@@ -20,7 +20,22 @@ async function remote<T>(operation: () => Promise<T>): Promise<T> {
     throw new AppError(classifySyncError(error) ?? "sync/server", "Sync request failed");
   }
 }
-export const hostSyncFlows = new SyncFlowController((signal, origin) => workspace.navigate({ surface: "settings", section: "dataSync" }, undefined, signal, false, undefined, origin), getSyncConnectionGeneration);
+/**
+ * Which settings section owns a sync flow's dialogs. Relay flows (sign-in,
+ * account deletion, billing) live in Data & Sync; a plugin transport's connect
+ * and disconnect live on that plugin's own settings page, so the flow
+ * navigates there. A disconnect while the bound transport's plugin is gone
+ * (disabled, uninstalled) has no plugin page — Data & Sync keeps that one.
+ */
+export function syncFlowSection(request?: HostSyncFlowRequest): WorkspaceSettingsSection {
+  const status = getSyncStatusSnapshot();
+  const ref = request?.action === "connect" ? request.transportRef ?? null
+    : request?.action === "disconnect" && status.backend === "transport" ? status.transportRef : null;
+  const transport = ref ? findSyncTransport(ref) : null;
+  return transport ? `plugin:${transport.pluginId}` : "dataSync";
+}
+export const hostSyncFlows = new SyncFlowController((signal, origin, request) =>
+  workspace.navigate({ surface: "settings", section: syncFlowSection(request) }, undefined, signal, false, undefined, origin), getSyncConnectionGeneration);
 export const hostSync = new HostSyncService({
   supported: isTauri, busy: getSyncConnectionBusy,
   epoch: () => `${getSyncConnectionGeneration()}:${getSyncConnectionOperationRevision()}`,

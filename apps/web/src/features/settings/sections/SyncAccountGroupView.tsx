@@ -8,6 +8,13 @@
  * usage / upgrade or manage). The icon-strip detail stays in the header
  * popover.
  *
+ * Plugin transports (`sync:transport`, e.g. WebDAV) are NOT configured here:
+ * their connect, status and disconnect live on the plugin's own settings page
+ * (`TransportSyncGroup`). Connected through one, this group shows a single
+ * pointer row to that page — and only when the plugin is gone (disabled,
+ * uninstalled) does the row offer the disconnect itself, since a dead binding
+ * has nowhere else to be torn down.
+ *
  * Split from `SyncAccountGroup` because every interesting state here comes from
  * somewhere Storybook cannot reach — a module-level scheduler singleton, the
  * relay, and Tauri IPC. With the data as props, the connected, syncing,
@@ -15,34 +22,25 @@
  * reviewed on their own.
  */
 import { Button, Dialog } from "@read-aware/ui";
-import { ERR_SYNC_FILE_TOO_LARGE, ERR_SYNC_QUOTA } from "@read-aware/core";
-import { useTranslation, describeErrorCode } from "../../../i18n";
+import { useTranslation } from "../../../i18n";
 import type { SyncProfile } from "../../../platform/sync/sync-store";
 import type { SyncStatusSnapshot } from "../../../platform/sync/sync-scheduler";
 import { PendingBadge } from "../components/PendingBadge";
 import { SettingsGroup } from "../components/SettingsGroup";
 import { SettingsRow } from "../components/SettingsRow";
-import { syncCycleFraction } from "../../sync/lib/sync-progress";
 import type { SyncBacklog, SyncBookBacklogRow } from "../../sync/hooks/useSyncStatus";
 import { contributionText } from "../../plugins/lib/plugin-i18n";
 import type { SyncAccountInfo } from "../hooks/useSyncAccountInfo";
 import type { useSyncConnection } from "../hooks/useSyncConnection";
 import { SyncConnectDialog } from "./SyncConnectDialog";
-import { TransportConnectDialog } from "./TransportConnectDialog";
+import {
+  formatBytes,
+  SyncBookBacklogRows,
+  SyncDisconnectDialog,
+  SyncStatusRow,
+} from "./SyncConnectedRows";
 
-/** "12 345 678" bytes → "11.8 MB": one decimal, sensible unit. */
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ["KB", "MB", "GB"] as const;
-  let value = bytes;
-  let unit: (typeof units)[number] = "KB";
-  for (const next of units) {
-    value /= 1024;
-    unit = next;
-    if (value < 1024) break;
-  }
-  return `${value >= 100 ? Math.round(value) : value.toFixed(1)} ${unit}`;
-}
+export { formatBytes };
 
 type SyncAccountGroupViewProps = {
   /** The web shell has no store and no sync — it keeps the placeholder row. */
@@ -58,9 +56,6 @@ type SyncAccountGroupViewProps = {
   movingBookTitle: string | null;
   connectOpen: boolean;
   onConnectOpenChange: (open: boolean) => void;
-  /** Registry ref of the transport whose connect dialog is open; null = none. */
-  transportDialogRef: string | null;
-  onTransportDialogChange: (ref: string | null) => void;
   disconnectOpen: boolean;
   onDisconnectOpenChange: (open: boolean) => void;
   /**
@@ -75,6 +70,8 @@ type SyncAccountGroupViewProps = {
   onDeleteAccount: () => void;
   onSyncNow: () => void;
   onDisconnect: () => void;
+  /** Jump to the connected transport's plugin settings page. */
+  onOpenTransportSettings: (pluginId: string) => void;
   /**
    * Whether external purchase links may be shown at all — false on iOS
    * storefronts where Apple forbids them (platform/purchase-gate). False
@@ -98,8 +95,6 @@ export function SyncAccountGroupView({
   movingBookTitle,
   connectOpen,
   onConnectOpenChange,
-  transportDialogRef,
-  onTransportDialogChange,
   disconnectOpen,
   onDisconnectOpenChange,
   deleteAccountOpen,
@@ -108,6 +103,7 @@ export function SyncAccountGroupView({
   onDeleteAccount,
   onSyncNow,
   onDisconnect,
+  onOpenTransportSettings,
   purchaseAllowed,
   onOpenPortal,
   onOpenUpgrade,
@@ -132,8 +128,6 @@ export function SyncAccountGroupView({
   }
 
   if (!connected) {
-    const dialogTransport =
-      sync.transports.find((entry) => entry.ref === transportDialogRef) ?? null;
     return (
       <SettingsGroup title={t("dataSync.sync")}>
         <SettingsRow
@@ -146,109 +140,61 @@ export function SyncAccountGroupView({
             </Button>
           }
         />
-        {/* Plugin-provided backends (sync:transport) — one quiet row each. */}
-        {sync.transports.map((transport) => (
-          <SettingsRow
-            key={transport.ref}
-            title={contributionText(transport.label)}
-            description={t("dataSync.transport.description", {
-              plugin: transport.pluginId,
-            })}
-            control={
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onTransportDialogChange(transport.ref)}
-              >
-                {t("dataSync.transport.connect")}
-              </Button>
-            }
-          />
-        ))}
         <SyncConnectDialog
           open={connectOpen}
           onClose={() => onConnectOpenChange(false)}
-          sync={sync}
-        />
-        <TransportConnectDialog
-          transport={dialogTransport}
-          onClose={() => onTransportDialogChange(null)}
           sync={sync}
         />
       </SettingsGroup>
     );
   }
 
-  const syncing = status.state === "syncing";
   // Connected through a plugin transport: the backend's label is the human
-  // name of the remote (the registered transport may be momentarily absent
-  // while its plugin restarts — the ref keeps the row honest meanwhile).
+  // name of the remote. The registered transport may be absent while its
+  // plugin restarts or after it was disabled — the ref keeps the row honest,
+  // and without a plugin page to send the user to, disconnect stays here.
   const viaTransport = sync.connectedTransport;
-  const transportEntry = viaTransport
-    ? (sync.transports.find((entry) => entry.ref === viaTransport.ref) ?? null)
-    : null;
+  if (viaTransport) {
+    const transportEntry = sync.transports.find((entry) => entry.ref === viaTransport.ref) ?? null;
+    const pluginId = viaTransport.ref.split(":")[1] ?? viaTransport.ref;
+    return (
+      <SettingsGroup title={t("dataSync.sync")}>
+        <SettingsRow
+          borderless
+          title={t("dataSync.transport.backendTitle")}
+          description={
+            transportEntry
+              ? t("dataSync.transport.connectedVia", {
+                  label: contributionText(transportEntry.label),
+                  plugin: pluginId,
+                })
+              : t("dataSync.transport.pluginUnavailable", { plugin: pluginId })
+          }
+          control={
+            transportEntry ? (
+              <Button size="sm" variant="outline" onClick={() => onOpenTransportSettings(pluginId)}>
+                {t("dataSync.transport.openPluginSettings")}
+              </Button>
+            ) : (
+              <Button size="sm" variant="ghost" onClick={() => onDisconnectOpenChange(true)}>
+                {t("dataSync.connected.disconnect")}
+              </Button>
+            )
+          }
+        />
+        <SyncDisconnectDialog
+          open={disconnectOpen}
+          busy={sync.busy || deletingAccount}
+          onClose={() => onDisconnectOpenChange(false)}
+          onConfirm={onDisconnect}
+        />
+      </SettingsGroup>
+    );
+  }
+
   // The email is the human name of the account; the opaque id only appears
   // while the relay hasn't answered yet (offline), shortened to stay legible.
-  const accountLabel = viaTransport
-    ? t("dataSync.transport.connectedVia", {
-        label: transportEntry
-          ? contributionText(transportEntry.label)
-          : viaTransport.ref,
-        plugin: viaTransport.ref.split(":")[1] ?? viaTransport.ref,
-      })
-    : (accountInfo?.email ?? `${(profile?.remoteAccountId ?? "").slice(0, 8)}…`);
-
-  // The Status row's one-line description: exactly one voice at a time —
-  // a rejected session and a failed cycle speak in the warning tone.
-  const fraction = syncCycleFraction(status);
-  const pending = backlog !== null && backlog.events + backlog.blobs > 0 ? backlog : null;
-  const statusDescription = sessionRejected ? (
-    <span className="text-red-700">{t("dataSync.syncStatus.signedOut")}</span>
-  ) : status.state === "error" ? (
-    <span className="text-red-700">
-      {describeErrorCode(status.lastErrorCode ?? undefined)?.body ?? t("dataSync.syncStatus.error")}
-    </span>
-  ) : syncing ? (
-    [
-      fraction === null
-        ? t("dataSync.syncStatus.syncing")
-        : `${t("dataSync.syncStatus.syncing")} ${Math.round(fraction * 100)}%`,
-      // Which book is moving right now, with part progress for chunked files.
-      movingBookTitle &&
-        status.progress &&
-        (status.progress.blobPartsTotal > 0
-          ? t(
-              status.progress.blobDirection === "down"
-                ? "dataSync.progress.bookDownParts"
-                : "dataSync.progress.bookUpParts",
-              {
-                title: movingBookTitle,
-                done: status.progress.blobPartsDone,
-                total: status.progress.blobPartsTotal,
-              },
-            )
-          : t(
-              status.progress.blobDirection === "down"
-                ? "dataSync.progress.bookDown"
-                : "dataSync.progress.bookUp",
-              { title: movingBookTitle },
-            )),
-    ]
-      .filter(Boolean)
-      .join(" · ")
-  ) : (
-    [
-      status.lastSyncAt
-        ? t("dataSync.syncStatus.lastSync", {
-            time: new Date(status.lastSyncAt).toLocaleTimeString(),
-          })
-        : t("dataSync.syncStatus.never"),
-      pending &&
-        t("dataSync.progress.pending", { events: pending.events, blobs: pending.blobs }),
-    ]
-      .filter(Boolean)
-      .join(" · ")
-  );
+  const accountLabel = accountInfo?.email ?? `${(profile?.remoteAccountId ?? "").slice(0, 8)}…`;
 
   // A currently-paying account manages its plan in Stripe's portal. Free
   // accounts get the upgrade menu even when a past customer exists (checkout
@@ -278,76 +224,42 @@ export function SyncAccountGroupView({
     accountInfo?.limits?.maxAccountBlobBytes != null &&
     accountInfo.blobBytesUsed > accountInfo.limits.maxAccountBlobBytes;
 
-  // The engine stores a stable code in `lastError` (classifyBlobRejection);
-  // rows written before that carry the relay's raw wording, mapped here once.
-  const rejectionCode = (row: SyncBookBacklogRow): string | null => {
-    const raw = row.lastError ?? "";
-    if (/^[a-z-]+\/[a-z-]+$/.test(raw)) return raw;
-    if (raw.includes("quota")) return ERR_SYNC_QUOTA;
-    if (raw.includes("exceeds")) return ERR_SYNC_FILE_TOO_LARGE;
-    return null;
-  };
-  const isQuotaRejection = (row: SyncBookBacklogRow) =>
-    row.pushState === "rejected" && rejectionCode(row) === ERR_SYNC_QUOTA;
-  const quotaBlocked = (bookBacklog ?? []).some(isQuotaRejection);
-
-  const bookStateLabel = (row: SyncBookBacklogRow): { text: string; tone?: "error" } => {
-    if (!row.localBytes) return { text: t("dataSync.books.awaitingOtherDevice") };
-    if (row.pushState === "pending") return { text: t("dataSync.books.pending") };
-    if (row.pushState === "unverified") return { text: t("dataSync.books.unverified") };
-    if (row.pushState === "failed") return { text: t("dataSync.books.failed") };
-    const code = rejectionCode(row);
-    if (code === ERR_SYNC_QUOTA) {
-      return { text: t("dataSync.books.rejectedQuota"), tone: "error" };
-    }
-    if (code === ERR_SYNC_FILE_TOO_LARGE) {
-      return { text: t("dataSync.books.rejectedTooLarge"), tone: "error" };
-    }
-    return { text: t("dataSync.books.rejected"), tone: "error" };
-  };
-
   return (
     <SettingsGroup title={t("dataSync.sync")}>
       <SettingsRow
         borderless
-        title={
-          viaTransport ? t("dataSync.transport.backendTitle") : t("dataSync.account.title")
-        }
+        title={t("dataSync.account.title")}
         description={accountLabel}
         control={
           <div className="flex items-center gap-1">
             <Button size="sm" variant="ghost" onClick={() => onDisconnectOpenChange(true)}>
               {t("dataSync.connected.disconnect")}
             </Button>
-            {!viaTransport && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-red-700 hover:text-red-800"
-                onClick={() => onDeleteAccountOpenChange(true)}
-              >
-                {t("dataSync.deleteAccount.action")}
-              </Button>
-            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-700 hover:text-red-800"
+              onClick={() => onDeleteAccountOpenChange(true)}
+            >
+              {t("dataSync.deleteAccount.action")}
+            </Button>
           </div>
         }
       />
-      <SettingsRow
-        title={t("dataSync.connected.statusTitle")}
-        description={statusDescription}
+      <SyncStatusRow
+        status={status}
+        backlog={backlog}
+        movingBookTitle={movingBookTitle}
+        // A rejected session makes "sync now" a guaranteed 401 — its slot
+        // offers the re-login (the same connect dialog) instead.
         control={
-          // A rejected session makes "sync now" a guaranteed 401 — its slot
-          // offers the re-login (the same connect dialog) instead.
           sessionRejected ? (
             <Button size="sm" onClick={() => onConnectOpenChange(true)}>
               {t("dataSync.reauth.action")}
             </Button>
-          ) : (
-            <Button size="sm" variant="outline" disabled={syncing} onClick={onSyncNow}>
-              {syncing ? t("dataSync.syncStatus.syncing") : t("dataSync.connected.syncNow")}
-            </Button>
-          )
+          ) : undefined
         }
+        onSyncNow={onSyncNow}
       />
       {/* Fetched from the relay, so quietly absent while offline. */}
       {accountInfo && (
@@ -374,34 +286,7 @@ export function SyncAccountGroupView({
           control={planControl}
         />
       )}
-      {/* Per-book upload backlog: which files the relay doesn't hold yet and
-          why. Absent entirely when every book's file made it — the panel says
-          nothing when there is nothing to say. */}
-      {bookBacklog !== null && (quotaBlocked || overLimit || bookBacklog.length > 0) && (
-        <SettingsRow
-          title={t("dataSync.books.title")}
-          description={
-            <span className="block space-y-1.5">
-              {(quotaBlocked || overLimit) && (
-                <span className="block text-red-700">{t("dataSync.books.quotaFull")}</span>
-              )}
-              {bookBacklog.map((row) => {
-                const state = bookStateLabel(row);
-                return (
-                  <span key={row.bookId} className="block">
-                    <span className="text-fg">{row.title}</span>
-                    {row.byteSize != null && ` · ${formatBytes(row.byteSize)}`}
-                    {" · "}
-                    <span className={state.tone === "error" ? "text-red-700" : undefined}>
-                      {state.text}
-                    </span>
-                  </span>
-                );
-              })}
-            </span>
-          }
-        />
-      )}
+      <SyncBookBacklogRows bookBacklog={bookBacklog} overLimit={overLimit} />
       <SettingsRow title={t("dataSync.e2e.title")} description={t("dataSync.e2e.active")} />
       {/* Re-login for a rejected session: the same connect flow, reached from
           the "sign in again" control above (or a deep-linked token). */}
@@ -410,28 +295,12 @@ export function SyncAccountGroupView({
         onClose={() => onConnectOpenChange(false)}
         sync={sync}
       />
-      <Dialog
+      <SyncDisconnectDialog
         open={disconnectOpen}
+        busy={sync.busy || deletingAccount}
         onClose={() => onDisconnectOpenChange(false)}
-        title={t("dataSync.connected.disconnectTitle")}
-      >
-        <div className="space-y-4">
-          <p>{t("dataSync.connected.disconnectBody")}</p>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" disabled={sync.busy || deletingAccount} onClick={() => onDisconnectOpenChange(false)}>
-              {t("dataSync.connected.cancel")}
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              disabled={sync.busy || deletingAccount}
-              onClick={onDisconnect}
-            >
-              {t("dataSync.connected.disconnect")}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+        onConfirm={onDisconnect}
+      />
       <Dialog
         open={deleteAccountOpen}
         onClose={() => {

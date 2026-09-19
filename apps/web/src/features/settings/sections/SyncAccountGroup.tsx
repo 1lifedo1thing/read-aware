@@ -4,12 +4,12 @@
  * `SyncAccountGroupView`.
  */
 import { useEffect } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useToast } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import { isTauri } from "../../../platform/environment";
 import { createLogger } from "../../../platform/logger";
-import { syncLoginTokenAtom } from "../../../state/ui";
+import { settingsSectionRequestAtom, syncLoginTokenAtom } from "../../../state/ui";
 import { useBlobBookTitle } from "../../sync/hooks/useBlobBookTitle";
 import { useSyncBacklog, useSyncBookBacklog } from "../../sync/hooks/useSyncStatus";
 import { useExternalPurchaseAllowed } from "../hooks/useExternalPurchaseAllowed";
@@ -24,6 +24,7 @@ export function SyncAccountGroup() {
   const { t } = useTranslation("settings");
   const { toast } = useToast();
   const sync = useSyncConnection();
+  const setSectionRequest = useSetAtom(settingsSectionRequestAtom);
 
   const backlog = useSyncBacklog(sync.connected);
   const bookBacklog = useSyncBookBacklog(sync.connected);
@@ -78,8 +79,6 @@ export function SyncAccountGroup() {
       movingBookTitle={movingBookTitle}
       connectOpen={flows.connectOpen}
       onConnectOpenChange={flows.setConnectOpen}
-      transportDialogRef={flows.transportDialogRef}
-      onTransportDialogChange={flows.setTransportDialogRef}
       disconnectOpen={flows.disconnectOpen}
       onDisconnectOpenChange={flows.setDisconnectOpen}
       deleteAccountOpen={flows.deleteAccountOpen}
@@ -88,6 +87,9 @@ export function SyncAccountGroup() {
       onDeleteAccount={() => void flows.deleteAccount()}
       onSyncNow={() => void handleSyncNow()}
       onDisconnect={() => void flows.disconnect()}
+      // A transport's own page is a real settings section (`plugin:<id>`),
+      // so the pointer row is a section jump, not a nested dialog.
+      onOpenTransportSettings={(pluginId) => setSectionRequest(`plugin:${pluginId}`)}
       purchaseAllowed={purchaseAllowed}
       onOpenPortal={() => void flows.openPortal()}
       onOpenUpgrade={() => void flows.openUpgrade()}

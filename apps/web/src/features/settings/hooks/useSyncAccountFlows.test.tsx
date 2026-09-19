@@ -43,10 +43,16 @@ test("mounted settings connects flow requests to existing confirmation callbacks
   try {
     await initI18n("en");
     await act(async () => { root.render(<ToastProvider><Harness /></ToastProvider>); });
-    let request!: Promise<HostSyncFlowReceipt>;
-    await act(async () => { request = hostSyncFlows.request({ action: "connect", transportRef: "webdav:main" }); await tick(); });
-    expect(flows.transportDialogRef).toBe("webdav:main"); expect(connects).toBe(0);
-    await act(async () => { await flows.sync.connectTransport("webdav:main", "user-only-passphrase"); flows.setTransportDialogRef(null); });
+    let request!: Promise<HostSyncFlowReceipt>, refused: unknown;
+    // A transport connect belongs to the plugin's own settings page
+    // (useTransportSyncFlows); this surface refuses it instead of opening
+    // any dialog, so a misrouted request cannot leak into the relay flow.
+    await act(async () => { refused = await hostSyncFlows.request({ action: "connect", transportRef: "webdav:main" }).catch(error => error); });
+    expect(refused).toMatchObject({ code: "ui/unavailable" });
+    expect(flows.connectOpen).toBe(false); expect(connects).toBe(0);
+    await act(async () => { request = hostSyncFlows.request({ action: "connect" }); await tick(); });
+    expect(flows.connectOpen).toBe(true);
+    await act(async () => { await flows.sync.finishConnect({ session: "s", accountId: "a", email: "e" } as never, "user-only-passphrase"); flows.setConnectOpen(false); });
     expect(await request).toEqual({ action: "connect", status: "completed" }); expect(connects).toBe(1);
     status = snapshot();
     await act(async () => { request = hostSyncFlows.request({ action: "delete-account" }); await tick(); });
@@ -68,6 +74,17 @@ test("mounted settings connects flow requests to existing confirmation callbacks
     const rejected = request.catch(error => error);
     await act(async () => { caller.abort(Error("retired")); expect(await rejected).toMatchObject({ message: "retired" }); });
     expect(flows.disconnectOpen).toBe(false);
+    // Bound to a registered plugin transport: disconnect is the plugin page's.
+    status = snapshot({ backend: "transport", transportRef: "webdav:main" });
+    await act(async () => { refused = await hostSyncFlows.request({ action: "disconnect" }).catch(error => error); });
+    expect(refused).toMatchObject({ code: "ui/unavailable" });
+    expect(flows.disconnectOpen).toBe(false);
+    // ...unless that plugin is gone: nothing else can tear the binding down.
+    status = snapshot({ backend: "transport", transportRef: "plugin:gone:main" });
+    await act(async () => { request = hostSyncFlows.request({ action: "disconnect" }); await tick(); });
+    expect(flows.disconnectOpen).toBe(true);
+    await act(async () => { flows.setDisconnectOpen(false); });
+    expect((await request).status).toBe("cancelled");
   } finally {
     await act(async () => { root.unmount(); });
     for (const mock of mocks) mock.mockRestore();

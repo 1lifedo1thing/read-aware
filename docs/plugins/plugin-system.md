@@ -5572,7 +5572,21 @@ registrations land. Connecting runs the same passphrase ritual as the relay
 (`establishEncryptionWithStore`), binds the profile to the session's
 `endpointId`, and is mutually exclusive with a relay account — one outbox, one
 mailbox. Transports classify failures by throwing errors with stable `sync/*`
-codes; uncoded failures are retried with backoff.
+codes.
+
+Cadence and surface (2026-09-19): a transport has no automatic cadence. The
+scheduler binds the connection and reports status, but runs no start cycle,
+interval, focus pull, push-on-write or retry timer for it; every cycle is an
+explicit "sync now" (the plugin page, the header indicator, or the Agent's
+sync service). The relay keeps its automatic cadence. A transport's whole
+user-facing surface — connect ritual, status with the manual-cadence reminder,
+sync now, backlog, disconnect — lives on the providing plugin's own settings
+section (`TransportSyncGroup` under the plugin's declared settings), never in
+Data & Sync; that panel only shows a pointer row while a transport is bound,
+and offers the disconnect itself only when the providing plugin is gone. Host
+sync flows route accordingly: `hostSyncFlows.request({ action: "connect",
+transportRef })` and a disconnect while bound to a registered transport
+navigate to `plugin:<pluginId>`; relay flows navigate to `dataSync`.
 
 First party: `plugins/webdav-sync` (marketplace-distributed, not bundled).
 

@@ -4,10 +4,17 @@ import { actorFromEvent, causalActor, ObservationCauses, stampEventCause, type D
  * at boot (App.tsx); the settings panel talks to the same singleton for
  * "sync now", connect/disconnect restarts, and status display.
  *
- * Cadence: pull-push cycle on start, then every PULL_INTERVAL_MS while the app
- * is focused; a commit broadcast nudges a push after a short debounce; window
- * focus pulls (the other device may have moved while we were away); failures
- * back off exponentially (nextSyncDelayMs) instead of hammering the relay.
+ * Cadence (relay): pull-push cycle on start, then every PULL_INTERVAL_MS while
+ * the app is focused; a commit broadcast nudges a push after a short debounce;
+ * window focus pulls (the other device may have moved while we were away);
+ * failures back off exponentially (nextSyncDelayMs) instead of hammering the
+ * relay.
+ *
+ * Cadence (plugin transport): none. A transport is dumb storage the user
+ * pointed us at — a WebDAV folder on a rate-limited provider, typically — so
+ * the scheduler only binds the connection and reports status; every cycle is
+ * an explicit "sync now" (settings, header indicator, Agent). No interval, no
+ * focus pull, no push-on-write, no retry timer.
  */
 import { flushRestoredCredentialPublications } from "../restored-credential-publication";
 import {
@@ -626,8 +633,6 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
     if (document.visibilityState === "visible") tick();
   };
 
-  let offTransports: (() => void) | null = null;
-
   void (async () => {
     const profile = await getSyncProfile().catch(() => null);
     if (disposed) return;
@@ -640,15 +645,6 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
     if (!profile?.syncEnabled || !profile.remoteAccountId || !credentialed) {
       return;
     }
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisible);
-    offBroadcast = onDomainEventBroadcast(event => {
-      // A local write: push soon, but let a burst (import, batch edit) settle.
-      if (disposed) return;
-      if (pushDebounce !== null) window.clearTimeout(pushDebounce);
-      pushCauses.add(event);
-      pushDebounce = window.setTimeout(() => tick(actorFromEvent(pushCauses.take({}))), PUSH_DEBOUNCE_MS);
-    });
     setStatus({
       state: "idle",
       accountConnected: true,
@@ -659,21 +655,26 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
     // Duplicates that predate this build (or arrived while sync was off)
     // reconcile once at start; pull-time detection covers everything after.
     void syncWork.run(() => disposed ? Promise.resolve(0) : reconcileDuplicateBooks());
-    if (!connection) {
-      // The doorbell socket is a relay feature; transports poll.
-      void openWatch();
-      tick(origin);
+    if (connection) {
+      // Manual cadence: the connection is bound and reported, nothing runs
+      // until the user (or an Agent tool acting for them) asks. `syncNow`
+      // resolves the transport from the registry per cycle, so a plugin that
+      // is still activating simply fails that one explicit request with
+      // "transport unavailable" instead of being polled for.
       return;
     }
-    // Plugin activation races scheduler start: when the bound transport is
-    // not registered yet, wait for the registry instead of opening with a
-    // guaranteed "transport unavailable" error. The interval stays as the
-    // safety net; a registration (or plugin restart) ticks immediately.
-    offTransports = onSyncTransportsChanged(source => {
-      if (!disposed && findSyncTransport(connection.ref)) tick(actorFromEvent(source));
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    offBroadcast = onDomainEventBroadcast(event => {
+      // A local write: push soon, but let a burst (import, batch edit) settle.
+      if (disposed) return;
+      if (pushDebounce !== null) window.clearTimeout(pushDebounce);
+      pushCauses.add(event);
+      pushDebounce = window.setTimeout(() => tick(actorFromEvent(pushCauses.take({}))), PUSH_DEBOUNCE_MS);
     });
-    if (findSyncTransport(connection.ref)) tick(origin);
-    else schedule(PULL_INTERVAL_MS);
+    // The doorbell socket is a relay feature.
+    void openWatch();
+    tick(origin);
   })();
 
   disposeScheduler = () => {
@@ -688,7 +689,6 @@ export function startSyncScheduler(origin: DomainActor = "system"): () => void {
     watchSocket?.close();
     watchSocket = null;
     offBroadcast?.();
-    offTransports?.();
     stopCoverHydration();
     window.removeEventListener("focus", onFocus);
     document.removeEventListener("visibilitychange", onVisible);

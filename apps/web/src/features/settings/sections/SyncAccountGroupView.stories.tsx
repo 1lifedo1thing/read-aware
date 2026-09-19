@@ -116,8 +116,6 @@ const meta = {
     bookBacklog: [],
     movingBookTitle: null,
     connectOpen: false,
-    transportDialogRef: null,
-    onTransportDialogChange: () => {},
     disconnectOpen: false,
     deleteAccountOpen: false,
     deletingAccount: false,
@@ -127,6 +125,7 @@ const meta = {
     onDeleteAccount: () => {},
     onSyncNow: () => {},
     onDisconnect: () => {},
+    onOpenTransportSettings: () => {},
     purchaseAllowed: true,
     onOpenPortal: () => {},
     onOpenUpgrade: () => {},
@@ -290,7 +289,10 @@ export const ReloginDialogOpen: Story = {
   args: { status: unauthenticated, connectOpen: true },
 };
 
-/** Disconnected, with a plugin-provided backend offering its own row. */
+/**
+ * Disconnected while a plugin backend is registered: the group does NOT list
+ * it — a transport is connected from its plugin's own settings page.
+ */
 export const TransportAvailable: Story = {
   args: {
     connected: false,
@@ -300,7 +302,7 @@ export const TransportAvailable: Story = {
   },
 };
 
-/** Connected through a plugin transport: no account, no plan — just sync. */
+/** Connected through a plugin transport: one pointer row to the plugin page. */
 export const ConnectedViaTransport: Story = {
   args: {
     accountInfo: null,
@@ -311,6 +313,28 @@ export const ConnectedViaTransport: Story = {
     sync: {
       ...inertSync,
       transports: [webdavTransport],
+      connectedTransport: {
+        ref: webdavTransport.ref,
+        endpointId: "dav.example.com/readaware",
+      },
+    },
+  },
+};
+
+/**
+ * The transport's plugin is disabled or uninstalled: there is no plugin page
+ * to send the user to, so the pointer row offers the disconnect itself.
+ */
+export const TransportPluginUnavailable: Story = {
+  args: {
+    accountInfo: null,
+    profile: {
+      ...profile,
+      remoteAccountId: "transport:webdav-sync:webdav:dav.example.com/readaware",
+    },
+    sync: {
+      ...inertSync,
+      transports: [],
       connectedTransport: {
         ref: webdavTransport.ref,
         endpointId: "dav.example.com/readaware",

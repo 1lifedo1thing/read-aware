@@ -483,7 +483,12 @@
       "freshRemote": "Ce serveur ne contient encore aucune donnée synchronisée — cet appareil définira sa phrase secrète de chiffrement.",
       "existingRemote": "Ce serveur contient déjà des données chiffrées. Saisissez la phrase secrète qui les a créées.",
       "wrongPassphrase": "Cette phrase secrète ne correspond pas aux données de ce serveur.",
-      "connectedVia": "{{label}} · via le plugin {{plugin}}"
+      "connectedVia": "{{label}} · via le plugin {{plugin}}",
+      "manualHint": "Ne synchronise que lorsque vous appuyez sur Synchroniser",
+      "openPluginSettings": "Ouvrir les réglages du plugin",
+      "pluginUnavailable": "Connecté via le plugin {{plugin}}, qui est désactivé ou introuvable. Déconnectez-vous pour synchroniser autrement.",
+      "otherBackend": "La synchronisation est déjà connectée à un autre service. Déconnectez-le d'abord dans Données et synchronisation.",
+      "openDataSync": "Ouvrir Données et synchronisation"
     },
     "tier": {
       "free": "Gratuite",

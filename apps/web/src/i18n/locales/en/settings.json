@@ -479,7 +479,12 @@
       "freshRemote": "This server holds no synced data yet — this device will set its encryption passphrase.",
       "existingRemote": "This server already holds encrypted data. Enter the same passphrase that created it.",
       "wrongPassphrase": "That passphrase doesn't match this server's data.",
-      "connectedVia": "{{label}} · via the {{plugin}} plugin"
+      "connectedVia": "{{label}} · via the {{plugin}} plugin",
+      "manualHint": "Syncs only when you press Sync now",
+      "openPluginSettings": "Open plugin settings",
+      "pluginUnavailable": "Connected through the {{plugin}} plugin, which is disabled or missing. Disconnect to sync another way.",
+      "otherBackend": "Sync is already connected to another backend. Disconnect it in Data & Sync first.",
+      "openDataSync": "Open Data & Sync"
     },
     "tier": {
       "free": "Free",

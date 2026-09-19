@@ -475,7 +475,12 @@
       "freshRemote": "這個伺服器上還沒有同步資料——將由本裝置設定加密口令。",
       "existingRemote": "這個伺服器上已有加密資料。請輸入建立時使用的同一口令。",
       "wrongPassphrase": "口令與該伺服器上的資料不相符。",
-      "connectedVia": "{{label}} · 由 {{plugin}} 外掛提供"
+      "connectedVia": "{{label}} · 由 {{plugin}} 外掛提供",
+      "manualHint": "僅在點選「立即同步」時同步",
+      "openPluginSettings": "開啟外掛設定",
+      "pluginUnavailable": "透過 {{plugin}} 外掛連線，但該外掛已停用或缺失。中斷連線後可改用其他方式同步。",
+      "otherBackend": "同步已連線到其他後端。請先在「資料與同步」中中斷連線。",
+      "openDataSync": "開啟資料與同步"
     },
     "tier": {
       "free": "免費",
