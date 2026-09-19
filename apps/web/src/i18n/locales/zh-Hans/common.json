@@ -175,7 +175,18 @@
     "transactionPreviewExpired": "预览已过期，请重新预览后提交。",
     "transactionReceiptMissing": "未找到属于当前调用者的事务回执。",
     "transactionQuota": "事务已达到限制，请缩小批次或减少待提交预览。",
-    "transactionNoChanges": "当前状态已符合请求，无需修改。"
+    "transactionNoChanges": "当前状态已符合请求，无需修改。",
+    "searchNotConfigured": "请在设置 → AI 中启用搜索并填写搜索 API Key。",
+    "searchAuth": "搜索服务商拒绝了此 key，请在设置 → AI 中检查搜索 API Key。",
+    "searchAccess": "此账号无法访问所请求的搜索 API，请检查服务商账号。",
+    "searchRateLimited": "搜索请求已达到限额，请稍后再试。",
+    "searchNetwork": "无法连接搜索服务商，请检查网络。",
+    "searchTimeout": "网页读取超时，请重试。",
+    "searchCancelled": "已取消网页读取。",
+    "searchInvalidInput": "请使用有效的查询词或公开网页地址。",
+    "searchProvider": "搜索服务商返回了异常响应。",
+    "searchFetchFailed": "无法读取此网页，可能需要登录或不允许自动访问。",
+    "searchTooLarge": "此网页过大，请尝试更小的资料来源。"
   },
   "crashPrompt": {
     "title": "ReadAware 上次运行出了问题",

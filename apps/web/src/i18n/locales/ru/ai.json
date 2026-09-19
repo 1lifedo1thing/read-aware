@@ -53,7 +53,9 @@
       "output": "Результат",
       "running": "Выполняется…",
       "fallback": "Работаю",
-      "failed": "не удалось"
+      "failed": "не удалось",
+      "web_search": "Поиск в интернете",
+      "web_fetch": "Чтение веб-страницы"
     },
     "interaction": {
       "form": {

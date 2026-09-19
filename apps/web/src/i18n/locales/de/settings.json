@@ -694,5 +694,18 @@
       "addNote": "Notiz",
       "askAI": "KI fragen"
     }
+  },
+  "search": {
+    "title": "Websuche",
+    "enabled": "Websuche erlauben",
+    "description": "Der Agent kann öffentliche Quellen suchen und Webseiten lesen. Suchbegriffe und URLs werden mit Ihrem eigenen Schlüssel an den gewählten Anbieter gesendet.",
+    "provider": "Suchanbieter",
+    "apiKey": "API-Schlüssel für die Suche",
+    "keyPlaceholder": "Schlüssel des Suchanbieters eingeben",
+    "keyHint": "Wird getrennt vom Modellschlüssel gespeichert.",
+    "getKey": "API-Schlüssel erhalten",
+    "test": "Search und Fetch testen",
+    "testing": "Test läuft…",
+    "testSuccess": "Search und Fetch sind erfolgreich verbunden."
   }
 }

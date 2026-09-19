@@ -53,7 +53,9 @@
       "output": "輸出",
       "running": "執行中…",
       "fallback": "處理中",
-      "failed": "失敗"
+      "failed": "失敗",
+      "web_search": "搜尋網路",
+      "web_fetch": "讀取網頁"
     },
     "interaction": {
       "form": {

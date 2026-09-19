@@ -175,7 +175,18 @@
     "transactionPreviewExpired": "The preview expired. Prepare a new preview before submitting.",
     "transactionReceiptMissing": "No transaction receipt was found for this caller.",
     "transactionQuota": "The transaction limit was reached. Reduce the batch or pending previews.",
-    "transactionNoChanges": "The requested state is already present."
+    "transactionNoChanges": "The requested state is already present.",
+    "searchNotConfigured": "Enable Search and add its API key in Settings → AI.",
+    "searchAuth": "The search provider rejected the key. Check the search key in Settings → AI.",
+    "searchAccess": "This account cannot access the requested search API. Check your provider account.",
+    "searchRateLimited": "The search request limit was reached. Wait and try again.",
+    "searchNetwork": "Could not reach the search provider. Check your connection.",
+    "searchTimeout": "Web retrieval timed out. Try again.",
+    "searchCancelled": "Web retrieval was cancelled.",
+    "searchInvalidInput": "Use a valid query or public web URL.",
+    "searchProvider": "The search provider returned an unexpected response.",
+    "searchFetchFailed": "This page could not be read. It may require login or block automated access.",
+    "searchTooLarge": "This page is too large to read. Try a smaller source."
   },
   "crashPrompt": {
     "title": "ReadAware had a problem last time",

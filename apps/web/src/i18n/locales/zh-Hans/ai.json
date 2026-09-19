@@ -53,7 +53,9 @@
       "output": "输出",
       "running": "执行中…",
       "fallback": "处理中",
-      "failed": "失败"
+      "failed": "失败",
+      "web_search": "搜索网络",
+      "web_fetch": "读取网页"
     },
     "interaction": {
       "form": {

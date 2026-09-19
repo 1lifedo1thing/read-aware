@@ -785,5 +785,18 @@
       "addNote": "Add note",
       "askAI": "Ask AI"
     }
+  },
+  "search": {
+    "title": "Web search",
+    "enabled": "Allow web search",
+    "description": "The agent can search public sources and read web pages when needed. Queries and URLs are sent to the selected provider using your own key.",
+    "provider": "Search provider",
+    "apiKey": "Search API key",
+    "keyPlaceholder": "Enter your search provider key",
+    "keyHint": "Saved separately from your model API key.",
+    "getKey": "Get an API key",
+    "test": "Test Search and Fetch",
+    "testing": "Testing…",
+    "testSuccess": "Search and Fetch both connected successfully."
   }
 }

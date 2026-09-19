@@ -27,7 +27,8 @@ const log = createLogger("secrets");
 
 /**
  * Secrets the app stores — two audited families. The `ai-api-key` family:
- * the legacy single slot plus one slot per provider (`ai-api-key.<provider>`),
+ * the legacy single slot plus one slot per model provider (`ai-api-key.<provider>`)
+ * and per web retrieval provider (`ai-api-key.search.<provider>`),
  * so switching providers never clobbers another provider's key. The `sync.`
  * family: the relay session token and the passphrase-derived E2E master key
  * (base64) — the "encryption_key_ref" that `sync_profile` points at. SQLite

@@ -83,6 +83,17 @@ type CopyEntry = {
 const AI_SETTINGS: ErrorAction = "open-ai-settings";
 
 const CODE_COPY: Record<string, CopyEntry> = {
+  "search/not-configured": { key: "searchNotConfigured", retryable: false, action: AI_SETTINGS },
+  "search/auth": { key: "searchAuth", retryable: false, action: AI_SETTINGS },
+  "search/access": { key: "searchAccess", retryable: false },
+  "search/rate-limited": { key: "searchRateLimited", retryable: true },
+  "search/network": { key: "searchNetwork", retryable: true },
+  "search/timeout": { key: "searchTimeout", retryable: true },
+  "search/cancelled": { key: "searchCancelled", retryable: false },
+  "search/invalid-input": { key: "searchInvalidInput", retryable: false },
+  "search/provider": { key: "searchProvider", retryable: true },
+  "search/fetch-failed": { key: "searchFetchFailed", retryable: false },
+  "search/too-large": { key: "searchTooLarge", retryable: false },
   "data/wipe-incomplete": { key: "dataWipeIncomplete", retryable: false },
   "backup/invalid-archive": { key: "backupInvalidArchive", retryable: false },
   "backup/unlock-failed": { key: "backupUnlockFailed", retryable: false },

@@ -53,7 +53,9 @@
       "output": "出力",
       "running": "実行中…",
       "fallback": "処理中",
-      "failed": "失敗"
+      "failed": "失敗",
+      "web_search": "ウェブを検索",
+      "web_fetch": "ページを読み取り"
     },
     "interaction": {
       "form": {

@@ -698,5 +698,18 @@
       "addNote": "Añadir nota",
       "askAI": "Preguntar a la IA"
     }
+  },
+  "search": {
+    "title": "Búsqueda web",
+    "enabled": "Permitir búsqueda web",
+    "description": "El agente puede buscar fuentes públicas y leer páginas web. Las consultas y URL se envían al proveedor elegido con tu propia clave.",
+    "provider": "Proveedor de búsqueda",
+    "apiKey": "Clave API de búsqueda",
+    "keyPlaceholder": "Introduce tu clave API de búsqueda",
+    "keyHint": "Se guarda por separado de la clave del modelo.",
+    "getKey": "Obtener una clave API",
+    "test": "Probar Search y Fetch",
+    "testing": "Probando…",
+    "testSuccess": "Search y Fetch se conectaron correctamente."
   }
 }

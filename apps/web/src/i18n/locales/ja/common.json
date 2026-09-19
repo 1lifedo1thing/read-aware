@@ -175,7 +175,18 @@
     "transactionPreviewExpired": "プレビューの有効期限が切れました。再度プレビューしてください。",
     "transactionReceiptMissing": "この呼び出し元の処理記録が見つかりません。",
     "transactionQuota": "トランザクションの上限に達しました。変更数や保留中のプレビューを減らしてください。",
-    "transactionNoChanges": "すでに要求された状態です。"
+    "transactionNoChanges": "すでに要求された状態です。",
+    "searchNotConfigured": "設定 → AI で検索を有効にし、検索 API キーを追加してください。",
+    "searchAuth": "検索キーが拒否されました。設定 → AI で確認してください。",
+    "searchAccess": "このアカウントでは検索 API を利用できません。プロバイダーのアカウントを確認してください。",
+    "searchRateLimited": "検索の制限に達しました。しばらくしてから再試行してください。",
+    "searchNetwork": "検索サービスに接続できません。ネットワークを確認してください。",
+    "searchTimeout": "ページの取得がタイムアウトしました。再試行してください。",
+    "searchCancelled": "ページの取得をキャンセルしました。",
+    "searchInvalidInput": "有効な検索語または公開ウェブ URL を使用してください。",
+    "searchProvider": "検索サービスから予期しない応答が返されました。",
+    "searchFetchFailed": "このページを読み取れません。ログインが必要か、自動アクセスが拒否されています。",
+    "searchTooLarge": "ページが大きすぎます。小さい資料をお試しください。"
   },
   "crashPrompt": {
     "title": "前回 ReadAware に問題が発生しました",

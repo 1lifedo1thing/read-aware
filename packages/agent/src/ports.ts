@@ -464,6 +464,8 @@ export interface ExternalMemoryCandidateRequest {
 }
 
 export interface RuntimeDeps {
+  /** Optional BYOK public web retrieval; credentials stay in the host. */
+  web?: import("./web/types").WebPort;
   readingAiActions: import("@read-aware/core").ReadingAiPort;
   schedules: {
     list(query?: import("@read-aware/core").PluginScheduleQuery): Promise<import("@read-aware/core").PluginSchedulePage>;

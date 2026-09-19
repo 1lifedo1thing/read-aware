@@ -14,6 +14,8 @@ import type { ChatToolPart } from "../lib/chat-types";
  * some) fall back to a generic "working" row instead of disappearing.
  */
 const TOOL_LABEL_KEYS = {
+  web_search: "chat.tools.web_search",
+  web_fetch: "chat.tools.web_fetch",
   search_memory: "chat.tools.search_memory",
   remember: "chat.tools.remember",
   search_conversation: "chat.tools.search_conversation",

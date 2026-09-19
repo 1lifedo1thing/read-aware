@@ -53,7 +53,9 @@
       "output": "Output",
       "running": "Running…",
       "fallback": "Working",
-      "failed": "failed"
+      "failed": "failed",
+      "web_search": "Searching the web",
+      "web_fetch": "Reading web page"
     },
     "interaction": {
       "form": {

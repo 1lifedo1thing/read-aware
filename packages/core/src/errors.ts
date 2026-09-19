@@ -73,6 +73,18 @@ export const ERR_SYNC_CHECKPOINT_MISMATCH = "sync/checkpoint-mismatch";
 export const ERR_SYNC_CHECKPOINT_PRECONDITION = "sync/checkpoint-precondition";
 /** AI provider failure codes (classified in @read-aware/agent). */
 export const ERR_AI_NOT_CONFIGURED = "ai/not-configured";
+/** BYOK public web search/fetch failures; separate from the model account. */
+export const ERR_SEARCH_NOT_CONFIGURED = "search/not-configured";
+export const ERR_SEARCH_AUTH = "search/auth";
+export const ERR_SEARCH_ACCESS = "search/access";
+export const ERR_SEARCH_RATE_LIMITED = "search/rate-limited";
+export const ERR_SEARCH_NETWORK = "search/network";
+export const ERR_SEARCH_TIMEOUT = "search/timeout";
+export const ERR_SEARCH_CANCELLED = "search/cancelled";
+export const ERR_SEARCH_INVALID_INPUT = "search/invalid-input";
+export const ERR_SEARCH_PROVIDER = "search/provider";
+export const ERR_SEARCH_FETCH_FAILED = "search/fetch-failed";
+export const ERR_SEARCH_TOO_LARGE = "search/too-large";
 export const ERR_AI_MEMORY_DISABLED = "ai/memory-disabled";
 export const ERR_AI_CONTEXT_CHANGED = "ai/context-changed";
 export const ERR_AI_CONTEXT_WITHHELD = "ai/context-withheld";

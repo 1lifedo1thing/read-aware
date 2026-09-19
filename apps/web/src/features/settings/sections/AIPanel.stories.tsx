@@ -17,6 +17,19 @@ type Story = StoryObj<typeof meta>;
     toggles write through reactively to this Storybook origin's localStorage. */
 export const Default: Story = {};
 
+/** BYOK search has independent provider/key fields and an explicit enable switch. */
+export const SearchSettings: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = canvas.getByLabelText("Search API key");
+    input.scrollIntoView({ block: "center" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "storybook-search-key");
+    const enabled = canvas.getByRole("switch", { name: "Allow web search" });
+    if (enabled.getAttribute("aria-checked") !== "true") await userEvent.click(enabled);
+  },
+};
+
 export const AdvancedSettings: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

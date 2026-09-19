@@ -15,6 +15,7 @@ import { personalizationEvalSuite } from "./personalization";
 import { readingEvalSuite } from "./reading";
 import { settingsEvalSuite } from "./settings";
 import { toolsEvalSuite } from "./tools";
+import { searchEvalSuite } from "./search";
 
 export const behaviorSuites = {
   reading: readingEvalSuite,
@@ -25,6 +26,7 @@ export const behaviorSuites = {
   interactions: interactionsEvalSuite,
   settings: settingsEvalSuite,
   tools: toolsEvalSuite,
+  search: searchEvalSuite,
   crossbook: crossbookEvalSuite,
   journeys: journeysEvalSuite,
   legacy: legacyEvalSuite,

@@ -32,6 +32,7 @@ import { buildSyncTools } from "./sync-tools";
 import { buildMaintenanceTools } from "./maintenance-tools";
 import { buildResourceTools } from "./resource-tools";
 import { buildDownloadTools } from "./download-tools";
+import { buildWebTools } from "./web-tools";
 import { buildEnrichmentTools } from "./enrichment-tools";
 import { buildBookContentTools } from "./book-content-tools";
 import { buildBookMergeTools } from "./book-merge-tools";
@@ -71,6 +72,7 @@ export function buildAgentTools(
     ...buildMaintenanceTools(deps),
     ...buildResourceTools(scope, deps),
     ...buildDownloadTools(scope, deps),
+    ...buildWebTools(deps),
     ...buildEnrichmentTools(scope, deps),
     ...buildBookContentTools(scope, deps),
     ...buildBookMergeTools(scope, deps),

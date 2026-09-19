@@ -9,6 +9,14 @@ import { HOST_COMMAND_IDS, type Id } from "@read-aware/core";
 import { createInMemoryDeps, type InMemorySeed } from "../testing/fixtures";
 import type { ThreadScope } from "../thread-scope";
 import { buildAgentTools } from "./registry";
+import type { RuntimeDeps } from "../ports";
+
+function enableFixtureWeb(deps: RuntimeDeps) {
+  deps.web = { configured: () => true,
+    search: async input => ({ provider: "fixture", query: input.query, sources: [{ title: "Example", url: "https://example.com/", snippet: "Example Domain" }], retrievedAt: "2026-09-19T00:00:00Z" }),
+    fetch: async input => ({ provider: "fixture", url: input.url, finalUrl: input.url, title: "Example", text: "Example Domain", offset: 0, nextOffset: null, retrievedAt: "2026-09-19T00:00:00Z" }),
+  };
+}
 
 const BOOK_ID = "book-1" as Id;
 
@@ -68,6 +76,7 @@ function seed(): InMemorySeed {
  * 完备性断言会指认漏网的名字。
  */
 const SURFACE_CASES: Record<string, Record<string, unknown>> = {
+  web_search: { query: "example" }, web_fetch: { url: "https://example.com/" },
   explain_selection: {}, define_term: {}, translate_selection: {}, summarize_chapter: {},
   get_conversation_state: {},
   get_sync_status: {},
@@ -242,6 +251,7 @@ function bindFixtureContentVersion(value: unknown, contentVersion: string): void
 
 function toolNames(scope: ThreadScope): string[] {
   const { deps } = createInMemoryDeps(seed());
+  enableFixtureWeb(deps);
   return buildAgentTools(scope, deps).map((tool) => tool.name);
 }
 
@@ -265,6 +275,7 @@ describe("tool surface contract", () => {
         if (!params) continue; // 完备性由上面的用例把守
         // 每个工具独立的 fixture：破坏性工具（fixture 自动批准权限）不得污染后续用例
         const { deps } = createInMemoryDeps(seed());
+        enableFixtureWeb(deps);
         const contentVersion = (await deps.reader.getSession()).location?.contentVersion;
         if (!contentVersion) throw new Error("expected the fixture reader to expose a content version");
         bindFixtureContentVersion(params, contentVersion);

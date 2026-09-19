@@ -175,7 +175,18 @@
     "transactionPreviewExpired": "L’aperçu a expiré. Préparez-en un nouveau avant de valider.",
     "transactionReceiptMissing": "Aucun reçu de transaction trouvé pour cet appelant.",
     "transactionQuota": "Limite atteinte. Réduisez le lot ou les aperçus en attente.",
-    "transactionNoChanges": "L’état demandé est déjà présent."
+    "transactionNoChanges": "L’état demandé est déjà présent.",
+    "searchNotConfigured": "Activez la recherche et ajoutez sa clé API dans Réglages → IA.",
+    "searchAuth": "La clé de recherche a été refusée. Vérifiez-la dans Réglages → IA.",
+    "searchAccess": "Ce compte n’a pas accès à cette API de recherche. Vérifiez votre compte fournisseur.",
+    "searchRateLimited": "La limite de recherche est atteinte. Réessayez plus tard.",
+    "searchNetwork": "Impossible de joindre le fournisseur de recherche. Vérifiez votre connexion.",
+    "searchTimeout": "La récupération a expiré. Réessayez.",
+    "searchCancelled": "La récupération a été annulée.",
+    "searchInvalidInput": "Utilisez une requête valide ou une URL web publique.",
+    "searchProvider": "Le fournisseur de recherche a renvoyé une réponse inattendue.",
+    "searchFetchFailed": "Cette page est illisible. Elle peut nécessiter une connexion ou bloquer l’accès automatisé.",
+    "searchTooLarge": "Cette page est trop volumineuse. Essayez une source plus petite."
   },
   "crashPrompt": {
     "title": "ReadAware a rencontré un problème la dernière fois",

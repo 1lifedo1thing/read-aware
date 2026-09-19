@@ -690,5 +690,18 @@
       "addNote": "ノート追加",
       "askAI": "AI に聞く"
     }
+  },
+  "search": {
+    "title": "ウェブ検索",
+    "enabled": "ウェブ検索を許可",
+    "description": "必要に応じて公開情報を検索し、ページを読み取ります。検索語と URL は、自分のキーを使って選択したサービスに送信されます。",
+    "provider": "検索プロバイダー",
+    "apiKey": "検索 API キー",
+    "keyPlaceholder": "検索サービスの API キーを入力",
+    "keyHint": "モデルの API キーとは別に保存します。",
+    "getKey": "API キーを取得",
+    "test": "Search と Fetch をテスト",
+    "testing": "テスト中…",
+    "testSuccess": "Search と Fetch の接続に成功しました。"
   }
 }

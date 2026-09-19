@@ -690,5 +690,18 @@
       "addNote": "新增筆記",
       "askAI": "問 AI"
     }
+  },
+  "search": {
+    "title": "聯網搜尋",
+    "enabled": "允許聯網搜尋",
+    "description": "Agent 可按需搜尋公開資料、讀取網頁。查詢詞和網址會使用你自己的 key 傳送給所選服務商。",
+    "provider": "搜尋服務商",
+    "apiKey": "搜尋 API Key",
+    "keyPlaceholder": "輸入搜尋服務商的 API Key",
+    "keyHint": "與模型 API Key 分開儲存。",
+    "getKey": "取得 API Key",
+    "test": "測試 Search 和 Fetch",
+    "testing": "正在測試…",
+    "testSuccess": "Search 和 Fetch 均連線成功。"
   }
 }

@@ -246,6 +246,7 @@ export function toolStepDetail(tool: string, args: unknown): string | undefined 
   if (!args || typeof args !== "object") return undefined;
   const record = args as Record<string, unknown>;
   if (typeof record.query === "string" && record.query.trim()) return truncate(record.query);
+  if (tool === "web_fetch" && typeof record.url === "string") return truncate(record.url);
   if (tool === "remember" && typeof record.content === "string" && record.content.trim()) {
     return truncate(record.content);
   }

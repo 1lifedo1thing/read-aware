@@ -175,7 +175,18 @@
     "transactionPreviewExpired": "Die Vorschau ist abgelaufen. Erstellen Sie vor dem Absenden eine neue.",
     "transactionReceiptMissing": "Für diesen Aufrufer wurde kein Transaktionsbeleg gefunden.",
     "transactionQuota": "Das Transaktionslimit ist erreicht. Reduzieren Sie den Umfang oder ausstehende Vorschauen.",
-    "transactionNoChanges": "Der gewünschte Zustand besteht bereits."
+    "transactionNoChanges": "Der gewünschte Zustand besteht bereits.",
+    "searchNotConfigured": "Aktivieren Sie die Suche unter Einstellungen → KI und geben Sie einen Suchschlüssel ein.",
+    "searchAuth": "Der Suchschlüssel wurde abgelehnt. Prüfen Sie ihn unter Einstellungen → KI.",
+    "searchAccess": "Dieses Konto hat keinen Zugriff auf die Such-API. Prüfen Sie Ihr Anbieterkonto.",
+    "searchRateLimited": "Das Suchlimit wurde erreicht. Versuchen Sie es später erneut.",
+    "searchNetwork": "Der Suchanbieter ist nicht erreichbar. Prüfen Sie die Verbindung.",
+    "searchTimeout": "Zeitüberschreitung beim Abrufen. Versuchen Sie es erneut.",
+    "searchCancelled": "Der Abruf wurde abgebrochen.",
+    "searchInvalidInput": "Verwenden Sie eine gültige Suchanfrage oder öffentliche Web-URL.",
+    "searchProvider": "Der Suchanbieter hat eine unerwartete Antwort geliefert.",
+    "searchFetchFailed": "Die Seite konnte nicht gelesen werden. Sie erfordert möglicherweise eine Anmeldung oder blockiert automatisierte Zugriffe.",
+    "searchTooLarge": "Die Seite ist zu groß. Versuchen Sie eine kleinere Quelle."
   },
   "crashPrompt": {
     "title": "ReadAware hatte beim letzten Mal ein Problem",

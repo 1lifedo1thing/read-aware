@@ -75,6 +75,7 @@ const ROAMING_POLICIES: Record<string, RoamingPolicy> = {
   // a sealed secret (below) — stripped from what we publish here, and
   // preserved locally on overlay for legacy blobs that still carry it inline.
   "read-aware-ai-config": { deviceLocalFields: ["apiKey"], stripOnPublish: ["apiKey"] },
+  "read-aware-search-config": { deviceLocalFields: [], stripOnPublish: ["apiKey"] },
   // The Context page's active thread: cross-device continuation — pick up on
   // the phone in the conversation the desktop was in.
   "read-aware-active-global-thread": { deviceLocalFields: [] },

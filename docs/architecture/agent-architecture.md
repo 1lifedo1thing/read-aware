@@ -36,8 +36,32 @@ ReadAware 使用一个核心阅读 Agent，配合确定性的检索、存储与�
 检索以本地 SQLite、全文索引和结构化范围为基础。Agent 可以继续查目录、搜索正文、
 读取章节；默认架构不引入 embedding 或向量数据库。
 
+公开网络资料通过独立的 BYOK Search / Fetch 能力获取。在「设置 → AI → 联网搜索」
+选择服务商、填写 key 并启用后，书内与全局 Agent 都可使用 `web_search` / `web_fetch`。
+搜索配置与模型配置独立，切换服务商保留各自凭据；当前注册的首个服务商是 TinyFish。
+设置页的连接测试会实际调用 Search 和 Fetch，关闭搜索则在下一次工具装配和调用检查时生效。
+
+宿主通过 `RuntimeDeps.web` 提供查询和正文读取，凭据使用既有加密 secret store 的
+`ai-api-key.search.<provider>` 槽位，沿用其加密备份与同步规则；普通配置不包含 key。
+模型只接收有界的来源、摘要或正文，不接收服务商凭据。联网只发送查询词及公开网址，
+本地书架检索仍走本地端口。网页资料按不可信数据处理，不能改变设置、泄露私密上下文，
+也不能代替本书版本的原文或绕过剧透边界；回答使用来源链接。
+
+TinyFish 适配器仅调用 [Search API](https://docs.tinyfish.ai/search-api/reference) 与
+[Fetch API](https://docs.tinyfish.ai/fetch-api/reference)，不自动升级到浏览器或 Agent 服务。
+Fetch 每次读取一个公开域名网址，默认接受一小时内缓存；`fresh` 请求实时抓取，
+正文最多返回 12,000 字符并提供 `nextOffset`（续读会重新查询服务商，并非固定快照）。
+每次请求最多 60 秒、响应最多 4 MB。域名筛选在本地复核，域外结果不会作为匹配来源返回。
+空搜索、HTTP 错误和单 URL 抓取失败分别处理，不能把失败解释为「未找到」。
+
+入口：[Provider 注册表](../../packages/agent/src/web/providers.ts)、
+[工具](../../packages/agent/src/tools/web-tools.ts)、
+[桌面端口](../../apps/web/src/features/ai/agent/ports/web-port.ts)、
+[设置面板](../../apps/web/src/features/settings/components/SearchConfigPanel.tsx)。
+
 主聊天使用 `smart` 模型角色，提炼、摘要等后台流程使用 `fast` 角色；实际模型和
-账号由配置解析。推理通过宿主提供的网络传输访问远端服务，数据与检索留在本机。
+账号由配置解析。推理通过宿主提供的网络传输访问远端服务；书籍数据与书内检索留在本机，
+可选的公开网络检索按上述 Search / Fetch 配置执行。
 取消、权限收紧、模型失败和后台排空由既有运行时处理，不能把请求受理当成保存成功。
 
 画像和实体整理见 [画像与身份](./identity-and-profile.md)，上下文输出见

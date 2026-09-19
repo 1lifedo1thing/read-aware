@@ -698,5 +698,18 @@
       "addNote": "Ajouter une note",
       "askAI": "Demander à l IA"
     }
+  },
+  "search": {
+    "title": "Recherche web",
+    "enabled": "Autoriser la recherche web",
+    "description": "L’agent peut rechercher des sources publiques et lire des pages web. Les requêtes et URL sont envoyées au fournisseur choisi avec votre propre clé.",
+    "provider": "Fournisseur de recherche",
+    "apiKey": "Clé API de recherche",
+    "keyPlaceholder": "Saisissez votre clé API de recherche",
+    "keyHint": "Enregistrée séparément de la clé du modèle.",
+    "getKey": "Obtenir une clé API",
+    "test": "Tester Search et Fetch",
+    "testing": "Test en cours…",
+    "testSuccess": "Search et Fetch se sont connectés."
   }
 }

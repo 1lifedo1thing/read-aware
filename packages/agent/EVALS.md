@@ -106,6 +106,13 @@ deltas print next to per-scenario regressions.
 - `tools` (S17): shelf presentation, humane reading stats, trajectory economy
   (batched search variants, targeted chapter reads), no-false-success on
   missing books, presentation restraint, and plugin tool scope exposure.
+- `search` (S18): BYOK web retrieval with isolated provider fixtures and real
+  AgentThread/model calls: search → original page → citation, direct live URL
+  fetch, stable explanations without browsing, empty results, provider errors,
+  disabled search, malicious page instructions, and private-query minimization.
+  Run `bun run eval:agent search --repetitions 1 --gate`; inspect answers as well
+  as trace checks. This suite does not test live TinyFish or native transport;
+  use the desktop AI settings connection test and a real chat for that boundary.
 - `crossbook` (S03): global-thread behaviors over a shelf of four real books —
   "which book said this" attribution, cross-book synthesis (deliberately also
   the watchpost for the known gap that the global thread arms no host spoiler

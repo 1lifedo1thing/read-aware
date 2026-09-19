@@ -781,5 +781,18 @@
       "addNote": "添加笔记",
       "askAI": "问 AI"
     }
+  },
+  "search": {
+    "title": "联网搜索",
+    "enabled": "允许联网搜索",
+    "description": "Agent 可按需搜索公开资料、读取网页。查询词和网址会使用你自己的 key 发送给所选服务商。",
+    "provider": "搜索服务商",
+    "apiKey": "搜索 API Key",
+    "keyPlaceholder": "输入搜索服务商的 API Key",
+    "keyHint": "与模型 API Key 分开保存。",
+    "getKey": "获取 API Key",
+    "test": "测试 Search 和 Fetch",
+    "testing": "正在测试…",
+    "testSuccess": "Search 和 Fetch 均连接成功。"
   }
 }
