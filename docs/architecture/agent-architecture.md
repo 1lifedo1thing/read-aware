@@ -38,8 +38,10 @@ ReadAware 使用一个核心阅读 Agent，配合确定性的检索、存储与�
 
 公开网络资料通过独立的 BYOK Search / Fetch 能力获取。在「设置 → AI → 联网搜索」
 选择服务商、填写 key 并启用后，书内与全局 Agent 都可使用 `web_search` / `web_fetch`。
-搜索配置与模型配置独立，切换服务商保留各自凭据；当前注册的首个服务商是 TinyFish。
-设置页的连接测试会实际调用 Search 和 Fetch，关闭搜索则在下一次工具装配和调用检查时生效。
+搜索配置与模型配置独立，切换服务商保留各自凭据；可选择 TinyFish、Exa、Tavily、SerpAPI（Google）或 Brave。
+Exa、Tavily、TinyFish 可同时搜索和读取原文；SerpAPI、Brave 的网页读取单独选择这三家之一并复用其已保存的 key。
+搜索和读取能力分别检查凭据：只配置搜索时不会提供 `web_fetch`。连接测试会测试搜索和已配置的读取服务，
+缺少读取 key 时只报告搜索已连接；关闭搜索则在下一次工具装配和调用检查时生效。
 
 宿主通过 `RuntimeDeps.web` 提供查询和正文读取，凭据使用既有加密 secret store 的
 `ai-api-key.search.<provider>` 槽位，沿用其加密备份与同步规则；普通配置不包含 key。
@@ -47,12 +49,25 @@ ReadAware 使用一个核心阅读 Agent，配合确定性的检索、存储与�
 本地书架检索仍走本地端口。网页资料按不可信数据处理，不能改变设置、泄露私密上下文，
 也不能代替本书版本的原文或绕过剧透边界；回答使用来源链接。
 
-TinyFish 适配器仅调用 [Search API](https://docs.tinyfish.ai/search-api/reference) 与
-[Fetch API](https://docs.tinyfish.ai/fetch-api/reference)，不自动升级到浏览器或 Agent 服务。
-Fetch 每次读取一个公开域名网址，默认接受一小时内缓存；`fresh` 请求实时抓取，
+各适配器使用官方 HTTP API，不自动升级到浏览器、Agent 或付费深度研究服务：
+
+| Provider | Search | Fetch 与特有约束 |
+| --- | --- | --- |
+| [TinyFish](https://docs.tinyfish.ai/search-api/reference) | Search API，时间、语言、域名筛选 | [Fetch API](https://docs.tinyfish.ai/fetch-api/reference)，`fresh` 设置 `ttl: 0` |
+| [Exa](https://exa.ai/docs/reference/search) | `auto`，返回 highlights；无显式语言筛选，会返回限制说明 | [Contents](https://exa.ai/docs/reference/get-contents)，`fresh` 设置 `maxAgeHours: 0` |
+| [Tavily](https://docs.tavily.com/documentation/api-reference/endpoint/search) | `basic`，禁用自动升档和生成式 answer，支持日期、语言、域名 | [Extract](https://docs.tavily.com/documentation/api-reference/endpoint/extract)，检查 HTTP 200 中的 `failed_results`；无缓存绕过参数，`fresh` 返回限制说明 |
+| [SerpAPI](https://serpapi.com/search-api) | Google 自然搜索结果，忽略广告与 answer box；检查 `search_metadata.status` | 使用单独配置的读取服务；凭据在其要求的查询参数中传送，不回显请求 URL 或上游错误正文 |
+| [Brave](https://api-dashboard.search.brave.com/api-reference/web/search/get) | Web Search，extra snippets，日期区间、site 限制；中文映射为 `zh-hans` / `zh-hant` | 使用单独配置的读取服务 |
+
+Fetch 每次读取一个公开域名网址，TinyFish / Exa 默认接受一小时内缓存。
 正文最多返回 12,000 字符并提供 `nextOffset`（续读会重新查询服务商，并非固定快照）。
 每次请求最多 60 秒、响应最多 4 MB。域名筛选在本地复核，域外结果不会作为匹配来源返回。
 空搜索、HTTP 错误和单 URL 抓取失败分别处理，不能把失败解释为「未找到」。
+
+`search` eval 套件包含 provider 专属场景：真实 AgentThread 和模型通过实际适配器消费固定 HTTP 响应，
+覆盖高亮/摘要与原文差异、广告过滤、网页指令隔离、Tavily 部分失败与新鲜度限制、SerpAPI 限流、
+以及 Brave 只配置搜索时的诚实性。它不消耗真实搜索额度，也不证明线上服务可用或调用延迟；
+真实请求与耗时须在桌面宿主另行观测。
 
 入口：[Provider 注册表](../../packages/agent/src/web/providers.ts)、
 [工具](../../packages/agent/src/tools/web-tools.ts)、

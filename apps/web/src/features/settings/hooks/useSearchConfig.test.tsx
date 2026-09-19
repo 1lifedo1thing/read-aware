@@ -50,6 +50,25 @@ if (process.env.SEARCH_SETTINGS_TEST === "1") {
       expect(signal?.aborted).toBe(true);
       await act(async () => { gate.resolve({ provider: "fixture", query: "old", sources: [], retrievedAt: "2026-09-19" }); await pending; });
       expect(state.result).toBeNull(); expect(state.testing).toBe(false);
+      const brave = spyOn(WEB_PROVIDERS.brave, "create").mockReturnValue({ search: async input => ({ provider: "brave", query: input.query, sources: [], retrievedAt: "now" }) });
+      try {
+        await act(async () => { state.changeProvider("brave"); });
+        expect(state.separateFetch).toBe(true); expect(state.config.apiKey).toBe("");
+        expect(state.fetchProvider).toBe("tinyfish"); expect(state.fetchKey).toBe("new-key");
+        await act(async () => { state.change({ apiKey: "brave-key" }); });
+        await act(async () => { state.changeFetchProvider("exa"); });
+        expect(state.fetchKey).toBe("");
+        await act(async () => { state.test(); await Bun.sleep(0); });
+        expect(state.result?.success).toBe(true); expect(state.result?.message).toContain("Search connected");
+        await act(async () => { state.change({ fetchApiKey: "exa-key" }); });
+        await act(async () => { state.changeProvider("exa"); });
+        expect(state.config.apiKey).toBe("exa-key"); expect(state.separateFetch).toBe(false);
+        await act(async () => { state.change({ apiKey: "exa-edited" }); });
+        await act(async () => { state.changeProvider("brave"); });
+        expect(state.config.apiKey).toBe("brave-key"); expect(state.fetchKey).toBe("exa-edited");
+        await act(async () => { state.changeProvider("tinyfish"); });
+        expect(state.config.apiKey).toBe("new-key");
+      } finally { brave.mockRestore(); }
       await act(async () => { root.unmount(); });
       expect(getSearchConfig().apiKey).toBe("new-key");
     } finally { factory.mockRestore(); dom.window.close(); }

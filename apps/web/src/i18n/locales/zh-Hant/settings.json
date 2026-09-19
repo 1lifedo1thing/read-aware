@@ -686,6 +686,10 @@
     }
   },
   "search": {
+    "fetchProvider": "網頁讀取服務商",
+    "fetchHint": "此搜尋服務不提供正文讀取。請選擇讀取原文的服務商，會沿用該服務商已儲存的金鑰。",
+    "fetchApiKey": "網頁讀取 API Key",
+    "testSearchSuccess": "搜尋連線成功。新增網頁讀取金鑰後即可讀取原文。",
     "title": "聯網搜尋",
     "enabled": "允許聯網搜尋",
     "description": "Agent 可按需搜尋公開資料、讀取網頁。查詢詞和網址會使用你自己的 key 傳送給所選服務商。",
@@ -694,7 +698,7 @@
     "keyPlaceholder": "輸入搜尋服務商的 API Key",
     "keyHint": "與模型 API Key 分開儲存。",
     "getKey": "取得 API Key",
-    "test": "測試 Search 和 Fetch",
+    "test": "測試連線",
     "testing": "正在測試…",
     "testSuccess": "Search 和 Fetch 均連線成功。"
   }

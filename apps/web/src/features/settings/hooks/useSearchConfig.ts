@@ -7,7 +7,7 @@ import { flushLocalKV } from "../../../platform/local-store";
 import { flushSecretWrites } from "../../../platform/secret-store";
 import { appHttpFetch } from "../../../platform/http-client";
 import { createLogger } from "../../../platform/logger";
-import { getSearchApiKey, getSearchConfig, saveSearchConfig, type SearchConfig } from "../../ai/lib/search-config";
+import { fetchApiKey, fetchProviderId, getSearchApiKey, getSearchConfig, saveSearchConfig, type SearchConfig } from "../../ai/lib/search-config";
 
 const log = createLogger("search-settings");
 export function useSearchConfig() {
@@ -22,6 +22,7 @@ export function useSearchConfig() {
   const [readError, setReadError] = useState(initial.readError);
   const [revision, setRevision] = useState(0);
   const [showKey, setShowKey] = useState(false);
+  const [showFetchKey, setShowFetchKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const active = useRef<AbortController | null>(null);
@@ -35,8 +36,14 @@ export function useSearchConfig() {
   const changeProvider = (value: string) => {
     if (!isWebProviderId(value)) return;
     flush();
-    setShowKey(false);
-    change({ provider: value, apiKey: getSearchApiKey(value) });
+    setShowKey(false); setShowFetchKey(false);
+    const fetchProvider = config.fetchProvider ?? "tinyfish";
+    change({ provider: value, apiKey: getSearchApiKey(value), fetchProvider, fetchApiKey: getSearchApiKey(fetchProvider) });
+  };
+  const changeFetchProvider = (value: string) => {
+    if (!isWebProviderId(value) || !WEB_PROVIDERS[value].supportsFetch) return;
+    flush(); setShowFetchKey(false);
+    change({ fetchProvider: value, fetchApiKey: getSearchApiKey(value) });
   };
   const test = async () => {
     if (active.current || !config.apiKey.trim()) return;
@@ -49,8 +56,13 @@ export function useSearchConfig() {
       const client = WEB_PROVIDERS[config.provider].create(config.apiKey, appHttpFetch);
       await client.search({ query: "Example Domain", domains: ["example.com"], limit: 1 }, controller.signal);
       controller.signal.throwIfAborted();
-      await client.fetch({ url: "https://example.com", maxChars: 500, fresh: true }, controller.signal);
-      if (active.current === controller) setResult({ success: true, message: t("search.testSuccess") });
+      const key = fetchApiKey(config);
+      if (key) {
+        const reader = WEB_PROVIDERS[fetchProviderId(config)].create(key, appHttpFetch);
+        if (!reader.fetch) throw new Error("Page reading provider lacks fetch");
+        await reader.fetch({ url: "https://example.com", maxChars: 500, fresh: true }, controller.signal);
+      }
+      if (active.current === controller) setResult({ success: true, message: t(key ? "search.testSuccess" : "search.testSearchSuccess") });
     } catch (error) {
       if (!controller.signal.aborted) {
         log.error("Search connection test failed", error);
@@ -64,5 +76,7 @@ export function useSearchConfig() {
       if (active.current === controller) { active.current = null; setTesting(false); }
     }
   };
-  return { config, change, changeProvider, flush, showKey, setShowKey, testing, result, readError, test };
+  return { config, change, changeProvider, changeFetchProvider, flush, showKey, setShowKey, showFetchKey, setShowFetchKey,
+    separateFetch: !WEB_PROVIDERS[config.provider].supportsFetch, fetchProvider: fetchProviderId(config), fetchKey: fetchApiKey(config),
+    testing, result, readError, test };
 }

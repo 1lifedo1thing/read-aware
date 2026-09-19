@@ -781,6 +781,10 @@
     }
   },
   "search": {
+    "fetchProvider": "Page reading provider",
+    "fetchHint": "This search provider does not read pages. Choose a provider to let the agent read original sources; its saved key is reused.",
+    "fetchApiKey": "Page reading API key",
+    "testSearchSuccess": "Search connected. Add a page reading key to read original sources.",
     "title": "Web search",
     "enabled": "Allow web search",
     "description": "The agent can search public sources and read web pages when needed. Queries and URLs are sent to the selected provider using your own key.",
@@ -789,7 +793,7 @@
     "keyPlaceholder": "Enter your search provider key",
     "keyHint": "Saved separately from your model API key.",
     "getKey": "Get an API key",
-    "test": "Test Search and Fetch",
+    "test": "Test connection",
     "testing": "Testing…",
     "testSuccess": "Search and Fetch both connected successfully."
   },

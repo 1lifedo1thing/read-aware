@@ -777,6 +777,10 @@
     }
   },
   "search": {
+    "fetchProvider": "网页读取服务商",
+    "fetchHint": "此搜索服务不提供正文读取。请选择读取原文的服务商，会复用该服务商已保存的密钥。",
+    "fetchApiKey": "网页读取 API Key",
+    "testSearchSuccess": "搜索连接成功。添加网页读取密钥后即可读取原文。",
     "title": "联网搜索",
     "enabled": "允许联网搜索",
     "description": "Agent 可按需搜索公开资料、读取网页。查询词和网址会使用你自己的 key 发送给所选服务商。",
@@ -785,7 +789,7 @@
     "keyPlaceholder": "输入搜索服务商的 API Key",
     "keyHint": "与模型 API Key 分开保存。",
     "getKey": "获取 API Key",
-    "test": "测试 Search 和 Fetch",
+    "test": "测试连接",
     "testing": "正在测试…",
     "testSuccess": "Search 和 Fetch 均连接成功。"
   },
