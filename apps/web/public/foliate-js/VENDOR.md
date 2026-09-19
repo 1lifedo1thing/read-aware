@@ -271,6 +271,20 @@ explicit/contextual `any`, unsafe double assertions, and suppression comments.
   multi-source bookmarks, source leases, failure/retry, resize during loading,
   supersession and close. Paginated flow retains its source-page behavior.
   Re-apply after any upstream update.
+- **Suspend native scrolling across chapter transitions:** `suspendScroll()`
+  temporarily retires the scroll container's native momentum layer and consumes
+  wheel events until its idempotent release callback runs. Automatic relayout
+  waits until release so removing the scrollbar cannot restore a stale anchor
+  before the adjacent-chapter navigation. The host holds it
+  from the outgoing fade through chapter navigation, including failure paths.
+  This addresses a macOS WebKit failure observed with physical trackpad input:
+  the on-screen chapter remained blank while DOM ranges and native WebView
+  snapshots contained text; resetting the outer scroll layer restored it.
+  The scroll-chapter runtime suite covers nested holds, wheel input, and crossing
+  the edge before the debounced reading position has caught up; the
+  reader-pagination hook test covers release on success and failure. Physical
+  multi-chapter scrolling is needed in addition to scripted DOM scroll checks.
+  Re-apply after any upstream update.
 - `vendor/` remains the pinned upstream distribution artifacts (including the
   official legacy PDF.js replacement described above).
 

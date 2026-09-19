@@ -91,14 +91,21 @@ export function useReaderPagination({
   const crossTo = useCallback(
     async (navigate: () => Promise<unknown> | void) => {
       if (crossingSectionRef.current) return;
-      if (!viewRef.current) return;
+      const view = viewRef.current;
+      if (!view) return;
       crossingSectionRef.current = true;
+      const renderer = view.renderer;
+      // Stop the old chapter's native momentum before its scroll bounds change.
+      // Hiding the content with opacity alone leaves WebKit's scrolling layer live.
+      const resumeScroll = renderer && "suspendScroll" in renderer ? renderer.suspendScroll() : undefined;
       setIsCrossing(true); // fade the current section out
       try {
         await new Promise((resolve) => window.setTimeout(resolve, SECTION_CROSS_FADE_MS));
         await navigate();
       } catch {
         // At the first/last section, or a teardown race — fall through to reveal.
+      } finally {
+        resumeScroll?.();
       }
       // The destination has rendered while hidden; reveal it on the next frame,
       // then settle briefly so one push advances a single section.
@@ -111,7 +118,7 @@ export function useReaderPagination({
 
   /**
    * Cross into the adjacent section. Used in scroll mode for the lazy section
-   * load (the engine keeps only one section live, so memory stays bounded), and
+   * load (the engine keeps the current TOC chapter's source documents live), and
    * it smooths the otherwise abrupt chapter swap. An explicit `targetSection`
    * jumps straight to that spine index instead of relying on next/prev — which
    * only cross once the viewport is pinned at a section edge.

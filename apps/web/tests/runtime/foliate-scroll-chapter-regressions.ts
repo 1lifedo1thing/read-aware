@@ -113,6 +113,27 @@ export async function runScrollChapterRegressions(ViewClass: typeof View): Promi
         const restored = renderer.getContents().find(x => x.index === 2)!.doc.getElementById("quote")!;
         const restoredRange = restored.ownerDocument.createRange(); restoredRange.selectNodeContents(restored);
         assert(view.getCFI(2, restoredRange) === cfi, "Joining source views changed stored CFI paths");
+        const currentScroller = restored.ownerDocument.defaultView!.frameElement!.parentElement!.parentElement!;
+        // A continuous gesture reaches the edge before the debounced relocate
+        // has updated the old bookmark anchor. Pausing can resize the scrollbar.
+        currentScroller.scrollTop = currentScroller.scrollHeight;
+        const resume = renderer.suspendScroll(), resumeNested = renderer.suspendScroll();
+        renderer.render();
+        assert(renderer.viewSize - renderer.end <= 2, "Pausing at the chapter edge jumped back to a stale reading anchor");
+        assert(getComputedStyle(currentScroller).overflow === "hidden", "Chapter swap retained its native momentum layer");
+        const wheel = new WheelEvent("wheel", { deltaY: 180, bubbles: true, cancelable: true });
+        restored.ownerDocument.dispatchEvent(wheel);
+        assert(wheel.defaultPrevented, "Momentum wheel input reached a chapter while its bounds were changing");
+        await renderer.next();
+        resume(); resume();
+        assert(getComputedStyle(currentScroller).overflow === "hidden", "Nested navigation resumed scrolling too early");
+        resumeNested();
+        assert(getComputedStyle(currentScroller).overflow === "auto", "Native scrolling did not resume after the swap");
+        assert(view.lastLocation?.range?.toString().startsWith("Chapter B") === true, "Momentum crossing stayed in the previous chapter");
+        const resumedWheel = new WheelEvent("wheel", { deltaY: 180, bubbles: true, cancelable: true });
+        renderer.getContents()[0]!.doc.dispatchEvent(resumedWheel);
+        assert(!resumedWheel.defaultPrevented, "Completed navigation kept consuming scroll input");
+        await view.goTo(cfi);
         renderer.setStyles("body {font:24px/36px serif !important} p,h1 {margin:0 !important}");
         await delay();
         assert(renderer.getContents().every(({ doc }) => parseFloat(doc.defaultView!.getComputedStyle(doc.body).fontSize) === 24), "Typography changed only one source of the chapter");

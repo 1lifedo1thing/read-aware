@@ -77,16 +77,16 @@ test("real adapter wiring publishes layout-only relocations and rejects replaced
     expect(readingRuntime.snapshot().pagination).toEqual(f.read());
     const revision = readingRuntime.snapshot().revision;
     f.view.renderer.pages = 6; f.view.renderer.page = 1;
-    f.view.dispatchEvent(new Event("relocate"));
+    f.view.dispatchEvent(new CustomEvent("relocate", { detail: { context: {} } }));
     expect(readingRuntime.snapshot().revision).toBeGreaterThan(revision);
     expect(readingRuntime.snapshot().pagination?.screen).toEqual({ index: 0, count: 4 });
     expect(seen.at(-1)).toBe(4);
     const second = fixture(); second.view.renderer.pages = 5;
     replacement = attachReadingEngine(second.view as unknown as FoliateView, session, "pagination-book", "v1");
     const replaced = readingRuntime.snapshot();
-    f.view.dispatchEvent(new Event("relocate")); detach();
+    f.view.dispatchEvent(new CustomEvent("relocate", { detail: { context: {} } })); detach();
     expect(readingRuntime.snapshot()).toEqual(replaced);
     replacement(); expect(readingRuntime.snapshot().pagination).toBeNull();
-    second.view.dispatchEvent(new Event("relocate")); expect(readingRuntime.snapshot().pagination).toBeNull();
+    second.view.dispatchEvent(new CustomEvent("relocate", { detail: { context: {} } })); expect(readingRuntime.snapshot().pagination).toBeNull();
   } finally { off(); detach(); replacement?.(); readingRuntime.closed(); }
 });

@@ -89,6 +89,7 @@ export class Paginator extends HTMLElement {
     #anchorIndex = -1
     #touchDocs = new WeakSet<Document>()
     #selectionDocs = new WeakSet<Document>()
+    #scrollSuspensions = 0
     #chapterStarts: ReadonlyMap<number, readonly ResolvedNavigation[]> = new Map()
     #vertical = false
     #rtl = false
@@ -261,6 +262,10 @@ export class Paginator extends HTMLElement {
         }, 250))
 
         const opts = { passive: false }
+        const guardScroll = (event: WheelEvent) => {
+            if (this.#scrollSuspensions && event.cancelable) event.preventDefault()
+        }
+        this.addEventListener('wheel', guardScroll, opts)
         const input = () => { this.#inputRevision++; this.#focusRequest = undefined; this.#scrollFeedback = undefined; this.#justAnchored = false }
         for (const name of ['pointerdown', 'wheel', 'touchstart', 'keydown']) this.addEventListener(name, input, { capture: true, passive: true })
         this.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
@@ -270,6 +275,7 @@ export class Paginator extends HTMLElement {
             const { doc } = (event as CustomEvent<LoadDetail>).detail
             if (this.#touchDocs.has(doc)) return
             this.#touchDocs.add(doc)
+            doc.addEventListener('wheel', guardScroll, opts)
             for (const name of ['pointerdown', 'wheel', 'touchstart', 'keydown']) doc.addEventListener(name, input, { capture: true, passive: true })
             doc.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
             doc.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
@@ -433,6 +439,7 @@ export class Paginator extends HTMLElement {
             container: this,
             chapterStarts: this.#chapterStarts.get(index),
             onExpand: () => {
+                if (this.#scrollSuspensions) { this.#deferredLayout = true; return }
                 if (this.#building !== undefined || this.#layingOut || !this.#entries.some(entry => entry.view === view)) return
                 this.#updateChapterEdges()
                 const anchor = this.#entries.find(entry => entry.index === this.#anchorIndex)
@@ -540,7 +547,7 @@ export class Paginator extends HTMLElement {
     }
     render(context = this.#anchorContext) {
         if (!this.#view) return
-        if (this.#building !== undefined) {
+        if (this.#building !== undefined || this.#scrollSuspensions) {
             this.#deferredLayout = true
             this.#anchorContext = context
             return
@@ -563,6 +570,28 @@ export class Paginator extends HTMLElement {
         } else void this.#scrollToAnchor(this.#anchor, 'anchor', this.#anchorContext)
     }
     waitForCurrentRender() { return this.#pendingRender }
+    /** Pause native momentum before replacing a scroll chapter's bounds.
+     * WebKit can otherwise keep displaying the old scrolling layer even though
+     * DOM positions and snapshots already describe the new chapter. The host
+     * holds this through its cross-fade, so the layer is retired before layout.
+     */
+    suspendScroll(): () => void {
+        if (!this.scrolled) return () => {}
+        this.#scrollSuspensions++
+        this.#container.style.overflow = 'hidden'
+        let released = false
+        return () => {
+            if (released) return
+            released = true
+            if (--this.#scrollSuspensions === 0) {
+                this.#container.style.removeProperty('overflow')
+                if (this.#deferredLayout) {
+                    this.#deferredLayout = false
+                    this.render(this.#anchorContext)
+                }
+            }
+        }
+    }
     #finishBuild(navigation: number) {
         if (this.#building !== navigation) return
         this.#building = undefined
