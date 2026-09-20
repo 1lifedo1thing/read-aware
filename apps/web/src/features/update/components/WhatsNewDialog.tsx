@@ -8,7 +8,7 @@ import { useWhatsNewDialog } from "../hooks/useWhatsNewDialog";
 import { WhatsNewDialogView } from "./WhatsNewDialogView";
 
 export function WhatsNewDialog() {
-  const { version, codename, entry, loading, close } = useWhatsNewDialog();
+  const { version, codename, entry, loading, close, configureSearch } = useWhatsNewDialog();
   return (
     <WhatsNewDialogView
       version={version}
@@ -16,6 +16,7 @@ export function WhatsNewDialog() {
       entry={entry}
       loading={loading}
       close={close}
+      configureSearch={configureSearch}
     />
   );
 }

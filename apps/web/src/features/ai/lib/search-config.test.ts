@@ -14,8 +14,10 @@ beforeAll(() => hydrateSecrets());
 beforeEach(() => { storage.clear(); deleteSecret("ai-api-key.search.tinyfish"); });
 afterEach(() => { deleteSecret("ai-api-key.search.tinyfish"); deleteSecret("ai-api-key.search.fixture"); });
 
-test("search defaults off and persists its key separately from model credentials", () => {
-  expect(getSearchConfig()).toEqual({ provider: "tinyfish", enabled: false, apiKey: "" });
+test("search defaults on, requires its own key, and preserves an explicit opt-out", () => {
+  expect(getSearchConfig()).toEqual({ provider: "tinyfish", enabled: true, apiKey: "" });
+  expect(agentWeb.configured("search")).toBe(false);
+  expect(agentWeb.configured("fetch")).toBe(false);
   const previous = getSecret("ai-api-key.openai");
   try {
     setSecret("ai-api-key.openai", "model-secret");
@@ -26,6 +28,8 @@ test("search defaults off and persists its key separately from model credentials
     expect(getSecret("ai-api-key.openai")).toBe("model-secret");
     saveSearchConfig({ ...getSearchConfig(), enabled: false });
     expect(getSearchConfig().apiKey).toBe("search-secret");
+    expect(getSearchConfig().enabled).toBe(false);
+    expect(agentWeb.configured("search")).toBe(false);
     saveSearchConfig({ ...getSearchConfig(), apiKey: "" });
     expect(getSecret("ai-api-key.search.tinyfish")).toBe("");
   } finally { setSecret("ai-api-key.openai", previous); }
@@ -85,7 +89,9 @@ test("one provider owns both operations; retired fetch settings cannot cause a f
     }
     for (const provider of Object.keys(WEB_PROVIDERS)) expect(getSecret(`ai-api-key.search.${provider}`)).toBe(`secret-${provider}`);
     expect([...storage.values()].join()).not.toContain("secret-");
-    for (const factory of factories) expect(factory).toHaveBeenCalledTimes(2);
+    for (const [index, provider] of Object.values(WEB_PROVIDERS).entries()) {
+      expect(factories[index]).toHaveBeenCalledTimes(provider.supportsFetch ? 2 : 1);
+    }
   } finally {
     for (const factory of factories) factory.mockRestore();
     for (const provider of Object.keys(WEB_PROVIDERS)) deleteSecret(`ai-api-key.search.${provider}`);

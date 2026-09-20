@@ -71,6 +71,11 @@ type Story = StoryObj<typeof meta>;
 /** A curated release: summary, then New / Improved / Fixed in that order. */
 export const Curated: Story = {};
 
+/** Enabled by default, with no separate search API key configured yet. */
+export const SearchSetup: Story = {
+  args: { configureSearch: () => {} },
+};
+
 /**
  * The dialog opens immediately and fills in when the notes land, so the
  * skeletons echo the filled layout's shape and the swap-in doesn't reflow.

@@ -17,7 +17,7 @@ export const getSearchApiKey = (provider: WebProviderId) => getSecret(keySlot(pr
 
 export function getSearchConfig(onReadError?: (error: AppError) => void): SearchConfig {
   const raw = localKV.getItem(SEARCH_CONFIG_KEY);
-  let enabled = false; let provider: WebProviderId = "tinyfish";
+  let enabled = true; let provider: WebProviderId = "tinyfish";
   if (raw) {
     try {
       const data: unknown = JSON.parse(raw);

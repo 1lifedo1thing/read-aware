@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSetAtom } from "jotai";
 import { useLocale } from "../../../i18n";
+import { settingsOpenAtom, settingsSectionRequestAtom } from "../../../state/ui";
+import { getSearchConfig } from "../../ai/lib/search-config";
 import { getGeneralSettings } from "../../settings/lib/general-settings";
 import { fetchWhatsNewEntry, type WhatsNewEntry } from "../lib/changelog-feed";
 import { readCurrentAppVersion } from "../lib/software-update";
@@ -25,8 +28,11 @@ export function useWhatsNewDialog(): {
   entry: WhatsNewEntry | null;
   loading: boolean;
   close: () => void;
+  configureSearch: (() => void) | undefined;
 } {
   const locale = useLocale();
+  const setSettingsOpen = useSetAtom(settingsOpenAtom);
+  const setSettingsSection = useSetAtom(settingsSectionRequestAtom);
   const [state, setState] = useState<{
     version: string;
     entry: WhatsNewEntry | null;
@@ -63,6 +69,13 @@ export function useWhatsNewDialog(): {
     setState(null);
   }, []);
 
+  const configureSearch = useCallback(() => {
+    close();
+    setSettingsSection("ai");
+    setSettingsOpen(true);
+  }, [close, setSettingsOpen, setSettingsSection]);
+  const search = state ? getSearchConfig() : null;
+
   const codename = state
     ? (state.entry?.codename ?? versionCodename(state.version))
     : null;
@@ -72,5 +85,6 @@ export function useWhatsNewDialog(): {
     entry: state?.entry ?? null,
     loading: state?.loading ?? false,
     close,
+    configureSearch: search?.enabled && !search.apiKey.trim() ? configureSearch : undefined,
   };
 }

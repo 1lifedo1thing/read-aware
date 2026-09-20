@@ -50,6 +50,8 @@ type WhatsNewDialogViewProps = {
   /** The notes are still in flight; the body renders as skeletons. */
   loading: boolean;
   close: () => void;
+  /** Missing search credentials; opens the existing AI settings page. */
+  configureSearch?: () => void;
 };
 
 export function WhatsNewDialogView({
@@ -58,8 +60,9 @@ export function WhatsNewDialogView({
   entry,
   loading,
   close,
+  configureSearch,
 }: WhatsNewDialogViewProps) {
-  const { t } = useTranslation(["nav", "common"]);
+  const { t } = useTranslation(["nav", "common", "settings"]);
   const locale = useLocale();
   const openLink = useExternalLink();
   const openChangelog = useExternalLink(close);
@@ -108,56 +111,67 @@ export function WhatsNewDialogView({
           )}
         </div>
 
-        {loading ? (
-          // Skeletons echo the filled layout's shape — a summary paragraph,
-          // a group heading, list items — so the swap-in doesn't reflow.
-          <div className="min-h-0 space-y-5 overflow-y-auto px-6 py-5 sm:px-8">
-            <Skeleton lines={3} className="w-full" />
-            <div className="space-y-3">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton lines={4} className="w-full" />
+        <div className="min-h-0 overflow-y-auto">
+          {configureSearch && (
+            <section className="border-b border-border px-6 py-5 sm:px-8">
+              <h3 className="font-sans text-sm font-medium text-fg">{t("settings:search.title")}</h3>
+              <Body as="p" className="mt-1.5">{t("settings:search.keyHint")}</Body>
+              <Button className="mt-3" variant="outline" size="sm" onClick={configureSearch}>
+                {t("settings:search.keyPlaceholder")}
+              </Button>
+            </section>
+          )}
+          {loading ? (
+            // Skeletons echo the filled layout's shape — a summary paragraph,
+            // a group heading, list items — so the swap-in doesn't reflow.
+            <div className="space-y-5 px-6 py-5 sm:px-8">
+              <Skeleton lines={3} className="w-full" />
+              <div className="space-y-3">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton lines={4} className="w-full" />
+              </div>
             </div>
-          </div>
-        ) : entry ? (
-          <div className="min-h-0 space-y-5 overflow-y-auto px-6 py-5 sm:px-8">
-            <Body as="p">{entry.text.summary}</Body>
-            {GROUP_ORDER.map((kind) => {
-              const group = entry.text.groups.find((g) => g.kind === kind);
-              if (!group) return null;
-              return (
-                <div key={kind}>
-                  <h3 className="text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-fg-muted">
-                    {groupLabel[kind]}
-                  </h3>
-                  <ul
-                    className={`mt-3 list-disc pl-[1.15em] marker:text-fg-subtle ${
-                      kind === "new" ? "space-y-4" : "space-y-2.5"
-                    }`}
-                  >
-                    {group.items.map((item, index) => (
-                      <li
-                        key={index}
-                        className="pl-[0.15em] text-sm leading-relaxed text-fg-muted"
-                      >
-                        {item.title && (
-                          <strong className="font-medium text-fg">
-                            {item.title}
-                            {leadIn}
-                          </strong>
-                        )}
-                        {item.body}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <Body as="p" className="min-h-0 overflow-y-auto px-6 py-5 sm:px-8">
-            {t("update.whatsNewBody")}
-          </Body>
-        )}
+          ) : entry ? (
+            <div className="space-y-5 px-6 py-5 sm:px-8">
+              <Body as="p">{entry.text.summary}</Body>
+              {GROUP_ORDER.map((kind) => {
+                const group = entry.text.groups.find((g) => g.kind === kind);
+                if (!group) return null;
+                return (
+                  <div key={kind}>
+                    <h3 className="text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-fg-muted">
+                      {groupLabel[kind]}
+                    </h3>
+                    <ul
+                      className={`mt-3 list-disc pl-[1.15em] marker:text-fg-subtle ${
+                        kind === "new" ? "space-y-4" : "space-y-2.5"
+                      }`}
+                    >
+                      {group.items.map((item, index) => (
+                        <li
+                          key={index}
+                          className="pl-[0.15em] text-sm leading-relaxed text-fg-muted"
+                        >
+                          {item.title && (
+                            <strong className="font-medium text-fg">
+                              {item.title}
+                              {leadIn}
+                            </strong>
+                          )}
+                          {item.body}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Body as="p" className="px-6 py-5 sm:px-8">
+              {t("update.whatsNewBody")}
+            </Body>
+          )}
+        </div>
 
         <section className="shrink-0 border-t border-border px-6 pb-4 pt-5 sm:px-8">
           <h3 className="font-sans text-sm font-medium text-fg">
