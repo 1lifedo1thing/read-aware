@@ -61,3 +61,5 @@ export { WEB_PROVIDERS, isWebProviderId, type WebProviderId } from "./web/provid
 export type { WebImage, WebClient, WebPort, WebProvider, WebSearchInput, WebSearchResult, WebFetchInput, WebFetchResult } from "./web/types";
 
 export { publicWebUrl } from "./web/shared";
+
+export { findChapterByHref } from "./text/chapter-lookup";

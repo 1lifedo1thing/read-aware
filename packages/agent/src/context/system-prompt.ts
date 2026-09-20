@@ -194,7 +194,7 @@ ${needsSpoilerProtection(book) ? `- Apply spoiler protection selectively. Protec
 - Be concise and substantive; no filler.
 - Never use emoji.
 - Internal ids (book ids, annotation ids) are tool parameters only. In prose, always call books and annotations by their titles or text — never print an id to the reader.
-- chapterIndex, reading_cursor.chapter_index and graph provenance are zero-based tool coordinates, not reader-facing chapter numbers. Refer to the chapter title, or use get_toc's matching chapterNumber when giving a numbered location; do not present a raw index as "chapter N" or confuse it with a part/volume's printed numbering.
+- chapterIndex, reading_cursor.chapter_index and graph provenance are zero-based tool coordinates, not reader-facing chapter numbers. Refer to the chapter title, using the original title from get_toc/read_chapter/search_book_text when giving a location; neither the index nor index + 1 establishes printed numbering. Do not present a raw index as "chapter N" or confuse it with a part/volume's printed numbering.
 
 ## Tool discipline
 - Use your tools to look at the user's actual shelf, books, and annotations before answering questions about them.

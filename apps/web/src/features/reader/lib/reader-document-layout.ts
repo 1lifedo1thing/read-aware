@@ -5,6 +5,23 @@ const log = createLogger("reader-document-layout");
 const chapterBlocks = "h1, h2, h3, h4, h5, h6, p, section, article, div";
 type ChapterStarts = ReadonlyMap<number, readonly ResolvedNavigation[]>;
 
+/** Href-less groups contribute their name, not a boundary. Nested sections stay
+ * in their enclosing chapter, matching the reader's continuous scroll surface. */
+export function readerChapterEntries(items: readonly TOCItem[], parents: string[] = []): { href: string; title?: string; aliases: string[] }[] {
+  const hrefs = (items: readonly TOCItem[]): string[] => items.flatMap(item =>
+    [...(item.href ? [item.href] : []), ...hrefs(item.subitems ?? [])]);
+  return items.flatMap(item => {
+    const path = [...parents, ...(item.label?.trim() ? [item.label.trim()] : [])];
+    return item.href ? [{ href: item.href, title: path.join(" › ") || undefined, aliases: hrefs(item.subitems ?? []) }]
+      : readerChapterEntries(item.subitems ?? [], path);
+  });
+}
+
+export function readerChapterBlock(target: Node): Element | null {
+  const element = target.nodeType === 1 ? target as Element : target.parentElement;
+  return element?.closest(chapterBlocks) ?? element;
+}
+
 /** Navigation already resolves publisher anchors; use those same targets for
  * presentation, without splitting files or changing persisted CFI node paths. */
 export async function prepareReaderChapterStarts(book: Book): Promise<ChapterStarts> {
@@ -12,9 +29,7 @@ export async function prepareReaderChapterStarts(book: Book): Promise<ChapterSta
   if (book.rendition?.layout === "pre-paginated" || !book.resolveHref) return starts;
   // A nested subsection is not a new chapter. Href-less grouping labels do not
   // consume a level, so their chapter children still get boundaries.
-  const chapters = (items: readonly TOCItem[]): string[] => items.flatMap(item =>
-    item.href ? [item.href] : chapters(item.subitems ?? []));
-  const targets = await Promise.all([...new Set(chapters(book.toc ?? []))].map(async href => {
+  const targets = await Promise.all([...new Set(readerChapterEntries(book.toc ?? []).map(entry => entry.href))].map(async href => {
     try { return await book.resolveHref!(href); }
     catch (error) { log.warn("Could not resolve chapter boundary", { href, error }); return null; }
   }));
@@ -32,10 +47,9 @@ export function markReaderChapterStarts(doc: Document, index: number, starts: Ch
     const target = typeof anchor === "function" ? anchor(doc) : anchor;
     if (!target || typeof target === "number") continue;
     const node = "startContainer" in target ? target.startContainer : target;
-    const element = node.nodeType === 1 ? node as Element : node.parentElement;
     // Keep a standalone empty anchor with its following heading. Moving only
     // the heading to a new column leaves TOC navigation on the previous page.
-    const block = element?.closest(chapterBlocks) ?? element;
+    const block = readerChapterBlock(node);
     if (!block || block === doc.body || !doc.body.contains(block)) continue;
     const before = doc.createRange();
     before.selectNodeContents(doc.body);

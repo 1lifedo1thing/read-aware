@@ -8,7 +8,7 @@ import type { DomainActor } from "../../../../platform/domain-actor";
  */
 import { invoke } from "../../../../platform/ipc";
 import { BookDigestQueue, type BookMemoryPort } from "@read-aware/agent";
-import { AppError } from "@read-aware/core";
+import { AppError, CHAPTER_DIGEST_VERSION } from "@read-aware/core";
 import { getDigestContentVersion, inspectBookDigest, saveBookDigest } from "../../../../domain/book-digest";
 import { isTauri } from "../../../../platform/environment";
 import { decodeChapterDigestRows } from "./chapter-digest-row";
@@ -25,7 +25,7 @@ export function createBookMemoryPort(origin: DomainActor = "agent"): BookMemoryP
         bookId: String(bookId), contentVersion,
       });
       if (await getDigestContentVersion(bookId) !== contentVersion) throw new AppError("memory/conflict", "Digest source changed during read");
-      return decodeChapterDigestRows(rows, bookId).filter(digest => digest.contentVersion === contentVersion);
+      return decodeChapterDigestRows(rows, bookId).filter(digest => digest.contentVersion === contentVersion && digest.digestVersion >= CHAPTER_DIGEST_VERSION);
     },
     inspectDigest: inspectBookDigest,
     saveDigest: (bookId, digest, expectedRevision, signal) => saveBookDigest(bookId, digest, expectedRevision, signal, origin),

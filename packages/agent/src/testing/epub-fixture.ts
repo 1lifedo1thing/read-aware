@@ -1,7 +1,9 @@
 /**
  * Headless EPUB 抽取（fixture 专用）：解 zip → OPF spine 顺序 → 章节 HTML 转纯文本，
  * NCX 提供章节标题。给 repl/测试喂真书正文用 —— 不是产品的阅读引擎（那是
- * foliate-js，跑在 webview 里）；这里只求"文本对、顺序对、标题对"。
+ * foliate-js，跑在 webview 里）。这里保留已有评测和纪要的 spine 坐标；一文件
+ * 多章/一章多文件的章节边界验收必须使用宿主抽取结果或真实 Tauri 端口，不能把
+ * 这里的 chapterIndex 当成原书章号或用它证明产品章节归属正确。
  */
 import { readFileSync } from "node:fs";
 import { strFromU8, unzipSync } from "fflate";

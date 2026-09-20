@@ -268,7 +268,7 @@ test("deletion while a section or write is pending cannot resurrect a derived re
 test("legacy, wrong-source and structurally corrupt records are never trusted as terminal", async () => {
   const h = harness(); await h.repo.ensure("book"); const good = h.saved() as BookTextRecord;
   expect(parseBookTextRecord(good, "book", "sha256:a")).not.toBeNull();
-  for (const value of [null, [], { version: 4, complete: true, chapters: [] }, { ...good, contentVersion: "sha256:old" },
+  for (const value of [null, [], { ...good, version: 5 }, { version: 4, complete: true, chapters: [] }, { ...good, contentVersion: "sha256:old" },
     { ...good, required: [0, 0] }, { ...good, pieces: [...good.pieces, ...good.pieces] }, { ...good, failures: [{ sectionIndex: 0, code: "db/error" }] },
     { ...good, chapters: [{ text: 23 }] }, { ...good, pieces: [{ sectionIndex: 4, text: "x" }] },
     { ...good, finalized: undefined }, { ...good, finalized: false }, { ...good, pieces: [] }]) {

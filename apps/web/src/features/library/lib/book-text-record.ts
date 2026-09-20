@@ -1,12 +1,13 @@
 import type { BookTextSnapshot } from "@read-aware/core";
 
 export interface ExtractedChapter { title?: string; text: string; hrefs?: string[] }
-export type TextPiece = { sectionIndex: number; href?: string; text: string };
+export type TextBoundary = { offset: number; href: string; title?: string };
+export type TextPiece = { sectionIndex: number; href?: string; text: string; starts: TextBoundary[]; anchors: { offset: number; href: string }[] };
 export type TextFailure = { sectionIndex: number; code: string };
 
-/** v3/v4 cannot prove completeness or source identity; rebuild lazily, never upgrade their verdict. */
+/** v6 follows TOC anchor boundaries. Earlier records have incompatible chapter coordinates; rebuild lazily. */
 export type BookTextRecord = {
-  version: 5;
+  version: 6;
   bookId: string;
   contentVersion: string;
   extractedAt: string;
@@ -34,7 +35,7 @@ export function textComplete(record: BookTextRecord): boolean {
 
 export function snapshotFromText(record: BookTextRecord): BookTextSnapshot {
   const complete = textComplete(record);
-  const hasText = record.pieces.some(piece => piece.text.length > 0);
+  const hasText = record.pieces.some(piece => piece.text.trim().length > 0);
   return { bookId: record.bookId, contentVersion: record.contentVersion,
     status: complete ? "ready" : record.required.length === 0 || record.unsupported.length === record.required.length ? "unsupported" : "partial",
     text: hasText ? "available" : complete ? "textless" : "unknown",
@@ -48,7 +49,7 @@ const strings = (value: unknown): value is string[] => Array.isArray(value) && v
 
 /** A malformed checkpoint must not turn a missing/failed section into a successful read. */
 export function parseBookTextRecord(value: unknown, bookId: string, contentVersion: string): BookTextRecord | null {
-  if (!object(value) || value.version !== 5 || value.bookId !== bookId || value.contentVersion !== contentVersion
+  if (!object(value) || value.version !== 6 || value.bookId !== bookId || value.contentVersion !== contentVersion
     || typeof value.extractedAt !== "string" || typeof value.finalized !== "boolean" || !integer(value.sectionCount)
     || !Array.isArray(value.required) || !Array.isArray(value.pieces) || !Array.isArray(value.failures)
     || !Array.isArray(value.unsupported) || !Array.isArray(value.chapters)) return null;
@@ -62,7 +63,11 @@ export function parseBookTextRecord(value: unknown, bookId: string, contentVersi
     occupied.add(index); return true;
   };
   if (!value.pieces.every(piece => object(piece) && claim(piece.sectionIndex) && typeof piece.text === "string"
-    && (piece.href === undefined || typeof piece.href === "string"))) return null;
+    && (piece.href === undefined || typeof piece.href === "string")
+    && Array.isArray(piece.starts) && Array.isArray(piece.anchors)
+    && [...piece.starts, ...piece.anchors].every(point => object(point) && integer(point.offset)
+      && point.offset <= (piece.text as string).length && typeof point.href === "string"
+      && (point.title === undefined || typeof point.title === "string")))) return null;
   if (!value.failures.every(failure => object(failure) && claim(failure.sectionIndex) && typeof failure.code === "string" && failure.code.length > 0)) return null;
   if (!value.unsupported.every(claim)) return null;
   if (!value.chapters.every(chapter => object(chapter) && typeof chapter.text === "string"

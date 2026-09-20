@@ -207,7 +207,7 @@ describe("digestMissingChapters", () => {
       },
       complete: async (_model: unknown, context: { messages: Array<{ content: unknown }> }) => {
         const text = String(context.messages[0]?.content ?? "");
-        const match = text.match(/Chapter #(\d+)/);
+        const match = text.match(/chapterIndex \(not a printed chapter number\): (\d+)/);
         digested.push(Number(match?.[1]));
         return reply(`{"summary": "第${match?.[1]}章摘要", "characters": [], "relations": []}`);
       },
@@ -350,7 +350,7 @@ describe("digestMissingChapters", () => {
         await new Promise((resolve) => setTimeout(resolve, 5));
         inFlight -= 1;
         knownBlocks.push(String(context.systemPrompt ?? "").split("Characters already known")[1] ?? "");
-        const match = String(context.messages[0]?.content ?? "").match(/Chapter #(\d+)/);
+        const match = String(context.messages[0]?.content ?? "").match(/chapterIndex \(not a printed chapter number\): (\d+)/);
         return reply(
           `{"summary": "第${match?.[1]}章摘要", "characters": [{"name": "人物${match?.[1]}"}], "relations": []}`,
         );

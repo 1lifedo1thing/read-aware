@@ -10,7 +10,7 @@ export function digestRunProbe(deps: RuntimeDeps, bookId: string, href: string) 
   const run = async (mode: "fail-first" | "success" | "pause") => {
     let paused = false;
     const complete: DigestBookTickInput["complete"] = async (_model, context) => {
-      const chapter = Number(JSON.stringify(context.messages).match(/Chapter #(\d+)/)?.[1]);
+      const chapter = Number(JSON.stringify(context.messages).match(/chapterIndex \(not a printed chapter number\): (\d+)/)?.[1]);
       inputs.push({ chapter, hasFutureName: /Hidden|Secret future identity/.test(context.systemPrompt ?? "") });
       started = true;
       if (mode === "pause" && !paused) {

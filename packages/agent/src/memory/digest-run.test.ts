@@ -5,11 +5,11 @@ import { AppError } from "@read-aware/core";
 import { createInMemoryDeps } from "../testing/fixtures";
 import { digestMissingChapters } from "./digest-run";
 import { digestBookCatchUp, digestBookTick } from "./graph-upkeep";
-import { extractChapterDigest } from "./chapter-digest";
+import { extractChapterDigest, DIGEST_VERSION } from "./chapter-digest";
 
 const model = { id: "fixture" } as Model<Api>;
 const reply = () => fauxAssistantMessage('{"summary":"A chapter","characters":[],"relations":[]}');
-const fixture = () => createInMemoryDeps({ books: [{ id: "b", title: "Book", status: "finished", narrativity: "narrative" }],
+const fixture = () => createInMemoryDeps({ books: [{ id: "b", title: "Book", status: "finished", narrativity: "narrative", spoilerSensitive: true }],
   chapters: { b: Array.from({ length: 5 }, (_, index) => ({ title: `Chapter ${index}`, text: `Text ${index}`, hrefs: [`ch${index}`] })) } });
 function deferred() { let resolve!: () => void; const promise = new Promise<void>(r => { resolve = r; }); return { promise, resolve }; }
 
@@ -57,8 +57,8 @@ test("model termination/invalid payload and write failures stay pending without 
   deps.bookMemory.saveDigest = async (id, digest, revision, signal) => { if (digest.chapterIndex === 2) throw new AppError("db/locked", "PRIVATE"); await save(id, digest, revision, signal); };
   const report = await digestBookCatchUp({ deps, bookId: "b", model, concurrency: 3, complete: async (_model, context) => {
     const text = JSON.stringify(context.messages);
-    if (text.includes("Chapter #0")) return { ...reply(), stopReason: "length" };
-    if (text.includes("Chapter #1")) return fauxAssistantMessage("null");
+    if (text.includes("chapterIndex (not a printed chapter number): 0")) return { ...reply(), stopReason: "length" };
+    if (text.includes("chapterIndex (not a printed chapter number): 1")) return fauxAssistantMessage("null");
     return reply();
   } });
   expect(report).toMatchObject({ status: "partial", attempted: 5, digested: 2, remaining: 3,
@@ -68,7 +68,7 @@ test("model termination/invalid payload and write failures stay pending without 
 
 test("repaired early chapters never receive later stored names or aliases", async () => {
   const { deps } = fixture();
-  await deps.bookMemory.saveDigest("b", { chapterIndex: 4, summary: "Future", characters: [{ name: "FUTURE_SECRET", aliases: ["FUTURE_ALIAS"] }], relations: [], digestVersion: 2, flavor: "narrative" }, (await deps.bookMemory.inspectDigest("b", 4))!.revision);
+  await deps.bookMemory.saveDigest("b", { chapterIndex: 4, summary: "Future", characters: [{ name: "FUTURE_SECRET", aliases: ["FUTURE_ALIAS"] }], relations: [], digestVersion: DIGEST_VERSION, flavor: "narrative" }, (await deps.bookMemory.inspectDigest("b", 4))!.revision);
   const report = await digestMissingChapters({ ...deps, bookId: "b", beforeChapterIndex: 5, maxChapters: 1, model, complete: async (_model, context) => {
     expect(context.systemPrompt).not.toContain("FUTURE_SECRET"); expect(context.systemPrompt).not.toContain("FUTURE_ALIAS"); return reply();
   } });
@@ -131,7 +131,7 @@ test("two independently generated candidates cannot both replace the same chapte
   expect(results.flatMap(r => r.failures)).toEqual([{ chapterIndex: 0, errorCode: "memory/conflict" }]);
   const snapshot = (await deps.bookMemory.inspectDigest("b", 0))!;
   const other = (await deps.bookMemory.inspectDigest("b", 1))!;
-  const digest = { chapterIndex: 1, summary: "Other", characters: [], relations: [], digestVersion: 2 };
+  const digest = { chapterIndex: 1, summary: "Other", characters: [], relations: [], digestVersion: DIGEST_VERSION };
   await deps.bookMemory.saveDigest("b", digest, other.revision);
   expect((await deps.bookMemory.inspectDigest("b", 0))!.revision).toBe(snapshot.revision);
 });

@@ -147,7 +147,7 @@ test("late execution callbacks cannot alter a terminal retry plan or retained re
 });
 
 test("failed rebuild keeps old digests and retry targets only failed rebuild chapters", async () => {
-  const { deps } = createInMemoryDeps({ books: [{ id: "b", title: "Book", status: "finished", narrativity: "narrative" }],
+  const { deps } = createInMemoryDeps({ books: [{ id: "b", title: "Book", status: "finished", narrativity: "narrative", spoilerSensitive: true }],
     chapters: { b: [0, 1].map(index => ({ title: `C${index}`, text: `Text${index}`, hrefs: [String(index)] })) } });
   const model = { id: "fixture" } as DigestBookTickInput["model"];
   const reply = (summary: string) => fauxAssistantMessage(JSON.stringify({ summary, characters: [], relations: [] }));
@@ -167,7 +167,7 @@ test("failed rebuild keeps old digests and retry targets only failed rebuild cha
 });
 
 test("public boundary is resolved after queueing and rechecked before a generated chapter writes", async () => {
-  const { deps } = createInMemoryDeps({ books: [{ id: "b", title: "Book", status: "finished", narrativity: "narrative" }], chapters: { b: [{ title: "C", text: "Text", hrefs: ["0"] }] } });
+  const { deps } = createInMemoryDeps({ books: [{ id: "b", title: "Book", status: "finished", narrativity: "narrative", spoilerSensitive: true }], chapters: { b: [{ title: "C", text: "Text", hrefs: ["0"] }] } });
   const model = { id: "fixture" } as DigestBookTickInput["model"], gate = deferred(); let ceiling: number | undefined = 1, calls = 0;
   const busy = deps.bookMemory.runExclusive("b", () => gate.promise);
   const run = () => digestBookCatchUp({ deps, bookId: "b", model, resolveBoundary: async () => ceiling,
@@ -180,12 +180,12 @@ test("public boundary is resolved after queueing and rechecked before a generate
 });
 
 test("chapter attempts are bounded across concurrency, failures, empty text and renewed retries", async () => {
-  const { deps } = createInMemoryDeps({ books: [{ id: "b", title: "Book", status: "finished", narrativity: "narrative" }],
+  const { deps } = createInMemoryDeps({ books: [{ id: "b", title: "Book", status: "finished", narrativity: "narrative", spoilerSensitive: true }],
     chapters: { b: [0, 1, 2, 3].map(index => ({ title: `C${index}`, text: index === 0 ? " " : `Text${index}`, hrefs: [String(index)] })) } });
   const seen: number[] = []; let fail = true;
   const owner = new BookGraphTaskOwner(input => digestBookTick({ ...input, deps, model: { id: "fixture" } as DigestBookTickInput["model"], concurrency: 2,
     complete: async (_model, context) => {
-      const chapter = Number(String(context.messages[0]!.content).match(/Chapter #(\d+)/)![1]); seen.push(chapter);
+      const chapter = Number(String(context.messages[0]!.content).match(/chapterIndex \(not a printed chapter number\): (\d+)/)![1]); seen.push(chapter);
       if (fail && chapter === 1) throw new AppError("ai/provider", "failure");
       return fauxAssistantMessage('{"summary":"Saved","characters":[],"relations":[]}');
     },

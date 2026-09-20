@@ -7,8 +7,8 @@ import { normalizeBookContextSnapshot } from "@read-aware/core";
 async function host() {
   const source = normalizeBookContextSnapshot(fixture, fixture.bookId), calls: string[] = [];
   source.contentHash = "a".repeat(64);
-  const record = { version: 5, bookId: source.bookId, contentVersion: `sha256:${source.contentHash}`, extractedAt: "now", finalized: true,
-    sectionCount: 2, required: [0, 1], pieces: [{ sectionIndex: 0, text: "RAW BOOK TEXT" }, { sectionIndex: 1, text: "SECOND RAW" }], failures: [], unsupported: [],
+  const record = { version: 6, bookId: source.bookId, contentVersion: `sha256:${source.contentHash}`, extractedAt: "now", finalized: true,
+    sectionCount: 2, required: [0, 1], pieces: [{ sectionIndex: 0, starts: [], anchors: [], text: "RAW BOOK TEXT" }, { sectionIndex: 1, starts: [], anchors: [], text: "SECOND RAW" }], failures: [], unsupported: [],
     chapters: [{ text: "RAW BOOK TEXT", hrefs: ["c1.xhtml"] }, { text: "SECOND RAW", hrefs: ["c2.xhtml"] }] };
   let bytes: Uint8Array | null = null;
   const store = async (value: unknown) => {

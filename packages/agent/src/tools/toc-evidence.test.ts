@@ -13,5 +13,17 @@ test("TOC repair evidence contains catalog metadata without reading future prose
   state.spoilerFence = { throughChapterIndex: 2 };
   const tool = buildBookTextTools({ kind: "book", bookId: id }, deps, state).find(t => t.name === "get_toc")!;
   await tool.execute("toc", {});
-  expect(JSON.parse(state.evidenceTexts[0]!)).toEqual([{ chapterIndex: 43, chapterNumber: 44, title: "Volume II", chars: 900 }]);
+  expect(JSON.parse(state.evidenceTexts[0]!)).toEqual([{ chapterIndex: 43, title: "Volume II", chars: 900 }]);
+});
+
+test("read results carry the publisher chapter title, never an inferred number", async () => {
+  const id = "chapter-book" as Id;
+  const { deps } = createInMemoryDeps({ books: [{ id, title: "History" }], chapters: { [id]: [
+    { title: "前言", text: "引言。" }, { title: "第23章 南巡", text: "1992年南方谈话推动改革。" },
+  ] } });
+  const tools = buildBookTextTools({ kind: "book", bookId: id }, deps);
+  const read = await tools.find(t => t.name === "read_chapter")!.execute("read", { chapterIndex: 1 });
+  const payload = JSON.parse((read.content[0] as { text: string }).text);
+  expect(payload).toMatchObject({ chapterIndex: 1, chapterTitle: "第23章 南巡" });
+  expect(payload).not.toHaveProperty("chapterNumber");
 });

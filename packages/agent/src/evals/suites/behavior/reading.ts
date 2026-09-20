@@ -284,6 +284,25 @@ export const readingEvalSuite: EvalSuite<AgentEvalScenario> = {
         "Names The Quiet Harbor as the match and quotes or paraphrases the actual lighthouse passage, without attributing it to the other book",
       ],
     }),
+    ...[
+      { id: "printed-chapter-after-frontmatter", text: "请读第五章，告诉我车站后来为什么恢复运营，并标明原书章名。", rubric: "必须按标题选择第5章（内部 index 2），解释桥梁修复并通过验收；不得说成第2章、第3章，也不能混入第4章的停运原因或第6章的博物馆结局。" },
+      { id: "search-result-chapter-attribution", text: "书里哪一章写车站重新开放？查原文，给我章名和一句原文。", rubric: "检索到 internal index 2 后应归属原书第5章。引用必须来自第五章；无需为章号额外心算，也不能把索引写成第二章。" },
+      { id: "volume-local-chapter-number", text: "请读下卷的第一章，它说车站保存了什么？请标明卷和章。", rubric: "读下卷第一章（index 3），回答保存了旧时刻表；保留卷名，不能因数组位置说成第三章或第四章。" },
+    ].map(({ id, text, rubric }) => defineAgentEvalScenario({
+      id, description: "原书章名与内部索引不同，主 Agent 审阅来源归属和引用。",
+      tags: ["retrieval", "book"], scope: { kind: "book" as const, bookId: "eval-chapter-labels" },
+      seed: { books: [{ id: "eval-chapter-labels", title: "旧车站纪事（评测文本）", narrativity: "expository" as const, spoilerSensitive: false, status: "finished" as const }],
+        chapters: { "eval-chapter-labels": [
+          { title: "前言", hrefs: ["shared.html#preface"], text: "本书按目录划分章节，前言不占用正文的章号。" },
+          { title: "上卷 › 第4章 停运", hrefs: ["shared.html#four"], text: "暴雨冲坏了铁路桥，车站因此停止客运。" },
+          { title: "上卷 › 第5章 重新开放", hrefs: ["shared.html#five", "continuation.html"], text: "工程队修复了铁路桥。经过独立验收，车站在十月重新开放。两部分记载共同构成本章。" },
+          { title: "下卷 › 第一章 留存", hrefs: ["continuation.html#one"], text: "管理员保存了一份旧时刻表。这是下卷的第一章，与前一卷分别编号。" },
+          { title: "下卷 › 第6章 博物馆", hrefs: ["continuation.html#six"], text: "多年后，旧站房改建为博物馆。" },
+        ] } },
+      turns: [{ text }],
+      expectation: { tools: { requiredAny: ["read_chapter", "search_book_text"], noErrors: true } },
+      rubric: [rubric, "程序只检查执行基本路径；最终章号、正文范围与引用正确性由主 Agent 对照完整日志判断。"],
+    })),
     ...[false, true].map(noCursor => defineAgentEvalScenario({
       id: noCursor ? "factual-history-without-position" : "factual-history-can-look-ahead",
       description: "叙事历史保留人物纪要，但不把后来的真实事件当作剧透。",

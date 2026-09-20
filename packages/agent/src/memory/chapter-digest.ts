@@ -15,7 +15,7 @@
  * 确定性重算，入事件流才可跨设备同步、可重放）。
  */
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
-import { AppError } from "@read-aware/core";
+import { AppError, CHAPTER_DIGEST_VERSION } from "@read-aware/core";
 import type { CompleteFn } from "../models/complete";
 import type {
   ChapterDigest,
@@ -24,8 +24,8 @@ import type {
   DigestRelation,
 } from "../ports";
 
-/** 提炼管线版本：升版意味着提示词/口径换代，旧摘要整体重算。v2 加关系边。 */
-export const DIGEST_VERSION = 2;
+/** v3 invalidates digests attached to the former spine-based chapter coordinates. */
+export const DIGEST_VERSION = CHAPTER_DIGEST_VERSION;
 
 /** 交给 fast 模型的单章正文上限（超长章节截断——纪要不需要每个字）。 */
 const CHAPTER_TEXT_BUDGET = 20_000;
@@ -199,8 +199,8 @@ export async function extractChapterDigest(
     messages: [
       {
         role: "user",
-        content: `Chapter #${input.chapterIndex}${
-          input.chapterTitle ? ` "${input.chapterTitle}"` : ""
+        content: `Internal chapterIndex (not a printed chapter number): ${input.chapterIndex}${
+          input.chapterTitle ? `\nOriginal chapter title: "${input.chapterTitle}"` : ""
         }:\n\n${text.slice(0, CHAPTER_TEXT_BUDGET)}`,
         timestamp: Date.now(),
       },

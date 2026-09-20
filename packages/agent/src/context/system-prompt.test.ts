@@ -45,7 +45,7 @@ describe("book system prompt", () => {
       'Reading position: about 40% through the book; currently at zero-based chapterIndex 4 ("The Turn")',
     );
     expect(known).not.toContain('chapter #4');
-    expect(known).toContain("get_toc's matching chapterNumber");
+    expect(known).toContain("original title from get_toc/read_chapter/search_book_text");
 
     const progressOnly = buildSystemPrompt(
       { kind: "book", bookId: "book-1" as Id },

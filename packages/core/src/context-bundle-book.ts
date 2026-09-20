@@ -1,6 +1,6 @@
 import { AppError } from "./errors";
 import { createContextBundle, type ContextBundle, type ContextBundleItem, type ContextBundleOmission } from "./context-bundle";
-import type { DigestFlavor } from "./book-memory";
+import { CHAPTER_DIGEST_VERSION, type DigestFlavor } from "./book-memory";
 
 export type BookContextSnapshot = {
   bookId: string; readingStatus: string; flavor: DigestFlavor | null; href: string | null; format: string;
@@ -118,9 +118,9 @@ export async function bookMemoryContextBundle(input: BookContextSnapshot, inputB
     else await add("annotation", row.id, row.kind, JSON.stringify({ quote: row.quote, note: row.note }), row.href);
   }
   for (const row of source.digests.sort((a, b) => a.index - b.index)) {
-    if ((row.flavor ?? "narrative") !== (source.flavor ?? "narrative")) { omit("chapter_digest", "unavailable"); continue; }
+    if (row.version < CHAPTER_DIGEST_VERSION || (row.flavor ?? "narrative") !== (source.flavor ?? "narrative")) { omit("chapter_digest", "unavailable"); continue; }
     if (boundary.kind === "unknown" || before !== null && row.index >= before) { omit("chapter_digest", "spoiler"); continue; }
-    await add("chapter_digest", String(row.index), `Chapter ${row.index + 1}`, JSON.stringify({ summary: row.summary,
+    await add("chapter_digest", String(row.index), "Chapter digest", JSON.stringify({ summary: row.summary,
       entities: digestGraph(row.characters, false), relations: digestGraph(row.relations, true) }), [row.href, row.version, row.flavor ?? "narrative"]);
   }
   const sourceRevision = `bctx1:${await bookContextHash([source.bookId, source.flavor ?? "narrative", source.contentHash, boundary.kind, before,

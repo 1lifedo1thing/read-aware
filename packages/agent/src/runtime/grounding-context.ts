@@ -121,7 +121,7 @@ export function renderGroundingContext(input: {
   const renderedHits: string[] = [];
   for (const hit of hits.slice(0, MAX_HITS)) {
     const title = hit.chapterTitle ? ` "${hit.chapterTitle}"` : "";
-    const entry = `[chapter #${hit.chapterIndex}${title}] ${hit.snippet}`;
+    const entry = `[chapterIndex=${hit.chapterIndex}${title}] ${hit.snippet}`;
     if (entry.length > budget) break;
     budget -= entry.length;
     renderedHits.push(entry);

@@ -1,3 +1,6 @@
+/** v3 digests use TOC-delimited chapters rather than EPUB spine file indices. */
+export const CHAPTER_DIGEST_VERSION = 3;
+
 /** Read-only chapter memory contracts. These are distilled evidence, never verbatim source text. */
 export type DigestFlavor = "narrative" | "expository";
 /** Local optimistic condition for one chapter and its book classification, plus source identity. */

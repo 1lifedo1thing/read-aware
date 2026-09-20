@@ -1,9 +1,17 @@
 import { expect, test } from "bun:test";
+
 import fixture from "./context-bundle-book.fixture.json";
 import { bookMemoryContextBundle, normalizeBookContextSnapshot } from "./context-bundle-book";
 
 const source = () => normalizeBookContextSnapshot(fixture, fixture.bookId);
 const chapters = [["c1.xhtml"], ["c2.xhtml"]];
+test("old spine-indexed digests are unavailable even when their source edition still matches", async () => {
+  const snapshot = source(); snapshot.readingStatus = "finished";
+  snapshot.digests[0]!.version = 2;
+  const bundle = await bookMemoryContextBundle(snapshot, { kind: "all" }, null);
+  expect(bundle.content.items.some(item => item.kind === "chapter_digest")).toBe(false);
+  expect(bundle.content.omissions).toContainEqual({ kind: "chapter_digest", reason: "unavailable", count: 1 });
+});
 test("nonfiction with narrative digests can disclose whole-book context while fiction remains bounded", async () => {
   const snapshot = { ...source(), spoilerSensitive: false };
   const bundle = await bookMemoryContextBundle(snapshot, { kind: "all" }, null);

@@ -39,7 +39,7 @@ describe("chat-driven graph catch-up", () => {
         return fauxAssistantMessage('{"narrativity": "expository", "spoilerSensitive": false, "confidence": 0.9}');
       }
       if (system.includes("Digest ONE chapter")) {
-        const match = String(context.messages[0]?.content ?? "").match(/Chapter #(\d+)/);
+        const match = String(context.messages[0]?.content ?? "").match(/chapterIndex \(not a printed chapter number\): (\d+)/);
         log.push(`digest:${match?.[1]}`);
         return fauxAssistantMessage(
           '{"summary": "本章要点。", "concepts": [{"name": "概念"}], "relations": []}',

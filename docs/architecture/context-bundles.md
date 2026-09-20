@@ -218,7 +218,7 @@ The implemented book recipe reads one durable, book-scoped SQLite snapshot: acti
 memories, annotations and chapter digests, together with classification, saved
 position and source/derived-text blob hashes. It never queries user/global memory
 or conversation messages. The host verifies derived-text bytes against the
-captured registry hash and uses the existing v5 parser only for chapter hrefs;
+captured registry hash and uses the existing v6 parser only for chapter hrefs;
 it does not extract text or start inference. A new local source-clock migration
 tracks blob-registry writes too, including replacement and deletion. A failed
 blob replacement that leaves bytes inconsistent with the registry must reject.
@@ -229,7 +229,7 @@ the persisted position, including loading/unknown state. A session/position/sour
 change invalidates capture through dispatch, including move-away-and-back.
 Memories have no chapter provenance, so they are omitted while a narrative fence
 is in force. Unlocated annotations are likewise omitted; flavor-mismatched
-digests are unavailable. This is a provenance fence, not a semantic proof that a
+digests and pre-v3 spine-indexed digests are unavailable. This is a provenance fence, not a semantic proof that a
 note or model summary cannot mention later events. All omissions are counted.
 Historical digests have href/index provenance but no edition hash; the artifact
 must not misrepresent them as content-version-verified source passages.

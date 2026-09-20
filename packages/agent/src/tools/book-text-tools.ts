@@ -87,7 +87,7 @@ export function buildBookTextTools(
     name: "get_toc",
     label: "Table of contents",
     description:
-      "Get a book's indexed table of contents. Each entry carries chapterIndex (what read_chapter takes) AND chapterNumber (how the reader counts, 1-based): when the reader says \"chapter N\", find the entry whose chapterNumber is N and pass its chapterIndex — never do the arithmetic yourself. chars = text length (one read_chapter part covers 12000 chars). A TOC does not prove whether a topic appears in the prose: if the reader asks you to check coverage, continue with search_book_text or read_chapter in this same turn instead of offering to look later. Empty results carry textState on current hosts (legacy hosts use textStatus). Only ready plus textless proves every required section was read successfully with no extractable text; available text can have no indexed chapters. Preparing, unsupported and unavailable are not textless. Partial or failed preparation returns an error. Use get_book_text_status for a read-only check without starting extraction. bookId defaults to the current book.",
+      "Get a book's indexed table of contents. Each entry carries chapterIndex (an internal tool coordinate, NOT a printed chapter number) and the original title. Match the reader's chapter number/name against the title, including any part/volume; copy its chapterIndex without arithmetic. Front matter and unnumbered sections also have indices. In replies cite the title; never invent a chapter number from the index. chars = text length (one read_chapter part covers 12000 chars). A TOC does not prove whether a topic appears in the prose: if the reader asks you to check coverage, continue with search_book_text or read_chapter in this same turn instead of offering to look later. Empty results carry textState on current hosts (legacy hosts use textStatus). Only ready plus textless proves every required section was read successfully with no extractable text; available text can have no indexed chapters. Preparing, unsupported and unavailable are not textless. Partial or failed preparation returns an error. Use get_book_text_status for a read-only check without starting extraction. bookId defaults to the current book.",
     parameters: Type.Object({
       bookId: Type.Optional(Type.String()),
     }),
@@ -124,10 +124,9 @@ export function buildBookTextTools(
         }
       }
       // hrefs 是运行时的反查键（阅读位置 → 章节），对模型是纯噪音。
-      // chapterNumber 让"第 N 章 → index"从心算变成查表——off-by-one 的根除。
+      // Printed chapter numbering belongs to the publisher title, never array order.
       const entries = toc.map(({ index, title, chars }) => ({
           chapterIndex: index,
-          chapterNumber: index + 1,
           title,
           chars,
         }));
@@ -146,7 +145,7 @@ export function buildBookTextTools(
     parameters: Type.Object(withSpoilerArgument(scope, {
       chapterIndex: Type.Number({
         description:
-          "0-based chapterIndex copied from the get_toc entry (match the reader's \"chapter N\" against get_toc's chapterNumber field — do not compute N-1 yourself). Name the chapter to the reader by its chapterNumber and title.",
+          "Internal chapterIndex copied from get_toc or search_book_text. Match printed chapter numbers against the title, not array order. Cite the returned chapterTitle in replies; an index is never a printed chapter number.",
       }),
       part: Type.Optional(Type.Number({ description: "Window index, default 0" })),
       bookId: Type.Optional(Type.String()),
@@ -170,12 +169,15 @@ export function buildBookTextTools(
       assertSpoilerPermission(confirmSpoiler, turnState, target === defaultBookId);
       if (fence && chapterIndex > fence.throughChapterIndex && !confirmSpoiler) {
         throw new Error(
-          `chapter ${chapterIndex} is beyond the reader's position or viewport boundary (reader chapter index ${fence.readerChapterIndex ?? fence.throughChapterIndex}) in this narrative book. If the reader explicitly asked for spoilers this turn, retry with confirmSpoiler: true; otherwise stay within the boundary.`,
+          `chapterIndex ${chapterIndex} is beyond the reader's position or viewport boundary (reader chapter index ${fence.readerChapterIndex ?? fence.throughChapterIndex}) in this narrative book. If the reader explicitly asked for spoilers this turn, retry with confirmSpoiler: true; otherwise stay within the boundary.`,
         );
       }
-      const text = await deps.bookText.getChapterText(target, chapterIndex);
+      const [text, toc] = await Promise.all([
+        deps.bookText.getChapterText(target, chapterIndex), deps.bookText.getToc(target),
+      ]);
+      const chapterTitle = toc.find(chapter => chapter.index === chapterIndex)?.title;
       if (text === undefined) {
-        throw new Error(`chapter ${chapterIndex} of ${target} is not extracted or does not exist`);
+        throw new Error(`chapterIndex ${chapterIndex} of ${target} is not extracted or does not exist`);
       }
       const totalParts = Math.max(1, Math.ceil(text.length / CHAPTER_PART_CHARS));
       const window = Math.min(Math.max(0, part), totalParts - 1);
@@ -190,6 +192,7 @@ export function buildBookTextTools(
       return textResult({
         bookId: target,
         chapterIndex,
+        chapterTitle,
         part: window,
         totalParts,
         text: returnedText,

@@ -1,4 +1,4 @@
-import { chapterMemoryPolicy, type BookGraphBoundary } from "@read-aware/agent";
+import { findChapterByHref, chapterMemoryPolicy, type BookGraphBoundary } from "@read-aware/agent";
 import type { DigestFlavor, ReadingSessionSnapshot } from "@read-aware/core";
 
 /** Resolve only persisted chapter identities; querying memory never starts extraction. */
@@ -14,8 +14,6 @@ export function bookMemoryBoundary(
     ? session.status === "ready" ? session.location?.href : undefined
     : book.progress?.href;
   if (!href || !chapters) return { kind: "unknown" };
-  const base = (value: string) => value.split("#")[0];
-  const ordered = [...chapters].sort((a, b) => a.index - b.index);
-  const chapter = ordered.find(entry => entry.hrefs?.includes(href)) ?? ordered.find(entry => entry.hrefs?.some(candidate => base(candidate) === base(href)));
+  const chapter = findChapterByHref(chapters, href);
   return chapterMemoryPolicy(policyBook, chapter?.index).boundary;
 }
