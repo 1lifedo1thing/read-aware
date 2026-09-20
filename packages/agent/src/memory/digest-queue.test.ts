@@ -10,7 +10,8 @@ function deferred() { let resolve!: () => void; const promise = new Promise<void
 const nextTurn = () => new Promise(resolve => setTimeout(resolve, 0));
 const model = { id: "fixture" } as DigestBookTickInput["model"];
 const reply = () => fauxAssistantMessage('{"summary":"Committed","characters":[],"relations":[]}');
-const fixture = () => createInMemoryDeps({ books: [{ id: "b", title: "Book", status: "finished", narrativity: "narrative" }],
+// Queue tests start with a fully classified book so each inference is a digest.
+const fixture = () => createInMemoryDeps({ books: [{ id: "b", title: "Book", status: "finished", narrativity: "narrative", spoilerSensitive: true }],
   chapters: { b: [0,1].map(i => ({ title: `Chapter ${i}`, text: `Text ${i}`, hrefs: [`ch${i}`] })) } });
 
 test("same book is FIFO, other books remain independent and rejection releases the lane", async () => {

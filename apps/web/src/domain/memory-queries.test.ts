@@ -39,7 +39,9 @@ describe("memory public query boundary", () => {
     const live: ReadingSessionSnapshot = { ...idle, bookId: "b", status: "ready", location: { bookId: "b", contentVersion: "v", href: "a.xhtml" } };
     expect(bookMemoryBoundary(book, live, chapters)).toEqual({ kind: "before", chapterIndex: 0 });
     expect(bookMemoryBoundary(book, { ...live, status: "loading" }, chapters)).toEqual({ kind: "unknown" });
-    expect(bookMemoryBoundary({ ...book, progress: { href: "c.xhtml#unknown" } }, idle, chapters)).toEqual({ kind: "before", chapterIndex: 1 });
+    expect(bookMemoryBoundary({ ...book, progress: { href: "c.xhtml#early" } }, idle, chapters)).toEqual({ kind: "before", chapterIndex: 1 });
+    // A shared source file does not identify the chapter of an unknown anchor.
+    expect(bookMemoryBoundary({ ...book, progress: { href: "c.xhtml#unknown" } }, idle, chapters)).toEqual({ kind: "unknown" });
     expect(bookMemoryBoundary(book, idle, null)).toEqual({ kind: "unknown" });
     expect(bookMemoryBoundary({ ...book, narrativity: "expository" }, idle, null)).toEqual({ kind: "all" });
     expect(bookMemoryBoundary({ ...book, readingStatus: "finished" }, idle, null)).toEqual({ kind: "all" });
