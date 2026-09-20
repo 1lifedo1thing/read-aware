@@ -24,6 +24,7 @@ function web(provider: "tinyfish" | "tavily" | "brave", mode: Mode): WebPort {
       return json({ results: [{ url: source, title: "Museum roof structure", snippet: text }] });
     }
     if (provider === "tavily") return json({ results: [{ url: source, title: "Museum roof structure", content: text, raw_content: text, images }], failed_results: [] });
+    if (path.endsWith("/images/search")) return json({ type: "images", results: images.map(image => ({ url: source, title: image.description, properties: { url: image.url }, thumbnail: { src: `${image.url}?preview=1` } })) });
     if (path.endsWith("/context")) return json({ grounding: { generic: [{ url: source, title: "Museum roof structure", snippets: [text] }] }, sources: { [source]: { thumbnail: images[0] ? { src: images[0].url } : undefined } } });
     return json({ type: "search", web: { results: [{ url: source, title: "Museum roof structure", description: text, thumbnail: images[0] ? { src: images[0].url } : undefined }] } });
   });
@@ -36,20 +37,20 @@ const shown = (observation: AgentEvalObservation) => observation.turns.flatMap(t
   chunk.type === "reference" && chunk.reference.kind === "web-images" ? chunk.reference.images : []));
 
 export const imageSearchScenarios = [
-  ...(["brave", "tinyfish"] as const).map(provider => defineAgentEvalScenario({
-    id: `search-images-${provider}-diagram`, description: `${provider}: 非人物需求，模型选择并展示来源中的建筑结构图。`,
+  ...(["brave", "tinyfish"] as const).flatMap(provider => ([false, true]).map(quick => defineAgentEvalScenario({
+    id: `search-images-${provider}-${quick ? "quick-lookup" : "diagram"}`, description: `${provider}: ${quick ? "首轮请求图片，直接展示已有依据充分的结果，不重复抓取" : "非人物需求，模型选择并展示来源中的建筑结构图"}。`,
     scope: provider === "tinyfish" ? { kind: "book", bookId: "architecture" } : { kind: "global", threadId: "image-diagram" },
     seed: provider === "tinyfish" ? { books: [{ id: "architecture", title: "Architecture", author: "Museum", status: "reading", progressPercent: 10 }] } : {},
     tags: ["retrieval", "grounding", provider === "tinyfish" ? "book" : "global"],
     setup: ({ deps }) => { deps.web = web(provider, "match"); },
-    turns: [{ text: "请联网查 museum.example.org 上的博物馆木构屋顶资料，解释梁是怎么连接的。我想直观看懂这种结构，适合的话请配图。" }],
+    turns: [{ text: quick ? "请联网找 museum.example.org 上的屋顶剖面图，展示一张对应的图，并用一句话说明是什么，不需要展开结构原理。" : "请联网查 museum.example.org 上的博物馆木构屋顶资料，解释梁是怎么连接的。我想直观看懂这种结构，适合的话请配图。" }],
     evaluate: observation => combineAssessments(evaluateAgentTrace(observation, {
-      tools: { required: ["web_search", "present_web_images", ...(provider === "tinyfish" ? ["web_fetch"] : [])], noErrors: true, maxCalls: 6 },
+      tools: { required: ["web_search", "present_web_images"], ...(quick ? { forbidden: ["web_fetch"] } : {}), noErrors: true, maxCalls: quick ? 2 : 6 },
       answer: { mustNotContain: ["![", "fixture-key"] },
     }), assessmentFromChecks([{ id: "images.correct-source", category: "policy", passed: shown(observation).length === 1 && shown(observation)[0]?.url === figure && shown(observation)[0]?.sourceUrl === source,
       message: "one relevant structure diagram reaches the UI reference stream, without the sponsor logo" }])),
-    rubric: ["回答梁的连接方式并展示对应结构图，图像带来源；不把赞助商 logo 当建筑图，不声称检查过图片像素。TinyFish 通过同一 provider 的 Fetch 取得图片。"],
-  })),
+    rubric: [quick ? "首轮搜索请求图片，直接展示一张有来源的屋顶剖面图，并简短介绍；不重复抓取或展示赞助商 logo，不声称检查过像素。" : "回答梁的连接方式并展示对应结构图，图像带来源；不把赞助商 logo 当建筑图，不声称检查过图片像素。已有摘录足够时不重复抓取；需要更多证据时仍应读取原文。"],
+  }))),
   ...(["empty", "unrelated"] as const).map(mode => defineAgentEvalScenario({
     id: `search-images-${mode}`, description: `Tavily: ${mode === "empty" ? "没有图片" : "只有无关图片"}时不硬凑图。`,
     scope: { kind: "global", threadId: `image-${mode}` }, tags: ["retrieval", "honesty", "global"],

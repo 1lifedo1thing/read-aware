@@ -144,6 +144,7 @@ export type ChatReference =
 
 export interface ChatWebImageReference {
   url: string;
+  thumbnailUrl?: string;
   sourceUrl: string;
   title: string;
   caption: string;

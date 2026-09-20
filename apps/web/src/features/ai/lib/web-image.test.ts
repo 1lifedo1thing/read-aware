@@ -24,3 +24,14 @@ test("unsafe or cancelled requests never start; non-images, empty and oversized 
   await expect(loadWebImage(url, async () => new Response(new ReadableStream({ start(c) { c.enqueue(new Uint8Array(4 * 1024 * 1024 + 1)); }, cancel() { cancelled = true; } }), { headers: { "content-type": "image/png" } }), new AbortController().signal)).rejects.toMatchObject({ code: "search/too-large" });
   expect(cancelled).toBe(true);
 });
+
+test("completed image transfer detaches before view cleanup cancels its parent", async () => {
+  let requestSignal: AbortSignal | null | undefined;
+  const controller = new AbortController();
+  await loadWebImage(url, async (_target, init) => {
+    requestSignal = init?.signal;
+    return new Response(new Uint8Array([1]), { headers: { "content-type": "image/png" } });
+  }, controller.signal);
+  controller.abort();
+  expect(requestSignal?.aborted).toBe(false);
+});

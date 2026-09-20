@@ -58,6 +58,8 @@ export function toAgentTurnInput(
 export function createPiChatTransport(): ChatTransport {
   return {
     async *sendTurn(request, signal) {
+      const started = performance.now();
+      let hasImageReference = false;
       const runtime = getAgentRuntime();
       if (!runtime) {
         throw new AiNotConfiguredError();
@@ -121,7 +123,7 @@ export function createPiChatTransport(): ChatTransport {
                   }
                 : chunk.reference.kind === "web-images" ? {
                     kind: "web-images",
-                    images: chunk.reference.images.map(image => ({ url: image.url, sourceUrl: image.sourceUrl, title: image.title, caption: image.caption })),
+                    images: chunk.reference.images.map(image => ({ url: image.url, ...(image.thumbnailUrl ? { thumbnailUrl: image.thumbnailUrl } : {}), sourceUrl: image.sourceUrl, title: image.title, caption: image.caption })),
                   } : {
                     kind: "words",
                     words: chunk.reference.words.map((word) => ({
@@ -131,6 +133,10 @@ export function createPiChatTransport(): ChatTransport {
                       source: word.source,
                     })),
                   };
+            if (reference.kind === "web-images" && reference.images.length && !hasImageReference) {
+              hasImageReference = true;
+              log.info("First image reference ready", { turnId: request.message.id, durationMs: Math.round(performance.now() - started) });
+            }
             yield { type: "reference", id: chunk.id, reference } satisfies ChatStreamChunk;
             break;
           }

@@ -2,6 +2,7 @@ import { webImages } from "./images";
 import { AppError } from "@read-aware/core";
 import type { AgentFetch } from "../models/transport";
 import type { WebClient, WebProvider } from "./types";
+import { optionalImages } from "./optional-images";
 import { domainQuery, fetchInput, fetchResult, invalid, jsonRequest, malformed, record, searchInput, searchResult, since, sourceUrl, string } from "./shared";
 
 function language(value: string) {
@@ -21,21 +22,56 @@ export function createBraveClient(apiKey: string, transport: AgentFetch): WebCli
     const params = new URLSearchParams({ q: query, count: String(input.limit), extra_snippets: "true" });
     if (input.recencyDays) params.set("freshness", `${since(input.recencyDays).slice(0, 10)}to${new Date().toISOString().slice(0, 10)}`);
     if (input.language) params.set("search_lang", language(input.language));
-    const data = await request(`https://api.search.brave.com/res/v1/web/search?${params}`, undefined, signal);
-    if (data.type !== "search" || data.error !== undefined) throw malformed();
-    // Brave legitimately omits the web object for an empty web result set.
-    const rows = data.web === undefined ? [] : record(data.web).results;
-    if (!Array.isArray(rows)) throw malformed();
-    const result = searchResult("brave", input, rows.map(item => {
-      const row = record(item);
-      const extras = Array.isArray(row.extra_snippets) ? row.extra_snippets.filter(x => typeof x === "string") : [];
-      return { title: string(row.title, 300), url: sourceUrl(row.url),
-        snippet: string([string(row.description, 800), ...extras].filter(Boolean).join("\n"), 800),
-        ...(typeof row.page_age === "string" ? { publishedAt: row.page_age.slice(0, 80) } : {}) };
-    }));
-    if (input.includeImages) result.images = rows.flatMap(item => { const row = record(item); const thumbnail = row.thumbnail && typeof row.thumbnail === "object" ? row.thumbnail as Record<string, unknown> : {};
-      return result.sources.some(source => source.url === sourceUrl(row.url)) ? webImages([thumbnail.src], row.url, row.title) : []; }).slice(0, 8);
-    return result;
+    const imageController = new AbortController();
+    const imageSignal = signal ? AbortSignal.any([signal, imageController.signal]) : imageController.signal;
+    const imageQueryValid = query.length <= 400 && query.split(/\s+/).length <= 50;
+    // Native image search runs alongside web search, using the same BYOK key.
+    // Keep source-page attribution and the provider's cached thumbnail separate
+    // from the original asset. Image access failure must not lose text results.
+    const imageRead = input.includeImages && imageQueryValid && input.recencyDays === undefined ? optionalImages(async signal => {
+      const imageParams = new URLSearchParams({ q: query, count: "8", safesearch: "strict" });
+      if (input.language) imageParams.set("search_lang", language(input.language));
+      const data = await request(`https://api.search.brave.com/res/v1/images/search?${imageParams}`, undefined, signal);
+      if (data.type !== "images" || !Array.isArray(data.results) || data.error !== undefined) throw malformed();
+      return data.results.flatMap(item => {
+        if (!item || typeof item !== "object") return [];
+        const row = item as Record<string, unknown>;
+        let url: string;
+        try { url = sourceUrl(row.url); } catch { return []; }
+        const host = new URL(url).hostname;
+        if (input.domains?.length && !input.domains.some(domain => host === domain.toLowerCase() || host.endsWith(`.${domain.toLowerCase()}`))) return [];
+        const thumbnail = row.thumbnail && typeof row.thumbnail === "object" ? row.thumbnail as Record<string, unknown> : {};
+        const properties = row.properties && typeof row.properties === "object" ? row.properties as Record<string, unknown> : {};
+        const images = webImages([{ url: properties.url, thumbnailUrl: thumbnail.src, description: row.title }], url, row.title);
+        return images.length ? images : webImages([{ url: thumbnail.src, description: row.title }], url, row.title);
+      }).slice(0, 8);
+    }, imageSignal).catch(() => undefined) : Promise.resolve(undefined);
+    try {
+      const data = await request(`https://api.search.brave.com/res/v1/web/search?${params}`, undefined, signal);
+      if (data.type !== "search" || data.error !== undefined) throw malformed();
+      // Brave legitimately omits the web object for an empty web result set.
+      const rows = data.web === undefined ? [] : record(data.web).results;
+      if (!Array.isArray(rows)) throw malformed();
+      const result = searchResult("brave", input, rows.map(item => {
+        const row = record(item);
+        const extras = Array.isArray(row.extra_snippets) ? row.extra_snippets.filter(x => typeof x === "string") : [];
+        return { title: string(row.title, 300), url: sourceUrl(row.url),
+          snippet: string([string(row.description, 800), ...extras].filter(Boolean).join("\n"), 800),
+          ...(typeof row.page_age === "string" ? { publishedAt: row.page_age.slice(0, 80) } : {}) };
+      }));
+      if (input.includeImages) {
+        const nativeImages = await imageRead;
+        signal?.throwIfAborted();
+        result.images = nativeImages ?? rows.flatMap(item => { const row = record(item); const thumbnail = row.thumbnail && typeof row.thumbnail === "object" ? row.thumbnail as Record<string, unknown> : {};
+          return result.sources.some(source => source.url === sourceUrl(row.url)) ? webImages([thumbnail.src], row.url, row.title) : []; }).slice(0, 8);
+        if (!nativeImages) result.warnings = [input.recencyDays !== undefined
+          ? "Brave image search cannot apply the requested date filter; any candidates below are thumbnails from the date-filtered web results, not date-verified images."
+          : imageQueryValid
+          ? "Brave image search was unavailable or exceeded its time budget; any candidates below are web-result thumbnails."
+          : "The query exceeds Brave image search limits; any candidates below are web-result thumbnails."];
+      }
+      return result;
+    } finally { imageController.abort(); }
   }, async fetch(raw, signal) {
     const input = fetchInput(raw);
     if (input.url.length > 600) throw invalid();

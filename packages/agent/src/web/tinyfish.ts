@@ -1,14 +1,15 @@
 import { webImages } from "./images";
 import { AppError } from "@read-aware/core";
 import type { AgentFetch } from "../models/transport";
-import type { WebClient, WebFetchInput, WebProvider, WebSearchInput } from "./types";
+import type { WebClient, WebClientOptions, WebFetchInput, WebProvider, WebSearchInput } from "./types";
+import { firstUsablePage, optionalImages } from "./optional-images";
 
 import { bounded, invalid, malformed, publicWebUrl, record, sourceUrl, string, jsonRequest } from "./shared";
 export { publicWebUrl } from "./shared";
 
-export function createTinyFishClient(apiKey: string, transport: AgentFetch): WebClient {
+export function createTinyFishClient(apiKey: string, transport: AgentFetch, options?: WebClientOptions): WebClient {
   const request = jsonRequest("TinyFish", apiKey, transport, { "X-API-Key": apiKey.trim() });
-  return {
+  const client: WebClient = {
     async search(input: WebSearchInput, signal) {
       const query = input.query.trim();
       if (!query || query.length > 2000) throw invalid();
@@ -33,8 +34,20 @@ export function createTinyFishClient(apiKey: string, transport: AgentFetch): Web
         const host = new URL(source.url).hostname.toLowerCase();
         return host === domain.toLowerCase() || host.endsWith(`.${domain.toLowerCase()}`);
       })).slice(0, limit);
-      return { provider: "tinyfish", query, sources, retrievedAt: new Date().toISOString(),
-        ...(input.includeImages ? { images: [], warnings: ["TinyFish Search does not return images; use web_fetch with includeImages=true on a relevant source page."] } : {}) };
+      const result = { provider: "tinyfish", query, sources, retrievedAt: new Date().toISOString() };
+      if (!input.includeImages || !sources.length) return { ...result, ...(input.includeImages ? { images: [] } : {}) };
+      // TinyFish has no image index. Read at most two ranked sources in parallel,
+      // return the first usable one, and cancel the other. The model still chooses
+      // relevant images; the excerpt avoids another model round just to find them.
+      const page = await optionalImages(signal => firstUsablePage([...new Set(sources.map(source => source.url))].slice(0, 2).map(async url => {
+        const page = await (options?.fetchPage ?? client.fetch)({ url, includeImages: true, maxChars: 2000 }, signal);
+        const host = new URL(page.finalUrl).hostname;
+        if (!page.images?.length || (input.domains?.length && !input.domains.some(domain => host === domain.toLowerCase() || host.endsWith(`.${domain.toLowerCase()}`)))) throw new Error("No usable images in scope");
+        return page;
+      })), signal);
+      return { ...result, images: page?.images ?? [],
+        ...(page ? { imageContext: [{ finalUrl: page.finalUrl, title: page.title, text: page.text, nextOffset: page.nextOffset, retrievedAt: page.retrievedAt }] }
+          : { warnings: ["The bounded image lookup found no usable candidates. It may have timed out or failed; this does not establish that the sources contain no images. Read a relevant source with includeImages=true if needed."] }) };
     },
     async fetch(input: WebFetchInput, signal) {
       const url = publicWebUrl(input.url);
@@ -60,6 +73,7 @@ export function createTinyFishClient(apiKey: string, transport: AgentFetch): Web
         ...(input.includeImages ? { images: webImages(row.image_links, row.final_url ?? row.url ?? url, row.title) } : {}) };
     },
   };
+  return client;
 }
 
 export const tinyFishProvider: WebProvider = {

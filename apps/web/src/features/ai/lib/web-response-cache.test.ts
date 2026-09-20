@@ -48,3 +48,17 @@ test("HTTP failures and malformed responses preserve provider errors and do not 
   await expect(client.fetch!({ url })).rejects.toMatchObject({ code: "search/provider" });
   expect((await client.fetch!({ url })).text).toBe("Timber beams"); expect(calls).toBe(3);
 });
+
+test("TinyFish image enrichment shares full response cache with later explicit reads", async () => {
+  let calls = 0;
+  const client = createCachedWebClient(WEB_PROVIDERS.tinyfish, "fixture", async (_url, init) => {
+    calls++;
+    return json(init?.body ? { results: [{ url, title: "Roof", text: "x".repeat(4000), image_links: ["https://images.example.org/a.png"] }] }
+      : { results: [{ url, title: "Roof", snippet: "Timber" }] });
+  });
+  const result = await client.search({ query: "roof", includeImages: true });
+  expect(calls).toBe(2); expect(result.imageContext?.[0]?.nextOffset).toBe(2000);
+  const next = await client.fetch!({ url, includeImages: true, offset: 2000 });
+  expect(next.text.length).toBe(2000); expect(calls).toBe(2);
+  await client.search({ query: "roof", includeImages: true }); expect(calls).toBe(2);
+});

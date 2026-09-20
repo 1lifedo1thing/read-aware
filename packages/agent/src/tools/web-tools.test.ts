@@ -37,7 +37,7 @@ test("retrieved image IDs survive tool refresh in a turn but cannot be invented,
   const { createAgentTurnState } = await import("./turn-state");
   const { referenceFromToolDetails } = await import("./present-tools");
   const { deps } = createInMemoryDeps();
-  const image = { url: "https://images.example.org/roof.png", sourceUrl: "https://museum.example.org/roof", title: "Roof design", description: "Roof cross-section" };
+  const image = { url: "https://images.example.org/roof.png", thumbnailUrl: "https://images.example.org/roof-small.png", sourceUrl: "https://museum.example.org/roof", title: "Roof design", description: "Roof cross-section" };
   deps.web = { configured: () => true,
     search: async input => ({ provider: "fixture", query: input.query, sources: [], images: [image], retrievedAt: "2026-09-20" }),
     fetch: async input => ({ provider: "fixture", url: input.url, finalUrl: input.url, title: "Roof", text: "Roof", offset: 0, nextOffset: null, images: [image], retrievedAt: "2026-09-20" }),
@@ -51,7 +51,7 @@ test("retrieved image IDs survive tool refresh in a turn but cannot be invented,
     const chosen = { images: [{ id, caption: "Roof cross-section" }] };
     expect(referenceFromToolDetails((await get("present_web_images").execute("show", { images: [{ id: image.url, caption: "Invented" }] })).details)).toBeUndefined();
     const shown = await get("present_web_images").execute("show", chosen);
-    expect(referenceFromToolDetails(shown.details)).toEqual({ kind: "web-images", images: [{ url: image.url, sourceUrl: image.sourceUrl, title: image.title, caption: "Roof cross-section" }] });
+    expect(referenceFromToolDetails(shown.details)).toEqual({ kind: "web-images", images: [{ url: image.url, thumbnailUrl: image.thumbnailUrl, sourceUrl: image.sourceUrl, title: image.title, caption: "Roof cross-section" }] });
     expect(referenceFromToolDetails((await get("present_web_images").execute("again", chosen)).details)).toBeUndefined();
     expect(referenceFromToolDetails((await get("present_web_images", createAgentTurnState()).execute("next", chosen)).details)).toBeUndefined();
   }

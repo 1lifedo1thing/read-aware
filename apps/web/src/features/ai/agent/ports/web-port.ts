@@ -4,6 +4,7 @@ import { appHttpFetch } from "../../../../platform/http-client";
 import { createLogger } from "../../../../platform/logger";
 import { getSearchConfig } from "../../lib/search-config";
 import { createCachedWebClient } from "../../lib/web-response-cache";
+import { prefetchWebImages } from "../../lib/web-image-cache";
 
 const log = createLogger("web-retrieval");
 let cached: { provider: WebProviderId; key: string; client: Pick<WebClient, "search"> & Partial<Pick<WebClient, "fetch">> } | undefined;
@@ -22,14 +23,24 @@ export const agentWeb: WebPort = {
     return config.enabled && Boolean(config.apiKey) && (operation === "search" || WEB_PROVIDERS[config.provider].supportsFetch);
   },
   search: async (input, signal) => {
-    try { return await client().search(input, signal); }
+    const start = performance.now();
+    try {
+      const result = await client().search(input, signal);
+      prefetchWebImages(result.images, signal);
+      log.info("Search ready", { provider: result.provider, durationMs: Math.round(performance.now() - start), images: result.images?.length ?? 0 });
+      return result;
+    }
     catch (error) { log.error("Web search failed", error); throw error; }
   },
   fetch: async (input, signal) => {
+    const start = performance.now();
     try {
       const fetch = client().fetch;
       if (!fetch) throw new AppError("search/fetch-failed", "The selected provider does not support page reading");
-      return await fetch(input, signal);
+      const result = await fetch(input, signal);
+      prefetchWebImages(result.images, signal);
+      log.info("Page ready", { provider: result.provider, durationMs: Math.round(performance.now() - start), images: result.images?.length ?? 0 });
+      return result;
     }
     catch (error) { log.error("Web fetch failed", error); throw error; }
   },

@@ -10,7 +10,7 @@ import type { ChatWebImageReference } from "../../lib/chat-types";
 export function WebImageCard({ image }: { image: ChatWebImageReference }) {
   const { t } = useTranslation("ai");
   const openExternalLink = useExternalLink();
-  const preview = useWebImage(image.url);
+  const preview = useWebImage(image.url, image.thumbnailUrl);
   return <figure className="m-0 flex w-60 max-w-full flex-col gap-1.5" data-testid="chat-web-image">
     <div className="flex aspect-[4/3] w-full shrink-0 items-center justify-center overflow-hidden rounded-sm bg-fill/40">
       {preview.failed ? <InlineError compact>{t("chat.references.imageUnavailable")}</InlineError>

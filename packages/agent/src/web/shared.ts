@@ -76,8 +76,13 @@ export function jsonRequest(provider: string, apiKey: string, transport: AgentFe
   headers: Record<string, string>, accessStatuses: number[] = []) {
   return async (url: string, body?: unknown, signal?: AbortSignal): Promise<Record<string, unknown>> => {
     if (!apiKey.trim()) throw new AppError("search/not-configured", "Configure Search in Settings → AI");
-    const timeout = AbortSignal.timeout(60_000);
-    const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
+    const controller = new AbortController();
+    let timedOut = false;
+    const abort = () => controller.abort(signal?.reason);
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, 60_000);
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
+    const combined = controller.signal;
     try {
       combined.throwIfAborted();
       const response = await transport(url, { method: body === undefined ? "GET" : "POST", redirect: "error", signal: combined,
@@ -107,9 +112,14 @@ export function jsonRequest(provider: string, apiKey: string, transport: AgentFe
       try { return record(JSON.parse(text)); } catch { throw malformed(); }
     } catch (error) {
       if (signal?.aborted) throw new AppError("search/cancelled", "Web retrieval cancelled");
-      if (timeout.aborted) throw new AppError("search/timeout", "Web retrieval timed out", { retryable: true });
+      if (timedOut) throw new AppError("search/timeout", "Web retrieval timed out", { retryable: true });
       if (error instanceof AppError) throw error;
       throw new AppError("search/network", "Web provider could not be reached", { retryable: true });
+    } finally {
+      // Native HTTP retains abort listeners on its resource handles. Do not
+      // fire a timeout/parent cancellation after a completed response is freed.
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
     }
   };
 }

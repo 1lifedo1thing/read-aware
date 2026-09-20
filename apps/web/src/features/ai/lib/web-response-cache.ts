@@ -54,14 +54,14 @@ export function createCachedWebClient(provider: WebProvider, key: string, transp
     });
     return { client, invalidate: () => invalidate(), stamp: <T extends { retrievedAt: string }>(result: T): T => retrievedAt ? { ...result, retrievedAt } : result };
   }
-  return {
+  const client: ReturnType<typeof provider.create> = {
     async search(input, signal) {
       // Use logical inputs: Exa computes startPublishedDate from the clock, so
       // its raw HTTP body changes even for repeated identical queries.
       const cacheKey = JSON.stringify([input.query.trim(), input.limit ?? 5, input.recencyDays ?? null,
         input.domains?.map(domain => domain.toLowerCase()).sort() ?? [], input.language?.toLowerCase() ?? null, input.includeImages ?? false]);
       try {
-        const result = await searches.get(cacheKey, signal => provider.create(key, transport).search(input, signal), signal);
+        const result = await searches.get(cacheKey, signal => provider.create(key, transport, { fetchPage: client.fetch }).search(input, signal), signal);
         return structuredClone(result);
       } catch (error) {
         if (signal?.aborted) throw new AppError("search/cancelled", "Web retrieval cancelled");
@@ -75,4 +75,5 @@ export function createCachedWebClient(provider: WebProvider, key: string, transp
       catch (error) { if (!signal?.aborted) call.invalidate(); throw error; }
     } } : {}),
   };
+  return client;
 }

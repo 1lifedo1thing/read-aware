@@ -17,6 +17,14 @@ function imageAsset(url: string) {
   };
 }
 
+function thumbnailUrl(value: unknown, source: string): string | undefined {
+  if (typeof value !== "string") return;
+  try {
+    const url = publicWebUrl(new URL(value, source).href);
+    if (url.startsWith("https:") && !/\.(svg|ico)$/i.test(new URL(url).pathname)) return url;
+  } catch { /* A malformed optional thumbnail must not discard the original. */ }
+}
+
 export const webImageIdentity = (url: string) => imageAsset(url).key;
 
 /** Optional media must not turn an otherwise usable search into a failure. */
@@ -24,7 +32,7 @@ export function webImages(values: unknown, source: unknown, title: unknown): Web
   if (!Array.isArray(values) || typeof source !== "string") return [];
   let sourceUrl: string;
   try { sourceUrl = publicWebUrl(source); } catch { return []; }
-  const candidates = new Map<string, { image: WebImage; width: number }>();
+  const candidates = new Map<string, { image: WebImage; width: number; previewWidth?: number }>();
   for (const value of values.slice(0, 160)) {
     const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
     const raw = typeof value === "string" ? value : row.url;
@@ -37,10 +45,15 @@ export function webImages(values: unknown, source: unknown, title: unknown): Web
       const asset = imageAsset(url);
       if (asset.decoration) continue;
       const previous = candidates.get(asset.key);
-      if (previous && previous.width >= asset.width) continue;
-      candidates.set(asset.key, { width: asset.width, image: { url, sourceUrl,
+      const explicitPreview = thumbnailUrl(row.thumbnailUrl, sourceUrl);
+      const preview = asset.width >= 240 && (!previous?.previewWidth || asset.width < previous.previewWidth)
+        ? { url, width: asset.width } : previous?.previewWidth ? { url: previous.image.thumbnailUrl ?? previous.image.url, width: previous.previewWidth } : undefined;
+      const best = previous && previous.width >= asset.width ? previous.image : { url, sourceUrl,
         title: typeof title === "string" && title.trim() ? title.trim().slice(0, 300) : new URL(sourceUrl).hostname,
-        ...(typeof row.description === "string" ? { description: row.description.slice(0, 500) } : previous?.image.description ? { description: previous.image.description } : {}) } });
+        ...(typeof row.description === "string" ? { description: row.description.slice(0, 500) } : previous?.image.description ? { description: previous.image.description } : {}) };
+      const thumb = explicitPreview ?? preview?.url ?? previous?.image.thumbnailUrl;
+      candidates.set(asset.key, { width: Math.max(asset.width, previous?.width ?? 0), previewWidth: preview?.width,
+        image: { ...best, ...(thumb && thumb !== best.url ? { thumbnailUrl: thumb } : {}) } });
     } catch { /* Ignore malformed optional media without losing page text. */ }
   }
   return [...candidates.values()].map(value => value.image).slice(0, 8);

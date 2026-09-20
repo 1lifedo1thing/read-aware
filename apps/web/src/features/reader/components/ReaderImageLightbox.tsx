@@ -53,6 +53,7 @@ export function ReaderImageLightbox({ src, alt, onClose, session, viewerId, life
   useEffect(() => {
     let objectUrl: string | null = null;
     let disposed = false;
+    setDisplaySrc(src);
     if (!src.startsWith("data:")) {
       void fetch(src)
         .then((response) => response.blob())

@@ -29,6 +29,7 @@ export type ReferencePayload =
 
 export interface WebImageReference {
   url: string;
+  thumbnailUrl?: string;
   sourceUrl: string;
   title: string;
   caption: string;
