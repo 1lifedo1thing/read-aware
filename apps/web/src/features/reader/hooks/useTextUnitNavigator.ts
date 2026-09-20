@@ -12,7 +12,7 @@ import { waitForReadingPaint } from "../lib/reading-engine-adapter";
 import { resolveTextUnitPosition } from "../lib/text-unit-position";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { causalActor, type DomainActor } from "../../../platform/domain-actor";
-import { readingRenderContext } from "../lib/reading-render-context";
+import { readingRenderActor, readingRenderContext } from "../lib/reading-render-context";
 import type { RegisteredReaderMode } from "../../plugins/lib/plugin-types";
 import {
   setVolumeKeyCapture,
@@ -571,7 +571,15 @@ export function useTextUnitNavigator({
   const handleRelocate = useCallback(
     (detail: FoliateRelocateDetail) => {
       if (detail.range) {
-        if (detail.range.startContainer.ownerDocument !== sectionRef.current?.doc) return;
+        const doc = detail.range.startContainer.ownerDocument;
+        if (doc && doc !== sectionRef.current?.doc) {
+          const index = detail.section?.current;
+          if (index == null) return;
+          // Scroll chapters can retain several source documents, and moving
+          // between them need not emit another load. The relocated range owns
+          // the navigator; a loaded continuation or cached page does not.
+          void handleSectionLoad(doc, index, readingRenderActor(detail));
+        }
         visibleRangeRef.current = detail.range;
         layoutReadyRef.current = true;
       }
@@ -584,7 +592,7 @@ export function useTextUnitNavigator({
       }
       positionWaiter.notify();
     },
-    [applyIndex, positionWaiter],
+    [applyIndex, handleSectionLoad, positionWaiter],
   );
 
   // Activation: index the loaded section and rest on the persisted unit if

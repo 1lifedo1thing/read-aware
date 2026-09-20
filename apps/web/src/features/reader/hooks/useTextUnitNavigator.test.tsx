@@ -169,6 +169,37 @@ test("navigator handles both event orders, same-index replacements, provider fai
     await act(async () => { state.handleContentVersion("pending-version-test", "v2"); });
     expect(state.position).toBeNull();
     expect(readTextUnitModeState("pending-version-test").active).toBe(false);
+
+    // Continuous scroll retains multiple sources. A relocation must select
+    // its own document even if a different source was the last one loaded.
+    options.bookId = "multi-source-mode-test";
+    await act(async () => { render(false); });
+    await act(async () => { state.handleContentVersion(options.bookId!, "v1"); });
+    const visible = doc("Visible source.");
+    const continuation = doc("Offscreen continuation.");
+    const relocateSource = (document: Document, index: number) => {
+      const range = document.createRange(); range.selectNodeContents(document.body);
+      state.handleRelocate({ range, section: { current: index, total: 2 } } as FoliateRelocateDetail);
+    };
+    await act(async () => {
+      state.handleSectionLoad(continuation, 1);
+      relocateSource(visible, 0);
+      render(true);
+    });
+    const visibleBuild = pending.length - 1;
+    expect(pending[visibleBuild]!.text).toBe("Visible source.");
+    await act(async () => { finish(visibleBuild); });
+    expect(state.current?.text).toBe("Visible source.");
+    const builds = pending.length;
+    await act(async () => { relocateSource(visible, 0); });
+    expect(pending.length).toBe(builds);
+
+    // A cached source can become visible without a new load event.
+    await act(async () => { render(false); });
+    await act(async () => { relocateSource(continuation, 1); render(true); });
+    expect(pending.at(-1)!.text).toBe("Offscreen continuation.");
+    await act(async () => { finish(pending.length - 1); });
+    expect(state.current?.text).toBe("Offscreen continuation.");
   } finally {
     stopCommits();
     await act(async () => { root.unmount(); });

@@ -2088,14 +2088,13 @@ export function FoliateReaderView({
           // The fixed-layout renderer keeps section documents alive in its
           // spread cache and re-announces 'load' whenever one becomes current
           // again — listeners attach once per document (a duplicate keydown
-          // listener would turn one keypress into two page turns), while the
-          // text-unit navigator re-syncs on every announcement, exactly as it
-          // did when each navigation produced a fresh document.
+          // listener would turn one keypress into two page turns). Navigator
+          // ownership follows relocate: load also announces offscreen source
+          // continuations and cached pages that aren't the reading position.
           if (!docsWithListenersRef.current.has(doc)) {
             docsWithListenersRef.current.add(doc);
             attachDocListeners(doc, index);
           }
-          textUnitNavigatorRef.current.handleSectionLoad(doc, index, readingRenderActor((event as CustomEvent<object>).detail));
         };
 
         const onCreateOverlay = () => {
