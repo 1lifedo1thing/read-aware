@@ -14,7 +14,11 @@ export class ChapterRanges {
         const elements = new Set<Element>()
         for (const target of targets) {
             const anchor = anchorValue(doc, target.anchor)
-            if (anchor === 0) this.startsAtBeginning = true
+            // EPUB nav commonly targets <body id="…">, <html>, or the file
+            // itself. These are chapter boundaries too, even though they must
+            // not become in-body ranges or acquire a preceding blank page.
+            if (anchor === 0 || target.anchor == null || anchor === doc.body || anchor === doc.documentElement)
+                this.startsAtBeginning = true
             const element = anchorElement(anchor)
             const block = element?.closest(blocks) ?? element
             if (block && block !== doc.body && doc.body.contains(block)) elements.add(block)

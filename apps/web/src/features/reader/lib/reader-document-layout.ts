@@ -34,7 +34,9 @@ export async function prepareReaderChapterStarts(book: Book): Promise<ChapterSta
     catch (error) { log.warn("Could not resolve chapter boundary", { href, error }); return null; }
   }));
   for (const target of targets) {
-    if (!target?.anchor || !book.sections[target.index]) continue;
+    // Zero (and an omitted anchor) means the start of a source document.
+    // Dropping it merges unrelated chapters into one ever-growing scroll view.
+    if (!target || !book.sections[target.index]) continue;
     const group = starts.get(target.index) ?? [];
     group.push(target);
     starts.set(target.index, group);

@@ -771,7 +771,7 @@ export class Paginator extends HTMLElement {
         const entry = this.#entries.find(entry => entry.view.document === doc)
         if (entry) return this.#goTo({ index: entry.index, anchor, select, context })
     }
-    async #scrollToAnchor(anchor: Anchor, reason: RelocateReason = 'anchor', context: object = {}) {
+    async #scrollToAnchor(anchor: Anchor, reason: RelocateReason = 'anchor', context: object = {}): Promise<void> {
         this.#anchor = anchor
         this.#anchorIndex = this.#index
         this.#anchorContext = context
@@ -782,7 +782,11 @@ export class Paginator extends HTMLElement {
             // previous column, there is an extra zero width rect in that column
             const rect = Array.from(rects)
                 .find(r => r.width > 0 && r.height > 0) || rects[0]
-            if (!rect) return
+            // A stored CFI can resolve to collapsed whitespace or a hidden
+            // publisher anchor (common on covers). It has no layout rect;
+            // still position the selected chapter and publish its relocation.
+            // Otherwise open finishes with no location and an empty reader.
+            if (!rect) return this.#scrollToAnchor(0, reason, context)
             await this.#scrollToRect(rect, reason, context)
             return
         }

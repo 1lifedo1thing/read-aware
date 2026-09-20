@@ -28,6 +28,25 @@ export async function runPDFRegressions(modules: Modules): Promise<Result[]> {
   const bytes = await makePDFFixture();
   const file = new File([bytes], "fixture.pdf", { type: "application/pdf" });
 
+  await check("PDF restores a later page before the first scroll layout", async () => {
+    const book = await modules.pdf.makePDF(file);
+    const view = new modules.view.View();
+    view.style.cssText = "display:block;position:fixed;left:0;top:0;width:900px;height:600px;opacity:0;pointer-events:none;z-index:-1";
+    document.body.append(view);
+    try {
+      await view.open(book);
+      const renderer = view.renderer;
+      if (!(renderer instanceof modules.fixed.FixedLayout)) throw new Error("Wrong renderer");
+      renderer.setLayout("scrolled", 1);
+      // Do not measure the host or wait for a frame before restoring: the
+      // real opening path can arrive before the shadow stylesheet is applied.
+      await view.goTo("epubcfi(/6/6)");
+      equal(renderer.index, 2);
+      equal(view.lastLocation?.section.current, 2);
+      if (!renderer.getContents().some(content => content.index === 2)) throw new Error("Saved page was not rendered");
+    } finally { view.close(); view.remove(); await book.destroy(); }
+  });
+
   await check("PDF parses through byte ranges, extracts text and resolves outline sections", async () => {
     let slices = 0;
     const source: BookFile = { name: file.name, size: file.size, type: file.type,

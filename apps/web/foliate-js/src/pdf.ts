@@ -17,11 +17,14 @@ const fetchText = async (url: string): Promise<string> => {
     return response.text()
 }
 
-// https://raw.githubusercontent.com/mozilla/pdf.js/refs/tags/v5.5.207/web/text_layer_builder.css
-const textLayerBuilderCSS = await fetchText(pdfjsPath('text_layer_builder.css'))
-
-// https://raw.githubusercontent.com/mozilla/pdf.js/refs/tags/v5.5.207/web/annotation_layer_builder.css
-const annotationLayerBuilderCSS = await fetchText(pdfjsPath('annotation_layer_builder.css'))
+// Keep module evaluation synchronous. Concurrent reader/background imports in
+// WKWebView can otherwise expose makePDF before these top-level awaits finish.
+// Page creation owns stylesheet readiness, shares the fetch, and permits retry.
+let layerStyles: Promise<string[]> | undefined
+const loadLayerStyles = () => layerStyles ??= Promise.all([
+    fetchText(pdfjsPath('text_layer_builder.css')),
+    fetchText(pdfjsPath('annotation_layer_builder.css')),
+]).catch((error: unknown) => { layerStyles = undefined; throw error })
 
 const COVER_MAX_EDGE = 480
 const COVER_SCAN_PAGES = 5
@@ -384,6 +387,7 @@ const render = async (page: PDFPage, doc: Document, zoom: number,
 }
 
 const renderPage = async (page: PDFPage, onRendered?: (canvas: HTMLCanvasElement) => void): Promise<PageSource> => {
+    const [textLayerBuilderCSS, annotationLayerBuilderCSS] = await loadLayerStyles()
     const viewport = page.getViewport({ scale: 1 })
     const src = URL.createObjectURL(new Blob([`
         <!DOCTYPE html>

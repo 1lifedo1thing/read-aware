@@ -11,6 +11,55 @@ export async function runScrollChapterRegressions(ViewClass: typeof View): Promi
   const results: Result[] = [];
   const assert = (value: boolean, message: string) => { if (!value) throw new Error(message); };
   const delay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
+  // Real EPUBs often put the chapter id on <body>, or omit a fragment entirely.
+  // Loading a middle chapter must not walk and lay out the rest of the book.
+  for (const anchorKind of ["body", "html", "zero", "omitted"] as const) {
+    const view = new ViewClass();
+    view.style.cssText = "position:fixed;display:block;left:0;top:0;width:1200px;height:800px;opacity:0;pointer-events:none;z-index:-1";
+    document.body.append(view);
+    const loads: number[] = [], leases = Array<number>(40).fill(0);
+    const urls = leases.map((_, index) => URL.createObjectURL(new Blob([
+      `<!doctype html><html id="root"><body id="chapter"><span hidden id="hidden-anchor"></span><h1>Chapter ${index}</h1><p id="quote">Bookmarked text ${index}.</p><p>${"Chapter prose. ".repeat(80)}</p></body></html>`,
+    ], { type: "text/html" })));
+    const book: Book = {
+      sections: urls.map((url, index) => ({ id: String(index), size: 1000,
+        load: () => { loads.push(index); leases[index]!++; return url; }, unload: () => { leases[index]!--; } })),
+      toc: urls.map((_, index) => ({ href: String(index) })),
+      resolveHref: href => ({ index: Number(href), ...(anchorKind === "omitted" ? {} : {
+        anchor: anchorKind === "zero" ? 0 : (doc: Document) => anchorKind === "body" ? doc.body : doc.documentElement,
+      }) }),
+    };
+    try {
+      await view.open(book);
+      const renderer = view.renderer;
+      if (!renderer || !("setChapterStarts" in renderer)) throw new Error("Missing paginator");
+      const starts = await prepareReaderChapterStarts(book);
+      assert(starts.size === urls.length, "Document-start TOC entries were discarded");
+      renderer.setChapterStarts(starts);
+      renderer.setLayoutAttributes({ flow: "scrolled", "max-inline-size": "700px" });
+      renderer.setStyles("body {font:20px/30px serif !important}");
+      await view.goTo({ index: 20, anchor: doc => doc.getElementById("hidden-anchor") });
+      assert(view.lastLocation?.section.current === 20, "A hidden saved anchor left the initial reader without a location");
+      await view.goTo("20");
+      assert(renderer.getContents().map(x => x.index).join() === "20", "Opening retained unrelated chapters");
+      assert(loads.length <= 2, `Opening scanned ${loads.length} of ${urls.length} source files`);
+      assert(readingVisibleText(view).text.includes("Chapter 20"), "Opening has no visible chapter text");
+      const doc = renderer.getContents()[0]!.doc;
+      const range = doc.createRange(); range.selectNodeContents(doc.getElementById("quote")!);
+      const cfi = view.getCFI(20, range);
+      await view.goTo("21");
+      await view.goTo(cfi);
+      assert(readingVisibleText(view).text.includes("Bookmarked text 20."), "CFI restoration is blank or in another chapter");
+      assert(renderer.getContents().length === 1 && loads.length <= 6, "Reopening grew the chapter surface");
+      await view.goTo("20");
+      await renderer.prev();
+      assert(view.lastLocation?.section.current === 19 && renderer.getContents().length === 1, "Previous chapter was merged or skipped");
+      await view.close();
+      assert(leases.every(count => count === 0), "Document-start navigation leaked source resources");
+      results.push({ name: `document-start chapter / ${anchorKind}`, passed: true });
+    } catch (error) { results.push({ name: `document-start chapter / ${anchorKind}`, passed: false, details: String(error) }); }
+    finally { await view.close(); view.remove(); urls.forEach(url => URL.revokeObjectURL(url)); }
+  }
   for (const scenario of ["continuous", "failed-continuation", "resize-during-load", "superseded", "close"] as const) {
     const view = new ViewClass();
     view.style.cssText = "position:fixed;display:block;left:0;top:0;width:1200px;height:800px;opacity:0;pointer-events:none;z-index:-1";

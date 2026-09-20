@@ -1159,6 +1159,17 @@ export class FixedLayout extends HTMLElement {
         if (!spread) return
         const { index, side } = spread
         const context = resolved.context ?? {}
+        // WKWebView may not have applied the newly connected host's shadow
+        // stylesheet yet. Scrolling then clamps to zero and overwrites a saved
+        // page with page one. Let the first layout establish a scroll viewport
+        // before positioning the stack; a replaced navigation must stay retired.
+        if (this.scrolled && (!this.clientWidth || !this.clientHeight)) {
+            do {
+                await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+                if (book !== this.book || this.#navigation !== navigation) return
+            } while (!this.clientWidth || !this.clientHeight)
+            this.#layoutStack(context)
+        }
         await this.#goToSpread(index, side, 'navigation', context, navigation)
         if (book !== this.book || this.#navigation !== navigation) return
         const content = this.getContents().find(content => content.index === resolved.index)

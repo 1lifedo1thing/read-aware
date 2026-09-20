@@ -231,6 +231,8 @@ export class SectionView {
     // Public fractions address the source section, whereas internal scrolling
     // addresses the selected chapter. Element/Range anchors keep their identity.
     selectChapter(anchor: Anchor): Anchor {
+        // Root targets mean the source start, not the body's margin/padding.
+        if (anchor === this.document?.body || anchor === this.document?.documentElement) anchor = 0
         if (!this.#chapters || this.#chapters.starts.length === 1) return anchor
         const sourceOffset = typeof anchor === 'number'
             ? this.#column ? Math.round(anchor * Math.max(0, this.#contentSize / this.#size - 1)) * this.#size
