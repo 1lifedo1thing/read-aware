@@ -195,5 +195,13 @@
   },
   "pluginServices": {
     "approvalNote": "Diese Berechtigungen gelten nur für diesen Aufruf. Der Buchzugriff umfasst das gesamte Buch einschließlich ungelesener Inhalte; globaler Zugriff umfasst alle Bücher. Änderungen und externe Aktionen lassen sich möglicherweise nicht rückgängig machen."
+  },
+  "community": {
+    "title": "Hilf ReadAware zu wachsen",
+    "description": "Mit einem Stern auf GitHub hilfst du anderen, ReadAware zu entdecken. Teile deine Ideen auf Discord und gestalte die nächste Version mit.",
+    "star": "Star auf GitHub",
+    "discord": "Discord beitreten",
+    "madeBy": "Mit <heart/> von <author>AHpx</author> entwickelt",
+    "love": "Liebe"
   }
 }

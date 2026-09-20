@@ -1,7 +1,8 @@
-import { ArrowSquareOut } from "@phosphor-icons/react";
-import { Body, Button, Dialog, Heading, Skeleton } from "@read-aware/ui";
+import { ArrowSquareOut, DiscordLogo, Star } from "@phosphor-icons/react";
+import { Body, Button, buttonClassName, Dialog, Heading, Skeleton } from "@read-aware/ui";
+import { useExternalLink } from "../../../hooks/useExternalLink";
 import { useLocale, useTranslation } from "../../../i18n";
-import { openExternalUrl } from "../../../platform/external-link";
+import { PROJECT_DISCORD_URL, PROJECT_REPOSITORY_URL } from "../../../platform/site-url";
 import type { ChangelogGroupKind, WhatsNewEntry } from "../lib/changelog-feed";
 import { changelogUrlForLocale } from "../lib/whats-new";
 
@@ -13,7 +14,9 @@ import { changelogUrlForLocale } from "../lib/whats-new";
  * website changelog serves — with the series codename beside the version,
  * mirroring the site's typography. Versions the site hasn't curated
  * (pre-releases) fall back to one line plus the external link; closing the
- * dialog — either button, Escape, or the backdrop — dismisses it for good.
+ * dialog — Continue reading, Escape, or the backdrop — dismisses it for good.
+ * Community links stay available while the notes load and leave the dialog
+ * open, so opening GitHub does not consume the invitation to join Discord.
  * Users who dislike it can turn it off in Settings → General.
  *
  * Presentation only. Which version to announce, and fetching its notes, is the
@@ -56,8 +59,10 @@ export function WhatsNewDialogView({
   loading,
   close,
 }: WhatsNewDialogViewProps) {
-  const { t } = useTranslation("nav");
+  const { t } = useTranslation(["nav", "common"]);
   const locale = useLocale();
+  const openLink = useExternalLink();
+  const openChangelog = useExternalLink(close);
 
   if (version === null) return null;
 
@@ -76,14 +81,15 @@ export function WhatsNewDialogView({
       // p-0: the scrolling body spans the panel's full width, so its
       // scrollbar hugs the panel edge instead of floating 32px inside the
       // padding — each section below carries its own padding instead.
-      className="max-w-md p-0"
+      className="max-w-lg p-0"
     >
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border px-8 pb-3 pt-8">
-        <Heading as="h2" size="xl">
+      <div className="flex max-h-[calc(100dvh-4rem)] flex-col">
+        <div className="flex shrink-0 flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border px-6 pb-3 pt-6 sm:px-8 sm:pt-8">
+          <Heading as="h2" size="xl">
             {t("update.whatsNewTitle", { version })}
             {codename && (
               <span className="ml-2 font-serif italic font-normal tracking-normal text-fg-muted">
-                {codename}
+                {" "}{codename}
               </span>
             )}
           </Heading>
@@ -105,7 +111,7 @@ export function WhatsNewDialogView({
         {loading ? (
           // Skeletons echo the filled layout's shape — a summary paragraph,
           // a group heading, list items — so the swap-in doesn't reflow.
-          <div className="max-h-[46vh] space-y-5 px-8 py-5">
+          <div className="min-h-0 space-y-5 overflow-y-auto px-6 py-5 sm:px-8">
             <Skeleton lines={3} className="w-full" />
             <div className="space-y-3">
               <Skeleton className="h-3 w-20" />
@@ -113,7 +119,7 @@ export function WhatsNewDialogView({
             </div>
           </div>
         ) : entry ? (
-          <div className="max-h-[46vh] space-y-5 overflow-y-auto px-8 py-5">
+          <div className="min-h-0 space-y-5 overflow-y-auto px-6 py-5 sm:px-8">
             <Body as="p">{entry.text.summary}</Body>
             {GROUP_ORDER.map((kind) => {
               const group = entry.text.groups.find((g) => g.kind === kind);
@@ -148,25 +154,44 @@ export function WhatsNewDialogView({
             })}
           </div>
         ) : (
-          <Body as="p" className="px-8 py-5">
+          <Body as="p" className="min-h-0 overflow-y-auto px-6 py-5 sm:px-8">
             {t("update.whatsNewBody")}
           </Body>
         )}
 
-        <div className="flex justify-end gap-2 px-8 pb-8 pt-5">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              // webview 吞 target=_blank——外链必须走 opener 插件
-              void openExternalUrl(changelogUrlForLocale(locale));
-              close();
-            }}
+        <section className="shrink-0 border-t border-border px-6 pb-4 pt-5 sm:px-8">
+          <h3 className="font-sans text-sm font-medium text-fg">
+            {t("common:community.title")}
+          </h3>
+          <Body as="p" className="mt-1.5">
+            {t("common:community.description")}
+          </Body>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className={buttonClassName()}>
+              <Star size={16} aria-hidden="true" />
+              {t("common:community.star")}
+            </a>
+            <a href={PROJECT_DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className={buttonClassName({ variant: "outline" })}>
+              <DiscordLogo size={18} aria-hidden="true" />
+              {t("common:community.discord")}
+            </a>
+          </div>
+        </section>
+
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-6 pb-6 sm:px-8">
+          <a
+            href={changelogUrlForLocale(locale)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={openChangelog}
+            className={buttonClassName({ variant: "link", size: "sm" })}
           >
             {t("update.whatsNewChangelog")}
             <ArrowSquareOut size={14} weight="regular" aria-hidden="true" />
-          </Button>
-          <Button onClick={close}>{t("update.whatsNewDone")}</Button>
+          </a>
+          <Button variant="ghost" size="sm" onClick={close}>{t("update.whatsNewDone")}</Button>
         </div>
+      </div>
     </Dialog>
   );
 }

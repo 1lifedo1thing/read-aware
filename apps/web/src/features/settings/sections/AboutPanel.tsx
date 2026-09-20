@@ -1,8 +1,10 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { Button, ChoiceGroup, Spinner } from "@read-aware/ui";
+import { DiscordLogo, Heart, Star } from "@phosphor-icons/react";
+import { Button, buttonClassName, ChoiceGroup, Spinner } from "@read-aware/ui";
+import { useExternalLink } from "../../../hooks/useExternalLink";
 import { isAndroid, isIOS, isTauri } from "../../../platform/environment";
-import { openExternalUrl } from "../../../platform/external-link";
-import { useTranslation } from "../../../i18n";
+import { PROJECT_AUTHOR_URL, PROJECT_DISCORD_URL, PROJECT_REPOSITORY_URL } from "../../../platform/site-url";
+import { Trans, useTranslation } from "../../../i18n";
 import { useSoftwareUpdate } from "../../update/hooks/useSoftwareUpdate";
 import {
   getUpdateChannel,
@@ -27,17 +29,13 @@ function formatVersion(version: string | null, unknownLabel: string): string {
   return codename ? `${version} 「${codename}」` : version;
 }
 
-function linkValue(href: string, label: string) {
+function linkValue(href: string, label: string, onClick: ReturnType<typeof useExternalLink>) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      onClick={(event) => {
-        // webview 吞 target=_blank——外链必须走 opener 插件
-        event.preventDefault();
-        void openExternalUrl(href);
-      }}
+      onClick={onClick}
       className="font-sans text-sm text-fg-muted underline underline-offset-2 transition-colors hover:text-fg"
     >
       {label}
@@ -46,7 +44,8 @@ function linkValue(href: string, label: string) {
 }
 
 export function AboutPanel() {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation(["settings", "common"]);
+  const openLink = useExternalLink();
   const update = useSoftwareUpdate();
   const updateControlRef = useMaintenanceSurface("updates");
   const channel = useSyncExternalStore(subscribeUpdateChannel, getUpdateChannel);
@@ -90,7 +89,24 @@ export function AboutPanel() {
                   : null;
 
   return (
-    <SettingsPage title={t("about.title")} description={t("about.description")}>
+    <SettingsPage
+      title={t("about.title")}
+      description={
+        <>
+          {t("about.description")}
+          <span className="mt-3 block text-fg-muted">
+            <Trans
+              ns="common"
+              i18nKey="community.madeBy"
+              components={{
+                heart: <Heart size={14} weight="fill" role="img" aria-label={t("common:community.love")} className="mx-0.5 inline-block align-[-2px]" />,
+                author: <a href={PROJECT_AUTHOR_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className="font-medium text-fg underline-offset-4 hover:underline" />,
+              }}
+            />
+          </span>
+        </>
+      }
+    >
       <SettingsGroup title="ReadAware">
         <SettingsRow
           borderless
@@ -149,6 +165,19 @@ export function AboutPanel() {
         />
       </SettingsGroup>
 
+      <SettingsGroup title={t("common:community.title")} description={t("common:community.description")}>
+        <div className="flex flex-wrap gap-2">
+          <a href={PROJECT_REPOSITORY_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className={buttonClassName()}>
+            <Star size={16} aria-hidden="true" />
+            {t("common:community.star")}
+          </a>
+          <a href={PROJECT_DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className={buttonClassName({ variant: "outline" })}>
+            <DiscordLogo size={18} aria-hidden="true" />
+            {t("common:community.discord")}
+          </a>
+        </div>
+      </SettingsGroup>
+
       <SettingsGroup
         title={t("about.engine.title")}
         description={t("about.engine.description")}
@@ -168,12 +197,12 @@ export function AboutPanel() {
           borderless
           title={t("about.website.title")}
           description={t("about.website.description")}
-          control={linkValue("https://readaware.app", "readaware.app")}
+          control={linkValue("https://readaware.app", "readaware.app", openLink)}
         />
         <SettingsRow
           title={t("about.contact.title")}
           description={t("about.contact.description")}
-          control={linkValue("mailto:hi@ahpx.me", "hi@ahpx.me")}
+          control={linkValue("mailto:hi@ahpx.me", "hi@ahpx.me", openLink)}
         />
       </SettingsGroup>
     </SettingsPage>

@@ -10,3 +10,8 @@ export function siteBaseUrl(): string {
   const dev = import.meta.env.VITE_READAWARE_SITE_URL as string | undefined;
   return dev || "https://readaware.app";
 }
+
+/** Public project destinations shared by the update notice and About. */
+export const PROJECT_REPOSITORY_URL = "https://github.com/ahpxex/read-aware";
+export const PROJECT_DISCORD_URL = "https://discord.gg/whDrKXwHWU";
+export const PROJECT_AUTHOR_URL = "https://ahpx.me";

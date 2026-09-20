@@ -195,5 +195,13 @@
   },
   "pluginServices": {
     "approvalNote": "僅為本次呼叫批准上述權限。書籍存取包含全書，可能涉及未讀內容；全域存取包含所有書籍。修改及外部操作可能無法復原。"
+  },
+  "community": {
+    "title": "讓更多人發現 ReadAware",
+    "description": "如果 ReadAware 對你有幫助，請在 GitHub 上給我們一顆 Star。也歡迎加入 Discord，分享想法，一起打磨下一版。",
+    "star": "在 GitHub 上 Star",
+    "discord": "加入 Discord",
+    "madeBy": "由 <author>AHpx</author> 用 <heart/> 打造",
+    "love": "熱愛"
   }
 }

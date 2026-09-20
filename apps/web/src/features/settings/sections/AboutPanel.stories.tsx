@@ -6,7 +6,7 @@ import { AboutPanel } from "./AboutPanel";
 
 const base: SoftwareUpdateState = {
   phase: "idle",
-  currentVersion: "0.5.2",
+  currentVersion: "0.6.0",
   availableVersion: null,
   progress: null,
   errorStage: null,
@@ -49,19 +49,19 @@ export const UpToDate: Story = {
 
 /** An update is available to install. */
 export const UpdateAvailable: Story = {
-  decorators: [updateState({ phase: "available", availableVersion: "0.6.0" })],
+  decorators: [updateState({ phase: "available", availableVersion: "0.6.1" })],
 };
 
 /** Downloading, with progress. */
 export const Downloading: Story = {
   decorators: [
-    updateState({ phase: "downloading", availableVersion: "0.6.0", progress: 63 }),
+    updateState({ phase: "downloading", availableVersion: "0.6.1", progress: 63 }),
   ],
 };
 
 /** Installing. */
 export const Installing: Story = {
-  decorators: [updateState({ phase: "installing", availableVersion: "0.6.0" })],
+  decorators: [updateState({ phase: "installing", availableVersion: "0.6.1" })],
 };
 
 /** A failed check, which surfaces here even though the header stays silent. */
@@ -73,7 +73,7 @@ export const CheckFailed: Story = {
 
 /** A version with no codename in the registry — the number stands alone. */
 export const VersionWithoutCodename: Story = {
-  decorators: [updateState({ currentVersion: "0.5.2-rc.1" })],
+  decorators: [updateState({ currentVersion: "0.3.0" })],
 };
 
 /** No version could be read (the web shell) — the unknown label stands in. */

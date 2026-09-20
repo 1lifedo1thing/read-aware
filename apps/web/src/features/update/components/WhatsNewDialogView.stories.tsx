@@ -4,37 +4,36 @@ import { WhatsNewDialogView } from "./WhatsNewDialogView";
 
 const entry: WhatsNewEntry = {
   version: "0.6.0",
-  codename: "Waxwing",
-  date: "2026-06-28",
+  codename: "Cambria",
+  date: "2026-09-20",
   text: {
     summary:
-      "Sync learns to speak plainly, the reader gets a proper last page, and plugins can finally own a settings page.",
+      "A more capable reading companion, reliable offline progress, and more ways to make ReadAware your own.",
     groups: [
       {
         kind: "new",
         items: [
           {
-            title: "The end of a book",
-            body: "Reading past the last page now arrives somewhere — your marks, the time it took, and a way to ask the agent to look back on it.",
+            title: "Reading insights for your assistant",
+            body: "Your assistant can work with reading history and trends to help you reflect on what you have read.",
           },
           {
-            title: "Plugin settings pages",
-            body: "A plugin can declare a full settings page and the app renders it with the design system, no plugin-authored UI involved.",
+            title: "More capable plugins",
+            body: "Plugins can work with your library, annotations and reading context through shared app capabilities.",
           },
         ],
       },
       {
         kind: "improved",
         items: [
-          { title: "Sync progress", body: "Percentages only when they're honest; the pull phase says so instead of inventing one." },
-          { body: "The Data & Sync panel now speaks in rows rather than paragraphs." },
+          { title: "Backup and restore", body: "Review the contents of an encrypted backup and choose what to restore." },
+          { body: "Find the project and its community directly in About." },
         ],
       },
       {
         kind: "fixed",
         items: [
-          { title: "Ghost books", body: "Books that failed to upload no longer look synced on other devices." },
-          { body: "PDF page turns no longer skip a page in double-page mode." },
+          { title: "Offline reading progress", body: "Reconnecting a device keeps the furthest reading position across devices." },
         ],
       },
     ],
@@ -59,7 +58,7 @@ const meta = {
   parameters: { layout: "fullscreen" },
   args: {
     version: "0.6.0",
-    codename: "Waxwing",
+    codename: "Cambria",
     entry,
     loading: false,
     close: () => {},

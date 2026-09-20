@@ -7,6 +7,7 @@
 const MINOR_CODENAMES: Record<string, string> = {
   "0.4": "El Alto",
   "0.5": "Lake Baikal",
+  "0.6": "Cambria",
 };
 
 /** The codename for a version string, or null for pre-codename series. */

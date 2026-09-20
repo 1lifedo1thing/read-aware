@@ -195,5 +195,13 @@
   },
   "pluginServices": {
     "approvalNote": "この呼び出しに限り、上記の権限を許可します。書籍へのアクセスは未読部分を含む全体、グローバルアクセスはすべての書籍が対象です。変更や外部操作は取り消せない場合があります。"
+  },
+  "community": {
+    "title": "ReadAware を応援する",
+    "description": "ReadAware が役に立ったら、GitHub で Star をお願いします。Discord では、次のバージョンに向けたアイデアや感想をお待ちしています。",
+    "star": "GitHub で Star",
+    "discord": "Discord に参加",
+    "madeBy": "<author>AHpx</author> が <heart/> を込めて制作",
+    "love": "愛情"
   }
 }

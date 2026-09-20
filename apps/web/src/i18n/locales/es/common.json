@@ -195,5 +195,13 @@
   },
   "pluginServices": {
     "approvalNote": "Autoriza estos permisos solo para esta llamada. El acceso al libro incluye todo el libro, incluso contenido no leído; el acceso global incluye todos los libros. Los cambios y acciones externas pueden ser irreversibles."
+  },
+  "community": {
+    "title": "Ayuda a ReadAware a crecer",
+    "description": "Una estrella en GitHub ayuda a que más lectores descubran ReadAware. Únete a Discord para compartir ideas y dar forma a lo que viene.",
+    "star": "Star en GitHub",
+    "discord": "Unirse a Discord",
+    "madeBy": "Hecho con <heart/> por <author>AHpx</author>",
+    "love": "amor"
   }
 }

@@ -195,5 +195,13 @@
   },
   "pluginServices": {
     "approvalNote": "Autorisez ces permissions pour cet appel uniquement. L’accès au livre couvre tout le livre, y compris les passages non lus ; l’accès global couvre tous les livres. Les modifications et actions externes peuvent être irréversibles."
+  },
+  "community": {
+    "title": "Soutenez ReadAware",
+    "description": "Une étoile sur GitHub aide davantage de lecteurs à découvrir ReadAware. Rejoignez Discord pour partager vos idées et préparer la suite avec nous.",
+    "star": "Star sur GitHub",
+    "discord": "Rejoindre Discord",
+    "madeBy": "Créé avec <heart/> par <author>AHpx</author>",
+    "love": "amour"
   }
 }
