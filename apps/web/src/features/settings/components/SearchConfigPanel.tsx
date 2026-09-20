@@ -24,18 +24,8 @@ export function SearchConfigPanel() {
         onClick={() => state.setShowKey(!state.showKey)} icon={state.showKey ? <EyeSlash /> : <Eye />} />} />
     <Caption>{t("search.keyHint")}{" "}<a className="underline underline-offset-4" href={WEB_PROVIDERS[state.config.provider].keyUrl}
       onClick={openExternalLink} target="_blank" rel="noreferrer">{t("search.getKey")}</a></Caption>
-    {state.separateFetch && <>
-      <Caption>{t("search.fetchHint")}</Caption>
-      <Select label={t("search.fetchProvider")} value={state.fetchProvider} onChange={state.changeFetchProvider}
-        options={Object.entries(WEB_PROVIDERS).filter(([, provider]) => provider.supportsFetch).map(([value, provider]) => ({ value, label: provider.label }))} />
-      <TextField label={t("search.fetchApiKey")} type={state.showFetchKey ? "text" : "password"} autoComplete="off"
-        value={state.fetchKey} onChange={event => state.change({ fetchProvider: state.fetchProvider, fetchApiKey: event.target.value })} onBlur={state.flush}
-        placeholder={t("search.keyPlaceholder")}
-        trailingAction={<IconButton size="sm" label={state.showFetchKey ? t("aiConfig.hide") : t("aiConfig.show")}
-          onClick={() => state.setShowFetchKey(!state.showFetchKey)} icon={state.showFetchKey ? <EyeSlash /> : <Eye />} />} />
-      <Caption><a className="underline underline-offset-4" href={WEB_PROVIDERS[state.fetchProvider].keyUrl}
-        onClick={openExternalLink} target="_blank" rel="noreferrer">{t("search.getKey")}</a></Caption>
-    </>}
+    {state.config.provider === "brave" && <Caption>{t("search.braveFetchHint")}</Caption>}
+    {!WEB_PROVIDERS[state.config.provider].supportsFetch && <Caption>{t("search.noFetchHint")}</Caption>}
     <div><Button variant="outline" size="sm" disabled={state.testing || !state.config.apiKey.trim()} onClick={() => void state.test()}>
       {state.testing ? t("search.testing") : t("search.test")}
     </Button></div>

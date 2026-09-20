@@ -781,13 +781,12 @@
     }
   },
   "search": {
-    "fetchProvider": "Page reading provider",
-    "fetchHint": "This search provider does not read pages. Choose a provider to let the agent read original sources; its saved key is reused.",
-    "fetchApiKey": "Page reading API key",
-    "testSearchSuccess": "Search connected. Add a page reading key to read original sources.",
+    "braveFetchHint": "Brave reads extracted text for the requested URL when available. It does not guarantee the complete page or a fresh crawl.",
+    "noFetchHint": "This provider supports search only. Page reading will not use another provider.",
+    "testSearchSuccess": "Search connected. This provider does not support page reading.",
     "title": "Web search",
     "enabled": "Allow web search",
-    "description": "The agent can search public sources and read web pages when needed. Queries and URLs are sent to the selected provider using your own key.",
+    "description": "The agent can search public sources and read web pages when needed. Queries and URLs are sent to the selected provider using your own key. Search and page reading use the same provider and API key.",
     "provider": "Search provider",
     "apiKey": "Search API key",
     "keyPlaceholder": "Enter your search provider key",

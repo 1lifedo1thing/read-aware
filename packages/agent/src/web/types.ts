@@ -26,5 +26,7 @@ export interface WebProvider {
   label: string;
   keyUrl: string;
   supportsFetch: boolean;
+  /** A public source available to this provider's page-reading API. */
+  connectionTestUrl?: string;
   create(apiKey: string, transport: AgentFetch): Pick<WebClient, "search"> & Partial<Pick<WebClient, "fetch">>;
 }

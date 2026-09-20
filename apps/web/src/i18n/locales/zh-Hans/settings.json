@@ -777,13 +777,12 @@
     }
   },
   "search": {
-    "fetchProvider": "网页读取服务商",
-    "fetchHint": "此搜索服务不提供正文读取。请选择读取原文的服务商，会复用该服务商已保存的密钥。",
-    "fetchApiKey": "网页读取 API Key",
-    "testSearchSuccess": "搜索连接成功。添加网页读取密钥后即可读取原文。",
+    "braveFetchHint": "Brave 读取指定网址可用的提取片段，不保证完整正文或实时抓取。",
+    "noFetchHint": "此服务商仅支持搜索，正文读取不会改用其他服务商。",
+    "testSearchSuccess": "搜索连接成功。此服务商不支持正文读取。",
     "title": "联网搜索",
     "enabled": "允许联网搜索",
-    "description": "Agent 可按需搜索公开资料、读取网页。查询词和网址会使用你自己的 key 发送给所选服务商。",
+    "description": "Agent 可按需搜索公开资料、读取网页。查询词和网址会使用你自己的 key 发送给所选服务商。 搜索和正文读取使用同一家服务商和同一个 API Key。",
     "provider": "搜索服务商",
     "apiKey": "搜索 API Key",
     "keyPlaceholder": "输入搜索服务商的 API Key",

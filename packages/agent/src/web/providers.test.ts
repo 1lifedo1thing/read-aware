@@ -84,6 +84,43 @@ test("Brave maps Chinese variants, preserves dates/snippets, recognizes omitted 
   await expect(createBraveClient(key, async () => { throw new Error("must not call"); }).search({ query: "x".repeat(601) })).rejects.toMatchObject({ code: "search/invalid-input" });
 });
 
+test("Brave reads only exact-URL chunks through its own key and reports partial/freshness limits", async () => {
+  const calls: string[] = [];
+  const client = createBraveClient(key, async (request, init) => {
+    calls.push(String(request));
+    expect(String(request)).toBe("https://api.search.brave.com/res/v1/llm/context");
+    expect(new Headers(init?.headers).get("X-Subscription-Token")).toBe(key);
+    expect(JSON.parse(String(init?.body))).toMatchObject({ q: url, maximum_number_of_tokens_per_url: 8192,
+      context_threshold_mode: "disabled", enable_local: false });
+    return json({ grounding: { generic: [
+      { url: "https://example.org/related", title: "Wrong page", snippets: ["Not the requested page"] },
+      { url, title: "Requested page", snippets: ["x".repeat(600), "y".repeat(200)] },
+    ] } });
+  });
+  const first = await client.fetch({ url: `${url}#heading`, maxChars: 500, fresh: true });
+  expect(first).toMatchObject({ provider: "brave", finalUrl: url, text: "x".repeat(500), nextOffset: 500 });
+  expect(first.warnings?.join(" ")).toContain("not a complete or live page fetch");
+  expect(first.warnings?.join(" ")).toContain("no cache-bypass");
+  expect(await client.fetch({ url, offset: 500, maxChars: 500 })).toMatchObject({ text: "x".repeat(100) + "\n\n" + "y".repeat(200), nextOffset: null });
+  expect(calls).toHaveLength(2);
+});
+
+test("Brave exact-URL misses, malformed or empty chunks fail without returning a related page", async () => {
+  for (const rows of [[], [{ url: `${url}/other`, snippets: ["Wrong page"] }], [{ url: `${url}?different=1`, snippets: ["Wrong page"] }], [{ url, snippets: [] }]]) {
+    await expect(createBraveClient(key, async () => json({ grounding: { generic: rows } })).fetch({ url }))
+      .rejects.toMatchObject({ code: "search/fetch-failed" });
+  }
+  await expect(createBraveClient(key, async () => json({ grounding: { generic: [{ url, snippets: [123] }] } })).fetch({ url }))
+    .rejects.toMatchObject({ code: "search/provider" });
+  let calls = 0;
+  const client = createBraveClient(key, async () => { calls++; return json({}); });
+  for (const target of ["http://localhost/private", `https://example.org/${"x".repeat(600)}`]) {
+    await expect(client.fetch({ url: target })).rejects.toMatchObject({ code: "search/invalid-input" });
+  }
+  await expect(client.fetch({ url }, AbortSignal.abort())).rejects.toMatchObject({ code: "search/cancelled" });
+  expect(calls).toBe(0);
+});
+
 const payload = (id: string) => {
   const rows = ["https://notexample.org/", url, url, "https://example.org/other"].map(url => ({ url, link: url, title: "T", snippet: "S", content: "S", description: "S", highlights: ["S"] }));
   if (id === "brave") return { type: "search", web: { results: rows } };

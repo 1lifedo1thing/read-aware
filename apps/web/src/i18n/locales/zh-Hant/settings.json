@@ -686,13 +686,12 @@
     }
   },
   "search": {
-    "fetchProvider": "網頁讀取服務商",
-    "fetchHint": "此搜尋服務不提供正文讀取。請選擇讀取原文的服務商，會沿用該服務商已儲存的金鑰。",
-    "fetchApiKey": "網頁讀取 API Key",
-    "testSearchSuccess": "搜尋連線成功。新增網頁讀取金鑰後即可讀取原文。",
+    "braveFetchHint": "Brave 讀取指定網址可用的擷取片段，不保證完整正文或即時抓取。",
+    "noFetchHint": "此服務商僅支援搜尋，正文讀取不會改用其他服務商。",
+    "testSearchSuccess": "搜尋連線成功。此服務商不支援正文讀取。",
     "title": "聯網搜尋",
     "enabled": "允許聯網搜尋",
-    "description": "Agent 可按需搜尋公開資料、讀取網頁。查詢詞和網址會使用你自己的 key 傳送給所選服務商。",
+    "description": "Agent 可按需搜尋公開資料、讀取網頁。查詢詞和網址會使用你自己的 key 傳送給所選服務商。 搜尋和正文讀取使用同一家服務商和同一個 API Key。",
     "provider": "搜尋服務商",
     "apiKey": "搜尋 API Key",
     "keyPlaceholder": "輸入搜尋服務商的 API Key",

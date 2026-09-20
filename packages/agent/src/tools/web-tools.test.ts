@@ -22,13 +22,13 @@ test("web tools refresh availability and recheck it before each call", async () 
 test("search-only setup exposes search in book and global scopes without advertising unreadable originals", async () => {
   const { deps } = createInMemoryDeps();
   deps.web = { configured: operation => operation !== "fetch",
-    search: async input => ({ provider: "brave", query: input.query, sources: [], retrievedAt: "2026-09-20" }),
+    search: async input => ({ provider: "serpapi", query: input.query, sources: [], retrievedAt: "2026-09-20" }),
     fetch: async () => { throw new Error("unconfigured"); },
   };
   for (const scope of [{ kind: "book" as const, bookId: "book" }, { kind: "global" as const, threadId: "web" }]) {
     const tools = buildAgentTools(scope, deps).map(tool => tool.name);
     expect(tools).toContain("web_search"); expect(tools).not.toContain("web_fetch");
     const result = await buildAgentTools(scope, deps).find(tool => tool.name === "web_search")!.execute("search", { query: "release" });
-    expect(JSON.stringify(result)).toContain("Original-page reading (web_fetch) is not configured");
+    expect(JSON.stringify(result)).toContain("Page reading (web_fetch) is unavailable with the selected provider");
   }
 });

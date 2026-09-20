@@ -1,6 +1,7 @@
+import { AppError } from "@read-aware/core";
 import type { AgentFetch } from "../models/transport";
 import type { WebClient, WebProvider } from "./types";
-import { domainQuery, invalid, jsonRequest, malformed, record, searchInput, searchResult, since, sourceUrl, string } from "./shared";
+import { domainQuery, fetchInput, fetchResult, invalid, jsonRequest, malformed, record, searchInput, searchResult, since, sourceUrl, string } from "./shared";
 
 function language(value: string) {
   const lower = value.toLowerCase();
@@ -9,7 +10,7 @@ function language(value: string) {
   if (lower === "pt-br") return "pt-br";
   return lower.split("-")[0]!;
 }
-export function createBraveClient(apiKey: string, transport: AgentFetch): Pick<WebClient, "search"> {
+export function createBraveClient(apiKey: string, transport: AgentFetch): WebClient {
   const request = jsonRequest("Brave", apiKey, transport, { "X-Subscription-Token": apiKey.trim() });
   return { async search(raw, signal) {
     const input = searchInput(raw);
@@ -31,8 +32,29 @@ export function createBraveClient(apiKey: string, transport: AgentFetch): Pick<W
         snippet: string([string(row.description, 800), ...extras].filter(Boolean).join("\n"), 800),
         ...(typeof row.page_age === "string" ? { publishedAt: row.page_age.slice(0, 80) } : {}) };
     }));
+  }, async fetch(raw, signal) {
+    const input = fetchInput(raw);
+    if (input.url.length > 600) throw invalid();
+    // Brave has query-based extraction, not an arbitrary-URL crawler. Keep only
+    // the exact requested source; a related page must never stand in for it.
+    const data = await request("https://api.search.brave.com/res/v1/llm/context", {
+      q: input.url, count: 5, maximum_number_of_urls: 5,
+      maximum_number_of_tokens: 8192, maximum_number_of_tokens_per_url: 8192,
+      context_threshold_mode: "disabled", enable_local: false,
+    }, signal);
+    const rows = record(data.grounding).generic;
+    if (!Array.isArray(rows) || data.error !== undefined) throw malformed();
+    const page = rows.map(record).find(row => sourceUrl(row.url) === input.url);
+    if (!page) throw new AppError("search/fetch-failed", "Brave returned no extracted text for the exact requested URL");
+    if (!Array.isArray(page.snippets) || page.snippets.some(chunk => typeof chunk !== "string")) throw malformed();
+    return fetchResult("brave", input, { url: input.url, title: page.title, text: page.snippets.join("\n\n"), warnings: [
+      "Brave returned extracted text chunks for this exact URL, not a complete or live page fetch. Sections may be missing or reordered; freshness is not guaranteed. nextOffset continues these returned chunks only, not the full source page.",
+      ...(input.fresh ? ["Brave LLM Context has no cache-bypass option; fresh=true cannot guarantee a new crawl."] : []),
+    ] });
   } };
 }
 export const braveProvider: WebProvider = {
-  id: "brave", label: "Brave", keyUrl: "https://api-dashboard.search.brave.com/app/keys", supportsFetch: false, create: createBraveClient,
+  id: "brave", label: "Brave", keyUrl: "https://api-dashboard.search.brave.com/app/keys", supportsFetch: true, create: createBraveClient,
+  // Use an indexed provider-owned page; example.com may have no exact extracted source.
+  connectionTestUrl: "https://brave.com/search/api/",
 };

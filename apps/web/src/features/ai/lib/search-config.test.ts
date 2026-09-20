@@ -54,50 +54,40 @@ test("unknown or malformed stored provider cannot silently enable TinyFish", () 
   }
 });
 
-test("all search providers retain their own key; fetch credentials never enter ordinary KV", () => {
+test("one provider owns both operations; retired fetch settings cannot cause a fallback", async () => {
+  const factories = Object.values(WEB_PROVIDERS).map(provider => spyOn(provider, "create").mockImplementation(apiKey => {
+    expect(apiKey).toBe(`secret-${provider.id}`);
+    return {
+      search: async input => ({ provider: provider.id, query: input.query, sources: [], retrievedAt: "now" }),
+      ...(provider.supportsFetch ? { fetch: async (input: { url: string }) => ({ provider: provider.id, url: input.url,
+        finalUrl: input.url, title: "Source", text: "Page text", offset: 0, nextOffset: null, retrievedAt: "now" }) } : {}),
+    };
+  }));
   try {
     for (const provider of Object.keys(WEB_PROVIDERS) as (keyof typeof WEB_PROVIDERS)[]) {
       saveSearchConfig({ provider, enabled: true, apiKey: `secret-${provider}` });
     }
-    saveSearchConfig({ provider: "brave", enabled: true, apiKey: "secret-brave", fetchProvider: "exa", fetchApiKey: "secret-exa" });
-    expect(getSearchConfig()).toEqual({ provider: "brave", enabled: true, apiKey: "secret-brave", fetchProvider: "exa", fetchApiKey: "secret-exa" });
+    for (const provider of Object.values(WEB_PROVIDERS)) {
+      // A saved TinyFish key and old fallback configuration must have no effect.
+      storage.set(SEARCH_CONFIG_KEY, JSON.stringify({ provider: provider.id, enabled: true, fetchProvider: "tinyfish" }));
+      expect(agentWeb.configured("search")).toBe(true);
+      expect(agentWeb.configured("fetch")).toBe(provider.supportsFetch);
+      expect((await agentWeb.search({ query: "release" })).provider).toBe(provider.id);
+      if (provider.supportsFetch) expect((await agentWeb.fetch({ url: "https://example.org" })).provider).toBe(provider.id);
+      else await expect(agentWeb.fetch({ url: "https://example.org" })).rejects.toMatchObject({ code: "search/fetch-failed" });
+      saveSearchConfig(getSearchConfig());
+      expect(JSON.parse(storage.get(SEARCH_CONFIG_KEY)!)).toEqual({ enabled: true, provider: provider.id });
+      saveSearchConfig({ ...getSearchConfig(), apiKey: "" });
+      expect(agentWeb.configured("search")).toBe(false); expect(agentWeb.configured("fetch")).toBe(false);
+      await expect(agentWeb.fetch({ url: "https://example.org" })).rejects.toMatchObject({ code: "search/not-configured" });
+      saveSearchConfig({ ...getSearchConfig(), apiKey: `secret-${provider.id}`, enabled: false });
+      expect(agentWeb.configured("search")).toBe(false); expect(agentWeb.configured("fetch")).toBe(false);
+    }
     for (const provider of Object.keys(WEB_PROVIDERS)) expect(getSecret(`ai-api-key.search.${provider}`)).toBe(`secret-${provider}`);
-    expect(storage.get(SEARCH_CONFIG_KEY)).toBe('{"enabled":true,"provider":"brave","fetchProvider":"exa"}');
     expect([...storage.values()].join()).not.toContain("secret-");
-    expect(() => saveSearchConfig({ provider: "brave", enabled: true, apiKey: "secret-brave", fetchProvider: "serpapi" })).toThrow();
-    storage.set(SEARCH_CONFIG_KEY, '{"provider":"brave","enabled":true,"fetchProvider":"serpapi"}');
-    expect(getSearchConfig().enabled).toBe(false);
-  } finally { for (const provider of Object.keys(WEB_PROVIDERS)) deleteSecret(`ai-api-key.search.${provider}`); }
-});
-
-test("switching to a reader-capable provider cannot overwrite another key with a stale fallback key", () => {
-  try {
-    setSecret("ai-api-key.search.exa", "latest-exa");
-    saveSearchConfig({ provider: "tavily", apiKey: "tavily-secret", enabled: true, fetchProvider: "exa", fetchApiKey: "stale-exa" });
-    expect(getSecret("ai-api-key.search.exa")).toBe("latest-exa");
-  } finally { deleteSecret("ai-api-key.search.exa"); deleteSecret("ai-api-key.search.tavily"); }
-});
-
-
-test("desktop port routes search and original-page requests to separate providers and gates them independently", async () => {
-  const search = spyOn(WEB_PROVIDERS.brave, "create").mockImplementation(apiKey => {
-    expect(apiKey).toBe("brave-secret");
-    return { search: async input => ({ provider: "brave", query: input.query, sources: [], retrievedAt: "now" }) };
-  });
-  const fetch = spyOn(WEB_PROVIDERS.exa, "create").mockImplementation(apiKey => {
-    expect(apiKey).toBe("exa-secret");
-    return { search: async () => { throw new Error("wrong search provider"); },
-      fetch: async input => ({ provider: "exa", url: input.url, finalUrl: input.url, title: "Original", text: "Original text", offset: 0, nextOffset: null, retrievedAt: "now" }) };
-  });
-  try {
-    saveSearchConfig({ enabled: true, provider: "brave", apiKey: "brave-secret", fetchProvider: "exa", fetchApiKey: "" });
-    expect(agentWeb.configured("search")).toBe(true); expect(agentWeb.configured("fetch")).toBe(false);
-    await expect(agentWeb.fetch({ url: "https://example.org" })).rejects.toMatchObject({ code: "search/not-configured" });
-    saveSearchConfig({ ...getSearchConfig(), fetchApiKey: "exa-secret" });
-    expect(agentWeb.configured("fetch")).toBe(true);
-    expect((await agentWeb.search({ query: "release" })).provider).toBe("brave");
-    expect((await agentWeb.fetch({ url: "https://example.org" })).provider).toBe("exa");
-    saveSearchConfig({ ...getSearchConfig(), enabled: false });
-    expect(agentWeb.configured("search")).toBe(false); expect(agentWeb.configured("fetch")).toBe(false);
-  } finally { search.mockRestore(); fetch.mockRestore(); deleteSecret("ai-api-key.search.brave"); deleteSecret("ai-api-key.search.exa"); }
+    for (const factory of factories) expect(factory).toHaveBeenCalledTimes(2);
+  } finally {
+    for (const factory of factories) factory.mockRestore();
+    for (const provider of Object.keys(WEB_PROVIDERS)) deleteSecret(`ai-api-key.search.${provider}`);
+  }
 });
