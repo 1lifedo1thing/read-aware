@@ -1,6 +1,8 @@
 import type { ChatAssistantPart, ChatMessage } from "../lib/chat-types";
 import { consolidateThinkingParts } from "../lib/chat-stream";
+import { groupChatActivity } from "../lib/chat-activity";
 import { AttachmentChip } from "./AttachmentChip";
+import { ChatActivity } from "./ChatActivity";
 import { ChatMessageActions, ChatMessageError } from "./ChatMessageActions";
 import { ChatInteractionPrompt } from "./ChatInteractionPrompt";
 import { ChatThinking } from "./ChatThinking";
@@ -11,10 +13,8 @@ import { ReferenceStack } from "./references/ReferenceStack";
 /**
  * One turn in the conversation. User turns sit right-aligned in a quiet chip
  * (with any attached passages above); assistant turns read as a left-aligned
- * timeline — one turn-level thinking disclosure, individual tool-step rows and
- * reference-card stacks interleaved with Markdown prose. Later reasoning runs
- * move the shared disclosure forward instead of stacking a new row around
- * every tool round.
+ * timeline — one activity disclosure for tools and reasoning, with reference
+ * stacks and Markdown prose kept in their original order outside it.
  *
  * Every settled message grows a hover-revealed action row (copy; regenerate
  * when `onRetry` is passed — the transcript only passes it on the last
@@ -24,10 +24,12 @@ import { ReferenceStack } from "./references/ReferenceStack";
 export function ChatMessageItem({
   message,
   streaming = false,
+  pendingStatus,
   onRetry,
 }: {
   message: ChatMessage;
   streaming?: boolean;
+  pendingStatus?: string;
   onRetry?: () => void;
 }) {
   if (message.role === "user") {
@@ -63,11 +65,23 @@ export function ChatMessageItem({
         : [];
   // Older persisted turns may predate turn-level reasoning consolidation.
   const parts = consolidateThinkingParts(rawParts, !streaming);
-  const lastIndex = parts.length - 1;
+  const lastPart = parts.at(-1);
+  const visibleParts = groupChatActivity(parts);
 
   return (
     <div className="group/message flex max-w-full flex-col gap-2">
-      {parts.map((part, index) => {
+      {visibleParts.map((part, index) => {
+        if (part.type === "activity") {
+          return (
+            <ChatActivity
+              key="activity"
+              part={part}
+              streaming={streaming}
+              thinking={streaming && lastPart?.type === "thinking"}
+              pendingStatus={streaming ? pendingStatus : undefined}
+            />
+          );
+        }
         if (part.type === "tool") {
           return <ChatToolStep key={part.id} part={part} />;
         }
@@ -82,14 +96,14 @@ export function ChatMessageItem({
             <ChatThinking
               key={index}
               text={part.text}
-              streaming={streaming && index === lastIndex}
+              streaming={streaming && part === lastPart}
             />
           );
         }
         return (
           <div key={index} className="max-w-full">
             <Markdown>{part.text}</Markdown>
-            {streaming && index === lastIndex && (
+            {streaming && part === lastPart && (
               <span className="ra-chat-caret" aria-hidden="true" />
             )}
           </div>

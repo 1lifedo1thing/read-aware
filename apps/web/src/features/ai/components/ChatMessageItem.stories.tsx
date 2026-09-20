@@ -38,7 +38,7 @@ export const UserTurnWithAttachment: Story = {
   },
 };
 
-/** A settled assistant turn: thinking, each tool call as its own row, prose after. */
+/** Tools and reasoning share one collapsed activity row, with prose after. */
 export const SettledAssistantTurn: Story = {
   args: {
     message: {
@@ -107,6 +107,60 @@ export const ConsolidatedToolRoundThinking: Story = {
           type: "text",
           text: "The visible passage supports the **clock clue**, but not the later reveal.",
         },
+      ],
+    },
+  },
+};
+
+/** Search rounds, including failures, fold into one row even across prose. */
+export const GroupedWebActivity: Story = {
+  args: {
+    message: {
+      id: "web-activity",
+      role: "assistant",
+      createdAt: sentAt,
+      content: "I found the official source. The roof shells share a spherical geometry.",
+      parts: [
+        { type: "tool", id: "search", tool: "web_search", detail: "Sydney Opera House spherical solution", state: "done", input: '{"query":"Sydney Opera House spherical solution"}', output: '{"results":2}' },
+        { type: "text", text: "I found the official source." },
+        { type: "tool", id: "fetch-1", tool: "web_fetch", detail: "Archive page", state: "error", output: '{"error":"Unavailable"}' },
+        { type: "tool", id: "fetch-2", tool: "web_fetch", detail: "The spherical solution", state: "done", output: '{"text":"The shells share a sphere."}' },
+        { type: "thinking", text: "The official source explains the shared geometry." },
+        { type: "text", text: "The roof shells share a **spherical geometry**." },
+      ],
+    },
+  },
+};
+
+/** Current action is visible without expanding tool arguments or results. */
+export const RunningWebActivity: Story = {
+  args: {
+    streaming: true,
+    message: {
+      id: "web-running",
+      role: "assistant",
+      createdAt: sentAt,
+      content: "",
+      parts: [
+        { type: "tool", id: "search", tool: "web_search", state: "done", output: '{"results":2}' },
+        { type: "tool", id: "fetch", tool: "web_fetch", detail: "The spherical solution", state: "running", input: '{"url":"https://www.sydneyoperahouse.com/"}' },
+      ],
+    },
+  },
+};
+
+/** A tool waiting for the reader must never hide the permission prompt. */
+export const ActivityWithPendingPermission: Story = {
+  args: {
+    streaming: true,
+    message: {
+      id: "permission",
+      role: "assistant",
+      createdAt: sentAt,
+      content: "",
+      parts: [
+        { type: "tool", id: "remove", tool: "delete_book", state: "running", input: '{"bookId":"example"}' },
+        { type: "interaction", id: "confirm", state: "pending", request: { id: "confirm", threadKey: "global:example", kind: "permission", action: "delete-book", subject: "Example book" } },
       ],
     },
   },

@@ -18,6 +18,8 @@
     "thinking": "思考中…",
     "thought": "思考過程",
     "tools": {
+      "calls": "{{count}} 次工具呼叫",
+      "failures": "{{count}} 次失敗",
       "list_host_commands": "宿主命令",
       "execute_host_command": "執行宿主命令",
       "get_workspace": "目前介面",

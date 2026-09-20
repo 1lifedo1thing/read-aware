@@ -76,6 +76,7 @@ export function ChatTranscript({
   // no tool row behind, only the cards).
   const lastPart = streamingParts[streamingParts.length - 1];
   const waitingForUser = lastPart?.type === "interaction" && lastPart.state === "pending";
+  const hasToolActivity = streamingParts.some((part) => part.type === "tool");
   const awaitingNextRound =
     isStreaming &&
     (lastPart?.type === "tool" ||
@@ -107,9 +108,10 @@ export function ChatTranscript({
             createdAt: "",
           }}
           streaming
+          pendingStatus={awaitingNextRound ? status ?? t("chat.thinking") : undefined}
         />
       ) : null}
-      {!waitingForUser && (streamingParts.length === 0 || awaitingNextRound) && (
+      {!waitingForUser && (streamingParts.length === 0 || (awaitingNextRound && !hasToolActivity)) && (
         <ThinkingRow label={status ?? t("chat.thinking")} />
       )}
     </>

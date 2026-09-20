@@ -18,6 +18,10 @@
     "thinking": "Thinking…",
     "thought": "Thought process",
     "tools": {
+      "calls_one": "{{count}} tool call",
+      "calls_other": "{{count}} tool calls",
+      "failures_one": "{{count}} failed",
+      "failures_other": "{{count}} failed",
       "list_host_commands": "Host commands",
       "execute_host_command": "Run host command",
       "get_workspace": "Workspace",
