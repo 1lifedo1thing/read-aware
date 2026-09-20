@@ -4,6 +4,7 @@ import type { DigestFlavor } from "./book-memory";
 
 export type BookContextSnapshot = {
   bookId: string; readingStatus: string; flavor: DigestFlavor | null; href: string | null; format: string;
+  spoilerSensitive?: boolean | null;
   contentHash: string | null; textHash: string | null;
   memories: { id: string; kind: string; text: string }[];
   annotations: { id: string; kind: string; href: string | null; quote: string; note: string | null }[];
@@ -33,7 +34,8 @@ function rows<T>(input: unknown, read: (value: unknown) => T, key: (row: T) => s
 
 /** Validate and copy native data before any async hashing or source reads. */
 export function normalizeBookContextSnapshot(input: unknown, expectedBookId: string): BookContextSnapshot {
-  const value = object(input, ["bookId", "readingStatus", "flavor", "href", "format", "contentHash", "textHash", "memories", "annotations", "digests"]);
+  const value = object(input, [...(input && typeof input === "object" && "spoilerSensitive" in input ? ["spoilerSensitive"] : []), "bookId", "readingStatus", "flavor", "href", "format", "contentHash", "textHash", "memories", "annotations", "digests"]);
+  if (value.spoilerSensitive != null && typeof value.spoilerSensitive !== "boolean") return invalid();
   if (id(value.bookId) !== id(expectedBookId)) return invalid();
   const hash = (value: unknown) => value === null ? null : typeof value === "string" && /^[a-f0-9]{64}$/.test(value) ? value : invalid();
   const memories = rows(value.memories, raw => {
@@ -52,7 +54,7 @@ export function normalizeBookContextSnapshot(input: unknown, expectedBookId: str
       characters: text(row.characters), relations: text(row.relations), version: integer(row.version) };
   }, row => String(row.index));
   if (memories.length + annotations.length + digests.length > 8192) return invalid();
-  return { bookId: expectedBookId, readingStatus: text(value.readingStatus, 32), flavor: flavor(value.flavor), href: nullable(value.href),
+  return { bookId: expectedBookId, spoilerSensitive: value.spoilerSensitive as boolean | null | undefined, readingStatus: text(value.readingStatus, 32), flavor: flavor(value.flavor), href: nullable(value.href),
     format: text(value.format, 32), contentHash: hash(value.contentHash), textHash: hash(value.textHash), memories, annotations, digests };
 }
 
@@ -87,7 +89,7 @@ export async function bookMemoryContextBundle(input: BookContextSnapshot, inputB
   const boundary = { ...object(inputBoundary, inputBoundary?.kind === "before" ? ["kind", "chapterIndex"] : ["kind"]) };
   if (!["all", "unknown", "before"].includes(boundary.kind as string)) return invalid();
   const before = boundary.kind === "before" ? integer(boundary.chapterIndex) : null;
-  if (boundary.kind === "all" && source.flavor !== "expository" && source.readingStatus !== "finished") return invalid();
+  if (boundary.kind === "all" && (source.spoilerSensitive ?? source.flavor !== "expository") && source.readingStatus !== "finished") return invalid();
   if (inputChapters !== null && (!Array.isArray(inputChapters) || inputChapters.some(hrefs => !Array.isArray(hrefs)))) return invalid();
   const chapters: string[][] | null = inputChapters === null ? null : inputChapters.map((hrefs: readonly string[]) => hrefs.map(href => text(href)));
   const items: ContextBundleItem[] = [], omissions: ContextBundleOmission[] = [];

@@ -17,6 +17,7 @@ export interface RealBookSpec {
   /** fixtures/<slug>.epub 与 fixtures/<slug>-digests.json 的文件名词干。 */
   slug: string;
   narrativity: "narrative" | "expository";
+  spoilerSensitive: boolean;
   /**
    * 正文第一章 index：之前的辅文（版权/目录/序言/人物表）不进纪要注入——
    * 目录与人物表携带前瞻信息，纪要层面把它们当噪音剔除。
@@ -31,12 +32,14 @@ const REAL_BOOKS = {
   karamazov: {
     slug: "karamazov",
     narrativity: "narrative",
+    spoilerSensitive: true,
     // 0-4 是版权/作者的话/辅文/人物表/目录。
     firstContentChapter: 5,
   },
   lebon: {
     slug: "lebon",
     narrativity: "expository",
+    spoilerSensitive: false,
     // 0-3 是目录/译者序/两版序言；引言起才是勒庞自己的论证。
     firstContentChapter: 4,
     title: "乌合之众",
@@ -44,6 +47,7 @@ const REAL_BOOKS = {
   santi: {
     slug: "santi",
     narrativity: "narrative",
+    spoilerSensitive: true,
     // 0-3 是目录/获奖感言/卷扉页；第一章起为正文。
     firstContentChapter: 4,
     title: "三体全集",
@@ -51,6 +55,7 @@ const REAL_BOOKS = {
   refactoring: {
     slug: "refactoring",
     narrativity: "expository",
+    spoilerSensitive: false,
     // 0-5 是电子书说明/环衬/版权/目录/初版序；Preface 起是 Fowler 本人的实文。
     // fixture 已剥离全部插图（原 36MB → 文本骨架），正文一字未动。
     firstContentChapter: 6,
@@ -58,6 +63,7 @@ const REAL_BOOKS = {
   berger: {
     slug: "berger",
     narrativity: "expository",
+    spoilerSensitive: false,
     // 0-2 是版权/推荐序/自测页；前言起是作者正文。
     firstContentChapter: 3,
     title: "如何用提问解决问题",
@@ -146,6 +152,7 @@ function createRealBook(spec: RealBookSpec): RealBookFixture {
           progressPercent,
           status,
           narrativity: spec.narrativity,
+          spoilerSensitive: spec.spoilerSensitive,
         },
       ],
       chapters: { [bookId]: epub().chapters },

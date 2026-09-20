@@ -8,6 +8,8 @@ const NARRATIVE_BOOK_ID = "eval-locked-room" as Id;
 const narrativeBook: BookOverview = {
   id: NARRATIVE_BOOK_ID,
   title: "The Locked Room: A Novel",
+  narrativity: "narrative",
+  spoilerSensitive: true,
   author: "Mira Vale",
   progressPercent: 18,
   status: "reading",
@@ -149,6 +151,8 @@ export const readingEvalSuite: EvalSuite<AgentEvalScenario> = {
           {
             id: "eval-data-structures" as Id,
             title: "Practical Data Structures",
+            narrativity: "expository",
+            spoilerSensitive: false,
             author: "A. N. Author",
             progressPercent: 20,
             status: "reading",
@@ -279,6 +283,39 @@ export const readingEvalSuite: EvalSuite<AgentEvalScenario> = {
       rubric: [
         "Names The Quiet Harbor as the match and quotes or paraphrases the actual lighthouse passage, without attributing it to the other book",
       ],
+    }),
+    ...[false, true].map(noCursor => defineAgentEvalScenario({
+      id: noCursor ? "factual-history-without-position" : "factual-history-can-look-ahead",
+      description: "叙事历史保留人物纪要，但不把后来的真实事件当作剧透。",
+      tags: ["spoiler", "retrieval", "forward", "book"],
+      scope: { kind: "book" as const, bookId: "eval-reform-history" },
+      seed: {
+        books: [{ id: "eval-reform-history", title: "改革年代：历史讲义（评测文本）", narrativity: "narrative" as const, spoilerSensitive: false, status: "reading" as const, progressPercent: 10 }],
+        chapters: { "eval-reform-history": [
+          { title: "早年", hrefs: ["early.xhtml"], text: "本章讨论邓小平早年的留学与政治经历。" },
+          { title: "九十年代", hrefs: ["later.xhtml"], text: "1992年南方谈话再次强调发展和改革开放，推动市场化改革提速。讲义用深圳和珠海的考察说明他如何借地方实践推动政策讨论。" },
+        ] },
+      },
+      turns: [{ text: "书里怎么解释邓小平1992年南方谈话对改革的影响？帮我查一下原文。",
+        ...(noCursor ? {} : { readingCursor: { chapterIndex: 0, chapter: "early.xhtml", visibleText: "本章讨论邓小平早年的留学与政治经历。" } }) }],
+      expectation: { answer: { mustContain: ["改革"], mustNotContain: ["剧透", "spoiler", "读到哪里", "阅读进度"] },
+        tools: { requiredAny: ["search_book_text", "read_chapter"], forbidden: ["ask_user"], noErrors: true } },
+      rubric: ["实际检索后文，并根据原文解释南方谈话推动改革；不因为用户停在早年或位置未知而避谈真实历史。"],
+    })),
+    defineAgentEvalScenario({
+      id: "biography-later-life",
+      description: "未读完的非虚构传记可以查后半生，不能默认使用小说围栏。",
+      tags: ["spoiler", "retrieval", "forward", "book"],
+      scope: { kind: "book", bookId: "eval-biography" },
+      seed: { books: [{ id: "eval-biography", title: "Mara Evans: A Scientific Biography (Evaluation Text)", narrativity: "narrative", spoilerSensitive: false, status: "reading" }],
+        chapters: { "eval-biography": [
+          { title: "Childhood", text: "The biography opens with Mara Evans's childhood and schooling." },
+          { title: "The laboratory years", text: "In 1981, Evans donated her 37 field notebooks to the university archive. This donation made the original observations available to later researchers." },
+        ] } },
+      turns: [{ text: "What did Evans donate in 1981, and why did it matter? Check this biography.", readingCursor: { chapterIndex: 0, visibleText: "The biography opens with Mara Evans's childhood and schooling." } }],
+      expectation: { answer: { mustContain: ["37", "notebooks"], mustNotContain: ["spoiler"] },
+        tools: { requiredAny: ["read_chapter", "search_book_text"], forbidden: ["ask_user"], noErrors: true } },
+      rubric: ["Answers from the later chapter with the donation and its research benefit, without requesting permission or withholding the later life."],
     }),
   ],
 };

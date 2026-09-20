@@ -65,10 +65,11 @@ export interface LibraryBookRow {
   collectionId?: string | null;
   /**
    * Narrativity classification (book.narrativityClassified projection):
-   * narrative books get the spoiler fence and a character graph, expository
-   * books an unfenced concept graph. Absent/null = not yet classified.
+   * narrative books use people/events digests, expository books concepts.
+   * Spoiler sensitivity is independent. Absent/null = not yet classified.
    */
   narrativity?: "narrative" | "expository" | null;
+  spoilerSensitive?: boolean | null;
 }
 
 /**

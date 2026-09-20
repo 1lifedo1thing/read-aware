@@ -59,7 +59,7 @@ export function createBookGraphTasks(lifetime?: AbortSignal, trackCleanup?: (wor
         await durable.onPlan(chapters); await input.onPlan(chapters);
       } } : {}),
       bookMemory: durable ? { ...memory, saveDigest: durable.saveDigest } : memory, bookText: createBookTextPort(actor),
-      classifyBookIfUnclassified: (bookId, flavor, signal) => classifyBookIfUnclassified(bookId, flavor, signal, actor),
+      classifyBookIfUnclassified: (bookId, flavor, signal, spoilerSensitive) => classifyBookIfUnclassified(bookId, flavor, signal, spoilerSensitive, actor),
       resolveBoundary: () => resolveBoundary(input.bookId) });
   }, (message, error) => log.warn(message, error), lifetime);
   // The owner's abort listener runs first, cancelling admission and execution.

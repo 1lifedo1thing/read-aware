@@ -41,6 +41,18 @@ test("book producer reads exact durable scope and verified chapter metadata with
   expect((await complete.read()).content.items).toHaveLength(3); complete.dispose();
   expect(h.calls).toEqual(["book-one"]);
 });
+test("factual narrative context uses all chapters without needing a recorded reading position", async () => {
+  const h = await host();
+  h.source.spoilerSensitive = false;
+  h.source.href = null;
+  h.controls.before = async step => { if (step === "blob") throw Error("Nonfiction should not need a chapter fence"); };
+  const lease = h.owner.open(h.source.bookId);
+  const bundle = await lease.read(); lease.dispose();
+  expect(bundle.content.items).toHaveLength(3);
+  expect(bundle.content.omissions).toEqual([]);
+  await h.owner.disclose(bundle);
+  expect(h.calls).toEqual([h.source.bookId, h.source.bookId]);
+});
 
 test("active rewind/loading/wrong-edition override persisted later position; unrelated sessions do not", async () => {
   for (const mode of ["rewind", "loading", "wrong-edition", "other"]) {

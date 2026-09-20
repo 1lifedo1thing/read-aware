@@ -23,7 +23,7 @@ fn book_context_snapshot_versioned(conn: &mut Connection, book_id: &str, version
     user_profile::require_initialized(&tx)?;
     let book = tx
         .query_row(
-            "SELECT reading_status,narrativity,progress_json,format FROM books WHERE id=?1",
+            "SELECT reading_status,narrativity,progress_json,format,spoiler_sensitive FROM books WHERE id=?1",
             [book_id],
             |r| {
                 Ok((
@@ -31,6 +31,7 @@ fn book_context_snapshot_versioned(conn: &mut Connection, book_id: &str, version
                     r.get::<_, Option<String>>(1)?,
                     r.get::<_, Option<String>>(2)?,
                     r.get::<_, String>(3)?,
+                    r.get::<_, Option<bool>>(4)?,
                 ))
             },
         )
@@ -93,7 +94,7 @@ fn book_context_snapshot_versioned(conn: &mut Connection, book_id: &str, version
             .optional()?
             .flatten())
     };
-    let result = json!({"bookId":book_id, "readingStatus":book.0, "flavor":book.1, "href":progress["href"], "format":book.3,
+    let result = json!({"bookId":book_id, "readingStatus":book.0, "flavor":book.1, "spoilerSensitive":book.4, "href":progress["href"], "format":book.3,
         "contentHash":hash(format!("bookfile:{book_id}"))?, "textHash":hash(format!("booktext:{book_id}"))?,
         "memories":memories, "annotations":annotations, "digests":digests});
     tx.commit()?;

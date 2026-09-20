@@ -34,10 +34,12 @@ export interface BookSummary {
   fileName?: string;
   fileSize?: number;
   /**
-   * Narrativity classification (spoiler fence + digest-flavor signal), written
+   * Digest organization (people/events versus concepts), written
    * by the idle classification pipeline. Absent = not yet classified.
    */
   narrativity?: "narrative" | "expository";
+  /** Independent protection for fictional plot revelations. */
+  spoilerSensitive?: boolean;
 }
 
 export interface CollectionSummary {

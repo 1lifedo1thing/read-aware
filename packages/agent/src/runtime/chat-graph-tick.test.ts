@@ -36,7 +36,7 @@ describe("chat-driven graph catch-up", () => {
       const system = String(context.systemPrompt ?? "");
       if (system.includes("NARRATIVE work or an EXPOSITORY work")) {
         log.push("classify");
-        return fauxAssistantMessage('{"narrativity": "expository", "confidence": 0.9}');
+        return fauxAssistantMessage('{"narrativity": "expository", "spoilerSensitive": false, "confidence": 0.9}');
       }
       if (system.includes("Digest ONE chapter")) {
         const match = String(context.messages[0]?.content ?? "").match(/Chapter #(\d+)/);

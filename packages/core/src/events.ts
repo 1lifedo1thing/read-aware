@@ -153,7 +153,7 @@ export type DomainEvent =
     >
   /**
    * 叙事性分类：空闲管线从书名/目录/正文样本判定这本书是叙事作品还是
-   * 说明文类。剧透围栏与纪要口径的分流信号。与 chapterDigested 同理，
+   * 说明文类；spoilerSensitive 单独决定是否保护情节揭晓。与 chapterDigested 同理，
    * LLM 判定不可确定性重算——入事件流，投影落 books.narrativity。
    * New automatic verdicts set onlyIfUnclassified; the current projector
    * preserves an existing classification on replay. Legacy unmarked events
@@ -161,7 +161,7 @@ export type DomainEvent =
    */
   | DomainEventEnvelope<
       "book.narrativityClassified",
-      { bookId: Id; narrativity: "narrative" | "expository"; model?: string; onlyIfUnclassified?: true }
+      { bookId: Id; narrativity: "narrative" | "expository"; spoilerSensitive?: boolean; model?: string; onlyIfUnclassified?: true }
     >
   /**
    * Two book records turned out to be the same content (matching source

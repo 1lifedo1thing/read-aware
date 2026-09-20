@@ -40,6 +40,19 @@ test("same-chapter classification changes replace stale digests without discardi
     expect(f.messageCounts).toEqual([1, 3, 5]);
   } finally { await f.close(); }
 });
+test("changing spoiler sensitivity refreshes the fence without changing digest flavor", async () => {
+  const f = fixture();
+  try {
+    f.stores.books[0]!.spoilerSensitive = true;
+    await f.send({ readingCursor: { chapterIndex: 1 } });
+    f.stores.books[0]!.spoilerSensitive = false;
+    await f.send({ readingCursor: { chapterIndex: 1 } });
+    expect(f.prompts[0]).not.toContain("Future narrative");
+    expect(f.prompts[1]).toContain("Future narrative");
+    expect(f.prompts[1]).toContain("This book has no plot-spoiler boundary");
+    expect(f.messageCounts).toEqual([1, 3]);
+  } finally { await f.close(); }
+});
 test("index-only movement, lost cursor and finished-to-reading changes invalidate the memory boundary", async () => {
   const f = fixture();
   try {

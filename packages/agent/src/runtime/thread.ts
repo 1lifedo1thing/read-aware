@@ -12,8 +12,8 @@ import { AppError, errorCode, ERR_AI_MEMORY_DISABLED, ERR_AI_PROVIDER, profileCo
 import { runMemoryBuild } from "../memory/build-policy";
 import { buildSystemPrompt } from "../context/system-prompt";
 import { extractMemories, extractMemoriesFromTranscript } from "../memory/extraction";
-import { digestBookTick } from "../memory/graph-upkeep";
-import { chapterMemoryPolicy } from "../memory/book-memory-policy";
+import { digestBookTick, ensureBookClassification } from "../memory/graph-upkeep";
+import { chapterMemoryPolicy, needsSpoilerProtection } from "../memory/book-memory-policy";
 import {
   bootstrapSummaryFromHistory,
   formatTurnsForFolding,
@@ -500,10 +500,31 @@ export class AgentThread {
       let narrativeUnfinished = false;
       let currentBook: BookOverview | undefined;
       if (this.scope.kind === "book") {
-        const book = await call.wait(this.deps.library.getBook(this.scope.bookId));
+        let book = await call.wait(this.deps.library.getBook(this.scope.bookId));
+        // Upgrade legacy narrative classifications before enforcing a plot fence.
+        // Cache the independent verdict through the existing conditional event seam.
+        // No source text is sampled when surrounding-text sharing is disabled.
+        if (book && book.status !== "finished" && book.spoilerSensitive === undefined && book.narrativity !== "expository") {
+          const deadline = new AbortController();
+          const timer = setTimeout(() => deadline.abort(new DOMException("Book classification timed out", "TimeoutError")), 15_000);
+          const signal = AbortSignal.any([call.signal, deadline.signal]);
+          const classificationCall = readingContextCall(this.deps.readingContextPolicy, signal, call.permissions);
+          try {
+            await classificationCall.wait(ensureBookClassification({ deps: this.deps, bookId: book.id,
+              model: this.resolveModel("fast"), complete: this.completeFn, signal },
+              call.permissions.surrounding ? cursor?.chapterIndex ?? 0 : 0));
+            book = await call.wait(this.deps.library.getBook(book.id));
+          } catch (error) {
+            call.assertAllowed();
+            this.deps.log?.warn("book reading policy unavailable; keeping conservative fallback", error);
+          } finally {
+            clearTimeout(timer);
+            classificationCall.dispose();
+          }
+        }
         currentBook = book;
         this.turnState.bookMemoryBoundary = chapterMemoryPolicy(book, cursor?.chapterIndex).boundary;
-        narrativeUnfinished = book?.narrativity === "narrative" && book.status !== "finished";
+        narrativeUnfinished = !!book && (book.spoilerSensitive ?? book.narrativity === "narrative") && needsSpoilerProtection(book);
         if (narrativeUnfinished && cursor?.chapterIndex !== undefined) {
           this.turnState.spoilerFence = {
             throughChapterIndex: localInput.readingCursor?.visibleText?.trim()

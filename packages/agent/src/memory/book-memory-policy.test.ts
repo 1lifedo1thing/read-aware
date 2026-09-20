@@ -9,6 +9,24 @@ const digests: ChapterDigest[] = [
   { chapterIndex: 1, summary: "Concept summary", characters: [{ name: "Entropy" }], relations: [], digestVersion: 2, flavor: "expository" },
   { chapterIndex: 2, summary: "Future summary", characters: [{ name: "Secret", aliases: ["Ada"] }], relations: [], digestVersion: 2, flavor: "narrative" },
 ];
+test("factual narrative books retain people/events digests without a reading fence", () => {
+  const book = { id: "b", title: "Historical biography", narrativity: "narrative" as const, spoilerSensitive: false, status: "reading" as const };
+  for (const index of [undefined, 0, 1]) {
+    const policy = chapterMemoryPolicy(book, index);
+    expect(policy).toEqual({ flavor: "narrative", boundary: { kind: "all" } });
+    const prompt = buildSystemPrompt({ kind: "book", bookId: "b" }, { book, chapterDigests: digests });
+    expect(prompt).toContain("Future summary");
+    expect(prompt).toContain("This book has no plot-spoiler boundary");
+    expect(prompt).not.toContain("first-sentence caution");
+    expect(prompt).not.toContain("ask the reader where they are");
+    expect(prompt).not.toContain("NEVER call read_chapter on the current narrative chapter");
+    expect(JSON.stringify(queryBookGraph(digests, {}, policy.boundary, policy.flavor))).toContain("Secret");
+  }
+});
+test("spoiler-sensitive fiction remains fenced regardless of its digest style", () => {
+  expect(chapterMemoryPolicy({ narrativity: "expository", spoilerSensitive: true, status: "reading" }, 2).boundary)
+    .toEqual({ kind: "before", chapterIndex: 2 });
+});
 test("unclassified chapter memory uses the conservative narrative policy; invalid positions withhold", () => {
   for (const index of [undefined, -1, NaN, Infinity, 1.2, Number.MAX_SAFE_INTEGER + 1]) {
     expect(chapterMemoryPolicy({ status: "reading" }, index)).toEqual({ flavor: "narrative", boundary: { kind: "unknown" } });

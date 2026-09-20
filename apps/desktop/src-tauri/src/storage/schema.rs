@@ -923,6 +923,7 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
       END;
       UPDATE capability_change_state SET epoch=lower(hex(randomblob(24))) WHERE id=1;"),
     (51, "credential_publication_sources", "ALTER TABLE restored_credential_publications ADD COLUMN source_json TEXT;"),
+    (52, "book_spoiler_policy", "ALTER TABLE books ADD COLUMN spoiler_sensitive INTEGER CHECK(spoiler_sensitive IN (0, 1));"),
 ];
 
 /// Rebuild the annotation FTS index from the table. Required after any VACUUM
@@ -941,7 +942,7 @@ pub(crate) fn rebuild_annotations_fts(conn: &Connection) -> Result<(), CommandEr
 /// The schema version a projection checkpoint is stamped with. Restoring one
 /// is only sound when the derived tables' shapes match exactly, so a
 /// checkpoint from a different version is ignored in favour of the log.
-pub(crate) const SCHEMA_VERSION: i64 = 51;
+pub(crate) const SCHEMA_VERSION: i64 = 52;
 
 /// The migration after which `materialize_legacy_covers` must run: the cover
 /// projection columns exist, the inline data-URL column still does.

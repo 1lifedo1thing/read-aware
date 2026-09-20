@@ -82,6 +82,7 @@ export function toBookSummary(book: LibraryBook): BookSummary {
     fileName: book.fileName || undefined,
     fileSize: book.fileSize || undefined,
     narrativity: book.narrativity ?? undefined,
+    spoilerSensitive: book.spoilerSensitive ?? undefined,
   };
 }
 

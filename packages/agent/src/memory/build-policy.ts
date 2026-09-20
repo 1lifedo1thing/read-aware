@@ -74,7 +74,7 @@ export async function runMemoryBuild<T>(
           inspectDigest: guard((bookId, index) => original.bookMemory.inspectDigest(bookId, index, call.signal)),
           saveDigest: commit((bookId, digest, revision) => original.bookMemory.saveDigest(bookId, digest, revision, call.signal)) },
         library: { ...original.library, getBook: guard(original.library.getBook), getBookStats: guard(original.library.getBookStats),
-          classifyBookIfUnclassified: commit((bookId, flavor) => original.library.classifyBookIfUnclassified(bookId, flavor, call.signal)) },
+          classifyBookIfUnclassified: commit((bookId, flavor, _signal, spoilerSensitive) => original.library.classifyBookIfUnclassified(bookId, flavor, call.signal, spoilerSensitive)) },
         bookText: { ...original.bookText,
           getSourceVersion: original.bookText.getSourceVersion && guard(original.bookText.getSourceVersion),
           getDigestChapter: original.bookText.getDigestChapter && guard(original.bookText.getDigestChapter), getToc: guard(original.bookText.getToc), getChapterText: guard(original.bookText.getChapterText) },

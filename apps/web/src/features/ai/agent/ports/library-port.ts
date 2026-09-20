@@ -22,6 +22,7 @@ function toOverview(book: BookSummary, state: BookStats | undefined): BookOvervi
     progressPercent: state?.progressPercent,
     status: state?.status,
     narrativity: book.narrativity,
+    spoilerSensitive: book.spoilerSensitive ?? undefined,
     addedAt: book.addedAt,
     updatedAt: book.updatedAt,
     lastOpenedAt: book.lastOpenedAt,

@@ -11,7 +11,7 @@ test("a user classification during inference wins and determines the digest flav
   await digestBookTick({ deps, bookId: "b", model: { id: "fixture" } as Model<Api>, complete: async () => {
     if (calls++ === 0) {
       stores.books[0]!.narrativity = "expository";
-      return fauxAssistantMessage('{"narrativity":"narrative","confidence":0.99}');
+      return fauxAssistantMessage('{"narrativity":"narrative", "spoilerSensitive": true,"confidence":0.99}');
     }
     return fauxAssistantMessage('{"summary":"A concept","characters":[],"relations":[]}');
   } });

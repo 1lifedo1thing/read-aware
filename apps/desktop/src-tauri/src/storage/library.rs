@@ -55,6 +55,8 @@ pub struct LibraryBook {
     /// 叙事性分类（book.narrativityClassified 的物化）；None = 未分类。
     #[serde(default)]
     pub narrativity: Option<String>,
+    #[serde(default)]
+    pub spoiler_sensitive: Option<bool>,
 }
 
 fn default_cover_status() -> String {
@@ -99,6 +101,7 @@ pub(crate) fn row_to_library_book(row: &rusqlite::Row) -> rusqlite::Result<Libra
         starred: Some(row.get::<_, i64>("starred")? != 0),
         collection_id: row.get("collection_id")?,
         narrativity: row.get("narrativity")?,
+        spoiler_sensitive: row.get("spoiler_sensitive")?,
     })
 }
 
@@ -109,7 +112,7 @@ const BOOK_SELECT: &str = "SELECT b.id, b.title, b.author, b.format, b.file_name
         b.file_size, b.cover_status, b.cover_blob_key,
         (bo.storage_uri IS NOT NULL) AS cover_local, bo.sha256 AS cover_version,
         b.created_at, b.updated_at, b.last_opened_at, b.progress_percent,
-        b.reading_status, b.progress_json, b.starred, b.collection_id, b.narrativity
+        b.reading_status, b.progress_json, b.starred, b.collection_id, b.narrativity, b.spoiler_sensitive
    FROM books b
    LEFT JOIN blob_objects bo ON bo.key = b.cover_blob_key AND bo.deleted_at IS NULL";
 
@@ -198,8 +201,8 @@ pub async fn library_put_book(
             "INSERT INTO books
             (id, title, author, format, file_name, mime_type, file_size, cover_status,
              cover_blob_key, created_at, updated_at, last_opened_at, progress_percent,
-             reading_status, progress_json, starred, collection_id, narrativity)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18)
+             reading_status, progress_json, starred, collection_id, narrativity, spoiler_sensitive)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19)
          ON CONFLICT(id) DO UPDATE SET
             title=excluded.title, author=excluded.author, format=excluded.format,
             file_name=excluded.file_name, mime_type=excluded.mime_type,
@@ -208,7 +211,7 @@ pub async fn library_put_book(
             updated_at=excluded.updated_at, last_opened_at=excluded.last_opened_at,
             progress_percent=excluded.progress_percent, reading_status=excluded.reading_status,
             progress_json=excluded.progress_json, starred=excluded.starred,
-            collection_id=excluded.collection_id, narrativity=excluded.narrativity",
+            collection_id=excluded.collection_id, narrativity=excluded.narrativity, spoiler_sensitive=excluded.spoiler_sensitive",
             params![
                 book.id,
                 book.title,
@@ -228,6 +231,7 @@ pub async fn library_put_book(
                 book.starred.unwrap_or(false) as i64,
                 book.collection_id,
                 book.narrativity,
+                book.spoiler_sensitive,
             ],
         )
         ?;

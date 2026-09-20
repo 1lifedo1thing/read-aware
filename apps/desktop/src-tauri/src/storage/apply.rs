@@ -378,6 +378,7 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
                     starred = MAX(starred, COALESCE((SELECT starred FROM books WHERE id = ?1), 0)),
                     collection_id = COALESCE(collection_id, (SELECT collection_id FROM books WHERE id = ?1)),
                     narrativity = COALESCE(narrativity, (SELECT narrativity FROM books WHERE id = ?1)),
+                    spoiler_sensitive = COALESCE(spoiler_sensitive, (SELECT spoiler_sensitive FROM books WHERE id = ?1)),
                     last_opened_at = COALESCE(
                         MAX(last_opened_at, (SELECT last_opened_at FROM books WHERE id = ?1)),
                         last_opened_at,
@@ -817,7 +818,7 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
             )
             ?;
         }
-        // 叙事性分类（剧透围栏与纪要口径的分流信号）：空闲管线的 LLM 判定，
+        // Independent digest flavor and spoiler sensitivity; persisted LLM verdicts
         // 与 chapterDigested 同理入事件——不可确定性重算，重放可复原。
         "book.narrativityClassified" => {
             let id = require(p, "bookId", t)?;
@@ -832,9 +833,18 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
                 Some(Value::Bool(true)) => true,
                 _ => return Err(format!("{t}: invalid automatic classification guard").into()),
             };
+            let spoiler_sensitive = match p.get("spoilerSensitive") {
+                None => None,
+                Some(Value::Bool(value)) => Some(*value),
+                _ => return Err(format!("{t}: invalid spoiler sensitivity").into()),
+            };
             tx.execute(
-                "UPDATE books SET narrativity = ?2, updated_at = ?3 WHERE id = ?1 AND (?4 = 0 OR narrativity IS NULL)",
-                params![id, narrativity, at, automatic],
+                "UPDATE books SET
+                   narrativity = CASE WHEN ?4 THEN COALESCE(narrativity, ?2) ELSE ?2 END,
+                   spoiler_sensitive = CASE WHEN ?4 THEN COALESCE(spoiler_sensitive, ?5) ELSE COALESCE(?5, spoiler_sensitive) END,
+                   updated_at = ?3
+                 WHERE id = ?1 AND (?4 = 0 OR narrativity IS NULL OR (spoiler_sensitive IS NULL AND ?5 IS NOT NULL))",
+                params![id, narrativity, at, automatic, spoiler_sensitive],
             )
             ?;
         }

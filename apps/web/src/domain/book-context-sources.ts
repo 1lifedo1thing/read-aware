@@ -16,7 +16,7 @@ type Host = {
 
 /** Only verified persisted metadata, never a running extraction or raw book text item. */
 async function chapterHrefs(source: BookContextSnapshot, host: Host, signal: AbortSignal): Promise<string[][] | null> {
-  if (source.readingStatus === "finished" || source.flavor === "expository"
+  if (source.readingStatus === "finished" || source.spoilerSensitive === false || (source.spoilerSensitive == null && source.flavor === "expository")
     || source.format === "virtual" || !source.contentHash || !source.textHash) return null;
   const loaded = await host.blob(`booktext:${source.bookId}`);
   signal.throwIfAborted();
@@ -51,7 +51,7 @@ function fence(source: BookContextSnapshot, chapters: string[][] | null, initial
   const sameSource = initial.bookId !== bookId || initial.status !== "ready"
     || initial.location?.contentVersion === `sha256:${source.contentHash}`;
   const mapped = sameSource ? chapters?.map((hrefs, index) => ({ index, hrefs })) ?? null : null;
-  let boundary: BookContextBoundary = bookMemoryBoundary({ id: bookId, narrativity: source.flavor, readingStatus: source.readingStatus,
+  let boundary: BookContextBoundary = bookMemoryBoundary({ id: bookId, narrativity: source.flavor, spoilerSensitive: source.spoilerSensitive, readingStatus: source.readingStatus,
     progress: { href: source.href } }, initial, mapped);
   const href = initial.bookId === bookId ? initial.location?.href : source.href;
   if (boundary.kind === "before" && href && chapters) {

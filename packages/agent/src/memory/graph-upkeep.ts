@@ -13,7 +13,7 @@ import type { CompleteFn } from "../models/complete";
 import type { RuntimeDeps } from "../ports";
 import { findChapterByHref } from "../text/chapter-lookup";
 import { digestMissingChapters, digestExecutionBudget, unavailableDigestReport, type DigestReport } from "./digest-run";
-import { classifyNarrativity } from "./narrativity";
+import { classifyBookReadingPolicy } from "./narrativity";
 
 export interface DigestBookTickInput {
   deps: Pick<RuntimeDeps, "library" | "bookText" | "bookMemory" | "log">;
@@ -45,19 +45,19 @@ export interface DigestBookTickInput {
  * 叙事性分类（图谱节拍的前置步骤）：未分类的书先分类并经 LibraryPort 落成
  * 事件；失败返回 undefined（本节拍按 narrative 保守提炼，下个节拍重试）。
  */
-async function ensureNarrativity(
-  input: DigestBookTickInput,
+export async function ensureBookClassification(
+  input: Pick<DigestBookTickInput, "deps" | "complete" | "model" | "bookId" | "signal" | "checkChapter">,
   beforeChapterIndex: number,
 ): Promise<"narrative" | "expository" | undefined> {
   const book = await input.deps.library.getBook(input.bookId);
   input.signal?.throwIfAborted();
   if (!book) return undefined;
-  if (book.narrativity) return book.narrativity;
+  if (book.narrativity && book.spoilerSensitive !== undefined) return book.narrativity;
   const toc = await input.deps.bookText.getToc(input.bookId).catch((error) => {
     input.deps.log?.warn("narrativity sampling: toc unavailable", error);
     return undefined;
   });
-  if (!toc?.length) return undefined;
+  if (!toc) return undefined;
   // 正文样本：跳过版权页等空转小节，取第一段像样的实文。
   let sampleText = "";
   for (let index = 0; index < Math.min(toc.length, 8, beforeChapterIndex) && sampleText.length < 600; index++) {
@@ -73,8 +73,7 @@ async function ensureNarrativity(
     await input.checkChapter?.(index);
   }
   input.signal?.throwIfAborted();
-  if (!sampleText) return undefined;
-  const narrativity = await classifyNarrativity({
+  const policy = await classifyBookReadingPolicy({
     log: input.deps.log,
     complete: (model, context) => input.complete(model, context, { signal: input.signal }),
     model: input.model,
@@ -84,12 +83,12 @@ async function ensureNarrativity(
     sampleText,
   });
   input.signal?.throwIfAborted();
-  if (!narrativity) {
+  if (!policy) {
     input.deps.log?.warn("narrativity classification incomplete; keeping it pending");
     return undefined;
   }
   try {
-    return await input.deps.library.classifyBookIfUnclassified(input.bookId, narrativity, input.signal);
+    return await input.deps.library.classifyBookIfUnclassified(input.bookId, policy.narrativity, input.signal, policy.spoilerSensitive);
   } catch (error) {
     input.deps.log?.warn("recording narrativity failed; will reclassify next tick", error);
     return undefined;
@@ -135,7 +134,7 @@ async function digestBookTickExclusive(input: DigestBookTickInput): Promise<Dige
   }
   // 纪要口径跟着书的叙事性走。未分类的书先分类；分类失败本节拍按
   // narrative 保守提炼——它的产物起码无害，分类落库后口径不符的行会被重算。
-  const narrativity = book.narrativity ?? (max === 0 ? undefined : await ensureNarrativity(input, beforeChapterIndex));
+  const narrativity = (max === 0 ? undefined : await ensureBookClassification(input, beforeChapterIndex)) ?? book.narrativity;
   input.signal?.throwIfAborted();
   const report = await digestMissingChapters({
     bookText: deps.bookText,

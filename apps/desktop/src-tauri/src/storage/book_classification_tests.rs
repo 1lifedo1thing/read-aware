@@ -56,6 +56,47 @@ fn count(conn: &Connection) -> i64 {
 }
 
 #[test]
+fn legacy_narrative_backfill_preserves_flavor_and_replays_independent_spoiler_policy() {
+    let mut conn = db();
+    book_classification_commit_inner(&mut conn, &event("legacy", 1, true, "narrative"), None).unwrap();
+    let mut fill = event("policy", 2, true, "expository");
+    fill.payload["spoilerSensitive"] = json!(false);
+    let result = book_classification_commit_inner(&mut conn, &fill, None).unwrap();
+    assert!(result.changed);
+    assert_eq!(result.snapshot.narrativity.as_deref(), Some("narrative"));
+    assert_eq!(result.snapshot.spoiler_sensitive, Some(false));
+    let mut late = event("late", 3, true, "expository");
+    late.payload["spoilerSensitive"] = json!(true);
+    assert!(!book_classification_commit_inner(&mut conn, &late, None).unwrap().changed);
+    let tx = conn.transaction().unwrap();
+    replay_into(&tx).unwrap();
+    tx.commit().unwrap();
+    assert_eq!(snapshot(&mut conn).spoiler_sensitive, Some(false));
+    assert_eq!(snapshot(&mut conn).narrativity.as_deref(), Some("narrative"));
+}
+
+#[test]
+fn spoiler_policy_participates_in_cas_and_explicit_choices_win_replay() {
+    for auto_first in [true, false] {
+        let mut conn = db();
+        let before = snapshot(&mut conn);
+        let mut user = event("user-policy", if auto_first { 2 } else { 1 }, false, "narrative");
+        user.payload["spoilerSensitive"] = json!(false);
+        let result = book_classification_commit_inner(&mut conn, &user, Some(&before.revision)).unwrap();
+        assert_ne!(result.snapshot.revision, before.revision);
+        let mut auto = event("auto-policy", if auto_first { 1 } else { 2 }, true, "narrative");
+        auto.payload["spoilerSensitive"] = json!(true);
+        commit_events_inner(&mut conn, &[auto]).unwrap();
+        let tx = conn.transaction().unwrap();
+        replay_into(&tx).unwrap();
+        tx.commit().unwrap();
+        assert_eq!(snapshot(&mut conn).spoiler_sensitive, Some(false));
+        user.id = "stale-policy".into();
+        assert_eq!(book_classification_commit_inner(&mut conn, &user, Some(&before.revision)).unwrap_err().code, "memory/conflict");
+    }
+}
+
+#[test]
 fn classification_commits_are_conditional_and_late_automation_returns_the_winner() {
     let mut conn = db();
     let old = snapshot(&mut conn);

@@ -4,6 +4,13 @@ import { bookMemoryContextBundle, normalizeBookContextSnapshot } from "./context
 
 const source = () => normalizeBookContextSnapshot(fixture, fixture.bookId);
 const chapters = [["c1.xhtml"], ["c2.xhtml"]];
+test("nonfiction with narrative digests can disclose whole-book context while fiction remains bounded", async () => {
+  const snapshot = { ...source(), spoilerSensitive: false };
+  const bundle = await bookMemoryContextBundle(snapshot, { kind: "all" }, null);
+  expect(bundle.content.items).toHaveLength(3);
+  expect(bundle.content.omissions).toEqual([]);
+  await expect(bookMemoryContextBundle({ ...snapshot, spoilerSensitive: true }, { kind: "all" }, null)).rejects.toMatchObject({ code: "memory/invalid-input" });
+});
 test("book recipe applies chapter and unknown-provenance fences before serializing graph text", async () => {
   const snapshot = source();
   snapshot.digests.push({ ...snapshot.digests[0]!, index: 1, summary: "FUTURE", characters: "MALFORMED FUTURE" });

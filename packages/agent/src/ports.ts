@@ -47,12 +47,10 @@ export interface BookOverview {
   /** 阅读进度 0..100（与 ReadingState.progressPercent 同义）。 */
   progressPercent?: number;
   status?: ReadingStatus;
-  /**
-   * 叙事性分类（剧透围栏的启用信号）：narrative 且未读完时，越过游标
-   * 章节的正文工具调用被宿主硬闸。undefined = 未分类，围栏不启用。
-   * 由导入/巩固管线落库；宿主适配前 eval fixture 先行。
-   */
+  /** Digest organization: people/events versus concepts. Independent of spoilers. */
   narrativity?: "narrative" | "expository";
+  /** Protect fictional plot revelations; factual history/biography is false. */
+  spoilerSensitive?: boolean;
   addedAt?: string;
   updatedAt?: string;
   lastOpenedAt?: string;
@@ -109,7 +107,7 @@ export interface LibraryPort {
    * Atomically fill only an unclassified book; return the actual persisted
    * flavor when another caller won. Internal pipeline, not a user edit tool.
    */
-  classifyBookIfUnclassified(bookId: Id, narrativity: "narrative" | "expository", signal?: AbortSignal): Promise<"narrative" | "expository">;
+  classifyBookIfUnclassified(bookId: Id, narrativity: "narrative" | "expository", signal?: AbortSignal, spoilerSensitive?: boolean): Promise<"narrative" | "expository">;
   removeBook(bookId: Id): Promise<void>;
   removeBooks(bookIds: Id[]): Promise<import("@read-aware/core").BookRemovalReceipt>;
   retryBookRemovalCleanup(bookIds: Id[]): Promise<import("@read-aware/core").BookFileReleaseReceipt>;
