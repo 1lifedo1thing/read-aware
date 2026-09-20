@@ -89,24 +89,7 @@ export function AboutPanel() {
                   : null;
 
   return (
-    <SettingsPage
-      title={t("about.title")}
-      description={
-        <>
-          {t("about.description")}
-          <span className="mt-3 block text-fg-muted">
-            <Trans
-              ns="common"
-              i18nKey="community.madeBy"
-              components={{
-                heart: <Heart size={14} weight="fill" role="img" aria-label={t("common:community.love")} className="mx-0.5 inline-block align-[-2px]" />,
-                author: <a href={PROJECT_AUTHOR_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className="font-medium text-fg underline-offset-4 hover:underline" />,
-              }}
-            />
-          </span>
-        </>
-      }
-    >
+    <SettingsPage title={t("about.title")} description={t("about.description")}>
       <SettingsGroup title="ReadAware">
         <SettingsRow
           borderless
@@ -205,6 +188,16 @@ export function AboutPanel() {
           control={linkValue("mailto:hi@ahpx.me", "hi@ahpx.me", openLink)}
         />
       </SettingsGroup>
+      <footer className="pt-2 text-center font-sans text-caption text-fg-muted">
+        <Trans
+          ns="common"
+          i18nKey="community.madeBy"
+          components={{
+            heart: <Heart size={12} weight="fill" role="img" aria-label={t("common:community.love")} className="mx-0.5 inline-block align-[-2px]" />,
+            author: <a href={PROJECT_AUTHOR_URL} target="_blank" rel="noopener noreferrer" onClick={openLink} className="underline-offset-4 hover:text-fg hover:underline" />,
+          }}
+        />
+      </footer>
     </SettingsPage>
   );
 }
