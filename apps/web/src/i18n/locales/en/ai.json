@@ -190,6 +190,7 @@
       "removeWord": "Remove from vocabulary",
       "imageUnavailable": "Image unavailable",
       "imageLoading": "Loading image",
+      "openImage": "Open image: {{caption}}",
       "imageSource": "Source: {{source}}"
     },
     "message": {

@@ -68,4 +68,21 @@ export const imageSearchScenarios = [
     expectation: { tools: { required: ["web_fetch"], forbidden: ["present_web_images", "web_search"], noErrors: true, maxCalls: 2 }, answer: { mustNotContain: ["!["] } },
     rubric: ["只用文字准确解释木梁连接方式，不展示图片。"],
   }),
+  defineAgentEvalScenario({ id: "search-images-multiple-complementary", description: "多个互补图像一起展示，不停在第一张、不展示同图的其他尺寸或站点图标。",
+    scope: { kind: "global", threadId: "multiple-figures" }, tags: ["retrieval", "grounding", "global"],
+    setup: ({ deps }) => {
+      const client = WEB_PROVIDERS.tinyfish.create("fixture-key", async () => new Response(JSON.stringify({ results: [{ url: source, title: "Museum roof structure",
+        text: "The roof plan roof-plan.png shows the overall radial beam arrangement. The separate roof-section.png diagram shows how the joints interlock, without metal fasteners. These are complementary views of the same roof, not alternative sizes of one image.",
+        image_links: ["https://en.wikipedia.org/static/images/icons/wikipedia.png", figure, "https://images.example.org/roof-plan.png"],
+      }], errors: [] })));
+      deps.web = { configured: () => true, search: client.search, fetch: client.fetch! };
+    },
+    turns: [{ text: `请读 ${source}，我想直观看懂屋顶的整体布局和局部接头有什么关系，适合的话配图说明。` }],
+    evaluate: observation => combineAssessments(evaluateAgentTrace(observation, {
+      tools: { required: ["web_fetch", "present_web_images"], forbidden: ["web_search"], noErrors: true, maxCalls: 4 },
+    }), assessmentFromChecks([{ id: "images.complementary", category: "tool",
+      passed: shown(observation).length === 2 && [figure, "https://images.example.org/roof-plan.png"].every(url => shown(observation).some(image => image.url === url)),
+      message: "Both relevant complementary figures are presented, without a site icon" }])),
+    rubric: ["用布局图和剖面图分别解释整体与局部，图和说明有来源；不把站点图标当建筑图，也不声称看过未输入模型的像素。"],
+  }),
 ];

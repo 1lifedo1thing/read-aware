@@ -5,7 +5,7 @@ import type { RuntimeDeps } from "../ports";
 import type { WebSearchInput, WebFetchInput, WebImage } from "../web/types";
 import type { WebImageReference } from "../chunks";
 import type { AgentTurnState } from "./turn-state";
-import { webImages } from "../web/images";
+import { webImages, webImageIdentity } from "../web/images";
 import { textResult } from "./tool-result";
 
 export function buildWebTools(deps: RuntimeDeps, turnState?: AgentTurnState): AgentTool[] {
@@ -14,7 +14,7 @@ export function buildWebTools(deps: RuntimeDeps, turnState?: AgentTurnState): Ag
   const candidates = (items: WebImage[] = []) => items.slice(0, 8).flatMap(item => {
     const image = webImages([{ url: item.url, description: item.description }], item.sourceUrl, item.title)[0];
     if (!image) return [];
-    const existing = [...images].find(([, value]) => value.url === image.url && value.sourceUrl === image.sourceUrl);
+    const existing = [...images].find(([, value]) => webImageIdentity(value.url) === webImageIdentity(image.url));
     if (!existing && images.size >= 40) return [];
     const id = existing?.[0] ?? `web-image-${images.size + 1}`;
     images.set(id, image);
@@ -59,7 +59,7 @@ export function buildWebTools(deps: RuntimeDeps, turnState?: AgentTurnState): Ag
     },
   }, {
     name: "present_web_images", label: "Show source images", executionMode: "sequential",
-    description: "Display up to three retrieved images inline with captions and source links. Copy IDs only from this turn's web_search/web_fetch images (includeImages=true); URLs and invented IDs are not accepted. Decide whether and which images help the current request, across any topic. Select by source context and image descriptions, not filenames alone; page thumbnails may be unrelated. Prefer a few useful images over decoration. If none are relevant, answer without an image. Captions follow the user's language. This displays images to the reader; it does not give you visual understanding or prove the image loaded on their device. Ground captions and explanations in the returned source text and descriptions; do not add visual details you have not observed. Never substitute an unrelated image. Do not duplicate these images in Markdown.",
+    description: "Display up to three retrieved images inline with captions and source links. Copy IDs only from this turn's web_search/web_fetch images (includeImages=true); URLs and invented IDs are not accepted. Decide whether and which images help the current request, across any topic. Select by source context and image descriptions, not filenames alone; page thumbnails may be unrelated. When several distinct images help explain or compare the subject, show them together (up to three); do not arbitrarily stop at one. Exclude logos and alternate sizes of the same image. If none are relevant, answer without an image. Captions follow the user's language. This displays images to the reader; it does not give you visual understanding or prove the image loaded on their device. Ground captions and explanations in the returned source text and descriptions; do not add visual details you have not observed. Never substitute an unrelated image. Do not duplicate these images in Markdown.",
     parameters: Type.Object({ images: Type.Array(Type.Object({ id: Type.String({ minLength: 1, maxLength: 100 }), caption: Type.String({ minLength: 1, maxLength: 300 }) }, { additionalProperties: false }), { minItems: 1, maxItems: 3 }) }, { additionalProperties: false }),
     execute: async (_id, input, signal) => {
       signal?.throwIfAborted(); client("search");
@@ -68,8 +68,8 @@ export function buildWebTools(deps: RuntimeDeps, turnState?: AgentTurnState): Ag
       const skipped: string[] = [];
       for (const entry of selected.slice(0, 3)) {
         const image = images.get(entry.id);
-        if (!image || presented.has(image.url) || presented.size >= 3) { skipped.push(entry.id); continue; }
-        presented.add(image.url);
+        if (!image || presented.has(webImageIdentity(image.url)) || presented.size >= 3) { skipped.push(entry.id); continue; }
+        presented.add(webImageIdentity(image.url));
         output.push({ url: image.url, sourceUrl: image.sourceUrl, title: image.title, caption: entry.caption.slice(0, 300) });
       }
       return { ...textResult({ presented: output.length, skipped, ...(skipped.length ? { note: "Use image IDs returned by web_search/web_fetch in this turn; repeats and excess images are skipped." } : {}) }),

@@ -5,7 +5,7 @@
  * ThreadChunk、轮末持久化两条 TurnRecord（doc §10）。
  * 书线程按**章节会话**装配上下文：同章节连续，换章节发新消息才重置（doc §5）。
  */
-import { Agent, type AgentEvent, type ThinkingLevel } from "@earendil-works/pi-agent-core";
+import { Agent, type AgentEvent, type AgentMessage, type ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { Usage } from "@earendil-works/pi-ai";
 import type { ThreadChunk } from "../chunks";
 import { AppError, errorCode, ERR_AI_MEMORY_DISABLED, ERR_AI_PROVIDER, profileContextText, type ProfileContext } from "@read-aware/core";
@@ -65,10 +65,28 @@ export interface SendTurnInput {
   signal?: AbortSignal;
   /**
    * 丢弃线程内存态（pi Agent 实例与章节会话），本轮从持久转录重建。
-   * UI 的 retry/regenerate 在截断并持久化转录之后带上它。
+   * UI 的 regenerate 在截断并持久化转录之后带上它。
    */
   reset?: boolean;
+  /** Retry a failed model step in this runtime, keeping completed tool results. */
+  retry?: boolean;
+  /** Host user-message identity; prevents resuming a different identical question. */
+  turnId?: string;
 }
+
+interface RetryCheckpoint {
+  inputKey: string;
+  messages: AgentMessage[];
+  chunks: ThreadChunk[];
+  runMessageStart: number;
+  startedAt: string;
+  bufferedText: string;
+  sawReference: boolean;
+  sawInteraction: boolean;
+  policyKey?: string;
+}
+
+const retryInputKey = (input: SendTurnInput) => JSON.stringify([input.turnId, input.text, input.attachments, input.readingCursor]);
 
 export interface AgentThreadOptions {
   scope: ThreadScope;
@@ -126,6 +144,9 @@ export class AgentThread {
   private readonly transformSystemPrompt?: (prompt: string, scope: ThreadScope) => string;
 
   private agent: Agent | undefined;
+  /** Ephemeral, cleared on new turns, model/context invalidation or disposal. */
+  private retryCheckpoint?: RetryCheckpoint;
+  private checkpointModel?: (messages: AgentMessage[]) => void;
   private busy = false;
   private disposed = false;
   /**
@@ -197,6 +218,7 @@ export class AgentThread {
    * 重水化只是一次 conversations.load。
    */
   private discardAgent(options?: { preserveRecentHistory?: boolean }): void {
+    this.retryCheckpoint = undefined;
     this.agent = undefined;
     this.sessionStarted = false;
     this.sessionChapter = undefined;
@@ -349,8 +371,10 @@ export class AgentThread {
       // Agent 不转发 cacheRetention，只能在 streamFn 这层补：一轮多次往返共享
       // 同一前缀（system prompt 轮内稳定），Anthropic 式显式缓存在这里全是净赚；
       // 不支持的 provider 由 pi 忽略。
-      streamFn: (model, context, options) =>
-        this.streamFn(model, context, { ...options, cacheRetention: "short" }),
+      streamFn: (model, context, options) => {
+        this.checkpointModel?.(agent.state.messages.slice());
+        return this.streamFn(model, context, { ...options, cacheRetention: "short" });
+      },
       getApiKey: this.getApiKey,
     });
     this.agent = agent;
@@ -409,8 +433,10 @@ export class AgentThread {
       const permitted: SendTurnInput = { ...input, signal: call.signal,
         attachments: call.permissions.selection ? input.attachments : undefined,
         readingCursor: permittedReadingCursor(input.readingCursor, call.permissions) };
-      for await (const chunk of this.sendPermittedTurn(permitted, input, call)) {
+      const emitted: ThreadChunk[] = [];
+      for await (const chunk of this.sendPermittedTurn(permitted, input, call, emitted)) {
         call.assertAllowed();
+        if (chunk.type !== "metric" && chunk.type !== "status") emitted.push(chunk);
         yield chunk;
       }
     } finally {
@@ -420,27 +446,31 @@ export class AgentThread {
     }
   }
 
-  private async *sendPermittedTurn(input: SendTurnInput, localInput: SendTurnInput, call: ReadingContextCall): AsyncGenerator<ThreadChunk> {
+  private async *sendPermittedTurn(input: SendTurnInput, localInput: SendTurnInput, call: ReadingContextCall, emitted: ThreadChunk[]): AsyncGenerator<ThreadChunk> {
     if (this.disposed) throw new Error(`thread ${this.key} has been disposed`);
     if (this.busy) throw new Error(`thread ${this.key} is already streaming a turn`);
     this.busy = true;
-    // retry/regenerate：UI 已截断并持久化转录，丢内存态从持久层重建本轮
-    if (input.reset) this.discardAgent();
-    const queue = new AsyncQueue<AgentEvent>();
+    const resume = !input.reset && input.retry && this.retryCheckpoint?.inputKey === retryInputKey(localInput)
+      ? this.retryCheckpoint : undefined;
+    if (input.reset || (this.retryCheckpoint && !resume) || (input.retry && !resume)) this.discardAgent();
+    this.retryCheckpoint = undefined;
+    const queue = new AsyncQueue<AgentEvent | { type: "model-checkpoint"; messages: AgentMessage[] }>();
     let unsubscribe: (() => void) | undefined;
-    // 只有干净收尾的轮次才留在章节会话里；中断/报错后 agent.state 形状
-    // 不可信，下一轮从持久记录重建基线（等价于今天的无状态装配）。
+    // Completed turns retain their session; retryable model failures retain only
+    // the request boundary before the failed response. Other interruptions rebuild.
     let turnCompleted = false;
-    this.turnState.presentedBookIds.clear();
-    this.turnState.webImages?.clear();
-    this.turnState.presentedWebImages?.clear();
-    this.turnState.modelSupportsImages = false;
-    this.turnState.modelImageCount = 0;
-    this.turnState.modelImageBytes = 0;
-    this.turnState.spoilerPermissionGranted = hasExplicitSpoilerPermission(input.text);
-    this.turnState.spoilerPermissionDenied = false;
-    this.turnState.spoilerGranted = false;
-    this.turnState.evidenceTexts.length = 0;
+    if (!resume) {
+      this.turnState.presentedBookIds.clear();
+      this.turnState.webImages?.clear();
+      this.turnState.presentedWebImages?.clear();
+      this.turnState.modelSupportsImages = false;
+      this.turnState.modelImageCount = 0;
+      this.turnState.modelImageBytes = 0;
+      this.turnState.spoilerPermissionGranted = hasExplicitSpoilerPermission(input.text);
+      this.turnState.spoilerPermissionDenied = false;
+      this.turnState.spoilerGranted = false;
+      this.turnState.evidenceTexts.length = 0;
+    }
     this.turnState.readingContextPermissions = call.permissions;
     try {
       call.assertAllowed();
@@ -556,6 +586,17 @@ export class AgentThread {
         // 全局线程无会话概念：长期存续、记忆与摘要的更新更要紧，维持每轮重建
         await call.wait(this.refreshSystemPrompt(agent, profile));
       }
+      if (resume && resume.policyKey !== this.sessionMemoryPolicy) {
+        throw new AppError("ai/context-changed", "Reading context changed since the failed step", { retryable: true });
+      }
+      if (resume) {
+        agent.state.messages = resume.messages;
+        // Replay presentation only: completed tools and their side effects do not run again.
+        for (const chunk of resume.chunks) yield chunk;
+      }
+      // Snapshot at the actual provider boundary, before pi appends its response.
+      // The event consumer can lag; reading state there would race a fast model.
+      this.checkpointModel = messages => queue.push({ type: "model-checkpoint", messages });
       unsubscribe = agent.subscribe((event) => queue.push(event));
 
       const onAbort = () => agent.abort();
@@ -581,7 +622,7 @@ export class AgentThread {
       // 注入同一条 —— 尾部等值的 user 消息属于本轮，丢弃避免问题被喂两遍。
       const tail = agent.state.messages[agent.state.messages.length - 1];
       if (
-        tail &&
+        !resume && tail &&
         "role" in tail &&
         tail.role === "user" &&
         typeof tail.content === "string" &&
@@ -589,13 +630,12 @@ export class AgentThread {
       ) {
         agent.state.messages = agent.state.messages.slice(0, -1);
       }
-      const startedAt = new Date().toISOString();
+      const startedAt = resume?.startedAt ?? new Date().toISOString();
       let runError: unknown;
-      let sawInteraction = false;
-      let sawReference = false;
-      const runMessageStart = agent.state.messages.length;
-      const run = agent
-        .prompt(promptText)
+      let sawInteraction = resume?.sawInteraction ?? false;
+      let sawReference = resume?.sawReference ?? false;
+      const runMessageStart = resume?.runMessageStart ?? agent.state.messages.length;
+      const run = (resume ? agent.continue() : agent.prompt(promptText))
         .then(() => agent.waitForIdle())
         .catch((error) => {
           runError = error;
@@ -610,9 +650,15 @@ export class AgentThread {
       let round = 0;
       let roundStartedAt = 0;
       let firstDeltaAt = 0;
-      let bufferedText = "";
+      let bufferedText = resume?.bufferedText ?? "";
+      let checkpoint: RetryCheckpoint | undefined;
       for await (const event of queue) {
         switch (event.type) {
+          case "model-checkpoint":
+            checkpoint = { inputKey: retryInputKey(localInput), messages: event.messages,
+              chunks: emitted.slice(), runMessageStart, startedAt, bufferedText, sawInteraction, sawReference,
+              policyKey: this.sessionMemoryPolicy };
+            break;
           case "turn_start":
             round += 1;
             roundStartedAt = performance.now();
@@ -739,8 +785,14 @@ export class AgentThread {
       call.assertAllowed();
       // 结构化状态码在 pi-ai 层已折叠成文本 —— 在这里（结构最后可见处）分类出
       // 稳定错误码，UI 据此决定文案与重试可见性，而不是转发 provider 原文。
-      if (runError) throw classifyModelFailure(runError);
-      if (agent.state.errorMessage) throw classifyModelFailure(agent.state.errorMessage);
+      if (runError || agent.state.errorMessage) {
+        const failure = classifyModelFailure(runError ?? agent.state.errorMessage);
+        // Only model failures are resumable. Abort, policy revocation, tool execution
+        // interruption and later persistence failures must rebuild normally.
+        if (failure.retryable && checkpoint && !input.signal?.aborted
+          && agent.state.messages.length === checkpoint.messages.length + 1) this.retryCheckpoint = checkpoint;
+        throw failure;
+      }
 
       // Read only the messages produced by this invocation. Reasoning or an
       // opaque tool trace is not a visible answer; only text and purpose-built
@@ -861,11 +913,11 @@ export class AgentThread {
       if (discardUnsafeAgent) this.discardAgent({ preserveRecentHistory: true });
       turnCompleted = true;
     } finally {
-      // 中断/报错后 agent.state 不可信 —— pi 会把 stopReason=error/aborted 的
-      // 助手消息连同本轮用户消息留在 state.messages 里。两种线程都整体丢弃，
-      // 下一轮从持久转录重建（书线程回到会话基线，全局线程 ensureAgent 重水化）。
-      if (!turnCompleted) this.discardAgent();
-      else if (this.agent) this.agent.state.messages = releaseToolImages(this.agent.state.messages);
+      // A retry restores the saved pre-request messages, never pi's failed draft.
+      // Without a verified model checkpoint, discard potentially partial execution.
+      if (!turnCompleted && !this.retryCheckpoint) this.discardAgent();
+      else if (turnCompleted && this.agent) this.agent.state.messages = releaseToolImages(this.agent.state.messages);
+      this.checkpointModel = undefined;
       unsubscribe?.();
       this.busy = false;
     }

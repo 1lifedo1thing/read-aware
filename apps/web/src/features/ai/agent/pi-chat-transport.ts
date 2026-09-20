@@ -50,6 +50,8 @@ export function toAgentTurnInput(
     readingCursor: request.readingCursor ?? undefined,
     signal,
     reset: request.reset,
+    retry: request.retry,
+    turnId: request.message.id,
   };
 }
 

@@ -26,6 +26,11 @@ ReadAware 使用一个核心阅读 Agent，配合确定性的检索、存储与�
 4. 宿主负责实际授权、需要用户确认的操作、持久写入和真实结果；工具不能绕过它。
 5. 运行时流式返回文字与界面事件，持久化对话，并在策略允许时排队提炼记忆或更新摘要。
 
+可重试的模型连接、限流等错误保留本次运行时内的请求断点：点击 Retry 时复用已经完成的
+工具结果、图片 ID 和展示记录，从失败的模型请求继续，不重复执行已完成的工具。
+失败请求的半截输出会丢弃；成功回答的 Regenerate 仍从头生成。断点仅在当前运行时有效，
+重启、切换模型、上下文失效或开始新一轮后不再复用；无有效断点时按正常流程重建。
+
 入口：[桌面适配器](../../apps/web/src/features/ai/agent/pi-chat-transport.ts)、
 [宿主运行时装配](../../apps/web/src/features/ai/agent/agent-runtime.ts)、
 [核心运行时](../../packages/agent/src/runtime/runtime.ts)、
@@ -55,6 +60,8 @@ Exa、Tavily、TinyFish 提供正文读取；Brave 用自己的 LLM Context 获�
 `includeImages` 请求当前服务商返回来源关联的候选图片；`present_web_images` 只能展示本轮检索
 返回的图片 ID，每轮最多三张。TinyFish 从 Fetch 的 `image_links` 取图，Exa、Tavily、Brave
 支持随搜索/正文返回图片，SerpAPI 使用自然结果缩略图。没有合适图片时照常回答，不换服务商兜底。
+候选先过滤已知站点装饰图、合并 MediaWiki 同图不同尺寸，再截取最多八张；多个互补图片
+可由模型一起展示。点击聊天图片复用阅读器的全屏图片查看器，支持缩放、旋转与复制。
 图片说明与来源随聊天记录保存；宿主用无凭据的 HTTP 请求读取 HTTPS 位图（最多 4 MiB），
 转换为临时 blob 显示，关闭时释放，失败则保留说明与来源。图片以 URL 哈希存入本机
 `app_cache_dir/web-images`，最多 128 MiB / 512 张、30 天；内存另保留最多 24 MiB，
@@ -78,7 +85,7 @@ Exa、Tavily、TinyFish 提供正文读取；Brave 用自己的 LLM Context 获�
 | [Brave](https://api-dashboard.search.brave.com/api-reference/web/search/get) | Web Search，extra snippets，日期区间、site 限制；中文映射为 `zh-hans` / `zh-hant` | [LLM Context](https://api-dashboard.search.brave.com/documentation/services/llm-context)，仅接受与目标 URL 完全匹配的提取片段；无匹配则失败，不能拿相关网页代替。响应明确标注正文可能不完整、不按原顺序且无法强制刷新 |
 
 Fetch 每次读取一个公开域名网址，TinyFish / Exa 默认接受一小时内缓存。
-正文最多返回 12,000 字符并提供 `nextOffset`（续读会重新查询服务商，并非固定快照）。
+正文最多返回 12,000 字符并提供 `nextOffset`（桌面正文缓存有效期内复用快照，过期后重新查询服务商）。
 每次请求最多 60 秒、响应最多 4 MB。域名筛选在本地复核，域外结果不会作为匹配来源返回。
 空搜索、HTTP 错误和单 URL 抓取失败分别处理，不能把失败解释为「未找到」。
 

@@ -190,6 +190,7 @@
       "removeWord": "从词汇表移除",
       "imageUnavailable": "图片暂时无法显示",
       "imageLoading": "正在加载图片",
+      "openImage": "查看图片：{{caption}}",
       "imageSource": "来源：{{source}}"
     },
     "message": {

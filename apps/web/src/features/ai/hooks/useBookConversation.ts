@@ -38,9 +38,8 @@ export interface BookConversation {
   status: string | null;
   send: (text: string, attachments?: ChatAttachment[]) => boolean;
   /**
-   * Re-run the last user turn: drops whatever reply followed it (failed or
-   * not), persists the truncation, and regenerates with the agent's thread
-   * memory reset. No-op while streaming or on an empty transcript.
+   * Retry a failed model step from the runtime checkpoint; successful replies
+   * regenerate from scratch. No-op while streaming or on an empty transcript.
    */
   retry: () => boolean;
   stop: () => void;
@@ -168,12 +167,11 @@ export function useBookConversation(
 
   /**
    * The shared turn body: persist the user turn, stream the reply, commit the
-   * assistant message. `reset` (retry/regenerate) makes the transport discard
-   * the agent's thread memory so the turn rebuilds from the persisted
-   * transcript — which is why the persist is awaited before the stream starts.
+   * assistant message. Regeneration rebuilds from the persisted transcript;
+   * failure retry replays completed presentation and resumes the model step.
    */
   const runTurn = useCallback(
-    (history: ChatMessage[], userMessage: ChatMessage, reset = false) => {
+    (history: ChatMessage[], userMessage: ChatMessage, mode?: "retry" | "regenerate") => {
       const source = causalActor("user"), owner = bindingRef.current;
       let completionSource = source;
       const withUser = [...history, userMessage];
@@ -210,7 +208,8 @@ export function useBookConversation(
               message: userMessage,
               thread,
               readingCursor: readingCursorRef.current,
-              reset,
+              reset: mode === "regenerate",
+              retry: mode === "retry",
             },
             controller.signal,
           );
@@ -316,7 +315,8 @@ export function useBookConversation(
     }
     if (lastUserIndex < 0) return false;
     // Same user message object — id, attachments and timestamp preserved.
-    runTurn(current.slice(0, lastUserIndex), current[lastUserIndex], true);
+    const failed = current.slice(lastUserIndex + 1).some(message => message.role === "assistant" && message.error);
+    runTurn(current.slice(0, lastUserIndex), current[lastUserIndex], failed ? "retry" : "regenerate");
     return true;
   }, [bookId, isLoading, runTurn]);
 

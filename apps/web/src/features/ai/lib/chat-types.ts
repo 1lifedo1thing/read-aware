@@ -220,10 +220,12 @@ export interface ChatTurnRequest {
    */
   readingCursor?: ChatReadingCursor | null;
   /**
-   * Retry/regenerate：UI 已截断并持久化转录，transport 应丢弃线程内存态，
+   * Regenerate：UI 已截断并持久化转录，transport 应丢弃线程内存态，
    * 让本轮从持久转录重建（否则被丢弃的回答仍留在 agent 的上下文里）。
    */
   reset?: boolean;
+  /** Resume an interrupted model step when the runtime still has its checkpoint. */
+  retry?: boolean;
 }
 
 /**

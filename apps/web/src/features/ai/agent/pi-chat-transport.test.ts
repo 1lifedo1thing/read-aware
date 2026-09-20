@@ -53,6 +53,8 @@ describe("pi chat transport mapping", () => {
       },
       signal: undefined,
       reset: undefined,
+      retry: undefined,
+      turnId: "message-1",
     });
   });
 });

@@ -6,6 +6,15 @@ const source = "https://museum.example.org";
 const image = "https://images.example.org/building.jpg";
 const json = (value: unknown) => new Response(JSON.stringify(value));
 
+test("site icons and responsive duplicates do not crowd out distinct article pictures", () => {
+  const thumb = (name: string, size: number) => `https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/${name}/${size}px-${name}?utm_source=en.wikipedia.org`;
+  const icons = ["Ambox_important.svg", "Translation_to_english_arrow.svg", "Disambig_gray.svg"].flatMap(name => [40, 120].map(size => thumb(name, size) + ".png"));
+  const result = webImages(["https://en.wikipedia.org/static/images/icons/wikipedia.png", ...icons,
+    thumb("Train_A.jpg", 330), thumb("Train_A.jpg", 960), thumb("Train_B.jpg", 960), thumb("Track_map.png", 800),
+  ], "https://en.wikipedia.org/wiki/Train", "Trains");
+  expect(result.map(i => i.url)).toEqual([thumb("Train_A.jpg", 960), thumb("Train_B.jpg", 960), thumb("Track_map.png", 800)]);
+});
+
 test("image candidates are bounded, source-linked, deduplicated and HTTPS only", () => {
   const result = webImages(["/drawing.png", "/drawing.png", "/icon.svg", "/favicon.ico", "http://images.example.org/a", "file:///tmp/a", "https://localhost/a", "https://127.0.0.1/a", "data:image/png;base64,a", { url: image, description: "Roof section" }, null], source, "Museum");
   expect(result).toEqual([
