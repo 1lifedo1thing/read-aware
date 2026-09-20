@@ -1,3 +1,4 @@
+import { qualitySummaryText } from "./evals/reviews";
 import { parseArgs } from "node:util";
 import { AgentEvalJudge, JUDGE_IMPLEMENTATION_VERSION } from "./evals/judge";
 import { resolveJudgeCompletion } from "./evals/model-config";
@@ -37,17 +38,17 @@ if (parsed.values.help || !directory) {
       enabled: true,
       provider: completion.metadata.provider,
       model: completion.metadata.model,
-      threshold: 0.6,
+      threshold: 0.8,
       implementationVersion: JUDGE_IMPLEMENTATION_VERSION,
     };
     console.log(`Judge: ${completion.metadata.provider}:${completion.metadata.model}`);
   }
   const result = await rescoreEvalBundle(directory, { judge, judgeMetadata });
   console.log(
-    `Rescored ${result.summary.runs} runs: ${result.summary.passed} passed, ${result.summary.failed} failed, ${result.summary.errors} errors`,
+    `Quality: ${qualitySummaryText(result.summary.quality!)}; diagnostics ${result.summary.passed}/${result.summary.runs} checks passed`,
   );
   if (result.reportPath) console.log(`Report: ${result.reportPath}`);
-  if (result.summary.errors > 0 || (parsed.values.gate && result.summary.failed > 0)) {
+  if (result.summary.errors > 0 || (parsed.values.gate && !result.accepted)) {
     process.exitCode = 1;
   }
 }

@@ -1,3 +1,4 @@
+import { qualityGatePassed, qualitySummaryText } from "./reviews";
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
@@ -88,12 +89,12 @@ Options:
   --tag <tag[,tag]>            Run scenarios matching any selected tag (closed
                                vocabulary, see evals/tags.ts)
   --thinking <level>           off|minimal|low|medium|high|xhigh|max (default: medium)
-  --judge                      Score rubric scenarios with an LLM judge (quality checks)
+  --judge                      Add an evidence-aware model opinion (primary review still required)
   --judge-provider <id>        Judge provider (default: baseline provider)
   --judge-model <id>           Judge model (default: provider default)
   --output-dir <path>          Artifact root (default: .eval)
   --no-artifacts               Do not persist prompts, traces, and reports
-  --gate                       Exit nonzero on behavioral failures
+  --gate                       Require completed primary reviews; pending reviews exit nonzero
   --verbose                    Print failed answers and tool traces
   --list                       List selected suite scenarios without calling a model
   --help                       Show this help
@@ -315,7 +316,7 @@ export async function runEvalCli(args: string[]): Promise<void> {
       enabled: true,
       provider: judgeCompletion.metadata.provider,
       model: judgeCompletion.metadata.model,
-      threshold: 0.6,
+      threshold: 0.8,
       implementationVersion: JUDGE_IMPLEMENTATION_VERSION,
     };
     judge = new AgentEvalJudge({ complete: judgeCompletion.complete });
@@ -327,13 +328,8 @@ export async function runEvalCli(args: string[]): Promise<void> {
   const built = specs.map((spec) => buildVariant(spec, options.thinkingLevel));
   const variants = built.map((entry) => entry.variant);
   if (judge) {
-    const judged = targets.reduce(
-      (total, target) =>
-        total + target.scenarios.filter((scenario) => scenario.rubric?.length).length,
-      0,
-    );
     const total = targets.reduce((sum, target) => sum + target.scenarios.length, 0);
-    console.log(`Judge: ${judgeLabel} scoring ${judged}/${total} scenarios with rubrics`);
+    console.log(`Judge: ${judgeLabel} reviewing all ${total} scenarios; opinion is provisional`);
   }
 
   for (const [index, target] of targets.entries()) {
@@ -403,7 +399,7 @@ async function runSuiteTarget(
   const markdown = formatEvalReport(result.summary);
   await artifactStore?.writeSummary(result.summary, markdown);
   console.log(
-    `\nSummary: ${result.summary.passed}/${result.summary.runs} passed, ${result.summary.failed} failed, ${result.summary.errors} errors`,
+    `\nQuality: ${qualitySummaryText(result.summary.quality!)}\nDiagnostics: ${result.summary.passed}/${result.summary.runs} checks passed, ${result.summary.failed} checks failed, ${result.summary.errors} errors`,
   );
 
   // 基线趋势只接受完整套件；筛选快扫不能把未运行的场景记成“移除”。
@@ -427,10 +423,10 @@ async function runSuiteTarget(
     if (previous) {
       const delta = compareTrends(previous, currentTrend);
       if (delta.length > 0) {
-        console.log(`Trend vs previous run (${previous.generatedAt}):`);
+        console.log(`Diagnostic trend vs previous run (${previous.generatedAt}):`);
         for (const line of delta) console.log(line);
       } else {
-        console.log("Trend: no per-scenario change vs previous run");
+        console.log("Diagnostic trend: no per-scenario change vs previous run");
       }
     }
     await saveTrend(path, currentTrend);
@@ -439,12 +435,12 @@ async function runSuiteTarget(
   }
   for (const comparison of result.summary.comparisons) {
     console.log(
-      `${comparison.candidateVariantId} vs ${comparison.baselineVariantId}: pass-rate ${(comparison.passRateDelta * 100).toFixed(1)} pp, score ${comparison.meanScoreDelta >= 0 ? "+" : ""}${comparison.meanScoreDelta.toFixed(3)}`,
+      `${comparison.candidateVariantId} vs ${comparison.baselineVariantId}: diagnostic pass-rate ${(comparison.passRateDelta * 100).toFixed(1)} pp, score ${comparison.meanScoreDelta >= 0 ? "+" : ""}${comparison.meanScoreDelta.toFixed(3)}`,
     );
   }
-  if (artifactStore) console.log(`Artifacts: ${artifactStore.directory}`);
+  if (artifactStore) console.log(`Artifacts: ${artifactStore.directory}\nRead structured evidence: bun run eval:review ${artifactStore.directory} --list\nThen --case <targetId>, --save <review.json> --gate. Viewer is optional for the user.`);
 
-  if (result.summary.errors > 0 || (options.gate && result.summary.failed > 0)) {
+  if (result.summary.errors > 0 || (options.gate && !qualityGatePassed(result.summary.quality!))) {
     process.exitCode = 1;
   }
 }

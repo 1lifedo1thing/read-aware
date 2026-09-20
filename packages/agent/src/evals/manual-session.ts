@@ -1,3 +1,5 @@
+import { captureReviewEvidence } from "./review-evidence";
+import { toJsonValue } from "./json";
 import type { Api, AssistantMessage, Context, Model, SimpleStreamOptions, Usage } from "@earendil-works/pi-ai";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { accountCredential, accountProviderId, createModelResolver } from "../models/accounts";
@@ -118,18 +120,22 @@ export async function createManualEvalSession(
           : {}),
       };
       const chunks: AgentEvalObservation["turns"][number]["chunks"] = [];
+      const initialState = options.scenario.observeState ? toJsonValue(await options.scenario.observeState(setupContext)) : undefined;
+      const originalSources = structuredClone({ books: setupContext.stores.books, chapters: setupContext.stores.chapters });
       const startedAt = performance.now();
       for await (const chunk of thread.sendTurn({ ...turn, signal: askOptions?.signal })) {
         chunks.push(chunk);
       }
       await thread.flushBackgroundWork();
       const state = await options.scenario.observeState?.(setupContext);
-      return buildAgentObservation({
-        turns: [{ input: turn, chunks }],
+      const observation = buildAgentObservation({
+        turns: [{ input: turn, chunks, stateBefore: initialState, stateAfter: state === undefined ? undefined : toJsonValue(state) }],
         modelRequests,
         wallTimeMs: performance.now() - startedAt,
         state,
       });
+      observation.reviewEvidence = captureReviewEvidence({ ...options.scenario, turns: [turn] }, originalSources, observation, initialState);
+      return observation;
     },
     dispose: () => {
       disposed = true;

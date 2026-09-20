@@ -21,8 +21,10 @@ import type { InMemorySeed, InMemoryStores } from "../testing/fixtures";
 import { createInMemoryDeps } from "../testing/fixtures";
 import type { ThreadScope } from "../thread-scope";
 import { evaluateAgentTrace, type AgentTraceExpectation } from "./assertions";
+import { reviewRubric } from "./rubric";
+import { captureReviewEvidence } from "./review-evidence";
 import { toJsonValue } from "./json";
-import { buildAgentObservation, captureModelRequest } from "./trace";
+import { buildAgentObservation, captureModelRequest, type RawEvalTurn } from "./trace";
 import type {
   AgentEvalObservation,
   EvalAssessment,
@@ -43,7 +45,7 @@ export interface AgentEvalScenario extends EvalScenario<AgentEvalObservation> {
   scope: ThreadScope;
   seed: InMemorySeed;
   turns: AgentEvalTurn[];
-  /** quality 维度的语义评分标准；仅在 --judge 运行时由 LLM judge 打分。 */
+  /** 主 Agent / 人工审阅标准；可选自动 judge 使用同一份标准。 */
   rubric?: string[];
   setup?: (context: AgentEvalSetupContext) => void | Promise<void>;
   observeState?: (context: AgentEvalSetupContext) => unknown | Promise<unknown>;
@@ -59,7 +61,7 @@ export interface DefineAgentEvalScenarioOptions {
   seedSummary?: JsonValue;
   turns: AgentEvalTurn[];
   expectation?: AgentTraceExpectation;
-  /** quality 评分标准（每条一句可判定的陈述）；写进 run 工件，--judge 时生效。 */
+  /** 场景专属语义标准；与全局四维标准一起持久化供审阅。 */
   rubric?: string[];
   /** Serializable description of custom state or semantic checks. */
   criteria?: JsonValue;
@@ -124,6 +126,7 @@ export function defineAgentEvalScenario(
   options: DefineAgentEvalScenarioOptions,
 ): AgentEvalScenario {
   const expectation = options.expectation ?? {};
+  options = { ...options, rubric: reviewRubric(options.rubric) };
   return {
     id: options.id,
     description: options.description,
@@ -190,6 +193,8 @@ export function createAgentEvalVariant(
         throw new EvalStageError("setup", `scenario setup failed: ${scenario.id}`, error);
       }
 
+      const initialState = scenario.observeState ? toJsonValue(await scenario.observeState(setupContext)) : undefined;
+      const originalSources = structuredClone({ books: setupContext.stores.books, chapters: setupContext.stores.chapters });
       const modelRequests: AgentEvalObservation["modelRequests"] = [];
       let activeTurn = 0;
       let activeRound = 0;
@@ -226,10 +231,11 @@ export function createAgentEvalVariant(
         maxWindowTurns: options.maxWindowTurns,
         transformSystemPrompt: options.transformSystemPrompt,
       });
-      const rawTurns: Array<{ input: AgentEvalTurn; chunks: AgentEvalObservation["turns"][number]["chunks"] }> = [];
+      const rawTurns: RawEvalTurn[] = [];
       context.capturePartial?.(() => {
         const observation = buildAgentObservation({ turns: rawTurns, modelRequests,
           wallTimeMs: performance.now() - startedAt });
+        observation.reviewEvidence = captureReviewEvidence(scenario, originalSources, observation, initialState);
         return { observation, telemetry: observation.telemetry };
       });
 
@@ -239,10 +245,13 @@ export function createAgentEvalVariant(
           activeTurn = index + 1;
           activeRound = 0;
           const chunks: AgentEvalObservation["turns"][number]["chunks"] = [];
-          rawTurns.push({ input: turn, chunks });
+          const rawTurn: RawEvalTurn = { input: turn, chunks,
+            ...(scenario.observeState ? { stateBefore: toJsonValue(await scenario.observeState(setupContext)) } : {}) };
+          rawTurns.push(rawTurn);
           for await (const chunk of thread.sendTurn({ ...turn, signal: context.signal })) {
             chunks.push(chunk);
           }
+          if (scenario.observeState) rawTurn.stateAfter = toJsonValue(await scenario.observeState(setupContext));
         }
         await thread.flushBackgroundWork();
         const state = await scenario.observeState?.(setupContext);
@@ -252,6 +261,7 @@ export function createAgentEvalVariant(
           wallTimeMs: performance.now() - startedAt,
           state,
         });
+        observation.reviewEvidence = captureReviewEvidence(scenario, originalSources, observation, initialState);
         return { observation, telemetry: observation.telemetry };
       } catch (error) {
         throw new EvalStageError("execution", `agent execution failed: ${scenario.id}`, error);

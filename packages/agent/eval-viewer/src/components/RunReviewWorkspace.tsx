@@ -9,6 +9,7 @@ import {
 } from "../api";
 import {
   reviewMean,
+  qualityVerdict,
   type HumanReview,
   type ManualReviewSession,
 } from "../reviews";
@@ -22,6 +23,7 @@ const refChipClass =
   "inline-block select-all rounded-[5px] bg-[var(--accent-bg)] px-2 py-0.5 font-mono text-[11px] text-[var(--accent)]";
 
 function humanScoreClass(review: HumanReview | undefined): string {
+  if (!review?.notes.trim()) return "text-[var(--subtle)]";
   if (review?.verdict === "pass") return "text-[var(--ok)]";
   if (review?.verdict === "partial") return "text-[var(--err)]";
   if (review?.verdict === "fail") return "text-[var(--fail)]";
@@ -45,7 +47,7 @@ function matchesFilter(
   filter: ReviewFilter,
 ): boolean {
   if (filter === "unreviewed")
-    return review?.score === undefined && !review?.verdict;
+    return !review?.verdict || !review.notes.trim();
   if (filter === "concerns") return isConcern(review);
   return true;
 }
@@ -53,7 +55,7 @@ function matchesFilter(
 function humanScore(review: HumanReview | undefined): string {
   const score = reviewMean(review);
   return score === undefined
-    ? "未评"
+    ? "待审"
     : `${score.toFixed(score % 1 ? 1 : 0)} / 5`;
 }
 
@@ -67,6 +69,14 @@ function recordTurns(record: RunRecord) {
       (tool) => tool.turn === undefined || tool.turn === index + 1,
     ),
   }));
+}
+
+function ReviewEvidence({ value }: { value: unknown }) {
+  const [open, setOpen] = useState(false);
+  return <details className="my-3 text-xs text-[var(--muted)]" onToggle={event => setOpen(event.currentTarget.open)}>
+    <summary className="cursor-pointer">原文、阅读边界与实际状态</summary>
+    {open && <pre className="max-h-96 overflow-auto whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>}
+  </details>;
 }
 
 function ReviewDiagnostics({
@@ -94,9 +104,9 @@ function ReviewDiagnostics({
       {scenario && (
         <div className="max-w-[900px] text-xs text-[var(--muted)]">
           <p>{scenario.description}</p>
-          {scenario.input.rubric?.length ? (
+          {(record.input ?? scenario.input).rubric?.length ? (
             <ul className="list-disc pl-5">
-              {scenario.input.rubric.map((line, index) => (
+              {(record.input ?? scenario.input).rubric?.map((line, index) => (
                 <li key={index}>{line}</li>
               ))}
             </ul>
@@ -170,7 +180,7 @@ export function RunReviewWorkspace({
     ...manualTurns.map((turn) => humanReviews[manualTargetId(turn.id)]),
   ];
   const reviewed = allReviews.filter(
-    (review) => review?.score !== undefined || review?.verdict,
+    (review) => review?.verdict && review.notes.trim(),
   );
   const concerns = reviewed.filter(isConcern);
 
@@ -249,20 +259,10 @@ export function RunReviewWorkspace({
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3 text-[11px] max-sm:grid max-sm:justify-items-end max-sm:gap-0.5">
-                      <span
-                        className={`font-semibold ${
-                          record.status === "passed"
-                            ? "text-[var(--ok)]"
-                            : "text-[var(--fail)]"
-                        }`}
-                      >
-                        机器
-                        {record.status === "passed"
-                          ? "通过"
-                          : record.status === "failed"
-                            ? "失败"
-                            : "错误"}
+                      <span className={`font-semibold ${humanScoreClass(review)}`}>
+                        {{ pass: "审阅通过", partial: "部分达标", fail: "审阅未通过", pending: "待语义审阅", error: "运行错误" }[qualityVerdict(record, humanReviews)]}
                       </span>
+                      <span className="text-[var(--subtle)]">辅助检查{record.status === "passed" ? "通过" : record.status === "failed" ? "有疑点" : "错误"}</span>
                       <span
                         className={`tabular-nums ${humanScoreClass(review)}`}
                       >
@@ -278,6 +278,11 @@ export function RunReviewWorkspace({
                   )}
                   <div className="min-w-0">
                     <TranscriptView turns={recordTurns(record)} />
+                    <ReviewEvidence value={{ scenario: record.input, evidence: record.output?.reviewEvidence ?? "旧工件未记录原文快照，请对照本地 fixture", state: record.output?.state, interactions: record.output?.interactions }} />
+                    {record.assessment?.modelReview && <details className="my-3 text-xs text-[var(--muted)]">
+                      <summary className="cursor-pointer">自动初评 · {record.assessment.modelReview.verdict}（待主 Agent / 人工复核）</summary>
+                      <ul className="list-disc pl-5">{record.assessment.modelReview.criteria.map((entry, index) => <li key={index}>{entry.criterion} — {entry.rationale} ({entry.score})</li>)}</ul>
+                    </details>}
                     <HumanReviewForm
                       key={targetId}
                       targetId={targetId}
@@ -336,6 +341,7 @@ export function RunReviewWorkspace({
                           },
                         ]}
                       />
+                      <ReviewEvidence value={{ input: turn.input, evidence: turn.reviewEvidence, state: turn.state, interactions: turn.interactions }} />
                       <HumanReviewForm
                         key={manualTarget}
                         targetId={manualTarget}

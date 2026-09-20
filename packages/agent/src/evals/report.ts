@@ -1,3 +1,4 @@
+import { hasExecutionError, qualitySummaryText } from "./reviews";
 import type {
   EvalAggregate,
   EvalComparison,
@@ -51,8 +52,8 @@ function comparisonLines(comparison: EvalComparison): string[] {
     "",
     `Paired runs: ${comparison.pairedRuns}`,
     "",
-    `- Pass-rate delta: ${signedPercent(comparison.passRateDelta)}`,
-    `- Mean-score delta: ${signed(comparison.meanScoreDelta)}`,
+    `- Diagnostic pass-rate delta: ${signedPercent(comparison.passRateDelta)}`,
+    `- Diagnostic score delta: ${signed(comparison.meanScoreDelta)}`,
     `- Wall-time delta: ${signed(comparison.telemetryDelta.meanWallTimeMs, " ms")}`,
     `- Token delta: ${tokenDelta ? signed(tokenDelta.total) : "n/a"}`,
     `- Cost delta: ${
@@ -83,26 +84,36 @@ export function formatEvalReport(summary: EvalSummary): string {
     "",
     `Generated: ${summary.generatedAt}`,
     "",
-    `Runs: ${summary.runs} | Passed: ${summary.passed} | Failed: ${summary.failed} | Errors: ${summary.errors}`,
+    `Quality: ${qualitySummaryText(summary.quality ?? { total: summary.runs, pass: 0, partial: 0, fail: 0, pending: summary.runs - summary.errors, error: summary.errors })}`,
     "",
-    "## Variants",
+    "Primary-agent / human review determines quality. Automated checks and optional model opinions below are diagnostics, not acceptance.",
     "",
-    "Variant | Scenario | Passed | Pass rate | Mean score | Mean wall ms | Mean tokens | Mean cost",
+    `Diagnostics: ${summary.passed}/${summary.runs} checks passed | ${summary.failed} checks failed | ${summary.errors} errors`,
+    "",
+    "## Primary review by variant", "",
+    "Variant | Pass | Partial | Fail | Pending | Error",
+    "--- | ---: | ---: | ---: | ---: | ---:",
+    ...(summary.qualityByVariant ?? []).map(q => `${q.variantId} | ${q.pass} | ${q.partial} | ${q.fail} | ${q.pending} | ${q.error}`),
+    "",
+    ...(summary.manualQuality ? [`Freeform reviews: ${qualitySummaryText(summary.manualQuality)}`, ""] : []),
+    "## Diagnostic variants",
+    "",
+    "Variant | Scenario | Checks passed | Check pass rate | Check score | Mean wall ms | Mean tokens | Mean cost",
     "--- | --- | ---: | ---: | ---: | ---: | --- | ---:",
     ...summary.byVariant.map(aggregateRow),
     "",
-    "## Scenarios",
+    "## Diagnostic scenarios",
     "",
-    "Variant | Scenario | Passed | Pass rate | Mean score | Mean wall ms | Mean tokens | Mean cost",
+    "Variant | Scenario | Checks passed | Check pass rate | Check score | Mean wall ms | Mean tokens | Mean cost",
     "--- | --- | ---: | ---: | ---: | ---: | --- | ---:",
     ...summary.byScenario.map(aggregateRow),
     "",
   ];
   if (summary.byTag.length > 0) {
     lines.push(
-      "## Tags",
+      "## Diagnostic tags",
       "",
-      "Tag | Variant | Passed | Pass rate | Mean score",
+      "Tag | Variant | Checks passed | Check pass rate | Check score",
       "--- | --- | ---: | ---: | ---:",
       ...summary.byTag.map(tagRow),
       "",
@@ -110,7 +121,7 @@ export function formatEvalReport(summary: EvalSummary): string {
   }
   if (summary.comparisons.length > 0) {
     lines.push(
-      "## Comparisons",
+      "## Diagnostic comparisons",
       "",
       ...summary.comparisons.flatMap(comparisonLines),
     );
@@ -119,11 +130,11 @@ export function formatEvalReport(summary: EvalSummary): string {
 }
 
 export function formatRunLine(record: EvalRunRecord): string {
-  const label = record.status.toUpperCase().padEnd(6);
+  const label = hasExecutionError(record) ? "ERROR" : "REVIEW PENDING";
   const duration = `${record.telemetry.wallTimeMs.toFixed(0)}ms`;
-  const score = record.assessment ? ` score=${record.assessment.score.toFixed(2)}` : "";
+  const score = record.assessment ? ` diagnosticScore=${record.assessment.score.toFixed(2)} checks=${record.status}` : "";
   const error = record.error ? ` ${record.error.stage}: ${record.error.message}` : "";
-  return `[${label}] ${record.variantId} / ${record.scenarioId} #${record.repetition} ${duration}${score}${error}`;
+  return `[${label}] ${record.variantId} / ${record.scenarioId} #${record.repetition} ${duration}${score}${record.assessment?.modelReview ? ` modelOpinion=${record.assessment.modelReview.verdict}` : ""}${error}`;
 }
 
 export function formatRunFailures(record: EvalRunRecord): string[] {

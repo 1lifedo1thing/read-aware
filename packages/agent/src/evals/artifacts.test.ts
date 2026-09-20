@@ -81,6 +81,10 @@ describe("eval artifact store", () => {
     expect(run).not.toContain(secret);
     expect(run).toContain("[REDACTED]");
     expect(JSON.parse(index)).toMatchObject({ status: "passed", scenarioId: "cursor" });
+    const packet = await readFile(join(store.directory, "runs", "baseline", "cursor", "1.review.json"), "utf8");
+    expect(packet).not.toContain(secret);
+    expect(JSON.parse(packet)).toMatchObject({ targetId: `run:${record.id}`, finalAnswer: "never retain [REDACTED]" });
+    expect(JSON.parse(packet).diagnostics).toBeUndefined();
     expect(await readFile(join(store.directory, "report.md"), "utf8")).toBe("# report\n");
   });
 });

@@ -1,3 +1,4 @@
+import { summarizeQuality } from "../reviews";
 import { Select } from "@read-aware/ui";
 import { useEffect, useState } from "react";
 import {
@@ -138,7 +139,7 @@ export function SuitePage({
             onChange={setSelectedRunId}
             options={history.map((run, index) => ({
               value: run.runId,
-              label: `${index === 0 ? "最新 · " : ""}${run.generatedAt?.slice(0, 16).replace("T", " ") ?? run.runId} · ${run.passed ?? 0}/${run.runs ?? 0}`,
+              label: `${index === 0 ? "最新 · " : ""}${run.generatedAt?.slice(0, 16).replace("T", " ") ?? run.runId} · 审阅 ${run.quality?.pass ?? 0}/${run.runs ?? 0} · 待审 ${run.quality?.pending ?? run.runs ?? 0}`,
             }))}
           />
         )}
@@ -146,14 +147,8 @@ export function SuitePage({
 
       {selectedRun && (
         <div className="mb-6 flex items-center gap-3 text-xs text-[var(--muted)] max-sm:flex-wrap">
-          <span
-            className={`font-semibold ${
-              selectedRun.passed === selectedRun.runs
-                ? "text-[var(--ok)]"
-                : "text-[var(--fail)]"
-            }`}
-          >
-            机器 {selectedRun.passed ?? 0}/{selectedRun.runs ?? 0}
+          <span className="font-semibold">
+            审阅通过 {summarizeQuality(detail?.records ?? [], detail?.humanReviews).pass}/{detail?.records.length ?? 0} · 待审 {summarizeQuality(detail?.records ?? [], detail?.humanReviews).pending}
           </span>
           <span>
             {selectedRun.provider}:{selectedRun.model}

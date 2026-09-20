@@ -43,6 +43,9 @@ describe("agent eval harness", () => {
 
     expect(assessment.passed).toBe(true);
     expect(result.observation.state).toEqual({ persistedTurns: 2 });
+    expect(result.observation.turns[0]?.stateBefore).toEqual({ persistedTurns: 0 });
+    expect(result.observation.turns[0]?.stateAfter).toEqual({ persistedTurns: 2 });
+    expect(result.observation.reviewEvidence).toMatchObject({ initialState: { persistedTurns: 0 }, finalState: { persistedTurns: 2 } });
     expect(result.observation.modelRequests).toHaveLength(1);
     expect(result.observation.modelRequests[0]?.context.systemPrompt).toStartWith("EVAL PREFIX");
     expect(JSON.stringify(result.observation.modelRequests[0]?.context.messages)).toContain(
@@ -70,5 +73,6 @@ describe("agent eval harness", () => {
     expect(partial.turns[0]?.input.text).toBe("Explain this slowly.");
     expect(partial.modelRequests).toHaveLength(1);
     expect(partial.state).toBeUndefined();
+    expect(partial.reviewEvidence).toBeDefined();
   });
 });

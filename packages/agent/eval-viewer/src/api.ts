@@ -1,3 +1,4 @@
+import type { QualitySummary } from "./reviews";
 /** viewer 的数据类型与取数（与 vite 中间件的 /api/* 对应）。 */
 
 import type {
@@ -45,6 +46,7 @@ export interface RunListing {
   total?: number;
   generatedAt?: string;
   runs?: number;
+  quality?: QualitySummary;
   passed?: number;
   failed?: number;
   errors?: number;
@@ -69,7 +71,8 @@ export interface RunRecord {
   variantId: string;
   repetition: number;
   status: "passed" | "failed" | "error";
-  assessment?: { passed: boolean; score: number; checks: EvalCheck[] };
+  assessment?: { passed: boolean; score: number; checks: EvalCheck[]; modelReview?: { verdict: string; criteria: Array<{ criterion: string; score: number; rationale: string }> } };
+  input?: CatalogScenario["input"];
   telemetry: {
     wallTimeMs: number;
     rounds?: number;
@@ -77,6 +80,9 @@ export interface RunRecord {
     tokens?: { total: number };
   };
   output?: {
+    reviewEvidence?: unknown;
+    state?: unknown;
+    interactions?: unknown;
     turns?: Array<{
       input?: {
         text?: string;
@@ -109,6 +115,7 @@ export interface RunDetail {
     };
   };
   summary?: {
+    quality?: QualitySummary;
     suiteId: string;
     suiteDisplayName?: string;
     generatedAt: string;

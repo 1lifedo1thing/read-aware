@@ -1,3 +1,4 @@
+import { summarizeQuality } from "../reviews";
 import { Select } from "@read-aware/ui";
 import { useEffect, useState } from "react";
 import {
@@ -137,15 +138,10 @@ export function RunPage({
       </header>
 
       <div className="mb-6 flex items-center gap-3 text-xs text-[var(--muted)] max-sm:flex-wrap">
-        <span
-          className={`font-semibold ${
-            summary.passed === summary.runs
-              ? "text-[var(--ok)]"
-              : "text-[var(--fail)]"
-          }`}
-        >
-          机器 {summary.passed}/{summary.runs}
+        <span className="font-semibold">
+          审阅通过 {summarizeQuality(records, detail.humanReviews).pass}/{records.length} · 待审 {summarizeQuality(records, detail.humanReviews).pending}
         </span>
+        <span>辅助检查 {summary.passed}/{summary.runs}</span>
         <span>{totalTokens.toLocaleString()} tokens</span>
         <span>{usd(totalCost)}</span>
       </div>
@@ -206,7 +202,7 @@ export function RunPage({
               })
               .join("\n") || "—"}
           </dd>
-          <dt className="text-[var(--subtle)]">机器结果</dt>
+          <dt className="text-[var(--subtle)]">辅助检查结果</dt>
           <dd className="m-0 whitespace-pre-wrap">
             {summary.passed} 通过 · {summary.failed} 失败 · {summary.errors}{" "}
             错误

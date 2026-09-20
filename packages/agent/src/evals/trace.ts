@@ -14,6 +14,8 @@ import type {
 } from "./types";
 
 export interface RawEvalTurn {
+  stateBefore?: JsonValue;
+  stateAfter?: JsonValue;
   input: unknown;
   chunks: ThreadChunk[];
 }
@@ -197,6 +199,8 @@ export function buildAgentObservation(input: {
   const turns = input.turns.map<AgentEvalTurnObservation>((turn, index) => ({
     turn: index + 1,
     input: toJsonObject(turn.input),
+    ...(turn.stateBefore === undefined ? {} : { stateBefore: turn.stateBefore }),
+    ...(turn.stateAfter === undefined ? {} : { stateAfter: turn.stateAfter }),
     // 轮感知拼接：流式增量轮内无缝连接，但跨模型轮（中间隔着 tool/metric
     // 块）的文本之间补空行——否则前一轮的过程叙述和最终回答粘成一句
     // （"...for you.Done."），污染被评分的答案串。

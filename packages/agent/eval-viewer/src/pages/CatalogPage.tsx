@@ -61,8 +61,9 @@ export function CatalogPage({
   // 各套件最新一次的通过聚合——顶部大盘（进行中/中断的 run 不进聚合）
   const latestList = Array.from(latest.values()).filter((run) => run.status === "complete");
   const latestRuns = latestList.reduce((sum, run) => sum + (run.runs ?? 0), 0);
-  const latestPassed = latestList.reduce((sum, run) => sum + (run.passed ?? 0), 0);
+  const latestPassed = latestList.reduce((sum, run) => sum + (run.quality?.pass ?? 0), 0);
 
+  const pending = latestList.reduce((sum, run) => sum + (run.quality?.pending ?? run.runs ?? 0), 0);
   return (
     <>
       <h1 className="m-0 text-2xl font-semibold tracking-normal">Eval 总览</h1>
@@ -73,22 +74,22 @@ export function CatalogPage({
 
       <div className="my-6 grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-px overflow-hidden rounded-[6px] border border-[var(--border)] bg-[var(--border)] max-sm:grid-cols-2">
         <div className="bg-[var(--bg)] px-4 py-4">
-          <div className={`text-[22px] font-semibold tabular-nums ${latestPassed === latestRuns ? "text-[var(--ok)]" : "text-[var(--fail)]"}`}>
-            {latestRuns ? Math.round((latestPassed / latestRuns) * 100) : 0}%
+          <div className={`text-[22px] font-semibold tabular-nums ${latestRuns > 0 && latestPassed === latestRuns ? "text-[var(--ok)]" : "text-[var(--muted)]"}`}>
+            {pending}
           </div>
-          <div className="mt-0.5 text-xs text-[var(--muted)]">最新通过率（各套件最近一次）</div>
+          <div className="mt-0.5 text-xs text-[var(--muted)]">待语义审阅（各套件最近一次）</div>
         </div>
         <div className="bg-[var(--bg)] px-4 py-4">
           <div className="text-[22px] font-semibold tabular-nums">
             {latestPassed}/{latestRuns}
           </div>
-          <div className="mt-0.5 text-xs text-[var(--muted)]">通过 / 运行</div>
+          <div className="mt-0.5 text-xs text-[var(--muted)]">审阅通过 / 总样本</div>
         </div>
         <div className="bg-[var(--bg)] px-4 py-4">
           <div className={`text-[22px] font-semibold tabular-nums ${visibleAttention.length ? "text-[var(--fail)]" : "text-[var(--ok)]"}`}>
             {attention === null ? "…" : visibleAttention.length}
           </div>
-          <div className="mt-0.5 text-xs text-[var(--muted)]">当前失败场景</div>
+          <div className="mt-0.5 text-xs text-[var(--muted)]">已发现问题</div>
         </div>
         <div className="bg-[var(--bg)] px-4 py-4">
           <div className="text-[22px] font-semibold tabular-nums">{visibleRuns.length}</div>
@@ -98,7 +99,7 @@ export function CatalogPage({
 
       {visibleAttention.length > 0 && (
         <>
-          <h2 className="mt-9 mb-3 text-[15px] font-semibold tracking-normal">当前失败（各套件最近一次运行）</h2>
+          <h2 className="mt-9 mb-3 text-[15px] font-semibold tracking-normal">审阅与诊断问题（各套件最近一次运行）</h2>
           {visibleAttention.map((item) => (
             <a
               key={`${item.runId}-${item.scenarioId}`}
@@ -109,7 +110,7 @@ export function CatalogPage({
                 <span className={refChipClass}>{refOf(item.suiteId, item.scenarioId)}</span>
                 <span className="font-mono text-xs font-medium">{item.scenarioId}</span>
                 <span className={statusClass(item.status === "error" ? "error" : "fail")}>
-                  {item.status === "error" ? "错误" : "失败"}
+                  {item.status === "error" ? "运行错误" : item.status === "diagnostic" ? "诊断提示 · 待审" : item.status === "partial" ? "部分达标" : "审阅未通过"}
                 </span>
                 <span className="ml-auto text-xs text-[var(--subtle)]">{suiteName(item.suiteId)}</span>
               </div>
@@ -140,7 +141,7 @@ export function CatalogPage({
           <tbody>
             {catalog.map((suite) => {
               const run = latest.get(suite.id);
-              const healthy = run && run.passed === run.runs;
+              const healthy = run && (run.runs ?? 0) > 0 && run.quality?.pass === run.runs;
               const href = `#/suites/${suite.id}`;
               return (
                 <tr
@@ -164,8 +165,8 @@ export function CatalogPage({
                   <td className={tdClass}>
                     {run ? (
                       run.status === "complete" ? (
-                        <span className={statusClass(healthy ? "ok" : "fail")}>
-                          {run.passed}/{run.runs}
+                        <span className={statusClass(healthy ? "ok" : run.quality?.pending ? "neutral" : "fail")}>
+                          审阅 {run.quality?.pass ?? 0}/{run.runs} · 待审 {run.quality?.pending ?? run.runs}
                         </span>
                       ) : (
                         <span className={statusClass(run.status === "running" ? "running" : "neutral")}>
@@ -201,7 +202,7 @@ export function CatalogPage({
               return (
                 <tr
                   key={run.runId}
-                  className={`group cursor-pointer ${run.passed !== run.runs ? "shadow-[inset_2px_0_0_var(--fail)]" : ""}`}
+                  className={`group cursor-pointer ${(run.quality?.fail ?? 0) + (run.quality?.partial ?? 0) > 0 ? "shadow-[inset_2px_0_0_var(--fail)]" : ""}`}
                   role="link"
                   tabIndex={0}
                   aria-label={`打开运行 ${run.runId}`}
@@ -221,8 +222,8 @@ export function CatalogPage({
                     ) : run.status === "stale" ? (
                       <span className={statusClass("neutral")}>中断 {run.runs ?? 0}/{run.total ?? "?"}</span>
                     ) : (
-                      <span className={statusClass(run.passed === run.runs ? "ok" : "fail")}>
-                        {run.passed ?? "?"}/{run.runs ?? "?"}
+                      <span className={statusClass(run.quality?.pending ? "neutral" : run.quality?.pass === run.runs ? "ok" : "fail")}>
+                        审阅 {run.quality?.pass ?? 0}/{run.runs ?? "?"} · 待审 {run.quality?.pending ?? run.runs ?? "?"}
                       </span>
                     )}
                     {run.errors ? (

@@ -1,3 +1,4 @@
+import { buildReviewPacket } from "./review-packet";
 import { appendFile, mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -216,6 +217,7 @@ export class EvalArtifactStore {
     await mkdir(directory, { recursive: true });
     await Promise.all([
       atomicWrite(join(directory, `${record.repetition}.json`), pretty(sanitized)),
+      atomicWrite(join(directory, `${record.repetition}.review.json`), pretty(this.sanitize(buildReviewPacket(record)))),
       appendFile(join(this.directory, "runs.jsonl"), `${JSON.stringify(sanitized)}\n`, "utf8"),
     ]);
   }

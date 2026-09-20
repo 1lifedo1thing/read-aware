@@ -1,3 +1,4 @@
+import { summarizeQuality, type HumanReview } from "./reviews";
 import type {
   EvalAggregate,
   EvalComparison,
@@ -168,6 +169,7 @@ export function buildEvalSummary(
   tagsByScenario: ReadonlyMap<string, readonly string[]> = new Map(),
   definitionHash?: string,
   suiteDisplayName?: string,
+  reviews: Record<string, HumanReview> = {},
 ): EvalSummary {
   const baselineVariantId = variantIds[0] ?? "baseline";
   // 场景按标签分桶后逐 (tag, variant) 聚合：byTag 是"测什么"维度的机器可读汇总
@@ -179,6 +181,8 @@ export function buildEvalSummary(
   }
   return {
     suiteId,
+    quality: summarizeQuality(records, reviews),
+    qualityByVariant: variantIds.map(variantId => ({ variantId, ...summarizeQuality(records.filter(r => r.variantId === variantId), reviews) })),
     ...(suiteDisplayName ? { suiteDisplayName } : {}),
     ...(definitionHash ? { definitionHash } : {}),
     baselineVariantId,

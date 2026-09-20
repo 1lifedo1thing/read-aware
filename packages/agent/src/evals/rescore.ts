@@ -1,3 +1,5 @@
+import { readHumanReviews, readManualSessions } from "./review-store";
+import { manualReviewRecords, plannedRunsComplete, qualityGatePassed, summarizeQuality } from "./reviews";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { join, resolve } from "node:path";
@@ -35,6 +37,7 @@ export interface RescoreCompatibility {
 export interface RescoreResult {
   records: EvalRunRecord[];
   summary: EvalSummary;
+  accepted?: boolean;
   summaryPath?: string;
   reportPath?: string;
   recordsPath?: string;
@@ -187,6 +190,12 @@ export async function rescoreEvalBundle(
       evaluatorSources === true,
   };
   const result = await rescoreEvalRecords(suite, variantIds, records, definitionHash);
+  const reviews = await readHumanReviews(directory);
+  result.summary.quality = summarizeQuality(result.records, reviews);
+  result.summary.qualityByVariant = variantIds.map(variantId => ({ variantId, ...summarizeQuality(result.records.filter(r => r.variantId === variantId), reviews) }));
+  result.summary.manualQuality = summarizeQuality(manualReviewRecords(await readManualSessions(directory)), reviews);
+  result.accepted = plannedRunsComplete(manifest.plan, records) && qualityGatePassed(result.summary.quality)
+    && (result.summary.manualQuality.total === 0 || qualityGatePassed(result.summary.manualQuality));
   const createdAt = new Date().toISOString();
   const rescoreId = `${createdAt.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")}-${randomUUID().slice(0, 8)}`;
   const rescoreDirectory = join(directory, "rescored", rescoreId);

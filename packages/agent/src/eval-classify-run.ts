@@ -7,12 +7,21 @@
  *   bun run eval:classify [--provider openrouter] [--model deepseek/deepseek-v4-flash-0731]
  */
 import { classifyBookReadingPolicy } from "./memory/narrativity";
-import { createModelResolver } from "./models/accounts";
+import { accountCredential, createModelResolver } from "./models/accounts";
 import { createCompleteFn } from "./models/complete";
 import { evalProviderRegistry } from "./evals/model-config";
 import type { ChapterRef } from "./ports";
 import { realBook, realBookSlugs } from "./evals/book-fixtures";
 import { applyEvalRouting, resolveEvalModel } from "./evals/model-config";
+
+import { EvalArtifactStore } from "./evals/artifacts";
+import { runEvalSuite } from "./evals/runner";
+import { assessmentFromChecks } from "./evals/assertions";
+import { formatEvalReport, formatRunLine } from "./evals/report";
+import { qualitySummaryText } from "./evals/reviews";
+import { toJsonValue } from "./evals/json";
+import { GLOBAL_QUALITY_RUBRIC } from "./evals/rubric";
+import type { EvalScenario } from "./evals/types";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
@@ -30,32 +39,39 @@ const model = createModelResolver(
 )("fast");
 const routedModel = applyEvalRouting(model);
 
-let failures = 0;
-for (const slug of realBookSlugs()) {
+type Policy = Awaited<ReturnType<typeof classifyBookReadingPolicy>>;
+type Observation = { policy: Policy; answer: string; turns: Array<{ input: { text: string }; answer: string }>; reviewEvidence: unknown };
+const scenarios = realBookSlugs().map(slug => {
   const book = realBook(slug);
   const epub = book.epub();
-  const toc: ChapterRef[] = epub.chapters.map((chapter, index) => ({
-    index,
-    title: chapter.title,
-    chars: chapter.text.length,
-  }));
-  const sampleText = epub.chapters[book.spec.firstContentChapter]?.text ?? "";
-  const verdict = await classifyBookReadingPolicy({
-    complete,
-    model: routedModel,
-    title: book.title(),
-    author: epub.author,
-    toc,
-    sampleText,
-  });
-  const expected = book.spec.narrativity;
-  const ok = verdict?.narrativity === expected && verdict.spoilerSensitive === book.spec.spoilerSensitive;
-  if (!ok) failures += 1;
-  console.log(
-    `${ok ? "PASS" : "FAIL"}\t${slug}\texpected=${expected}\tgot=${JSON.stringify(verdict) ?? "undefined (low confidence / parse failure)"}`,
-  );
-}
-if (failures > 0) {
-  console.error(`${failures} misclassification(s)`);
-  process.exit(1);
-}
+  const toc: ChapterRef[] = epub.chapters.map((chapter, index) => ({ index, title: chapter.title, chars: chapter.text.length }));
+  const source = { title: book.title(), author: epub.author, toc,
+    sampleText: epub.chapters[book.spec.firstContentChapter]?.text ?? "" };
+  return {
+    id: slug, description: `Reading policy classification for ${book.title()}`,
+    input: toJsonValue({ source, expected: { narrativity: book.spec.narrativity, spoilerSensitive: book.spec.spoilerSensitive },
+      rubric: [...GLOBAL_QUALITY_RUBRIC, "Judge the book's actual form and spoiler sensitivity from its title, TOC and source sample; explain any conflict with the registry label."] }),
+    source,
+    evaluate: ({ policy }: Observation) => assessmentFromChecks([{
+      id: "registry.policy-match", category: "policy", passed: policy?.narrativity === book.spec.narrativity && policy.spoilerSensitive === book.spec.spoilerSensitive,
+      message: "Comparison to the fixture registry (diagnostic; inspect source and classification rationale)",
+      expected: toJsonValue({ narrativity: book.spec.narrativity, spoilerSensitive: book.spec.spoilerSensitive }), actual: toJsonValue(policy),
+    }]),
+  } satisfies EvalScenario<Observation> & { source: typeof source };
+});
+const artifacts = await EvalArtifactStore.create({ suiteId: "classify", secrets: [accountCredential(resolved.account)] });
+const result = await runEvalSuite<Observation, (typeof scenarios)[number]>({ id: "classify", code: "CLASSIFY", displayName: "阅读策略分类器", description: "Original-source policy classification review", scenarios }, [{
+  id: "baseline", metadata: { provider, model: resolved.modelId, thinkingLevel: "off" },
+  run: async scenario => {
+    const policy = await classifyBookReadingPolicy({ complete, model: routedModel, ...scenario.source });
+    const answer = policy ? JSON.stringify(policy) : "No confident policy returned.";
+    return { observation: { policy, answer, turns: [{ input: { text: `Classify the reading policy of ${scenario.source.title}` }, answer }], reviewEvidence: scenario.source } };
+  },
+}], { hooks: {
+  onPlan: plan => artifacts.writePlan(plan),
+  onRunComplete: async record => { console.log(formatRunLine(record)); await artifacts.writeRun(record); },
+} });
+await artifacts.writeSummary(result.summary, formatEvalReport(result.summary));
+console.log(`Quality: ${qualitySummaryText(result.summary.quality!)}`);
+console.log(`Artifacts: ${artifacts.directory}; review source and output, then bun run eval:review ${artifacts.directory} --gate`);
+if (result.summary.errors > 0 || (process.argv.includes("--gate") && result.summary.quality!.pending > 0)) process.exitCode = 1;

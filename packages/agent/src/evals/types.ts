@@ -24,8 +24,11 @@ export interface EvalCheck {
 }
 
 export interface EvalAssessment {
+  /** Optional automated semantic opinion, never folded into diagnostic checks/score. */
+  modelReview?: { verdict: "pass" | "partial" | "fail"; criteria: Array<{ criterion: string; score: number; rationale: string }> };
+  /** Diagnostic checks only; not a product-quality verdict. */
   passed: boolean;
-  /** Normalized to the inclusive 0..1 range. */
+  /** Diagnostic score. Normalized to the inclusive 0..1 range. */
   score: number;
   checks: EvalCheck[];
 }
@@ -79,6 +82,8 @@ export interface EvalInteraction {
 }
 
 export interface AgentEvalTurnObservation {
+  stateBefore?: JsonValue;
+  stateAfter?: JsonValue;
   turn: number;
   input: JsonObject;
   answer: string;
@@ -96,6 +101,8 @@ export interface AgentEvalObservation {
   modelRequests: CapturedModelRequest[];
   telemetry: EvalTelemetry;
   state?: JsonValue;
+  /** Original fixture evidence for review, separate from what the tested model saw. */
+  reviewEvidence?: JsonValue;
 }
 
 export interface EvalScenario<TObservation> {
@@ -217,6 +224,10 @@ export interface EvalComparison {
 }
 
 export interface EvalSummary {
+  /** Primary review coverage; assertion-only historical results are pending. */
+  quality?: import("./reviews").QualitySummary;
+  manualQuality?: import("./reviews").QualitySummary;
+  qualityByVariant?: Array<import("./reviews").QualitySummary & { variantId: string }>;
   suiteId: string;
   /** Optional for compatibility with summaries written before readable names. */
   suiteDisplayName?: string;

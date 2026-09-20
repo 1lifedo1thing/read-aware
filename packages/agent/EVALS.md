@@ -23,7 +23,7 @@ Three nested axes answer "what test is what kind of test":
   the capability, not the book.
 - **Suite** — stable id + append-only code (`S01`…). The id is the foreign key
   for trend files (`trend-<id>.json`), artifact bundles, and viewer routes;
-  it never changes once published. 17 suites, ~245 scenarios.
+  it never changes once published. 17 suites; scenario counts come from the registry.
 - **Tags** — a closed vocabulary (`src/evals/tags.ts`) classifying every
   scenario along a capability axis (what behavior) and a modifier axis (what
   shape), plus an open book-slug axis. Tags are validated by
@@ -68,7 +68,7 @@ bun run eval:agent behavior --tag spoiler,permission
 bun run eval:agent realbook --tag control
 ```
 
-Tag rollups are first-class outputs: every report gains a `## Tags` section,
+Tag rollups are first-class outputs: every report gains a `## Diagnostic tags` section,
 and each trend file stores per-scenario tags plus a `byTag` rollup whose
 deltas print next to per-scenario regressions.
 
@@ -88,7 +88,7 @@ deltas print next to per-scenario regressions.
   and the memory-first principle is violated. A concrete persona (family
   wound, political-science grad student, prefers short plain answers, plays
   Minecraft, builds products with coding agents) drives five application
-  surfaces: style (a hard length gate the concision preference must pass),
+  surfaces: style (length checks diagnose an explicit concision preference),
   unprompted domain connection, analogies drawn from the reader's world,
   discretion (no verbatim dossier recitals, no off-topic memory dumping), and
   transparency ("what do you remember about me" gets an honest, correctable
@@ -110,7 +110,7 @@ deltas print next to per-scenario regressions.
   AgentThread/model calls: search → original page → citation, direct live URL
   fetch, stable explanations without browsing, empty results, provider errors,
   disabled search, malicious page instructions, and private-query minimization.
-  Run `bun run eval:agent search --repetitions 1 --gate`; inspect answers as well
+  Run `bun run eval:agent search --repetitions 1`; review answers as well
   as trace checks. This suite does not test live TinyFish or native transport;
   use the desktop AI settings connection test and a real chat for that boundary.
 - `crossbook` (S03): global-thread behaviors over a shelf of four real books —
@@ -274,7 +274,7 @@ bun run eval:reading
 # A more useful stochastic sample
 bun run eval:reading --repetitions 5
 
-# One capability group (11 suites), or the real-book group (6 suites)
+# One capability group (12 suites), or the real-book group (5 suites)
 bun run eval:behavior
 bun run eval:agent realbook --repetitions 3
 
@@ -284,8 +284,8 @@ bun run eval:all --repetitions 3 --concurrency 4
 # One capability axis across all capability suites
 bun run eval:agent behavior --tag spoiler
 
-# One scenario, with behavioral failures promoted to a failing exit code
-bun run eval:reading --scenario narrative-no-spoiler --repetitions 3 --gate
+# One scenario (run first, then review the saved evidence before acceptance)
+bun run eval:reading --scenario narrative-no-spoiler --repetitions 3
 
 # Compare two models with paired scenario/repetition runs
 bun run eval:reading \
@@ -327,65 +327,80 @@ bun run eval:reading custom
 
 `READAWARE_EVAL_API` may be `openai-completions` or `openai-responses`.
 
-## Machine Quality Judge
+## Semantic Review Is The Quality Verdict
 
-Scenarios may declare a `rubric` — short, individually decidable statements
-about answer quality that deterministic assertions cannot express (human units,
-tone, engagement). Rubrics only score when a judge is enabled:
+This applies to **every** suite and scenario, including synthetic behavior,
+search providers/images, memory, permissions, settings and real books. The
+primary agent reads the question, reading boundary/selection, original sources,
+all answers, tool receipts, approvals and actual state before deciding pass /
+partial / fail. All scenarios inherit four semantic criteria (correctness,
+completeness, helpfulness/execution, restraint); custom rubrics add task-specific
+facts. Correct paraphrases and aliases must not fail for missing a keyword.
+Matching keywords or calling a tool does not establish a correct answer or a
+successful action. Length by itself is not a defect.
+
+`status`, `assessment.passed/score/checks`, aggregate pass rates and trend deltas
+remain **diagnostic** fields for artifact compatibility. They never determine
+quality acceptance. `summary.quality` tracks primary review pass / partial /
+fail / pending / error. A historical machine pass without a reasoned review is
+pending, not an accepted experience. Runtime errors cannot be overridden by a
+review. A scorer failure with a recorded completed output remains a diagnostic
+error; primary review can still judge that answer. It cannot rescue an interrupted
+run with only partial output. Actual unauthorized actions, disclosure or failed writes remain defects;
+review is not permission to excuse them.
+
+The primary agent reads structured local artifacts directly, without browsing
+the Viewer. The Viewer is the user's presentation and discussion surface.
+Missing evidence is a logging gap to fix, not a reason to substitute screenshots.
+Reviews use the existing `human-reviews.json` companion shared with the Viewer. A
+verdict needs a nonempty evidence-based comment; scores alone do not close
+review. Every sample in the claimed acceptance scope must be read. Large runs
+may be reviewed in batches but unreviewed coverage remains explicit. The
+primary agent should first read evidence without the assertion score, then
+compare diagnostics and attribute discrepancies to product / assertion /
+fixture / judge / environment. Record at least one off-syllabus question for
+changed product behavior; tooling changes can instead validate against retained
+raw transcripts. See `.agents/skills/evals/SKILL.md` for the complete workflow.
 
 ```sh
-# Judge rubric scenarios with an LLM (default judge provider = baseline provider)
-bun run eval:reading --repetitions 3 --judge
-
-# Use a different judge model
-bun run eval:reading --judge --judge-provider openai --judge-model gpt-5.6-sol
+bun run eval:agent reading --scenario printed-chapter-after-frontmatter
+bun run eval:review .eval/<run-id> --list
+bun run eval:review .eval/<run-id> --case 'run:<record-id>'
+# After reading evidence, compare optional diagnostic checks/model opinion.
+bun run eval:review .eval/<run-id> --case 'run:<record-id>' --diagnostics
+bun run eval:review .eval/<run-id> --save /tmp/reviews.json --gate
 ```
 
-With `--judge` on, EVERY scenario is additionally scored against a global
-quality rubric (directness / no filler, and companion-grade prose) — structure
-passing while the prose is mediocre now shows up as a failing quality check.
-Scenario-specific rubrics stack on top of the global one.
+`eval:review` performs no inference. It rebuilds summary/report from immutable
+runs plus reviews; pending, partial, failed, erroneous or incomplete planned
+samples and non-passing freeform follow-ups fail the gate. Viewer saves update
+the same report. User reviews and main-agent reviews share this format.
+`--save` takes one review object or an array and merges only those targets.
+Reviews can attach `findings` with product/assertion/fixture/judge/environment
+attribution, evidence paths and explanations. See the skill's
+[structured review reference](../../.claude/skills/evals/references/reviewing.md).
 
-The judge sees the user turns, the tool trace, and the final answer, and must
-return strict JSON scores per criterion. Verdicts become `quality`-category
-checks (pass at score >= 0.6) merged into the same assessment. Parse failures
-retry once, then surface as scoring errors — never silent passes. Judge checks
-follow the usual gating rules: observations by default, failures only with
-`--gate`.
+### Optional Automated Opinion
 
-This model-based judge is a scalable signal, not the release owner. In
-particular, using the evaluated model as its own judge is not independent
-evidence. Real-book release decisions require the qualitative workflow below.
+`--judge` adds an evidence-aware initial opinion on every scenario, stored in
+`assessment.modelReview`, **separate** from diagnostic checks and primary
+review. It is not a release verdict and does not certify the tested model by
+letting it grade itself. Choose a different model when independence matters.
 
-## Qualitative And Human Judge
+The judge receives the recorded scenario, full conversation, selections/cursors,
+full tool arguments and results, interaction responses, actual state, original
+chapter labels and touched fixture text. It excludes model hidden reasoning and
+request credentials. Missing source material must be identified as uncertainty;
+retrieval indexes must not be converted to printed chapter numbers. Source
+omissions are explicit; an oversized judge prompt fails instead of silently
+truncating answers. Invalid JSON retries once, then becomes a scoring error.
+Criterion scores >= 0.8 suggest pass; weak or contradicted evidence produces a
+partial/fail opinion with a specific rationale, never a blended quality score.
 
-For real-book evals, the primary agent owns a reader-level review of the actual
-answers. It must inspect every failed/error sample, every scenario directly
-affected by the change, and a representative set of machine passes. The review
-asks whether the response is correct, sufficiently grounded, complete, useful
-at that reading moment, and appropriately restrained. Machine pass rate and an
-LLM judge score must never be reported as a substitute for this judgement.
-
-The Suite page is the shared review surface and defaults to its latest run.
-Each item shows the reader question and complete model answer, followed
-immediately by a 1–5 human score, issue flags, and comment. Changes save
-reactively without a submit button. Scores map to a verdict (`pass` /
-`partial` / `fail`); earlier dimension scores remain readable for artifact
-compatibility. Both the primary agent and the user can review the same samples
-and revise an assessment. Test definitions, machine checks, and seed data are
-secondary diagnostics rather than the page's main content.
-
-Fixed scenarios are not enough for qualitative behavior. From any recorded
-scenario, the viewer can start a manual session that reconstructs the same
-book seed, scope, reading cursor, optional selection, provider, model, and
-thinking level. Questions and follow-ups run through a real persistent
-`AgentThread`. Manual sessions survive as review artifacts; after the viewer
-server restarts their transcripts remain reviewable, but a new live session is
-required for another follow-up.
-
-A release conclusion reports three signals separately: deterministic checks,
-machine quality judge, and primary-agent/human satisfaction. A machine-green
-answer that a reader would reject is a product failure, not an eval success.
+```sh
+bun run eval:agent reading --judge --judge-provider openai --judge-model gpt-5.6-sol
+bun run eval:rescore .eval/<run-id> --judge
+```
 
 ## Artifacts
 
@@ -396,9 +411,12 @@ manifest.json             run configuration, model/judge metadata, git revision,
                           and SHA-256 prompt/evaluator/runtime/fixture provenance
 runs.jsonl                one normalized record per attempted run
 runs/<variant>/<case>/    full model-visible context, chunks, tools, answer
-summary.json              aggregate and paired-comparison data
-report.md                 readable summary
-human-reviews.json         mutable local human verdicts, dimension scores, flags, notes
+  <repetition>.review.json agent-facing evidence: complete answers, parsed tool
+                          receipts, source snapshots and state; no hidden reasoning
+summary.json              primary review coverage + diagnostic aggregate/comparison data
+report.md                 review-first summary (refresh after editing reviews)
+human-reviews.json         local primary verdicts, dimensions, notes, attributed findings
+review-summary.json       primary acceptance + freeform coverage (eval:review)
 manual-sessions.json       freeform reader questions, follow-ups, answers, tools, telemetry
 ```
 
@@ -408,7 +426,7 @@ evidence, separate from a completed `output`, and is never graded or rescored.
 Active requests may have no completed-round timing or token usage yet; inspect
 the captured activity before interpreting zero-valued completion telemetry.
 
-Browse everything in the **eval viewer** (`bun run eval:ui`, port 5199 —
+Users can browse everything in the **eval viewer** (`bun run eval:ui`, port 5199 —
 `packages/agent/eval-viewer`): the suite catalog grouped by behavior/realbook with
 stable reference codes (scenarios are cited as `S07.3`), each scenario's
 definition (turns, expectations, rubric, seed), and every run bundle rendered
@@ -424,7 +442,7 @@ Use `--no-artifacts` for an intentionally ephemeral run, or `--output-dir` to
 place bundles under another local root.
 
 Each artifact-producing run also updates `.eval/trend-<suite>.json` with the
-baseline's per-scenario pass rate and mean score (plus per-scenario tags and a
+baseline's per-scenario diagnostic pass rate and check score (plus per-scenario tags and a
 `byTag` rollup), and prints a delta against the previous run — regressed
 scenarios are prefixed with `!`, regressed tag rollups appear under
 `Tag rollup`. The trend file holds only the latest run; bundles remain the
@@ -453,16 +471,21 @@ than silently replacing an earlier score.
 
 ## Scoring And CI
 
-Assertions inspect both outcomes and trajectories: answer phrases, required or
-forbidden tools, tool errors, interaction kinds, state mutations, model rounds,
-and custom context invariants. Checks that can be deterministic should remain
-deterministic; reserve `rubric` + `--judge` for criteria that genuinely need
-semantic judgment.
+Assertions diagnose outcomes and traces: phrases, tools, errors, interactions,
+state changes, rounds and custom context invariants. Exact execution / permission /
+state contracts remain deterministic tests; semantic correctness belongs to
+source-based review. Do not weaken a contract to hide a product defect.
 
-By default, behavior failures are observations and do not change the process
-exit code. Execution/setup/timeout/scoring errors always fail the command.
-`--gate` additionally fails on behavior checks. Promote a live suite to a CI
-gate only after repeated runs establish a stable baseline.
+Execution/setup/timeout/scoring errors fail the command. `eval:agent --gate`
+also requires completed primary reviews, so fresh runs exit nonzero while
+pending. Finish review and use `eval:review <bundle> --gate` for acceptance.
+`eval:rescore --gate` also consults existing primary reviews. CI runtime contracts
+use `bun test`; an unreviewed model pass rate is not a CI quality gate.
+
+`eval:classify` records original classification inputs and outcomes for the same
+review process; comparison to the registry is diagnostic. `eval:digests` is a
+fixture generator, not a semantic acceptance test: generated JSON needs source
+review before it becomes a trusted fixture.
 
 ## Adding A Scenario
 
@@ -478,12 +501,12 @@ and the rubric. Tag it from the closed vocabulary in `src/evals/tags.ts`
 out-of-vocabulary tags. Keep fixture books synthetic and make expected facts
 explicit. Prefer:
 
-1. A deterministic answer or state invariant.
-2. A trajectory invariant explaining how the answer was obtained.
-3. A serializable `criteria` field for every custom check.
-4. Optionally a `rubric` for judge-scored quality dimensions — each entry one
-   decidable statement, phrased so a grader can score it from the transcript
-   alone.
+1. A reader task, verifiable expected facts, and scenario-specific semantic
+   criteria. The shared four-dimension rubric is always included.
+2. Original source evidence and exact chapter/volume labels, reading boundary,
+   approvals, and minimal before/after state needed to judge the outcome.
+3. Useful deterministic diagnostics, with serializable `criteria` for custom
+   checks. Keywords are clues, never the semantic truth oracle.
 
 When a scenario asserts that a capability EXISTS, consider whether a `control`
 twin (assertions inverted) is meaningful — personalization's no-profile twins
@@ -491,5 +514,5 @@ are the pattern; a capability that passes its control was never being tested.
 
 Use `setup` only for domain seams the fixture cannot express, such as a declined
 permission or a scope-filtered plugin tool. Use `observeState` to expose the
-smallest post-run projection needed for scoring; never serialize an entire
+smallest before/after projection needed to judge each turn; never serialize an entire
 credential-bearing runtime object.

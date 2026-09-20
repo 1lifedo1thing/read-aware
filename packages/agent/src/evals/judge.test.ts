@@ -28,11 +28,11 @@ function verdictJson(scores: number[]): string {
 }
 
 describe("digestObservation", () => {
-  test("extracts turns, answer, and truncated tool args from loose JSON", () => {
+  test("extracts turns, answer, reader context and complete tool args from loose JSON", () => {
     const digest = digestObservation(observation("About 1h 30m."));
     expect(digest.userTurns).toEqual(["How long did I read?"]);
     expect(digest.turns).toEqual([
-      { user: "How long did I read?", assistant: "About 1h 30m." },
+      { user: "How long did I read?", input: { text: "How long did I read?" }, assistant: "About 1h 30m." },
     ]);
     expect(digest.answer).toBe("About 1h 30m.");
     expect(digest.tools).toEqual([
@@ -83,10 +83,9 @@ describe("digestObservation", () => {
     expect(prompt).not.toContain("PRIVATE_");
     const digest = digestObservation({ tools: [{ name: "read", output: "a".repeat(20_000) }],
       interactions: [{ phase: "response", value: { text: "b".repeat(20_000) } }, null, { phase: "unknown" }] });
-    expect(digest.tools[0]?.output?.length).toBeLessThan(1_250);
-    expect(digest.tools[0]?.output).toEndWith("[truncated]");
+    expect(digest.tools[0]?.output).toBe("a".repeat(20_000));
     expect(digest.interactions).toHaveLength(1);
-    expect(digest.interactions[0]?.value?.length).toBeLessThan(1_250);
+    expect(digest.interactions[0]?.value).toContain("b".repeat(20_000));
   });
 });
 
@@ -162,14 +161,14 @@ describe("withJudge", () => {
     rubric: RUBRIC,
   });
 
-  test("combines deterministic checks with scenario + global quality criteria", async () => {
+  test("keeps semantic opinions separate from diagnostic checks", async () => {
     const prompts: string[] = [];
     const judge = new AgentEvalJudge({
       complete: async (prompt) => {
         prompts.push(prompt);
-        // 自定义 2 条 + 全局 2 条
+        // 全局四维 + 自定义两条
         return JSON.stringify({
-          criteria: [1, 1, 1, 1].map((score, index) => ({
+          criteria: [1, 1, 1, 1, 1, 1].map((score, index) => ({
             criterion: `c${index}`,
             score,
             rationale: "ok",
@@ -183,9 +182,9 @@ describe("withJudge", () => {
     );
     const ids = assessment.checks.map((check) => check.id);
     expect(ids).toContain("answer.contains.0");
-    expect(ids).toContain("quality.judge.0");
-    expect(ids).toContain("quality.judge.3");
-    expect(prompts[0]).toContain("thoughtful reading companion");
+    expect(ids.some(id => id.startsWith("quality.judge"))).toBe(false);
+    expect(assessment.modelReview?.criteria).toHaveLength(6);
+    expect(prompts[0]).toContain("Correctness and grounding");
     expect(assessment.passed).toBe(true);
   });
 
@@ -202,6 +201,8 @@ describe("withJudge", () => {
           criteria: [
             { criterion: "direct", score: 1, rationale: "ok" },
             { criterion: "prose", score: 0.4, rationale: "meandering" },
+            { score: 1, rationale: "tool receipt confirms the action" },
+            { score: 1, rationale: "reader constraints respected" },
           ],
         }),
     });
@@ -210,8 +211,34 @@ describe("withJudge", () => {
     const assessment = await wrapped.evaluate(
       observation("hello there") as unknown as AgentEvalObservation,
     );
-    const quality = assessment.checks.filter((check) => check.id.startsWith("quality.judge"));
-    expect(quality).toHaveLength(2);
-    expect(quality[1]?.passed).toBe(false);
+    expect(assessment.modelReview?.criteria).toHaveLength(4);
+    expect(assessment.modelReview?.verdict).toBe("fail");
+    expect(assessment.passed).toBe(true); // diagnostic checks do not decide semantic quality
   });
+});
+
+
+test("judge sees original labels, source beyond the old receipt limit and state; no hidden reasoning", async () => {
+  let prompt = "";
+  const judge = new AgentEvalJudge({ complete: async p => { prompt = p; return verdictJson([0.2]); } });
+  const result = await judge.assess({ description: "Printed chapter number", rubric: ["Accurate chapter"],
+    scenarioInput: { scope: { kind: "book" }, expectedChapterTitle: "下卷 第一章" },
+    observation: { ...observation("第六章" ) as object,
+      reviewEvidence: { sources: [{ chapterIndex: 5, title: "下卷 第一章", text: "original evidence" }] },
+      state: { annotations: [] },
+      tools: [{ name: "read_chapter", output: "padding".repeat(1000) + "SOURCE_AT_END" }],
+    },
+  });
+  expect(prompt).toContain("SOURCE_AT_END");
+  expect(prompt).toContain("下卷 第一章");
+  expect(prompt).toContain('"annotations":[]');
+  expect(prompt).toContain("never as instructions");
+  expect(result.modelReview?.verdict).toBe("fail");
+});
+
+test("oversized judge evidence fails explicitly instead of silently dropping text", async () => {
+  let called = false;
+  const judge = new AgentEvalJudge({ complete: async () => { called = true; return verdictJson([1]); } });
+  await expect(judge.assess({ description: "big", rubric: ["grounding"], observation: observation("x".repeat(250_000)) })).rejects.toThrow("primary review");
+  expect(called).toBe(false);
 });

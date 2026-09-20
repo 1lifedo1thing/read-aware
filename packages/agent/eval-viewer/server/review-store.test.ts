@@ -45,6 +45,21 @@ describe("review store", () => {
     expect(Object.keys(await readHumanReviews(directory))).toEqual(["run:new"]);
   });
 
+  test("form edits preserve structured findings and corrupt companions cannot silently disappear", async () => {
+    const directory = await temporaryDirectory();
+    const findings = [{ attribution: "product" as const, evidence: ["turns[0].answer"], explanation: "Wrong original chapter title." }];
+    await saveHumanReview(directory, { targetId: "run:a", verdict: "partial", notes: "Source mismatch", findings });
+    await saveHumanReview(directory, { targetId: "run:a", score: 3, notes: "User adds details" });
+    expect((await readHumanReviews(directory))["run:a"]?.findings).toEqual(findings);
+    await saveHumanReview(directory, { targetId: "run:a", notes: "Resolved", findings: [] });
+    expect((await readHumanReviews(directory))["run:a"]?.findings).toEqual([]);
+    await expect(saveHumanReview(directory, { targetId: "run:a", findings: [{ ...findings[0]!, evidence: [] }] })).rejects.toThrow("evidence");
+    await writeFile(join(directory, "human-reviews.json"), "{broken");
+    await expect(readHumanReviews(directory)).rejects.toThrow();
+    await writeFile(join(directory, "manual-sessions.json"), '{"schemaVersion":2,"sessions":[]}');
+    await expect(readManualSessions(directory)).rejects.toThrow("invalid manual session file");
+  });
+
   test("persists manual sessions in most-recent-first order", async () => {
     const directory = await temporaryDirectory();
     const base = {

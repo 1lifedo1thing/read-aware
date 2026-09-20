@@ -10,6 +10,9 @@
  *    在 eval 跑动时自动刷新，不需要手动刷新页面。
  * 工件含书文本与模型输出，属本地诊断数据——server 只绑 localhost。
  */
+import { qualityVerdict, summarizeQuality, type QualitySummary, type ReviewableRun } from "../src/evals/reviews";
+import { refreshReviewReport } from "../src/evals/review-report";
+import type { EvalRunRecord } from "../src/evals/types";
 import { randomUUID } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync, watch } from "node:fs";
 import { join, resolve } from "node:path";
@@ -41,6 +44,7 @@ interface RunListing {
   status: "running" | "stale" | "complete";
   generatedAt?: string;
   runs?: number;
+  quality?: QualitySummary;
   passed?: number;
   failed?: number;
   errors?: number;
@@ -94,7 +98,26 @@ function readJson(path: string): unknown {
   }
 }
 
-function listRuns(): RunListing[] {
+// Keep only identity/status in the listing cache; full transcripts can be hundreds of MB.
+const reviewRecordCache = new Map<string, { stamp: string; records: ReviewableRun[] }>();
+function readReviewableRuns(directory: string): ReviewableRun[] {
+  const path = join(directory, "runs.jsonl");
+  if (!existsSync(path)) return [];
+  const stat = statSync(path);
+  const stamp = `${stat.mtimeMs}:${stat.size}`;
+  const cached = reviewRecordCache.get(path);
+  if (cached?.stamp === stamp) return cached.records;
+  const records: ReviewableRun[] = [];
+  for (const line of readFileSync(path, "utf8").split("\n")) {
+    if (!line) continue;
+    try { const record = JSON.parse(line) as ReviewableRun; records.push({ id: record.id, status: record.status, error: record.error, hasCompletedOutput: record.output !== undefined }); }
+    catch { /* Live writer may be between chunks of the last row. */ }
+  }
+  reviewRecordCache.set(path, { stamp, records });
+  return records;
+}
+
+async function listRuns(): Promise<RunListing[]> {
   const listings: RunListing[] = [];
   for (const root of EVAL_ROOTS) {
     if (!existsSync(root)) continue;
@@ -127,7 +150,9 @@ function listRuns(): RunListing[] {
         (manifest.plan.repetitions ?? 1) *
         Math.max(1, manifest.plan.variants?.length ?? 1);
       const progress = summary ? undefined : liveProgress(directory);
+      const quality = summarizeQuality(readReviewableRuns(directory), await readHumanReviews(directory));
       listings.push({
+        quality,
         runId: manifest.runId ?? entry,
         suiteId: manifest.plan.suiteId,
         status: summary ? "complete" : livenessOf(directory),
@@ -295,7 +320,7 @@ function evalDataPlugin(): Plugin {
             return sendJson(res, catalogCache);
           }
           if (url.pathname === "/api/runs") {
-            return sendJson(res, listRuns());
+            return sendJson(res, await listRuns());
           }
           if (url.pathname === "/api/events") {
             res.writeHead(200, {
@@ -344,22 +369,20 @@ function evalDataPlugin(): Plugin {
             for (const run of Array.from(latest.values())) {
               const directory = (run as { directory?: string }).directory;
               if (!directory || !existsSync(join(directory, "runs.jsonl"))) continue;
+              const reviews = await readHumanReviews(directory);
               for (const line of readFileSync(join(directory, "runs.jsonl"), "utf8").split("\n")) {
                 if (!line) continue;
-                const record = JSON.parse(line) as {
-                  scenarioId: string;
-                  status: string;
-                  assessment?: { checks?: Array<{ id: string; message: string; passed: boolean }> };
-                  error?: { message: string };
-                };
-                if (record.status === "passed") continue;
+                const record = JSON.parse(line) as EvalRunRecord;
+                const verdict = qualityVerdict(record, reviews);
+                // Pending samples appear in coverage; this list is for observed concerns.
+                if (verdict === "pass" || (verdict === "pending" && record.status === "passed")) continue;
                 attention.push({
                   suiteId: run.suiteId,
                   runId: run.runId,
                   scenarioId: record.scenarioId,
-                  status: record.status,
+                  status: verdict === "pending" ? "diagnostic" : verdict,
                   failedChecks:
-                    record.assessment?.checks
+                    (reviews[`run:${record.id}`]?.notes ? [{ id: "primary-review", message: reviews[`run:${record.id}`]!.notes }] : undefined) ?? record.assessment?.checks
                       ?.filter((check) => !check.passed)
                       .map(({ id, message }) => ({ id, message })) ??
                     (record.error ? [{ id: "error", message: record.error.message }] : []),
@@ -377,6 +400,7 @@ function evalDataPlugin(): Plugin {
               return sendJson(res, { error: "review target not found in this run" }, 404);
             }
             const review = await saveHumanReview(directory, input);
+            if (existsSync(join(directory, "summary.json"))) await refreshReviewReport(directory);
             broadcast();
             return sendJson(res, review);
           }
@@ -475,6 +499,9 @@ function evalDataPlugin(): Plugin {
               id: `${session.record.id}:${session.record.turns.length + 1}`,
               question: body.question.trim(),
               answer: observation.answer,
+              input: observation.turns[0]?.input,
+              reviewEvidence: observation.reviewEvidence,
+              state: observation.state,
               tools: observation.tools.map(({ name, args, output, isError }) => ({
                 name,
                 ...(args === undefined ? {} : { args }),
@@ -546,7 +573,7 @@ function evalDataPlugin(): Plugin {
             }));
             return sendJson(res, {
               manifest,
-              summary,
+              summary: summary && typeof summary === "object" ? { ...summary, quality: summarizeQuality(records as EvalRunRecord[], humanReviews) } : summary,
               records,
               status,
               rescores,

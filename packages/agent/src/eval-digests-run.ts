@@ -110,6 +110,7 @@ for (let index = 0; index < epub.chapters.length; index++) {
 
 persist();
 console.log(`wrote ${digests.size} digests to ${outPath}`);
+console.log("Generation complete, semantic review pending: compare entities, relations and claims with original chapter text before trusting this fixture. JSON validity is not a quality verdict.");
 if (failed.length) {
   console.error(`FAILED chapters (re-run with --resume): ${failed.join(", ")}`);
   process.exit(1);

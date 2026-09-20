@@ -41,7 +41,7 @@ export const imageSearchScenarios = [
     id: `search-images-${provider}-${quick ? "quick-lookup" : "diagram"}`, description: `${provider}: ${quick ? "首轮请求图片，直接展示已有依据充分的结果，不重复抓取" : "非人物需求，模型选择并展示来源中的建筑结构图"}。`,
     scope: provider === "tinyfish" ? { kind: "book", bookId: "architecture" } : { kind: "global", threadId: "image-diagram" },
     seed: provider === "tinyfish" ? { books: [{ id: "architecture", title: "Architecture", author: "Museum", status: "reading", progressPercent: 10 }] } : {},
-    tags: ["retrieval", "grounding", provider === "tinyfish" ? "book" : "global"],
+    tags: ["retrieval", "honesty", provider === "tinyfish" ? "book" : "global"],
     setup: ({ deps }) => { deps.web = web(provider, "match"); },
     turns: [{ text: quick ? "请联网找 museum.example.org 上的屋顶剖面图，展示一张对应的图，并用一句话说明是什么，不需要展开结构原理。" : "请联网查 museum.example.org 上的博物馆木构屋顶资料，解释梁是怎么连接的。我想直观看懂这种结构，适合的话请配图。" }],
     evaluate: observation => combineAssessments(evaluateAgentTrace(observation, {
@@ -70,7 +70,7 @@ export const imageSearchScenarios = [
     rubric: ["只用文字准确解释木梁连接方式，不展示图片。"],
   }),
   defineAgentEvalScenario({ id: "search-images-multiple-complementary", description: "多个互补图像一起展示，不停在第一张、不展示同图的其他尺寸或站点图标。",
-    scope: { kind: "global", threadId: "multiple-figures" }, tags: ["retrieval", "grounding", "global"],
+    scope: { kind: "global", threadId: "multiple-figures" }, tags: ["retrieval", "honesty", "global"],
     setup: ({ deps }) => {
       const client = WEB_PROVIDERS.tinyfish.create("fixture-key", async () => new Response(JSON.stringify({ results: [{ url: source, title: "Museum roof structure",
         text: "The roof plan roof-plan.png shows the overall radial beam arrangement. The separate roof-section.png diagram shows how the joints interlock, without metal fasteners. These are complementary views of the same roof, not alternative sizes of one image.",
