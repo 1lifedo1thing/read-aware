@@ -1,8 +1,9 @@
-# Release builds — run ONLY when a version tag (v*) is pushed.
+# Release builds run on version tags. Manual dispatch repairs Windows artifacts
+# and the desktop updater for an existing tag without rebuilding shipped platforms.
 # Android: signed arm64 APK. iOS: unsigned arm64 IPA for sideloading (AltStore
 # / SideStore / Sideloadly re-sign it with the user's own Apple ID). Desktop:
 # macOS .dmg/.app.zip per chip (Apple Silicon + Intel, no universal), Windows
-# x64 .msi/.exe, Linux x64 .AppImage/.deb/.rpm. Every artifact is renamed to carry its platform
+# x64 NSIS .exe/portable .zip, Linux x64 .AppImage/.deb/.rpm. Every artifact is renamed to carry its platform
 # (ReadAware-vX.Y.Z-<platform>-<arch>.<ext>) before it is attached to the
 # GitHub release for the tag (created on first upload). Stable releases
 # additionally upload every installer under a version-less stable alias
@@ -48,6 +49,12 @@
 name: release
 
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag whose Windows assets and updater need repair
+        required: true
+        type: string
   push:
     tags:
       - "v*"
@@ -56,10 +63,13 @@ permissions:
   contents: write
 
 env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
   NDK_VERSION: 28.2.13676358
 
 jobs:
   marketplace-contract:
+    outputs:
+      desktop-matrix: ${{ steps.targets.outputs.matrix }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -67,8 +77,35 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ env.RELEASE_TAG }}
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+      - name: Verify release tag and select desktop targets
+        id: targets
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, re
+          from pathlib import Path
+          tag = os.environ["RELEASE_TAG"]
+          if not re.fullmatch(r"v\d+\.\d+\.\d+(?:-\d+)?", tag):
+              raise SystemExit("Expected a version tag such as v0.6.0")
+          version = json.loads(Path("apps/desktop/src-tauri/tauri.conf.json").read_text())["version"]
+          if tag != f"v{version}":
+              raise SystemExit("Tag does not match the checked-out app version")
+          targets = [
+              {"os": "macos-latest", "target": "aarch64-apple-darwin", "platform": "macos-arm64"},
+              {"os": "macos-latest", "target": "x86_64-apple-darwin", "platform": "macos-x64"},
+              {"os": "ubuntu-latest", "target": "x86_64-unknown-linux-gnu", "platform": "linux-x64"},
+              {"os": "windows-latest", "target": "x86_64-pc-windows-msvc", "platform": "windows-x64"},
+          ]
+          if os.environ["EVENT_NAME"] == "workflow_dispatch":
+              targets = [target for target in targets if target["platform"] == "windows-x64"]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("matrix=" + json.dumps({"include": targets}) + "\n")
+          PYTHON
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -77,6 +114,7 @@ jobs:
         run: bun run check:marketplace
 
   android:
+    if: github.event_name != 'workflow_dispatch'
     needs: marketplace-contract
     runs-on: ubuntu-latest
     steps:
@@ -119,8 +157,8 @@ jobs:
       - name: Verify tag matches the Android app version
         run: |
           APP_VERSION="$(bun -e "console.log(require('./apps/desktop/src-tauri/tauri.conf.json').version)")"
-          if [ "${GITHUB_REF_NAME#v}" != "$APP_VERSION" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match tauri.conf.json version $APP_VERSION" >&2
+          if [ "${RELEASE_TAG#v}" != "$APP_VERSION" ]; then
+            echo "Tag $RELEASE_TAG does not match tauri.conf.json version $APP_VERSION" >&2
             exit 1
           fi
 
@@ -142,7 +180,7 @@ jobs:
 
       - name: Prepare update artifacts
         run: |
-          APK="ReadAware-${{ github.ref_name }}-android-arm64.apk"
+          APK="ReadAware-${{ env.RELEASE_TAG }}-android-arm64.apk"
           cp apps/desktop/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk "$APK"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
           "$APKSIGNER" verify --verbose "$APK"
@@ -150,23 +188,24 @@ jobs:
           VERSION_CODE="$(bun -e "console.log(require('./apps/desktop/src-tauri/tauri.conf.json').bundle.android.versionCode)")"
           SHA256="$(sha256sum "$APK" | cut -d ' ' -f 1)"
           SIZE="$(stat -c %s "$APK")"
-          APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${APK}"
+          APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${APK}"
           VERSION="$VERSION" VERSION_CODE="$VERSION_CODE" SHA256="$SHA256" SIZE="$SIZE" APK_URL="$APK_URL" \
             bun -e 'console.log(JSON.stringify({ version: process.env.VERSION, versionCode: Number(process.env.VERSION_CODE), url: process.env.APK_URL, sha256: process.env.SHA256, size: Number(process.env.SIZE) }, null, 2))' \
             > latest-android.json
-          if [[ "$GITHUB_REF_NAME" != *-* ]]; then
+          if [[ "$RELEASE_TAG" != *-* ]]; then
             cp "$APK" ReadAware-android-arm64.apk
           fi
 
       - name: Attach to release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
-          name: ReadAware ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ReadAware ${{ env.RELEASE_TAG }}
           files: |
             ReadAware-*android-arm64.apk
             latest-android.json
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
 
   # iOS: unsigned arm64 IPA via `tauri ios build --no-sign` (the CLI overrides
   # the codesigning identity to "" and still runs beforeBuildCommand plus the
@@ -174,6 +213,7 @@ jobs:
   # the supported one). The IPA carries no signature at all — sideloading
   # tools (AltStore, SideStore, Sideloadly) re-sign it on install.
   ios:
+    if: github.event_name != 'workflow_dispatch'
     needs: marketplace-contract
     runs-on: macos-latest
     steps:
@@ -197,14 +237,14 @@ jobs:
       - name: Verify tag matches the iOS app version
         run: |
           APP_VERSION="$(bun -e "console.log(require('./apps/desktop/src-tauri/tauri.conf.json').version)")"
-          if [ "${GITHUB_REF_NAME#v}" != "$APP_VERSION" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match tauri.conf.json version $APP_VERSION" >&2
+          if [ "${RELEASE_TAG#v}" != "$APP_VERSION" ]; then
+            echo "Tag $RELEASE_TAG does not match tauri.conf.json version $APP_VERSION" >&2
             exit 1
           fi
           PLIST="apps/desktop/src-tauri/gen/apple/read-aware-desktop_iOS/Info.plist"
           IOS_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
-          if [ "${GITHUB_REF_NAME#v}" != "$IOS_VERSION" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match iOS Info.plist version $IOS_VERSION" >&2
+          if [ "${RELEASE_TAG#v}" != "$IOS_VERSION" ]; then
+            echo "Tag $RELEASE_TAG does not match iOS Info.plist version $IOS_VERSION" >&2
             exit 1
           fi
 
@@ -229,8 +269,8 @@ jobs:
           codesign -dv "$RUNNER_TEMP/ipa-check/Payload/ReadAware.app" 2>&1 | grep -q "not signed" \
             || { echo "expected an unsigned IPA" >&2; exit 1; }
           mkdir -p release-assets
-          cp "$IPA" "release-assets/ReadAware-${{ github.ref_name }}-ios-arm64.ipa"
-          if [[ "$GITHUB_REF_NAME" != *-* ]]; then
+          cp "$IPA" "release-assets/ReadAware-${{ env.RELEASE_TAG }}-ios-arm64.ipa"
+          if [[ "$RELEASE_TAG" != *-* ]]; then
             cp "$IPA" release-assets/ReadAware-ios-arm64.ipa
           fi
           ls -la release-assets
@@ -238,32 +278,22 @@ jobs:
       - name: Attach to release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
-          name: ReadAware ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ReadAware ${{ env.RELEASE_TAG }}
           files: release-assets/*
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
 
   desktop:
     needs: marketplace-contract
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            platform: macos-arm64
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            platform: macos-x64
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            platform: linux-x64
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            platform: windows-x64
+      matrix: ${{ fromJSON(needs.marketplace-contract.outputs.desktop-matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Install Linux system dependencies
         if: matrix.os == 'ubuntu-latest'
@@ -291,8 +321,8 @@ jobs:
         shell: bash
         run: |
           APP_VERSION="$(bun -e "console.log(require('./apps/desktop/src-tauri/tauri.conf.json').version)")"
-          if [ "${GITHUB_REF_NAME#v}" != "$APP_VERSION" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match tauri.conf.json version $APP_VERSION" >&2
+          if [ "${RELEASE_TAG#v}" != "$APP_VERSION" ]; then
+            echo "Tag $RELEASE_TAG does not match tauri.conf.json version $APP_VERSION" >&2
             exit 1
           fi
 
@@ -363,7 +393,7 @@ jobs:
         shell: bash
         run: |
           BUNDLE="apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle"
-          BASE="ReadAware-${{ github.ref_name }}-${{ matrix.platform }}"
+          BASE="ReadAware-${{ env.RELEASE_TAG }}-${{ matrix.platform }}"
           mkdir -p release-assets
           case "${{ matrix.platform }}" in
             macos-*)
@@ -383,8 +413,6 @@ jobs:
             windows-*)
               cp "$BUNDLE"/nsis/*-setup.exe "release-assets/$BASE-setup.exe"
               cp "$BUNDLE"/nsis/*-setup.exe.sig "release-assets/$BASE-setup.exe.sig"
-              cp "$BUNDLE"/msi/*.msi "release-assets/$BASE.msi"
-              cp "$BUNDLE"/msi/*.msi.sig "release-assets/$BASE.msi.sig"
               # The exe in target/ keeps its cargo name; only the installers
               # ship it renamed. Restage it as ReadAware.exe for the zip.
               EXE_DIR="apps/desktop/src-tauri/target/${{ matrix.target }}/release"
@@ -398,7 +426,7 @@ jobs:
               (cd "$RUNNER_TEMP/portable" && 7z a "$OLDPWD/release-assets/$BASE-portable.zip" ReadAware.exe)
               ;;
           esac
-          if [[ "$GITHUB_REF_NAME" != *-* ]]; then
+          if [[ "$RELEASE_TAG" != *-* ]]; then
             case "${{ matrix.platform }}" in
               macos-*)
                 cp "release-assets/$BASE.dmg" "release-assets/ReadAware-${{ matrix.platform }}.dmg"
@@ -410,7 +438,6 @@ jobs:
                 ;;
               windows-*)
                 cp "release-assets/$BASE-setup.exe" release-assets/ReadAware-windows-x64-setup.exe
-                cp "release-assets/$BASE.msi" release-assets/ReadAware-windows-x64.msi
                 cp "release-assets/$BASE-portable.zip" release-assets/ReadAware-windows-x64-portable.zip
                 ;;
             esac
@@ -420,10 +447,11 @@ jobs:
       - name: Attach to release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
-          name: ReadAware ${{ github.ref_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ReadAware ${{ env.RELEASE_TAG }}
           files: release-assets/*
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
 
   # latest.json must exist once, after every desktop artifact is uploaded —
   # composing it in a dedicated job avoids the cross-job merge races the
@@ -437,7 +465,7 @@ jobs:
     steps:
       - name: Compose and upload latest.json
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${RELEASE_TAG}"
           VERSION="${TAG#v}"
           BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
           mkdir sigs && cd sigs
@@ -458,7 +486,6 @@ jobs:
           appimage = entry(f"ReadAware-{tag}-linux-x64.AppImage")
           deb = entry(f"ReadAware-{tag}-linux-x64.deb")
           rpm = entry(f"ReadAware-{tag}-linux-x64.rpm")
-          msi = entry(f"ReadAware-{tag}-windows-x64.msi")
           nsis = entry(f"ReadAware-{tag}-windows-x64-setup.exe")
 
           manifest = {
@@ -472,8 +499,9 @@ jobs:
                   "linux-x86_64-appimage": appimage,
                   "linux-x86_64-deb": deb,
                   "linux-x86_64-rpm": rpm,
-                  "windows-x86_64": msi,
-                  "windows-x86_64-msi": msi,
+                  "windows-x86_64": nsis,
+                  # Keep older MSI clients able to discover the signed EXE updater.
+                  "windows-x86_64-msi": nsis,
                   "windows-x86_64-nsis": nsis,
               },
           }
