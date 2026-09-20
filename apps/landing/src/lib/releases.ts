@@ -45,7 +45,7 @@ export type PlatformDownload = {
   name: string;
   /** Recommended installer for the platform, or null when unavailable. */
   primary: DownloadLink | null;
-  /** Alternative packages (e.g. `.msi`, `.deb`, `.rpm`). */
+  /** Alternative packages (e.g. portable `.zip`, `.deb`, `.rpm`). */
   extras: DownloadLink[];
   /** Announced but not yet shipping. */
   comingSoon?: boolean;
@@ -69,7 +69,6 @@ export const DOWNLOADS: PlatformDownload[] = [
     name: "Windows",
     primary: link("Download installer", "windows-x64-setup.exe"),
     extras: [
-      link(".msi", "windows-x64.msi"),
       // v0.2.10 predates the portable bundle, so this alias 404s until the
       // next stable release ships; every release from then on carries it.
       link("Portable .zip", "windows-x64-portable.zip"),
