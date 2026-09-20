@@ -170,7 +170,10 @@
   },
   "textUnitMode": {
     "progress": "Posición en el capítulo",
-    "sessionTime": "Tiempo de la sesión"
+    "sessionTime": "Tiempo de la sesión",
+    "currentTime": "Hora actual",
+    "showCurrentTime": "Mostrar la hora actual",
+    "showSessionTime": "Mostrar el tiempo de lectura"
   },
   "fileMissing": {
     "no-sync": "El archivo de este libro no está en este dispositivo y la sincronización está desactivada. Importa el archivo original para leerlo aquí.",

@@ -170,7 +170,10 @@
   },
   "textUnitMode": {
     "progress": "Position im Kapitel",
-    "sessionTime": "Zeit dieser Sitzung"
+    "sessionTime": "Zeit dieser Sitzung",
+    "currentTime": "Aktuelle Uhrzeit",
+    "showCurrentTime": "Aktuelle Uhrzeit anzeigen",
+    "showSessionTime": "Lesezeit anzeigen"
   },
   "fileMissing": {
     "no-sync": "Die Datei dieses Buches ist nicht auf diesem Gerät und Sync ist aus. Importiere die Originaldatei, um es hier zu lesen.",

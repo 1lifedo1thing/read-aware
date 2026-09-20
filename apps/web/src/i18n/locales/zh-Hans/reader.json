@@ -170,7 +170,10 @@
   },
   "textUnitMode": {
     "progress": "本章位置",
-    "sessionTime": "本次用时"
+    "sessionTime": "本次用时",
+    "currentTime": "当前时间",
+    "showCurrentTime": "显示当前时间",
+    "showSessionTime": "显示本次阅读用时"
   },
   "fileMissing": {
     "no-sync": "这本书的文件不在此设备上，且未开启同步。重新导入原文件即可在此阅读。",

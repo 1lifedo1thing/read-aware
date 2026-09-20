@@ -170,7 +170,10 @@
   },
   "textUnitMode": {
     "progress": "章内の位置",
-    "sessionTime": "今回の経過時間"
+    "sessionTime": "今回の経過時間",
+    "currentTime": "現在時刻",
+    "showCurrentTime": "現在時刻を表示",
+    "showSessionTime": "今回の読書時間を表示"
   },
   "fileMissing": {
     "no-sync": "この本のファイルはこの端末になく、同期もオフです。元のファイルを再度読み込むとここで読めます。",

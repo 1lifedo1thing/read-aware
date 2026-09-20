@@ -170,7 +170,10 @@
   },
   "textUnitMode": {
     "progress": "本章位置",
-    "sessionTime": "本次用時"
+    "sessionTime": "本次用時",
+    "currentTime": "目前時間",
+    "showCurrentTime": "顯示目前時間",
+    "showSessionTime": "顯示本次閱讀用時"
   },
   "fileMissing": {
     "no-sync": "這本書的檔案不在此裝置上，且未開啟同步。重新匯入原檔案即可在此閱讀。",

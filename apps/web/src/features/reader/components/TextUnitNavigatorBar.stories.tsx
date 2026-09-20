@@ -70,6 +70,10 @@ const meta = {
     // Placeholder only — FramedNavigatorBar substitutes its live ref.
     containerRef: { current: null },
     canReturn: true,
+    canAnnotate: true,
+    onHighlight: () => {},
+    onUnderline: () => {},
+    onAddNote: () => {},
     tapToAdvance: true,
     unitId: "line",
     onUnitChange: () => {},
@@ -88,12 +92,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The pure navigation strip — unit actions live in the tap menu on the wash. */
+/** Touch starts with annotation actions; desktop shows navigation. */
 export const OnUnit: Story = {};
 
 /** Nothing to return to yet: the return-to-current control is disabled. */
 export const NoRestingUnit: Story = {
-  args: { canReturn: false },
+  args: { canReturn: false, canAnnotate: false },
 };
 
 /** Alternate plugin unit engaged: the quick toggle shows its pressed state. */

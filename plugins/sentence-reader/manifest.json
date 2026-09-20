@@ -167,15 +167,15 @@
         }
       },
       "description": {
-        "default": "The floating bar counts the time since you entered the mode. Resets every time; nothing is saved.",
+        "default": "Counts active reading time, pausing in the background or after one minute without activity. Tap to switch to the current time. Resets on each entry; nothing is saved.",
         "translations": {
-          "zh-Hans": "浮动条显示本次进入逐句阅读以来的用时。每次进入重新计时，不做任何保存。",
-          "zh-Hant": "浮動列顯示本次進入逐句閱讀以來的用時。每次進入重新計時，不做任何保存。",
-          "ja": "モードに入ってからの経過時間をフローティングバーに表示します。毎回リセットされ、保存はされません。",
-          "ru": "Плавающая панель отсчитывает время с входа в режим. Сбрасывается каждый раз; ничего не сохраняется.",
-          "fr": "La barre flottante compte le temps depuis l’entrée dans le mode. Remis à zéro à chaque fois ; rien n’est enregistré.",
-          "de": "Die schwebende Leiste zählt die Zeit seit dem Einstieg in den Modus. Wird jedes Mal zurückgesetzt; nichts wird gespeichert.",
-          "es": "La barra flotante cuenta el tiempo desde que entraste en el modo. Se reinicia cada vez; no se guarda nada."
+          "zh-Hans": "显示本次阅读用时，切到后台或 1 分钟无操作时暂停，继续阅读时恢复。点击可切换当前时间。每次进入重新计时，不做保存。",
+          "zh-Hant": "顯示本次閱讀用時，切到背景或 1 分鐘無操作時暫停，繼續閱讀時恢復。點擊可切換目前時間。每次進入重新計時，不做儲存。",
+          "ja": "読書時間を表示し、バックグラウンド時や1分間操作がない場合は一時停止します。操作すると再開し、タップで現在時刻に切り替えます。毎回リセットされ、保存されません。",
+          "ru": "Считает время чтения, приостанавливаясь в фоне или после минуты без действий. Действия возобновляют отсчёт; нажатие переключает на текущее время. Каждый вход сбрасывает таймер; данные не сохраняются.",
+          "fr": "Compte le temps de lecture, avec une pause en arrière-plan ou après une minute d’inactivité. Reprend à la prochaine action. Touchez pour afficher l’heure. Remis à zéro à chaque entrée ; rien n’est enregistré.",
+          "de": "Zählt die Lesezeit und pausiert im Hintergrund oder nach einer Minute ohne Aktivität. Bei Aktivität läuft die Zeit weiter. Antippen zeigt die Uhrzeit. Jeder Einstieg setzt den Timer zurück; nichts wird gespeichert.",
+          "es": "Cuenta el tiempo de lectura y se pausa en segundo plano o tras un minuto sin actividad. Se reanuda al interactuar. Toca para ver la hora actual. Se reinicia en cada entrada; no se guarda nada."
         }
       },
       "value": true

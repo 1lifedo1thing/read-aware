@@ -450,6 +450,7 @@ export function FoliateReaderView({
   const onContentClickRef = useRef(onContentClick);
   const onContentScrollRef = useRef(onContentScroll);
   const onReadingActivityRef = useRef(onReadingActivity);
+  const sessionTimerActivityRef = useRef<(() => void) | null>(null);
   const onPageChangeRef = useRef(onPageChange);
   const onProgressChangeRef = useRef(onProgressChange);
   const onFractionChangeRef = useRef(onFractionChange);
@@ -1025,6 +1026,7 @@ export function FoliateReaderView({
     previousTextUnitTargetKeyRef.current = textUnitTargetKey;
     // Losing the unit (deactivation, section unload) is not a step.
     if (textUnitTargetKey == null) return;
+    sessionTimerActivityRef.current?.();
     setFootnote(null);
     setActiveAnnotation(null);
     setUnitMenuAnchor(null);
@@ -1399,7 +1401,10 @@ export function FoliateReaderView({
     // scroll mode, where there are no page turns and a reader can linger on one
     // screenful. These events never bubble out of the iframe, so they must be
     // observed on the section document; capture+passive keeps it unobtrusive.
-    const bumpReadingActivity = () => onReadingActivityRef.current?.();
+    const bumpReadingActivity = () => {
+      onReadingActivityRef.current?.();
+      sessionTimerActivityRef.current?.();
+    };
     const activityOptions = { passive: true, capture: true } as const;
     doc.addEventListener("pointermove", bumpReadingActivity, activityOptions);
     doc.addEventListener("pointerdown", bumpReadingActivity, activityOptions);
@@ -2345,6 +2350,10 @@ export function FoliateReaderView({
           onPrev={textUnitNavigator.prev}
           onNext={textUnitNavigator.next}
           onReturnToCurrent={textUnitNavigator.returnToCurrent}
+          canAnnotate={textUnitNavigator.status === "ready" && textUnitNavigator.current?.cfiRange != null}
+          onHighlight={() => { setUnitMenuAnchor(null); void handleNavigatorMark("highlight"); }}
+          onUnderline={() => { setUnitMenuAnchor(null); void handleNavigatorMark("underline"); }}
+          onAddNote={() => { setUnitMenuAnchor(null); handleNavigatorAddNote(); }}
           onExit={() => onExitTextUnitModeRef.current?.()}
           readAloudAvailable={readAloud.available}
           readAloudPlaying={readAloud.playing}
@@ -2354,11 +2363,13 @@ export function FoliateReaderView({
       )}
       {textUnitMode && (
         <TextUnitReadoutChip
+          key={selectedBook?.id}
           visible={textUnitModeEngineActive && !isLoading && !error}
           containerRef={readerRootRef}
           progress={textUnitNavigator.progress}
           showProgress={textUnitModeSettings.showProgress}
           sessionTimer={textUnitModeSettings.sessionTimer}
+          activityRef={sessionTimerActivityRef}
         />
       )}
       {/* Off-screen stage where the engine loads + extracts a footnote fragment. */}

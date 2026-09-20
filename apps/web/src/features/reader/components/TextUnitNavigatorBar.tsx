@@ -6,11 +6,14 @@ import {
   Crosshair,
   DotsSixVertical,
   DotsThree,
+  Highlighter,
   ListBullets,
   Notebook,
+  NotePencil,
   SpeakerHigh,
   SpeakerSlash,
   TextAa,
+  TextUnderline,
   X,
 } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
@@ -50,6 +53,10 @@ type TextUnitNavigatorBarProps = {
   onPrev: () => void;
   onNext: () => void;
   onReturnToCurrent: () => void;
+  canAnnotate: boolean;
+  onHighlight: () => void;
+  onUnderline: () => void;
+  onAddNote: () => void;
   onExit: () => void;
   /** Read-aloud (hidden where the webview offers no speech synthesis). */
   readAloudAvailable: boolean;
@@ -99,13 +106,9 @@ function BarButton({
  * bottom center of the reader: step to the previous / next unit, jump back
  * to the resting unit, switch the step unit, read aloud, and exit.
  *
- * Unit-level ACTIONS (copy / highlight / underline / note / ask AI / plugin
- * lookups) no longer live here: tapping the resting unit's wash opens them
- * as an anchored menu right at the sentence — the bar stays a pure
- * navigation strip, short enough to never crowd a phone screen. On
- * coarse-pointer devices it keeps only the back-step while tap-to-advance
- * owns the forward step (a tap anywhere on the page), and it grows a grip
- * that drags it anywhere; the spot sticks per device.
+ * Touch puts marks and notes first, with navigation on the expanded page.
+ * The anchored sentence menu still carries the full set of selection actions.
+ * Tap-to-advance owns the forward step on touch; the grip moves the whole bar.
  */
 export function TextUnitNavigatorBar({
   visible,
@@ -120,6 +123,10 @@ export function TextUnitNavigatorBar({
   onPrev,
   onNext,
   onReturnToCurrent,
+  canAnnotate,
+  onHighlight,
+  onUnderline,
+  onAddNote,
   onExit,
   readAloudAvailable,
   readAloudPlaying,
@@ -133,8 +140,8 @@ export function TextUnitNavigatorBar({
   // it — the bar carries the back-step alone. Disarm the tap and it returns.
   const showNextStep = !coarsePointer || !tapToAdvance;
   const float = useDraggableFloat({ containerRef, controlId: "navigator-bar" });
-  // 手机宽度装不下整条：触屏分两页（» 翻到面板/退出页，« 翻回导航页），
-  // 桌面有空间，永远整条铺开。双箭头图标与单步的 ‹ › 区分。
+  // Touch starts with annotation and panel actions; navigation is expanded
+  // through More. Desktop keeps the full navigation strip.
   const paged = coarsePointer;
   const [page, setPage] = useState<0 | 1>(0);
   useEffect(() => {
@@ -183,7 +190,27 @@ export function TextUnitNavigatorBar({
             <DotsSixVertical size={16} weight="bold" aria-hidden="true" />
           </span>
 
-          {(!paged || page === 0) && (
+          {paged && page === 0 && (
+            <>
+              <BarButton label={t("menu.highlight")} disabled={!canAnnotate} onClick={onHighlight}
+                className={actionButtonClass} icon={<Highlighter size={14} aria-hidden="true" />} />
+              <BarButton label={t("menu.underline")} disabled={!canAnnotate} onClick={onUnderline}
+                className={actionButtonClass} icon={<TextUnderline size={14} aria-hidden="true" />} />
+              <BarButton label={t("menu.addNote")} disabled={!canAnnotate} onClick={onAddNote}
+                className={actionButtonClass} icon={<NotePencil size={14} aria-hidden="true" />} />
+            </>
+          )}
+
+          {paged && page === 1 && (
+            <BarButton
+              label={resolvePluginText(mode.copy.collapseActions, locale)}
+              onClick={() => setPage(0)}
+              className={actionButtonClass}
+              icon={<CaretDoubleLeft size={14} weight="regular" aria-hidden="true" />}
+            />
+          )}
+
+          {(!paged || page === 1) && (
             <>
               <BarButton
                 label={prevStepLabel}
@@ -242,27 +269,7 @@ export function TextUnitNavigatorBar({
             </>
           )}
 
-          {paged && page === 0 && (
-            <>
-              <BarDivider />
-              <BarButton
-                label={resolvePluginText(mode.copy.moreActions, locale)}
-                onClick={() => setPage(1)}
-                className={actionButtonClass}
-                icon={<DotsThree size={16} weight="bold" aria-hidden="true" />}
-              />
-            </>
-          )}
-          {paged && page === 1 && (
-            <BarButton
-              label={resolvePluginText(mode.copy.collapseActions, locale)}
-              onClick={() => setPage(0)}
-              className={actionButtonClass}
-              icon={<CaretDoubleLeft size={14} weight="regular" aria-hidden="true" />}
-            />
-          )}
-
-          {(!paged || page === 1) && (
+          {(!paged || page === 0) && (
             <>
               <BarDivider />
               <BarButton
@@ -296,6 +303,17 @@ export function TextUnitNavigatorBar({
                 onClick={onExit}
                 className={actionButtonClass}
                 icon={<X size={14} weight="regular" aria-hidden="true" />}
+              />
+            </>
+          )}
+          {paged && page === 0 && (
+            <>
+              <BarDivider />
+              <BarButton
+                label={resolvePluginText(mode.copy.moreActions, locale)}
+                onClick={() => setPage(1)}
+                className={actionButtonClass}
+                icon={<DotsThree size={16} weight="bold" aria-hidden="true" />}
               />
             </>
           )}

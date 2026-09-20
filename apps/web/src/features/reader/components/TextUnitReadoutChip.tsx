@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
+import { Button } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
-import { useTranslation } from "../../../i18n";
+import { useLocale, useTranslation } from "../../../i18n";
 import { useDraggableFloat } from "../hooks/useDraggableFloat";
 import { useSessionTimer } from "../hooks/useSessionTimer";
 import type { TextUnitProgress } from "../hooks/useTextUnitNavigator";
@@ -14,10 +15,11 @@ type TextUnitReadoutChipProps = {
   /** Plugin-settings readout toggles. Both off → the chip never renders. */
   showProgress: boolean;
   sessionTimer: boolean;
+  activityRef?: RefObject<(() => void) | null>;
 };
 
 /**
- * The text-unit mode's passive readouts — section position and session
+ * The text-unit mode's readouts — section position and session
  * clock — as their own quiet floating chip, so the navigator bar stays a
  * pure control strip (it is already width-constrained on phones). Defaults
  * to the top-right of the reader; draggable anywhere, and the spot sticks
@@ -29,10 +31,16 @@ export function TextUnitReadoutChip({
   progress,
   showProgress,
   sessionTimer,
+  activityRef,
 }: TextUnitReadoutChipProps) {
   const { t } = useTranslation("reader");
+  const locale = useLocale();
   // The clock runs per mode entry (chip visibility) and is never persisted.
-  const sessionElapsed = useSessionTimer(visible && sessionTimer);
+  const timer = useSessionTimer(visible && sessionTimer, activityRef);
+  const sessionElapsed = timer.elapsed;
+  const timeText = timer.showClock
+    ? timer.now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
+    : sessionElapsed;
   const float = useDraggableFloat({ containerRef, controlId: "navigator-readouts" });
 
   if (!visible) return null;
@@ -50,12 +58,22 @@ export function TextUnitReadoutChip({
         }
         style={float.style ?? undefined}
       >
-        <div
-          role="status"
+        <Button
+          variant="ghost"
+          size="sm"
           data-ra-float
           {...float.handleProps}
+          onClick={() => {
+            if (!float.consumeDragClick() && sessionTimer) timer.toggleClock();
+          }}
+          aria-label={sessionTimer
+            ? t(timer.showClock ? "textUnitMode.showSessionTime" : "textUnitMode.showCurrentTime")
+            : t("textUnitMode.progress")}
+          title={sessionTimer
+            ? t(timer.showClock ? "textUnitMode.showSessionTime" : "textUnitMode.showCurrentTime")
+            : undefined}
           className={cn(
-            "ra-motion-overlay-pop pointer-events-auto flex cursor-grab touch-none select-none items-center gap-2 rounded-md border border-border bg-[var(--ra-main-surface-color)] px-2.5 py-1 text-caption tabular-nums text-fg-subtle shadow-[0_4px_16px_-6px_rgba(28,25,23,0.25)]",
+            "ra-motion-overlay-pop pointer-events-auto h-auto cursor-grab touch-none select-none gap-2 rounded-md border border-border bg-[var(--ra-main-surface-color)] px-2.5 py-1 text-caption font-normal tabular-nums text-fg-muted shadow-[0_4px_16px_-6px_rgba(28,25,23,0.25)]",
             float.dragging && "cursor-grabbing text-fg",
           )}
         >
@@ -68,11 +86,11 @@ export function TextUnitReadoutChip({
             <span aria-hidden="true" className="h-3 w-px shrink-0 bg-border" />
           )}
           {sessionElapsed && (
-            <span aria-label={`${t("textUnitMode.sessionTime")}: ${sessionElapsed}`}>
-              {sessionElapsed}
+            <span aria-label={`${t(timer.showClock ? "textUnitMode.currentTime" : "textUnitMode.sessionTime")}: ${timeText}`}>
+              {timeText}
             </span>
           )}
-        </div>
+        </Button>
       </div>
     </div>
   );
