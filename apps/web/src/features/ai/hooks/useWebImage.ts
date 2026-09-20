@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { appHttpFetch } from "../../../platform/http-client";
-import { isTauri } from "../../../platform/environment";
 import { createLogger } from "../../../platform/logger";
-import { loadWebImage } from "../lib/web-image";
+import { cachedWebImage } from "../lib/web-image-cache";
 
 const log = createLogger("chat-image");
 export function useWebImage(url: string) {
@@ -11,7 +9,7 @@ export function useWebImage(url: string) {
     const controller = new AbortController();
     let objectUrl: string | undefined;
     setState({ source: url });
-    void loadWebImage(url, isTauri() ? appHttpFetch : fetch, controller.signal).then(blob => {
+    void cachedWebImage(url, controller.signal).then(blob => {
       if (controller.signal.aborted) return;
       objectUrl = URL.createObjectURL(blob);
       setState({ source: url, url: objectUrl });

@@ -97,5 +97,21 @@ export const searchEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     ...providerSearchScenarios,
     ...imageSearchScenarios,
+    scenario({ id: "fetch-independent-sources-parallel", description: "两份独立来源同轮读取，减少串行等待与模型往返。", tags: ["retrieval", "economy", "global"],
+      scope: { kind: "global", threadId: "parallel-pages" },
+      setup: ({ deps }) => { deps.web = web({ fetch: async input => {
+        await new Promise(resolve => setTimeout(resolve, 25));
+        return { provider: "fixture", url: input.url, finalUrl: input.url, title: "Release", text: input.url.endsWith("/august") ? "August release: version 4.1, Pine export." : pageText, offset: 0, nextOffset: null, retrievedAt };
+      } }); },
+      turns: [{ text: `请读取 ${source} 和 https://atlas.example.org/releases/august，比较两个版本号和导出格式，附来源。` }],
+      evaluate: observation => {
+        const steps = observation.turns.flatMap(turn => turn.chunks).filter(chunk => chunk.type === "tool-step").filter(chunk => chunk.tool === "web_fetch");
+        return combineAssessments(evaluateAgentTrace(observation, {
+          tools: { required: ["web_fetch"], forbidden: ["web_search"], noErrors: true, maxCalls: 2 },
+          answer: { mustContain: ["4.1", "4.2", "Pine", "Cedar"] },
+        }), assessmentFromChecks([{ id: "fetch.parallel", category: "tool", passed: steps[0]?.phase === "start" && steps[1]?.phase === "start", message: "both independent page reads start before either completes" }]));
+      },
+      rubric: ["比较两个来源中的版本与格式并引用原文；无需先等第一份读完再取第二份。"],
+    }),
   ],
 };

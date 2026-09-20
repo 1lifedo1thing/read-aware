@@ -1,6 +1,7 @@
 mod android_update;
 mod book_metadata;
 mod covers;
+mod web_image_cache;
 mod resource_images;
 mod import;
 mod desktop_update;
@@ -951,6 +952,8 @@ pub fn run() {
             import::library_stage_import,
             storage::library_begin_import,
             storage::library_finish_import,
+            web_image_cache::web_image_cache_get,
+            web_image_cache::web_image_cache_put,
             covers::library_put_cover,
             covers::library_cover_backlog,
             storage::append_events,

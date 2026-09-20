@@ -1,14 +1,20 @@
 import { AppError } from "@read-aware/core";
-import { WEB_PROVIDERS, type WebPort } from "@read-aware/agent";
+import { WEB_PROVIDERS, type WebPort, type WebClient, type WebProviderId } from "@read-aware/agent";
 import { appHttpFetch } from "../../../../platform/http-client";
 import { createLogger } from "../../../../platform/logger";
 import { getSearchConfig } from "../../lib/search-config";
+import { createCachedWebClient } from "../../lib/web-response-cache";
 
 const log = createLogger("web-retrieval");
+let cached: { provider: WebProviderId; key: string; client: Pick<WebClient, "search"> & Partial<Pick<WebClient, "fetch">> } | undefined;
 function client() {
   const config = getSearchConfig();
-  if (!config.enabled || !config.apiKey) throw new AppError("search/not-configured", "Enable Search and set its key in Settings → AI");
-  return WEB_PROVIDERS[config.provider].create(config.apiKey, appHttpFetch);
+  if (!config.enabled || !config.apiKey) { cached = undefined; throw new AppError("search/not-configured", "Enable Search and set its key in Settings → AI"); }
+  if (cached?.provider === config.provider && cached.key === config.apiKey) return cached.client;
+  // Cache lifetime is scoped to this provider and credential; neither is written to disk.
+  const value = createCachedWebClient(WEB_PROVIDERS[config.provider], config.apiKey, appHttpFetch);
+  cached = { provider: config.provider, key: config.apiKey, client: value };
+  return value;
 }
 export const agentWeb: WebPort = {
   configured: (operation = "search") => {
