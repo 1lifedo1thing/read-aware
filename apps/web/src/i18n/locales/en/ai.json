@@ -197,6 +197,13 @@
       "openImage": "Open image: {{caption}}",
       "imageSource": "Source: {{source}}"
     },
+    "externalLink": {
+      "title": "Open external link?",
+      "description": "This link will open in your default browser.",
+      "copy": "Copy link",
+      "open": "Open link",
+      "close": "Close"
+    },
     "message": {
       "copy": "Copy message",
       "copied": "Copied",

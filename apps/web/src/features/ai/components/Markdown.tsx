@@ -1,7 +1,12 @@
-import { Streamdown } from "streamdown";
+import { Streamdown, type LinkSafetyConfig } from "streamdown";
 import { cn } from "@read-aware/ui/cn";
+import { MarkdownLinkDialog } from "./MarkdownLinkDialog";
 
 const components = { img: ({ alt }: { alt?: string }) => alt ? <span>{alt}</span> : null };
+const linkSafety: LinkSafetyConfig = {
+  enabled: true,
+  renderModal: (props) => <MarkdownLinkDialog {...props} />,
+};
 
 /**
  * Renders assistant replies as Markdown via Streamdown (handles partial/unclosed
@@ -15,6 +20,7 @@ export function Markdown({ children, className }: { children: string; className?
     <Streamdown
       controls={false}
       lineNumbers={false}
+      linkSafety={linkSafety}
       // Retrieved images use source-backed reference cards. Do not let prose
       // invent arbitrary remote image requests (including while streaming).
       components={components}

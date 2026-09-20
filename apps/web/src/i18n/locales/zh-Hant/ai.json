@@ -195,6 +195,13 @@
       "openImage": "檢視圖片：{{caption}}",
       "imageSource": "來源：{{source}}"
     },
+    "externalLink": {
+      "title": "開啟外部連結？",
+      "description": "此連結將在預設瀏覽器中開啟。",
+      "copy": "複製連結",
+      "open": "開啟連結",
+      "close": "關閉"
+    },
     "message": {
       "copy": "複製訊息",
       "copied": "已複製",

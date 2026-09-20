@@ -9,6 +9,7 @@ type DialogProps = {
   "aria-label"?: string;
   children: ReactNode;
   className?: string;
+  backdrop?: "blur" | "dim";
 };
 
 const EXIT_DURATION_MS = 240;
@@ -20,6 +21,7 @@ export function Dialog({
   "aria-label": ariaLabel,
   children,
   className,
+  backdrop = "blur",
 }: DialogProps) {
   const id = useId();
   const titleId = `${id}-title`;
@@ -105,7 +107,8 @@ export function Dialog({
         aria-hidden="true"
         onMouseDown={onClose}
         className={cn(
-          "absolute inset-0 bg-stone-950/20 backdrop-blur-sm transition-opacity duration-220 ease-[var(--ra-ease-out-quart)] motion-reduce:transition-none",
+          "absolute inset-0 bg-stone-950/20 transition-opacity duration-220 ease-[var(--ra-ease-out-quart)] motion-reduce:transition-none",
+          backdrop === "blur" && "backdrop-blur-sm",
           isVisible ? "opacity-100" : "opacity-0",
         )}
       />

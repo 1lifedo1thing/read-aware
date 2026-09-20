@@ -7,11 +7,11 @@ import { createLogger } from "../platform/logger";
 const log = createLogger("external-link");
 
 /** Keep a real href for browser/link semantics; Tauri needs the native opener. */
-export function useExternalLink() {
+export function useExternalLink(onOpened?: () => void) {
   const { toast } = useToast();
   return (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    void openExternalUrl(event.currentTarget.href).catch(error => {
+    void openExternalUrl(event.currentTarget.href).then(onOpened).catch(error => {
       log.error("Could not open link", error);
       toast({ variant: "destructive", description: describeError(error).body });
     });

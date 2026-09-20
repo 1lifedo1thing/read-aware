@@ -195,6 +195,13 @@
       "openImage": "查看图片：{{caption}}",
       "imageSource": "来源：{{source}}"
     },
+    "externalLink": {
+      "title": "打开外部链接？",
+      "description": "此链接将在默认浏览器中打开。",
+      "copy": "复制链接",
+      "open": "打开链接",
+      "close": "关闭"
+    },
     "message": {
       "copy": "复制消息",
       "copied": "已复制",

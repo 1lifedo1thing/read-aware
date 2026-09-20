@@ -57,3 +57,10 @@ export const StreamingFragment: Story = {
     children: "The author frames habit change as a **compounding process — each repetition is",
   },
 };
+
+/** Clicking a citation opens our themed confirmation, with a plain dim backdrop. */
+export const ExternalLinkConfirmation: Story = {
+  args: {
+    children: "Source: [非洲 — Wikipedia](https://zh.wikipedia.org/wiki/%E9%9D%9E%E6%B4%B2).",
+  },
+};

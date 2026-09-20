@@ -21,6 +21,17 @@ export const Default: Story = {
   },
 };
 
+/** A quiet confirmation that leaves the surrounding content sharp. */
+export const DimBackdrop: Story = {
+  args: {
+    open: true,
+    onClose: () => {},
+    title: "Open external link?",
+    backdrop: "dim",
+    children: "This link will open in your default browser.",
+  },
+};
+
 export const Interactive: Story = {
   args: {
     open: false,
