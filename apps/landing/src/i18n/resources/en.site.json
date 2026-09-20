@@ -171,6 +171,65 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.0",
+        "date": "2026-09-21",
+        "codename": "Cambria",
+        "summary": "Cambria keeps your furthest reading progress across devices, brings web sources and images into the assistant, and makes your library easier to back up and use with other tools.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Web research with your own keys",
+                "body": "Connect TinyFish, Exa, Tavily, SerpAPI, or Brave for web search and retrieval. The assistant stays with your selected provider, links to sources, and can show relevant images. Models that support vision can also inspect image content."
+              },
+              {
+                "title": "Encrypted backups of your reading workspace",
+                "body": "Create a full encrypted backup of your books, annotations, conversations, memory, settings, and plugin data. Review what will be restored before merging it into another installation, while keeping that device's account session and local settings."
+              },
+              {
+                "title": "Your library in other assistants",
+                "body": "An optional, token-protected local HTTP API lets other tools read your library and reading context. Copy the ReadAware skill installation prompt from Settings to connect a compatible assistant."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "A more useful reading assistant",
+                "body": "Retry a failed model step without starting the conversation over, and expand one grouped view to inspect tool activity. Fiction retains reading-progress spoiler protection, while history and biography can use relevant factual context."
+              },
+              {
+                "title": "A reader that remembers your preferences",
+                "body": "Font choices are remembered by book language, two-page layouts have more room, and chapter navigation follows the table of contents even when several chapters share one source file."
+              },
+              {
+                "title": "More capable plugins",
+                "body": "Plugins can work with more of your reading workspace through scoped permissions. Updated navigation, annotations, and reading goals make their everyday controls simpler, while plugin sync transports have their own settings and a manual Sync now action."
+              },
+              {
+                "title": "Help shape ReadAware",
+                "body": "The update dialog now offers a direct way to star ReadAware on GitHub or join the Discord community. About includes a small credit to AHpx at the bottom."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Offline progress no longer moves backward",
+                "body": "Sync keeps the furthest reading position across devices. If an offline device has reached page 300 and another device has a newer record at page 200, reconnecting keeps page 300. Reading time is handled separately from reading position."
+              },
+              {
+                "title": "More accurate reading time and smoother navigation",
+                "body": "Reading sessions pause while the app is idle or in the background. Touch annotations respond more reliably, and chapter transitions in scroll mode no longer drift into the wrong section."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.5.4",
         "date": "2026-09-07",
         "codename": "Lake Baikal",

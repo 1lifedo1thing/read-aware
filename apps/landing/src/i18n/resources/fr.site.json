@@ -171,6 +171,65 @@
     "leadIn": " : ",
     "entries": [
       {
+        "version": "0.6.0",
+        "date": "2026-09-21",
+        "codename": "Cambria",
+        "summary": "Cambria conserve votre progression de lecture la plus avancée sur tous vos appareils, intègre les sources web et les images à l’assistant et facilite la sauvegarde de votre bibliothèque et son utilisation avec d’autres outils.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Recherche web avec vos propres clés",
+                "body": "Connectez TinyFish, Exa, Tavily, SerpAPI ou Brave pour la recherche et la récupération sur le web. L’assistant reste auprès du fournisseur sélectionné, renvoie vers les sources et peut afficher des images pertinentes. Les modèles compatibles avec la vision peuvent également examiner le contenu des images."
+              },
+              {
+                "title": "Sauvegardes chiffrées de votre espace de lecture",
+                "body": "Créez une sauvegarde chiffrée complète de vos livres, annotations, conversations, mémoire, réglages et données de plugins. Examinez ce qui sera restauré avant de le fusionner dans une autre installation, tout en conservant la session de compte et les réglages locaux de cet appareil."
+              },
+              {
+                "title": "Votre bibliothèque dans d’autres assistants",
+                "body": "Une API HTTP locale optionnelle, protégée par un jeton, permet à d’autres outils de lire votre bibliothèque et votre contexte de lecture. Copiez l’invite d’installation de la compétence ReadAware depuis Réglages pour connecter un assistant compatible."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Un assistant de lecture plus utile",
+                "body": "Relancez une étape de modèle échouée sans recommencer la conversation et développez une vue regroupée pour examiner l’activité des outils. La fiction conserve la protection contre les spoilers fondée sur la progression de lecture, tandis que l’histoire et la biographie peuvent utiliser un contexte factuel pertinent."
+              },
+              {
+                "title": "Un lecteur qui mémorise vos préférences",
+                "body": "Les choix de police sont mémorisés selon la langue du livre, les mises en page sur deux pages offrent davantage d’espace et la navigation entre les chapitres suit le sommaire même lorsque plusieurs chapitres partagent un même fichier source."
+              },
+              {
+                "title": "Des plugins plus performants",
+                "body": "Les plugins peuvent travailler avec une plus grande partie de votre espace de lecture grâce à des permissions délimitées. La navigation, les annotations et les objectifs de lecture mis à jour simplifient leurs commandes courantes, tandis que les transports de synchronisation des plugins ont leurs propres réglages et une action manuelle « Synchroniser maintenant »."
+              },
+              {
+                "title": "Contribuez à ReadAware",
+                "body": "La boîte de dialogue de mise à jour propose désormais un moyen direct d’ajouter une étoile à ReadAware sur GitHub ou de rejoindre la communauté Discord. La page À propos contient une petite mention d’AHpx en bas."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "La progression hors ligne ne recule plus",
+                "body": "La synchronisation conserve la position de lecture la plus avancée sur tous les appareils. Si un appareil hors ligne a atteint la page 300 et qu’un autre appareil possède un enregistrement plus récent à la page 200, la reconnexion conserve la page 300. Le temps de lecture est géré séparément de la position de lecture."
+              },
+              {
+                "title": "Temps de lecture plus précis et navigation plus fluide",
+                "body": "Les sessions de lecture se mettent en pause lorsque l’application est inactive ou en arrière-plan. Les annotations tactiles réagissent de manière plus fiable et les transitions entre chapitres en mode défilement ne dérivent plus vers la mauvaise section."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.5.4",
         "date": "2026-09-07",
         "codename": "Lake Baikal",

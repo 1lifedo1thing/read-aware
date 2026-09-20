@@ -171,6 +171,65 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.0",
+        "date": "2026-09-21",
+        "codename": "Cambria",
+        "summary": "Cambria bewahrt deinen weitesten Lesefortschritt über mehrere Geräte hinweg, bringt Webquellen und Bilder in den Assistenten und macht es einfacher, deine Bibliothek zu sichern und mit anderen Werkzeugen zu verwenden.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Webrecherche mit eigenen Schlüsseln",
+                "body": "Verbinde TinyFish, Exa, Tavily, SerpAPI oder Brave für Websuche und Abruf. Der Assistent bleibt bei deinem ausgewählten Anbieter, verknüpft Quellen und kann relevante Bilder anzeigen. Modelle mit Vision-Unterstützung können auch Bildinhalte untersuchen."
+              },
+              {
+                "title": "Verschlüsselte Backups deiner Leseumgebung",
+                "body": "Erstelle ein vollständiges verschlüsseltes Backup deiner Bücher, Annotationen, Unterhaltungen, deines Gedächtnisses, deiner Einstellungen und Plugin-Daten. Prüfe vor dem Zusammenführen in eine andere Installation, was wiederhergestellt wird, während die Kontositzung und lokalen Einstellungen dieses Geräts erhalten bleiben."
+              },
+              {
+                "title": "Deine Bibliothek in anderen Assistenten",
+                "body": "Eine optionale, durch ein Token geschützte lokale HTTP-API ermöglicht anderen Werkzeugen, deine Bibliothek und deinen Lesekontext zu lesen. Kopiere in den Einstellungen die Installationsaufforderung für den ReadAware-Skill, um einen kompatiblen Assistenten zu verbinden."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Ein nützlicherer Lese-Assistent",
+                "body": "Wiederhole einen fehlgeschlagenen Modellschritt, ohne die Unterhaltung neu zu beginnen, und erweitere eine gruppierte Ansicht, um die Tool-Aktivität zu prüfen. Bei Belletristik bleibt der Spoilerschutz anhand des Lesefortschritts erhalten, während Geschichte und Biografien relevanten sachlichen Kontext verwenden können."
+              },
+              {
+                "title": "Ein Reader, der sich deine Einstellungen merkt",
+                "body": "Für alle Bücher gewählte Schriften werden nach der Sprache des Buches gespeichert, in Doppelseitenlayouts ist mehr Platz, und die Kapitelnavigation folgt dem Inhaltsverzeichnis, auch wenn mehrere Kapitel dieselbe Quelldatei verwenden."
+              },
+              {
+                "title": "Leistungsfähigere Plugins",
+                "body": "Plugins können durch eingegrenzte Berechtigungen mit mehr Teilen deiner Leseumgebung arbeiten. Überarbeitete Navigation, Annotationen und Leseziele vereinfachen die alltägliche Bedienung, während Plugin-Transporte für Sync eigene Einstellungen und die manuelle Aktion „Jetzt synchronisieren“ haben."
+              },
+              {
+                "title": "Hilf, ReadAware mitzugestalten",
+                "body": "Der Neuigkeiten-Dialog bietet jetzt einen direkten Weg, ReadAware auf GitHub einen Stern zu geben oder der Discord-Community beizutreten. Unter Über steht unten ein kleiner Hinweis auf AHpx."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Offline-Fortschritt geht nicht mehr zurück",
+                "body": "Sync behält auf allen Geräten die am weitesten erfasste Leseposition. Wenn ein Offline-Gerät Seite 300 erreicht hat und ein anderes Gerät einen neueren Datensatz bei Seite 200 hat, bleibt nach der erneuten Verbindung Seite 300 erhalten. Die Lesezeit wird getrennt von der Leseposition behandelt."
+              },
+              {
+                "title": "Genauere Lesezeit und flüssigere Navigation",
+                "body": "Lesesitzungen pausieren, wenn die App inaktiv oder im Hintergrund ist. Annotationen per Touch reagieren zuverlässiger, und Kapitelübergänge im Scroll-Modus driften nicht mehr in den falschen Abschnitt."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.5.4",
         "date": "2026-09-07",
         "codename": "Lake Baikal",
