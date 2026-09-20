@@ -14,6 +14,7 @@
 // there is no vector store in the default architecture.
 
 pub mod apply;
+mod reading_progress;
 mod execution;
 pub(crate) use execution::blocking;
 mod library;

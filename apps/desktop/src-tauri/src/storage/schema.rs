@@ -924,6 +924,7 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
       UPDATE capability_change_state SET epoch=lower(hex(randomblob(24))) WHERE id=1;"),
     (51, "credential_publication_sources", "ALTER TABLE restored_credential_publications ADD COLUMN source_json TEXT;"),
     (52, "book_spoiler_policy", "ALTER TABLE books ADD COLUMN spoiler_sensitive INTEGER CHECK(spoiler_sensitive IN (0, 1));"),
+    (53, "furthest_reading_progress", "UPDATE sync_profile SET projections_stale=1 WHERE log_complete=0;"),
 ];
 
 /// Rebuild the annotation FTS index from the table. Required after any VACUUM
@@ -942,7 +943,7 @@ pub(crate) fn rebuild_annotations_fts(conn: &Connection) -> Result<(), CommandEr
 /// The schema version a projection checkpoint is stamped with. Restoring one
 /// is only sound when the derived tables' shapes match exactly, so a
 /// checkpoint from a different version is ignored in favour of the log.
-pub(crate) const SCHEMA_VERSION: i64 = 52;
+pub(crate) const SCHEMA_VERSION: i64 = 53;
 
 /// The migration after which `materialize_legacy_covers` must run: the cover
 /// projection columns exist, the inline data-URL column still does.
@@ -970,6 +971,7 @@ pub(crate) fn run_migrations_up_to(conn: &mut Connection, max_version: i64) -> R
         if *version > current && *version <= max_version {
             let tx = conn.transaction()?;
             tx.execute_batch(sql)?;
+            if *version == 53 { super::apply::recover_furthest_progress(&tx)?; }
             if *version == 36 { super::context_bundle_publication::install_source_clock(&tx)?; }
             if *version == 37 { super::context_bundle_publication::install_blob_source_clock(&tx)?; }
             if *version == 38 {
@@ -1155,6 +1157,19 @@ pub(crate) fn fts_match_expr(query: &str) -> Option<String> {
 /// Register app SQL functions on a connection. Must run BEFORE migrations
 /// (v4's initial populate and the FTS triggers call `ra_fts_segment`).
 pub fn register_sql_functions(conn: &Connection) -> Result<(), CommandError> {
+    conn.create_scalar_function(
+        "ra_progress_compare", 2,
+        rusqlite::functions::FunctionFlags::SQLITE_UTF8 | rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC,
+        |ctx| {
+            let parse = |index| -> rusqlite::Result<Value> {
+                let text: Option<String> = ctx.get(index)?;
+                text.map(|text| serde_json::from_str(&text)
+                    .map_err(|error| rusqlite::Error::UserFunctionError(Box::new(error))))
+                    .transpose().map(|value| value.unwrap_or(Value::Null))
+            };
+            Ok(super::reading_progress::compare(&parse(0)?, &parse(1)?) as i32)
+        },
+    )?;
     use rusqlite::functions::FunctionFlags;
     super::plugin_document_search::register(conn)?;
     conn.create_scalar_function(

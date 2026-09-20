@@ -1,0 +1,12 @@
+[
+  {"name":"later page within one rounded percent","left":{"currentLocation":301,"totalLocations":1000,"progressPercent":30},"right":{"currentLocation":300,"totalLocations":1000,"progressPercent":30},"order":1},
+  {"name":"normalized locations across totals","left":{"currentLocation":400,"totalLocations":1000,"progressPercent":40},"right":{"currentLocation":300,"totalLocations":500,"progressPercent":60},"order":-1},
+  {"name":"legacy percentage without locations","left":{"progressPercent":60},"right":{"progressPercent":40},"order":1},
+  {"name":"empty legacy location counts","left":{"currentLocation":0,"totalLocations":0,"progressPercent":60},"right":{"progressPercent":40},"order":1},
+  {"name":"numeric CFI offset","left":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/2!/4/2/1:10)"},"right":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/2!/4/2/1:2)"},"order":1},
+  {"name":"numeric spine order","left":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/10!/4/2/1:0)"},"right":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/2!/4/2/1:0)"},"order":1},
+  {"name":"CFI range start wins over its visible end","left":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/2!/4/2,/1:10,/1:20)"},"right":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/2!/4/2,/1:2,/1:90)"},"order":1},
+  {"name":"escaped assertions do not become paths","left":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/2[id^]9^,2]!/4/2/1:10)"},"right":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/2[id999]!/4/2/1:2)"},"order":1},
+  {"name":"missing anchor can gain precise location","left":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/2!/4/2/1:0)"},"right":{"currentLocation":300,"totalLocations":500},"order":1},
+  {"name":"identical positions","left":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/2!/4/2/1:0)"},"right":{"currentLocation":300,"totalLocations":500,"cfi":"epubcfi(/6/2!/4/2/1:0)"},"order":0}
+]

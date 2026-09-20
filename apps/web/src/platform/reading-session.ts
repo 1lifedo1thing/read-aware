@@ -3,8 +3,8 @@
  *
  * Reading is modelled as SESSIONS, not as ticks and page turns. A tick ADDS
  * active time to a (book, local day, local hour) bucket in the device-local
- * `reading_sessions_pending` table and every page turn OVERWRITES the
- * bucket's position; the single `book.sessionRecorded` event for the bucket —
+ * `reading_sessions_pending` table and every page turn can ADVANCE the
+ * bucket's furthest position; the single `book.sessionRecorded` event for the bucket —
  * the time read plus the position reached, observed at `endedAt` — is minted
  * only when the bucket CLOSES: the hour rolls over, the book or the app
  * closes, reading pauses. `reading_session_flush` commits the event and
@@ -46,7 +46,7 @@ export type ReadingSessionBucket = {
   ms: number;
   startedAt: number;
   lastAt: number;
-  /** The latest position seen, or null when only time accrued. */
+  /** The furthest position seen, or null when only time accrued. */
   progress: SessionPosition | null;
   /** When that position was observed (page turns only, never ticks). */
   positionAt: number | null;
@@ -86,7 +86,7 @@ export async function accrueReadingSession(
 }
 
 /**
- * A page turn: the bucket's position becomes `progress`, observed at
+ * A page turn: the bucket's position advances to `progress`, observed at
  * `atEpochMs`. Creates the bucket (with no time yet) when the first tick has
  * not fired. Null outside the desktop shell.
  */

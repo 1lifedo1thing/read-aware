@@ -1,6 +1,8 @@
 //! storage 的单元测试（`mod tests` 的独立文件形态 —— 仍是单元测试作用域，
 //! 可访问父模块私有项；集成测试才放 crate 根的 tests/ 目录）。
 use super::*;
+#[path = "reading_progress_tests.rs"]
+mod reading_progress_tests;
 #[path = "reading_snapshot_tests.rs"]
 mod reading_snapshot_tests;
 #[path = "profile_entities_tests.rs"]

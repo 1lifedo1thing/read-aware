@@ -384,13 +384,17 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
                         last_opened_at,
                         (SELECT last_opened_at FROM books WHERE id = ?1)),
                     progress_json = CASE
-                        WHEN COALESCE((SELECT progress_percent FROM books WHERE id = ?1), 0) > progress_percent
+                        WHEN ra_progress_compare((SELECT COALESCE(progress_json, json_object('progressPercent', progress_percent)) FROM books WHERE id = ?1), COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0
                         THEN (SELECT progress_json FROM books WHERE id = ?1) ELSE progress_json END,
+                    progress_observed_at = CASE
+                        WHEN ra_progress_compare((SELECT COALESCE(progress_json, json_object('progressPercent', progress_percent)) FROM books WHERE id = ?1), COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0
+                        THEN (SELECT progress_observed_at FROM books WHERE id = ?1) ELSE progress_observed_at END,
                     reading_status = CASE
-                        WHEN COALESCE((SELECT progress_percent FROM books WHERE id = ?1), 0) > progress_percent
+                        WHEN ra_progress_compare((SELECT COALESCE(progress_json, json_object('progressPercent', progress_percent)) FROM books WHERE id = ?1), COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0
                         THEN (SELECT reading_status FROM books WHERE id = ?1) ELSE reading_status END,
-                    progress_percent = MAX(progress_percent,
-                        COALESCE((SELECT progress_percent FROM books WHERE id = ?1), 0))
+                    progress_percent = CASE
+                        WHEN ra_progress_compare((SELECT COALESCE(progress_json, json_object('progressPercent', progress_percent)) FROM books WHERE id = ?1), COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0
+                        THEN (SELECT progress_percent FROM books WHERE id = ?1) ELSE progress_percent END
                  WHERE id = ?2",
                 params![merged, keep],
             )
@@ -449,8 +453,7 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
 
         // ── Reading ─────────────────────────────────────────────────────────
         "book.progressed" => {
-            // Legacy (pre-session) position event: observed when it was
-            // stamped. Same last-observed-wins rule as a session's position.
+            // Legacy positions participate in the same furthest-position rule.
             let id = require(p, "bookId", t)?;
             apply_position(tx, &id, p, ev.hlc.wall_ms, &at)?;
         }
@@ -872,12 +875,8 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
     Ok(true)
 }
 
-/// A reading position as observed at `observed_at` (epoch ms). The projection
-/// keeps the LATEST OBSERVATION, not the latest event: a session that closes
-/// late — a laptop left open while the phone read on — carries an older
-/// observation and must not overwrite the phone's newer one, whatever order
-/// the two events reach the log in. `books.progress_observed_at` is that
-/// clock; a row without one (pre-v27) accepts the first observation.
+/// All devices share the furthest position, independently of observation,
+/// upload or replay order. The observation clock only resolves equal positions.
 fn apply_position(
     tx: &Transaction<'_>,
     book_id: &str,
@@ -908,11 +907,13 @@ fn apply_position(
                 progress_percent = COALESCE(?3, progress_percent),
                 reading_status = CASE WHEN reading_status = 'finished' THEN 'finished'
                                       ELSE COALESCE(?4, reading_status) END,
-                last_opened_at = ?5,
-                updated_at = ?5,
+                last_opened_at = MAX(COALESCE(last_opened_at, ?5), ?5),
+                updated_at = MAX(updated_at, ?5),
                 progress_observed_at = ?6
           WHERE id = ?1
-            AND (progress_observed_at IS NULL OR progress_observed_at <= ?6)",
+            AND (ra_progress_compare(?2, COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0
+                OR (ra_progress_compare(?2, COALESCE(progress_json, json_object('progressPercent', progress_percent))) = 0
+                    AND (progress_observed_at IS NULL OR progress_observed_at <= ?6)))",
         params![
             book_id,
             progress.to_string(),
@@ -922,6 +923,28 @@ fn apply_position(
             observed_at,
         ],
     )?;
+    Ok(())
+}
+
+/// Upgrade only reading positions. Replaying entire session events here would
+/// count time twice, and rebuilding every projection would discard legacy rows.
+/// Start with existing positions and advance from available history. An
+/// incomplete bootstrap remains stale until its normal backfill/full replay.
+pub(crate) fn recover_furthest_progress(tx: &Transaction<'_>) -> Result<(), CommandError> {
+    super::events::for_each_event_after(tx, None, |ev| {
+        let (position, observed_at, at) = match ev.event_type.as_str() {
+            "book.progressed" => (&ev.payload, ev.hlc.wall_ms, event_time(ev)),
+            "book.sessionRecorded" => {
+                let Some(progress) = ev.payload.get("progress").filter(|p| p.is_object()) else { return Ok(()); };
+                let ended = i64_of(&ev.payload, "endedAt").unwrap_or(ev.hlc.wall_ms);
+                (progress, i64_of(progress, "observedAt").unwrap_or(ended), iso_from_millis(ended))
+            }
+            _ => return Ok(()),
+        };
+        let id = require(&ev.payload, "bookId", &ev.event_type)?;
+        let id = resolve_book_alias(tx, &id)?.unwrap_or(id);
+        apply_position(tx, &id, position, observed_at, &at)
+    })?;
     Ok(())
 }
 

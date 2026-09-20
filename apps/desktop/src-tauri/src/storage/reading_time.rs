@@ -520,11 +520,11 @@ pub struct ReadingSessionBucket {
     /// Epoch ms of the first and latest tick/page turn in the bucket.
     pub started_at: i64,
     pub last_at: i64,
-    /// The latest position seen (the `book.progressed`-shaped payload the
+    /// The furthest position seen (the `book.progressed`-shaped payload the
     /// reader reports), or null when only time accrued.
     pub progress: Value,
     /// When that position was observed — moves with page turns only, never
-    /// with ticks. The clock last-observed-wins compares.
+    /// with ticks. Only breaks ties between equal positions.
     pub position_at: Option<i64>,
 }
 
@@ -587,10 +587,9 @@ pub(crate) fn reading_session_accrue_inner(
     read_session(conn, book_id, local_day, local_hour)
 }
 
-/// A page turn: overwrite the bucket's position (creating the bucket with no
-/// time yet if the first tick has not fired). `at_epoch_ms` is when the
-/// position was observed — it becomes the session's `endedAt`, the clock the
-/// projection's last-observed-wins rule compares.
+/// A page turn: advance the bucket's furthest position (creating the bucket
+/// with no time yet if the first tick has not fired). `at_epoch_ms` records
+/// when this position was observed; a later backward turn cannot replace it.
 pub(crate) fn reading_session_position_inner(
     conn: &Connection,
     book_id: &str,
@@ -608,9 +607,14 @@ pub(crate) fn reading_session_position_inner(
          VALUES (?1, ?2, ?3, 0, ?4, ?4, ?5, ?4)
          ON CONFLICT(book_id, local_day, local_hour) DO UPDATE SET
             last_at = MAX(last_at, excluded.last_at),
-            progress_json = CASE WHEN position_at IS NULL OR excluded.position_at >= position_at
+            progress_json = CASE WHEN progress_json IS NULL
+                OR ra_progress_compare(excluded.progress_json, progress_json) > 0
+                OR (ra_progress_compare(excluded.progress_json, progress_json) = 0 AND excluded.position_at >= position_at)
                                  THEN excluded.progress_json ELSE progress_json END,
-            position_at = MAX(COALESCE(position_at, 0), excluded.position_at)",
+            position_at = CASE WHEN progress_json IS NULL
+                OR ra_progress_compare(excluded.progress_json, progress_json) > 0
+                OR (ra_progress_compare(excluded.progress_json, progress_json) = 0 AND excluded.position_at >= position_at)
+                THEN excluded.position_at ELSE position_at END",
         params![book_id, local_day, local_hour, at_epoch_ms, progress.to_string()],
     )?;
     read_session(conn, book_id, local_day, local_hour)
@@ -700,8 +704,10 @@ pub(crate) fn reading_session_flush_in_transaction(
             "DELETE FROM reading_sessions_pending
               WHERE book_id = ?1 AND local_day = ?2 AND local_hour = ?3
                 AND ms <= 0 AND last_at <= ?4
-                AND (position_at IS NULL OR position_at <= ?5)",
-            params![book_id, local_day, local_hour, ended_at, observed_at],
+                AND (position_at IS NULL OR position_at <= ?5)
+                AND (progress_json IS NULL OR (?6 IS NOT NULL AND ra_progress_compare(progress_json, ?6) <= 0))",
+            params![book_id, local_day, local_hour, ended_at, observed_at,
+                ev.payload.get("progress").filter(|p| p.is_object()).map(Value::to_string)],
         )?;
     }
     Ok(report)
