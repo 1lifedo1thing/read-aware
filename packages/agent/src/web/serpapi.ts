@@ -1,3 +1,4 @@
+import { webImages } from "./images";
 import type { AgentFetch } from "../models/transport";
 import type { WebClient, WebProvider } from "./types";
 import { domainQuery, jsonRequest, malformed, record, searchInput, searchResult, sourceUrl, string } from "./shared";
@@ -16,11 +17,13 @@ export function createSerpApiClient(apiKey: string, transport: AgentFetch): Pick
     if (metadata.status !== "Success" || (data.error !== undefined && !empty)) throw malformed();
     if (data.organic_results === undefined && empty) return searchResult("serpapi", input, []);
     if (!Array.isArray(data.organic_results)) throw malformed();
-    return searchResult("serpapi", input, data.organic_results.map(item => {
+    const result = searchResult("serpapi", input, data.organic_results.map(item => {
       const row = record(item);
       return { title: string(row.title, 300), url: sourceUrl(row.link), snippet: string(row.snippet, 800),
         ...(typeof row.date === "string" ? { publishedAt: row.date.slice(0, 80) } : {}) };
     }));
+    if (input.includeImages) result.images = data.organic_results.flatMap(item => { const row = record(item); return result.sources.some(source => source.url === sourceUrl(row.link)) ? webImages([row.thumbnail], row.link, row.title) : []; }).slice(0, 8);
+    return result;
   } };
 }
 export const serpApiProvider: WebProvider = {

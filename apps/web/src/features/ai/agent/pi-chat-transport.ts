@@ -117,7 +117,10 @@ export function createPiChatTransport(): ChatTransport {
                       author: book.author,
                     })),
                   }
-                : {
+                : chunk.reference.kind === "web-images" ? {
+                    kind: "web-images",
+                    images: chunk.reference.images.map(image => ({ url: image.url, sourceUrl: image.sourceUrl, title: image.title, caption: image.caption })),
+                  } : {
                     kind: "words",
                     words: chunk.reference.words.map((word) => ({
                       term: word.term,

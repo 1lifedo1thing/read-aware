@@ -58,4 +58,6 @@ export { chapterMemoryPolicy } from "./memory/book-memory-policy";
 // eval viewer 的数据源：套件目录（场景定义本身就是可序列化的）。
 export { planMemoryMaintenance } from "./memory/maintenance-plan";
 export { WEB_PROVIDERS, isWebProviderId, type WebProviderId } from "./web/providers";
-export type { WebClient, WebPort, WebProvider, WebSearchInput, WebSearchResult, WebFetchInput, WebFetchResult } from "./web/types";
+export type { WebImage, WebClient, WebPort, WebProvider, WebSearchInput, WebSearchResult, WebFetchInput, WebFetchResult } from "./web/types";
+
+export { publicWebUrl } from "./web/shared";

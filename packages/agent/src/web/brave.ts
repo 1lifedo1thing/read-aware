@@ -1,3 +1,4 @@
+import { webImages } from "./images";
 import { AppError } from "@read-aware/core";
 import type { AgentFetch } from "../models/transport";
 import type { WebClient, WebProvider } from "./types";
@@ -25,13 +26,16 @@ export function createBraveClient(apiKey: string, transport: AgentFetch): WebCli
     // Brave legitimately omits the web object for an empty web result set.
     const rows = data.web === undefined ? [] : record(data.web).results;
     if (!Array.isArray(rows)) throw malformed();
-    return searchResult("brave", input, rows.map(item => {
+    const result = searchResult("brave", input, rows.map(item => {
       const row = record(item);
       const extras = Array.isArray(row.extra_snippets) ? row.extra_snippets.filter(x => typeof x === "string") : [];
       return { title: string(row.title, 300), url: sourceUrl(row.url),
         snippet: string([string(row.description, 800), ...extras].filter(Boolean).join("\n"), 800),
         ...(typeof row.page_age === "string" ? { publishedAt: row.page_age.slice(0, 80) } : {}) };
     }));
+    if (input.includeImages) result.images = rows.flatMap(item => { const row = record(item); const thumbnail = row.thumbnail && typeof row.thumbnail === "object" ? row.thumbnail as Record<string, unknown> : {};
+      return result.sources.some(source => source.url === sourceUrl(row.url)) ? webImages([thumbnail.src], row.url, row.title) : []; }).slice(0, 8);
+    return result;
   }, async fetch(raw, signal) {
     const input = fetchInput(raw);
     if (input.url.length > 600) throw invalid();
@@ -41,13 +45,16 @@ export function createBraveClient(apiKey: string, transport: AgentFetch): WebCli
       q: input.url, count: 5, maximum_number_of_urls: 5,
       maximum_number_of_tokens: 8192, maximum_number_of_tokens_per_url: 8192,
       context_threshold_mode: "disabled", enable_local: false,
+      ...(input.includeImages ? { enable_source_metadata: true } : {}),
     }, signal);
     const rows = record(data.grounding).generic;
     if (!Array.isArray(rows) || data.error !== undefined) throw malformed();
     const page = rows.map(record).find(row => sourceUrl(row.url) === input.url);
     if (!page) throw new AppError("search/fetch-failed", "Brave returned no extracted text for the exact requested URL");
     if (!Array.isArray(page.snippets) || page.snippets.some(chunk => typeof chunk !== "string")) throw malformed();
-    return fetchResult("brave", input, { url: input.url, title: page.title, text: page.snippets.join("\n\n"), warnings: [
+    const source = data.sources && typeof data.sources === "object" ? (data.sources as Record<string, { thumbnail?: unknown }>)[input.url] : undefined;
+    const thumbnail = source?.thumbnail && typeof source.thumbnail === "object" ? source.thumbnail as Record<string, unknown> : {};
+    return fetchResult("brave", input, { ...(input.includeImages ? { images: webImages([thumbnail.src], input.url, page.title) } : {}), url: input.url, title: page.title, text: page.snippets.join("\n\n"), warnings: [
       "Brave returned extracted text chunks for this exact URL, not a complete or live page fetch. Sections may be missing or reordered; freshness is not guaranteed. nextOffset continues these returned chunks only, not the full source page.",
       ...(input.fresh ? ["Brave LLM Context has no cache-bypass option; fresh=true cannot guarantee a new crawl."] : []),
     ] });

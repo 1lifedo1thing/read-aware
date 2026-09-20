@@ -1,6 +1,8 @@
 import { Streamdown } from "streamdown";
 import { cn } from "@read-aware/ui/cn";
 
+const components = { img: ({ alt }: { alt?: string }) => alt ? <span>{alt}</span> : null };
+
 /**
  * Renders assistant replies as Markdown via Streamdown (handles partial/unclosed
  * Markdown mid-stream out of the box). Kept deliberately quiet for the reader's
@@ -13,6 +15,9 @@ export function Markdown({ children, className }: { children: string; className?
     <Streamdown
       controls={false}
       lineNumbers={false}
+      // Retrieved images use source-backed reference cards. Do not let prose
+      // invent arbitrary remote image requests (including while streaming).
+      components={components}
       className={cn("ra-chat-markdown", className)}
     >
       {children}

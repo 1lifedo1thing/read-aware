@@ -32,3 +32,27 @@ test("search-only setup exposes search in book and global scopes without adverti
     expect(JSON.stringify(result)).toContain("Page reading (web_fetch) is unavailable with the selected provider");
   }
 });
+
+test("retrieved image IDs survive tool refresh in a turn but cannot be invented, repeated or reused next turn", async () => {
+  const { createAgentTurnState } = await import("./turn-state");
+  const { referenceFromToolDetails } = await import("./present-tools");
+  const { deps } = createInMemoryDeps();
+  const image = { url: "https://images.example.org/roof.png", sourceUrl: "https://museum.example.org/roof", title: "Roof design", description: "Roof cross-section" };
+  deps.web = { configured: () => true,
+    search: async input => ({ provider: "fixture", query: input.query, sources: [], images: [image], retrievedAt: "2026-09-20" }),
+    fetch: async input => ({ provider: "fixture", url: input.url, finalUrl: input.url, title: "Roof", text: "Roof", offset: 0, nextOffset: null, images: [image], retrievedAt: "2026-09-20" }),
+  };
+  for (const scope of [{ kind: "global" as const, threadId: "images" }, { kind: "book" as const, bookId: "museum" }]) {
+    const state = createAgentTurnState();
+    const get = (name: string, turn = state) => buildAgentTools(scope, deps, turn).find(t => t.name === name)!;
+    const result = await get("web_search").execute("search", { query: "roof", includeImages: true });
+    const data = JSON.parse(result.content.map(c => c.type === "text" ? c.text : "").join(""));
+    const id = data.images[0].id;
+    const chosen = { images: [{ id, caption: "Roof cross-section" }] };
+    expect(referenceFromToolDetails((await get("present_web_images").execute("show", { images: [{ id: image.url, caption: "Invented" }] })).details)).toBeUndefined();
+    const shown = await get("present_web_images").execute("show", chosen);
+    expect(referenceFromToolDetails(shown.details)).toEqual({ kind: "web-images", images: [{ url: image.url, sourceUrl: image.sourceUrl, title: image.title, caption: "Roof cross-section" }] });
+    expect(referenceFromToolDetails((await get("present_web_images").execute("again", chosen)).details)).toBeUndefined();
+    expect(referenceFromToolDetails((await get("present_web_images", createAgentTurnState()).execute("next", chosen)).details)).toBeUndefined();
+  }
+});

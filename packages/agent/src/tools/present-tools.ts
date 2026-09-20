@@ -10,7 +10,7 @@ import { Type } from "@earendil-works/pi-ai";
 import type { BookReference, ReferencePayload } from "../chunks";
 import type { RuntimeDeps } from "../ports";
 
-export const PRESENT_TOOL_NAMES = ["present_books"] as const;
+export const PRESENT_TOOL_NAMES = ["present_books", "present_web_images"] as const;
 
 /**
  * 一轮回复内的展示状态：同一本书第二次出现直接丢弃（deepseek 会在
@@ -48,6 +48,7 @@ export function referenceFromToolDetails(details: unknown): ReferencePayload | u
   if (payload.kind === "words" && Array.isArray(payload.words) && payload.words.length > 0) {
     return payload;
   }
+  if (payload.kind === "web-images" && Array.isArray(payload.images) && payload.images.length > 0) return payload;
   return undefined;
 }
 

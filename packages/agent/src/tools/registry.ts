@@ -72,7 +72,7 @@ export function buildAgentTools(
     ...buildMaintenanceTools(deps),
     ...buildResourceTools(scope, deps),
     ...buildDownloadTools(scope, deps),
-    ...buildWebTools(deps),
+    ...buildWebTools(deps, turnState),
     ...buildEnrichmentTools(scope, deps),
     ...buildBookContentTools(scope, deps),
     ...buildBookMergeTools(scope, deps),

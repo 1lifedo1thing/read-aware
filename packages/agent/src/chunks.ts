@@ -24,7 +24,15 @@ export interface WordReference {
 
 export type ReferencePayload =
   | { kind: "books"; books: BookReference[] }
-  | { kind: "words"; words: WordReference[] };
+  | { kind: "words"; words: WordReference[] }
+  | { kind: "web-images"; images: WebImageReference[] };
+
+export interface WebImageReference {
+  url: string;
+  sourceUrl: string;
+  title: string;
+  caption: string;
+}
 
 export type ThreadChunk =
   | { type: "status"; status: string }

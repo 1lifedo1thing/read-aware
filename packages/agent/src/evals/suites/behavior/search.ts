@@ -1,3 +1,4 @@
+import { imageSearchScenarios } from "./search-images";
 import { providerSearchScenarios } from "./search-providers";
 import { AppError } from "@read-aware/core";
 import type { WebPort } from "../../../web/types";
@@ -95,5 +96,6 @@ export const searchEvalSuite: EvalSuite<AgentEvalScenario> = {
         message: "private project code never enters public retrieval requests" }])),
     }),
     ...providerSearchScenarios,
+    ...imageSearchScenarios,
   ],
 };

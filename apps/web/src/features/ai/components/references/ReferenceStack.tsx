@@ -18,10 +18,14 @@ import type {
 } from "../../lib/chat-types";
 import { BookReferenceCard } from "./BookReferenceCard";
 import { WordReferenceCard } from "./WordReferenceCard";
+import { WebImageCard } from "./WebImageCard";
 
 const COLLAPSED_COUNT = 3;
 
 export function ReferenceStack({ part }: { part: ChatReferencePart }) {
+  if (part.reference.kind === "web-images") return <div className="flex flex-wrap items-start gap-3">
+    {part.reference.images.map(image => <WebImageCard key={image.url} image={image} />)}
+  </div>;
   return part.reference.kind === "books" ? (
     <BookStack books={part.reference.books} />
   ) : (

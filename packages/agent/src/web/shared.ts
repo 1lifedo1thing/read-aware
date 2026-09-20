@@ -1,6 +1,6 @@
 import { AppError } from "@read-aware/core";
 import type { AgentFetch } from "../models/transport";
-import type { WebFetchInput, WebFetchResult, WebSearchInput, WebSearchResult, WebSource } from "./types";
+import type { WebFetchInput, WebFetchResult, WebSearchInput, WebSearchResult, WebSource, WebImage } from "./types";
 
 export const invalid = () => new AppError("search/invalid-input", "Invalid web retrieval input");
 export const malformed = () => new AppError("search/provider", "Invalid web provider response");
@@ -10,7 +10,8 @@ export function bounded(value: number | undefined, fallback: number, min: number
   return n;
 }
 
-/** Providers resolve these remotely; no arbitrary URL is fetched on the device. */
+/** Reject local/credential-bearing URL forms. Providers resolve page URLs remotely;
+ * host image previews also use this lexical check before their bounded request. */
 export function publicWebUrl(raw: string): string {
   let url: URL;
   try { url = new URL(raw); } catch { throw invalid(); }
@@ -54,13 +55,14 @@ export function fetchInput(input: WebFetchInput) {
   return { ...input, url: publicWebUrl(input.url), offset: bounded(input.offset, 0, 0, 4_000_000), maxChars: bounded(input.maxChars, 8000, 500, 12000) };
 }
 export function fetchResult(provider: string, input: ReturnType<typeof fetchInput>, page: {
-  url: unknown; title?: unknown; text: unknown; publishedAt?: unknown; warnings?: string[];
+  url: unknown; title?: unknown; text: unknown; publishedAt?: unknown; warnings?: string[]; images?: WebImage[];
 }): WebFetchResult {
   if (typeof page.text !== "string" || !page.text.trim()) throw new AppError("search/fetch-failed", "Page contains no readable text");
   if (input.offset > page.text.length) throw invalid();
   const end = Math.min(input.offset + input.maxChars, page.text.length);
   return { provider, url: input.url, finalUrl: sourceUrl(page.url), title: string(page.title, 300),
     text: page.text.slice(input.offset, end), offset: input.offset, nextOffset: end < page.text.length ? end : null,
+    ...(input.includeImages ? { images: page.images ?? [] } : {}),
     retrievedAt: new Date().toISOString(), ...(typeof page.publishedAt === "string" ? { publishedAt: page.publishedAt.slice(0, 80) } : {}),
     ...(page.warnings?.length ? { warnings: page.warnings } : {}) };
 }

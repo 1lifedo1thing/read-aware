@@ -51,6 +51,13 @@ Exa、Tavily、TinyFish 提供正文读取；Brave 用自己的 LLM Context 获�
 本地书架检索仍走本地端口。网页资料按不可信数据处理，不能改变设置、泄露私密上下文，
 也不能代替本书版本的原文或绕过剧透边界；回答使用来源链接。
 
+模型按问题判断是否需要配图，不按人物等场景设置触发规则。`web_search` / `web_fetch` 的
+`includeImages` 请求当前服务商返回来源关联的候选图片；`present_web_images` 只能展示本轮检索
+返回的图片 ID，每轮最多三张。TinyFish 从 Fetch 的 `image_links` 取图，Exa、Tavily、Brave
+支持随搜索/正文返回图片，SerpAPI 使用自然结果缩略图。没有合适图片时照常回答，不换服务商兜底。
+图片说明与来源随聊天记录保存；宿主用无凭据的 HTTP 请求读取 HTTPS 位图（最多 4 MiB），
+转换为临时 blob 显示，关闭时释放，失败则保留说明与来源。展示图片不等于模型看过图片像素。
+
 各适配器使用官方 HTTP API，不自动升级到浏览器、Agent 或付费深度研究服务：
 
 | Provider | Search | Fetch 与特有约束 |

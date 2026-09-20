@@ -139,7 +139,15 @@ export interface ChatWordReference {
 
 export type ChatReference =
   | { kind: "books"; books: ChatBookReference[] }
-  | { kind: "words"; words: ChatWordReference[] };
+  | { kind: "words"; words: ChatWordReference[] }
+  | { kind: "web-images"; images: ChatWebImageReference[] };
+
+export interface ChatWebImageReference {
+  url: string;
+  sourceUrl: string;
+  title: string;
+  caption: string;
+}
 
 /**
  * A stack of reference cards the assistant chose to show (via its present /

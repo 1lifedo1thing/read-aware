@@ -432,6 +432,8 @@ export class AgentThread {
     // 不可信，下一轮从持久记录重建基线（等价于今天的无状态装配）。
     let turnCompleted = false;
     this.turnState.presentedBookIds.clear();
+    this.turnState.webImages?.clear();
+    this.turnState.presentedWebImages?.clear();
     this.turnState.modelSupportsImages = false;
     this.turnState.modelImageCount = 0;
     this.turnState.modelImageBytes = 0;

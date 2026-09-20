@@ -187,7 +187,10 @@
       "missingBook": "已不在書架上",
       "openBook": "打開《{{title}}》",
       "saveWord": "加入詞彙表",
-      "removeWord": "從詞彙表移除"
+      "removeWord": "從詞彙表移除",
+      "imageUnavailable": "圖片暫時無法顯示",
+      "imageLoading": "正在載入圖片",
+      "imageSource": "來源：{{source}}"
     },
     "message": {
       "copy": "複製訊息",

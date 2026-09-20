@@ -1,3 +1,4 @@
+import { webImages } from "./images";
 import { AppError } from "@read-aware/core";
 import type { AgentFetch } from "../models/transport";
 import type { WebClient, WebFetchInput, WebProvider, WebSearchInput } from "./types";
@@ -32,14 +33,15 @@ export function createTinyFishClient(apiKey: string, transport: AgentFetch): Web
         const host = new URL(source.url).hostname.toLowerCase();
         return host === domain.toLowerCase() || host.endsWith(`.${domain.toLowerCase()}`);
       })).slice(0, limit);
-      return { provider: "tinyfish", query, sources, retrievedAt: new Date().toISOString() };
+      return { provider: "tinyfish", query, sources, retrievedAt: new Date().toISOString(),
+        ...(input.includeImages ? { images: [], warnings: ["TinyFish Search does not return images; use web_fetch with includeImages=true on a relevant source page."] } : {}) };
     },
     async fetch(input: WebFetchInput, signal) {
       const url = publicWebUrl(input.url);
       const offset = bounded(input.offset, 0, 0, 4_000_000);
       const maxChars = bounded(input.maxChars, 8000, 500, 12000);
       const data = await request("https://api.fetch.tinyfish.ai", {
-        urls: [url], format: "markdown", ttl: input.fresh ? 0 : 3600, per_url_timeout_ms: 45000,
+        urls: [url], format: "markdown", ...(input.includeImages ? { image_links: true } : {}), ttl: input.fresh ? 0 : 3600, per_url_timeout_ms: 45000,
       }, signal);
       if (!Array.isArray(data.results) || (data.errors !== undefined && !Array.isArray(data.errors))) throw malformed();
       if (!data.results.length) {
@@ -54,7 +56,8 @@ export function createTinyFishClient(apiKey: string, transport: AgentFetch): Web
       return { provider: "tinyfish", url, finalUrl: sourceUrl(row.final_url ?? row.url ?? url), title: string(row.title, 300),
         text: row.text.slice(offset, end), offset, nextOffset: end < row.text.length ? end : null,
         ...(typeof row.published_date === "string" ? { publishedAt: row.published_date.slice(0, 80) } : {}),
-        retrievedAt: new Date().toISOString() };
+        retrievedAt: new Date().toISOString(),
+        ...(input.includeImages ? { images: webImages(row.image_links, row.final_url ?? row.url ?? url, row.title) } : {}) };
     },
   };
 }

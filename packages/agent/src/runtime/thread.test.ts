@@ -105,6 +105,28 @@ describe("AgentThread", () => {
     } finally { thread.dispose(); await thread.flushBackgroundWork(); }
   });
 
+  test("web image candidates and display limits reset between turns on the same thread", async () => {
+    const { faux, model } = makeFaux();
+    const { deps } = makeDeps();
+    const image = { url: "https://images.example.org/diagram.png", sourceUrl: "https://museum.example.org/roof", title: "Roof" };
+    deps.web = { configured: () => true,
+      search: async input => ({ provider: "fixture", query: input.query, sources: [], images: [image], retrievedAt: "2026-09-20" }),
+      fetch: async () => { throw new Error("unused"); },
+    };
+    const search = () => fauxAssistantMessage([fauxToolCall("web_search", { query: "roof", includeImages: true })], { stopReason: "toolUse" });
+    const show = () => fauxAssistantMessage([fauxToolCall("present_web_images", { images: [{ id: "web-image-1", caption: "Roof diagram" }] })], { stopReason: "toolUse" });
+    faux.setResponses([search(), show(), fauxAssistantMessage("First."),
+      show(), fauxAssistantMessage("Stale candidate skipped."),
+      search(), show(), show(), fauxAssistantMessage("Fresh retrieval.")]);
+    const thread = makeThread(deps, model);
+    try {
+      const count = (chunks: ThreadChunk[]) => chunks.filter(c => c.type === "reference" && c.reference.kind === "web-images").length;
+      expect(count(await collect(thread.sendTurn({ text: "Find a roof diagram." })))).toBe(1);
+      expect(count(await collect(thread.sendTurn({ text: "Use an old ID without retrieval." })))).toBe(0);
+      expect(count(await collect(thread.sendTurn({ text: "Find the image again." })))).toBe(1);
+    } finally { thread.dispose(); await thread.flushBackgroundWork(); }
+  });
+
   test("chapter-memory failure is logged and omitted, with a fresh session recovering the projection", async () => {
     const { faux, model } = makeFaux();
     const prompts: string[] = [], warnings: string[] = [];

@@ -7,14 +7,18 @@ export interface WebSearchInput {
   recencyDays?: number;
   domains?: string[];
   language?: string;
+  includeImages?: boolean;
 }
+/** A provider-returned image tied to the page it came from, never a guessed URL. */
+export interface WebImage { url: string; sourceUrl: string; title: string; description?: string }
 export interface WebSource { title: string; url: string; snippet: string; publishedAt?: string }
-export interface WebSearchResult { provider: string; query: string; sources: WebSource[]; retrievedAt: string; warnings?: string[] }
-export interface WebFetchInput { url: string; offset?: number; maxChars?: number; fresh?: boolean }
+export interface WebSearchResult { provider: string; query: string; sources: WebSource[]; retrievedAt: string; warnings?: string[]; images?: WebImage[] }
+export interface WebFetchInput { url: string; offset?: number; maxChars?: number; fresh?: boolean; includeImages?: boolean }
 export interface WebFetchResult {
   provider: string; url: string; finalUrl: string; title: string; text: string;
   publishedAt?: string; retrievedAt: string; offset: number; nextOffset: number | null;
   warnings?: string[];
+  images?: WebImage[];
 }
 export interface WebClient {
   search(input: WebSearchInput, signal?: AbortSignal): Promise<WebSearchResult>;

@@ -21,7 +21,7 @@ function readContext(deps: RuntimeDeps): ReaderToolContext | null | undefined {
   try { return deps.reader.toolContext(); } catch { return null; }
 }
 function check(name: string, scope: ThreadScope, deps: RuntimeDeps, context: ReturnType<typeof readContext>, turnState?: AgentTurnState): ToolAvailability {
-  if (name === "web_search" || name === "web_fetch") return deps.web?.configured(name === "web_fetch" ? "fetch" : "search") ? available : unavailable("search-not-configured-or-provider-unsupported; check the selected provider in Settings → AI");
+  if (name === "web_search" || name === "web_fetch" || name === "present_web_images") return deps.web?.configured(name === "web_fetch" ? "fetch" : "search") ? available : unavailable("search-not-configured-or-provider-unsupported; check the selected provider in Settings → AI");
   if (name === "read_book_image") return !deps.bookText.readImageInput ? unavailable("image-input-unavailable")
     : turnState?.modelSupportsImages === false ? unavailable("model-image-unsupported") : available;
   if (selectionTools.has(name) && (turnState?.readingContextPermissions?.selection === false || deps.readingContextPolicy?.snapshot().selection === false)) return unavailable("selection-private");

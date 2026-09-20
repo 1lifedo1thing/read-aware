@@ -141,3 +141,11 @@ describe("thinking stream assembly", () => {
     );
   });
 });
+
+test("image references keep caption and source across streaming and persisted history without duplicate cards", () => {
+  const reference = { kind: "web-images" as const, images: [{ url: "https://images.example.org/roof.png", sourceUrl: "https://museum.example.org/roof", title: "Roof", caption: "Roof cross-section" }] };
+  let parts = appendStreamChunk([], { type: "reference", id: "image-ref", reference });
+  parts = appendStreamChunk(parts, { type: "reference", id: "image-ref", reference });
+  expect(JSON.parse(JSON.stringify(finalizeParts(parts)))).toMatchObject([{ type: "reference", id: "image-ref", reference }]);
+  expect(parts).toHaveLength(1);
+});

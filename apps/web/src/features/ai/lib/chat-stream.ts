@@ -19,6 +19,8 @@ function dedupeReference(
     if (part.type !== "reference") continue;
     if (part.reference.kind === "books") {
       for (const book of part.reference.books) seen.add(`book:${book.bookId}`);
+    } else if (part.reference.kind === "web-images") {
+      for (const image of part.reference.images) seen.add(`image:${image.url}`);
     } else {
       for (const word of part.reference.words) {
         seen.add(`word:${word.language} ${word.term.toLowerCase()}`);
@@ -28,6 +30,10 @@ function dedupeReference(
   if (reference.kind === "books") {
     const books = reference.books.filter((book) => !seen.has(`book:${book.bookId}`));
     return books.length > 0 ? { kind: "books", books } : undefined;
+  }
+  if (reference.kind === "web-images") {
+    const images = reference.images.filter(image => !seen.has(`image:${image.url}`));
+    return images.length ? { kind: "web-images", images } : undefined;
   }
   const words = reference.words.filter(
     (word) => !seen.has(`word:${word.language} ${word.term.toLowerCase()}`),

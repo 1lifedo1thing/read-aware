@@ -187,7 +187,10 @@
       "missingBook": "No longer on the shelf",
       "openBook": "Open {{title}}",
       "saveWord": "Add to vocabulary",
-      "removeWord": "Remove from vocabulary"
+      "removeWord": "Remove from vocabulary",
+      "imageUnavailable": "Image unavailable",
+      "imageLoading": "Loading image",
+      "imageSource": "Source: {{source}}"
     },
     "message": {
       "copy": "Copy message",

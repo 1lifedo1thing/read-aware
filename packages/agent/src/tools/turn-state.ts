@@ -15,6 +15,8 @@ export interface AgentTurnState {
   /** Automatic reading context grants captured when this turn began. */
   readingContextPermissions?: import("../runtime/reading-context-policy").ReadingContextPermissions;
   presentedBookIds: Set<string>;
+  webImages?: Map<string, import("../web/types").WebImage>;
+  presentedWebImages?: Set<string>;
   modelSupportsImages?: boolean;
   modelImageCount?: number;
   modelImageBytes?: number;
