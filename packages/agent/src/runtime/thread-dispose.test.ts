@@ -52,7 +52,7 @@ describe("thread dispose cancellation", () => {
       });
 
     const { deps } = createInMemoryDeps({
-      books: [{ id: "b1" as Id, title: "书", status: "reading" }],
+      books: [{ id: "b1" as Id, title: "书", status: "reading", narrativity: "narrative", spoilerSensitive: true }],
       chapters: { b1: [{ title: "一", text: "正文", hrefs: ["ch0.html"] }] },
     });
     const thread = new AgentThread({

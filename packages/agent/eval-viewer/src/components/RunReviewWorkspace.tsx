@@ -221,12 +221,14 @@ export function RunReviewWorkspace({
         {ordered.map((record) => {
           const targetId = runTargetId(record);
           const review = humanReviews[targetId];
+          const verdict = qualityVerdict(record, humanReviews);
           const sessions = manualSessions.filter(
             (session) =>
               session.scenarioId === record.scenarioId &&
               session.variantId === record.variantId,
           );
-          const showRecord = matchesFilter(review, filter);
+          const showRecord = filter === "all" || (filter === "unreviewed" ? verdict === "pending"
+            : verdict === "partial" || verdict === "fail" || verdict === "error");
           const visibleManualTurns = sessions.flatMap((session) =>
             session.turns
               .map((turn, index) => ({ session, turn, index }))
@@ -259,14 +261,14 @@ export function RunReviewWorkspace({
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3 text-[11px] max-sm:grid max-sm:justify-items-end max-sm:gap-0.5">
-                      <span className={`font-semibold ${humanScoreClass(review)}`}>
-                        {{ pass: "审阅通过", partial: "部分达标", fail: "审阅未通过", pending: "待语义审阅", error: "运行错误" }[qualityVerdict(record, humanReviews)]}
+                      <span className={`font-semibold ${verdict === "pass" ? "text-[var(--ok)]" : humanScoreClass(review)}`}>
+                        {{ pass: "通过", partial: "部分达标", fail: "未通过", pending: "待语义审阅", error: "运行错误" }[verdict]}
                       </span>
                       <span className="text-[var(--subtle)]">辅助检查{record.status === "passed" ? "通过" : record.status === "failed" ? "有疑点" : "错误"}</span>
                       <span
                         className={`tabular-nums ${humanScoreClass(review)}`}
                       >
-                        {humanScore(review)}
+                        {review ? humanScore(review) : verdict === "pass" || verdict === "fail" ? "状态验证" : "—"}
                       </span>
                     </div>
                   </header>

@@ -22,12 +22,13 @@ import {
 import type { CompleteFn, StreamFn } from "../models/complete";
 import { classifyModelFailure } from "../models/failure";
 import type { ResolveModel } from "../models/roles";
-import type { BookOverview, RuntimeDeps, TurnAttachment, TurnRecord } from "../ports";
+import type { BookOverview, RuntimeDeps, TurnAttachment, TurnRecord, TurnImage } from "../ports";
+import { prepareImageInputs } from "./image-input";
 import { findChapterByHref } from "../text/chapter-lookup";
 import { threadScopeKey, type ThreadScope } from "../thread-scope";
 import { visibleScopes } from "../tools/memory-tools";
 import { referenceFromToolDetails } from "../tools/present-tools";
-import { buildAgentTools, createAgentTurnState } from "../tools/registry";
+import { buildModelTools, createAgentTurnState } from "../tools/registry";
 import { hasExplicitSpoilerPermission } from "../tools/spoiler-permission";
 import { interactionFromToolDetails } from "../tools/user-interaction";
 import { AsyncQueue } from "./async-queue";
@@ -57,6 +58,9 @@ export type SelectionAttachment = TurnAttachment;
 export interface SendTurnInput {
   text: string;
   attachments?: SelectionAttachment[];
+  images?: TurnImage[];
+  /** Recent conversation images for visual follow-ups; current attachments win. */
+  contextImages?: TurnImage[];
   /**
    * 发送时刻的阅读游标：既是章节会话边界，也是每轮动态的当前可见上下文。
    * 它不进稳定 system prompt，所以同章翻页不会使前缀缓存失效。
@@ -86,7 +90,7 @@ interface RetryCheckpoint {
   policyKey?: string;
 }
 
-const retryInputKey = (input: SendTurnInput) => JSON.stringify([input.turnId, input.text, input.attachments, input.readingCursor]);
+const retryInputKey = (input: SendTurnInput) => JSON.stringify([input.turnId, input.text, input.attachments, input.images, input.contextImages, input.readingCursor]);
 
 export interface AgentThreadOptions {
   scope: ThreadScope;
@@ -358,14 +362,18 @@ export class AgentThread {
         tools: [],
         messages: turnRecordsToMessages(permittedTurnRecords(records, call.permissions), model),
       },
-      transformContext: async (messages) =>
-        elideStaleToolResults(windowByTurns(messages, this.maxWindowTurns)),
+      transformContext: async (messages) => {
+        const context = elideStaleToolResults(windowByTurns(messages, this.maxWindowTurns));
+        // Also applies to a retry checkpoint captured with a different model.
+        return this.turnState.modelSupportsImages ? context : releaseToolImages(context,
+          "[Image pixels withheld: the current model does not support image input. Do not claim visual inspection.]");
+      },
       // Refresh both discovery and execution context between provider requests,
       // without discarding the conversation or its turn-scoped permissions.
       prepareNextTurnWithContext: ({ context }) => ({
         context: {
           ...context,
-          tools: buildAgentTools(this.scope, this.deps, this.turnState),
+          tools: buildModelTools(this.scope, this.deps, this.turnState),
         },
       }),
       // Agent 不转发 cacheRetention，只能在 streamFn 这层补：一轮多次往返共享
@@ -460,6 +468,7 @@ export class AgentThread {
     // the request boundary before the failed response. Other interruptions rebuild.
     let turnCompleted = false;
     if (!resume) {
+      this.turnState.loadedTools?.clear();
       this.turnState.presentedBookIds.clear();
       this.turnState.webImages?.clear();
       this.turnState.presentedWebImages?.clear();
@@ -624,8 +633,7 @@ export class AgentThread {
       call.assertAllowed();
       // The loop preparation hook runs only after the first model response.
       // Build before attaching the abort listener, so a failed discovery cannot leak it.
-      agent.state.tools = buildAgentTools(this.scope, this.deps, this.turnState);
-      input.signal?.addEventListener("abort", onAbort, { once: true });
+      agent.state.tools = buildModelTools(this.scope, this.deps, this.turnState);
 
       const userText = formatUserTurn(input.text, input.attachments);
       const basePromptText = formatPromptTurn(
@@ -652,11 +660,15 @@ export class AgentThread {
         agent.state.messages = agent.state.messages.slice(0, -1);
       }
       const startedAt = resume?.startedAt ?? new Date().toISOString();
+      const imageContent = resume ? [] : await prepareImageInputs([...(input.images ?? []), ...(input.contextImages ?? [])], this.deps, this.turnState, call.signal);
+      call.assertAllowed();
+      input.signal?.addEventListener("abort", onAbort, { once: true });
       let runError: unknown;
       let sawInteraction = resume?.sawInteraction ?? false;
       let sawReference = resume?.sawReference ?? false;
       const runMessageStart = resume?.runMessageStart ?? agent.state.messages.length;
-      const run = (resume ? agent.continue() : agent.prompt(promptText))
+      const run = (resume ? agent.continue() : imageContent.length
+        ? agent.prompt({ role: "user", timestamp: Date.now(), content: [{ type: "text", text: promptText || "Please examine the attached image(s)." }, ...imageContent] }) : agent.prompt(promptText))
         .then(() => agent.waitForIdle())
         .catch((error) => {
           runError = error;
@@ -907,6 +919,7 @@ export class AgentThread {
         content: input.text,
         createdAt: startedAt,
         attachments: localInput.attachments,
+        images: localInput.images,
       });
       if (answer) {
         await this.deps.conversations.append(this.key, {

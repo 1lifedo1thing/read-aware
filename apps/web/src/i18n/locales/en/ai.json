@@ -222,7 +222,10 @@
     },
     "error": {
       "generic": "Something went wrong getting a reply."
-    }
+    },
+    "attachImage": "Attach image",
+    "removeImage": "Remove image",
+    "localImageUnavailable": "Image is no longer cached on this device."
   },
   "note": {
     "addTitle": "Add Note",

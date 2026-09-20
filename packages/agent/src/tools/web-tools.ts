@@ -7,6 +7,7 @@ import type { WebImageReference } from "../chunks";
 import type { AgentTurnState } from "./turn-state";
 import { webImages, webImageIdentity } from "../web/images";
 import { textResult } from "./tool-result";
+import { reserveModelImages } from "../runtime/image-input";
 
 export function buildWebTools(deps: RuntimeDeps, turnState?: AgentTurnState): AgentTool[] {
   const images = turnState ? (turnState.webImages ??= new Map<string, WebImage>()) : new Map<string, WebImage>();
@@ -59,7 +60,7 @@ export function buildWebTools(deps: RuntimeDeps, turnState?: AgentTurnState): Ag
     },
   }, {
     name: "present_web_images", label: "Show source images", executionMode: "sequential",
-    description: "Display up to three retrieved images inline with captions and source links. Copy IDs only from this turn's web_search/web_fetch images (includeImages=true); URLs and invented IDs are not accepted. Decide whether and which images help the current request, across any topic. Select by source context and image descriptions, not filenames alone; page thumbnails may be unrelated. When several distinct images help explain or compare the subject, show them together (up to three); do not arbitrarily stop at one. Exclude logos and alternate sizes of the same image. If none are relevant, answer without an image. Captions follow the user's language. This displays images to the reader; it does not give you visual understanding or prove the image loaded on their device. Ground captions and explanations in the returned source text and descriptions; do not add visual details you have not observed. Never substitute an unrelated image. Do not duplicate these images in Markdown.",
+    description: "Display up to three retrieved images inline with captions and source links. Copy IDs only from this turn's web_search/web_fetch images (includeImages=true); URLs and invented IDs are not accepted. Decide whether and which images help the current request, across any topic. Select by source context and image descriptions, not filenames alone; page thumbnails may be unrelated. When several distinct images help explain or compare the subject, show them together (up to three); do not arbitrarily stop at one. Exclude logos and alternate sizes of the same image. If none are relevant, answer without an image. Captions follow the user's language. This displays images to the reader. For vision-capable models the result also includes bounded decoded image blocks when available. Check pixelsAttached per image: only actual image blocks give visual evidence; display alone does not prove pixels were read or loaded on the reader device. Ground captions and explanations in the returned source text and descriptions; do not add visual details you have not observed. Never substitute an unrelated image. Do not duplicate these images in Markdown.",
     parameters: Type.Object({ images: Type.Array(Type.Object({ id: Type.String({ minLength: 1, maxLength: 100 }), caption: Type.String({ minLength: 1, maxLength: 300 }) }, { additionalProperties: false }), { minItems: 1, maxItems: 3 }) }, { additionalProperties: false }),
     execute: async (_id, input, signal) => {
       signal?.throwIfAborted(); client("search");
@@ -72,7 +73,28 @@ export function buildWebTools(deps: RuntimeDeps, turnState?: AgentTurnState): Ag
         presented.add(webImageIdentity(image.url));
         output.push({ url: image.url, ...(image.thumbnailUrl ? { thumbnailUrl: image.thumbnailUrl } : {}), sourceUrl: image.sourceUrl, title: image.title, caption: entry.caption.slice(0, 300) });
       }
-      return { ...textResult({ presented: output.length, skipped, ...(skipped.length ? { note: "Use image IDs returned by web_search/web_fetch in this turn; repeats and excess images are skipped." } : {}) }),
+      const visual = [];
+      const vision = [];
+      // Decode independent images concurrently, then reserve the shared turn
+      // budget sequentially. Failed pixels never prevent displaying source cards.
+      const inputs = await Promise.all(output.map(async image => {
+        if (turnState?.modelSupportsImages !== true || !deps.images) return { image, input: null };
+        try { return { image, input: await deps.images.read({ kind: "web", name: image.title, url: image.url, thumbnailUrl: image.thumbnailUrl }, signal) }; }
+        catch (error) { signal?.throwIfAborted(); deps.log?.warn("Web image input unavailable", error); return { image, input: null }; }
+      }));
+      for (const { image, input: pixels } of inputs) {
+        let attached = false;
+        if (pixels && turnState) {
+          try {
+            const [imageInput] = reserveModelImages([pixels], turnState);
+            visual.push({ type: "text" as const, text: `Image: ${image.title}. Source: ${image.sourceUrl}. Captions are not proof of visual details.` }, { type: "image" as const, ...imageInput! });
+            attached = true;
+          } catch (error) { deps.log?.warn("Web image input budget exhausted", error); }
+        }
+        vision.push({ url: image.url, pixelsAttached: attached });
+      }
+      return { details: undefined, content: [...textResult({ presented: output.length, skipped, vision,
+        note: "Only pixelsAttached=true images are available for visual inspection. Others have source text only; never infer unseen details." }).content, ...visual],
         ...(output.length ? { details: { reference: { kind: "web-images" as const, images: output } } } : {}) };
     },
   }];

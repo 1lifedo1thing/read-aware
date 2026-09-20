@@ -85,6 +85,7 @@ export interface InMemoryStores {
   interactions: UserInteractionRequest[];
   readerRequests: ReaderRequest[];
   settings: AgentSettingsSnapshot;
+  bookSettings: Record<string, Record<string, AgentSettingValue>>;
 }
 
 export interface InMemorySeed {
@@ -258,8 +259,10 @@ function validateFixtureSetting(
 function applySettingChanges(
   current: AgentSettingsSnapshot,
   changes: AgentSettingChange[],
-): { settings: AgentSettingsSnapshot; changed: AgentSettingChange[] } {
+  bookSettings: InMemoryStores["bookSettings"],
+): { bookSettings: InMemoryStores["bookSettings"]; settings: AgentSettingsSnapshot; changed: AgentSettingChange[] } {
   const next = structuredClone(current);
+  const nextBooks = structuredClone(bookSettings);
   const byPath = new Map(
     next.settings.map((setting) => [setting.path, setting]),
   );
@@ -284,17 +287,29 @@ function applySettingChanges(
     if (seen.has(key)) throw new Error(`duplicate settings change: ${key}`);
     seen.add(key);
     validateFixtureSetting(setting, change.value);
-    if (!Object.is(setting.value, change.value)) {
-      setting.value = change.value;
+    const currentValue = target.kind === "book" ? nextBooks[target.bookId]?.[change.path] : setting.value;
+    const changesOverrides = target.kind === "all-books" && Object.values(nextBooks)
+      .some(values => !Object.is(values[change.path] ?? setting.value, change.value));
+    if (!Object.is(currentValue, change.value) || changesOverrides) {
+      if (target.kind === "book") (nextBooks[target.bookId] ??= {})[change.path] = change.value;
+      else {
+        setting.value = change.value;
+        if (target.kind === "all-books") {
+          for (const values of Object.values(nextBooks)) values[change.path] = change.value;
+        }
+      }
       changed.push({ ...change, target });
     }
   }
-  return { settings: next, changed };
+  next.revision += changed.length ? 1 : 0;
+  next.overrides = Object.entries(nextBooks).map(([bookId, values]) => ({ target: { kind: "book", bookId }, paths: Object.keys(values) }));
+  return { settings: next, bookSettings: nextBooks, changed };
 }
 
 function querySettings(
   settings: AgentSettingsSnapshot,
   query: AgentSettingsQuery = {},
+  books: InMemoryStores["bookSettings"] = {},
 ): AgentSettingsSnapshot {
   const target = query.target ?? { kind: "global" as const };
   return {
@@ -307,7 +322,7 @@ function querySettings(
         (!query.section || setting.section === query.section) &&
         (target.kind === "global" ||
           setting.supportedTargets?.includes("book")),
-    ),
+    ).map(setting => ({ ...setting, value: target.kind === "book" && Object.prototype.hasOwnProperty.call(books[target.bookId] ?? {}, setting.path) ? books[target.bookId]![setting.path]! : setting.value })),
   };
 }
 
@@ -354,6 +369,7 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
     interactions: [],
     readerRequests: [],
     settings: structuredClone(seed.settings ?? defaultSettings()),
+    bookSettings: {},
   };
   let memoryCounter = 0;
   let annotationCounter = annotations.length;
@@ -756,16 +772,17 @@ export function createInMemoryDeps(seed: InMemorySeed = {}): {
       refreshModelCatalog: async provider => ({ provider, revision: 2, refreshing: false, checkedAt: Date.now(), errorCode: null,
         models: [], total: 0, offset: 0, nextOffset: null }),
       resetReading: async () => { throw new AppError("ui/unavailable", "Attach a reading reset fixture"); },
-      getSettings: async (query) => querySettings(stores.settings, query),
+      getSettings: async (query) => querySettings(stores.settings, query, stores.bookSettings),
       getSettingOptions: async query => {
-        const snapshot = querySettings(stores.settings, { target: query.target });
+        const snapshot = querySettings(stores.settings, { target: query.target }, stores.bookSettings);
         const setting = snapshot.settings.find(entry => entry.path === query.path);
         if (!setting) throw new AppError("settings/options-invalid", "Unknown fixture setting");
         return pageSettingOptions(setting.options ?? [], snapshot.revision, query);
       },
       updateSettings: async (changes) => {
-        const result = applySettingChanges(stores.settings, changes);
+        const result = applySettingChanges(stores.settings, changes, stores.bookSettings);
         stores.settings = result.settings;
+        stores.bookSettings = result.bookSettings;
         return {
           changed: result.changed,
           settings: querySettings(stores.settings),

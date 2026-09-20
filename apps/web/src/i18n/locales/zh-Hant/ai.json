@@ -220,7 +220,10 @@
     },
     "error": {
       "generic": "取得回覆時發生問題。"
-    }
+    },
+    "attachImage": "加入圖片",
+    "removeImage": "移除圖片",
+    "localImageUnavailable": "圖片已不在這台裝置的快取中。"
   },
   "note": {
     "addTitle": "新增筆記",

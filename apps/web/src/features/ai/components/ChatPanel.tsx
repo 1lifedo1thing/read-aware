@@ -74,8 +74,8 @@ export function ChatPanel({
     return () => cancelAnimationFrame(frame);
   }, [askAiRequest, bookId, conversation]);
 
-  function handleSend(text: string) {
-    const accepted = conversation.send(text, pendingAttachment ? [pendingAttachment] : undefined);
+  function handleSend(text: string, images: import("../lib/chat-types").ChatImageAttachment[] = []) {
+    const accepted = conversation.send(text, [...(pendingAttachment ? [pendingAttachment] : []), ...images]);
     if (accepted) setPendingAttachment(null);
     return accepted;
   }

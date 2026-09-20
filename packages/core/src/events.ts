@@ -329,7 +329,7 @@ export type DomainEvent =
           text: string;
           anchor?: string;
           chapterHref?: string;
-        }>;
+        } | { attachmentId: Id; kind: "image"; cacheKey: string; name: string }>;
       }
     >
   /**

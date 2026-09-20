@@ -21,6 +21,7 @@ import type { ChatReference, ChatStreamChunk } from "../lib/chat-types";
 import type { ChatTurnRequest } from "../lib/chat-types";
 import { getAgentRuntime } from "./agent-runtime";
 import { toChatInteractionRequest } from "./chat-interaction-request";
+import { messageImages } from "../lib/chat-image";
 
 /**
  * present_* 即时执行且卡片就是其可见输出 —— 活动行只会闪一下徒增噪音，
@@ -37,7 +38,7 @@ export function toAgentTurnInput(
   request: ChatTurnRequest,
   signal?: AbortSignal,
 ): SendTurnInput {
-  const attachments: SelectionAttachment[] | undefined = request.message.attachments?.map(
+  const attachments: SelectionAttachment[] | undefined = request.message.attachments?.filter(attachment => attachment.kind !== "image").map(
     (attachment) => ({
       text: attachment.text,
       anchor: attachment.cfiRange ?? undefined,
@@ -47,6 +48,9 @@ export function toAgentTurnInput(
   return {
     text: request.message.content,
     attachments,
+    images: messageImages(request.message),
+    // Current uploads win, then the latest displayed images before older uploads.
+    contextImages: request.history.slice(-2).reverse().flatMap(messageImages),
     readingCursor: request.readingCursor ?? undefined,
     signal,
     reset: request.reset,

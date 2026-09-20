@@ -46,7 +46,7 @@ describe("conversation insights", () => {
     void pending.then(() => { settled = true; }, () => { settled = true; });
     await Promise.resolve();
     expect(settled).toBe(false);
-    expect(writeSpy).toHaveBeenCalledWith(INSIGHTS_KEY, JSON.stringify({ "book:one": "pending summary" }));
+    expect(writeSpy).toHaveBeenCalledWith(INSIGHTS_KEY, JSON.stringify({ "book:one": "pending summary" }), "agent");
     reject(new Error("persistence rejected"));
     await expect(pending).rejects.toThrow("persistence rejected");
   });

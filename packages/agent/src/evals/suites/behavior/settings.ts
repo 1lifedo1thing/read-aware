@@ -47,6 +47,7 @@ export const settingsEvalSuite: EvalSuite<AgentEvalScenario> = {
   scenarios: [
     defineAgentEvalScenario({
       id: "global-setting-update",
+      evaluation: "programmatic",
       description: "更新前发现精确的全局设置路径。",
       tags: ["state", "global"],
       scope: { kind: "global", threadId: "settings-global" },
@@ -77,6 +78,7 @@ export const settingsEvalSuite: EvalSuite<AgentEvalScenario> = {
     }),
     defineAgentEvalScenario({
       id: "book-scoped-theme-update",
+      evaluation: "programmatic",
       description: "使用通用设置工具将读者主题应用于仅一本书。",
       tags: ["state", "book"],
       scope: { kind: "book", bookId: SETTINGS_BOOK_ID },
@@ -90,7 +92,12 @@ export const settingsEvalSuite: EvalSuite<AgentEvalScenario> = {
         interactions: { forbiddenKinds: ["question", "permission"] },
       },
       criteria: { setting: "reading.theme", target: "book", expected: "dark" },
-      observeState: settingValue("reading.theme"),
+      observeState: async ({ deps }) => {
+        const read = async (target: { kind: "global" } | { kind: "book"; bookId: string }) =>
+          (await deps.settings.getSettings({ target })).settings.find(s => s.path === "reading.theme")?.value;
+        return { "reading.theme": await read({ kind: "book", bookId: SETTINGS_BOOK_ID }),
+          "global.theme": await read({ kind: "global" }), "otherBook.theme": await read({ kind: "book", bookId: "other-book" }) };
+      },
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, {
@@ -98,6 +105,8 @@ export const settingsEvalSuite: EvalSuite<AgentEvalScenario> = {
             interactions: { forbiddenKinds: ["question", "permission"] },
           }),
           stateCheck(observation, "reading.theme", "dark"),
+          stateCheck(observation, "global.theme", "warm"),
+          stateCheck(observation, "otherBook.theme", "warm"),
         ),
     }),
     defineAgentEvalScenario({

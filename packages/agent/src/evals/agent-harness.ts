@@ -52,6 +52,9 @@ export interface AgentEvalScenario extends EvalScenario<AgentEvalObservation> {
 }
 
 export interface DefineAgentEvalScenarioOptions {
+  /** Deterministic action contracts may close on state checks. Reading/content
+   * and mixed scenarios require source-based Agent review (the default). */
+  evaluation?: "programmatic" | "semantic";
   id: string;
   description: string;
   tags?: string[];
@@ -113,6 +116,7 @@ function noMemoryComplete(model: Model<Api>, _context: Context): Promise<Assista
 
 function scenarioInput(options: DefineAgentEvalScenarioOptions): JsonValue {
   return toJsonValue({
+    evaluation: options.evaluation ?? "semantic",
     scope: options.scope,
     seed: options.seedSummary ?? options.seed ?? {},
     turns: options.turns,

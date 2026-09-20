@@ -49,7 +49,7 @@ export function AgentWorkspace() {
         isStreaming={conversation.isStreaming}
         pendingAttachment={null}
         onRemoveAttachment={() => {}}
-        onSend={(text) => conversation.send(text)}
+        onSend={(text, images) => conversation.send(text, images)}
         onStop={conversation.stop}
       />
     </div>

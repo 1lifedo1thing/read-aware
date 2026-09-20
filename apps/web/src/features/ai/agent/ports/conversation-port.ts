@@ -35,7 +35,7 @@ function toTurns(messages: ChatMessage[]): TurnRecord[] {
       role: message.role,
       content: message.content,
       createdAt: message.createdAt,
-      attachments: message.attachments?.map((attachment) => ({
+      attachments: message.attachments?.filter(attachment => attachment.kind !== "image").map((attachment) => ({
         text: attachment.text,
         anchor: attachment.cfiRange ?? undefined,
         chapter: attachment.chapterHref ?? undefined,

@@ -110,7 +110,7 @@ function readReviewableRuns(directory: string): ReviewableRun[] {
   const records: ReviewableRun[] = [];
   for (const line of readFileSync(path, "utf8").split("\n")) {
     if (!line) continue;
-    try { const record = JSON.parse(line) as ReviewableRun; records.push({ id: record.id, status: record.status, error: record.error, hasCompletedOutput: record.output !== undefined }); }
+    try { const record = JSON.parse(line) as ReviewableRun; records.push({ id: record.id, status: record.status, error: record.error, hasCompletedOutput: record.output !== undefined, input: record.input, assessment: record.assessment }); }
     catch { /* Live writer may be between chunks of the last row. */ }
   }
   reviewRecordCache.set(path, { stamp, records });

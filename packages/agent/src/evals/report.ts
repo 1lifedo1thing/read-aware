@@ -1,4 +1,4 @@
-import { hasExecutionError, qualitySummaryText } from "./reviews";
+import { qualityVerdict, qualitySummaryText } from "./reviews";
 import type {
   EvalAggregate,
   EvalComparison,
@@ -130,7 +130,8 @@ export function formatEvalReport(summary: EvalSummary): string {
 }
 
 export function formatRunLine(record: EvalRunRecord): string {
-  const label = hasExecutionError(record) ? "ERROR" : "REVIEW PENDING";
+  const verdict = qualityVerdict(record);
+  const label = verdict === "pending" ? "REVIEW PENDING" : verdict.toUpperCase();
   const duration = `${record.telemetry.wallTimeMs.toFixed(0)}ms`;
   const score = record.assessment ? ` diagnosticScore=${record.assessment.score.toFixed(2)} checks=${record.status}` : "";
   const error = record.error ? ` ${record.error.stage}: ${record.error.message}` : "";

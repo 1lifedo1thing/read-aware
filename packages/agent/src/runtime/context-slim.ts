@@ -51,11 +51,11 @@ export function elideStaleToolResults(
 }
 
 /** Release pixel payloads from the retained agent state when a turn has ended. */
-export function releaseToolImages(messages: AgentMessage[]): AgentMessage[] {
+export function releaseToolImages(messages: AgentMessage[], note = "[Image input released after this turn; reread its descriptor for visual inspection.]"): AgentMessage[] {
   return messages.map(message => {
     const result = message as ToolResultLike;
-    if (result.role !== "toolResult" || !result.content?.some(block => block.type === "image")) return message;
+    if ((result.role !== "toolResult" && result.role !== "user") || !Array.isArray(result.content) || !result.content.some(block => block.type === "image")) return message;
     return { ...message, content: [...result.content.filter(block => block.type !== "image"),
-      { type: "text", text: "[Image input released after this turn; reread its descriptor for visual inspection.]" }] } as AgentMessage;
+      { type: "text", text: note }] } as AgentMessage;
   });
 }

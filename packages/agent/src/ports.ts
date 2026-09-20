@@ -65,7 +65,12 @@ export interface TurnAttachment {
   chapter?: string;
 }
 
+/** References only: pixel payloads never enter persisted turns or sync events. */
+export type TurnImage = { kind: "local"; cacheKey: string; name: string }
+  | { kind: "web"; url: string; thumbnailUrl?: string; name: string };
+
 export interface TurnRecord {
+  images?: TurnImage[];
   role: "user" | "assistant";
   content: string;
   createdAt: string;
@@ -464,6 +469,7 @@ export interface ExternalMemoryCandidateRequest {
 export interface RuntimeDeps {
   /** Optional BYOK public web retrieval; credentials stay in the host. */
   web?: import("./web/types").WebPort;
+  images?: { read(image: TurnImage, signal?: AbortSignal): Promise<import("@read-aware/core").ModelImageInput> };
   readingAiActions: import("@read-aware/core").ReadingAiPort;
   schedules: {
     list(query?: import("@read-aware/core").PluginScheduleQuery): Promise<import("@read-aware/core").PluginSchedulePage>;

@@ -25,7 +25,8 @@ export interface ChatSelectionAttachment {
   chapterHref: string | null;
 }
 
-export type ChatAttachment = ChatSelectionAttachment;
+export interface ChatImageAttachment { kind: "image"; cacheKey: string; name: string }
+export type ChatAttachment = ChatSelectionAttachment | ChatImageAttachment;
 
 /** Live reader viewport sampled when a book-chat message is sent. */
 export interface ChatReadingCursor {
@@ -175,7 +176,7 @@ export interface ChatMessage {
   content: string;
   /** ISO timestamp. */
   createdAt: string;
-  /** Passages attached to a turn — only present on user messages. */
+  /** Passages or local image references attached to a user turn. */
   attachments?: ChatAttachment[];
   /**
    * The assistant turn as an ordered timeline (prose, thinking, tool calls).

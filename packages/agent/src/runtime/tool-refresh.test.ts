@@ -15,6 +15,8 @@ async function collect(events: AsyncIterable<ThreadChunk>) {
   return chunks;
 }
 
+const discover = (query: string) => fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query })], { stopReason: "toolUse" });
+
 function tool(name: string, run: () => string): AgentTool {
   return {
     name, label: name, description: name, parameters: Type.Object({}),
@@ -38,17 +40,17 @@ describe("live model tool snapshots", () => {
         completeFn: async () => fauxAssistantMessage('{"new": [], "reinforced": []}'),
         streamFn: (model, context, options) => {
           seen.push(context.tools?.map(tool=>tool.name) ?? []);history.push(JSON.stringify(context.messages));
-          ready = false;
+          if (seen.length === 2) ready = false;
           return streamSimple(model, context, options);
         },
       });
-      faux.setResponses([fauxAssistantMessage([fauxToolCall("focus_reader", {target:"content"})], {stopReason:"toolUse"}),fauxAssistantMessage("Reader is unavailable.")]);
+      faux.setResponses([discover("focus_reader"), fauxAssistantMessage([fauxToolCall("focus_reader", {target:"content"})], {stopReason:"toolUse"}),fauxAssistantMessage("Reader is unavailable.")]);
       try {
         const chunks=await collect(thread.sendTurn({text:"Focus the reader"}));
-        expect(seen[0]).toContain("focus_reader");expect(seen[1]).not.toContain("focus_reader");
-        expect(chunks.find(chunk=>chunk.type==="tool-step"&&chunk.phase==="end")).toMatchObject({isError:true});expect(calls).toBe(0);
-        ready=true;faux.setResponses([fauxAssistantMessage("Reader is ready again.")]);
-        await collect(thread.sendTurn({text:"Continue after recovery"}));expect(seen[2]).toContain("focus_reader");expect(history[2]).toContain("Focus the reader");
+        expect(seen[0]).not.toContain("focus_reader");expect(seen[1]).toContain("focus_reader");expect(seen[2]).not.toContain("focus_reader");
+        expect(chunks.find(chunk=>chunk.type==="tool-step"&&chunk.phase==="end"&&chunk.tool==="focus_reader")).toMatchObject({isError:true});expect(calls).toBe(0);
+        ready=true;faux.setResponses([discover("focus_reader"), fauxAssistantMessage("Reader is ready again.")]);
+        await collect(thread.sendTurn({text:"Continue after recovery"}));expect(seen[3]).not.toContain("focus_reader");expect(seen[4]).toContain("focus_reader");expect(history[4]).toContain("Focus the reader");
       } finally { await thread.flushBackgroundWork();thread.dispose(); }
     });
   }
@@ -66,17 +68,17 @@ describe("live model tool snapshots", () => {
         completeFn: async () => fauxAssistantMessage('{"new": [], "reinforced": []}'),
         streamFn: (model, context, options) => {
           seen.push(context.tools?.map(tool => tool.name) ?? []);
-          visible = false;
+          if (seen.length === 2) visible = false;
           return streamSimple(model, context, options);
         },
       });
-      faux.setResponses([fauxAssistantMessage([fauxToolCall("explain_selection", {})], { stopReason: "toolUse" }), fauxAssistantMessage("Disabled.")]);
+      faux.setResponses([discover("explain_selection"), fauxAssistantMessage([fauxToolCall("explain_selection", {})], { stopReason: "toolUse" }), fauxAssistantMessage("Disabled.")]);
       try {
         const chunks = await collect(thread.sendTurn({ text: "Explain the selection" }));
-        for (const name of ["explain_selection", "define_term", "translate_selection", "summarize_chapter"]) {
-          expect(seen[0]).toContain(name); expect(seen[1]).not.toContain(name);
+        for (const name of ["explain_selection"]) {
+          expect(seen[0]).not.toContain(name); expect(seen[1]).toContain(name); expect(seen[2]).not.toContain(name);
         }
-        expect(chunks.find(chunk => chunk.type === "tool-step" && chunk.phase === "end")).toMatchObject({ isError: true });
+        expect(chunks.find(chunk => chunk.type === "tool-step" && chunk.phase === "end" && chunk.tool === "explain_selection")).toMatchObject({ isError: true });
         expect(calls).toBe(0);
       } finally { await thread.flushBackgroundWork(); thread.dispose(); }
     });
@@ -107,31 +109,34 @@ describe("live model tool snapshots", () => {
         },
       });
       faux.setResponses([
+        discover("enable_target"),
         fauxAssistantMessage([fauxToolCall("enable_target", {})], { stopReason: "toolUse" }),
+        discover("new_target"),
         fauxAssistantMessage([fauxToolCall("new_target", {})], { stopReason: "toolUse" }),
         fauxAssistantMessage("First answer."),
+        discover("between_user_turns"),
         fauxAssistantMessage("Second answer."),
       ]);
       try {
         const chunks = await collect(thread.sendTurn({ text: "First question", readingCursor: { chapter: "chapter.xhtml" } }));
-        expect(seen[0]!.names).toContain("enable_target");
+        expect(seen[1]!.names).toContain("enable_target");
         expect(seen[0]!.names).not.toContain("new_target");
-        expect(seen[1]!.names).not.toContain("enable_target");
-        expect(seen[1]!.names).toContain("new_target");
-        expect(seen[1]!.messages).toContain("target enabled");
-        expect(seen[2]!.messages).toContain("target evidence");
+        expect(seen[2]!.names).not.toContain("enable_target");
+        expect(seen[3]!.names).toContain("new_target");
+        expect(seen[2]!.messages).toContain("target enabled");
+        expect(seen[4]!.messages).toContain("target evidence");
         expect(calls).toEqual(["target"]);
         const toolEnds = chunks.filter(chunk => chunk.type === "tool-step").filter(chunk => chunk.phase === "end");
-        expect(toolEnds).toHaveLength(2);
+        expect(toolEnds).toHaveLength(4);
         expect(toolEnds.every(chunk => !chunk.isError)).toBe(true);
         available = [tool("between_user_turns", () => "unused")];
         await collect(thread.sendTurn({ text: "Second question", readingCursor: { chapter: "chapter.xhtml" } }));
-        expect(seen[3]!.names).toContain("between_user_turns");
-        expect(seen[3]!.names).not.toContain("new_target");
-        expect(seen[3]!.messages).toContain("First question");
-        expect(seen[3]!.messages).toContain("First answer.");
-        expect(seen[3]!.messages).toContain("target evidence");
-        expect(discoveries).toBe(4);
+        expect(seen[6]!.names).toContain("between_user_turns");
+        expect(seen[6]!.names).not.toContain("new_target");
+        expect(seen[6]!.messages).toContain("First question");
+        expect(seen[6]!.messages).toContain("First answer.");
+        expect(seen[6]!.messages).toContain("target evidence");
+        expect(discoveries).toBe(7);
       } finally {
         await thread.flushBackgroundWork();
         thread.dispose();
@@ -156,7 +161,7 @@ describe("live model tool snapshots", () => {
       resolveModel: () => faux.getModel() as Model<Api>, getApiKey: () => "test",
       completeFn: async () => fauxAssistantMessage('{"new": [], "reinforced": []}'),
       streamFn: (model, context, options) => {
-        if (++requests === 1) {
+        if (++requests === 2) {
           oldActive = false;
           available = [replacement];
         }
@@ -164,13 +169,14 @@ describe("live model tool snapshots", () => {
       },
     });
     faux.setResponses([
+      discover("target"),
       fauxAssistantMessage([fauxToolCall("target", {})], { stopReason: "toolUse" }),
       fauxAssistantMessage([fauxToolCall("target", {})], { stopReason: "toolUse" }),
       fauxAssistantMessage("Done."),
     ]);
     try {
       const chunks = await collect(thread.sendTurn({ text: "Call target" }));
-      const ends = chunks.filter(chunk => chunk.type === "tool-step" && chunk.phase === "end");
+      const ends = chunks.filter(chunk => chunk.type === "tool-step" && chunk.phase === "end" && chunk.tool === "target");
       expect(ends).toHaveLength(2);
       expect(ends[0]).toMatchObject({ isError: true, output: "Retired registration" });
       expect(ends[1]).toMatchObject({ isError: false, output: "replacement result" });

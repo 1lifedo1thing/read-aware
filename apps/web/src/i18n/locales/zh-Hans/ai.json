@@ -220,7 +220,10 @@
     },
     "error": {
       "generic": "获取回复时出错。"
-    }
+    },
+    "attachImage": "添加图片",
+    "removeImage": "移除图片",
+    "localImageUnavailable": "图片已不在这台设备的缓存中。"
   },
   "note": {
     "addTitle": "添加笔记",

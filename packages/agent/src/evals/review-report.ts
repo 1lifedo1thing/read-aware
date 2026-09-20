@@ -36,8 +36,11 @@ export async function refreshReviewReport(directory: string) {
   for (const record of [...records, ...manualRecords]) {
     const target = ("reviewTargetId" in record ? record.reviewTargetId : undefined) ?? `run:${record.id}`;
     const review = reviews[target];
-    lines.push(`### ${record.id}: ${qualityVerdict(record, reviews)}`, "",
-      review?.notes || "Pending primary review of question, source, full answer, tools and actual state.", "");
+    const verdict = qualityVerdict(record, reviews);
+    lines.push(`### ${record.id}: ${verdict}`, "",
+      review?.notes || (verdict === "pending" ? "Pending primary review of question, source, full answer, tools and actual state."
+        : verdict === "error" ? "Execution did not complete; see the recorded error and partial trace."
+        : "Deterministic action evaluated from completed execution and state checks."), "");
     for (const finding of review?.findings ?? []) lines.push(`- ${finding.attribution}: ${finding.explanation} [${finding.evidence.join(", ")}]`, "");
     if ("assessment" in record && record.assessment?.modelReview) {
       lines.push(`Automated opinion (provisional): ${record.assessment.modelReview.verdict}`, "",

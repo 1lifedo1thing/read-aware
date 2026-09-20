@@ -329,25 +329,21 @@ bun run eval:reading custom
 
 ## Semantic Review Is The Quality Verdict
 
-This applies to **every** suite and scenario, including synthetic behavior,
-search providers/images, memory, permissions, settings and real books. The
-primary agent reads the question, reading boundary/selection, original sources,
-all answers, tool receipts, approvals and actual state before deciding pass /
-partial / fail. All scenarios inherit four semantic criteria (correctness,
-completeness, helpfulness/execution, restraint); custom rubrics add task-specific
-facts. Correct paraphrases and aliases must not fail for missing a keyword.
-Matching keywords or calling a tool does not establish a correct answer or a
-successful action. Length by itself is not a defect.
+Evaluation follows the task, not the suite or conversation scope. Reading and content
+interpretation (including web/image answers), and mixed content/action tasks default
+to `input.evaluation = "semantic"`: the primary agent compares original sources,
+complete answers, tools and actual state before saving an evidence-backed review.
+Assertions are diagnostics, not semantic acceptance. Automatic judges are preliminary.
 
-`status`, `assessment.passed/score/checks`, aggregate pass rates and trend deltas
-remain **diagnostic** fields for artifact compatibility. They never determine
-quality acceptance. `summary.quality` tracks primary review pass / partial /
-fail / pending / error. A historical machine pass without a reasoned review is
-pending, not an accepted experience. Runtime errors cannot be overridden by a
-review. A scorer failure with a recorded completed output remains a diagnostic
-error; primary review can still judge that answer. It cannot rescue an interrupted
-run with only partial output. Actual unauthorized actions, disclosure or failed writes remain defects;
-review is not permission to excuse them.
+Pure deterministic actions may explicitly set `evaluation: "programmatic"` in
+`defineAgentEvalScenario`. A completed output and actual `state` checks are required;
+then the assessment determines acceptance. Validate target scope, side effects,
+authorization and receipts, not just tool names or success phrases. Settings updates
+are examples. A failing contract cannot be overridden with a passing prose review.
+Unmarked legacy runs remain semantic/pending. An explicit reasoned review may still
+reject a programmatic pass. `summary.quality` reports pass/partial/fail/pending/error
+using this same policy in the CLI and Viewer. Scoring/judge errors do not erase
+completed answers; interrupted execution cannot be rescued by a review.
 
 The primary agent reads structured local artifacts directly, without browsing
 the Viewer. The Viewer is the user's presentation and discussion surface.
@@ -477,7 +473,7 @@ state contracts remain deterministic tests; semantic correctness belongs to
 source-based review. Do not weaken a contract to hide a product defect.
 
 Execution/setup/timeout/scoring errors fail the command. `eval:agent --gate`
-also requires completed primary reviews, so fresh runs exit nonzero while
+also requires primary reviews for semantic tasks, so those fresh runs exit nonzero while
 pending. Finish review and use `eval:review <bundle> --gate` for acceptance.
 `eval:rescore --gate` also consults existing primary reviews. CI runtime contracts
 use `bun test`; an unreviewed model pass rate is not a CI quality gate.

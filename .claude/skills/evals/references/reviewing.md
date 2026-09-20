@@ -2,6 +2,8 @@
 
 不需要启动 Viewer。它是用户查看与讨论结果的界面，主 Agent 使用下面的本地数据流程。
 这些命令不调用模型；`--save` 只合并指定 target 的评语，不覆盖其他样本。
+纯确定性操作显式标记 programmatic 后，以完成执行和实际 state 检查为主要结论，
+不要求另填语义评分；下面的逐条语义审阅用于阅读、内容理解与混合任务。
 
 ```sh
 bun run eval:review .eval/<run-id> --list

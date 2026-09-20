@@ -25,8 +25,9 @@ Baidu/千帆优先路由（CoreWeave 次选），key 在 `~/.pi/agent/auth.json`
 单场景超时 **240s**。`--provider deepseek` 是旧直连路径；跨 provider/thinking
 档位的结果**不可比**（trend 会标 INCOMPARABLE）。
 
-默认所有场景都包含四维语义标准。运行结束的 `diagnosticScore` 和 checks 仅为辅助；
-`Quality` 显示审阅覆盖率，未经主 Agent / 人工评审的样本始终 pending。
+默认场景采用 semantic：checks 为辅助，未经主 Agent / 人工评审保持 pending。
+纯确定性操作可显式标记 programmatic，完成输出及实际 state 检查共同决定验收；
+只检查工具名不够。阅读、内容解释和混合任务不可用该模式绕过语义审阅。
 主 Agent 按 [结构化审阅](reviewing.md) 直接读日志，使用 `eval:review --list / --case / --save`。
 保存逐条评语后执行 `bun run eval:review .eval/<run-id> --gate`；这一步不调用模型，
 会根据原始记录和 `human-reviews.json` 更新 summary/report，包含自由追问的结论。

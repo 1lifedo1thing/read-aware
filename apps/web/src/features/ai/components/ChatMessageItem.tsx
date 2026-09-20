@@ -2,6 +2,7 @@ import type { ChatAssistantPart, ChatMessage } from "../lib/chat-types";
 import { consolidateThinkingParts } from "../lib/chat-stream";
 import { groupChatActivity } from "../lib/chat-activity";
 import { AttachmentChip } from "./AttachmentChip";
+import { ChatImageAttachment } from "./ChatImageAttachment";
 import { ChatActivity } from "./ChatActivity";
 import { ChatMessageActions, ChatMessageError } from "./ChatMessageActions";
 import { ChatInteractionPrompt } from "./ChatInteractionPrompt";
@@ -37,7 +38,8 @@ export function ChatMessageItem({
     return (
       <div className="group/message flex flex-col items-end gap-1.5">
         {message.attachments?.map((attachment, i) => (
-          <AttachmentChip key={i} attachment={attachment} className="max-w-[90%]" />
+          attachment.kind === "image" ? <ChatImageAttachment key={i} attachment={attachment} />
+            : <AttachmentChip key={i} attachment={attachment} className="max-w-[90%]" />
         ))}
         {/* Your own turn is content too — it sizes with the reply below it,
             not with the chrome. */}

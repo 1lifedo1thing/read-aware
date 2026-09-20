@@ -3347,3 +3347,20 @@ fn projection_repair_commits_drift_correction_and_rolls_back_failed_replay() {
     assert_eq!(scalar::<String>(&conn, "SELECT title FROM books WHERE id='b1'"), "kept on failure");
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM domain_events"), 1);
 }
+
+#[test]
+fn chat_image_references_survive_event_projection_without_pixels() {
+    let mut conn = migrated_conn();
+    let key = "a".repeat(64);
+    apply_remote_events_inner(&mut conn, &[ev_on("device-b", "image-turn", 2000, "aiMessage.appended", serde_json::json!({
+        "messageId": "image-message", "conversationId": "image-conversation", "role": "user", "seq": 0, "content": "Explain this",
+        "attachments": [ { "attachmentId": "a", "kind": "image", "cacheKey": key, "name": "diagram.png" },
+            { "attachmentId": "b", "kind": "selection", "text": "Passage", "anchor": "cfi", "chapterHref": "chapter.xhtml" } ]
+    }))]).unwrap();
+    let raw = scalar::<String>(&conn, "SELECT attachments_json FROM ai_messages WHERE id='image-message'");
+    let attachments: serde_json::Value = serde_json::from_str(&raw).unwrap();
+    assert_eq!(attachments[0], serde_json::json!({ "kind": "image", "cacheKey": key, "name": "diagram.png" }));
+    assert_eq!(attachments[1]["cfiRange"], "cfi");
+    assert_eq!(attachments[1]["kind"], "selection");
+    assert!(!raw.contains("base64"));
+}

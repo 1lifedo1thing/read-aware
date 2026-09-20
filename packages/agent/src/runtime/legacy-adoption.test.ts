@@ -85,7 +85,7 @@ describe("legacy thread adoption", () => {
     const model = makeFaux();
     faux.setResponses([fauxAssistantMessage("好的")]);
     const { deps, stores } = createInMemoryDeps({
-      books: [{ id: "b1" as Id, title: "书", status: "reading" }],
+      books: [{ id: "b1" as Id, title: "书", status: "reading", narrativity: "narrative", spoilerSensitive: true }],
       turns: { "book:b1": legacyTurns() },
     });
     const calls: Array<{ kind: string; content: string }> = [];
@@ -114,7 +114,7 @@ describe("legacy thread adoption", () => {
     const model = makeFaux();
     faux.setResponses([fauxAssistantMessage("回一"), fauxAssistantMessage("回二")]);
     const { deps } = createInMemoryDeps({
-      books: [{ id: "b1" as Id, title: "书", status: "reading" }],
+      books: [{ id: "b1" as Id, title: "书", status: "reading", narrativity: "narrative", spoilerSensitive: true }],
       turns: { "book:b1": legacyTurns() },
     });
     const calls: Array<{ kind: string; content: string }> = [];
@@ -132,7 +132,7 @@ describe("legacy thread adoption", () => {
     const model = makeFaux();
     faux.setResponses([fauxAssistantMessage("回一"), fauxAssistantMessage("回二")]);
     const { deps } = createInMemoryDeps({
-      books: [{ id: "b1" as Id, title: "书", status: "reading" }],
+      books: [{ id: "b1" as Id, title: "书", status: "reading", narrativity: "narrative", spoilerSensitive: true }],
       turns: { "book:b1": legacyTurns() },
       insights: { "book:b1": "已有摘要" },
     });
@@ -143,7 +143,7 @@ describe("legacy thread adoption", () => {
     expect(calls.filter((call) => call.kind === "bootstrap")).toHaveLength(0);
 
     const fresh = createInMemoryDeps({
-      books: [{ id: "b1" as Id, title: "书", status: "reading" }],
+      books: [{ id: "b1" as Id, title: "书", status: "reading", narrativity: "narrative", spoilerSensitive: true }],
     });
     const freshCalls: Array<{ kind: string; content: string }> = [];
     const freshThread = makeThread(fresh.deps, model, trackingComplete(freshCalls));

@@ -76,6 +76,7 @@ describe("present flow", () => {
   test("extension book cards and present_books share per-turn deduplication", async () => {
     const { faux, model } = makeFaux();
     faux.setResponses([
+      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "plugin_books_show" })], { stopReason: "toolUse" }),
       fauxAssistantMessage([fauxToolCall("plugin_books_show", {})], { stopReason: "toolUse" }),
       fauxAssistantMessage([fauxToolCall("present_books", { bookIds: ["b1", "b2"] })], { stopReason: "toolUse" }),
       fauxAssistantMessage([fauxToolCall("plugin_books_show", {})], { stopReason: "toolUse" }),
@@ -90,6 +91,7 @@ describe("present flow", () => {
     const chunks = await collect(thread.sendTurn({ text: "Show the books" }));
     expect(references(chunks).map(chunk => chunk.reference.kind === "books" ? chunk.reference.books.map(book => book.bookId) : [])).toEqual([["b1"], ["b2"]]);
     faux.setResponses([
+      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "plugin_books_show" })], { stopReason: "toolUse" }),
       fauxAssistantMessage([fauxToolCall("plugin_books_show", {})], { stopReason: "toolUse" }),
       fauxAssistantMessage("Again."),
     ]);
@@ -154,6 +156,7 @@ describe("present flow", () => {
     const { faux, model } = makeFaux();
     let secondRound: Context | undefined;
     faux.setResponses([
+      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "plugin_dictionary_lookup_word" })], { stopReason: "toolUse" }),
       fauxAssistantMessage(
         [
           fauxToolCall("plugin_dictionary_lookup_word", {

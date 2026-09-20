@@ -23,12 +23,22 @@ export async function runToolRefreshLoop(options: {
     call(options.target), call(options.target), message([{ type: "text", text: "Second result." }])];
   const { deps } = createInMemoryDeps();
   deps.extraTools = options.extraTools;
+  let discoveredForStep = false, catalogRequests = 0;
   const snapshots: Array<{ tools: string[]; messages: string }> = [];
   const ends: Array<{ tool: string; isError?: boolean; output?: string }> = [];
   const thread = new AgentThread({ scope: { kind: "global", threadId: "capability-tool-refresh" }, deps,
     resolveModel: () => model, getApiKey: () => "test",
     completeFn: async () => message([{ type: "text", text: '{"new": [], "reinforced": []}' }]),
     streamFn: (_model, context) => {
+      const pending = responses[0]?.content.find(block => block.type === "toolCall");
+      if (pending?.type === "toolCall" && !context.tools?.some(tool => tool.name === pending.name) && !discoveredForStep) {
+        discoveredForStep = true; catalogRequests++;
+        const discovery = message([{ type: "toolCall", id: `discover-${++callId}`, name: "get_host_capabilities", arguments: { catalog: "tools", query: pending.name } }], "toolUse");
+        const stream = createAssistantMessageEventStream();
+        queueMicrotask(() => { stream.push({ type: "start", partial: discovery }); stream.push({ type: "done", reason: "toolUse", message: discovery }); });
+        return stream;
+      }
+      discoveredForStep = false;
       snapshots.push({ tools: context.tools?.map(tool => tool.name) ?? [], messages: JSON.stringify(context.messages) });
       const output = createAssistantMessageEventStream();
       void (async () => {
@@ -48,10 +58,10 @@ export async function runToolRefreshLoop(options: {
   try {
     for (const text of ["First request", "Second request"]) {
       for await (const chunk of thread.sendTurn({ text })) {
-        if (chunk.type === "tool-step" && chunk.phase === "end") ends.push(chunk);
+        if (chunk.type === "tool-step" && chunk.phase === "end" && chunk.tool !== "get_host_capabilities") ends.push(chunk);
       }
     }
-    return { snapshots, ends };
+    return { snapshots, ends, catalogRequests };
   } finally {
     await thread.flushBackgroundWork(); thread.dispose();
   }

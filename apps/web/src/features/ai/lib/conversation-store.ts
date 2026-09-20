@@ -113,7 +113,9 @@ function toAppendedDraft(
       role: message.role,
       seq,
       content: message.content,
-      attachments: message.attachments?.map((attachment) => ({
+      attachments: message.attachments?.map((attachment) => attachment.kind === "image" ? {
+        attachmentId: crypto.randomUUID(), kind: "image" as const, cacheKey: attachment.cacheKey, name: attachment.name,
+      } : ({
         attachmentId: crypto.randomUUID(),
         kind: attachment.kind,
         text: attachment.text,

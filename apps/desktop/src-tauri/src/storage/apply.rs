@@ -579,7 +579,11 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
                 let mapped: Vec<Value> = list
                     .iter()
                     .map(|a| {
+                        if a.get("kind").and_then(Value::as_str) == Some("image") {
+                            return serde_json::json!({ "kind": "image", "cacheKey": a.get("cacheKey"), "name": a.get("name") });
+                        }
                         serde_json::json!({
+                            "kind": "selection",
                             "text": a.get("text").and_then(Value::as_str).unwrap_or_default(),
                             "cfiRange": a.get("anchor").cloned().unwrap_or(Value::Null),
                             "chapterHref": a.get("chapterHref").cloned().unwrap_or(Value::Null),

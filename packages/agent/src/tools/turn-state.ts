@@ -12,6 +12,8 @@ export interface SpoilerFence {
 }
 
 export interface AgentTurnState {
+  /** On-demand schemas, bounded and reset with each user turn. */
+  loadedTools?: Set<string>;
   /** Automatic reading context grants captured when this turn began. */
   readingContextPermissions?: import("../runtime/reading-context-policy").ReadingContextPermissions;
   presentedBookIds: Set<string>;

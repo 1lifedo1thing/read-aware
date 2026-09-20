@@ -1,4 +1,5 @@
 import type { QualitySummary } from "./reviews";
+import type { EvalAssessment } from "../../src/evals/types";
 /** viewer 的数据类型与取数（与 vite 中间件的 /api/* 对应）。 */
 
 import type {
@@ -71,7 +72,7 @@ export interface RunRecord {
   variantId: string;
   repetition: number;
   status: "passed" | "failed" | "error";
-  assessment?: { passed: boolean; score: number; checks: EvalCheck[]; modelReview?: { verdict: string; criteria: Array<{ criterion: string; score: number; rationale: string }> } };
+  assessment?: EvalAssessment;
   input?: CatalogScenario["input"];
   telemetry: {
     wallTimeMs: number;

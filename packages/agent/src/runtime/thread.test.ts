@@ -90,6 +90,7 @@ describe("AgentThread", () => {
     deps.bookText.readImageInput = async () => ({ status: "ready", image: { image, alt: "" }, input: { mimeType: "image/png", data: "AQID" } });
     const contexts: string[] = [];
     faux.setResponses([
+      fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: "read_book_image" })], { stopReason: "toolUse" }),
       fauxAssistantMessage([fauxToolCall("read_book_image", { image })], { stopReason: "toolUse" }),
       context => { contexts.push(JSON.stringify(context)); return fauxAssistantMessage("Visible diagram."); },
       context => { contexts.push(JSON.stringify(context)); return fauxAssistantMessage("Next answer."); },
@@ -334,7 +335,7 @@ describe("AgentThread", () => {
     const { faux, model } = makeFaux();
     faux.setResponses([fauxAssistantMessage("Still answering.")]);
     const state = memoryPolicyState(); state.set(false);
-    const { deps, stores } = createInMemoryDeps({ books: BOOKS, turns: { "book:b1": [
+    const { deps, stores } = createInMemoryDeps({ books: BOOKS.map(book => ({ ...book, narrativity: "expository", spoilerSensitive: false })), turns: { "book:b1": [
       { role: "user", content: "Legacy request", createdAt: "2026-01-01T00:00:00Z" },
       { role: "assistant", content: "Legacy answer", createdAt: "2026-01-01T00:00:01Z" },
     ] } });

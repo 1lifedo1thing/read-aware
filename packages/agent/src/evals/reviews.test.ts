@@ -57,3 +57,14 @@ describe("semantic acceptance across all suites", () => {
     expect(formatRunLine(record)).toContain("diagnosticScore");
   });
 });
+
+test("deterministic action acceptance needs completed output and state evidence; reading stays pending", () => {
+  const run = { id: "action", status: "pass", output: {}, input: { evaluation: "programmatic" },
+    assessment: { passed: true, score: 1, checks: [{ id: "scope", category: "state" as const, passed: true, message: "Only target book changed" }] } };
+  expect(qualityVerdict(run)).toBe("pass");
+  expect(qualityVerdict({ ...run, output: undefined })).toBe("pending");
+  expect(qualityVerdict({ ...run, assessment: { ...run.assessment, checks: [] } })).toBe("pending");
+  expect(qualityVerdict({ ...run, input: { evaluation: "semantic" } })).toBe("pending");
+  expect(qualityVerdict({ ...run, input: {} })).toBe("pending");
+  expect(qualityVerdict({ ...run, assessment: { ...run.assessment, passed: false } })).toBe("fail");
+});

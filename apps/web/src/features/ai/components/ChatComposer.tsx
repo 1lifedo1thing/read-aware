@@ -6,11 +6,13 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import { ArrowUp, Stop } from "@phosphor-icons/react";
+import { ArrowUp, Stop, ImageSquare } from "@phosphor-icons/react";
 import { IconButton } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
 import { useTranslation } from "../../../i18n";
-import type { ChatSelectionAttachment } from "../lib/chat-types";
+import type { ChatSelectionAttachment, ChatImageAttachment as ImageAttachment } from "../lib/chat-types";
+import { useChatImages } from "../hooks/useChatImages";
+import { ChatImageAttachment } from "./ChatImageAttachment";
 import { AttachmentChip } from "./AttachmentChip";
 import { useReaderFocusTarget } from "../../reader/hooks/useReaderFocusTarget";
 import type { DomainActor } from "../../../platform/domain-actor";
@@ -25,7 +27,7 @@ type ChatComposerProps = {
   disabled?: boolean;
   pendingAttachment: ChatSelectionAttachment | null;
   onRemoveAttachment: () => void;
-  onSend: (text: string) => boolean | void;
+  onSend: (text: string, images?: ImageAttachment[]) => boolean | void;
   onStop: () => void;
 };
 
@@ -42,6 +44,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     ref,
   ) {
     const { t } = useTranslation("ai");
+    const imageInput = useChatImages();
+    const fileRef = useRef<HTMLInputElement>(null);
     const [value, setValue] = useState("");
     const valueRef = useRef(value);
     valueRef.current = value;
@@ -77,11 +81,12 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
     }, [value]);
 
-    const canSend = (value.trim().length > 0 || !!pendingAttachment) && !isStreaming && !disabled;
+    const canSend = (value.trim().length > 0 || !!pendingAttachment || imageInput.images.length > 0) && !isStreaming && !disabled && !imageInput.loading;
 
     function submit() {
       if (!canSend) return;
-      if (onSend(value) === false) return;
+      if (onSend(value, imageInput.images.length ? imageInput.images : undefined) === false) return;
+      imageInput.clear();
       valueRef.current = "";
       setValue("");
     }
@@ -114,6 +119,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       // home indicator; --ra-safe-bottom is zero on desktop.
       <div className="shrink-0 border-t border-border px-3 pt-3 pb-[calc(0.75rem+var(--ra-safe-bottom))]">
         <div className="mx-auto w-full max-w-2xl">
+          {imageInput.images.length > 0 && <div className="mb-2 flex flex-wrap gap-2">{imageInput.images.map((attachment, index) =>
+            <ChatImageAttachment key={`${attachment.cacheKey}-${index}`} attachment={attachment} onRemove={() => imageInput.remove(index)} />)}</div>}
           {pendingAttachment && (
             <AttachmentChip
               attachment={pendingAttachment}
@@ -126,12 +133,20 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
               of wedged between the text and an inline button; the send button is
               overlaid at the bottom-right, kept clear of the scrollbar. */}
           <div className="relative">
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" multiple hidden onChange={event => {
+              const files = Array.from(event.target.files ?? []); event.target.value = ""; if (files.length) void imageInput.add(files);
+            }} />
             <textarea
               ref={textareaRef}
               rows={1}
               value={value}
               onChange={(event) => { valueRef.current = event.target.value; setValue(event.target.value); }}
               onKeyDown={handleKeyDown}
+              onPaste={event => {
+                if (isStreaming || disabled || imageInput.loading) return;
+                const files = Array.from(event.clipboardData.files).filter(file => file.type.startsWith("image/"));
+                if (files.length) { event.preventDefault(); void imageInput.add(files); }
+              }}
               onCompositionStart={() => {
                 composingRef.current = true;
               }}
@@ -146,8 +161,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
               }
               // Sized with the transcript: what you type should read the same
               // as what comes back.
-              className="ra-content-type block max-h-40 min-h-8 w-full resize-none bg-transparent py-1 pr-9 text-fg outline-none placeholder:text-fg-subtle"
+              className="ra-content-type block max-h-40 min-h-8 w-full resize-none bg-transparent py-1 pr-16 text-fg outline-none placeholder:text-fg-subtle"
             />
+            <IconButton label={t("chat.attachImage")} size="sm" icon={<ImageSquare size={16} />} disabled={disabled || isStreaming || imageInput.loading}
+              onClick={() => fileRef.current?.click()} className="absolute bottom-1 right-9 text-fg-muted" />
             {isStreaming ? (
               <IconButton
                 label={t("chat.stopGenerating")}

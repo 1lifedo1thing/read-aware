@@ -164,8 +164,10 @@ export function reviewMean(review: HumanReview | undefined): number | undefined 
 }
 
 
-/** Assertions are diagnostics. Only a reasoned primary-agent/human review closes quality. */
+/** Semantic quality needs primary review; opted-in deterministic actions use state checks. */
 export interface ReviewableRun {
+  input?: unknown;
+  assessment?: import("./types").EvalAssessment;
   id: string;
   reviewTargetId?: string;
   status: string;
@@ -194,6 +196,13 @@ export function hasExecutionError(record: ReviewableRun): boolean {
 export function qualityVerdict(record: ReviewableRun, reviews: Record<string, HumanReview> = {}): QualityVerdict {
   if (hasExecutionError(record)) return "error";
   const review = reviews[record.reviewTargetId ?? `run:${record.id}`];
+  if (isRecord(record.input) && record.input.evaluation === "programmatic") {
+    // Opt-in alone is insufficient: a completed observation and actual state
+    // checks are mandatory. Tool names/keywords cannot certify a write.
+    if (!(record.hasCompletedOutput ?? record.output !== undefined) || !record.assessment?.checks.some(check => check.category === "state")) return "pending";
+    if (!record.assessment.passed) return "fail";
+    return review?.notes?.trim() && review.verdict ? review.verdict : "pass";
+  }
   // A number or a blank checkbox is not an evidence-based review.
   return review?.notes?.trim() && review.verdict ? review.verdict : "pending";
 }
@@ -206,7 +215,7 @@ export function qualityGatePassed(summary: QualitySummary): boolean {
   return summary.total > 0 && summary.pass === summary.total;
 }
 export function qualitySummaryText(summary: QualitySummary): string {
-  return `${summary.pass}/${summary.total} reviewed pass; ${summary.partial} partial, ${summary.fail} fail, ${summary.pending} pending review, ${summary.error} errors`;
+  return `${summary.pass}/${summary.total} accepted; ${summary.partial} partial, ${summary.fail} fail, ${summary.pending} pending review, ${summary.error} errors`;
 }
 
 

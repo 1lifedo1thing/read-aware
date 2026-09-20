@@ -109,7 +109,7 @@ function conversationDrafts(conversationId: string, rows: AiMessageRow[]): Domai
     },
   ];
   for (const row of messages) {
-    let attachments: { text: string; cfiRange?: string | null; chapterHref?: string | null }[] = [];
+    let attachments: import("../features/ai/lib/chat-types").ChatAttachment[] = [];
     try {
       attachments = row.attachmentsJson ? JSON.parse(row.attachmentsJson) : [];
     } catch {
@@ -126,7 +126,7 @@ function conversationDrafts(conversationId: string, rows: AiMessageRow[]): Domai
         content: row.content,
         attachments:
           attachments.length > 0
-            ? attachments.map((attachment) => ({
+            ? attachments.map((attachment) => attachment.kind === "image" ? { attachmentId: crypto.randomUUID(), kind: "image" as const, cacheKey: attachment.cacheKey, name: attachment.name } : ({
                 attachmentId: crypto.randomUUID(),
                 kind: "selection" as const,
                 text: attachment.text,

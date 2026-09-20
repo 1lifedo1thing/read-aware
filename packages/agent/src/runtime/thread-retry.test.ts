@@ -31,6 +31,7 @@ for (const kind of ["book", "global"] as const) test(`${kind}: retry keeps compl
   }, fetch: async () => { throw new Error("unused"); } };
   let recoveredContext = "";
   faux.setResponses([
+    call("get_host_capabilities", { catalog: "tools", query: "create_annotation" }),
     call("create_annotation", { kind: "note", bookId: "book", body: "Keep this note once." }),
     call("web_search", { query: "diagrams", includeImages: true }),
     call("present_web_images", { images: [{ id: "web-image-1", caption: "A" }] }),

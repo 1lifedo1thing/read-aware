@@ -8,7 +8,7 @@ import { AgentThread } from "../runtime/thread";
 export function createScriptedThread(scope: ThreadScope, deps: RuntimeDeps, calls: { name: string; arguments: Record<string, unknown> }[]) {
   const provider = registerFauxProvider({ tokensPerSecond: 100_000 });
   provider.setResponses([
-    ...calls.map(call => fauxAssistantMessage([fauxToolCall(call.name, call.arguments)], { stopReason: "toolUse" })),
+    ...calls.flatMap(call => [fauxAssistantMessage([fauxToolCall("get_host_capabilities", { catalog: "tools", query: call.name })], { stopReason: "toolUse" }), fauxAssistantMessage([fauxToolCall(call.name, call.arguments)], { stopReason: "toolUse" })]),
     fauxAssistantMessage("Finished."),
   ]);
   const thread = new AgentThread({ scope, deps, resolveModel: () => provider.getModel(), getApiKey: () => "fixture", streamFn: streamSimple,
