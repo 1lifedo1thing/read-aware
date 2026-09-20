@@ -55,7 +55,7 @@ describe("live model tool snapshots", () => {
     });
   }
 
-  for (const scope of [{ kind: "book", bookId: "book" }, { kind: "global", threadId: "reading-features" }] satisfies ThreadScope[]) {
+  for (const scope of [{ kind: "global", threadId: "reading-features" }] satisfies ThreadScope[]) {
     test(`${scope.kind}: disabled reading actions disappear on the next request and retained definitions cannot execute`, async () => {
       faux = registerFauxProvider({ tokensPerSecond: 100_000 });
       const { deps } = createInMemoryDeps({ books: [{ id: "book", title: "Book", progressPercent: 0 }] });
@@ -72,13 +72,13 @@ describe("live model tool snapshots", () => {
           return streamSimple(model, context, options);
         },
       });
-      faux.setResponses([discover("explain_selection"), fauxAssistantMessage([fauxToolCall("explain_selection", {})], { stopReason: "toolUse" }), fauxAssistantMessage("Disabled.")]);
+      faux.setResponses([discover("reading_action"), fauxAssistantMessage([fauxToolCall("reading_action", { request: { operation: "explain" } })], { stopReason: "toolUse" }), fauxAssistantMessage("Disabled.")]);
       try {
         const chunks = await collect(thread.sendTurn({ text: "Explain the selection" }));
-        for (const name of ["explain_selection"]) {
+        for (const name of ["reading_action"]) {
           expect(seen[0]).not.toContain(name); expect(seen[1]).toContain(name); expect(seen[2]).not.toContain(name);
         }
-        expect(chunks.find(chunk => chunk.type === "tool-step" && chunk.phase === "end" && chunk.tool === "explain_selection")).toMatchObject({ isError: true });
+        expect(chunks.find(chunk => chunk.type === "tool-step" && chunk.phase === "end" && chunk.tool === "reading_action")).toMatchObject({ isError: true });
         expect(calls).toBe(0);
       } finally { await thread.flushBackgroundWork(); thread.dispose(); }
     });

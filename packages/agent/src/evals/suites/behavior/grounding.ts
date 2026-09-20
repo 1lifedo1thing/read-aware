@@ -113,7 +113,7 @@ export const groundingEvalSuite: EvalSuite<AgentEvalScenario> = {
       },
       turns: [{ text: "How long have I spent reading Untouched Tome?" }],
       expectation: {
-        tools: { required: ["get_reading_stats"], noErrors: true },
+        tools: { required: ["query_reading_stats"], noErrors: true },
       },
       criteria: { mustNotInvent: "any concrete duration" },
       rubric: [
@@ -122,7 +122,7 @@ export const groundingEvalSuite: EvalSuite<AgentEvalScenario> = {
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, {
-            tools: { required: ["get_reading_stats"], noErrors: true },
+            tools: { required: ["query_reading_stats"], noErrors: true },
           }),
           noInventedDurationAssessment(observation),
         ),

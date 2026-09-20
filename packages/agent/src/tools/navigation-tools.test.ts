@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import type { AgentToolResult } from "@earendil-works/pi-agent-core";
 import { createInMemoryDeps } from "../testing/fixtures";
+import { buildBookTextTools } from "./book-text-tools";
 import { buildNavigationTools } from "./navigation-tools";
 import { buildReaderTools } from "./reader-tools";
 import { createAgentTurnState } from "./turn-state";
@@ -11,7 +12,7 @@ function fixture() {
   const state = createAgentTurnState();
   state.spoilerFence = { throughChapterIndex: 0, readerChapterIndex: 1 };
   const scope = { kind: "book", bookId: "book" } as const;
-  const tools = [...buildNavigationTools(scope, deps, state), ...buildReaderTools(scope, deps, state)];
+  const tools = [...buildBookTextTools(scope, deps, state), ...buildNavigationTools(scope, deps, state), ...buildReaderTools(scope, deps, state)];
   return { deps, state, tool: (name: string) => tools.find(tool => tool.name === name)! };
 }
 function value(result: AgentToolResult<unknown>) {
@@ -77,7 +78,7 @@ test("navigation cannot turn a later viewport into authorized text", async () =>
 
 test("TOC locations round-trip through open_book without chapter-number arithmetic", async () => {
   const { deps, tool } = fixture();
-  const toc = value(await tool("get_navigation_toc").execute("test", {}));
+  const toc = value(await tool("get_toc").execute("test", { view: "navigation" }));
   expect(toc.entries[0]).toMatchObject({ label: "Chapter 10", ordinal: 1 });
   let passed: unknown;
   const original = deps.reader.goTo;

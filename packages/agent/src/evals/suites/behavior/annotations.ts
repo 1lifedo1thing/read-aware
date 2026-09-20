@@ -186,7 +186,7 @@ export const annotationsEvalSuite: EvalSuite<AgentEvalScenario> = {
         },
       ],
       expectation: {
-        tools: { required: ["get_annotations", "edit_annotation"], noErrors: true },
+        tools: { required: ["get_annotations", "apply_annotation_changes"], noErrors: true },
       },
       criteria: { noteMustGain: "alibi" },
       observeState: observeAnnotations,
@@ -196,7 +196,7 @@ export const annotationsEvalSuite: EvalSuite<AgentEvalScenario> = {
         const extended = noteBody.toLowerCase().includes("alibi");
         return combineAssessments(
           evaluateAgentTrace(observation, {
-            tools: { required: ["get_annotations", "edit_annotation"], noErrors: true },
+            tools: { required: ["get_annotations", "apply_annotation_changes"], noErrors: true },
           }),
           assessmentFromChecks([
             {

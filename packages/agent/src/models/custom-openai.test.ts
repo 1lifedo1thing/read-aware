@@ -443,7 +443,10 @@ describe("Custom OpenAI-compatible wire format", () => {
       port: 0,
       async fetch(request) {
         requests.push((await request.json()) as Record<string, unknown>);
-        return new Response(body, {
+        const discovery = 'data: ' + JSON.stringify({ id: "discover-probe", object: "chat.completion.chunk", model: "gateway-model",
+          choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "load", type: "function", function: {
+            name: "get_host_capabilities", arguments: JSON.stringify({ catalog: "tools", query: "schema_probe" }) } }] }, finish_reason: "tool_calls" }] }) + "\n\ndata: [DONE]\n\n";
+        return new Response(requests.length === 1 ? discovery : body, {
           headers: { "Content-Type": "text/event-stream" },
         });
       },
@@ -495,7 +498,9 @@ describe("Custom OpenAI-compatible wire format", () => {
           .join(""),
       ).toBe("ok");
       expect(nativeFetchCalls).toBeGreaterThan(0);
-      const tools = requests[0]?.tools as
+      const discoveredRequest = requests.find(request => JSON.stringify(request.tools).includes('"schema_probe"'));
+      expect(discoveredRequest).toBeDefined();
+      const tools = discoveredRequest?.tools as
         | Array<{
             function?: {
               name?: string;

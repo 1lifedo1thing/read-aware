@@ -57,7 +57,26 @@
       "fallback": "处理中",
       "failed": "失败",
       "web_search": "搜索网络",
-      "web_fetch": "读取网页"
+      "web_fetch": "读取网页",
+      "query_conversation": "正在查询对话记录",
+      "query_reading_stats": "正在查询阅读统计",
+      "query_book_text_tasks": "正在查询正文准备进度",
+      "manage_book_text_task": "正在管理正文准备任务",
+      "reader_panels": "正在调整阅读器侧栏",
+      "model_catalog": "正在查询模型目录",
+      "acquire_resource": "正在准备文件",
+      "manage_resource": "正在处理文件",
+      "resource_directory": "正在访问文件目录",
+      "query_book_imports": "正在检查书籍导入",
+      "manage_book_import": "正在处理书籍导入",
+      "query_durable_jobs": "正在查询任务进度",
+      "manage_durable_job": "正在管理任务",
+      "query_context_bundles": "正在读取已存上下文",
+      "manage_context_bundle": "正在保存或导出上下文",
+      "query_book_references": "正在读取书中引用",
+      "control_book_reference": "正在显示书中引用",
+      "reading_action": "正在启动阅读任务",
+      "apply_annotation_changes": "正在更新标注"
     },
     "interaction": {
       "form": {

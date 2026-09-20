@@ -1,3 +1,4 @@
+import { operationCall } from "../testing/tool-operation";
 /**
  * 工具表面契约：每个内置工具塞给模型的文本必须"可读"——不允许裸毫秒字段、
  * 不允许 epoch 毫秒数字、体积有上界。新工具必须在 SURFACE_CASES 里登记一组
@@ -262,8 +263,8 @@ describe("tool surface contract", () => {
 
   test("every registered tool has a surface case", () => {
     const registered = new Set([...toolNames(globalScope), ...toolNames(bookScope)]);
-    const missing = [...registered].filter((name) => !(name in SURFACE_CASES));
-    const stale = Object.keys(SURFACE_CASES).filter((name) => !registered.has(name));
+    const missing = [...registered].filter((name) => !Object.keys(SURFACE_CASES).some(operation => operationCall(operation).name === name));
+    const stale = Object.keys(SURFACE_CASES).filter((name) => !registered.has(operationCall(name).name));
     expect(missing).toEqual([]);
     expect(stale).toEqual([]);
   });
@@ -271,7 +272,8 @@ describe("tool surface contract", () => {
   for (const scope of [globalScope, bookScope]) {
     test(`${scope.kind} scope tools emit legible, bounded text`, async () => {
       const names = toolNames(scope);
-      for (const name of names) {
+      for (const name of Object.keys(SURFACE_CASES).filter(operation => names.includes(operationCall(operation).name))) {
+        if (scope.kind === "book" && ["explain_selection", "define_term", "translate_selection", "summarize_chapter", "get_conversation_insights", "download_resource"].includes(name)) continue;
         const params = structuredClone(SURFACE_CASES[name]);
         if (!params) continue; // 完备性由上面的用例把守
         // 每个工具独立的 fixture：破坏性工具（fixture 自动批准权限）不得污染后续用例
@@ -353,10 +355,10 @@ describe("tool surface contract", () => {
           params.kind = selector.kind; params.version = (await deps.contextBundles.capture(selector)).bundle.version;
         }
         const tool = buildAgentTools(scope, deps).find(
-          (candidate: AgentTool) => candidate.name === name,
+          (candidate: AgentTool) => candidate.name === operationCall(name).name,
         );
         if (!tool) throw new Error(`${name} was not registered`);
-        const result = await tool.execute(`surface-${name}`, params);
+        const result = await tool.execute(`surface-${name}`, operationCall(name, params).arguments);
         expectLegibleSurface(name, resultText(result));
       }
     });
@@ -365,10 +367,10 @@ describe("tool surface contract", () => {
   test("get_reading_stats presents durations, not milliseconds", async () => {
     const { deps } = createInMemoryDeps(seed());
     const tool = buildAgentTools(globalScope, deps).find(
-      (candidate) => candidate.name === "get_reading_stats",
+      (candidate) => candidate.name === "query_reading_stats",
     );
     if (!tool) throw new Error("get_reading_stats was not registered");
-    const text = resultText(await tool.execute("surface-stats", {}));
+    const text = resultText(await tool.execute("surface-stats", { request: { operation: "overview" } }));
     expect(text).toContain("1h 30m");
     expect(text).not.toContain("5427000");
   });

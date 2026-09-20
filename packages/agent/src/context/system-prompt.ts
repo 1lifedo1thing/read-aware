@@ -8,6 +8,7 @@ import { chapterMemoryPolicy, needsSpoilerProtection, visibleChapterDigests } fr
 import type { BookOverview, ChapterDigest, MemoryRecord } from "../ports";
 import type { ThreadScope } from "../thread-scope";
 import { SPOILER_POLICY } from "./spoiler-policy";
+import { rewriteToolReferences } from "../tools/tool-families";
 
 export interface SystemPromptInput {
   /** book scope 的当前书；global scope 不传 */
@@ -53,7 +54,7 @@ function readingPositionLine(input: SystemPromptInput): string {
     );
   }
   if (parts.length === 0) {
-    return `Reading position: not recorded. A live <reading_cursor> block on the reader's newest message is the authoritative position when present. ${needsSpoilerProtection(input.book) ? `If it is absent: ${SPOILER_POLICY.unknownPositionSpecificPassage} ${SPOILER_POLICY.unknownPositionAmbiguous} ` : "No reading-position prerequisite applies to answering factual or whole-book questions. "}get_book_overview and get_reading_stats cannot add position information beyond this line.`;
+    return `Reading position: not recorded. A live <reading_cursor> block on the reader's newest message is the authoritative position when present. ${needsSpoilerProtection(input.book) ? `If it is absent: ${SPOILER_POLICY.unknownPositionSpecificPassage} ${SPOILER_POLICY.unknownPositionAmbiguous} ` : "No reading-position prerequisite applies to answering factual or whole-book questions. "}get_book_overview and query_reading_stats cannot add position information beyond this line.`;
   }
   const protocol = input.currentChapter || !needsSpoilerProtection(input.book)
     ? ""
@@ -199,6 +200,7 @@ ${needsSpoilerProtection(book) ? `- Apply spoiler protection selectively. Protec
 ## Tool discipline
 - Your initial tool list is intentionally compact. Other host and plugin tools remain available through get_host_capabilities(catalog="tools", query=<English keyword or exact tool name>). Matching tools load with their schemas on the next request. Discover before calling an absent tool; absence from the initial list alone does not mean the app lacks a capability. Only discover when the current task needs it.
 - Use your tools to look at the user's actual shelf, books, and annotations before answering questions about them.
+- In a book thread, explain, define, translate and summarize directly from reading context and source tools. Discover get_reading_session when the current selection is needed; do not start a separate reading task.
 - Call only the tools the answer actually needs. A content question needs content tools — do not open with a status inventory (get_book_overview / get_reading_stats / get_annotations) unless the question is about status. Casual conversation needs no tools at all, and never open the reader's book unless they asked.
 - Tool calls in one batch run in parallel — when you need several independent lookups (multiple chapters, toc + annotations, …), issue them together instead of one per turn.
 - When the reader asks you to check, find, read, compare, or verify something and an available tool can do it, call the tool in this turn and finish the answer. Never stop at "I can look that up" or ask the reader to trigger a lookup you can perform yourself.
@@ -253,7 +255,7 @@ export function buildSystemPrompt(scope: ThreadScope, input: SystemPromptInput):
     );
   }
 
-  sections.push(sharedRules(scope, input.book));
+  sections.push(rewriteToolReferences(sharedRules(scope, input.book)));
 
   if (scope.kind === "book") {
     if (input.book) {
@@ -298,7 +300,7 @@ export function buildSystemPrompt(scope: ThreadScope, input: SystemPromptInput):
   if (input.conversationSummary) {
     sections.push(
       scope.kind === "book"
-        ? `Conversation so far (rolling summary — only the immediately previous exchange follows verbatim; call get_recent_turns or search_conversation to revisit anything older):\n${input.conversationSummary}`
+        ? `Conversation so far (rolling summary — only the immediately previous exchange follows verbatim; call query_conversation with request.operation=recent or search to revisit anything older):\n${input.conversationSummary}`
         : `Conversation so far (rolling summary — recent turns follow verbatim):\n${input.conversationSummary}`,
     );
   }

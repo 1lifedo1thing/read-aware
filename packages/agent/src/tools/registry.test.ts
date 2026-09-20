@@ -1,168 +1,40 @@
 import { describe, expect, test } from "bun:test";
-import type { AgentTool } from "@earendil-works/pi-agent-core";
-import type { Id } from "@read-aware/core";
 import { createInMemoryDeps } from "../testing/fixtures";
-import type { ThreadScope } from "../thread-scope";
 import { buildAgentTools } from "./registry";
-
-const names = (tools: AgentTool[]) => tools.map((tool) => tool.name);
+import { TOOL_FAMILIES } from "./tool-families";
 
 describe("agent tool registry", () => {
-  test("book scope keeps reading and current-book actions, not global administration", () => {
-    const { deps } = createInMemoryDeps();
-    const book: ThreadScope = { kind: "book", bookId: "b1" as Id };
-
-    const tools = names(buildAgentTools(book, deps));
-
-    expect(tools).toHaveLength(118);
-    expect(tools).toContain("get_operation_availability");
-    for (const name of ["read_book_image", "open_resource_external", "pick_resource_directory", "list_resource_directory", "open_directory_resource", "release_resource_directory"]) expect(tools).toContain(name);
-    expect(tools).toContain("capture_context_bundle");
-    expect(tools).toContain("export_context_bundle");
-    expect(tools).toContain("inspect_user_profile");
-    expect(tools).toContain("query_entities");
-    expect(tools).toContain("manage_entity");
-    expect(tools).toContain("focus_reader");
-    expect(tools).toContain("update_user_profile");
-    expect(tools).toContain("get_setting_options");
-    expect(tools).toContain("get_book_content_state");
-    expect(tools).toContain("get_host_capabilities");
-    expect(tools).toContain("reset_reading_settings");
-    expect(tools).toContain("list_book_formats");
-    expect(tools).not.toContain("inspect_resource_book");
-    expect(tools).toContain("get_book_enrichment");
-    expect(tools).toContain("retry_book_enrichment");
-    expect(tools).toContain("open_book_cover");
-    expect(tools).toContain("copy_resource_image");
-    expect(tools).toContain("open_book_resource");
-    expect(tools).toContain("pick_resource_files");
-    expect(tools).not.toContain("import_resource_book");
-    expect(tools).not.toContain("download_resource");
-    expect(tools).not.toContain("merge_duplicate_books");
-    expect(tools).toContain("get_software_update");
-    expect(tools).toContain("verify_local_data");
-    expect(tools).toContain("request_projection_repair");
-    expect(tools).toContain("set_book_text_task_priority");
-    expect(tools).toContain("pause_book_text_task");
-    expect(tools).toContain("resume_book_text_task");
-    expect(tools).toContain("request_diagnostics_report");
-    expect(tools).toContain("request_backup");
-    expect(tools).toContain("open_maintenance_settings");
-    expect(tools).toContain("get_sync_status");
-    expect(tools).toContain("manage_sync");
-    expect(tools).toContain("request_conversation_turn");
-    expect(tools).toContain("get_conversation_state");
-    expect(tools).not.toContain("manage_conversation");
-    expect(tools).toContain("list_installed_plugins");
-    expect(tools).toContain("list_plugin_contributions");
-    expect(tools).toContain("copy_to_clipboard");
-    expect(tools).toContain("export_text_file");
-    expect(tools).toContain("open_external_url");
-    expect(tools).toContain("manage_reading_emphasis");
-    expect(tools).toContain("set_reading_selection");
-    expect(tools).toContain("manage_book_graph");
-    expect(tools).toContain("classify_book");
-    expect(tools).toContain("manage_memory");
-    expect(tools).toContain("list_host_commands");
-    expect(tools).toContain("execute_host_command");
-    expect(tools).toContain("get_workspace");
-    expect(tools).toContain("navigate_app");
-    expect(tools).toContain("get_book_text_status");
-    expect(tools).toContain("get_reader_panels");
-    expect(tools).toContain("set_reader_panel");
-    expect(tools).toContain("set_reader_controls");
-    expect(tools).toContain("get_host_environment");
-    expect(tools).toContain("configure_reading_mode");
-    expect(tools).toContain("control_read_aloud");
-    expect(tools).toContain("apply_annotation_changes");
-    expect(tools).toContain("get_navigation_toc");
-    expect(tools).toContain("find_book_locations");
-    expect(tools).toContain("get_reading_session");
-    expect(tools).toContain("navigate_reading");
-    expect(tools).toContain("read_chapter");
-    expect(tools).toContain("query_book_graph");
-    expect(tools).toContain("create_annotation");
-    expect(tools).toContain("update_book");
-    expect(tools).toContain("delete_book");
-    expect(tools).toContain("update_settings");
-    expect(tools).not.toContain("list_books");
-    expect(tools).not.toContain("list_collections");
-    expect(tools).not.toContain("manage_collection");
-    expect(tools).not.toContain("delete_collection");
-    expect(tools).not.toContain("delete_books");
-    expect(tools).not.toContain("list_book_removal_cleanup");
-    expect(tools).not.toContain("get_conversation_insights");
-    expect(tools).not.toContain("present_books");
-  });
-
-  test("global scope keeps shelf-wide tools and asks the host for scoped plugin tools", () => {
-    const { deps } = createInMemoryDeps();
-    const seen: ThreadScope[] = [];
-    deps.extraTools = (scope) => {
-      seen.push(scope);
-      return [];
-    };
-    const global: ThreadScope = { kind: "global", threadId: "t1" };
-
-    const tools = names(buildAgentTools(global, deps));
-
-    expect(tools).toHaveLength(139);
-    expect(tools).toContain("get_operation_availability");
-    expect(tools).toContain("onboard_reader");
-    expect(tools).toContain("read_context_bundle");
-    expect(tools).toContain("list_context_bundles");
-    expect(tools).toContain("inspect_user_profile");
-    expect(tools).toContain("query_entities");
-    expect(tools).toContain("manage_entity");
-    expect(tools).toContain("focus_reader");
-    expect(tools).toContain("update_user_profile");
-    expect(tools).toContain("get_setting_options");
-    expect(tools).toContain("get_book_content_state");
-    expect(tools).toContain("download_resource");
-    expect(tools).toContain("get_host_capabilities");
-    expect(tools).toContain("inspect_resource_book");
-    expect(tools).toContain("merge_duplicate_books");
-    expect(tools).toContain("import_resource_book");
-    expect(tools).toContain("list_plugin_schedules");
-    expect(tools).toContain("manage_plugin_schedule");
-    expect(tools).toContain("request_conversation_turn");
-    expect(tools).toContain("manage_reading_emphasis");
-    expect(tools).toContain("set_reading_selection");
-    expect(tools).toContain("manage_book_graph");
-    expect(tools).toContain("classify_book");
-    expect(tools).toContain("manage_memory");
-    expect(tools).toContain("list_host_commands");
-    expect(tools).toContain("execute_host_command");
-    expect(tools).toContain("get_workspace");
-    expect(tools).toContain("navigate_app");
-    expect(tools).toContain("list_book_removal_cleanup");
-    expect(tools).toContain("delete_books");
-    expect(tools).toContain("get_book_text_status");
-    expect(tools).toContain("get_reader_panels");
-    expect(tools).toContain("set_reader_panel");
-    expect(tools).toContain("set_reader_controls");
-    expect(tools).toContain("get_host_environment");
-    expect(tools).toContain("configure_reading_mode");
-    expect(tools).toContain("control_read_aloud");
-    expect(tools).toContain("apply_annotation_changes");
-    expect(tools).toContain("get_navigation_toc");
-    expect(tools).toContain("find_book_locations");
-    expect(tools).toContain("get_reading_session");
-    expect(tools).toContain("navigate_reading");
-    expect(tools).toContain("list_books");
-    expect(tools).toContain("manage_collection");
-    expect(tools).toContain("get_conversation_insights");
-    expect(tools).toContain("present_books");
-    expect(seen).toEqual([global]);
-  });
+  for (const scope of [{ kind: "book", bookId: "b1" }, { kind: "global", threadId: "t1" }] as const) {
+    test(`${scope.kind}: the complete catalog uses families without legacy aliases`, () => {
+      const { deps } = createInMemoryDeps();
+      const seen: unknown[] = [];
+      deps.extraTools = scope => { seen.push(scope); return []; };
+      const tools = buildAgentTools(scope, deps);
+      const names = tools.map(tool => tool.name);
+      expect(names).toHaveLength(scope.kind === "book" ? 89 : 107);
+      expect(new Set(names).size).toBe(names.length);
+      const retired = [...TOOL_FAMILIES.flatMap(f => Object.values(f.members)), "edit_annotation", "get_navigation_toc"];
+      for (const name of retired) expect(names).not.toContain(name);
+      for (const name of ["query_conversation", "query_reading_stats", "query_book_text_tasks", "manage_book_text_task",
+        "reader_panels", "acquire_resource", "manage_resource", "resource_directory", "query_context_bundles",
+        "manage_context_bundle", "query_book_references", "control_book_reference", "get_toc", "read_chapter",
+        "search_book_text", "read_book_image", "get_reading_session", "apply_annotation_changes", "delete_annotation",
+        "update_settings", "get_operation_availability", "get_host_capabilities"]) expect(names).toContain(name);
+      for (const name of ["list_books", "list_collections", "manage_collection", "delete_collection", "delete_books",
+        "list_book_removal_cleanup", "manage_conversation", "present_books", "reading_action", "query_book_imports", "manage_book_import"])
+        expect(names.includes(name)).toBe(scope.kind === "global");
+      // A partially available family must not expose the unavailable branch.
+      const acquire = JSON.stringify(tools.find(tool => tool.name === "acquire_resource")!.parameters);
+      const conversation = JSON.stringify(tools.find(tool => tool.name === "query_conversation")!.parameters);
+      expect(acquire.includes('"const":"download"')).toBe(scope.kind === "global");
+      expect(conversation.includes('"const":"summary"')).toBe(scope.kind === "global");
+      expect(seen).toEqual([scope]);
+    });
+  }
 
   test("global book overview requires the id that list_books resolved", () => {
     const { deps } = createInMemoryDeps();
-    const tool = buildAgentTools(
-      { kind: "global", threadId: "t1" },
-      deps,
-    ).find((candidate) => candidate.name === "get_book_overview");
-
+    const tool = buildAgentTools({ kind: "global", threadId: "t1" }, deps).find(t => t.name === "get_book_overview");
     expect((tool?.parameters as { required?: string[] }).required).toEqual(["bookId"]);
   });
 });

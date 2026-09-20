@@ -12,7 +12,7 @@ import { bookRangeSchema } from "./book-range-schema";
 export function buildNavigationTools(scope: ThreadScope, deps: RuntimeDeps, state?: AgentTurnState): AgentTool[] {
   return [{
     name: "list_book_navigation_targets", label: "Book navigation targets",
-    description: "List up to 20 versioned source sections (kind=sections) or book-provided page labels (kind=pages). Get contentVersion from get_navigation_toc first; continue with nextOffset. Source index is zero-based reading order, not TOC ordinal or extracted chapter number. Sections include non-linear notes; PDF/comics use one source section per page. Pages are only an existing page-list, never invented printed numbers or screen page counts. Optional label matches the exact source page label, preserving duplicates; an available empty result means no match, absent means no page-list. Null location is not navigable. Copy a returned location to open_book. Reads navigation metadata only, not passage text, and does not grant spoiler access.",
+    description: "List up to 20 versioned source sections (kind=sections) or book-provided page labels (kind=pages). Get contentVersion from get_toc(view=navigation) first; continue with nextOffset. Source index is zero-based reading order, not TOC ordinal or extracted chapter number. Sections include non-linear notes; PDF/comics use one source section per page. Pages are only an existing page-list, never invented printed numbers or screen page counts. Optional label matches the exact source page label, preserving duplicates; an available empty result means no match, absent means no page-list. Null location is not navigable. Copy a returned location to open_book. Reads navigation metadata only, not passage text, and does not grant spoiler access.",
     parameters: Type.Object({ bookId: Type.Optional(Type.String()), contentVersion: Type.String({ minLength: 1, maxLength: 256 }),
       kind: Type.Union([Type.Literal("sections"), Type.Literal("pages")]), offset: Type.Optional(Type.Integer({ minimum: 0 })),
       label: Type.Optional(Type.String({ minLength: 1, maxLength: 300 })) }, { additionalProperties: false }),
@@ -24,11 +24,6 @@ export function buildNavigationTools(scope: ThreadScope, deps: RuntimeDeps, stat
       signal?.throwIfAborted();
       return textResult(result);
     },
-  }, {
-    name: "get_navigation_toc", label: "Navigation contents",
-    description: "Read the hierarchical navigation TOC with versioned locations. Ordinal is 1-based TOC order, NOT printed chapter numbering or read_chapter's extracted chapterIndex. Pass a returned location directly to open_book. A null location means a non-navigable heading.",
-    parameters: Type.Object({ bookId: Type.Optional(Type.String()) }),
-    execute: async (_id, params, signal) => textResult(await deps.bookText.getNavigationToc(resolveBookId(scope, (params as { bookId?: string }).bookId), signal)),
   }, {
     name: "find_book_locations", label: "Find book locations",
     description: "Find exact text matches and return versioned locations suitable for open_book. Unlike search_book_text this does not use token fallback. Pagination is bounded by matches and scanned sections; follow nextCursor to continue, including when a batch has no hits. Narrative searches stay behind the reading fence unless the reader explicitly grants spoilers.",

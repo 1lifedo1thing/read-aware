@@ -7,6 +7,7 @@ import type { AgentTurnState } from "./turn-state";
 export type ToolAvailability = { state: "available" | "unavailable" | "unknown"; reason?: string };
 const metadata = new WeakMap<AgentTool, ToolAvailability>();
 export const toolAvailability = (tool: AgentTool): ToolAvailability | undefined => metadata.get(tool);
+export const setToolAvailability = (tool: AgentTool, availability: ToolAvailability): void => { metadata.set(tool, availability); };
 const readerTools = new Set([
   "navigate_reading", "focus_reader", "set_reading_selection", "set_reader_controls",
   "set_reader_panel", "set_reader_panel_width", "configure_reading_mode", "control_read_aloud",

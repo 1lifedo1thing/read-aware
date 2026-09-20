@@ -441,7 +441,7 @@ export const lebonQuestionScenarios: AgentEvalScenario[] = [
         },
       ],
     },
-    expectation: { tools: { required: ["get_reading_stats"], noErrors: true } },
+    expectation: { tools: { required: ["query_reading_stats"], noErrors: true } },
     mustContain: ["3"],
     criteria: { seeded: "3.5h total" },
     rubric: ["Reports about three and a half hours naturally"],

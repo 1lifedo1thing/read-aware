@@ -35,8 +35,8 @@ test("source evidence keys cannot silently overwrite an unrelated capability sou
 
 test("import task controls have explicit actor mappings and are absent from book-scoped Agent tools", () => {
   const inventory = collectInventory();
-  for (const name of ["get_book_import_tasks", "cancel_book_import_task"]) {
-    expect(inventory.find(item => item.family === "Agent global" && item.name.endsWith(name))?.rows).toEqual(["LIB06", "CON06"]);
+  for (const name of ["query_book_imports", "manage_book_import"]) {
+    expect(inventory.find(item => item.family === "Agent global" && item.name.endsWith(name))?.rows).toEqual(expect.arrayContaining(["LIB06", "CON06"]));
     expect(inventory.some(item => item.family === "Agent book" && item.name.endsWith(name))).toBe(false);
   }
   for (const name of ["domains.library.commands.books.startImport", "domains.library.commands.books.cancelImportTask",
@@ -111,12 +111,12 @@ test("durable private source reads are explicit inventory entries, not raw globa
   expect(inventory.find(item => item.name === "storage::get_kv")?.rows).toEqual(["SYS01", "MEM13"]);
 });
 
-test("reading AI actions have explicit per-feature mappings in both Agent scopes", () => {
+test("reading actions use one global entry while book agents answer directly", () => {
   const inventory = collectInventory();
-  const actions = { explain_selection: "SET18", define_term: "SET19", translate_selection: "SET20", summarize_chapter: "SET21" };
-  for (const family of ["Agent global", "Agent book"]) for (const [name, row] of Object.entries(actions)) {
-    expect(inventory.find(item => item.family === family && item.name === name)?.rows).toEqual([row]);
-  }
+  expect(inventory.find(item => item.family === "Agent global" && item.name === "reading_action")?.rows)
+    .toEqual(["SET18", "SET19", "SET20", "SET21"]);
+  expect(inventory.some(item => item.family === "Agent book" && item.name === "reading_action")).toBe(false);
+  expect(inventory.some(item => item.family === "Agent book" && item.name === "get_reading_session")).toBe(true);
 });
 
 test("entity registry native, Agent and plugin entrypoints have explicit MEM08 mappings", () => {

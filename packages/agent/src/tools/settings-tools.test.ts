@@ -106,7 +106,8 @@ describe("settings tools", () => {
     expect(read).toMatchObject({
       settings: { target: { kind: "book", bookId: "book-1" } },
     });
-    expect(setting(stores.settings.settings, "reading.theme").value).toBe("dark");
+    expect(stores.bookSettings["book-1"]?.["reading.theme"]).toBe("dark");
+    expect(setting(stores.settings.settings, "reading.theme").value).toBe("warm");
   });
 
   test("updates unrelated preferences through the same path/value contract", async () => {
@@ -279,6 +280,7 @@ describe("settings tools", () => {
 
   test("warns when a global write remains shadowed by scoped overrides", async () => {
     const { deps, stores } = createInMemoryDeps();
+    stores.bookSettings["book-1"] = { "reading.theme": "warm", "reading.fontSize": "medium" };
     stores.settings.overrides = [
       {
         target: { kind: "book", bookId: "book-1" },

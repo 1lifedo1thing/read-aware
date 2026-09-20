@@ -59,7 +59,7 @@ export async function runDesktopAnnotationMutationProbe(bookId: string) {
       }
     }
     const fresh = await call("get_annotations", { annotationId: note.id });
-    results.agentEdit = await call("edit_annotation", { annotationId: note.id, body: "Agent conditional edit", expectedRevision: fresh.revision });
+    results.agentEdit = await call("apply_annotation_changes", { changes: [{ op: "updateNote", annotationId: note.id, body: "Agent conditional edit", expectedRevision: fresh.revision }] });
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
     try {

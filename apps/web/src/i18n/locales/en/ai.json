@@ -59,7 +59,26 @@
       "fallback": "Working",
       "failed": "failed",
       "web_search": "Searching the web",
-      "web_fetch": "Reading web page"
+      "web_fetch": "Reading web page",
+      "query_conversation": "Reading conversation history",
+      "query_reading_stats": "Checking reading statistics",
+      "query_book_text_tasks": "Checking text preparation",
+      "manage_book_text_task": "Managing text preparation",
+      "reader_panels": "Managing reader panels",
+      "model_catalog": "Checking model catalog",
+      "acquire_resource": "Preparing a file",
+      "manage_resource": "Working with a file",
+      "resource_directory": "Working with a directory",
+      "query_book_imports": "Checking book imports",
+      "manage_book_import": "Managing book import",
+      "query_durable_jobs": "Checking saved tasks",
+      "manage_durable_job": "Managing a saved task",
+      "query_context_bundles": "Reading saved context",
+      "manage_context_bundle": "Saving or exporting context",
+      "query_book_references": "Reading book references",
+      "control_book_reference": "Showing a book reference",
+      "reading_action": "Starting a reading task",
+      "apply_annotation_changes": "Updating annotations"
     },
     "interaction": {
       "form": {

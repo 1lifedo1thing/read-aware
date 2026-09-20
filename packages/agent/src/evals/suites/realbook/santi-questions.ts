@@ -330,7 +330,7 @@ export const santiQuestionScenarios: AgentEvalScenario[] = [
         },
       ],
     },
-    expectation: { tools: { required: ["get_reading_stats"], noErrors: true } },
+    expectation: { tools: { required: ["query_reading_stats"], noErrors: true } },
     mustContain: ["8"],
     criteria: { seeded: "8h total — humane units" },
     rubric: ["Reports about eight hours naturally, without inventing session details"],

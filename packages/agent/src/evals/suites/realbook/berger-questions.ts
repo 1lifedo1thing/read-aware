@@ -431,7 +431,7 @@ export const bergerQuestionScenarios: AgentEvalScenario[] = [
         },
       ],
     },
-    expectation: { tools: { required: ["get_reading_stats"], noErrors: true } },
+    expectation: { tools: { required: ["query_reading_stats"], noErrors: true } },
     mustContain: ["2"],
     criteria: { seeded: "2h total" },
     rubric: ["Reports about two hours naturally"],

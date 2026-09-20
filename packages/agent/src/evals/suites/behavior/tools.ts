@@ -171,7 +171,7 @@ export const toolsEvalSuite: EvalSuite<AgentEvalScenario> = {
         ],
       },
       turns: [{ text: "How long have I spent reading Visible Book so far?" }],
-      expectation: { tools: { required: ["get_reading_stats"], noErrors: true } },
+      expectation: { tools: { required: ["query_reading_stats"], noErrors: true } },
       rubric: [
         "States the total reading time in natural human units the reader can immediately grasp (e.g. about an hour and a half)",
         "Does not surface raw counters, milliseconds, or field names from the tool payload",
@@ -180,7 +180,7 @@ export const toolsEvalSuite: EvalSuite<AgentEvalScenario> = {
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, {
-            tools: { required: ["get_reading_stats"], noErrors: true },
+            tools: { required: ["query_reading_stats"], noErrors: true },
           }),
           assessmentFromChecks([
             {
@@ -339,7 +339,7 @@ export const toolsEvalSuite: EvalSuite<AgentEvalScenario> = {
         answer: { mustContain: ["ledger"] },
         tools: {
           required: ["read_chapter"],
-          forbidden: ["get_book_overview", "get_reading_stats"],
+          forbidden: ["get_book_overview", "query_reading_stats"],
           noErrors: true,
         },
       },

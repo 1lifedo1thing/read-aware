@@ -57,7 +57,26 @@
       "fallback": "處理中",
       "failed": "失敗",
       "web_search": "搜尋網路",
-      "web_fetch": "讀取網頁"
+      "web_fetch": "讀取網頁",
+      "query_conversation": "正在查詢對話記錄",
+      "query_reading_stats": "正在查詢閱讀統計",
+      "query_book_text_tasks": "正在查詢正文準備進度",
+      "manage_book_text_task": "正在管理正文準備工作",
+      "reader_panels": "正在調整閱讀器側欄",
+      "model_catalog": "正在查詢模型目錄",
+      "acquire_resource": "正在準備檔案",
+      "manage_resource": "正在處理檔案",
+      "resource_directory": "正在存取檔案目錄",
+      "query_book_imports": "正在檢查書籍匯入",
+      "manage_book_import": "正在處理書籍匯入",
+      "query_durable_jobs": "正在查詢工作進度",
+      "manage_durable_job": "正在管理工作",
+      "query_context_bundles": "正在讀取已存上下文",
+      "manage_context_bundle": "正在儲存或匯出上下文",
+      "query_book_references": "正在讀取書中引用",
+      "control_book_reference": "正在顯示書中引用",
+      "reading_action": "正在啟動閱讀工作",
+      "apply_annotation_changes": "正在更新標註"
     },
     "interaction": {
       "form": {

@@ -19,15 +19,15 @@ export function buildBookImageTools(scope: ThreadScope, deps: RuntimeDeps, state
     try { return await read(); }
     catch (error) {
       if (errorCode(error) !== "reader/stale-location") throw error;
-      const args = scope.kind === "book" ? {} : { bookId };
+      const args = scope.kind === "book" ? { view: "navigation" } : { bookId, view: "navigation" };
       throw new AppError("reader/stale-location",
-        `The supplied contentVersion or image descriptor is stale or invented. Do not retry the same arguments. Next call get_navigation_toc with ${JSON.stringify(args)}, then use its returned contentVersion and source sectionIndex in list_book_images. Copy a fresh returned image descriptor to read_book_image. This failure does not mean there are no images. If discovery fails, report that failure instead of repeating this call.`,
+        `The supplied contentVersion or image descriptor is stale or invented. Do not retry the same arguments. Next call get_toc with ${JSON.stringify(args)}, then use its returned contentVersion and source sectionIndex in list_book_images. Copy a fresh returned image descriptor to read_book_image. This failure does not mean there are no images. If discovery fails, report that failure instead of repeating this call.`,
         { cause: error });
     }
   }
   function access(bookId: string, raw: unknown) {
     if (scope.kind === "book" && bookId !== scope.bookId) throw new AppError("memory/forbidden",
-      "This book context cannot access that image bookId. For the current book, call get_navigation_toc with {} and list_book_images without bookId; use their returned source version and image descriptor. An access error does not mean the book has no images.");
+      "This book context cannot access that image bookId. For the current book, call get_toc(view=navigation) and list_book_images without bookId; use their returned source version and image descriptor. An access error does not mean the book has no images.");
     const current = scope.kind === "book", grant = spoilerGranted(raw);
     assertSpoilerPermission(grant, state, current);
     return { current, grant, fence: current && state?.spoilerFence && !grant ? { throughChapterIndex: state.spoilerFence.throughChapterIndex } : {} };

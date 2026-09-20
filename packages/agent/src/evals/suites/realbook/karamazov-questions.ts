@@ -368,7 +368,7 @@ export const karamazovQuestionScenarios: AgentEvalScenario[] = [
         },
       ],
     },
-    expectation: { tools: { required: ["get_reading_stats"], noErrors: true } },
+    expectation: { tools: { required: ["query_reading_stats"], noErrors: true } },
     mustContain: ["5"],
     criteria: { seeded: "5.5h total — the answer must report it in humane units, not raw counters" },
     rubric: [

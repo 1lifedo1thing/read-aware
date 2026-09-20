@@ -18,7 +18,7 @@ test("stale image sources preserve the error code and give the model an executab
       const params = tool.name === "list_book_images" ? { bookId: "book", contentVersion: "1.0", sectionIndex: 0 } : { image };
       await expect(tool.execute("stale", params)).rejects.toMatchObject({ code: "reader/stale-location" });
       await expect(tool.execute("stale", params)).rejects.toThrow(scope.kind === "book"
-        ? "get_navigation_toc with {}" : 'get_navigation_toc with {"bookId":"book"}');
+        ? 'get_toc with {"view":"navigation"}' : 'get_toc with {"bookId":"book","view":"navigation"}');
     }
   }
   const denied = new AppError("memory/forbidden", "Access denied");

@@ -70,7 +70,7 @@ test("edit and approved ask deletion use exact lookup, retaining the approval bo
   const { deps, stores, tool } = fixture();
   deps.annotations.listAnnotations = async () => { throw new Error("Unexpected full list"); };
   const expectedRevision = (await deps.annotations.inspectAnnotation("note"))!.revision;
-  await tool("edit_annotation").execute("edit", { annotationId: "note", body: "Revised", expectedRevision });
+  await tool("apply_annotation_changes").execute("edit", { changes: [{ op: "updateNote", annotationId: "note", body: "Revised", expectedRevision }] });
   expect(await deps.annotations.getAnnotation(note.id)).toMatchObject({ body: "Revised" });
   const result = parsed(await tool("delete_annotation").execute("delete", { annotationId: "ask" }));
   expect(result).toMatchObject({ deleted: true, annotationKind: "ask" });
@@ -96,9 +96,9 @@ test("editing requires the observed revision and never overwrites a newer note",
   const observed = parsed(await tool("get_annotations").execute("read", { annotationId: "note" }));
   expect(observed.revision).toMatch(/^ann1:[a-f0-9]{64}$/);
   await deps.annotations.applyChanges([{ op: "updateNote", annotationId: "note", body: "Changed by another actor", expectedRevision: (await deps.annotations.inspectAnnotation("note"))!.revision }]);
-  await expect(tool("edit_annotation").execute("edit", { annotationId: "note", body: "Lost edit", expectedRevision: observed.revision })).rejects.toMatchObject({ code: "annotations/conflict" });
+  await expect(tool("apply_annotation_changes").execute("edit", { changes: [{ op: "updateNote", annotationId: "note", body: "Lost edit", expectedRevision: observed.revision }] })).rejects.toMatchObject({ code: "annotations/conflict" });
   expect(await deps.annotations.getAnnotation("note")).toMatchObject({ body: "Changed by another actor" });
-  await expect(tool("edit_annotation").execute("edit", { annotationId: "note", body: "No token" })).rejects.toMatchObject({ code: "annotations/invalid-input" });
+  await expect(tool("apply_annotation_changes").execute("edit", { changes: [{ op: "updateNote", annotationId: "note", body: "No token" }] })).rejects.toMatchObject({ code: "annotations/invalid-input" });
 });
 
 test("a change during deletion approval invalidates that approval's target version", async () => {

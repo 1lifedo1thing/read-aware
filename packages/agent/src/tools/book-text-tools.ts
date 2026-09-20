@@ -87,13 +87,21 @@ export function buildBookTextTools(
     name: "get_toc",
     label: "Table of contents",
     description:
-      "Get a book's indexed table of contents. Each entry carries chapterIndex (an internal tool coordinate, NOT a printed chapter number) and the original title. Match the reader's chapter number/name against the title, including any part/volume; copy its chapterIndex without arithmetic. Front matter and unnumbered sections also have indices. In replies cite the title; never invent a chapter number from the index. chars = text length (one read_chapter part covers 12000 chars). A TOC does not prove whether a topic appears in the prose: if the reader asks you to check coverage, continue with search_book_text or read_chapter in this same turn instead of offering to look later. Empty results carry textState on current hosts (legacy hosts use textStatus). Only ready plus textless proves every required section was read successfully with no extractable text; available text can have no indexed chapters. Preparing, unsupported and unavailable are not textless. Partial or failed preparation returns an error. Use get_book_text_status for a read-only check without starting extraction. bookId defaults to the current book.",
+      "Read table of contents. view=navigation returns the original hierarchical TOC with versioned locations for open_book; ordinal is TOC order, never a read_chapter coordinate. Null locations are non-navigable headings. Default view=chapters returns the indexed table of contents. Each entry carries chapterIndex (an internal tool coordinate, NOT a printed chapter number) and the original title. Match the reader's chapter number/name against the title, including any part/volume; copy its chapterIndex without arithmetic. Front matter and unnumbered sections also have indices. In replies cite the title; never invent a chapter number from the index. chars = text length (one read_chapter part covers 12000 chars). A TOC does not prove whether a topic appears in the prose: if the reader asks you to check coverage, continue with search_book_text or read_chapter in this same turn instead of offering to look later. Empty results carry textState on current hosts (legacy hosts use textStatus). Only ready plus textless proves every required section was read successfully with no extractable text; available text can have no indexed chapters. Preparing, unsupported and unavailable are not textless. Partial or failed preparation returns an error. Use get_book_text_status for a read-only check without starting extraction. bookId defaults to the current book.",
     parameters: Type.Object({
       bookId: Type.Optional(Type.String()),
+      view: Type.Optional(Type.Union([Type.Literal("chapters"), Type.Literal("navigation")], { description: "chapters (default): indexed chapter titles/coordinates for read_chapter. navigation: original nested TOC with versioned locations for open_book; source section indices are NOT chapterIndex." })),
     }),
-    execute: async (_id, params) => {
-      const { bookId } = params as { bookId?: string };
+    execute: async (_id, params, signal) => {
+      const { bookId, view = "chapters" } = params as { bookId?: string; view?: "chapters" | "navigation" };
       const target = resolveBookId(bookId);
+      signal?.throwIfAborted();
+      if (view === "navigation") {
+        const navigation = await deps.bookText.getNavigationToc(target, signal);
+        signal?.throwIfAborted();
+        return textResult({ ...navigation, coordinatePolicy: "Versioned navigation locations, not indexed chapter coordinates. Use returned locations with open_book; use view=chapters for read_chapter indices. Cite original titles, never infer printed numbering from an index." });
+      }
+      if (view !== "chapters") throw new AppError("reader/invalid-target", "Unknown table of contents view");
       const toc = await deps.bookText.getToc(target);
       if (toc.length === 0 && deps.bookText.getTextState) {
         const state = await deps.bookText.getTextState(target);

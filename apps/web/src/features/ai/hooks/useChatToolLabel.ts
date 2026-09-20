@@ -9,6 +9,26 @@ import { pluginToolsAtom } from "../../plugins/state/plugin-store";
  * some) fall back to a generic "working" row instead of disappearing.
  */
 const TOOL_LABEL_KEYS = {
+  query_conversation: "chat.tools.query_conversation",
+  query_reading_stats: "chat.tools.query_reading_stats",
+  query_book_text_tasks: "chat.tools.query_book_text_tasks",
+  manage_book_text_task: "chat.tools.manage_book_text_task",
+  reader_panels: "chat.tools.reader_panels",
+  model_catalog: "chat.tools.model_catalog",
+  acquire_resource: "chat.tools.acquire_resource",
+  manage_resource: "chat.tools.manage_resource",
+  resource_directory: "chat.tools.resource_directory",
+  query_book_imports: "chat.tools.query_book_imports",
+  manage_book_import: "chat.tools.manage_book_import",
+  query_durable_jobs: "chat.tools.query_durable_jobs",
+  manage_durable_job: "chat.tools.manage_durable_job",
+  query_context_bundles: "chat.tools.query_context_bundles",
+  manage_context_bundle: "chat.tools.manage_context_bundle",
+  query_book_references: "chat.tools.query_book_references",
+  control_book_reference: "chat.tools.control_book_reference",
+  reading_action: "chat.tools.reading_action",
+  apply_annotation_changes: "chat.tools.apply_annotation_changes",
+
   web_search: "chat.tools.web_search",
   web_fetch: "chat.tools.web_fetch",
   search_memory: "chat.tools.search_memory",

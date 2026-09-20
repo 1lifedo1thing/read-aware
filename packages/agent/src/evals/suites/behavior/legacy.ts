@@ -136,7 +136,7 @@ export const legacyEvalSuite: EvalSuite<AgentEvalScenario> = {
         },
       ],
       expectation: {
-        tools: { requiredAny: ["search_conversation", "get_recent_turns"], noErrors: true },
+        tools: { requiredAny: ["query_conversation"], noErrors: true },
         answer: { mustContain: ["接受"] },
       },
       criteria: {
@@ -148,7 +148,7 @@ export const legacyEvalSuite: EvalSuite<AgentEvalScenario> = {
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, {
-            tools: { requiredAny: ["search_conversation", "get_recent_turns"], noErrors: true },
+            tools: { requiredAny: ["query_conversation"], noErrors: true },
             answer: { mustContain: ["接受"] },
           }),
           fenceDisciplineAssessment(observation, READER_CHAPTER),
@@ -235,7 +235,7 @@ export const legacyEvalSuite: EvalSuite<AgentEvalScenario> = {
         },
       ],
       expectation: {
-        tools: { requiredAny: ["search_conversation", "get_recent_turns"], noErrors: true },
+        tools: { requiredAny: ["query_conversation"], noErrors: true },
         answer: { mustContain: ["上帝"] },
       },
       criteria: {
@@ -246,7 +246,7 @@ export const legacyEvalSuite: EvalSuite<AgentEvalScenario> = {
       evaluate: (observation) =>
         combineAssessments(
           evaluateAgentTrace(observation, {
-            tools: { requiredAny: ["search_conversation", "get_recent_turns"], noErrors: true },
+            tools: { requiredAny: ["query_conversation"], noErrors: true },
             answer: { mustContain: ["上帝"] },
           }),
           cjkAnswerAssessment(observation),

@@ -22,9 +22,13 @@ test("host discovery filters ambient failures, preserves recovery/queries and ex
 
 test("selection, mode, image and controls gate independently; failed metadata does not block pure queries", () => {
   const {deps}=createInMemoryDeps();deps.reader.toolContext=()=>({...ready(),selection:false,controls:false,panels:false,modes:false,playback:false,imageBookId:null});
-  const names=buildAgentTools({kind:"global",threadId:"global"},deps).map(tool=>tool.name);
+  const tools=buildAgentTools({kind:"global",threadId:"global"},deps);
+  const names=tools.map(tool=>tool.name);
+  const readingSchema=JSON.stringify(tools.find(tool=>tool.name==="reading_action")!.parameters);
+  for (const operation of ["explain","define","translate"]) expect(readingSchema).not.toContain(`"const":"${operation}"`);
+  expect(readingSchema).toContain('"const":"summarize"');
   for(const name of ["explain_selection","define_term","translate_selection","set_reader_controls","set_reader_panel","configure_reading_mode","control_read_aloud","control_reader_image"])expect(names).not.toContain(name);
-  expect(names).toContain("get_reading_session");expect(names).toContain("summarize_chapter");expect(names).toContain("list_books");
+  expect(names).toContain("get_reading_session");expect(names).toContain("reading_action");expect(names).toContain("list_books");
   deps.reader.toolContext=()=>{throw Error("PRIVATE_RUNTIME_ERROR");};
   const failed=buildAgentTools({kind:"global",threadId:"global"},deps);
   expect(failed.some(tool=>tool.name==="focus_reader")).toBe(false);expect(failed.some(tool=>tool.name==="list_books")).toBe(true);
@@ -34,6 +38,8 @@ test("selection, mode, image and controls gate independently; failed metadata do
 test("turn-captured selection privacy is not widened by later preferences", () => {
   const {deps}=createInMemoryDeps();deps.reader.toolContext=ready;
   const state=createAgentTurnState();state.readingContextPermissions={selection:false,surrounding:true};
-  const names=buildAgentTools({kind:"global",threadId:"private"},deps,state).map(tool=>tool.name);
+  const tools=buildAgentTools({kind:"global",threadId:"private"},deps,state);
+  const names=tools.map(tool=>tool.name);
+  expect(JSON.stringify(tools.find(tool=>tool.name==="reading_action")!.parameters)).not.toContain('"const":"explain"');
   expect(names).not.toContain("explain_selection");expect(names).toContain("get_reading_session");
 });

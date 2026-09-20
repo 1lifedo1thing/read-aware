@@ -1,3 +1,4 @@
+import { operationCall } from "../testing/tool-operation";
 import { describe, expect, test } from "bun:test";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import type { Id } from "@read-aware/core";
@@ -9,9 +10,9 @@ import { resolveContextBundleScope } from "./context-bundle-tools";
 const BOOK = "book-1" as Id, book: ThreadScope = { kind: "book", bookId: BOOK }, global: ThreadScope = { kind: "global", threadId: "t1" };
 const text = (result: Awaited<ReturnType<AgentTool["execute"]>>) => JSON.parse((result.content[0] as { text: string }).text);
 function tool(scope: ThreadScope, name: string, deps = createInMemoryDeps({ books: [{ id: BOOK, title: "Book", status: "reading" }], profile: "Reads slowly.", insights: { "book:book-1": "Discussed chapter one." } }).deps) {
-  const found = buildAgentTools(scope, deps).find(candidate => candidate.name === name);
+  const found = buildAgentTools(scope, deps).find(candidate => candidate.name === operationCall(name).name);
   if (!found) throw new Error(`${name} missing`);
-  return { run: (params: unknown, signal?: AbortSignal) => found.execute("call", params, signal), deps };
+  return { run: (params: unknown, signal?: AbortSignal) => found.execute("call", operationCall(name, params as Record<string, unknown>).arguments, signal), deps };
 }
 
 describe("context bundle scope resolution", () => {

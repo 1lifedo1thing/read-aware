@@ -119,7 +119,7 @@ describe("conversation flow", () => {
     const model = makeFaux();
     let toolResultPayload = "";
     faux.setResponses([
-      fauxAssistantMessage([fauxToolCall("search_conversation", { queries: ["利贝特"] })], {
+      fauxAssistantMessage([fauxToolCall("query_conversation", { request: { operation: "search", queries: ["利贝特"] } })], {
         stopReason: "toolUse",
       }),
       (context) => {
@@ -177,7 +177,7 @@ describe("conversation flow", () => {
     const model = makeFaux();
     let toolResultPayload = "";
     faux.setResponses([
-      fauxAssistantMessage([fauxToolCall("get_recent_turns", { n: 4 })], {
+      fauxAssistantMessage([fauxToolCall("query_conversation", { request: { operation: "recent", n: 4 } })], {
         stopReason: "toolUse",
       }),
       (context) => {
@@ -204,7 +204,7 @@ describe("conversation flow", () => {
     const model = makeFaux();
     let toolResultPayload = "";
     faux.setResponses([
-      fauxAssistantMessage([fauxToolCall("get_conversation_insights", { bookId: "b1" })], {
+      fauxAssistantMessage([fauxToolCall("query_conversation", { request: { operation: "summary", bookId: "b1" } })], {
         stopReason: "toolUse",
       }),
       (context) => {

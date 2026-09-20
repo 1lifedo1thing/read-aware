@@ -399,7 +399,7 @@ export const refactoringQuestionScenarios: AgentEvalScenario[] = [
         },
       ],
     },
-    expectation: { tools: { required: ["get_reading_stats"], noErrors: true } },
+    expectation: { tools: { required: ["query_reading_stats"], noErrors: true } },
     mustContain: ["12"],
     criteria: { seeded: "12h total" },
     rubric: ["Reports about twelve hours naturally, in Chinese"],

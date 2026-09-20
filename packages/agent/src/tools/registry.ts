@@ -43,6 +43,7 @@ import { buildContextBundleTools } from "./context-bundle-tools";
 import { buildOnboardingTool } from "./onboarding-tool";
 import type { AgentTurnState } from "./turn-state";
 import { prepareHostTools } from "./tool-availability";
+import { consolidateHostTools } from "./consolidate-tools";
 
 export type { AgentTurnState, SpoilerFence } from "./turn-state";
 export { createAgentTurnState } from "./turn-state";
@@ -52,7 +53,7 @@ export { createAgentTurnState } from "./turn-state";
 // entire host catalog. Domain permissions still belong to the original tools.
 const CORE_TOOLS = new Set([
   "get_host_capabilities", "ask_user", "list_books", "get_book_overview",
-  "get_recent_turns", "search_conversation", "get_conversation_insights",
+  "query_conversation",
   "get_annotations", "get_toc", "read_chapter", "search_book_text",
   "query_book_graph", "search_memory", "remember", "get_user_profile",
   "get_settings", "get_setting_options", "update_settings",
@@ -70,7 +71,7 @@ export function buildAgentTools(
 ): AgentTool[] {
   const hostTools: AgentTool[] = [
     ...(scope.kind === "global" ? [buildOnboardingTool(scope, deps)] : []),
-    ...buildReadingAiTools(scope, deps),
+    ...(scope.kind === "global" ? buildReadingAiTools(scope, deps) : []),
     ...buildEnvironmentTools(deps),
     ...buildOperationAvailabilityTools(deps, scope),
     ...buildWindowTools(deps),
@@ -110,7 +111,7 @@ export function buildAgentTools(
     ...buildSettingsTools(scope, deps),
   ];
   const extensions = deps.extraTools?.(scope) ?? [];
-  const prepared = prepareHostTools(hostTools, scope, deps, turnState);
+  const prepared = consolidateHostTools(prepareHostTools(hostTools, scope, deps, turnState).all);
   const loaded = turnState ? (turnState.loadedTools ??= new Set<string>()) : new Set<string>();
   const discover = modelFacing ? (names: string[]) => {
     for (const name of names) {

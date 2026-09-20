@@ -136,44 +136,6 @@ export function buildAnnotationTools(scope: ThreadScope, deps: RuntimeDeps, stat
     },
   };
 
-  const editAnnotation: AgentTool = {
-    name: "edit_annotation",
-    label: "Edit annotation",
-    description:
-      "Edit an existing annotation the user clearly identifies: replace a note's body, or change a highlight's color. First read get_annotations(annotationId) and pass its revision as expectedRevision. A conflict means nothing changed: re-read and reconsider, never blindly rebase the overwrite. Pass the field matching the annotation's kind.",
-    parameters: Type.Object({
-      annotationId: Type.String(),
-      expectedRevision: Type.String({ description: "Revision from the exact annotation read" }),
-      body: Type.Optional(Type.String({ description: "New body (notes only)" })),
-      color: Type.Optional(highlightColorSchema),
-    }),
-    executionMode: "sequential",
-    execute: async (_id, params, signal) => {
-      const { annotationId, body, color, expectedRevision } = params as {
-        annotationId: string;
-        body?: string;
-        color?: HighlightColor;
-        expectedRevision: string;
-      };
-      if (body === undefined && color === undefined) {
-        throw new Error("pass body (note) or color (highlight)");
-      }
-      const annotation = await deps.annotations.getAnnotation(annotationId as Id);
-      if (!annotation) throw new Error(`annotation not found: ${annotationId}`);
-      if (annotation.kind === "note") {
-        if (!body?.trim()) throw new Error(`${annotationId} is a note; pass a non-empty body`);
-        await deps.annotations.applyChanges([{ op: "updateNote", annotationId, body: body.trim(), expectedRevision }], signal);
-        return textResult({ updated: true, annotationId, body: body.trim() });
-      }
-      if (annotation.kind === "highlight") {
-        if (!color) throw new Error(`${annotationId} is a highlight; pass color`);
-        await deps.annotations.applyChanges([{ op: "recolorHighlight", annotationId, color, expectedRevision }], signal);
-        return textResult({ updated: true, annotationId, color });
-      }
-      throw new Error(`${annotationId} is a recorded question and cannot be edited`);
-    },
-  };
-
   const deleteAnnotation: AgentTool = {
     name: "delete_annotation",
     label: "Delete annotation",
@@ -208,5 +170,5 @@ export function buildAnnotationTools(scope: ThreadScope, deps: RuntimeDeps, stat
     },
   };
 
-  return [createAnnotation, editAnnotation, deleteAnnotation, buildAnnotationBatchTool(scope, deps)];
+  return [createAnnotation, deleteAnnotation, buildAnnotationBatchTool(scope, deps)];
 }
