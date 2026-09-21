@@ -81,6 +81,43 @@ describe("engine search", () => {
   });
 });
 
+describe("folded search", () => {
+  test("matches only whole graphemes and whole source code points", () => {
+    // A single member of a ZWJ family is not the family; the joiner is a format character.
+    expect([...search(["👨\u200d👩\u200d👧"], "👨")]).toEqual([]);
+    expect([...search(["👨\u200d👩\u200d👧"], "👨\u200d👩\u200d👧")]).toHaveLength(1);
+    // Accents matter: the base letter alone does not match a precomposed or decomposed accented letter.
+    expect([...search(["é e\u0301"], "e", { sensitivity: "accent" })]).toEqual([]);
+    expect([...search(["é e\u0301"], "é", { sensitivity: "accent" })].map(r => r.excerpt.match)).toEqual(["é", "e\u0301"]);
+    // Accents folded: both forms match and the range covers the mark.
+    expect([...search(["é e\u0301"], "e", { sensitivity: "base" })].map(r => r.excerpt.match)).toEqual(["é", "e\u0301"]);
+  });
+  test("compatibility forms fold to their plain letters unless the search is exact", () => {
+    expect([...search(["Ｃａｆé ﬁne"], "cafe fine", { sensitivity: "base" })]).toHaveLength(1);
+    expect([...search(["Ｃａｆé"], "CAFÉ", { sensitivity: "accent" })]).toHaveLength(1);
+    expect([...search(["Ｃａｆé"], "Café", { sensitivity: "variant" })]).toEqual([]);
+    // The dot above İ is an accent: it survives accent-sensitive folding and falls with base folding.
+    expect([...search(["İstanbul"], "istanbul", { sensitivity: "accent", locales: "en" })]).toEqual([]);
+    expect([...search(["İstanbul"], "istanbul", { sensitivity: "base", locales: "en" })].map(r => r.excerpt.match)).toEqual(["İstanbul"]);
+  });
+  test("whole words respect boundaries after folding and across nodes", () => {
+    expect([...search(["Hello WOR", "LD, hello"], "world", { granularity: "word" })].map(r => r.excerpt.match)).toEqual(["WORLD"]);
+    expect([...search(["Worldwide"], "world", { granularity: "word", sensitivity: "base" })]).toEqual([]);
+    expect([...search(["a b  c"], "b c", { granularity: "word" })].map(r => r.excerpt.match)).toEqual(["b  c"]);
+  });
+  test("a book-length section folds and scans in linear time", () => {
+    const filler = "The quick brown fox jumps over the lazy dog while thinking about inheritance. ";
+    const text = filler.repeat(4000) + "It is often hard to see the misuse until it is in the rear-view mirror.";
+    const started = performance.now();
+    const results = [...search([text], "rear-view mirror", { sensitivity: "accent" })];
+    const elapsed = performance.now() - started;
+    expect(results).toHaveLength(1);
+    expect(results[0].range.endOffset).toBe(text.length - 1);
+    // The collator window took minutes on 300 KB; folding must stay well under a second.
+    expect(elapsed).toBeLessThan(1500);
+  });
+});
+
 describe("document text walking", () => {
   test("search returns DOM ranges and ignores script/style content", () => withDom(window => {
     const doc = window.document;

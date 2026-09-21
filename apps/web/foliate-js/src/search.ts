@@ -67,54 +67,136 @@ const simpleSearch = function* (strs: string[], query: string, options: SearchOp
     }
 }
 
-type Segment = { start: number; end: number; text: string }
+type Folded = { text: string; starts: number[]; ends: number[] }
 
-function* segmentsOf(segmenter: Intl.Segmenter, text: string): Generator<Segment | undefined, void, unknown> {
-    let whitespace: Segment | undefined
+const FORMAT = /\p{Format}/u
+const MARKS = /\p{M}/gu
+const SPACE = /\s/u
+
+/**
+ * Fold text the way a collator would compare it, but once and linearly:
+ * NFKD (canonical and compatibility equivalence, so full-width and ligature
+ * forms meet their plain letters), combining marks dropped when accents do not
+ * matter, lower-cased when case does not matter, whitespace runs collapsed to
+ * one space and format characters made transparent. Every folded UTF-16 unit
+ * remembers the source code point it came from, so a match maps back to the
+ * exact source range. Yields periodically for cooperative scheduling.
+ */
+function* foldText(text: string, locales: string | string[], foldCase: boolean, foldAccents: boolean): Generator<undefined, Folded, unknown> {
+    const parts: string[] = [], starts: number[] = [], ends: number[] = []
+    let space = -1
     let count = 0
-    for (const { index, segment } of segmenter.segment(text)) {
-        if (++count % 256 === 0) yield undefined
-        if (!/[^\p{Format}]/u.test(segment)) continue
-        if (/^\s+$/u.test(segment)) {
-            if (whitespace) whitespace.end = index + segment.length
-            else whitespace = { start: index, end: index + segment.length, text: ' ' }
+    const whitespace = (index: number, end: number) => {
+        if (space === -1) { space = starts.length; parts.push(' '); starts.push(index); ends.push(end) }
+        else ends[space] = end
+    }
+    for (let index = 0; index < text.length;) {
+        if (++count % 2048 === 0) yield undefined
+        const unit = text.charCodeAt(index)
+        // ASCII and CJK ideographs are their own NFKD form; only ASCII letters
+        // have case. Book text is almost entirely one or the other, so this
+        // path decides the cost of folding.
+        if (unit < 0x80) {
+            if (unit === 0x20 || unit >= 0x09 && unit <= 0x0d) whitespace(index, index + 1)
+            else {
+                space = -1
+                parts.push(String.fromCharCode(foldCase && unit >= 0x41 && unit <= 0x5a ? unit + 0x20 : unit))
+                starts.push(index); ends.push(index + 1)
+            }
+            index++
             continue
         }
-        if (whitespace) { yield whitespace; whitespace = undefined }
-        yield { start: index, end: index + segment.length, text: segment }
+        if (unit >= 0x4e00 && unit <= 0x9fff || unit >= 0x3400 && unit <= 0x4dbf) {
+            space = -1
+            parts.push(text[index]); starts.push(index); ends.push(index + 1)
+            index++
+            continue
+        }
+        const code = text.codePointAt(index) ?? unit
+        const length = code > 0xffff ? 2 : 1
+        const end = index + length
+        const char = text.slice(index, end)
+        if (SPACE.test(char)) { whitespace(index, end); index = end; continue }
+        space = -1
+        if (!FORMAT.test(char)) {
+            let piece = char.normalize('NFKD')
+            if (foldAccents) piece = piece.replace(MARKS, '')
+            if (foldCase) piece = piece.toLocaleLowerCase(locales)
+            if (piece) {
+                parts.push(piece)
+                for (let offset = 0; offset < piece.length; offset++) { starts.push(index); ends.push(end) }
+            } else if (ends.length) {
+                // A bare combining mark belongs to the letter before it.
+                ends[ends.length - 1] = end
+            }
+        }
+        index = end
     }
-    if (whitespace) yield whitespace
+    return { text: parts.join(''), starts, ends }
 }
 
-const segmenterSearch = function* (strs: string[], query: string, options: SearchOptions = {}): Generator<SearchResult | undefined, void, unknown> {
+/** Whether `from` and `to` (source offsets) both fall on segment boundaries. */
+function onBoundaries(segmenter: Intl.Segmenter, text: string, from: number, to: number, context: number): boolean {
+    const low = Math.max(0, from - context), high = Math.min(text.length, to + context)
+    let startsOk = from === 0 || from === text.length, endsOk = to === 0 || to === text.length
+    for (const { index, segment } of segmenter.segment(text.slice(low, high))) {
+        const start = low + index, end = start + segment.length
+        if (start === from) startsOk = true
+        if (end === to) endsOk = true
+        if (start > to) break
+    }
+    return startsOk && endsOk
+}
+
+/**
+ * Case-, accent- and width-insensitive search in linear time: fold the
+ * content once, scan with indexOf, then confirm each candidate covers whole
+ * source code points and sits on grapheme (or word) boundaries. This replaces
+ * a collator-compared sliding window that cost a string allocation and a
+ * comparison per grapheme, which made a book-length section take minutes.
+ */
+const foldedSearch = function* (strs: string[], query: string, options: SearchOptions = {}): Generator<SearchResult | undefined, void, unknown> {
     const { locales = 'en', granularity = 'grapheme', sensitivity = 'base' } = options
-    let segmenter: Intl.Segmenter, collator: Intl.Collator
-    try {
-        segmenter = new Intl.Segmenter(locales, { granularity })
-        collator = new Intl.Collator(locales, { sensitivity })
-    } catch (e) {
+    const foldCase = sensitivity === 'base' || sensitivity === 'accent'
+    const foldAccents = sensitivity === 'base' || sensitivity === 'case'
+    let segmenter: Intl.Segmenter
+    let localeTag: string | string[] = locales
+    try { segmenter = new Intl.Segmenter(locales, { granularity }) }
+    catch (e) {
         console.warn(e)
+        localeTag = 'en'
         segmenter = new Intl.Segmenter('en', { granularity })
-        collator = new Intl.Collator('en', { sensitivity })
     }
-    const querySegments: Segment[] = []
-    for (const segment of segmentsOf(segmenter, query)) {
-        if (segment) querySegments.push(segment)
-        else yield undefined
-    }
-    if (!querySegments.length) return
-    const normalizedQuery = querySegments.map(segment => segment.text).join('')
+    const needle = (yield* foldText(query, localeTag, foldCase, foldAccents)).text
+    if (!needle) return
     const indexed = indexText(strs)
-    const window: Segment[] = []
-    for (const segment of segmentsOf(segmenter, indexed.text)) {
-        if (!segment) { yield undefined; continue }
-        window.push(segment)
-        if (window.length < querySegments.length) continue
-        if (collator.compare(normalizedQuery, window.map(part => part.text).join('')) === 0) {
-            const range = indexed.range(window[0].start, segment.end)
-            yield { range, excerpt: makeExcerpt(strs, range) }
+    const folded = yield* foldText(indexed.text, localeTag, foldCase, foldAccents)
+    // One checkpoint per scan even when the folded text is shorter than the
+    // needle, so a cancelled no-hit search still observes its signal.
+    yield undefined
+    const { text: haystack, starts, ends } = folded
+    const context = granularity === 'word' ? 64 : 16
+    const wholeCodePoints = (start: number, end: number) =>
+        (start === 0 || starts[start] !== starts[start - 1]) && (end === haystack.length || starts[end] !== starts[end - 1])
+    const chunkSize = 32768
+    let from = 0
+    while (from <= haystack.length - needle.length) {
+        yield undefined
+        const end = Math.min(from + chunkSize, haystack.length - needle.length + 1)
+        const chunk = haystack.slice(from, end + needle.length - 1)
+        let index = chunk.indexOf(needle)
+        while (index !== -1 && from + index < end) {
+            const start = from + index, stop = start + needle.length
+            if (wholeCodePoints(start, stop)) {
+                const sourceStart = starts[start], sourceEnd = ends[stop - 1]
+                if (onBoundaries(segmenter, indexed.text, sourceStart, sourceEnd, context)) {
+                    const range = indexed.range(sourceStart, sourceEnd)
+                    yield { range, excerpt: makeExcerpt(strs, range) }
+                }
+            }
+            index = chunk.indexOf(needle, index + 1)
         }
-        window.shift()
+        from = end
     }
 }
 
@@ -124,7 +206,7 @@ function* searchSteps(strs: string[], query: string, options: SearchOptions): Ge
     if (!Intl?.Segmenter || granularity === 'grapheme'
     && sensitivity === 'variant')
         yield* simpleSearch(strs, query, options)
-    else yield* segmenterSearch(strs, query, options)
+    else yield* foldedSearch(strs, query, options)
 }
 
 export function* search(strs: string[], query: string, options: SearchOptions = {}): Generator<SearchResult, void, unknown> {

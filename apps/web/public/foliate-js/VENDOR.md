@@ -53,6 +53,16 @@ explicit/contextual `any`, unsafe double assertions, and suppression comments.
   compatibility layer. Also vendored PDF.js's `wasm/` assets and configured
   `wasmUrl` in `pdf.js` so image decoders do not depend on missing runtime
   files. Re-apply both changes after any upstream update.
+- **`search.js` — linear folded search:** upstream's case/accent-insensitive
+  search compared every grapheme window through `Intl.Collator`, one string
+  allocation and one comparison per position, which took minutes on a
+  book-length section. The engine now folds the text once (NFKD, marks dropped
+  when accents do not matter, lower-cased when case does not matter, whitespace
+  runs collapsed, format characters transparent) with a per-unit map back to
+  source offsets, scans with `indexOf`, and confirms each candidate covers whole
+  source code points on grapheme or word boundaries. Exact (`variant`) search
+  keeps upstream's substring scan. Semantics are pinned by
+  `tests/foliate-search.test.ts`.
 - **`pdf.js` — local PDF experience patches:** each page section exposes a
   lightweight `getText()` path for on-device AI/search extraction without
   rendering a canvas; page ids are stable `page:N` locators; cover generation
