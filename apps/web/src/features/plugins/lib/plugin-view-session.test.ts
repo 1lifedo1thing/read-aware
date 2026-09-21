@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { PluginDetailView, PluginView, PluginViewResult } from "./plugin-types";
+import type { PluginDetailView, PluginListView, PluginView, PluginViewResult } from "./plugin-types";
 import { PluginViewSession } from "./plugin-view-session";
 import { AppError } from "@read-aware/core";
 import { setPluginToastHandler } from "./plugin-toast";
@@ -365,5 +365,49 @@ test("explicit same-depth navigation changes render identity while data refreshe
   expect(f.session.getSnapshot().renderKey).toBe(parentKey);
   f.session.dispose();
   expect(f.session.getSnapshot().renderKey).toBeNull();
+  expect(f.registry.size).toBe(0);
+});
+
+test("a list search answer swaps the frame in place, drops stale or malformed answers and retires old rows", async () => {
+  const f = fixture();
+  const answers = new Map<string, () => void>();
+  // Answers cross the wire once, through the invoked onQuery; only the root is wired here.
+  const rows = (query: string): PluginListView => ({ kind: "list", items: [{ id: query || "toc", title: query || "Contents", onSelect: () => ({ toast: query }) }],
+    search: { onQuery: (next: string) => new Promise(resolve => { answers.set(next, () => resolve({ view: rows(next) })); }) } });
+  f.session.setRoot(f.wire(rows("")));
+  const key = f.session.getSnapshot().renderKey;
+  const first = f.session.getSnapshot().stack[0] as PluginListView;
+  const query = (text: string) => f.session.refine(key, text, () => first.search!.onQuery(text));
+  const a = query("a"), ab = query("ab");
+  await flush();
+  expect(f.session.getSnapshot().searchQuery).toBe("ab");
+  answers.get("ab")!(); await ab; await flush();
+  const second = f.session.getSnapshot().stack[0] as PluginListView;
+  expect(second.items[0].id).toBe("ab");
+  expect(f.session.getSnapshot()).toMatchObject({ renderKey: key, busy: false, searchQuery: "ab" });
+  expect(f.session.getSnapshot().stack).toHaveLength(1);
+  // The earlier answer arrives late: the frame keeps the newer rows.
+  answers.get("a")!(); await a; await flush();
+  expect((f.session.getSnapshot().stack[0] as PluginListView).items[0].id).toBe("ab");
+  // The replaced rows' callbacks retire once React has painted the new ones.
+  f.session.acknowledgeRender(f.session.getSnapshot().stack[0]);
+  await expect(first.items[0].onSelect!()).rejects.toThrow(/released/);
+  await f.session.runFrom(key, () => second.items[0].onSelect!());
+  expect(f.notices).toEqual(["ab"]);
+  // A query is a read: answers that navigate, close or carry live content are refused without touching the frame.
+  for (const answer of [{ view: rows("x"), close: true }, { close: true }, { view: { ...rows("y"), live: { subscribe: () => ({ dispose() {} }) } } }]) {
+    await f.session.refine(key, "bad", async () => answer as PluginViewResult);
+  }
+  expect(f.failures()).toBe(3);
+  expect((f.session.getSnapshot().stack[0] as PluginListView).items[0].id).toBe("ab");
+  // The refused text still counts as sent: the host does not retry it on its own.
+  expect(f.session.getSnapshot().searchQuery).toBe("bad");
+  // A pushed view sends nothing and keeps the answered text for the way back.
+  await f.session.runFrom(key, () => ({ view: f.view("child") }));
+  await f.session.refine(key, "ignored", async () => ({ view: rows("ignored") }));
+  expect(f.session.getSnapshot().searchQuery).toBe("");
+  f.session.back();
+  expect(f.session.getSnapshot()).toMatchObject({ renderKey: key, searchQuery: "bad" });
+  f.session.dispose();
   expect(f.registry.size).toBe(0);
 });

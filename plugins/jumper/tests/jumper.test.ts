@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { BookTocEntry, PluginFormView, PluginListView, PluginView, PluginViewResult, PluginViewUpdate, ReadingLocation } from "@read-aware/plugin-types";
+import type { BookTocEntry, PluginListView, PluginView, PluginViewResult, PluginViewUpdate, ReadingLocation } from "@read-aware/plugin-types";
 import { chapterNumber, findChapters } from "../src/chapters";
 import { jumperView } from "../src/views";
 import type { JumperContext } from "../src/types";
@@ -34,6 +34,7 @@ function fixture() {
   } } }, domains: {
     library: { queries: { books: { getNavigationToc: async () => ({ bookId: "book", contentVersion: "v1", entries }),
       searchLocations: async () => ({ bookId: "book", contentVersion: "v1", hits: [], nextCursor: null, textStatus: "available", scannedSections: 1, totalSections: 1 }),
+      listNavigationTargets: async () => ({ bookId: "book", contentVersion: "v1", kind: "pages", status: "absent", items: [], total: 0, nextOffset: null }),
     } } },
     reading: { queries: { session: async () => ({ bookId: "book", sessionId: "session", history: { canGoBack: true, canGoForward: true } }) },
       commands: { goTo: async (target: ReadingLocation) => { jumps.push(target); } },
@@ -46,43 +47,120 @@ async function mount(view: PluginView, id = "channel") {
   await Bun.sleep(0);
   return subscription;
 }
-async function form(ctx: JumperContext): Promise<PluginFormView> {
+async function box(ctx: JumperContext): Promise<PluginListView> {
   const view = await jumperView(ctx);
-  if (view.kind !== "blocks") throw new Error("Expected blocks");
-  const form = view.blocks.find(block => block.kind === "form");
-  if (!form || form.kind !== "form") throw new Error("Expected form");
-  return form;
+  if (view.kind !== "list" || !view.search) throw new Error("Expected the go-to list");
+  return view;
+}
+async function answer(ctx: JumperContext, query: string): Promise<PluginListView> {
+  return list(await (await box(ctx)).search!.onQuery(query));
 }
 function list(result: PluginViewResult): PluginListView {
   if (!result || result.view?.kind !== "list") throw new Error("Expected list result");
   return result.view;
 }
 
-test("missing chapters produce field validation without moving the reader", async () => {
+test("an empty box lists the whole table of contents, marks the current chapter and keeps unplaced headings inert", async () => {
   const { ctx, jumps } = fixture();
-  const view = await form(ctx);
-  expect(await view.onSubmit({ mode: "chapter", query: "99" })).toEqual({ fieldErrors: { query: "该章节不存在。" } });
-  expect(await view.onSubmit({ mode: "chapter", query: "1" })).toEqual({ fieldErrors: { query: "此目录标题没有可跳转的位置。" } });
+  ctx.domains.reading.queries.session = async () => ({ bookId: "book", sessionId: "session", location: { ...location, href: "chapter-12#p3" },
+    history: { canGoBack: false, canGoForward: true } }) as never;
+  const view = await box(ctx);
+  expect(view.search).toMatchObject({ placeholder: "章节、页码或要查找的文字", autoFocus: true });
+  expect(view.items.map(item => [item.id, item.title, item.subtitle, item.onSelect !== undefined])).toEqual([
+    ["chapter:part", "Part One", "此目录标题没有可跳转的位置。", false],
+    ["chapter:chapter", "第十二章 起点", "Part One", true],
+    ["chapter:other", "Chapter 20", undefined, true],
+  ]);
+  expect(view.items.map(item => item.accessories?.[0])).toEqual([undefined, { kind: "tag", text: "当前" }, undefined]);
+  expect(view.actions!.map(action => [action.id, action.disabled])).toEqual([["back", true], ["forward", false]]);
+  expect(await view.items[1]!.onSelect!()).toEqual({ close: true });
+  expect(jumps).toEqual([location]);
+});
+
+test("typed text answers with matching chapters first and the text search last; Enter order is that order", async () => {
+  const { ctx, jumps } = fixture();
+  const twelve = await answer(ctx, "12");
+  expect(twelve.items.map(item => item.id)).toEqual(["chapter:chapter", "search"]);
+  expect(twelve.items[1]!.title).toBe("在正文中搜索“12”");
+  const title = await answer(ctx, "起点");
+  expect(title.items.map(item => item.id)).toEqual(["chapter:chapter", "search"]);
+  const missing = await answer(ctx, "99");
+  expect(missing.items.map(item => item.id)).toEqual(["search"]);
   expect(jumps).toHaveLength(0);
+  expect(await twelve.items[0]!.onSelect!()).toEqual({ close: true });
+  expect(jumps).toEqual([location]);
 });
 
 test("a unique chapter awaits actual navigation before closing", async () => {
-  const { ctx, jumps } = fixture();
-  expect(await (await form(ctx)).onSubmit({ mode: "chapter", query: "12" })).toEqual({ close: true });
-  expect(jumps).toEqual([location]);
+  const { ctx } = fixture();
   ctx.domains.reading.commands.goTo = async () => { throw new Error("engine failure"); };
-  await expect((await form(ctx)).onSubmit({ mode: "chapter", query: "12" })).rejects.toThrow("engine failure");
+  await expect((await answer(ctx, "12")).items[0]!.onSelect!()).rejects.toThrow("engine failure");
 });
 
-test("ambiguous chapters return choices instead of picking a destination", async () => {
+test("the text-search row keeps the typed query and applies smart case", async () => {
+  const { ctx } = fixture();
+  const requests: unknown[] = [];
+  ctx.domains.library.queries.books.searchLocations = async input => {
+    requests.push(input);
+    return { bookId: "book", contentVersion: "v1", hits: [], nextCursor: null, textStatus: "available", scannedSections: 1, totalSections: 1 };
+  };
+  for (const query of ["needle", "Needle"]) {
+    const items = (await answer(ctx, query)).items;
+    const result = await items[items.length - 1]!.onSelect!();
+    expect(result!.navigation).toBeUndefined();
+    await mount(result!.view!, query);
+  }
+  expect(requests).toEqual([
+    { bookId: "book", query: "needle", matchCase: false, limit: 20 },
+    { bookId: "book", query: "Needle", matchCase: true, limit: 20 },
+  ]);
+});
+
+test("back and forward retain the session guard without creating plugin-owned history", async () => {
+  const { ctx } = fixture();
+  const guards: unknown[] = [];
+  ctx.domains.reading.commands.back = async guard => { guards.push(guard); return { status: "completed", sessionId: "session", location }; };
+  const view = await box(ctx);
+  expect(await view.actions!.find(action => action.id === "back")!.run()).toEqual({ close: true });
+  expect(guards).toEqual([{ sessionId: "session" }]);
+});
+
+test("printed page labels resolve through navigation targets between chapters and the text search", async () => {
   const { ctx, jumps } = fixture();
-  ctx.domains.library.queries.books.getNavigationToc = async () => ({ bookId: "book", contentVersion: "v1",
-    entries: [...entries, { ...entries[0].children[0], id: "duplicate", ordinal: 4 }] });
-  const result = list(await (await form(ctx)).onSubmit({ mode: "chapter", query: "12" }));
-  expect(result.items).toHaveLength(2);
-  expect(jumps).toHaveLength(0);
-  await result.items[0].onSelect!();
-  expect(jumps).toEqual([location]);
+  const requests: unknown[] = [];
+  const target = (index: number, label: string, href: string) => ({ index, sectionIndex: 0, label, labelTruncated: false, linear: true, location: { ...location, href } });
+  const pages = new Map<string, { status: "available" | "absent"; items: ReturnType<typeof target>[] }>([
+    ["7", { status: "available", items: [target(6, "7", "page-7")] }],
+    ["9", { status: "available", items: [target(8, "9", "page-9a"), target(9, "9", "page-9b")] }],
+    ["12", { status: "available", items: [target(11, "12", "page-12")] }],
+  ]);
+  ctx.domains.library.queries.books.listNavigationTargets = (async (input: { label: string }) => {
+    requests.push(input);
+    return pages.get(input.label) ?? { status: "absent", items: [] };
+  }) as never;
+  const seven = await answer(ctx, "7");
+  expect(seven.items.map(item => [item.id, item.title])).toEqual([["page:6", "第 7 页"], ["search", "在正文中搜索“7”"]]);
+  expect(await seven.items[0]!.onSelect!()).toEqual({ close: true });
+  const nine = await answer(ctx, "9");
+  expect(nine.items.map(item => item.id)).toEqual(["page:8", "page:9", "search"]);
+  await nine.items[1]!.onSelect!();
+  expect(jumps.map(jump => jump.href)).toEqual(["page-7", "page-9b"]);
+  expect((await answer(ctx, "12")).items.map(item => item.id)).toEqual(["chapter:chapter", "page:11", "search"]);
+  expect((await answer(ctx, "none")).items.map(item => item.id)).toEqual(["search"]);
+  expect(requests).toEqual(expect.arrayContaining([{ bookId: "book", contentVersion: "v1", kind: "pages", label: "7", limit: 10 }]));
+  expect(requests).toHaveLength(4);
+  expect((await answer(ctx, "two words")).items.map(item => item.id)).toEqual(["search"]);
+  expect(requests).toHaveLength(4);
+});
+
+test("a failing page catalog loses only its rows", async () => {
+  const { ctx } = fixture();
+  ctx.domains.library.queries.books.listNavigationTargets = (async () => { throw Object.assign(new Error("private"), { code: "db/locked" }); }) as never;
+  const warn = console.warn; const warnings: unknown[] = [];
+  console.warn = (...args: unknown[]) => { warnings.push(args); };
+  try { expect((await answer(ctx, "12")).items.map(item => item.id)).toEqual(["chapter:chapter", "search"]); }
+  finally { console.warn = warn; }
+  expect(warnings).toHaveLength(1);
 });
 
 test("empty paged searches consume continuation and retain the pinned revision", async () => {
@@ -94,14 +172,15 @@ test("empty paged searches consume continuation and retain the pinned revision",
       ? { bookId: "book", contentVersion: "v1", hits: [], nextCursor: null, textStatus: "available", scannedSections: 2, totalSections: 2 }
       : { bookId: "book", contentVersion: "v1", hits: [], nextCursor: "next", textStatus: "partial", scannedSections: 1, totalSections: 2 };
   };
-  const task = (await (await form(ctx)).onSubmit({ mode: "text", textQuery: "needle" }))!.view!;
+  const rows = (await answer(ctx, "needle")).items;
+  const task = (await rows[rows.length - 1]!.onSelect!())!.view!;
   expect(task).toMatchObject({ kind: "blocks", blocks: [{ kind: "progress", value: null }] });
   await mount(task);
   const result = list({ view: updates[updates.length - 1]!.view });
   expect(result.emptyText).toBe("没有匹配结果。");
   expect(requests).toEqual([
-    { bookId: "book", query: "needle", matchCase: false, wholeWords: false, limit: 20 },
-    { bookId: "book", query: "needle", matchCase: false, wholeWords: false, limit: 20, cursor: "next", contentVersion: "v1" },
+    { bookId: "book", query: "needle", matchCase: false, limit: 20 },
+    { bookId: "book", query: "needle", matchCase: false, limit: 20, cursor: "next", contentVersion: "v1" },
   ]);
   expect(updates.some(update => update.view.kind === "blocks" && update.view.blocks[0]?.kind === "progress"
     && update.view.blocks[0].value === 1)).toBe(true);
@@ -174,18 +253,6 @@ test("failed searches show a host error code and retry uses a fresh signal and t
   expect(signals[0]).not.toBe(signals[1]);
 });
 
-test("back and forward retain the session guard without creating plugin-owned history", async () => {
-  const { ctx } = fixture();
-  const guards: unknown[] = [];
-  ctx.domains.reading.commands.back = async guard => { guards.push(guard); return { status: "completed", sessionId: "session", location }; };
-  const view = await jumperView(ctx);
-  const actions = view.kind === "blocks" ? view.blocks.find(block => block.kind === "actions") : undefined;
-  if (!actions || actions.kind !== "actions") throw new Error("Expected history actions");
-  expect(actions.actions.map(action => action.id)).toEqual(["bookmarks", "back", "forward"]);
-  await actions.actions.find(action => action.id === "back")!.run();
-  expect(guards).toEqual([{ sessionId: "session" }]);
-});
-
 test("completed text matches retain their versioned location and do not search again when restored", async () => {
   const { ctx, updates, jumps } = fixture();
   let calls = 0;
@@ -214,26 +281,3 @@ test("stale locations discard hits and do not offer a guaranteed-failing retry o
   expect(updates[updates.length - 1]!.view).toMatchObject({ kind: "list", items: [], emptyText: "书籍内容已变化，请重新搜索。", actions: [] });
 });
 
-test("page mode resolves printed page labels through navigation targets", async () => {
-  const { ctx, jumps } = fixture();
-  const requests: unknown[] = [];
-  const target = (index: number, label: string, href: string) => ({ index, sectionIndex: 0, label, labelTruncated: false, linear: true, location: { ...location, href } });
-  const pages = new Map<string, { status: "available" | "absent"; items: ReturnType<typeof target>[] }>([
-    ["7", { status: "available", items: [target(6, "7", "page-7")] }],
-    ["9", { status: "available", items: [target(8, "9", "page-9a"), target(9, "9", "page-9b")] }],
-    ["none", { status: "available", items: [] }],
-  ]);
-  ctx.domains.library.queries.books.listNavigationTargets = (async (input: { label: string }) => {
-    requests.push(input);
-    return pages.get(input.label) ?? { status: "absent", items: [] };
-  }) as never;
-  expect(await (await form(ctx)).onSubmit({ mode: "page", pageQuery: "7" })).toEqual({ close: true });
-  expect(jumps.map(jump => jump.href)).toEqual(["page-7"]);
-  expect(await (await form(ctx)).onSubmit({ mode: "page", pageQuery: "none" })).toEqual({ fieldErrors: { pageQuery: "没有这个页码。" } });
-  expect(await (await form(ctx)).onSubmit({ mode: "page", pageQuery: "  " })).toEqual({ fieldErrors: { pageQuery: "请输入 1 至 300 个字符的页码。" } });
-  const ambiguous = list(await (await form(ctx)).onSubmit({ mode: "page", pageQuery: "9" }));
-  expect(ambiguous.items.map(item => [item.id, item.title])).toEqual([["8", "页码 9"], ["9", "页码 9"]]);
-  await ambiguous.items[1]!.onSelect!();
-  expect(jumps.map(jump => jump.href)).toEqual(["page-7", "page-9b"]);
-  expect(requests).toEqual(expect.arrayContaining([{ bookId: "book", contentVersion: "v1", kind: "pages", label: "7", limit: 40 }]));
-});

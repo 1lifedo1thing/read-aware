@@ -2184,6 +2184,42 @@ remain for concentrated E2E. Tree is added in views 1.6 and resource raster imag
 in views 1.7 below; the bounded editor is available in views 1.11. The stated
 real-runtime acceptance gaps remain open.
 
+### Plugin-Computed List Search (Views 1.12)
+
+[代码] `schemas.views` 1.12 adds `PluginListView.search` for lists whose
+matching is not a substring test over the supplied rows: a go-to box that reads
+"42" as chapter 42 and page 42, or a query that reaches data outside the
+current page. `search` declares an optional `placeholder`, optional `autoFocus`
+and `onQuery(query)`; it is exclusive with `searchable`, which stays the
+host-local filter. The host owns the input: it renders the field, debounces
+typing, sends the trimmed text once per settled change (and `""` on clear),
+keeps the answered text per frame across pushed views and back navigation, and
+drops out-of-order answers. Enter activates the first row that has `onSelect`.
+
+An answer is `{ view }` with the complete list for that text, or null to keep
+what is shown. It replaces the frame's content in place through the live-update
+lifecycle — same render key, drafts reconciled, old row callbacks retired after
+the new commit paints — so the field keeps its text, focus and caret and no busy
+overlay covers the typing. A query is a read, not an action: answers carrying
+`close`, `toast`, `navigation`, `fieldErrors`, `live` or `onClose` are rejected
+through the host failure surface without touching the frame. Pushed views and
+dialogs suspend sending; the answered text is restored on the way back.
+
+`PluginAction.disabled` (also 1.12) renders an action inert for availability the
+plugin knows when it builds the view, so a toolbar keeps its shape instead of a
+control appearing and vanishing.
+
+Jumper 0.13 is the first consumer: one go-to box lists the table of contents
+with the current chapter marked, answers typed text with chapters, printed pages
+(`listNavigationTargets`, short labels only) and a row that pushes the existing
+cancellable live text search with smart case, and keeps back/forward as
+disabled-aware actions. Bookmarks keep their own header action and command.
+
+[验证] Normalization, session in-place swap/stale-drop/refusal/back-restore and
+mounted React field tests pass; Jumper plugin tests, typecheck and build pass.
+Real Worker/Tauri keystroke round trips and popover focus are verified in the
+running desktop app for Jumper; other consumers remain to be exercised.
+
 ### Plain Text Editor (Views 1.11)
 
 [代码] `PluginEditorView` works at the root or inside composed blocks. It
@@ -6514,7 +6550,7 @@ additional source plugin in this checkout:
 | Text to Speech | voice/options providers, storage, secrets, network, settings schema |
 | Theme Schedule | Settings domain, options/commands, storage/UI, committed schedule, settings schema |
 | WebDAV Sync | sync transport, storage, secrets, network, settings schema |
-| Jumper | one navigation form (chapter/page/text; page mode uses `listNavigationTargets` pages), cancellable live precise search, shared locations with back/forward history, named bookmarks with list pagination and global bookmark tools |
+| Jumper | one go-to box (views 1.12 plugin-computed search) answering chapters, printed pages via `listNavigationTargets` and a cancellable live precise text search, shared locations with back/forward history, named bookmarks with list pagination and global bookmark tools |
 | Annotations | paged annotation list through host pagination, note/highlight creation returning to the list with a toast, live detail with conditional edits, batch review, export |
 | Reading Goals | single per-book goal form, agent context provider, opt-in memory candidate provider, honors the host `ai.preferences.buildMemory` setting, private documents and goal tools |
 

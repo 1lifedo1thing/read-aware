@@ -1,5 +1,5 @@
 import { ListBullets } from "@phosphor-icons/react";
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import {
   Caption,
   EmptyState,
@@ -25,12 +25,19 @@ import {
 import type { PluginListAccessory, PluginListItem, PluginListView } from "../lib/plugin-types";
 import { PluginActionGroup } from "./PluginActionGroup";
 import { PluginViewPagination } from "./PluginViewPagination";
-import type { PluginResultRunner } from "./plugin-view-types";
+import type { PluginQueryRunner, PluginResultRunner } from "./plugin-view-types";
 
 type PluginListViewBodyProps = {
   view: PluginListView;
   busy: boolean;
   onResult: PluginResultRunner;
+  /**
+   * Plugin-computed search (`view.search`): the text the session last sent,
+   * which seeds the field on mount and gates re-sending, and the runner that
+   * applies the plugin's answer in place.
+   */
+  searchQuery?: string;
+  onQuery?: PluginQueryRunner;
   /**
    * Stable identity of the hosting view (a contribution key). When present,
    * the timeline's selected range persists across reopens under it.
@@ -76,12 +83,36 @@ export function PluginListViewBody({
   view,
   busy,
   onResult,
+  searchQuery = "",
+  onQuery,
   viewStateKey,
 }: PluginListViewBodyProps) {
   const { t } = useTranslation("plugins");
   const locale = useLocale();
-  const [query, setQuery] = useState("");
+  const pluginSearch = view.search;
+  const [query, setQuery] = useState(pluginSearch ? searchQuery : "");
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS);
+
+  // Plugin-computed search: send the settled text once per change. The answer
+  // swaps this frame's content in place, so `view` (and `pluginSearch`) change
+  // identity while `searchQuery` catches up — the equality check keeps that
+  // from echoing the same text back to the plugin.
+  useEffect(() => {
+    if (!pluginSearch || !onQuery) return;
+    const next = debouncedQuery.trim();
+    if (next === searchQuery) return;
+    void onQuery(next, () => pluginSearch.onQuery(next));
+  }, [debouncedQuery, onQuery, pluginSearch, searchQuery]);
+  const settling = pluginSearch !== undefined && query.trim() !== searchQuery;
+
+  // Enter in a go-to box takes the first row, the way a command palette does.
+  const submitFirst = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter" || !pluginSearch || busy || settling) return;
+    const first = view.items.find((item) => item.onSelect);
+    if (!first) return;
+    event.preventDefault();
+    void onResult(() => first.onSelect!(), { presentation: first.presentation, dialogTitle: first.title });
+  };
   // Defaults to "today" (the freshest slice), and remembers the user's choice
   // per view when a stable key is available.
   const [range, setRange] = useState<PluginTimelineRange>(() => readTimelineRange(viewStateKey));
@@ -93,13 +124,13 @@ export function PluginListViewBody({
 
   const items = useMemo(() => {
     const needle = debouncedQuery.trim().toLocaleLowerCase();
-    if (!needle) return view.items;
+    if (!needle || !view.searchable) return view.items;
     return view.items.filter((item) =>
       [item.title, item.subtitle, ...(item.keywords ?? [])]
         .filter((part): part is string => Boolean(part))
         .some((part) => part.toLocaleLowerCase().includes(needle)),
     );
-  }, [debouncedQuery, view.items]);
+  }, [debouncedQuery, view.items, view.searchable]);
 
   // One item as a virtual row: reuses the design-system ItemList.Item; the
   // top border stands in for ItemList's own `divide-y` (which a one-item list
@@ -202,15 +233,39 @@ export function PluginListViewBody({
     />
   ) : null;
 
+  // A go-to box stays put while its long answer scrolls under it: the field is
+  // the whole point of the surface, so it must never leave the viewport.
+  const searchField = pluginSearch ? (
+    <div className="sticky top-0 z-10 bg-[var(--ra-main-surface-color)]">
+      <SearchField
+        label={pluginSearch.placeholder ?? t("viewer.search")}
+        placeholder={pluginSearch.placeholder ?? t("viewer.search")}
+        value={query}
+        autoFocus={pluginSearch.autoFocus}
+        onChange={(event) => setQuery(event.target.value)}
+        onKeyDown={submitFirst}
+      />
+    </div>
+  ) : view.searchable ? (
+    <SearchField
+      label={view.searchPlaceholder ?? t("viewer.search")}
+      placeholder={view.searchPlaceholder ?? t("viewer.search")}
+      value={query}
+      onChange={(event) => setQuery(event.target.value)}
+    />
+  ) : null;
+
   if (view.items.length === 0) {
     // List-level actions must survive emptiness — on a fresh surface they are
-    // the only way to create the first item at all.
+    // the only way to create the first item at all. A plugin-computed search
+    // keeps its field too: an empty answer is a state of the box, not its end.
     return (
       <Stack gap="sm">
+        {pluginSearch && searchField}
         {listActions}
         <EmptyState
           icon={<ListBullets size={28} weight="regular" aria-hidden="true" />}
-          title={view.emptyText ?? t("viewer.empty")}
+          title={view.emptyText ?? (pluginSearch && searchQuery ? t("viewer.noMatches") : t("viewer.empty"))}
           className="py-10"
         />
         <PluginViewPagination pagination={view.pagination} busy={busy} onResult={onResult} />
@@ -220,14 +275,7 @@ export function PluginListViewBody({
 
   return (
     <Stack gap="md">
-      {view.searchable && (
-        <SearchField
-          label={view.searchPlaceholder ?? t("viewer.search")}
-          placeholder={view.searchPlaceholder ?? t("viewer.search")}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      )}
+      {searchField}
 
       {view.timeline ? (
         <Tabs
@@ -240,7 +288,11 @@ export function PluginListViewBody({
       ) : items.length === 0 ? (
         <EmptyState title={t("viewer.noMatches")} className="py-10" />
       ) : (
-        <Stack gap="sm">
+        <Stack
+          gap="sm"
+          aria-busy={settling || undefined}
+          className={cn("transition-opacity", settling && "opacity-60")}
+        >
           {listActions}
           <PluginVirtualRows rows={plainRows} />
         </Stack>

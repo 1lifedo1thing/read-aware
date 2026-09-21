@@ -1523,7 +1523,7 @@
 | `annotations` | [ANN01](#ANN01) [ANN04](#ANN04) [ANN05](#ANN05) [ANN08](#ANN08) [ANN09](#ANN09) [EXT02](#EXT02) [EXT05](#EXT05) [SYS10](#SYS10) | [代码] 源码版本 0.10.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `dictionary` | [EXT09](#EXT09) [AI12](#AI12) [READ07](#READ07) [LIB01](#LIB01) | [代码] 源码版本 1.4.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `editorial-themes` | [EXT08](#EXT08) | [代码] 源码版本 1.0.0；源码存在不等于打包、安装、启用或模型可调用 |
-| `jumper` | [TXT02](#TXT02) [TXT07](#TXT07) [READ01](#READ01) [READ05](#READ05) [READ06](#READ06) [READ07](#READ07) [READ13](#READ13) [EXT02](#EXT02) [SYS02](#SYS02) [AI05](#AI05) | [代码] 源码版本 0.12.0；源码存在不等于打包、安装、启用或模型可调用 |
+| `jumper` | [TXT02](#TXT02) [TXT07](#TXT07) [READ01](#READ01) [READ05](#READ05) [READ06](#READ06) [READ07](#READ07) [READ13](#READ13) [EXT02](#EXT02) [SYS02](#SYS02) [AI05](#AI05) | [代码] 源码版本 0.13.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `reading-goals` | [AI11](#AI11) [MEM03](#MEM03) [CFG01](#CFG01) [EXT07](#EXT07) [EXT02](#EXT02) [EXT05](#EXT05) [SYS01](#SYS01) [SYS02](#SYS02) | [代码] 源码版本 0.7.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `rss-reader` | [EXT10](#EXT10) | [代码] 源码版本 0.24.0；源码存在不等于打包、安装、启用或模型可调用 |
 | `sentence-reader` | [READ15](#READ15) [READ16](#READ16) | [代码] 源码版本 1.1.0；源码存在不等于打包、安装、启用或模型可调用 |

@@ -10,6 +10,7 @@ import type {
   PluginFormView,
   PluginListAccessory,
   PluginListItem,
+  PluginListSearch,
   PluginListView,
   PluginViewPagination,
   PluginTableView,
@@ -66,6 +67,11 @@ function string(value: unknown, context: string, optional = false): string | und
   return value;
 }
 
+function boolean(value: unknown, context: string): boolean {
+  if (typeof value !== "boolean") throw new PluginViewError(`${context} must be a boolean`);
+  return value;
+}
+
 function finiteNumber(value: unknown, context: string): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new PluginViewError(`${context} must be a finite number`);
@@ -111,7 +117,18 @@ function normalizeAction(input: unknown, context: string): PluginAction {
       "primary",
       `${context}.priority`,
     ),
+    disabled: value.disabled === undefined ? undefined : boolean(value.disabled, `${context}.disabled`),
     run: value.run as PluginAction["run"],
+  };
+}
+
+function normalizeListSearch(input: unknown, context: string): PluginListSearch {
+  const value = record(input, context);
+  if (typeof value.onQuery !== "function") throw new PluginViewError(`${context}.onQuery must be a function`);
+  return {
+    placeholder: string(value.placeholder, `${context}.placeholder`, true),
+    autoFocus: value.autoFocus === undefined ? undefined : boolean(value.autoFocus, `${context}.autoFocus`),
+    onQuery: value.onQuery as PluginListSearch["onQuery"],
   };
 }
 
@@ -216,7 +233,7 @@ function normalizeListItem(input: unknown, context: string): PluginListItem {
 }
 
 function normalizeListView(input: Record<string, unknown>, context: string): PluginListView {
-  return {
+  const view: PluginListView = {
     kind: "list",
     title: string(input.title, `${context}.title`, true),
     items: array(input.items, `${context}.items`, MAX_LIST_ITEMS).map((item, index) =>
@@ -229,9 +246,12 @@ function normalizeListView(input: Record<string, unknown>, context: string): Plu
     emptyText: string(input.emptyText, `${context}.emptyText`, true),
     searchable: input.searchable === true,
     searchPlaceholder: string(input.searchPlaceholder, `${context}.searchPlaceholder`, true),
+    search: input.search == null ? undefined : normalizeListSearch(input.search, `${context}.search`),
     timeline: input.timeline === true,
     pagination: normalizePagination(input.pagination, `${context}.pagination`),
   };
+  if (view.search && view.searchable) throw new PluginViewError(`${context}.search cannot be combined with searchable`);
+  return view;
 }
 
 function normalizePagination(input: unknown, context: string): PluginViewPagination | undefined {

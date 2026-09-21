@@ -20,7 +20,7 @@ import type { PluginView } from "../lib/plugin-types";
 import type { PluginViewSession } from "../lib/plugin-view-session";
 import { usePluginViewSession } from "../hooks/usePluginViewSession";
 import { PluginFormDraftContext } from "../hooks/usePluginFormDraft";
-import type { PluginResultRunner } from "./plugin-view-types";
+import type { PluginQueryRunner, PluginResultRunner } from "./plugin-view-types";
 import { PluginBlocks } from "./PluginBlockRenderer";
 import { PluginActionGroup } from "./PluginActionGroup";
 import { PluginDetailViewBody } from "./PluginDetailViewBody";
@@ -76,7 +76,7 @@ export function PluginViewRenderer({
   className,
 }: PluginViewRendererProps) {
   const { t } = useTranslation(["plugins", "common"]);
-  const { session, stack, renderKey, forms, error: viewError, liveError, busy, dialog: detailDialog } = usePluginViewSession(view, provided, onClose, onRequestRefresh);
+  const { session, stack, renderKey, forms, error: viewError, liveError, busy, searchQuery, dialog: detailDialog } = usePluginViewSession(view, provided, onClose, onRequestRefresh);
 
   useEffect(() => {
     onDepthChange?.(stack.length);
@@ -89,6 +89,7 @@ export function PluginViewRenderer({
 
   const closeDetailDialog = () => session.closeDialog(true);
   const handleResult = useCallback<PluginResultRunner>((run, options) => session.runFrom(renderKey, run, options), [session, renderKey]);
+  const handleQuery = useCallback<PluginQueryRunner>((query, run) => session.refine(renderKey, query, run), [session, renderKey]);
 
   if (viewError) {
     return (
@@ -114,6 +115,8 @@ export function PluginViewRenderer({
           view={current}
           busy={busy}
           onResult={handleResult}
+          searchQuery={searchQuery}
+          onQuery={handleQuery}
           // Only the root list owns the view's identity; pushed sub-lists get
           // no key and fall back to the default range.
           viewStateKey={stack.length === 1 ? viewStateKey : undefined}

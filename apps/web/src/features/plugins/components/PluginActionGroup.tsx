@@ -47,7 +47,7 @@ export function PluginActionGroup({
           key={action.id}
           size="sm"
           variant={action.variant ?? "outline"}
-          disabled={busy}
+          disabled={busy || action.disabled}
           onClick={() => void onResult(action.run)}
         >
           {action.icon && renderPluginIcon(action.icon, 14)}
@@ -77,7 +77,7 @@ export function PluginActionGroup({
             label: action.label,
             icon: action.icon ? renderPluginIcon(action.icon, 15) : undefined,
             destructive: action.variant === "danger",
-            disabled: busy,
+            disabled: busy || action.disabled,
             onClick: () => void onResult(action.run),
           }))}
         />

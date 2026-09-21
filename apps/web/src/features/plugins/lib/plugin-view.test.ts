@@ -366,3 +366,22 @@ describe("navigatePluginViewStack", () => {
     );
   });
 });
+
+describe("plugin-computed list search (views 1.12)", () => {
+  test("keeps the query callback, rejects malformed declarations and the local-filter combination", () => {
+    const onQuery = () => null;
+    const view = normalizePluginView({ kind: "list", items: [], search: { placeholder: "Go to", autoFocus: true, onQuery, extra: 1 } });
+    expect(view).toMatchObject({ kind: "list", search: { placeholder: "Go to", autoFocus: true, onQuery } });
+    expect(normalizePluginView({ kind: "list", items: [], search: { onQuery } })).toMatchObject({ search: { onQuery, placeholder: undefined, autoFocus: undefined } });
+    for (const search of [true, [], {}, { onQuery: "fn" }, { onQuery, autoFocus: "yes" }, { onQuery, placeholder: 3 }]) {
+      expect(() => normalizePluginView({ kind: "list", items: [], search })).toThrow(PluginViewError);
+    }
+    expect(() => normalizePluginView({ kind: "list", items: [], searchable: true, search: { onQuery } })).toThrow(/cannot be combined/);
+  });
+  test("actions carry an explicit disabled flag and reject other shapes", () => {
+    const run = () => null;
+    const view = normalizePluginView({ kind: "list", items: [], actions: [{ id: "back", label: "Back", disabled: true, run }, { id: "forward", label: "Forward", run }] });
+    expect(view).toMatchObject({ actions: [{ id: "back", disabled: true }, { id: "forward", disabled: undefined }] });
+    expect(() => normalizePluginView({ kind: "list", items: [], actions: [{ id: "back", label: "Back", disabled: "no", run }] })).toThrow(PluginViewError);
+  });
+});

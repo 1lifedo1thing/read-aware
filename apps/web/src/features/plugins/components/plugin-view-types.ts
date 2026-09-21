@@ -13,3 +13,9 @@ export type PluginResultRunner = (
   run: () => PluginViewResult | Promise<PluginViewResult>,
   options?: PluginResultOptions,
 ) => Promise<PluginViewResult>;
+
+/** Sends a plugin-computed list search; the session applies the answer in place. */
+export type PluginQueryRunner = (
+  query: string,
+  run: () => PluginViewResult | Promise<PluginViewResult>,
+) => Promise<void>;

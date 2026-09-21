@@ -1,4 +1,4 @@
-import type { PluginToast, PluginView, PluginViewCloseReason, PluginViewResult } from "./plugin-types";
+import type { PluginToast, PluginView, PluginViewCloseReason, PluginViewContent, PluginViewResult } from "./plugin-types";
 import type { PluginResultOptions } from "../components/plugin-view-types";
 import { navigatePluginViewStack, normalizePluginView, PluginViewError } from "./plugin-view";
 import { observePluginCallbackOwners, releasePluginCallbacks, retainPluginCallbacks } from "../runtime/plugin-callback-wire";
@@ -10,7 +10,11 @@ import { ownPluginViewClose } from "./plugin-view-close";
 
 const log = createLogger("plugin-views");
 type OwnedView = { view: PluginView; renderKey: number; dispose: () => void };
-type Frame = OwnedView & { notifyClosed(reason: PluginViewCloseReason): void; forms: PluginFormDrafts; rendered?: () => void; live?: PluginLiveView; liveError?: unknown };
+type Frame = OwnedView & { notifyClosed(reason: PluginViewCloseReason): void; forms: PluginFormDrafts; rendered?: () => void; live?: PluginLiveView; liveError?: unknown;
+  /** Replace this frame's content in place, keeping its identity and drafts. */
+  swap(next: PluginViewContent): void;
+  /** Plugin-computed list search: the text last answered and the latest request. */
+  searchQuery: string; searchRequest: number };
 type Effects = { close?: () => void; refresh?: () => void; toast?: (message: PluginToast) => void; failure?: (error: unknown) => void };
 export type PluginViewSnapshot = {
   stack: readonly PluginView[];
@@ -20,6 +24,8 @@ export type PluginViewSnapshot = {
   busy: boolean;
   error: boolean;
   liveError: unknown;
+  /** Text the top frame's plugin-computed search last answered; "" without one. */
+  searchQuery: string;
   dialog: { requestId: number; title: string; session: PluginViewSession } | null;
 };
 
@@ -47,7 +53,7 @@ export class PluginViewSession {
   private inlineRequest = 0;
   private readonly foreground = new Set<number>();
   private readonly listeners = new Set<() => void>();
-  private snapshot: PluginViewSnapshot = { stack: [], renderKey: null, forms: null, busy: false, error: false, liveError: null, dialog: null };
+  private snapshot: PluginViewSnapshot = { stack: [], renderKey: null, forms: null, busy: false, error: false, liveError: null, searchQuery: "", dialog: null };
 
   constructor(private effects: Effects = {}, private readonly parent?: PluginViewSession) {}
   configure(effects: Effects): void { this.effects = effects; }
@@ -63,7 +69,7 @@ export class PluginViewSession {
     }
     this.snapshot = { ...this.snapshot, stack: this.frames.map(frame => frame.view), renderKey: this.frames.at(-1)?.renderKey ?? null,
       forms: this.frames.at(-1)?.forms ?? null,
-      busy: this.foreground.size > 0, liveError: this.frames.at(-1)?.liveError ?? null, ...patch };
+      busy: this.foreground.size > 0, liveError: this.frames.at(-1)?.liveError ?? null, searchQuery: this.frames.at(-1)?.searchQuery ?? "", ...patch };
     for (const listener of [...this.listeners]) listener();
   }
 
@@ -85,7 +91,16 @@ export class PluginViewSession {
     let current = ownView(raw, this.close, renderKey);
     const closed = ownPluginViewClose(current.view.onClose);
     let painted: OwnedView | undefined;
-    const frame: Frame = { ...current, notifyClosed: closed.notify, forms: forms ?? new PluginFormDrafts(current.view),
+    const swap = (next: PluginViewContent) => {
+      const replacement = ownView(next, this.close, renderKey);
+      const previous = current; current = replacement; frame.view = replacement.view;
+      frame.forms.reconcile(replacement.view);
+      // Keep only the visible callbacks plus the latest unpainted snapshot.
+      // A button in the old React commit must not lose its handle mid-click.
+      if (previous !== painted) this.release(previous.dispose);
+      this.publish();
+    };
+    const frame: Frame = { ...current, notifyClosed: closed.notify, forms: forms ?? new PluginFormDrafts(current.view), swap, searchQuery: "", searchRequest: 0,
       rendered: () => {
         const prior = painted; painted = current;
         if (prior && prior !== current) this.release(prior.dispose);
@@ -98,15 +113,7 @@ export class PluginViewSession {
     };
     try {
       if (forms) forms.reconcile(current.view);
-      if (current.view.live) frame.live = new PluginLiveView(current.view.live, next => {
-        const replacement = ownView(next, this.close, renderKey);
-        const previous = current; current = replacement; frame.view = replacement.view;
-        frame.forms.reconcile(replacement.view);
-        // Keep only the visible callbacks plus the latest unpainted snapshot.
-        // A button in the old React commit must not lose its handle mid-click.
-        if (previous !== painted) this.release(previous.dispose);
-        this.publish();
-      }, error => { frame.liveError = error; this.publish(); });
+      if (current.view.live) frame.live = new PluginLiveView(current.view.live, swap, error => { frame.liveError = error; this.publish(); });
       return frame;
     } catch (error) { closed.dispose(); current.dispose(); if (!forms) frame.forms.dispose(); throw error; }
   }
@@ -190,6 +197,40 @@ export class PluginViewSession {
   runFrom = (renderKey: number | null, run: () => PluginViewResult | Promise<PluginViewResult>, options?: PluginResultOptions): Promise<PluginViewResult> => {
     if (renderKey === null || this.frames.at(-1)?.renderKey !== renderKey || this.snapshot.dialog) return Promise.resolve(null);
     return this.run(run, options);
+  };
+
+  /**
+   * Answer a plugin-computed list search. The answer swaps the frame's content
+   * in place — the live-update lifecycle, not navigation — so the field keeps
+   * its text, focus and caret and no busy overlay covers the typing. Only the
+   * latest request may answer; a stale or null answer changes nothing.
+   */
+  refine = async (renderKey: number | null, query: string, run: () => PluginViewResult | Promise<PluginViewResult>): Promise<void> => {
+    const frame = this.frames.at(-1);
+    if (renderKey === null || !this.active || !frame || frame.renderKey !== renderKey || this.snapshot.dialog) return;
+    frame.searchQuery = query;
+    this.publish();
+    const epoch = this.epoch, request = ++frame.searchRequest;
+    const current = () => this.active && epoch === this.epoch && frame === this.frames.at(-1) && request === frame.searchRequest;
+    let releaseResult = () => {};
+    try {
+      const result = await run();
+      releaseResult = retainPluginCallbacks(result);
+      if (!current() || result == null) return;
+      if (typeof result !== "object" || Array.isArray(result) || !result.view || Object.keys(result).some(key => key !== "view")) {
+        throw new PluginViewError("A search answer must contain only a view");
+      }
+      if ("live" in result.view || "onClose" in result.view) throw new PluginViewError("A search answer must contain only view content");
+      frame.swap(result.view);
+    } catch (error) {
+      log.error("Plugin list search failed", error);
+      if (current()) {
+        if (this.effects.failure) this.effects.failure(error);
+        else showPluginFailureToast(undefined, error);
+      }
+    } finally {
+      this.release(releaseResult);
+    }
   };
 
   run = async (run: () => PluginViewResult | Promise<PluginViewResult>, options?: PluginResultOptions): Promise<PluginViewResult> => {

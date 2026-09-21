@@ -502,6 +502,12 @@ export type PluginAction = {
    * actions primary and leave housekeeping such as refresh secondary.
    */
   priority?: "primary" | "secondary";
+  /**
+   * Views 1.12: render the action inert. For a control whose availability the
+   * plugin knows when it builds the view (history that cannot go back yet), so
+   * the row keeps its shape instead of the control appearing and vanishing.
+   */
+  disabled?: boolean;
   run: () => PluginViewResult | Promise<PluginViewResult>;
 };
 
@@ -540,6 +546,31 @@ export type PluginViewPagination = {
   onNext?: () => PluginViewResult | Promise<PluginViewResult>;
 };
 
+/**
+ * Views 1.12: a search box whose results the PLUGIN computes — for lists
+ * where matching is not a substring test over the supplied rows: a go-to box
+ * that reads "42" as chapter 42 and page 42, or a query that reaches data
+ * outside the current page. The host owns the input: it renders the field,
+ * debounces typing, keeps the typed text across pushed views and back
+ * navigation, and drops out-of-order answers, so the plugin only maps a query
+ * to rows. Enter activates the first row that has `onSelect`.
+ */
+export type PluginListSearch = {
+  placeholder?: string;
+  /** Focus the field when the list mounts; for panels whose whole purpose is the box. */
+  autoFocus?: boolean;
+  /**
+   * Called with the trimmed text after typing settles (and with "" when the
+   * box is cleared). Return `{ view }` with the complete list for that text:
+   * it replaces this frame's CONTENT in place — the same lifecycle as a live
+   * update, so the field keeps its text, focus and caret — rather than
+   * navigating, and must therefore carry no `live` or `onClose`. Return null
+   * to keep what is shown. Other result fields (close, toast, navigation,
+   * fieldErrors) are rejected: a query is a read, not an action.
+   */
+  onQuery: (query: string) => PluginViewResult | Promise<PluginViewResult>;
+};
+
 export type PluginListView = {
   kind: "list";
   title?: string;
@@ -551,6 +582,8 @@ export type PluginListView = {
   /** Adds host-rendered local filtering over title, subtitle, and keywords. */
   searchable?: boolean;
   searchPlaceholder?: string;
+  /** Plugin-computed search (views 1.12). Exclusive with `searchable`. */
+  search?: PluginListSearch;
   /**
    * Sort and group items by `timestamp`, with host-owned Today / This week /
    * This month / All tabs. Search is debounced by the host.

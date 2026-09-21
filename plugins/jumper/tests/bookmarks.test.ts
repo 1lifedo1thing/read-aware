@@ -219,15 +219,17 @@ test("live bookmark lists update from document queries and expired continuation 
   expect(refreshed.kind).toBe("list");
 });
 
-test("compiled bookmark command works without an open reader, while the reader menu exposes the same list", async () => {
+test("compiled bookmark command works without an open reader, while the reader header keeps its own bookmark entry", async () => {
   const f = fixture(); f.seed("saved");
   const commands = new Map<string, () => Promise<PluginViewResult>>();
   const registration = { dispose() {}, updateState: async () => ({ status: "applied" }) };
+  const headerActions: string[] = [];
   Object.assign(f.ctx, { contributions: {
     commands: { register: (command: { id: string; run: () => Promise<PluginViewResult> }) => { commands.set(command.id, command.run); return registration; } },
-    headerActions: { register: () => registration },
+    headerActions: { register: (action: { id: string }) => { headerActions.push(action.id); return registration; } },
     agentTools: { register: () => registration },
   } });
+  Object.assign(f.ctx.domains.library.queries.books, { getNavigationToc: async () => ({ bookId: "book-a", contentVersion: "v1", entries: [] }) });
   const plugin = (await import(new URL("../dist/main.js", import.meta.url).href)).default as PluginModule;
   await plugin.activate(f.ctx);
   f.session.status = "idle"; f.session.bookId = null; f.session.location = null;
@@ -239,11 +241,11 @@ test("compiled bookmark command works without an open reader, while the reader m
   expect((latest(f.updates) as PluginListView).items[0]?.title).toBe("Compiled live bookmark");
   subscription.dispose(); expect(f.observers.size).toBe(0);
   f.session.status = "ready"; f.session.bookId = "book-a"; f.session.location = location;
+  // The go-to box is navigation only; bookmarks keep their own header action and command.
   const root = view(await commands.get("open")!());
-  if (root.kind !== "blocks") throw Error("Expected Jumper root");
-  const menu = root.blocks.find(block => block.kind === "actions" && block.actions.some(a => a.id === "bookmarks"));
-  if (menu?.kind !== "actions") throw Error("Expected bookmark action");
-  expect((view(await menu.actions.find(a => a.id === "bookmarks")!.run()) as PluginListView).items).toHaveLength(1);
+  if (root.kind !== "list" || !root.search) throw Error("Expected the Jumper go-to list");
+  expect(root.actions!.map(a => a.id)).toEqual(["back", "forward"]);
+  expect(headerActions).toEqual(["jumper", "bookmarks"]);
   const manifest = await Bun.file(new URL("../dist/manifest.json", import.meta.url)).json();
   expect(manifest.requires.services.storage).toBe("^2.3.0");
   expect(manifest.permissions).toEqual(["library:read", "reading:write", "agent:tools"]);

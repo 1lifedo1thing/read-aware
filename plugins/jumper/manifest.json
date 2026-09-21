@@ -1,10 +1,10 @@
 {
   "id": "jumper",
   "name": "Jumper",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "schemaVersion": 1,
   "minAppVersion": "0.3.0",
-  "description": "Jump to a chapter, page or passage in the open book, and keep named bookmarks.",
+  "description": "Jump to a chapter, page or passage in the open book from one search box, and keep named bookmarks.",
   "author": "ReadAware",
   "main": "main.js",
   "permissions": [
@@ -28,7 +28,7 @@
       "storage": "^2.3.0"
     },
     "schemas": {
-      "views": "^1.8.0"
+      "views": "^1.12.0"
     }
   },
   "services": [
