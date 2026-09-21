@@ -102,6 +102,7 @@
 			<key>CFBundleTypeExtensions</key>
 			<array>
 				<string>txt</string>
+				<string>text</string>
 			</array>
 			<key>LSItemContentTypes</key>
 			<array>
@@ -109,6 +110,24 @@
 			</array>
 			<key>CFBundleTypeName</key>
 			<string>TXT</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeExtensions</key>
+			<array>
+				<string>html</string>
+				<string>htm</string>
+				<string>xhtml</string>
+			</array>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.html</string>
+			</array>
+			<key>CFBundleTypeName</key>
+			<string>HTML</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
