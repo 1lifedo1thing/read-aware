@@ -12,6 +12,7 @@ import { waitForReadingPaint } from "../lib/reading-engine-adapter";
 import { resolveTextUnitPosition, textUnitContinuesBeyondPage } from "../lib/text-unit-position";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { causalActor, type DomainActor } from "../../../platform/domain-actor";
+import { isEditableKeyTarget } from "../../../platform/app-keydown";
 import { readingRenderActor, readingRenderContext } from "../lib/reading-render-context";
 import type { RegisteredReaderMode } from "../../plugins/lib/plugin-types";
 import {
@@ -743,24 +744,31 @@ export function useTextUnitNavigator({
   // relays presses as VOLUME_STEP_EVENT; off Android both calls no-op.
   useEffect(() => {
     if (!active) return;
+    // The shell consumes captured presses before the page sees them, so the
+    // keys must be handed back while a note editor or chat composer has focus.
+    // Otherwise typing leaves the volume buttons dead: no step and no volume.
+    let captured = false;
+    const syncCapture = () => {
+      const wanted = !isEditableKeyTarget(document.activeElement);
+      if (wanted === captured) return;
+      captured = wanted;
+      setVolumeKeyCapture(wanted);
+    };
     const onVolumeStep = (event: Event) => {
-      const focused = document.activeElement;
-      // Don't steal the keys mid-typing (note editor, chat composer).
-      if (
-        focused instanceof HTMLElement &&
-        (focused.isContentEditable ||
-          focused.closest("input, textarea, select, [contenteditable='true']"))
-      ) {
-        return;
-      }
+      // A press that raced the focus change still must not type over the field.
+      if (isEditableKeyTarget(document.activeElement)) return;
       const direction = (event as CustomEvent<VolumeStepDirection>).detail;
       step(direction === "prev" ? -1 : 1);
     };
-    setVolumeKeyCapture(true);
+    syncCapture();
     window.addEventListener(VOLUME_STEP_EVENT, onVolumeStep);
+    document.addEventListener("focusin", syncCapture);
+    document.addEventListener("focusout", syncCapture);
     return () => {
       window.removeEventListener(VOLUME_STEP_EVENT, onVolumeStep);
-      setVolumeKeyCapture(false);
+      document.removeEventListener("focusin", syncCapture);
+      document.removeEventListener("focusout", syncCapture);
+      if (captured) setVolumeKeyCapture(false);
     };
   }, [active, step]);
 
