@@ -55,6 +55,7 @@ export async function runChapterRegressions(ViewClass: typeof View): Promise<Res
         renderer.setStyles(buildReaderContentCss({ ...DEFAULT_READER_SETTINGS, fontFamily: "system:serif", readingMode: mode }, { palette: BUILTIN_READER_PALETTES.warm }));
         const settle = async () => {
           await renderer.waitForCurrentRender();
+          if ("whenChapterSettled" in renderer) await renderer.whenChapterSettled();
           await renderer.getContents()[0]!.doc.fonts.ready;
           await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         };
@@ -122,6 +123,7 @@ export async function runChapterRegressions(ViewClass: typeof View): Promise<Res
         await view.goTo({ index: 0, anchor: 0 });
         assert(text().startsWith("Preface"), "Source fraction 0 no longer selects the first chapter");
         await view.goTo({ index: 0, anchor: 1 });
+        await settle();
         assert(mode === "scroll" ? renderer.getContents().length === 2 && !text().includes("Chapter one")
           : text().startsWith("Chapter two"), "Source fraction 1 no longer selects the final chapter");
         results.push({ name, passed: true });

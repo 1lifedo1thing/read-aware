@@ -82,7 +82,19 @@ export class Paginator extends HTMLElement {
     #view: SectionView | null = null
     #entries: SectionEntry[] = []
     #building: number | undefined
-    #chapterComplete = false
+    // Continuous scroll keeps a resident window of a TOC chapter's source
+    // files around the viewport rather than the whole chapter: files are
+    // added as the reader approaches an edge and released once far behind.
+    // The token identifies the chapter surface; replacing it (another
+    // chapter, close) invalidates in-flight extensions.
+    #chapterToken = 0
+    #chapterEdges: { first?: number; last?: number } = {}
+    #extending: Partial<Record<-1 | 1, Promise<boolean>>> = {}
+    #extensionFailed: Partial<Record<-1 | 1, number>> = {}
+    #maintaining: Promise<void> | undefined
+    #maintainFrame: number | undefined
+    #maintainAgain = false
+    #windowing = 0
     #layingOut = false
     #deferredLayout = false
     #pendingRender: Promise<void> = Promise.resolve()
@@ -96,6 +108,9 @@ export class Paginator extends HTMLElement {
     #margin = 0
     #index = -1
     #anchor: Anchor = 0 // anchor view to a fraction (0-1), Range, or Element
+    // Scroll offset at which #anchor was last valid. A reader who has scrolled
+    // since is not sent back there by a late expansion (fonts, images).
+    #anchoredScroll = 0
     #anchorContext: object | undefined
     #scrollFeedback: { position: number; context: object } | undefined
     #justAnchored = false
@@ -251,6 +266,15 @@ export class Paginator extends HTMLElement {
 
         this.#observer.observe(this.#container)
         this.#container.addEventListener('scroll', () => this.dispatchEvent(new Event('scroll')))
+        // Window maintenance follows the raw scroll position, once per frame:
+        // the debounced relocation below deliberately skips anchor scrolls.
+        this.#container.addEventListener('scroll', () => {
+            if (!this.scrolled || this.#windowing || this.#maintainFrame !== undefined) return
+            this.#maintainFrame = requestAnimationFrame(() => {
+                this.#maintainFrame = undefined
+                if (this.scrolled && !this.#windowing) void this.#maintainWindow(this.#anchorContext ?? {})
+            })
+        }, { passive: true })
         this.#container.addEventListener('scroll', debounce(() => {
             if (this.scrolled) {
                 if (this.#justAnchored) this.#justAnchored = false
@@ -424,7 +448,9 @@ export class Paginator extends HTMLElement {
     }
     #keepEntry(keep?: SectionEntry) {
         for (const entry of this.#entries) if (entry !== keep) this.#dropEntry(entry)
-        this.#chapterComplete = false
+        this.#chapterToken++
+        this.#chapterEdges = {}
+        this.#extensionFailed = {}
         this.#view = keep?.view ?? null
     }
     #activate(entry: SectionEntry, context: object = {}, announce = false) {
@@ -443,8 +469,14 @@ export class Paginator extends HTMLElement {
                 // only an expansion outside a build needs deferring while the
                 // scroll layer is suspended.
                 if (this.#building !== undefined || this.#layingOut || !this.#entries.some(entry => entry.view === view)) return
+                // A window change measures its own displacement and shifts the
+                // scroll position exactly; re-anchoring here would fight it.
+                if (this.#windowing) return
                 if (this.#scrollSuspensions) { this.#deferredLayout = true; return }
                 this.#updateChapterEdges()
+                // In continuous scroll the anchor lags the reader by the relocate
+                // debounce; while they are moving, leave the scroll position alone.
+                if (this.scrolled && Math.abs(this.start - this.#anchoredScroll) > 1) return
                 const anchor = this.#entries.find(entry => entry.index === this.#anchorIndex)
                 if (anchor) this.#activate(anchor, this.#anchorContext)
                 void this.#scrollToAnchor(this.#anchor, 'anchor', this.#anchorContext)
@@ -457,11 +489,98 @@ export class Paginator extends HTMLElement {
         this.#entries.sort((a, b) => a.index - b.index)
         return entry
     }
+    // Reader margins belong to the chapter's outer edges only. A resident edge
+    // whose neighbour is merely not loaded yet gets no margin: the seam will
+    // be filled as the reader approaches it.
+    #isChapterStart(entry: SectionEntry) {
+        // Without TOC chapter boundaries every source file is its own chapter.
+        if (!this.#chapterStarts.size) return true
+        return entry.view.startsChapter || this.#chapterEdges.first === entry.index || this.#adjacentIndex(-1, entry.index) === undefined
+    }
+    #isChapterEnd(entry: SectionEntry) {
+        if (!this.#chapterStarts.size) return true
+        if (entry.view.hasChapter(1) || this.#chapterEdges.last === entry.index) return true
+        const next = this.#adjacentIndex(1, entry.index)
+        return next === undefined || this.#startsAtDocumentStart(next)
+    }
+    // A TOC target at a file's very start (no fragment, or fragment 0) makes
+    // that file begin a chapter without loading it. Element anchors need the
+    // document; those files are loaded and released if they turn out to start.
+    #startsAtDocumentStart(index: number) {
+        return (this.#chapterStarts.get(index) ?? []).some(target => target.anchor == null || target.anchor === 0)
+    }
     #updateChapterEdges() {
         for (const [i, entry] of this.#entries.entries()) {
-            entry.view.setChapterEdges(!this.scrolled || i === 0, !this.scrolled || i === this.#entries.length - 1)
+            entry.view.setChapterEdges(!this.scrolled || (i === 0 && this.#isChapterStart(entry)),
+                !this.scrolled || (i === this.#entries.length - 1 && this.#isChapterEnd(entry)))
             entry.view.setScrollExtent(0)
         }
+    }
+    /** Whether the current scroll chapter has source content beyond its
+     * resident edge in `dir` that is not loaded yet. */
+    hasPendingContent(dir: -1 | 1): boolean {
+        if (!this.scrolled || !this.#chapterStarts.size) return false
+        const edge = dir < 0 ? this.#entries[0] : this.#entries.at(-1)
+        // An edge still loading has no chapter knowledge yet; it is not pending.
+        return !!edge && edge.view.ready && !(dir < 0 ? this.#isChapterStart(edge) : this.#isChapterEnd(edge))
+    }
+    /** Make the part under the viewport start the active document. */
+    #activateVisible(context: object = {}) {
+        if (!this.scrolled) return
+        const position = this.start + this.#margin
+        const entry = this.#entries.find(({ view }) => view.ready && this.#viewOffset(view) + view.element.getBoundingClientRect()[this.sideProp] > position)
+            ?? this.#entries.findLast(({ view }) => view.ready)
+        if (entry) this.#activate(entry, context)
+    }
+    /** Begin a change to the resident window. Returns the function that ends
+     * it: it moves the scroller so the document the reader is looking at
+     * stays exactly where it was, keeps the surface long enough to hold that
+     * position, and refreshes the reading anchor. Call it before any DOM
+     * change, including a continuation's load: a part inserted before the
+     * reader pushes their text down as soon as it is laid out. */
+    #stableViewport(): () => void {
+        // Measure the part the reader is looking at: relocation is debounced,
+        // so the active document may lag a fast scroll.
+        this.#activateVisible(this.#anchorContext ?? {})
+        // The iframe, not the part element: a part losing its leading chapter
+        // margin moves its text without moving its box. Positions are taken in
+        // scroll-surface coordinates, so a browser clamp of the scroll offset
+        // during the change (a surface that briefly shrinks) cannot mislead.
+        const frame = this.#view?.document?.defaultView?.frameElement
+        const axis = this.#vertical ? 'left' : 'top'
+        const sign = this.#vertical ? -1 : 1
+        const surfaceOffset = () => frame ? frame.getBoundingClientRect()[axis] + sign * this.start : 0
+        const startBefore = this.start, offsetBefore = surfaceOffset()
+        this.#windowing++
+        let ended = false
+        return () => {
+            if (ended) return
+            ended = true
+            this.#windowing--
+            if (!frame || !frame.isConnected) return
+            const start = Math.max(0, startBefore + sign * (surfaceOffset() - offsetBefore))
+            const last = this.#entries.at(-1)
+            // Keep the surface long enough to hold the position (see setScrollExtent).
+            if (last) last.view.setScrollExtent(start + this.size - this.#viewOffset(last.view))
+            if (Math.abs(start - this.start) > 0.5) {
+                this.#container[this.scrollProp] = this.#vertical ? -start : start
+                this.#scrollFeedback = { position: this.#container[this.scrollProp], context: this.#anchorContext ?? {} }
+            }
+            // What is on screen now is the reading position. Later expansions
+            // (fonts settling in a joined part) re-anchor to this, not to a
+            // range recorded before the reader last scrolled.
+            const range = this.#getVisibleRange()
+            if (range) {
+                this.#lastVisibleRange = range
+                this.#anchor = range
+                this.#anchorIndex = this.#index
+                this.#anchoredScroll = this.start
+            }
+        }
+    }
+    #withStableViewport<T>(mutate: () => T): T {
+        const end = this.#stableViewport()
+        try { return mutate() } finally { end() }
     }
     #viewOffset(view = this.#view) {
         if (!this.scrolled) return 0
@@ -567,12 +686,25 @@ export class Paginator extends HTMLElement {
             this.#updateChapterEdges()
         } finally { this.#layingOut = false }
         if (changeFlow && this.scrolled && this.#chapterStarts.size) {
-            this.#chapterComplete = false
             this.#pendingRender = this.#goTo({ index: this.#index, anchor, context })
             void this.#pendingRender.catch((error: unknown) => console.error('Could not render continuous chapter', error))
         } else void this.#scrollToAnchor(this.#anchor, 'anchor', this.#anchorContext)
     }
     waitForCurrentRender() { return this.#pendingRender }
+    /** Resolves once the resident window around the viewport is satisfied:
+     * nearby chapter sources loaded, distant ones released. Navigation itself
+     * resolves as soon as the target source is shown. */
+    async whenChapterSettled(): Promise<void> {
+        for (;;) {
+            // A scroll has scheduled a pass for the next frame; let it start.
+            if (this.#maintainFrame !== undefined) { await new Promise(resolve => requestAnimationFrame(resolve)); continue }
+            const current = this.#maintaining
+            if (!current) return
+            await current
+            // Only a maintenance pass started after this one keeps us waiting.
+            if (this.#maintaining === current) return
+        }
+    }
     /** Pause native momentum before replacing a scroll chapter's bounds.
      * WebKit can otherwise keep displaying the old scrolling layer even though
      * DOM positions and snapshots already describe the new chapter. The host
@@ -729,14 +861,14 @@ export class Paginator extends HTMLElement {
                 ? ({ top, bottom }) => ({ left: top - offset, right: bottom - offset })
                 : ({ left, right }) => ({ left: left - offset, right: right - offset })
     }
-    async #scrollToRect(rect: DOMRect, reason: RelocateReason | null, context: object) {
+    async #scrollToRect(rect: DOMRect, reason: RelocateReason | null, context: object, view = this.#view) {
         if (this.scrolled) {
-            const offset = this.#getRectMapper()(rect).left - this.#margin
+            const offset = this.#getRectMapper(view)(rect).left - this.#margin
             const last = this.#entries.at(-1)?.view
             last?.setScrollExtent(offset + this.size - this.#viewOffset(last))
             return this.#scrollTo(offset, reason, false, context)
         }
-        const offset = this.#getRectMapper()(rect).left
+        const offset = this.#getRectMapper(view)(rect).left
         return this.#scrollToPage(Math.floor(offset / this.size) + (this.#rtl ? -1 : 1), reason, false, context)
     }
     async #scrollTo(offset: number, reason: RelocateReason | null, smooth = false, context: object = {}) {
@@ -789,8 +921,14 @@ export class Paginator extends HTMLElement {
             // publisher anchor (common on covers). It has no layout rect;
             // still position the selected chapter and publish its relocation.
             // Otherwise open finishes with no location and an empty reader.
-            if (!rect) return this.#scrollToAnchor(0, reason, context)
-            await this.#scrollToRect(rect, reason, context)
+            // A re-anchor after layout has no such duty: an anchor that lost
+            // its geometry must not fling the reader to the top.
+            if (!rect) return reason === 'anchor' ? undefined : this.#scrollToAnchor(0, reason, context)
+            // A scroll chapter holds several documents; map the anchor with
+            // the part that owns it, not with whichever part is active.
+            const doc = typeof anchor === 'number' ? null : 'startContainer' in anchor ? anchor.startContainer.ownerDocument : anchor.ownerDocument
+            const owner = this.#entries.find(entry => entry.view.document === doc)?.view ?? this.#view
+            await this.#scrollToRect(rect, reason, context, owner)
             return
         }
         // if anchor is a fraction
@@ -830,21 +968,18 @@ export class Paginator extends HTMLElement {
         })
     }
     #afterScroll(reason: RelocateReason | null, context: object = {}) {
-        if (this.scrolled) {
-            const position = this.start + this.#margin
-            const entry = this.#entries.find(({ view }) => this.#viewOffset(view) + view.element.getBoundingClientRect()[this.sideProp] > position)
-                ?? this.#entries.at(-1)
-            if (entry) this.#activate(entry, context)
-        }
+        this.#activateVisible(context)
         const range = this.#getVisibleRange()
         if (!range) return
         this.#lastVisibleRange = range
+        if (this.scrolled && !this.#windowing) void this.#maintainWindow(context)
         // don't set new anchor if relocation was to scroll to anchor
         if (reason !== 'selection' && reason !== 'navigation' && reason !== 'anchor') {
             this.#anchor = range
             this.#anchorIndex = this.#index
             this.#anchorContext = context
         } else this.#justAnchored = true
+        this.#anchoredScroll = this.start
 
         const index = this.#index
         const detail: RelocateDetail = { reason, range, index, context }
@@ -859,12 +994,12 @@ export class Paginator extends HTMLElement {
         }
         this.dispatchEvent(new CustomEvent('relocate', { detail }))
     }
-    async #loadSection(index: number, navigation: number, context: object, replace = false): Promise<SectionEntry | undefined> {
+    async #loadSection(index: number, live: () => boolean, context: object, replace = false): Promise<SectionEntry | undefined> {
         const section = this.sections[index]
         const src = await section.load()
         let released = false
         const release = () => { if (!released) { released = true; section.unload?.() } }
-        if (navigation !== this.#navigation) { release(); return }
+        if (!live()) { release(); return }
         if (typeof src !== 'string') { release(); throw new Error('Reflowable section must load a document URL') }
         if (replace) this.#keepEntry()
         const entry = this.#createView(index, release)
@@ -872,7 +1007,7 @@ export class Paginator extends HTMLElement {
         if (!this.#view) this.#activate(entry)
         try {
             await view.load(src, doc => {
-                if (navigation !== this.#navigation) return
+                if (!live()) return
                 if (doc.head) {
                     const before = doc.createElement('style'), after = doc.createElement('style')
                     doc.head.prepend(before)
@@ -882,7 +1017,7 @@ export class Paginator extends HTMLElement {
                 this.#applyStyles(view)
                 this.dispatchEvent(new CustomEvent('load', { detail: { doc, index, context } }))
             }, direction => this.#beforeRender(this.#view === view ? direction : { vertical: this.#vertical, rtl: this.#rtl }))
-            if (navigation !== this.#navigation) { this.#dropEntry(entry); return }
+            if (!live()) { this.#dropEntry(entry); return }
             this.dispatchEvent(new CustomEvent('create-overlayer', { detail: {
                 doc: view.document, index, context,
                 attach: (overlayer: Overlayer) => view.overlayer = overlayer,
@@ -892,33 +1027,102 @@ export class Paginator extends HTMLElement {
         } catch (error) {
             this.#dropEntry(entry)
             if (this.#view === view) this.#view = null
-            if (navigation === this.#navigation) throw error
+            if (live()) throw error
         }
     }
-    async #assembleChapter(primary: SectionEntry, navigation: number, context: object) {
-        if (!this.scrolled || !this.#chapterStarts.size || this.#chapterComplete) return
-        // Retry an incomplete load from its requested source, releasing any
-        // partial continuation rather than duplicating its iframe or lease.
-        this.#keepEntry(primary)
-        // A chapter may end in one spine file and resume in the next. Keep all
-        // its original iframes in one scroll surface, stopping at TOC boundaries.
-        for (const dir of [-1, 1] as const) {
-            let edge = primary
-            while (navigation === this.#navigation && this.scrolled) {
-                if (dir < 0 ? edge.view.startsChapter : edge.view.hasChapter(1)) break
-                const index = this.#adjacentIndex(dir, edge.index)
-                if (index === undefined) break
-                const next = await this.#loadSection(index, navigation, context)
-                if (!next) return
+    // Resident window policy, in viewports: load the next source once the
+    // reader is within PREFETCH of a resident edge; release sources more than
+    // RETAIN beyond the viewport. Bounded work and memory for any chapter size.
+    static readonly #PREFETCH = 2
+    static readonly #RETAIN = 3
+    #maintainWindow(context: object = {}): Promise<void> {
+        if (this.#maintaining) { this.#maintainAgain = true; return this.#maintaining }
+        const run = (async () => {
+            do {
+                this.#maintainAgain = false
+                // A navigation in progress schedules its own maintenance once
+                // the target is shown; a debounced scroll must not act on a
+                // half-built surface.
+                if (!this.scrolled || !this.#chapterStarts.size || !this.#view?.ready || this.#building !== undefined) return
+                const size = this.size
+                if (!size) return
+                this.#activateVisible(context)
+                if (this.viewSize - this.end < size * Paginator.#PREFETCH && this.#extensionFailed[1] === undefined) await this.#extend(1, context)
+                if (this.start < size * Paginator.#PREFETCH && this.#extensionFailed[-1] === undefined) await this.#extend(-1, context)
+                this.#releaseDistant()
+            } while (this.#maintainAgain)
+        })()
+        // Clear only after the promise settles, so a pass that returns
+        // synchronously cannot leave a resolved promise registered forever.
+        this.#maintaining = run
+        void run.finally(() => { if (this.#maintaining === run) this.#maintaining = undefined })
+            .catch((error: unknown) => console.warn('Chapter window maintenance failed', error))
+        return run
+    }
+    /** Load the chapter's next source in `dir` onto the resident edge.
+     * Resolves true when a source was added. */
+    #extend(dir: -1 | 1, context: object = {}): Promise<boolean> {
+        const pending = this.#extending[dir]
+        if (pending) return pending
+        const run = (async () => {
+            const token = this.#chapterToken
+            const live = () => token === this.#chapterToken && this.scrolled
+            const edge = dir < 0 ? this.#entries[0] : this.#entries.at(-1)
+            if (!edge || !this.hasPendingContent(dir)) return false
+            const index = this.#adjacentIndex(dir, edge.index)
+            if (index === undefined) return false
+            // The joining part enters the surface (and lays out) while it loads,
+            // so the reader's position is captured before the load and restored
+            // once the part is placed; expansions in between must not re-anchor.
+            const settle = this.#stableViewport()
+            try {
+                let next: SectionEntry | undefined
+                try { next = await this.#loadSection(index, live, context) }
+                catch (error) {
+                    // Leave the edge open for an explicit retry (next navigation
+                    // or page turn) instead of hammering a failing source on scroll.
+                    this.#extensionFailed[dir] = index
+                    console.warn('Could not load chapter continuation', index, error)
+                    return false
+                }
+                if (!next || !live()) return false
                 next.view.selectChapter(dir < 0 ? 1 : 0)
-                if (dir > 0 && next.view.startsChapter) { this.#dropEntry(next); break }
-                edge = next
-            }
+                if (dir > 0 && next.view.startsChapter) {
+                    this.#dropEntry(next)
+                    this.#chapterEdges.last = edge.index
+                    this.#updateChapterEdges()
+                    return false
+                }
+                if (dir < 0 && next.view.startsChapter) this.#chapterEdges.first = next.index
+                this.#updateChapterEdges()
+                return true
+            } finally { settle() }
+        })().finally(() => { delete this.#extending[dir] })
+        this.#extending[dir] = run
+        return run
+    }
+    /** Release resident sources far outside the viewport, keeping the reading
+     * position, the active document and any document holding a selection. */
+    #releaseDistant() {
+        if (!this.scrolled || this.#entries.length < 2) return
+        const size = this.size
+        const keepFrom = this.start - size * Paginator.#RETAIN, keepTo = this.end + size * Paginator.#RETAIN
+        const anchorDoc = typeof this.#anchor === 'number' ? null
+            : 'startContainer' in this.#anchor ? this.#anchor.startContainer.ownerDocument : this.#anchor.ownerDocument
+        const distant: SectionEntry[] = []
+        let offset = 0
+        for (const entry of this.#entries) {
+            const extent = entry.view.element.getBoundingClientRect()[this.sideProp]
+            const doc = entry.view.document
+            const selected = doc?.getSelection()?.isCollapsed === false
+            if ((offset + extent < keepFrom || offset > keepTo) && entry.view !== this.#view && doc !== anchorDoc && !selected) distant.push(entry)
+            offset += extent
         }
-        if (navigation !== this.#navigation) return
-        this.#chapterComplete = true
-        this.#updateChapterEdges()
-        this.#activate(primary, context)
+        if (!distant.length) return
+        this.#withStableViewport(() => {
+            for (const entry of distant) this.#dropEntry(entry)
+            this.#updateChapterEdges()
+        })
     }
     #canGoToIndex(index: number): boolean {
         return Number.isInteger(index) && index >= 0 && index <= this.sections.length - 1
@@ -937,7 +1141,7 @@ export class Paginator extends HTMLElement {
             let entry = this.#entries.find(entry => entry.index === index && entry.view.ready)
             if (!entry) {
                 retireScrollLayer()
-                entry = await this.#loadSection(index, navigation, context, true)
+                entry = await this.#loadSection(index, () => navigation === this.#navigation, context, true)
             }
             if (!entry || navigation !== this.#navigation) return
             this.#activate(entry, context)
@@ -949,8 +1153,7 @@ export class Paginator extends HTMLElement {
                 retireScrollLayer()
                 this.#keepEntry(entry)
             }
-            await this.#assembleChapter(entry, navigation, context)
-            if (navigation !== this.#navigation) return
+            this.#extensionFailed = {}
             this.#updateChapterEdges()
             this.#activate(entry, context, true)
             await this.#scrollToAnchor(localAnchor, select ? 'selection' : 'navigation', context)
@@ -958,6 +1161,9 @@ export class Paginator extends HTMLElement {
         } finally {
             resumeScroll?.()
             this.#finishBuild(navigation)
+            // The target source is on screen; its chapter neighbours follow
+            // on demand, without holding the navigation open.
+            if (navigation === this.#navigation) void this.#maintainWindow(context)
         }
     }
     async goTo(target: MaybePromise<ResolvedNavigation | null | undefined>) {
@@ -968,22 +1174,32 @@ export class Paginator extends HTMLElement {
         if (navigation === this.#navigation && resolved && this.#canGoToIndex(resolved.index))
             return this.#goTo(resolved, navigation)
     }
-    #scrollPrev(distance: number | undefined, context: object) {
+    async #scrollPrev(distance: number | undefined, context: object): Promise<boolean | undefined> {
         if (!this.#view) return true
         if (this.scrolled) {
             if (this.start > 0) return this.#scrollTo(
-                Math.max(0, this.start - (distance ?? this.size)), null, true, context)
+                Math.max(0, this.start - (distance ?? this.size)), null, true, context).then(() => false)
+            // The chapter continues above but is not resident yet: bring it
+            // in and keep scrolling instead of leaving the chapter.
+            if (this.hasPendingContent(-1)) {
+                delete this.#extensionFailed[-1]
+                if (await this.#extend(-1, context)) return this.#scrollPrev(distance, context)
+            }
             return true
         }
         if (this.atStart) return
         const page = this.page - 1
         return this.#scrollToPage(page, 'page', true, context).then(() => page <= 0)
     }
-    #scrollNext(distance: number | undefined, context: object) {
+    async #scrollNext(distance: number | undefined, context: object): Promise<boolean | undefined> {
         if (!this.#view) return true
         if (this.scrolled) {
             if (this.viewSize - this.end > 2) return this.#scrollTo(
-                Math.min(this.viewSize, distance ? this.start + distance : this.end), null, true, context)
+                Math.min(this.viewSize, distance ? this.start + distance : this.end), null, true, context).then(() => false)
+            if (this.hasPendingContent(1)) {
+                delete this.#extensionFailed[1]
+                if (await this.#extend(1, context)) return this.#scrollNext(distance, context)
+            }
             return true
         }
         if (this.atEnd) return
@@ -1030,14 +1246,13 @@ export class Paginator extends HTMLElement {
             const resumeScroll = this.suspendScroll()
             try {
                 this.#keepEntry(edge)
-                this.#activate(edge, context)
-                await this.#assembleChapter(edge, navigation, context)
-                if (navigation !== this.#navigation) return
+                this.#updateChapterEdges()
                 this.#activate(edge, context, true)
                 await this.#scrollToAnchor(dir < 0 ? 1 : 0, 'navigation', context)
             } finally {
                 resumeScroll()
                 this.#finishBuild(navigation)
+                if (navigation === this.#navigation) void this.#maintainWindow(context)
             }
             return
         }
@@ -1116,6 +1331,7 @@ export class Paginator extends HTMLElement {
         this.#transformController?.abort()
         this.#observer.disconnect()
         this.#keepEntry()
+        this.#extending = {}
         this.#building = undefined
         this.#deferredLayout = false
         this.#mediaQuery.removeEventListener('change', this.#mediaQueryListener)

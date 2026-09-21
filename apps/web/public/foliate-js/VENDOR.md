@@ -259,18 +259,32 @@ explicit/contextual `any`, unsafe double assertions, and suppression comments.
   LTR/RTL/vertical text, forward/backward turns, CFI restoration, annotation
   alignment, fractions, resizing and mode changes in native WebKit. Re-apply
   after any upstream update.
-- **Continuous scroll chapters across spine files:** the paginator loads a
-  chapter's linear source continuations into one scroll container, without
-  rewriting DOM paths or merging publisher stylesheets. Only the chapter's
-  outer edges receive reader margins. Scrolling across a source seam updates
-  the active CFI without reloading or turning a page; visible text includes
-  all intersecting source ranges. Styles, relayout and annotation layers apply
-  to every part. Failed continuations reject navigation and can be retried;
+- **Continuous scroll chapters across spine files, as a resident window:** in
+  scrolled flow one TOC chapter reads as a single scroll surface across its
+  linear source files, without rewriting DOM paths or merging publisher
+  stylesheets, but only a window of those files is resident. Navigation shows
+  the target source as soon as it is anchored (the navigation promise resolves
+  then); neighbours are loaded when the viewport comes within two viewports of
+  a resident edge and released again once more than three viewports away.
+  Window changes keep the active document's on-screen position exactly and
+  refresh the reading anchor, so nothing the reader is looking at moves. A file
+  whose TOC target is its very start is known to begin a chapter without
+  loading; element-anchored starts are probed and released. Only the chapter's
+  real outer edges receive reader margins; a resident edge with sources still
+  to load has none. `hasPendingContent(dir)` reports such an edge (the host's
+  scroll-edge helper consults it), page turns at that edge load the next source
+  instead of leaving the chapter, and `whenChapterSettled()` resolves once the
+  window around the viewport is satisfied. A failed continuation keeps its edge
+  open and is retried by the next page turn or navigation into the chapter;
   superseding navigation and close release pending and resident sources.
-  `tests/runtime/foliate-scroll-chapter-regressions.ts` covers real scrolling,
-  multi-source bookmarks, source leases, failure/retry, resize during loading,
-  supersession and close. Paginated flow retains its source-page behavior.
-  Re-apply after any upstream update.
+  Scrolling across a source seam updates the active CFI without reloading or
+  turning a page; visible text includes all intersecting resident ranges.
+  Styles, relayout and annotation layers apply to every resident part.
+  `tests/runtime/foliate-scroll-chapter-regressions.ts` covers prefetch and
+  release while reading, position stability across window changes, restoring
+  released sources, multi-source bookmarks, source leases, failure/retry,
+  resize during loading, supersession and close. Paginated flow retains its
+  source-page behavior. Re-apply after any upstream update.
 - **Suspend native scrolling across chapter transitions:** `suspendScroll()`
   temporarily retires the scroll container's native momentum layer and consumes
   wheel events until its idempotent release callback runs. Automatic relayout

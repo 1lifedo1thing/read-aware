@@ -145,9 +145,12 @@ export function getScrollEdges(
     const start = renderer.start ?? 0;
     const end = renderer.end ?? 0;
     const viewSize = renderer.viewSize ?? 0;
+    // A resident edge with chapter sources still to load is not an edge the
+    // reader can push past; the engine fills it in as they approach.
+    const pending = (dir: -1 | 1) => "hasPendingContent" in renderer && renderer.hasPendingContent(dir);
     return {
-      atTop: start <= SCROLL_EDGE_EPSILON,
-      atBottom: viewSize - end <= SCROLL_EDGE_EPSILON,
+      atTop: start <= SCROLL_EDGE_EPSILON && !pending(-1),
+      atBottom: viewSize - end <= SCROLL_EDGE_EPSILON && !pending(1),
     };
   } catch {
     return null;
