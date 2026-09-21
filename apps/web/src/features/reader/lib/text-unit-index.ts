@@ -46,13 +46,35 @@ function isRendered(el: Element): boolean {
   return style.display !== "none" && style.visibility !== "hidden";
 }
 
-/** Accept text/CDATA, descend through elements, skip script/style/hidden. */
+// A superscript that is only a reference mark, not reading text (note
+// numbers, asterisks, daggers, bracketed numbers). Subscripts are never
+// markers ("H₂O"); a superscript with letters stays ("1st", "Mᵐᵉ").
+const REFERENCE_MARK = /^[\s\d\p{No}*†‡§¶[\]()（）【】〔〕.,]+$/u;
+
+/**
+ * Inline text that sits in the reading flow but is not part of the sentence:
+ * note reference markers and ruby annotations. Handed to the segmenter, a
+ * note number glued to a period ("…hello.¹ Then…") defeats the sentence
+ * break (UAX #29 forbids a break between a terminator and a digit), fusing
+ * two sentences into one unit; ruby text interleaves the gloss with the base
+ * characters. Neither is read aloud by a human reader either.
+ */
+function isReadingAside(el: Element): boolean {
+  const name = el.localName.toLowerCase();
+  if (name === "rt" || name === "rp") return true;
+  const epubType = el.getAttribute("epub:type") ?? el.getAttributeNS("http://www.idpf.org/2007/ops", "type");
+  if (epubType?.split(/\s+/).includes("noteref") || el.getAttribute("role") === "doc-noteref") return true;
+  return name === "sup" && REFERENCE_MARK.test(el.textContent ?? "");
+}
+
+/** Accept text/CDATA, descend through elements, skip script/style/hidden and
+ *  inline asides (note markers, ruby annotations). */
 function acceptTextNode(node: Node): number {
   if (node.nodeType === Node.ELEMENT_NODE) {
     const el = node as Element;
     const name = el.tagName.toLowerCase();
     if (name === "script" || name === "style") return NodeFilter.FILTER_REJECT;
-    if (!isRendered(el)) return NodeFilter.FILTER_REJECT;
+    if (!isRendered(el) || isReadingAside(el)) return NodeFilter.FILTER_REJECT;
     return NodeFilter.FILTER_SKIP;
   }
   return NodeFilter.FILTER_ACCEPT;

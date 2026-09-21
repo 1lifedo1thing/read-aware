@@ -40,3 +40,41 @@ describe("Sentence Reader segmentation", () => {
     expect(segmentTextUnits({ text: "Hello.", language: "en", unitId: "page" })).toEqual([]);
   });
 });
+
+describe("Sentence Reader dialogue quotes", () => {
+  test("an opening quote after a terminator starts the next sentence", () => {
+    const text = "“你好。”他说。“再见！”她答道。";
+    expect(pieces(text, "zh-CN")).toEqual(["“你好。”", "他说。", "“再见！”", "她答道。"]);
+  });
+
+  test("opening brackets and spaces before them move with the next sentence", () => {
+    const text = "He paused. “Well,” she said. （注）下一句。";
+    const parts = pieces(text, "en");
+    expect(parts[0]).toBe("He paused.");
+    expect(parts[1]!.startsWith("“Well,”")).toBe(true);
+    expect(parts[parts.length - 1]!.startsWith("（注）")).toBe(true);
+    expect(parts.some(part => /[“（]$/.test(part))).toBe(false);
+  });
+
+  test("a segment that is only an opening mark is left alone", () => {
+    const text = "“";
+    expect(pieces(text, "zh-CN")).toEqual(["“"]);
+  });
+});
+
+describe("Sentence Reader abbreviations", () => {
+  test("honorifics, Latin shorthands and initials do not end a sentence", () => {
+    const text = "Mr. Smith met Dr. Jones at 3 p.m. today, e.g. for tea. J. K. Rowling wrote it. Fine.";
+    expect(pieces(text)).toEqual([
+      "Mr. Smith met Dr. Jones at 3 p.m. today, e.g. for tea.",
+      "J. K. Rowling wrote it.",
+      "Fine.",
+    ]);
+  });
+
+  test("ordinary words and dotted acronyms keep their sentence end", () => {
+    expect(pieces("I said no. Then I left.")).toEqual(["I said no.", "Then I left."]);
+    expect(pieces("We moved to the U.S. Then we left.")).toEqual(["We moved to the U.S.", "Then we left."]);
+    expect(pieces("Bring apples, pears, etc. Then go.")).toEqual(["Bring apples, pears, etc.", "Then go."]);
+  });
+});

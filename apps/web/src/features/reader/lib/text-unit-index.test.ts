@@ -88,3 +88,15 @@ test("first failure prevents a backlog of new Worker requests", async () => {
   await tick();
   expect(calls).toBe(8);
 });
+
+test("note reference markers and ruby annotations stay out of the segmented text", async () => {
+  const doc = documentWith(
+    "<p>He said hello.<sup>1</sup> Then he left.<a epub:type=\"noteref\" href=\"#n2\">2</a> Water is H<sub>2</sub>O.</p>"
+    + "<p><ruby>漢<rt>かん</rt>字<rt>じ</rt></ruby>を読む。</p>",
+  );
+  const seen: string[] = [];
+  const units = await buildTextUnitRanges(doc, "paragraph", async ({ text }) => { seen.push(text); return [{ start: 0, end: text.length }]; });
+  expect(seen).toEqual(["He said hello. Then he left. Water is H2O.", "漢字を読む。"]);
+  // Ranges still span the live DOM; the highlight covers the markers in between.
+  expect(units.map(range => range.toString())).toEqual(["He said hello.1 Then he left.2 Water is H2O.", "漢かん字じを読む。"]);
+});

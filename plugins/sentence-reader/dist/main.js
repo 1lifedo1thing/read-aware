@@ -239,7 +239,108 @@ function segmentTextUnits({
     if (end > start)
       result.push({ start, end });
   }
-  return result;
+  return reattachOpeningQuotes(segmentable, mergeAbbreviationBreaks(segmentable, result));
+}
+var NON_TERMINAL_ABBREVIATIONS = new Set([
+  "Mr",
+  "Mrs",
+  "Ms",
+  "Mx",
+  "Dr",
+  "Prof",
+  "Sr",
+  "Jr",
+  "St",
+  "Mt",
+  "Ft",
+  "Rev",
+  "Fr",
+  "Gen",
+  "Col",
+  "Maj",
+  "Capt",
+  "Lt",
+  "Sgt",
+  "Cpl",
+  "Pvt",
+  "Hon",
+  "Pres",
+  "Gov",
+  "Sen",
+  "Rep",
+  "Messrs",
+  "Mme",
+  "Mlle",
+  "Msgr",
+  "vs",
+  "cf",
+  "viz",
+  "e.g",
+  "i.e",
+  "ca",
+  "approx",
+  "No",
+  "Nos",
+  "Fig",
+  "Figs",
+  "Vol",
+  "Vols",
+  "Ch",
+  "Chap",
+  "Sec",
+  "p",
+  "pp",
+  "ed",
+  "eds",
+  "op",
+  "loc",
+  "Inc",
+  "Ltd",
+  "Co",
+  "Corp",
+  "Bros"
+]);
+var ABBREVIATION_TAIL = /(?:^|[\s(\[\u201C\u2018])([A-Za-z](?:\.[A-Za-z])?|[A-Za-z][a-z]{0,5})\.$/;
+function mergeAbbreviationBreaks(text, segments) {
+  const merged = [];
+  for (const segment of segments) {
+    const previous = merged[merged.length - 1];
+    if (previous && endsWithAbbreviation(text.slice(previous.start, previous.end))) {
+      previous.end = segment.end;
+      continue;
+    }
+    merged.push({ ...segment });
+  }
+  return merged;
+}
+function endsWithAbbreviation(segment) {
+  const match = ABBREVIATION_TAIL.exec(segment);
+  if (!match)
+    return false;
+  const word = match[1];
+  if (/^[A-Z]$/.test(word))
+    return true;
+  return NON_TERMINAL_ABBREVIATIONS.has(word);
+}
+var OPENING_MARKS = /[\u201c\u2018\u300c\u300e\u301d\u3008\u300a\u3010\u3014\u3016\u3018\u301a\uff08\uff3b\uff5b\uff5f\ufe41\ufe43]/u;
+function reattachOpeningQuotes(text, segments) {
+  for (let i = 0;i + 1 < segments.length; i++) {
+    const current = segments[i];
+    const next = segments[i + 1];
+    let cut = current.end;
+    while (cut > current.start && OPENING_MARKS.test(text[cut - 1]))
+      cut--;
+    if (cut === current.end)
+      continue;
+    const moved = cut;
+    while (cut > current.start && /\s/.test(text[cut - 1]))
+      cut--;
+    if (cut === current.start)
+      continue;
+    current.end = cut;
+    next.start = moved;
+  }
+  return segments;
 }
 
 // src/index.ts
