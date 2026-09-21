@@ -13,6 +13,18 @@ const DRAG_START_THRESHOLD_PX = 6;
 // so a drag can never strand it beyond reach.
 const EDGE_MARGIN_PX = 24;
 
+/** The `--ra-safe-top` / `--ra-safe-bottom` insets (see index.css), in px. */
+export function safeAreaInsets(element: Element): { top: number; bottom: number } {
+  const win = element.ownerDocument.defaultView;
+  if (!win) return { top: 0, bottom: 0 };
+  const style = win.getComputedStyle(element.ownerDocument.documentElement);
+  const px = (name: string) => {
+    const value = Number.parseFloat(style.getPropertyValue(name));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  };
+  return { top: px("--ra-safe-top"), bottom: px("--ra-safe-bottom") };
+}
+
 export type DraggableFloat = {
   /** Center position as fractions of the container; null = untouched default. */
   position: FloatPosition | null;
@@ -67,12 +79,17 @@ export function useDraggableFloat({
       const rect = container.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return null;
       const half = halfSizeRef.current;
+      // The reader root is full-bleed; the status bar and the system gesture
+      // strip overlay its top and bottom by the safe-area insets. A control
+      // parked under them is unreachable, so the insets shrink the drag box.
+      const safe = safeAreaInsets(container);
       // A control wider than the container still clamps sanely: the min bound
       // wins, pinning it to the leading edge.
       const minX = Math.min(Math.max(half.x, EDGE_MARGIN_PX), rect.width / 2);
-      const minY = Math.min(Math.max(half.y, EDGE_MARGIN_PX), rect.height / 2);
+      const minY = Math.min(Math.max(half.y, EDGE_MARGIN_PX) + safe.top, rect.height / 2);
+      const maxY = Math.max(rect.height - Math.max(half.y, EDGE_MARGIN_PX) - safe.bottom, minY);
       const x = Math.min(rect.width - minX, Math.max(minX, centerX));
-      const y = Math.min(rect.height - minY, Math.max(minY, centerY));
+      const y = Math.min(maxY, Math.max(minY, centerY));
       return { x: x / rect.width, y: y / rect.height };
     },
     [containerRef],
