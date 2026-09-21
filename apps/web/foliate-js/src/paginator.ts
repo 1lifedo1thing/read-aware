@@ -439,8 +439,11 @@ export class Paginator extends HTMLElement {
             container: this,
             chapterStarts: this.#chapterStarts.get(index),
             onExpand: () => {
-                if (this.#scrollSuspensions) { this.#deferredLayout = true; return }
+                // A build lays its own sections out and anchors them itself;
+                // only an expansion outside a build needs deferring while the
+                // scroll layer is suspended.
                 if (this.#building !== undefined || this.#layingOut || !this.#entries.some(entry => entry.view === view)) return
+                if (this.#scrollSuspensions) { this.#deferredLayout = true; return }
                 this.#updateChapterEdges()
                 const anchor = this.#entries.find(entry => entry.index === this.#anchorIndex)
                 if (anchor) this.#activate(anchor, this.#anchorContext)
@@ -924,9 +927,16 @@ export class Paginator extends HTMLElement {
         if (!this.#canGoToIndex(index)) return
         const hasFocus = this.#view?.document?.hasFocus()
         this.#building = navigation
+        // Any navigation that replaces the scroll chapter's surface must first
+        // retire the old native scrolling layer (see suspendScroll). TOC jumps,
+        // bookmarks and chapter shortcuts arrive here without the host's
+        // cross-fade, so the engine holds the suspension itself.
+        let resumeScroll: (() => void) | undefined
+        const retireScrollLayer = () => { resumeScroll ??= this.suspendScroll() }
         try {
             let entry = this.#entries.find(entry => entry.index === index && entry.view.ready)
             if (!entry) {
+                retireScrollLayer()
                 entry = await this.#loadSection(index, navigation, context, true)
             }
             if (!entry || navigation !== this.#navigation) return
@@ -935,14 +945,20 @@ export class Paginator extends HTMLElement {
             if (!doc) return
             const chapter = entry.view.chapterIndex
             const localAnchor = entry.view.selectChapter((typeof anchor === 'function' ? anchor(doc) : anchor) ?? 0)
-            if (!this.scrolled || chapter !== entry.view.chapterIndex) this.#keepEntry(entry)
+            if (!this.scrolled || chapter !== entry.view.chapterIndex) {
+                retireScrollLayer()
+                this.#keepEntry(entry)
+            }
             await this.#assembleChapter(entry, navigation, context)
             if (navigation !== this.#navigation) return
             this.#updateChapterEdges()
             this.#activate(entry, context, true)
             await this.#scrollToAnchor(localAnchor, select ? 'selection' : 'navigation', context)
             if (hasFocus) this.focusView(context)
-        } finally { this.#finishBuild(navigation) }
+        } finally {
+            resumeScroll?.()
+            this.#finishBuild(navigation)
+        }
     }
     async goTo(target: MaybePromise<ResolvedNavigation | null | undefined>) {
         if (this.#locked) return
@@ -1009,6 +1025,9 @@ export class Paginator extends HTMLElement {
         if (edge?.view.turnChapter(dir)) {
             const navigation = ++this.#navigation
             this.#building = navigation
+            // Same-file chapter turns swap the scroll surface too; keep the
+            // old momentum layer retired until the new chapter is anchored.
+            const resumeScroll = this.suspendScroll()
             try {
                 this.#keepEntry(edge)
                 this.#activate(edge, context)
@@ -1016,7 +1035,10 @@ export class Paginator extends HTMLElement {
                 if (navigation !== this.#navigation) return
                 this.#activate(edge, context, true)
                 await this.#scrollToAnchor(dir < 0 ? 1 : 0, 'navigation', context)
-            } finally { this.#finishBuild(navigation) }
+            } finally {
+                resumeScroll()
+                this.#finishBuild(navigation)
+            }
             return
         }
         const index = this.#adjacentIndex(dir, edge?.index)
