@@ -171,6 +171,77 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.1",
+        "date": "2026-09-21",
+        "codename": "Cambria",
+        "summary": "Dieses Cambria-Update öffnet große Bücher im fortlaufenden Scroll-Modus sofort, macht den Sentence Reader auf Telefonen verlässlich und lässt Geräte im Beta-Kanal Updates überall finden.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Weiterlesen auf der Seite, die du aufgeschlagen hast",
+                "body": "In seitenbasierten Layouts setzt der nächste Tipp oder Schritt mit der Lautstärketaste im Sentence Reader nach dem manuellen Umblättern bei der Seite fort, die du gerade ansiehst. Der Satz, den du verlassen hast, bleibt über „Zurück zum aktuellen Satz“ mit einem Tipp erreichbar."
+              },
+              {
+                "title": "Ein Gehe-zu-Feld im Jumper",
+                "body": "Ein einziges Feld liefert Kapitel, Seiten der Druckausgabe und eine live mitlaufende Textsuche im Buch, darunter das Inhaltsverzeichnis und dein aktuelles Kapitel. Plugins können jetzt in Listenansichten eine eigene Suche anbieten."
+              },
+              {
+                "title": "Websuche standardmäßig aktiv",
+                "body": "Füge den API-Schlüssel deines Suchanbieters hinzu, um die Websuche mit dem Assistenten zu nutzen. Der Update-Dialog bietet eine Verknüpfung zu den KI-Einstellungen, wenn der Schlüssel fehlt, und respektiert eine bestehende Entscheidung, die Suche ausgeschaltet zu lassen."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Sofortiges Öffnen im fortlaufenden Scroll-Modus",
+                "body": "Bücher, deren Kapitel über Dutzende Dateien verteilt sind, brauchten zum Öffnen oder Springen früher Sekunden. Der Reader zeigt die Zielseite jetzt sofort an und behält nur die Dateien um deine Position herum geladen, ohne den Text unter dir zu verschieben."
+              },
+              {
+                "title": "Schnelle Suche in langen Büchern",
+                "body": "Die Textsuche ignoriert Groß- und Kleinschreibung sowie Akzente und berechnet jeden Abschnitt dafür nur einmal im Voraus, sodass eine Abfrage über das ganze Buch, die früher Minuten dauerte, in unter einer Sekunde abgeschlossen ist."
+              },
+              {
+                "title": "Sätze werden so getrennt, wie Leser es erwarten",
+                "body": "Öffnende Anführungszeichen beginnen die Dialogzeile, die sie einleiten, Abkürzungen wie Mr., Dr. und z. B. beenden keinen Satz mehr, und Fußnotenzahlen verschmelzen nicht mehr zwei Sätze miteinander."
+              },
+              {
+                "title": "Stabileres satzweises Fortschreiten auf Telefonen",
+                "body": "Der Ansichtsbereich bleibt an seinem Platz, während du durch den sichtbaren Text schreitest, Sätze, die über eine Seitengrenze reichen, werden vor dem Weiterschalten vollständig angezeigt, und ein Tipp auf den hervorgehobenen Satz schreitet weiterhin fort. Die kompakte Werkzeugleiste behält Annotationsaktionen und Verlassen in einer Zeile."
+              },
+              {
+                "title": "Ein Beta-Kanal, der überall funktioniert",
+                "body": "Beta-Updates werden über einen festen Release-Zeiger statt über die GitHub-API gefunden, sodass Geräte in gemeinsam genutzten Netzwerken oder dort, wo die API blockiert ist, jetzt neue Betas sehen."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Weniger leere Bildschirme beim Öffnen großer Bücher",
+                "body": "Lesepositionen werden auch dann wiederhergestellt, wenn die gespeicherte Stelle kein sichtbares Rechteck hat, PDF-Seiten warten vor der Wiederherstellung auf das Layout, und Kapitelsprünge im Scroll-Modus hinterlassen das vorherige Kapitel nicht mehr auf dem Bildschirm."
+              },
+              {
+                "title": "Sentence-Reader-Bedienung auf Android",
+                "body": "Die Lautstärketasten funktionieren wieder, während ein Notiz- oder Chatfeld fokussiert ist, und eine gezogene Werkzeugleiste lässt sich nicht mehr unter der Statusleiste oder der Gestenleiste abstellen."
+              },
+              {
+                "title": "Sheets auf dem Telefon bleiben dir aus dem Weg",
+                "body": "Das Inhaltsverzeichnis und die Chat-Sheets schließen sich, wenn die Reader-Oberfläche ausgeblendet wird, und erscheinen beim erneuten Öffnen eines Buches nicht mehr über der Seite."
+              },
+              {
+                "title": "Zwei Plugins entfallen",
+                "body": "Die Plugins Leseziele und Annotationen werden entfernt. Der Reader verarbeitet Annotationen jetzt von sich aus, und der Assistent behält deine Leseabsicht auch ohne Plugin im Blick."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.0",
         "date": "2026-09-21",
         "codename": "Cambria",

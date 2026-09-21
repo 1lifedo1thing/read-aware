@@ -171,6 +171,77 @@
     "leadIn": " : ",
     "entries": [
       {
+        "version": "0.6.1",
+        "date": "2026-09-21",
+        "codename": "Cambria",
+        "summary": "Cette mise à jour de Cambria ouvre instantanément les gros livres en défilement continu, rend le Lecteur de phrases fiable sur téléphone et permet aux appareils du canal Beta de trouver les mises à jour partout.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Poursuivez la lecture depuis la page atteinte",
+                "body": "Dans les mises en page paginées, après avoir tourné les pages à la main, le prochain appui ou l’appui sur une touche de volume dans le Lecteur de phrases poursuit depuis la page que vous consultez. La phrase que vous avez quittée reste accessible en un appui via « Retour à la phrase en cours »."
+              },
+              {
+                "title": "Un champ d’accès direct dans Jumper",
+                "body": "Un seul champ répond avec les chapitres, les pages imprimées et une recherche de texte en temps réel dans le livre, avec le sommaire et votre chapitre en cours en dessous. Les plugins peuvent désormais proposer leur propre recherche dans les vues en liste."
+              },
+              {
+                "title": "Recherche web activée par défaut",
+                "body": "Ajoutez la clé d’API de votre fournisseur de recherche pour utiliser la recherche web avec l’assistant. La boîte de dialogue de mise à jour propose un raccourci vers les réglages IA lorsque la clé est absente et respecte un choix existant de conserver la recherche désactivée."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Ouverture instantanée en défilement continu",
+                "body": "Les livres dont les chapitres s’étendent sur des dizaines de fichiers prenaient auparavant plusieurs secondes pour s’ouvrir ou pour y sauter. Le lecteur affiche désormais la page visée immédiatement et ne garde chargés que les fichiers autour de votre position, sans déplacer le texte sous vos yeux."
+              },
+              {
+                "title": "Recherche rapide dans les livres longs",
+                "body": "La recherche de texte, insensible à la casse et aux accents, normalise désormais chaque section une seule fois : une requête sur tout le livre qui prenait des minutes s’achève en moins d’une seconde."
+              },
+              {
+                "title": "Des phrases découpées comme un lecteur s’y attend",
+                "body": "Les guillemets ouvrants marquent le début de la ligne de dialogue qu’ils introduisent, les abréviations comme Mr., Dr. et e.g. ne terminent plus une phrase, et les numéros de note de bas de page ne fusionnent plus deux phrases."
+              },
+              {
+                "title": "Une progression par phrase plus stable sur téléphone",
+                "body": "La vue reste en place pendant que vous parcourez le texte visible, les phrases qui chevauchent une limite de page sont révélées avant d’avancer, et toucher la phrase en surbrillance fait toujours avancer. La barre d’outils compacte garde les actions d’annotation et la sortie sur une seule rangée."
+              },
+              {
+                "title": "Un canal Beta qui fonctionne partout",
+                "body": "Les mises à jour Beta sont trouvées via un pointeur de version fixe plutôt que par l’API GitHub, de sorte que les appareils sur des réseaux partagés ou là où l’API est bloquée voient désormais les nouvelles betas."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Moins d’écrans vides à l’ouverture des gros livres",
+                "body": "Les positions de lecture se restaurent même lorsque l’emplacement enregistré n’a aucun rectangle visible, les pages PDF attendent la mise en page avant la restauration, et les sauts de chapitre en mode défilement ne laissent plus le chapitre précédent à l’écran."
+              },
+              {
+                "title": "Les commandes du Lecteur de phrases sur Android",
+                "body": "Les touches de volume fonctionnent à nouveau pendant qu’un champ de note ou de discussion a le focus, et une barre d’outils déplacée ne peut plus être rangée sous la barre d’état ou la zone de gestes."
+              },
+              {
+                "title": "Les volets sur téléphone ne gênent plus",
+                "body": "Les volets du sommaire et de la discussion se ferment quand l’interface du lecteur se masque et n’apparaissent plus par-dessus la page à la réouverture d’un livre."
+              },
+              {
+                "title": "Deux plugins retirés",
+                "body": "Les plugins Objectifs de lecture et Annotations sont retirés. Le lecteur gère les annotations nativement, et l’assistant porte l’intention de lecture sans plugin."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.0",
         "date": "2026-09-21",
         "codename": "Cambria",

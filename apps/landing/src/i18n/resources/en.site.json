@@ -171,6 +171,77 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.1",
+        "date": "2026-09-21",
+        "codename": "Cambria",
+        "summary": "This Cambria update opens large books instantly in continuous scroll, makes Sentence Reader dependable on phones, and lets Beta channel devices find updates anywhere.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Read on from the page you turned to",
+                "body": "In paginated layouts, after you flip pages by hand, the next tap or volume-key step in Sentence Reader continues from the page you are looking at. The sentence you left stays one tap away behind Back to current sentence."
+              },
+              {
+                "title": "A go-to box in Jumper",
+                "body": "One field answers with chapters, printed pages, and a live text search of the book, with the table of contents and your current chapter underneath. Plugins can now offer their own search in list views."
+              },
+              {
+                "title": "Web search on by default",
+                "body": "Add your search provider's API key to use web search with the assistant. The update dialog offers a shortcut to AI settings when the key is missing and respects an existing choice to keep search off."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Instant opening in continuous scroll",
+                "body": "Books whose chapters span dozens of files used to take seconds to open or jump. The reader now shows the target page at once and keeps only the files around your position loaded, without moving the text under you."
+              },
+              {
+                "title": "Fast search in long books",
+                "body": "Case- and accent-insensitive text search now folds each section once, so a full-book query that took minutes completes in under a second."
+              },
+              {
+                "title": "Sentences split the way a reader expects",
+                "body": "Opening quotes start the line of dialogue they open, abbreviations such as Mr., Dr., and e.g. no longer end a sentence, and footnote numbers no longer fuse two sentences together."
+              },
+              {
+                "title": "Steadier sentence stepping on phones",
+                "body": "The viewport stays put while you step through visible text, sentences that span a page boundary are revealed before advancing, and tapping the highlighted sentence keeps advancing. The compact toolbar keeps annotation actions and exit on one row."
+              },
+              {
+                "title": "A Beta channel that works everywhere",
+                "body": "Beta updates are found through a fixed release pointer instead of the GitHub API, so devices on shared networks or where the API is blocked now see new betas."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Fewer blank screens when opening large books",
+                "body": "Reading positions restore even when the saved location has no visible rectangle, PDF pages wait for layout before restoring, and chapter jumps in scroll mode no longer leave the previous chapter on screen."
+              },
+              {
+                "title": "Sentence Reader controls on Android",
+                "body": "Volume keys work again while a note or chat field has focus, and a dragged toolbar can no longer be parked under the status bar or the gesture strip."
+              },
+              {
+                "title": "Phone sheets stay out of the way",
+                "body": "The table of contents and chat sheets close when the reader chrome hides and no longer reappear over the page when a book is reopened."
+              },
+              {
+                "title": "Two plugins retired",
+                "body": "The Reading Goals and Annotations plugins are removed. The reader handles annotations natively, and the assistant carries reading intent without a plugin."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.0",
         "date": "2026-09-21",
         "codename": "Cambria",

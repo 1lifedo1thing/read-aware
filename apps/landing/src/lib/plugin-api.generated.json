@@ -6,7 +6,7 @@
         "(input: { providerId: string; key: string; title: string; author?: string; }): Promise<PluginBook>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1547
+      "line": 1580
     },
     {
       "path": "ctx.domains.library.commands.books.cancelImportTask",
@@ -14,7 +14,7 @@
         "(taskId: string): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1539
+      "line": 1572
     },
     {
       "path": "ctx.domains.library.commands.books.cancelTextTask",
@@ -22,7 +22,7 @@
         "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1524
+      "line": 1557
     },
     {
       "path": "ctx.domains.library.commands.books.editMetadata",
@@ -30,7 +30,7 @@
         "(bookId: string, patch: { title?: string; author?: string; }): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1540
+      "line": 1573
     },
     {
       "path": "ctx.domains.library.commands.books.importBook",
@@ -38,7 +38,7 @@
         "(input: { fileName: string; data: ArrayBuffer | Uint8Array; }, options?: PluginCallOptions): Promise<PluginBook>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1525
+      "line": 1558
     },
     {
       "path": "ctx.domains.library.commands.books.importResource",
@@ -46,7 +46,7 @@
         "(id: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImportReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1532
+      "line": 1565
     },
     {
       "path": "ctx.domains.library.commands.books.invalidateVirtualBook",
@@ -54,7 +54,7 @@
         "(input: { providerId: string; key: string; }): Promise<{ bookId: string; revision: string; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1556
+      "line": 1589
     },
     {
       "path": "ctx.domains.library.commands.books.mergeDuplicates",
@@ -62,7 +62,7 @@
         "(input: import(\"@read-aware/core\").BookMergeRequest): Promise<import(\"@read-aware/core\").BookMergeReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1517
+      "line": 1550
     },
     {
       "path": "ctx.domains.library.commands.books.pauseTextTask",
@@ -70,7 +70,7 @@
         "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1520
+      "line": 1553
     },
     {
       "path": "ctx.domains.library.commands.books.prepareText",
@@ -78,7 +78,7 @@
         "(bookId: string, options?: import(\"@read-aware/core\").BookTextPrepareOptions): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1513
+      "line": 1546
     },
     {
       "path": "ctx.domains.library.commands.books.remove",
@@ -86,7 +86,7 @@
         "(bookId: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1542
+      "line": 1575
     },
     {
       "path": "ctx.domains.library.commands.books.removeMany",
@@ -94,7 +94,7 @@
         "(bookIds: string[]): Promise<import(\"@read-aware/core\").BookRemovalReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1544
+      "line": 1577
     },
     {
       "path": "ctx.domains.library.commands.books.removeVirtualBook",
@@ -102,7 +102,7 @@
         "(input: { providerId: string; key: string; expectedBookId?: string; }): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1553
+      "line": 1586
     },
     {
       "path": "ctx.domains.library.commands.books.resumeTextTask",
@@ -110,7 +110,7 @@
         "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1522
+      "line": 1555
     },
     {
       "path": "ctx.domains.library.commands.books.retryEnrichment",
@@ -118,7 +118,7 @@
         "(bookId: string): Promise<import(\"@read-aware/core\").BookEnrichmentReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1515
+      "line": 1548
     },
     {
       "path": "ctx.domains.library.commands.books.retryRemovalCleanup",
@@ -126,7 +126,7 @@
         "(bookIds: string[]): Promise<import(\"@read-aware/core\").BookFileReleaseReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1546
+      "line": 1579
     },
     {
       "path": "ctx.domains.library.commands.books.setStarred",
@@ -134,7 +134,7 @@
         "(bookId: string, starred: boolean): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1541
+      "line": 1574
     },
     {
       "path": "ctx.domains.library.commands.books.setTextTaskPriority",
@@ -142,7 +142,7 @@
         "(bookId: string, taskId: string, priority: import(\"@read-aware/core\").BookTextPriority): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1519
+      "line": 1552
     },
     {
       "path": "ctx.domains.library.commands.books.startImport",
@@ -150,7 +150,7 @@
         "(input: import(\"@read-aware/core\").BookImportRequest, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1538
+      "line": 1571
     },
     {
       "path": "ctx.domains.library.commands.collections.assignBooks",
@@ -158,7 +158,7 @@
         "(bookIds: string[], collectionId: string | null): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1562
+      "line": 1595
     },
     {
       "path": "ctx.domains.library.commands.collections.create",
@@ -166,7 +166,7 @@
         "(name: string): Promise<PluginCollection>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1559
+      "line": 1592
     },
     {
       "path": "ctx.domains.library.commands.collections.remove",
@@ -174,7 +174,7 @@
         "(collectionId: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1561
+      "line": 1594
     },
     {
       "path": "ctx.domains.library.commands.collections.rename",
@@ -182,7 +182,7 @@
         "(collectionId: string, name: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1560
+      "line": 1593
     },
     {
       "path": "ctx.domains.library.events.observeContentState",
@@ -190,7 +190,7 @@
         "(bookId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookContentObservation>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1572
+      "line": 1605
     },
     {
       "path": "ctx.domains.library.events.observeEnrichment",
@@ -198,7 +198,7 @@
         "(bookId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookEnrichmentObservation>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1571
+      "line": 1604
     },
     {
       "path": "ctx.domains.library.events.observeImportTask",
@@ -206,7 +206,7 @@
         "(taskId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookImportTaskSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1570
+      "line": 1603
     },
     {
       "path": "ctx.domains.library.events.observeInvalidation",
@@ -214,7 +214,7 @@
         "(handler: PluginObservationHandler<import(\"@read-aware/core\").ProjectionInvalidation>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1575
+      "line": 1608
     },
     {
       "path": "ctx.domains.library.events.observeTextTask",
@@ -222,7 +222,7 @@
         "(bookId: string, taskId: string, handler: PluginObservationHandler<import(\"@read-aware/core\").BookTextTaskSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1568
+      "line": 1601
     },
     {
       "path": "ctx.domains.library.events.subscribe",
@@ -230,7 +230,7 @@
         "<K extends LibraryDomainEventType>(event: K, handler: (event: PluginDomainEvent<K>) => void, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1566
+      "line": 1599
     },
     {
       "path": "ctx.domains.library.queries.books.get",
@@ -238,7 +238,7 @@
         "(bookId: string): Promise<PluginBook | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1470
+      "line": 1503
     },
     {
       "path": "ctx.domains.library.queries.books.getChapterText",
@@ -246,7 +246,7 @@
         "(bookId: string, chapterIndex: number): Promise<string | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1486
+      "line": 1519
     },
     {
       "path": "ctx.domains.library.queries.books.getContentState",
@@ -254,7 +254,7 @@
         "(bookId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookContentState>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1477
+      "line": 1510
     },
     {
       "path": "ctx.domains.library.queries.books.getEnrichment",
@@ -262,7 +262,7 @@
         "(bookId: string): Promise<import(\"@read-aware/core\").BookEnrichmentSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1475
+      "line": 1508
     },
     {
       "path": "ctx.domains.library.queries.books.getImportTask",
@@ -270,7 +270,7 @@
         "(taskId: string, waitMs?: number, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1484
+      "line": 1517
     },
     {
       "path": "ctx.domains.library.queries.books.getNavigationToc",
@@ -278,7 +278,7 @@
         "(bookId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookNavigationToc>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1487
+      "line": 1520
     },
     {
       "path": "ctx.domains.library.queries.books.getTextState",
@@ -286,7 +286,7 @@
         "(bookId: string): Promise<import(\"@read-aware/core\").BookTextSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1473
+      "line": 1506
     },
     {
       "path": "ctx.domains.library.queries.books.getTextTask",
@@ -294,7 +294,7 @@
         "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1479
+      "line": 1512
     },
     {
       "path": "ctx.domains.library.queries.books.getToc",
@@ -302,7 +302,7 @@
         "(bookId: string): Promise<PluginChapterRef[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1471
+      "line": 1504
     },
     {
       "path": "ctx.domains.library.queries.books.inspectResource",
@@ -310,7 +310,7 @@
         "(id: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookInspection>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1462
+      "line": 1495
     },
     {
       "path": "ctx.domains.library.queries.books.list",
@@ -318,7 +318,7 @@
         "(): Promise<PluginBook[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1458
+      "line": 1491
     },
     {
       "path": "ctx.domains.library.queries.books.listDuplicates",
@@ -326,7 +326,7 @@
         "(query?: import(\"@read-aware/core\").DuplicateBookQuery): Promise<import(\"@read-aware/core\").DuplicateBookPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1464
+      "line": 1497
     },
     {
       "path": "ctx.domains.library.queries.books.listFormats",
@@ -334,7 +334,7 @@
         "(): Promise<import(\"@read-aware/core\").BookFormatCapability[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1460
+      "line": 1493
     },
     {
       "path": "ctx.domains.library.queries.books.listImages",
@@ -342,7 +342,7 @@
         "(input: import(\"@read-aware/core\").BookImagesQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookImagesPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1495
+      "line": 1528
     },
     {
       "path": "ctx.domains.library.queries.books.listImportTasks",
@@ -350,7 +350,7 @@
         "(): Promise<import(\"@read-aware/core\").BookImportTaskSnapshot[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1485
+      "line": 1518
     },
     {
       "path": "ctx.domains.library.queries.books.listNavigationTargets",
@@ -358,7 +358,7 @@
         "(input: import(\"@read-aware/core\").BookNavigationTargetsQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookNavigationTargetsPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1489
+      "line": 1522
     },
     {
       "path": "ctx.domains.library.queries.books.listReferences",
@@ -366,7 +366,7 @@
         "(input: import(\"@read-aware/core\").BookReferencesQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookReferencesPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1493
+      "line": 1526
     },
     {
       "path": "ctx.domains.library.queries.books.listRemovalCleanup",
@@ -374,7 +374,7 @@
         "(query?: import(\"@read-aware/core\").BookRemovalCleanupQuery): Promise<import(\"@read-aware/core\").BookRemovalCleanupPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1469
+      "line": 1502
     },
     {
       "path": "ctx.domains.library.queries.books.listTextTaskHistory",
@@ -382,7 +382,7 @@
         "(bookId: string, query?: import(\"@read-aware/core\").BookTextTaskHistoryQuery): Promise<import(\"@read-aware/core\").BookTextTaskHistoryPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1478
+      "line": 1511
     },
     {
       "path": "ctx.domains.library.queries.books.listTextTasks",
@@ -390,7 +390,7 @@
         "(bookId: string): Promise<import(\"@read-aware/core\").BookTextTaskSnapshot[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1480
+      "line": 1513
     },
     {
       "path": "ctx.domains.library.queries.books.openImageResource",
@@ -398,7 +398,7 @@
         "(input: import(\"@read-aware/core\").BookImageQuery): Promise<import(\"@read-aware/core\").BookImageResource>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1497
+      "line": 1530
     },
     {
       "path": "ctx.domains.library.queries.books.previewMerge",
@@ -406,7 +406,7 @@
         "(bookId: string): Promise<import(\"@read-aware/core\").BookMergePreview | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1465
+      "line": 1498
     },
     {
       "path": "ctx.domains.library.queries.books.readRange",
@@ -414,7 +414,7 @@
         "(input: import(\"@read-aware/core\").BookRangeQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookRangePage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1491
+      "line": 1524
     },
     {
       "path": "ctx.domains.library.queries.books.readReference",
@@ -422,7 +422,7 @@
         "(input: import(\"@read-aware/core\").BookReferenceQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookReferencePreview>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1499
+      "line": 1532
     },
     {
       "path": "ctx.domains.library.queries.books.resolveId",
@@ -430,7 +430,7 @@
         "(bookId: string): Promise<string | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1467
+      "line": 1500
     },
     {
       "path": "ctx.domains.library.queries.books.searchLocations",
@@ -438,7 +438,7 @@
         "(input: import(\"@read-aware/core\").BookLocationSearch, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookLocationSearchPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1490
+      "line": 1523
     },
     {
       "path": "ctx.domains.library.queries.books.searchText",
@@ -446,7 +446,7 @@
         "(input: import(\"@read-aware/core\").BookTextSearch, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BookTextHit[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1501
+      "line": 1534
     },
     {
       "path": "ctx.domains.library.queries.collections.booksIn",
@@ -454,7 +454,7 @@
         "(collectionId: string): Promise<string[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1505
+      "line": 1538
     },
     {
       "path": "ctx.domains.library.queries.collections.list",
@@ -462,7 +462,7 @@
         "(): Promise<PluginCollection[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1504
+      "line": 1537
     }
   ],
   "domains:reading": [
@@ -472,7 +472,7 @@
         "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1611
+      "line": 1644
     },
     {
       "path": "ctx.domains.reading.commands.clearSelection",
@@ -480,7 +480,7 @@
         "(expectedId: string, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingSelectionReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1605
+      "line": 1638
     },
     {
       "path": "ctx.domains.reading.commands.close",
@@ -488,7 +488,7 @@
         "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1617
+      "line": 1650
     },
     {
       "path": "ctx.domains.reading.commands.configureMode",
@@ -496,7 +496,7 @@
         "(input: import(\"@read-aware/core\").ReadingModeConfiguration, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingModeReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1623
+      "line": 1656
     },
     {
       "path": "ctx.domains.reading.commands.controlPlayback",
@@ -504,7 +504,7 @@
         "(action: \"start\" | \"stop\", guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingPlaybackReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1619
+      "line": 1652
     },
     {
       "path": "ctx.domains.reading.commands.forward",
@@ -512,7 +512,7 @@
         "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1612
+      "line": 1645
     },
     {
       "path": "ctx.domains.reading.commands.goTo",
@@ -520,7 +520,7 @@
         "(target: import(\"@read-aware/core\").ReadingTarget, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1610
+      "line": 1643
     },
     {
       "path": "ctx.domains.reading.commands.openBook",
@@ -528,7 +528,7 @@
         "(bookId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1609
+      "line": 1642
     },
     {
       "path": "ctx.domains.reading.commands.putEmphasis",
@@ -536,7 +536,7 @@
         "(input: import(\"@read-aware/core\").ReadingEmphasisWrite, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingEmphasisReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1600
+      "line": 1633
     },
     {
       "path": "ctx.domains.reading.commands.reload",
@@ -544,7 +544,7 @@
         "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1616
+      "line": 1649
     },
     {
       "path": "ctx.domains.reading.commands.removeEmphasis",
@@ -552,7 +552,7 @@
         "(input: import(\"@read-aware/core\").ReadingEmphasisRef, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingEmphasisRemoval>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1601
+      "line": 1634
     },
     {
       "path": "ctx.domains.reading.commands.returnToMode",
@@ -560,7 +560,7 @@
         "(guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1625
+      "line": 1658
     },
     {
       "path": "ctx.domains.reading.commands.selectRange",
@@ -568,7 +568,7 @@
         "(range: import(\"@read-aware/core\").BookTextRange, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingSelectionReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1603
+      "line": 1636
     },
     {
       "path": "ctx.domains.reading.commands.setControls",
@@ -576,7 +576,7 @@
         "(visible: boolean, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingControlsReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1607
+      "line": 1640
     },
     {
       "path": "ctx.domains.reading.commands.setFinished",
@@ -584,7 +584,7 @@
         "(bookId: string, finished: boolean): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1608
+      "line": 1641
     },
     {
       "path": "ctx.domains.reading.commands.step",
@@ -592,7 +592,7 @@
         "(direction: import(\"@read-aware/core\").ReadingStep, guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingNavigationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1614
+      "line": 1647
     },
     {
       "path": "ctx.domains.reading.commands.stepMode",
@@ -600,7 +600,7 @@
         "(direction: \"next\" | \"previous\", guard?: import(\"@read-aware/core\").ReadingSessionGuard, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ReadingModeStepReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1627
+      "line": 1660
     },
     {
       "path": "ctx.domains.reading.events.observeEmphasis",
@@ -608,7 +608,7 @@
         "(handler: (snapshot: import(\"@read-aware/core\").ReadingEmphasisSnapshot[], delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1634
+      "line": 1667
     },
     {
       "path": "ctx.domains.reading.events.observeSession",
@@ -616,7 +616,7 @@
         "(handler: (snapshot: import(\"@read-aware/core\").ReadingSessionSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1633
+      "line": 1666
     },
     {
       "path": "ctx.domains.reading.events.observeTime",
@@ -624,7 +624,7 @@
         "(query: import(\"@read-aware/core\").ReadingTimeQuery, handler: (event: import(\"@read-aware/core\").ReadingTimeObservation, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1638
+      "line": 1671
     },
     {
       "path": "ctx.domains.reading.events.subscribe",
@@ -632,7 +632,7 @@
         "<K extends \"book.opened\" | \"book.finished\" | \"book.progressed\" | \"book.timeRecorded\" | \"book.sessionRecorded\">(event: K, handler: (event: PluginDomainEvent<K>) => void, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1630
+      "line": 1663
     },
     {
       "path": "ctx.domains.reading.queries.emphasis",
@@ -640,7 +640,7 @@
         "(): Promise<import(\"@read-aware/core\").ReadingEmphasisSnapshot[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1587
+      "line": 1620
     },
     {
       "path": "ctx.domains.reading.queries.session",
@@ -648,7 +648,7 @@
         "(): Promise<import(\"@read-aware/core\").ReadingSessionSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1588
+      "line": 1621
     },
     {
       "path": "ctx.domains.reading.queries.stats.forBook",
@@ -656,7 +656,7 @@
         "(bookId: string): Promise<PluginBookStats | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1593
+      "line": 1626
     },
     {
       "path": "ctx.domains.reading.queries.stats.insights",
@@ -664,7 +664,7 @@
         "(query?: import(\"@read-aware/core\").ReadingInsightsQuery): Promise<import(\"@read-aware/core\").ReadingInsights>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1592
+      "line": 1625
     },
     {
       "path": "ctx.domains.reading.queries.stats.list",
@@ -672,7 +672,7 @@
         "(): Promise<PluginBookStats[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1594
+      "line": 1627
     },
     {
       "path": "ctx.domains.reading.queries.stats.overview",
@@ -680,7 +680,7 @@
         "(): Promise<PluginStatsOverview>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1595
+      "line": 1628
     },
     {
       "path": "ctx.domains.reading.queries.stats.time",
@@ -688,7 +688,7 @@
         "(query?: import(\"@read-aware/core\").ReadingTimeQuery): Promise<import(\"@read-aware/core\").ReadingTimeSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1591
+      "line": 1624
     }
   ],
   "domains:annotations": [
@@ -698,7 +698,7 @@
         "(changes: import(\"@read-aware/core\").AnnotationMutation[]): Promise<import(\"@read-aware/core\").AnnotationCommitResult>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1666
+      "line": 1699
     },
     {
       "path": "ctx.domains.annotations.commands.createHighlight",
@@ -706,7 +706,7 @@
         "(input: { range?: import(\"@read-aware/core\").BookTextRange; bookId: string; text: string; anchor?: string | null; chapterHref?: string | null; color?: HighlightColor; style?: HighlightStyle; }): Promise<PluginHighlight>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1668
+      "line": 1701
     },
     {
       "path": "ctx.domains.annotations.commands.createNote",
@@ -714,7 +714,7 @@
         "(input: { range?: import(\"@read-aware/core\").BookTextRange; bookId: string; body: string; quotedText?: string; anchor?: string | null; chapterHref?: string | null; }): Promise<PluginNote>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1677
+      "line": 1710
     },
     {
       "path": "ctx.domains.annotations.events.observe",
@@ -722,7 +722,7 @@
         "(query: import(\"@read-aware/core\").AnnotationObservationQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").AnnotationObservation>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1689
+      "line": 1722
     },
     {
       "path": "ctx.domains.annotations.events.subscribe",
@@ -730,7 +730,7 @@
         "<K extends AnnotationDomainEventType>(event: K, handler: (event: PluginDomainEvent<K>) => void, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1687
+      "line": 1720
     },
     {
       "path": "ctx.domains.annotations.queries.get",
@@ -738,7 +738,7 @@
         "(annotationId: string): Promise<PluginAnnotation | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1656
+      "line": 1689
     },
     {
       "path": "ctx.domains.annotations.queries.inspect",
@@ -746,7 +746,7 @@
         "(annotationId: string): Promise<import(\"@read-aware/core\").AnnotationSnapshot | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1652
+      "line": 1685
     },
     {
       "path": "ctx.domains.annotations.queries.list",
@@ -754,7 +754,7 @@
         "(filter?: { bookId?: string; kind?: \"highlight\" | \"note\" | \"ask\"; query?: string; }): Promise<PluginAnnotation[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1657
+      "line": 1690
     },
     {
       "path": "ctx.domains.annotations.queries.page",
@@ -762,7 +762,7 @@
         "(input?: import(\"@read-aware/core\").AnnotationPageQuery): Promise<import(\"@read-aware/core\").AnnotationPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1654
+      "line": 1687
     }
   ],
   "domains:conversations": [
@@ -772,7 +772,7 @@
         "(id: string): Promise<import(\"@read-aware/core\").ConversationTurnRequestSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1723
+      "line": 1756
     },
     {
       "path": "ctx.domains.conversations.commands.clear",
@@ -780,7 +780,7 @@
         "(target: import(\"@read-aware/core\").ConversationTarget): Promise<import(\"@read-aware/core\").ConversationControlReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1730
+      "line": 1763
     },
     {
       "path": "ctx.domains.conversations.commands.createThread",
@@ -788,7 +788,7 @@
         "(): Promise<import(\"@read-aware/core\").ConversationControlReceipt & { draft: true; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1725
+      "line": 1758
     },
     {
       "path": "ctx.domains.conversations.commands.requestTurn",
@@ -796,7 +796,7 @@
         "(request: import(\"@read-aware/core\").ConversationTurnRequest): Promise<import(\"@read-aware/core\").ConversationTurnRequestSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1722
+      "line": 1755
     },
     {
       "path": "ctx.domains.conversations.commands.selectThread",
@@ -804,7 +804,7 @@
         "(threadId: string): Promise<import(\"@read-aware/core\").ConversationControlReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1726
+      "line": 1759
     },
     {
       "path": "ctx.domains.conversations.commands.stop",
@@ -812,7 +812,7 @@
         "(target: import(\"@read-aware/core\").ConversationTarget): Promise<import(\"@read-aware/core\").ConversationControlReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1728
+      "line": 1761
     },
     {
       "path": "ctx.domains.conversations.events.observeInvalidation",
@@ -820,7 +820,7 @@
         "(handler: PluginObservationHandler<import(\"@read-aware/core\").ProjectionInvalidation>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1733
+      "line": 1766
     },
     {
       "path": "ctx.domains.conversations.events.observeRuntime",
@@ -828,7 +828,7 @@
         "(handler: PluginObservationHandler<PluginConversationRuntimeSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1735
+      "line": 1768
     },
     {
       "path": "ctx.domains.conversations.events.subscribe",
@@ -836,7 +836,7 @@
         "<K extends ConversationDomainEventType>(event: K, handler: (event: PluginDomainEvent<K>) => void, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1732
+      "line": 1765
     },
     {
       "path": "ctx.domains.conversations.queries.getBookThread",
@@ -844,7 +844,7 @@
         "(bookId: string): Promise<PluginChatMessage[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1716
+      "line": 1749
     },
     {
       "path": "ctx.domains.conversations.queries.getInsights",
@@ -852,7 +852,7 @@
         "(target: import(\"@read-aware/core\").ConversationTarget): Promise<string | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1712
+      "line": 1745
     },
     {
       "path": "ctx.domains.conversations.queries.getThread",
@@ -860,7 +860,7 @@
         "(threadId: string): Promise<PluginChatMessage[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1718
+      "line": 1751
     },
     {
       "path": "ctx.domains.conversations.queries.listThreads",
@@ -868,7 +868,7 @@
         "(): Promise<PluginThreadSummary[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1717
+      "line": 1750
     },
     {
       "path": "ctx.domains.conversations.queries.runtime",
@@ -876,7 +876,7 @@
         "(): Promise<PluginConversationRuntimeSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1715
+      "line": 1748
     },
     {
       "path": "ctx.domains.conversations.queries.turnRequests",
@@ -884,7 +884,7 @@
         "(): Promise<import(\"@read-aware/core\").ConversationTurnRequestSnapshot[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1714
+      "line": 1747
     }
   ],
   "domains:settings": [
@@ -894,7 +894,7 @@
         "(provider: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ModelCatalogPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1764
+      "line": 1797
     },
     {
       "path": "ctx.domains.settings.commands.resetReading",
@@ -902,7 +902,7 @@
         "(request: import(\"@read-aware/core\").ReadingSettingsReset): Promise<SettingsUpdateResult>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1768
+      "line": 1801
     },
     {
       "path": "ctx.domains.settings.commands.update",
@@ -910,7 +910,7 @@
         "(changes: SettingChange[]): Promise<SettingsUpdateResult>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1765
+      "line": 1798
     },
     {
       "path": "ctx.domains.settings.events.subscribe",
@@ -918,7 +918,7 @@
         "(handler: (event: SettingsChangedEvent & PluginReactionEvent) => void, options?: { ignoreSelf?: boolean; ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1771
+      "line": 1804
     },
     {
       "path": "ctx.domains.settings.queries.discover",
@@ -926,7 +926,7 @@
         "(query?: SettingsQuery): Promise<SettingCatalogEntry[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1746
+      "line": 1779
     },
     {
       "path": "ctx.domains.settings.queries.modelCatalog",
@@ -934,7 +934,7 @@
         "(query: import(\"@read-aware/core\").ModelCatalogQuery): Promise<import(\"@read-aware/core\").ModelCatalogPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1741
+      "line": 1774
     },
     {
       "path": "ctx.domains.settings.queries.observe",
@@ -942,7 +942,7 @@
         "(query: SettingsQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").SettingsObservation>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1745
+      "line": 1778
     },
     {
       "path": "ctx.domains.settings.queries.options",
@@ -950,7 +950,7 @@
         "(query: import(\"@read-aware/core\").SettingsOptionsQuery): Promise<import(\"@read-aware/core\").SettingsOptionsPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1759
+      "line": 1792
     },
     {
       "path": "ctx.domains.settings.queries.read",
@@ -958,7 +958,7 @@
         "(path: string, target?: SettingsQueryTarget): Promise<SettingReadResult>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1760
+      "line": 1793
     },
     {
       "path": "ctx.domains.settings.queries.snapshot",
@@ -966,7 +966,7 @@
         "(query?: SettingsQuery): Promise<import(\"@read-aware/core\").SettingsSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1743
+      "line": 1776
     }
   ],
   "domains:memory": [
@@ -976,7 +976,7 @@
         "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1854
+      "line": 1887
     },
     {
       "path": "ctx.domains.memory.commands.classify",
@@ -984,7 +984,7 @@
         "(input: import(\"@read-aware/core\").BookClassificationChange): Promise<import(\"@read-aware/core\").BookClassificationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1852
+      "line": 1885
     },
     {
       "path": "ctx.domains.memory.commands.completeOnboarding",
@@ -992,7 +992,7 @@
         "(input: import(\"@read-aware/core\").OnboardingChange, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").OnboardingReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1850
+      "line": 1883
     },
     {
       "path": "ctx.domains.memory.commands.context.capture",
@@ -1000,7 +1000,7 @@
         "(selector: import(\"@read-aware/core\").ContextBundleSelector, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ContextBundleCaptureReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1842
+      "line": 1875
     },
     {
       "path": "ctx.domains.memory.commands.decideEntity",
@@ -1008,7 +1008,7 @@
         "(input: import(\"@read-aware/core\").EntityDecision, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").EntityDecisionReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1835
+      "line": 1868
     },
     {
       "path": "ctx.domains.memory.commands.mutate",
@@ -1016,7 +1016,7 @@
         "(input: import(\"@read-aware/core\").MemoryMutation): Promise<import(\"@read-aware/core\").MemoryMutationReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1851
+      "line": 1884
     },
     {
       "path": "ctx.domains.memory.commands.retryGraphTask",
@@ -1024,7 +1024,7 @@
         "(bookId: string, taskId: string, options?: import(\"@read-aware/core\").BookGraphTaskOptions): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1855
+      "line": 1888
     },
     {
       "path": "ctx.domains.memory.commands.startGraphTask",
@@ -1032,7 +1032,7 @@
         "(bookId: string, mode: \"catch-up\" | \"rebuild\", options?: import(\"@read-aware/core\").BookGraphTaskOptions): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1853
+      "line": 1886
     },
     {
       "path": "ctx.domains.memory.commands.updateProfile",
@@ -1040,7 +1040,7 @@
         "(input: import(\"@read-aware/core\").UserProfileChange): Promise<import(\"@read-aware/core\").UserProfileReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1846
+      "line": 1879
     },
     {
       "path": "ctx.domains.memory.events.observe",
@@ -1048,7 +1048,7 @@
         "(query: import(\"@read-aware/core\").MemoryObservationQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").MemoryObservation>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1860
+      "line": 1893
     },
     {
       "path": "ctx.domains.memory.queries.bookGraph",
@@ -1056,7 +1056,7 @@
         "(bookId: string, query?: import(\"@read-aware/core\").BookGraphQuery): Promise<import(\"@read-aware/core\").BookGraphResult>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1828
+      "line": 1861
     },
     {
       "path": "ctx.domains.memory.queries.classification",
@@ -1064,7 +1064,7 @@
         "(bookId: string): Promise<import(\"@read-aware/core\").BookClassificationSnapshot | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1822
+      "line": 1855
     },
     {
       "path": "ctx.domains.memory.queries.context.export",
@@ -1072,7 +1072,7 @@
         "(query: import(\"@read-aware/core\").ContextBundleReadQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1806
+      "line": 1839
     },
     {
       "path": "ctx.domains.memory.queries.context.history",
@@ -1080,7 +1080,7 @@
         "(query: import(\"@read-aware/core\").ContextBundleHistoryQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ContextBundleHistoryPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1804
+      "line": 1837
     },
     {
       "path": "ctx.domains.memory.queries.context.read",
@@ -1088,7 +1088,7 @@
         "(query: import(\"@read-aware/core\").ContextBundleReadQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ContextBundle | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1805
+      "line": 1838
     },
     {
       "path": "ctx.domains.memory.queries.entities",
@@ -1096,7 +1096,7 @@
         "(query?: import(\"@read-aware/core\").EntityQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").EntityPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1818
+      "line": 1851
     },
     {
       "path": "ctx.domains.memory.queries.getGraphTask",
@@ -1104,7 +1104,7 @@
         "(bookId: string, taskId: string): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1823
+      "line": 1856
     },
     {
       "path": "ctx.domains.memory.queries.inspect",
@@ -1112,7 +1112,7 @@
         "(id: string): Promise<import(\"@read-aware/core\").MemorySnapshot | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1821
+      "line": 1854
     },
     {
       "path": "ctx.domains.memory.queries.listGraphTasks",
@@ -1120,7 +1120,7 @@
         "(bookId: string): Promise<import(\"@read-aware/core\").BookGraphTaskSnapshot[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1824
+      "line": 1857
     },
     {
       "path": "ctx.domains.memory.queries.page",
@@ -1128,7 +1128,7 @@
         "(input: import(\"@read-aware/core\").MemoryPageQuery): Promise<import(\"@read-aware/core\").MemoryPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1826
+      "line": 1859
     },
     {
       "path": "ctx.domains.memory.queries.profile",
@@ -1136,7 +1136,7 @@
         "(query?: import(\"@read-aware/core\").UserProfileQuery): Promise<import(\"@read-aware/core\").UserProfilePage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1820
+      "line": 1853
     },
     {
       "path": "ctx.domains.memory.queries.profileContext",
@@ -1144,7 +1144,7 @@
         "(query?: import(\"@read-aware/core\").ProfileInspectionQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ProfileInspectionPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1815
+      "line": 1848
     },
     {
       "path": "ctx.domains.memory.queries.search",
@@ -1152,7 +1152,7 @@
         "(input: import(\"@read-aware/core\").MemoryQuery): Promise<import(\"@read-aware/core\").MemoryRecord[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1825
+      "line": 1858
     }
   ],
   "contributions:uriHandlers": [
@@ -1162,7 +1162,7 @@
         "(handler: PluginUriHandler): PluginActionRegistration"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2194
+      "line": 2227
     }
   ],
   "contributions:selectionActions": [
@@ -1172,7 +1172,7 @@
         "(action: PluginSelectionAction): PluginActionRegistration"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2197
+      "line": 2230
     }
   ],
   "contributions:headerActions": [
@@ -1182,7 +1182,7 @@
         "(action: PluginHeaderAction): PluginActionRegistration"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2200
+      "line": 2233
     }
   ],
   "contributions:contextActions": [
@@ -1192,7 +1192,7 @@
         "(action: PluginContextAction): PluginActionRegistration"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2203
+      "line": 2236
     }
   ],
   "contributions:commands": [
@@ -1202,7 +1202,7 @@
         "(command: PluginCommand): PluginActionRegistration"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2206
+      "line": 2239
     }
   ],
   "contributions:settingsOptions": [
@@ -1212,7 +1212,7 @@
         "(fieldId: string, provider: (values: PluginFormValues) => PluginSelectOption[] | Promise<PluginSelectOption[]>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2209
+      "line": 2242
     }
   ],
   "contributions:voiceProviders": [
@@ -1222,7 +1222,7 @@
         "(provider: PluginVoiceProvider): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2217
+      "line": 2250
     }
   ],
   "contributions:contentProviders": [
@@ -1232,7 +1232,7 @@
         "(provider: { id: string; load(key: string): Promise<PluginBookContent>; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2220
+      "line": 2253
     }
   ],
   "contributions:readerModes": [
@@ -1242,7 +1242,7 @@
         "(mode: PluginReaderMode): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2226
+      "line": 2259
     }
   ],
   "contributions:agentTools": [
@@ -1252,7 +1252,7 @@
         "(tool: PluginToolDefinition): PluginActionRegistration"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2229
+      "line": 2262
     }
   ],
   "contributions:agentContextProviders": [
@@ -1262,7 +1262,7 @@
         "(provider: PluginAgentContextProvider): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2232
+      "line": 2265
     }
   ],
   "contributions:agentRetrievalProviders": [
@@ -1272,7 +1272,7 @@
         "(provider: PluginAgentRetrievalProvider): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2235
+      "line": 2268
     }
   ],
   "contributions:memoryCandidateProviders": [
@@ -1282,7 +1282,7 @@
         "(provider: PluginMemoryCandidateProvider): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2238
+      "line": 2271
     }
   ],
   "contributions:themes": [],
@@ -1294,7 +1294,7 @@
         "(transport: PluginSyncTransport): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2241
+      "line": 2274
     }
   ],
   "services:storage": [
@@ -1304,7 +1304,7 @@
         "(changes: PluginDocumentChange[]): Promise<PluginDocumentCommit>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1912
+      "line": 1945
     },
     {
       "path": "ctx.services.storage.collection",
@@ -1312,7 +1312,7 @@
         "(name: string): PluginDocumentCollection"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1908
+      "line": 1941
     },
     {
       "path": "ctx.services.storage.documents(collection).delete",
@@ -1320,7 +1320,7 @@
         "(id: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2013
+      "line": 2046
     },
     {
       "path": "ctx.services.storage.documents(collection).get",
@@ -1328,7 +1328,7 @@
         "<T = unknown>(id: string): Promise<PluginDocument<T> | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2012
+      "line": 2045
     },
     {
       "path": "ctx.services.storage.documents(collection).list",
@@ -1336,7 +1336,7 @@
         "<T = unknown>(filter?: { bookId?: string; limit?: number; oldestFirst?: boolean; }): Promise<PluginDocument<T>[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2015
+      "line": 2048
     },
     {
       "path": "ctx.services.storage.documents(collection).page",
@@ -1344,7 +1344,7 @@
         "<T = unknown>(filter?: PluginDocumentPageFilter): Promise<PluginDocumentPage<T>>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2023
+      "line": 2056
     },
     {
       "path": "ctx.services.storage.documents(collection).put",
@@ -1352,7 +1352,7 @@
         "(id: string, data: unknown, options?: { bookId?: string; anchor?: string; }): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2011
+      "line": 2044
     },
     {
       "path": "ctx.services.storage.flush",
@@ -1360,7 +1360,7 @@
         "(): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1900
+      "line": 1933
     },
     {
       "path": "ctx.services.storage.get",
@@ -1368,7 +1368,7 @@
         "<T = unknown>(key: string): T | null"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1892
+      "line": 1925
     },
     {
       "path": "ctx.services.storage.getDurable",
@@ -1376,7 +1376,7 @@
         "<T = unknown>(key: string): Promise<T | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1895
+      "line": 1928
     },
     {
       "path": "ctx.services.storage.observeDocuments",
@@ -1384,7 +1384,7 @@
         "<T = unknown>(query: PluginDocumentObservationQuery, handler: PluginObservationHandler<PluginDocumentObservation<T>>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1917
+      "line": 1950
     },
     {
       "path": "ctx.services.storage.onChange",
@@ -1392,7 +1392,7 @@
         "(handler: PluginObservationHandler<{ kind: \"changed\"; }>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1927
+      "line": 1960
     },
     {
       "path": "ctx.services.storage.policy",
@@ -1400,7 +1400,7 @@
         "(): Promise<PluginStoragePolicy>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1891
+      "line": 1924
     },
     {
       "path": "ctx.services.storage.remove",
@@ -1408,7 +1408,7 @@
         "(key: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1898
+      "line": 1931
     },
     {
       "path": "ctx.services.storage.set",
@@ -1416,7 +1416,7 @@
         "(key: string, value: unknown): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 1897
+      "line": 1930
     }
   ],
   "services:secrets": [
@@ -1426,7 +1426,7 @@
         "(key: string): Promise<string | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2310
+      "line": 2343
     },
     {
       "path": "ctx.services.secrets.remove",
@@ -1434,7 +1434,7 @@
         "(key: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2312
+      "line": 2345
     },
     {
       "path": "ctx.services.secrets.set",
@@ -1442,7 +1442,7 @@
         "(key: string, value: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2311
+      "line": 2344
     }
   ],
   "services:ui": [
@@ -1452,7 +1452,7 @@
         "(request: import(\"@read-aware/core\").HostCommandRequest): Promise<import(\"@read-aware/core\").HostCommandReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2328
+      "line": 2361
     },
     {
       "path": "ctx.services.ui.commands.list",
@@ -1460,7 +1460,7 @@
         "(): Promise<import(\"@read-aware/core\").HostCommandSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2324
+      "line": 2357
     },
     {
       "path": "ctx.services.ui.commands.observe",
@@ -1468,7 +1468,7 @@
         "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostCommandObservation>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2326
+      "line": 2359
     },
     {
       "path": "ctx.services.ui.exportFile",
@@ -1476,7 +1476,7 @@
         "(file: PluginExportFile): Promise<boolean>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2343
+      "line": 2376
     },
     {
       "path": "ctx.services.ui.openExternal",
@@ -1484,7 +1484,7 @@
         "(url: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2345
+      "line": 2378
     },
     {
       "path": "ctx.services.ui.publishView",
@@ -1492,7 +1492,7 @@
         "(channel: PluginViewChannel, update: PluginViewUpdate): Promise<PluginViewUpdateReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2348
+      "line": 2381
     },
     {
       "path": "ctx.services.ui.reader.closeReferencePreview",
@@ -1500,7 +1500,7 @@
         "(id: string): Promise<import(\"@read-aware/core\").ReaderReferenceCloseReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2374
+      "line": 2407
     },
     {
       "path": "ctx.services.ui.reader.focus",
@@ -1508,7 +1508,7 @@
         "(target: import(\"@read-aware/core\").ReaderFocusTarget, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderFocusReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2370
+      "line": 2403
     },
     {
       "path": "ctx.services.ui.reader.image.control",
@@ -1516,7 +1516,7 @@
         "(request: import(\"@read-aware/core\").ReaderImageRequest): Promise<import(\"@read-aware/core\").ReaderImageReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2357
+      "line": 2390
     },
     {
       "path": "ctx.services.ui.reader.image.observe",
@@ -1524,7 +1524,7 @@
         "(handler: PluginObservationHandler<import(\"@read-aware/core\").ReaderImageSnapshot | null>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2355
+      "line": 2388
     },
     {
       "path": "ctx.services.ui.reader.image.open",
@@ -1532,7 +1532,7 @@
         "(query: import(\"@read-aware/core\").BookImageQuery, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderImageOpenReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2359
+      "line": 2392
     },
     {
       "path": "ctx.services.ui.reader.image.snapshot",
@@ -1540,7 +1540,7 @@
         "(): Promise<import(\"@read-aware/core\").ReaderImageSnapshot | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2353
+      "line": 2386
     },
     {
       "path": "ctx.services.ui.reader.observe",
@@ -1548,7 +1548,7 @@
         "(handler: PluginObservationHandler<import(\"@read-aware/core\").ReaderPanelsSnapshot | null>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2363
+      "line": 2396
     },
     {
       "path": "ctx.services.ui.reader.previewReference",
@@ -1556,7 +1556,7 @@
         "(query: import(\"@read-aware/core\").BookReferenceQuery, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderReferencePreviewReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2372
+      "line": 2405
     },
     {
       "path": "ctx.services.ui.reader.setPanel",
@@ -1564,7 +1564,7 @@
         "(panel: import(\"@read-aware/core\").ReaderPanel, open: boolean, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderPanelReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2365
+      "line": 2398
     },
     {
       "path": "ctx.services.ui.reader.setWidth",
@@ -1572,7 +1572,7 @@
         "(panel: import(\"@read-aware/core\").ResizableReaderPanel, width: number, guard?: import(\"@read-aware/core\").ReadingSessionGuard): Promise<import(\"@read-aware/core\").ReaderPanelReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2367
+      "line": 2400
     },
     {
       "path": "ctx.services.ui.reader.snapshot",
@@ -1580,7 +1580,7 @@
         "(): Promise<import(\"@read-aware/core\").ReaderPanelsSnapshot | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2361
+      "line": 2394
     },
     {
       "path": "ctx.services.ui.showToast",
@@ -1588,7 +1588,7 @@
         "(message: PluginToast): void"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2342
+      "line": 2375
     },
     {
       "path": "ctx.services.ui.window.control",
@@ -1596,7 +1596,7 @@
         "(request: import(\"@read-aware/core\").HostWindowRequest): Promise<import(\"@read-aware/core\").HostWindowReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2320
+      "line": 2353
     },
     {
       "path": "ctx.services.ui.window.observe",
@@ -1604,7 +1604,7 @@
         "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostWindowObservation>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2319
+      "line": 2352
     },
     {
       "path": "ctx.services.ui.window.snapshot",
@@ -1612,7 +1612,7 @@
         "(): Promise<import(\"@read-aware/core\").HostWindowSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2317
+      "line": 2350
     },
     {
       "path": "ctx.services.ui.workspace.navigate",
@@ -1620,7 +1620,7 @@
         "(target: import(\"@read-aware/core\").WorkspaceTarget, expectedRevision?: number): Promise<import(\"@read-aware/core\").WorkspaceReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2340
+      "line": 2373
     },
     {
       "path": "ctx.services.ui.workspace.observe",
@@ -1628,7 +1628,7 @@
         "(query: import(\"@read-aware/core\").WorkspaceQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").WorkspaceSnapshot | null>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2338
+      "line": 2371
     },
     {
       "path": "ctx.services.ui.workspace.snapshot",
@@ -1636,7 +1636,7 @@
         "(query?: import(\"@read-aware/core\").WorkspaceQuery): Promise<import(\"@read-aware/core\").WorkspaceSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2336
+      "line": 2369
     }
   ],
   "services:schedules": [
@@ -1646,7 +1646,7 @@
         "(scheduleId: string, run: (context: import(\"@read-aware/core\").PluginScheduleRun, delivery?: PluginReactionEvent) => void | Promise<void>): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2378
+      "line": 2411
     },
     {
       "path": "ctx.services.schedules.cancelDeferred",
@@ -1654,7 +1654,7 @@
         "(id: string, requestId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginDeferredReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2385
+      "line": 2418
     },
     {
       "path": "ctx.services.schedules.control",
@@ -1662,7 +1662,7 @@
         "(id: string, action: \"pause\" | \"resume\" | \"run\"): Promise<import(\"@read-aware/core\").PluginScheduleReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2390
+      "line": 2423
     },
     {
       "path": "ctx.services.schedules.defer",
@@ -1670,7 +1670,7 @@
         "(id: string, input: import(\"@read-aware/core\").PluginDeferredRequest, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginDeferredReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2383
+      "line": 2416
     },
     {
       "path": "ctx.services.schedules.list",
@@ -1678,7 +1678,7 @@
         "(query?: Omit<import(\"@read-aware/core\").PluginScheduleQuery, \"pluginId\">): Promise<import(\"@read-aware/core\").PluginSchedulePage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2387
+      "line": 2420
     },
     {
       "path": "ctx.services.schedules.observe",
@@ -1686,7 +1686,7 @@
         "(query: Omit<import(\"@read-aware/core\").PluginScheduleQuery, \"pluginId\">, handler: PluginObservationHandler<import(\"@read-aware/core\").PluginSchedulePage>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2388
+      "line": 2421
     }
   ],
   "services:jobs": [
@@ -1696,7 +1696,7 @@
         "(id: string, action: import(\"@read-aware/core\").DurableJobControl, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DurableJobSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2491
+      "line": 2524
     },
     {
       "path": "ctx.services.jobs.get",
@@ -1704,7 +1704,7 @@
         "(id: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DurableJobSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2489
+      "line": 2522
     },
     {
       "path": "ctx.services.jobs.list",
@@ -1712,7 +1712,7 @@
         "(query?: { offset?: number; limit?: number; }, options?: PluginCallOptions): Promise<{ jobs: import(\"@read-aware/core\").DurableJobSnapshot[]; nextOffset: number | null; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2490
+      "line": 2523
     },
     {
       "path": "ctx.services.jobs.start",
@@ -1720,7 +1720,7 @@
         "(plan: import(\"@read-aware/core\").DurableJobPlan, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DurableJobSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2488
+      "line": 2521
     }
   ],
   "services:changes": [
@@ -1730,7 +1730,7 @@
         "(query: import(\"@read-aware/core\").ChangesQuery, options?: PluginCallOptions): Promise<{ cursor: string; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2481
+      "line": 2514
     },
     {
       "path": "ctx.services.changes.read",
@@ -1738,7 +1738,7 @@
         "(query: import(\"@read-aware/core\").ChangesQuery, cursor: string, limit?: number, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ChangesPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2482
+      "line": 2515
     }
   ],
   "services:transactions": [
@@ -1748,7 +1748,7 @@
         "(previewId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2497
+      "line": 2530
     },
     {
       "path": "ctx.services.transactions.preview",
@@ -1756,7 +1756,7 @@
         "(operations: import(\"@read-aware/core\").AtomicOperation[], options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicPreview>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2496
+      "line": 2529
     },
     {
       "path": "ctx.services.transactions.previewUndo",
@@ -1764,7 +1764,7 @@
         "(receiptId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicPreview>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2498
+      "line": 2531
     },
     {
       "path": "ctx.services.transactions.receipt",
@@ -1772,7 +1772,7 @@
         "(receiptId: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").AtomicReceipt | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2499
+      "line": 2532
     }
   ],
   "services:session": [
@@ -1782,7 +1782,7 @@
         "(): Promise<import(\"@read-aware/core\").HostEnvironmentSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2507
+      "line": 2540
     },
     {
       "path": "ctx.services.session.observeEnvironment",
@@ -1790,7 +1790,7 @@
         "(handler: (snapshot: import(\"@read-aware/core\").HostEnvironmentSnapshot, delivery?: PluginReactionEvent) => void | Promise<void>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2510
+      "line": 2543
     },
     {
       "path": "ctx.services.session.operationAvailability",
@@ -1798,7 +1798,7 @@
         "(query: import(\"@read-aware/core\").OperationAvailabilityQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").OperationAvailability>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2505
+      "line": 2538
     }
   ],
   "services:plugins": [
@@ -1808,7 +1808,7 @@
         "(request: import(\"@read-aware/core\").PluginServiceCall, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginServiceReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2397
+      "line": 2430
     },
     {
       "path": "ctx.services.plugins.contributions",
@@ -1816,7 +1816,7 @@
         "(query?: import(\"@read-aware/core\").PluginContributionQuery): Promise<import(\"@read-aware/core\").PluginContributionPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2400
+      "line": 2433
     },
     {
       "path": "ctx.services.plugins.list",
@@ -1824,7 +1824,7 @@
         "(query?: import(\"@read-aware/core\").PluginDirectoryQuery): Promise<import(\"@read-aware/core\").PluginDirectoryPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2403
+      "line": 2436
     },
     {
       "path": "ctx.services.plugins.listServices",
@@ -1832,7 +1832,7 @@
         "(query?: import(\"@read-aware/core\").PluginServiceQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginServicePage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2394
+      "line": 2427
     },
     {
       "path": "ctx.services.plugins.observe",
@@ -1840,7 +1840,7 @@
         "(query: import(\"@read-aware/core\").PluginDirectoryQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").PluginDirectoryPage>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2405
+      "line": 2438
     },
     {
       "path": "ctx.services.plugins.observeContributions",
@@ -1848,7 +1848,7 @@
         "(query: import(\"@read-aware/core\").PluginContributionQuery, handler: PluginObservationHandler<import(\"@read-aware/core\").PluginContributionPage>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2401
+      "line": 2434
     }
   ],
   "services:maintenance": [
@@ -1858,7 +1858,7 @@
         "(): Promise<import(\"@read-aware/core\").HostMaintenanceSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2423
+      "line": 2456
     },
     {
       "path": "ctx.services.maintenance.observe",
@@ -1866,7 +1866,7 @@
         "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostMaintenanceSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2416
+      "line": 2449
     },
     {
       "path": "ctx.services.maintenance.openSettings",
@@ -1874,7 +1874,7 @@
         "(surface: import(\"@read-aware/core\").HostMaintenanceSurface): ReturnType<import(\"@read-aware/core\").HostMaintenancePort[\"openSettings\"]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2421
+      "line": 2454
     },
     {
       "path": "ctx.services.maintenance.requestBackup",
@@ -1882,7 +1882,7 @@
         "(action: import(\"@read-aware/core\").BackupAction, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").BackupReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2414
+      "line": 2447
     },
     {
       "path": "ctx.services.maintenance.requestConnectionTest",
@@ -1890,7 +1890,7 @@
         "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ConnectionTestReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2409
+      "line": 2442
     },
     {
       "path": "ctx.services.maintenance.snapshot",
@@ -1898,7 +1898,7 @@
         "(): Promise<import(\"@read-aware/core\").HostMaintenanceSnapshot>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2415
+      "line": 2448
     }
   ],
   "services:diagnostics": [
@@ -1908,7 +1908,7 @@
         "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ProjectionRepairReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2428
+      "line": 2461
     },
     {
       "path": "ctx.services.diagnostics.requestReport",
@@ -1916,7 +1916,7 @@
         "(action: import(\"@read-aware/core\").DiagnosticsReportAction, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").DiagnosticsReportReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2429
+      "line": 2462
     },
     {
       "path": "ctx.services.diagnostics.verifyProjections",
@@ -1924,7 +1924,7 @@
         "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ProjectionVerification>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2430
+      "line": 2463
     }
   ],
   "services:logging": [
@@ -1934,7 +1934,7 @@
         "(): Promise<{ levels: PluginLogEntry[\"level\"][]; maxEntryChars: number; maxFields: number; perPluginLimit: number; appLimit: number; windowMs: number; delivery: \"best-effort\"; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2265
+      "line": 2298
     },
     {
       "path": "ctx.services.logging.write",
@@ -1942,7 +1942,7 @@
         "(entry: PluginLogEntry): Promise<PluginLogReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2264
+      "line": 2297
     }
   ],
   "services:resources": [
@@ -1952,7 +1952,7 @@
         "(id: string, offset: number, data: Uint8Array | ArrayBuffer): Promise<import(\"@read-aware/core\").ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2457
+      "line": 2490
     },
     {
       "path": "ctx.services.resources.assets.delete",
@@ -1960,7 +1960,7 @@
         "(key: string, expectedRevision: string, options?: PluginCallOptions): Promise<{ deleted: true; cleanupPending: boolean; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2447
+      "line": 2480
     },
     {
       "path": "ctx.services.resources.assets.get",
@@ -1968,7 +1968,7 @@
         "(key: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAsset | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2444
+      "line": 2477
     },
     {
       "path": "ctx.services.resources.assets.list",
@@ -1976,7 +1976,7 @@
         "(query?: import(\"@read-aware/core\").PluginAssetQuery, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAssetPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2443
+      "line": 2476
     },
     {
       "path": "ctx.services.resources.assets.open",
@@ -1984,7 +1984,7 @@
         "(key: string, expectedRevision: string, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2446
+      "line": 2479
     },
     {
       "path": "ctx.services.resources.assets.policy",
@@ -1992,7 +1992,7 @@
         "(options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAssetPolicy>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2442
+      "line": 2475
     },
     {
       "path": "ctx.services.resources.assets.store",
@@ -2000,7 +2000,7 @@
         "(resourceId: string, input: import(\"@read-aware/core\").PluginAssetWrite, options?: PluginCallOptions): Promise<import(\"@read-aware/core\").PluginAssetReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2445
+      "line": 2478
     },
     {
       "path": "ctx.services.resources.commit",
@@ -2008,7 +2008,7 @@
         "(id: string): Promise<import(\"@read-aware/core\").ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2458
+      "line": 2491
     },
     {
       "path": "ctx.services.resources.create",
@@ -2016,7 +2016,7 @@
         "(options: import(\"@read-aware/core\").ResourceCreateOptions): Promise<import(\"@read-aware/core\").ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2454
+      "line": 2487
     },
     {
       "path": "ctx.services.resources.listDirectory",
@@ -2024,7 +2024,7 @@
         "(id: string, query?: import(\"@read-aware/core\").ResourceDirectoryQuery): Promise<import(\"@read-aware/core\").ResourceDirectoryPage>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2436
+      "line": 2469
     },
     {
       "path": "ctx.services.resources.openAssociated",
@@ -2032,7 +2032,7 @@
         "(id: string, options?: PluginCallOptions): Promise<{ opened: boolean; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2462
+      "line": 2495
     },
     {
       "path": "ctx.services.resources.openBook",
@@ -2040,7 +2040,7 @@
         "(bookId: string): Promise<import(\"@read-aware/core\").ResourceRef | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2451
+      "line": 2484
     },
     {
       "path": "ctx.services.resources.openCover",
@@ -2048,7 +2048,7 @@
         "(bookId: string): Promise<import(\"@read-aware/core\").ResourceRef | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2453
+      "line": 2486
     },
     {
       "path": "ctx.services.resources.openDirectoryFile",
@@ -2056,7 +2056,7 @@
         "(id: string, relativePath: string): Promise<import(\"@read-aware/core\").ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2437
+      "line": 2470
     },
     {
       "path": "ctx.services.resources.pick",
@@ -2064,7 +2064,7 @@
         "(options?: import(\"@read-aware/core\").ResourcePickOptions): Promise<{ cancelled: boolean; resources: import(\"@read-aware/core\").ResourceRef[]; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2449
+      "line": 2482
     },
     {
       "path": "ctx.services.resources.pickDirectory",
@@ -2072,7 +2072,7 @@
         "(): Promise<{ cancelled: boolean; directory: import(\"@read-aware/core\").ResourceDirectoryRef | null; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2435
+      "line": 2468
     },
     {
       "path": "ctx.services.resources.read",
@@ -2080,7 +2080,7 @@
         "(id: string, offset: number, length: number): Promise<import(\"@read-aware/core\").ResourceChunk>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2456
+      "line": 2489
     },
     {
       "path": "ctx.services.resources.release",
@@ -2088,7 +2088,7 @@
         "(id: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2464
+      "line": 2497
     },
     {
       "path": "ctx.services.resources.releaseDirectory",
@@ -2096,7 +2096,7 @@
         "(id: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2438
+      "line": 2471
     },
     {
       "path": "ctx.services.resources.save",
@@ -2104,7 +2104,7 @@
         "(id: string, filename?: string): Promise<{ saved: boolean; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2459
+      "line": 2492
     },
     {
       "path": "ctx.services.resources.stat",
@@ -2112,7 +2112,7 @@
         "(id: string): Promise<import(\"@read-aware/core\").ResourceRef>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2455
+      "line": 2488
     }
   ],
   "services:sync": [
@@ -2122,7 +2122,7 @@
         "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"account\"]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2469
+      "line": 2502
     },
     {
       "path": "ctx.services.sync.backlog",
@@ -2130,7 +2130,7 @@
         "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"backlog\"]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2468
+      "line": 2501
     },
     {
       "path": "ctx.services.sync.connectionOptions",
@@ -2146,7 +2146,7 @@
         "(handler: PluginObservationHandler<import(\"@read-aware/core\").HostSyncSnapshot>, options?: { ruleId?: string; }): PluginDisposable"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2473
+      "line": 2506
     },
     {
       "path": "ctx.services.sync.openSettings",
@@ -2154,7 +2154,7 @@
         "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"openSettings\"]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2471
+      "line": 2504
     },
     {
       "path": "ctx.services.sync.requestFlow",
@@ -2162,7 +2162,7 @@
         "(request: import(\"@read-aware/core\").HostSyncFlowRequest, options?: PluginCallOptions): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"requestFlow\"]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2472
+      "line": 2505
     },
     {
       "path": "ctx.services.sync.requestSync",
@@ -2170,7 +2170,7 @@
         "(): ReturnType<import(\"@read-aware/core\").HostSyncPort[\"requestSync\"]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2470
+      "line": 2503
     },
     {
       "path": "ctx.services.sync.snapshot",
@@ -2188,7 +2188,7 @@
         "(id: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2556
+      "line": 2589
     },
     {
       "path": "ctx.services.network.fetch",
@@ -2196,7 +2196,7 @@
         "(input: string | URL | Request, init?: RequestInit, options?: { retry?: \"none\" | \"safe\"; }): Promise<Response>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2541
+      "line": 2574
     },
     {
       "path": "ctx.services.network.openStream",
@@ -2204,7 +2204,7 @@
         "(input: string | URL | Request, init?: RequestInit, options?: { retry?: \"none\" | \"safe\"; }): Promise<PluginNetworkStream>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2549
+      "line": 2582
     },
     {
       "path": "ctx.services.network.policy",
@@ -2212,7 +2212,7 @@
         "(): Promise<PluginNetworkAccess & { maxRedirects: number; maxBodyBytes: number; timeoutMs: number; maxStreamBytes: number; maxChunkBytes: number; maxConcurrentRequests: number; maxHostConcurrentRequests: number; cumulative: { windowMs: number; maxOwnerRequests: number; maxHostRequests: number; maxOwnerBytes: number; maxHostBytes: number; maxOwners: number; }; retry: { maxRetries: number; baseDelayMs: number; maxDelayMs: number; statuses: readonly number[]; }; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2515
+      "line": 2548
     },
     {
       "path": "ctx.services.network.readStream",
@@ -2220,7 +2220,7 @@
         "(id: string, offset: number, maxBytes?: number): Promise<PluginNetworkChunk>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2553
+      "line": 2586
     }
   ],
   "services:llm": [
@@ -2231,7 +2231,7 @@
         "(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never; }): Promise<unknown>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2561
+      "line": 2594
     },
     {
       "path": "ctx.services.llm.askDetailed",
@@ -2240,7 +2240,7 @@
         "(input: PluginInferenceInput & { schema: Record<string, unknown>; onText?: never; }): Promise<import(\"@read-aware/core\").InferenceResult>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2565
+      "line": 2598
     },
     {
       "path": "ctx.services.llm.cancelRequest",
@@ -2248,7 +2248,7 @@
         "(requestId: string): Promise<import(\"@read-aware/core\").InferenceRequestReceipt | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2578
+      "line": 2611
     },
     {
       "path": "ctx.services.llm.getRequest",
@@ -2256,7 +2256,7 @@
         "(requestId: string): Promise<import(\"@read-aware/core\").InferenceRequestReceipt | null>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2574
+      "line": 2607
     },
     {
       "path": "ctx.services.llm.listRequests",
@@ -2264,7 +2264,7 @@
         "(): Promise<import(\"@read-aware/core\").InferenceRequestReceipt[]>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2575
+      "line": 2608
     },
     {
       "path": "ctx.services.llm.policy",
@@ -2272,7 +2272,7 @@
         "(): Promise<{ defaultTimeoutMs: number; maxTimeoutMs: number; perPluginLimit: number; appLimit: number; maxOutputTokensLimit: number; maxImageCount: number; maxImageBytes: number; maxImageTotalBytes: number; maxTotalOutputTokensLimit: number; maxOutputCharsLimit: number; maxInputChars: number; }>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2560
+      "line": 2593
     }
   ],
   "services:clipboard": [
@@ -2282,7 +2282,7 @@
         "(resourceId: string): Promise<import(\"@read-aware/core\").ResourceImageReceipt>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2583
+      "line": 2616
     },
     {
       "path": "ctx.services.clipboard.writeText",
@@ -2290,7 +2290,7 @@
         "(text: string): Promise<void>"
       ],
       "source": "packages/plugin-types/src/index.ts",
-      "line": 2581
+      "line": 2614
     }
   ],
   "schemas:views": [],

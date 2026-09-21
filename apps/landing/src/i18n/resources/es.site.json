@@ -171,6 +171,77 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.1",
+        "date": "2026-09-21",
+        "codename": "Cambria",
+        "summary": "Esta actualización de Cambria abre los libros grandes al instante en el modo de desplazamiento continuo, hace que Sentence Reader sea fiable en el teléfono y permite que los dispositivos del canal Beta encuentren actualizaciones en cualquier lugar.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Sigue leyendo desde la página a la que pasaste",
+                "body": "En los diseños paginados, después de pasar las páginas a mano, el siguiente toque o paso con la tecla de volumen en Sentence Reader continúa desde la página que estás viendo. La frase que dejaste sigue a un toque detrás de «Volver a la frase actual»."
+              },
+              {
+                "title": "Un cuadro Ir a en Jumper",
+                "body": "Un solo campo responde con capítulos, páginas impresas y una búsqueda de texto en vivo del libro, con la tabla de contenidos y tu capítulo actual debajo. Los plugins ahora pueden ofrecer su propia búsqueda en las vistas de lista."
+              },
+              {
+                "title": "Búsqueda web activada por defecto",
+                "body": "Añade la clave de API de tu proveedor de búsqueda para usar la búsqueda web con el asistente. El diálogo de actualización ofrece un acceso directo a Ajustes de IA cuando falta la clave y respeta la elección previa de mantener la búsqueda desactivada."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Apertura instantánea en el desplazamiento continuo",
+                "body": "Abrir un libro cuyos capítulos abarcan decenas de archivos, o saltar dentro de él, solía tardar segundos. El lector muestra ahora la página de destino de inmediato y mantiene cargados únicamente los archivos cercanos a tu posición, sin que el texto se mueva debajo de ti."
+              },
+              {
+                "title": "Búsqueda rápida en libros largos",
+                "body": "La búsqueda de texto, que ignora mayúsculas y acentos, ahora prepara cada sección una sola vez, de modo que una consulta a todo el libro que antes tardaba minutos se completa en menos de un segundo."
+              },
+              {
+                "title": "Las frases se dividen como el lector espera",
+                "body": "Las comillas de apertura inician la línea de diálogo que abren, abreviaturas como Mr., Dr. y e.g. ya no terminan una frase, y los números de las notas al pie ya no fusionan dos frases en una."
+              },
+              {
+                "title": "Avance de frases más estable en el teléfono",
+                "body": "La vista permanece fija mientras avanzas por el texto visible, las frases que cruzan el borde de una página se revelan completas antes de avanzar, y tocar la frase resaltada mantiene el avance. La barra de herramientas compacta conserva las acciones de anotación y la salida en una sola fila."
+              },
+              {
+                "title": "Un canal Beta que funciona en todas partes",
+                "body": "Las actualizaciones beta se encuentran mediante un puntero fijo a la versión publicada en lugar de la API de GitHub, de modo que los dispositivos en redes compartidas o donde la API está bloqueada ya ven las nuevas betas."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Menos pantallas en blanco al abrir libros grandes",
+                "body": "Las posiciones de lectura se restauran incluso cuando la ubicación guardada no tiene un rectángulo visible, las páginas PDF esperan a la maquetación antes de restaurarse, y los saltos de capítulo en el modo de desplazamiento ya no dejan en pantalla el capítulo anterior."
+              },
+              {
+                "title": "Controles de Sentence Reader en Android",
+                "body": "Las teclas de volumen vuelven a funcionar cuando un campo de nota o de chat tiene el foco, y la barra de herramientas arrastrada ya no se puede estacionar bajo la barra de estado ni bajo la franja de gestos."
+              },
+              {
+                "title": "Los paneles del teléfono ya no estorban",
+                "body": "Los paneles de la tabla de contenidos y del chat se cierran cuando se oculta la interfaz del lector y ya no reaparecen sobre la página al reabrir un libro."
+              },
+              {
+                "title": "Dos plugins retirados",
+                "body": "Se eliminan los plugins de Objetivos de lectura y de Anotaciones. El lector gestiona las anotaciones de forma nativa y el asistente transmite la intención de lectura sin necesidad de un plugin."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.0",
         "date": "2026-09-21",
         "codename": "Cambria",
