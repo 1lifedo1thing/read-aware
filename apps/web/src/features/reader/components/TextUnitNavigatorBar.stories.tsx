@@ -92,8 +92,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Touch starts with annotation actions; desktop shows navigation. */
+/** Touch starts with annotation actions and More; desktop shows navigation. */
 export const OnUnit: Story = {};
+
+/** Narrow touch layout must keep More alongside the annotation controls. */
+export const PhoneWidth: Story = {
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};
 
 /** Nothing to return to yet: the return-to-current control is disabled. */
 export const NoRestingUnit: Story = {

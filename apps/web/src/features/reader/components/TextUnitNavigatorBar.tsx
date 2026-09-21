@@ -1,5 +1,4 @@
 import {
-  CaretDoubleLeft,
   CaretLeft,
   CaretRight,
   ChatCircle,
@@ -16,9 +15,9 @@ import {
   TextUnderline,
   X,
 } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
 import type { ReactNode, RefObject } from "react";
-import { IconButton, Tooltip } from "@read-aware/ui";
+import { DropdownMenu, IconButton, Tooltip } from "@read-aware/ui";
+import { usePhoneViewport } from "@read-aware/ui/media";
 import { cn } from "@read-aware/ui/cn";
 import { useLocale, useTranslation } from "../../../i18n";
 import { hasCoarsePointer } from "../../../platform/environment";
@@ -106,7 +105,7 @@ function BarButton({
  * bottom center of the reader: step to the previous / next unit, jump back
  * to the resting unit, switch the step unit, read aloud, and exit.
  *
- * Touch puts marks and notes first, with navigation on the expanded page.
+ * Compact layouts put marks and notes first, with other actions in More.
  * The anchored sentence menu still carries the full set of selection actions.
  * Tap-to-advance owns the forward step on touch; the grip moves the whole bar.
  */
@@ -140,13 +139,8 @@ export function TextUnitNavigatorBar({
   // it — the bar carries the back-step alone. Disarm the tap and it returns.
   const showNextStep = !coarsePointer || !tapToAdvance;
   const float = useDraggableFloat({ containerRef, controlId: "navigator-bar" });
-  // Touch starts with annotation and panel actions; navigation is expanded
-  // through More. Desktop keeps the full navigation strip.
-  const paged = coarsePointer;
-  const [page, setPage] = useState<0 | 1>(0);
-  useEffect(() => {
-    if (!visible) setPage(0);
-  }, [visible]);
+  const phoneViewport = usePhoneViewport();
+  const compact = coarsePointer || phoneViewport;
 
   if (!visible) return null;
 
@@ -155,8 +149,7 @@ export function TextUnitNavigatorBar({
   const prevStepLabel = resolvePluginText(activeUnit.previousLabel, locale);
   const nextStepLabel = resolvePluginText(activeUnit.nextLabel, locale);
   // Quiet, monochrome ghost buttons — same surface language as the selection
-  // menu. Touch gets a taller target without widening the desktop bar; width
-  // stays at 36px so the full strip still fits a phone screen in one row.
+  // menu. Compact layouts keep a single row; overflow uses the shared menu.
   const actionButtonClass =
     "rounded-md text-fg-muted hover:bg-fg/5 hover:text-fg focus-visible:ring-fg disabled:pointer-events-none disabled:opacity-40 pointer-coarse:h-10 pointer-coarse:w-9";
 
@@ -190,7 +183,7 @@ export function TextUnitNavigatorBar({
             <DotsSixVertical size={16} weight="bold" aria-hidden="true" />
           </span>
 
-          {paged && page === 0 && (
+          {compact && (
             <>
               <BarButton label={t("menu.highlight")} disabled={!canAnnotate} onClick={onHighlight}
                 className={actionButtonClass} icon={<Highlighter size={14} aria-hidden="true" />} />
@@ -201,16 +194,7 @@ export function TextUnitNavigatorBar({
             </>
           )}
 
-          {paged && page === 1 && (
-            <BarButton
-              label={resolvePluginText(mode.copy.collapseActions, locale)}
-              onClick={() => setPage(0)}
-              className={actionButtonClass}
-              icon={<CaretDoubleLeft size={14} weight="regular" aria-hidden="true" />}
-            />
-          )}
-
-          {(!paged || page === 1) && (
+          {!compact && (
             <>
               <BarButton
                 label={prevStepLabel}
@@ -269,7 +253,7 @@ export function TextUnitNavigatorBar({
             </>
           )}
 
-          {(!paged || page === 0) && (
+          {!compact && (
             <>
               <BarDivider />
               <BarButton
@@ -306,15 +290,41 @@ export function TextUnitNavigatorBar({
               />
             </>
           )}
-          {paged && page === 0 && (
+          {compact && (
             <>
               <BarDivider />
-              <BarButton
-                label={resolvePluginText(mode.copy.moreActions, locale)}
-                onClick={() => setPage(1)}
-                className={actionButtonClass}
-                icon={<DotsThree size={16} weight="bold" aria-hidden="true" />}
+              <DropdownMenu
+                triggerLabel={resolvePluginText(mode.copy.moreActions, locale)}
+                side={float.position && float.position.y < 0.5 ? "bottom" : "top"}
+                align="right"
+                trigger={<span className={cn(actionButtonClass, "inline-flex h-7 w-7 items-center justify-center")}>
+                  <DotsThree size={16} weight="bold" aria-hidden="true" />
+                </span>}
+                items={[
+                  { label: prevStepLabel, disabled: !canStep, onClick: onPrev, icon: <CaretLeft size={16} /> },
+                  ...(showNextStep ? [{ label: nextStepLabel, disabled: !canStep, onClick: onNext, icon: <CaretRight size={16} /> }] : []),
+                  { label: resolvePluginText(mode.copy.returnToCurrent, locale), disabled: !canReturn, onClick: onReturnToCurrent, icon: <Crosshair size={14} /> },
+                  ...quickUnits.map(unit => ({
+                    label: resolvePluginText(unit.toggleLabel ?? unit.label, locale),
+                    checked: unit.id === activeUnit.id,
+                    onClick: () => onUnitChange(unit.id === activeUnit.id ? mode.defaultUnitId : unit.id),
+                    icon: renderPluginIcon(unit.icon, 14),
+                  })),
+                  ...(readAloudAvailable ? [{
+                    label: readAloudPlaying ? t("readAloud.stop") : t("readAloud.start"),
+                    checked: readAloudPlaying,
+                    disabled: !readAloudPlaying && !readAloudCanStart,
+                    onClick: onToggleReadAloud,
+                    icon: readAloudPlaying ? <SpeakerSlash size={15} /> : <SpeakerHigh size={15} />,
+                  }] : []),
+                  { label: t("tableOfContents"), onClick: () => onOpenPanel("toc"), icon: <ListBullets size={14} /> },
+                  { label: t("notes"), onClick: () => onOpenPanel("annotations"), icon: <Notebook size={14} /> },
+                  { label: t("readingAppearance"), onClick: () => onOpenPanel("appearance"), icon: <TextAa size={14} /> },
+                  { label: t("chat"), onClick: () => onOpenPanel("chat"), icon: <ChatCircle size={14} /> },
+                ]}
               />
+              <BarButton label={resolvePluginText(mode.copy.exit, locale)} onClick={onExit}
+                className={actionButtonClass} icon={<X size={14} aria-hidden="true" />} />
             </>
           )}
         </div>
