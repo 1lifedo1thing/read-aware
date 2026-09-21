@@ -79,10 +79,15 @@ tag 带 `-` 即 pre-release（如 `v0.3.0-beta.1`），流程与正式版相同�
   上一个 stable，Stable 通道用户完全无感。装了 beta 的用户在下个正式版
   发布时会正常升级上去。
 - **Beta 更新通道**（设置 → About → Update channel）的用户会收到
-  pre-release：客户端经 GitHub API 取全部 release 里 semver 最大者
-  （`features/update/lib/release-feed.ts`），纯数字 prerelease 标识
-  （`0.4.0-1 < 0.4.0-2 < 0.4.0`）排序正确，stable 追上后 beta 用户自动
-  回到 stable。
+  pre-release：客户端读固定地址
+  `releases/download/beta/latest(-android).json`（滚动的 `beta` 预发布 release，
+  由 `scripts/publish-beta-manifest.sh` 在 release.yml 里维护：凡 semver 不低于
+  当前指针的 release——含正式版——都会把清单换过去，纯数字 prerelease 标识
+  `0.4.0-1 < 0.4.0-2 < 0.4.0` 排序正确，stable 追上后 beta 用户自动回到
+  stable）。2026-09-21 之前走的是匿名 GitHub API 列 release 取最大者，匿名
+  配额每 IP 每小时 60 次、共享出口/国内网络下常年 403 或不通，失败还静默退回
+  stable 清单，手机 beta 用户因此"检查不到更新"——别再回到 API 方案。
+  `beta` release 只放清单，不放安装包；rolling tag 指向哪个 commit 无所谓。
 - 版本号的 prerelease 标识必须**纯数字**（如 `0.3.0-1`）：MSI 打包硬性要求
   "numeric-only and cannot be greater than 65535"，`-beta.1` 这种带词的会挂
   Windows job（v0.3.0-beta.1 实测挂过，只能删了重发）。iOS 会自动剥掉后缀

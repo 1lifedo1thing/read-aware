@@ -105,10 +105,13 @@ fn client(current_version: &str, timeout: std::time::Duration) -> Result<reqwest
 #[cfg(target_os = "android")]
 fn validate_manifest_source(raw: &str) -> Result<(), String> {
     let url = reqwest::Url::parse(raw).map_err(|err| format!("Invalid manifest URL: {err}"))?;
+    // A versioned release or the rolling `beta` pointer release (Beta channel).
     let path_ok = url
         .path()
-        .strip_prefix("/ahpxex/read-aware/releases/download/v")
-        .is_some_and(|rest| rest.ends_with("/latest-android.json"));
+        .strip_prefix("/ahpxex/read-aware/releases/download/")
+        .and_then(|rest| rest.split_once('/'))
+        .is_some_and(|(tag, name)| name == "latest-android.json"
+            && (tag == "beta" || tag.strip_prefix('v').is_some_and(|v| v.starts_with(|c: char| c.is_ascii_digit()))));
     if url.scheme() != "https"
         || url.host_str() != Some("github.com")
         || !path_ok

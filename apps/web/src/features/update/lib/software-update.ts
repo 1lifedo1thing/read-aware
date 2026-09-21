@@ -1,5 +1,5 @@
 import { isAndroid, isMobileOS, isTauri } from "../../../platform/environment";
-import { resolveBetaManifestUrl } from "./release-feed";
+import { betaManifestUrl } from "./update-channel";
 import { getUpdateChannel } from "./update-channel";
 import { invoke } from "../../../platform/ipc";
 import { AppError } from "@read-aware/core";
@@ -60,14 +60,16 @@ export async function readCurrentAppVersion(): Promise<string | null> {
 export async function findSoftwareUpdate(): Promise<AvailableSoftwareUpdate | null> {
   if (!canUseSoftwareUpdater()) return null;
 
-  // Beta: point the check at the semver-largest release's manifest (found via
-  // the GitHub API); a failed resolution degrades to the stable endpoint, so
-  // beta users are never worse off than stable ones. Stable: the endpoint
-  // baked into tauri.conf.json (GitHub's `releases/latest`, no pre-releases).
+  // Beta: the rolling `beta` release's manifest, a fixed github.com download
+  // URL that the release workflow moves to every semver-newer release. Stable:
+  // the endpoint baked into tauri.conf.json (GitHub's `releases/latest`, no
+  // pre-releases). Neither channel touches the rate-limited GitHub API, and a
+  // failing beta check surfaces as an error rather than silently reporting the
+  // stable release as the newest.
   const beta = getUpdateChannel() === "beta";
 
   if (isAndroid()) {
-    const manifestUrl = beta ? await resolveBetaManifestUrl("latest-android.json") : null;
+    const manifestUrl = beta ? betaManifestUrl("latest-android.json") : null;
     return invokeWithTimeout<AvailableSoftwareUpdate | null>(
       "android_update_check",
       ANDROID_CHECK_TIMEOUT_MS,
@@ -76,7 +78,7 @@ export async function findSoftwareUpdate(): Promise<AvailableSoftwareUpdate | nu
   }
 
   desktopUpdateReady = false;
-  const endpoint = beta ? await resolveBetaManifestUrl("latest.json") : null;
+  const endpoint = beta ? betaManifestUrl("latest.json") : null;
   const found = await invoke<AvailableSoftwareUpdate | null>("desktop_update_check", { endpoint });
   desktopUpdateReady = found !== null;
   return found;

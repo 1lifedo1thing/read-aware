@@ -207,6 +207,14 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
 
+      # The Beta channel reads a fixed URL under the rolling `beta` release
+      # (see scripts/publish-beta-manifest.sh); every release that is semver-
+      # newer than the current pointer moves it, stable ones included.
+      - name: Point the beta channel at this release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/publish-beta-manifest.sh latest-android.json "$GITHUB_REPOSITORY"
+
   # iOS: unsigned arm64 IPA via `tauri ios build --no-sign` (the CLI overrides
   # the codesigning identity to "" and still runs beforeBuildCommand plus the
   # Rust build through its Xcode options server, so the whole pipeline stays
@@ -510,3 +518,6 @@ jobs:
           EOF
           python3 -m json.tool latest.json
           gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Point the beta channel at this release
+        run: scripts/publish-beta-manifest.sh latest.json "$GITHUB_REPOSITORY"

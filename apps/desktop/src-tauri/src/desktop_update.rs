@@ -39,12 +39,17 @@ struct DesktopUpdateProgress {
 /// Only manifests that live under our own repo's release assets are accepted
 /// as endpoint overrides: https://github.com/ahpxex/read-aware/releases/download/v…/latest.json
 #[cfg(desktop)]
+/// Only our own release assets: a versioned release (`vX.Y.Z[-N]`) or the
+/// rolling `beta` pointer release that the Beta channel follows.
+fn is_release_manifest_path(path: &str, asset: &str) -> bool {
+    let Some(rest) = path.strip_prefix("/ahpxex/read-aware/releases/download/") else { return false };
+    let Some((tag, name)) = rest.split_once('/') else { return false };
+    name == asset && (tag == "beta" || tag.strip_prefix('v').is_some_and(|v| v.starts_with(|c: char| c.is_ascii_digit())))
+}
+
 fn validate_manifest_url(raw: &str) -> Result<url::Url, String> {
     let url = url::Url::parse(raw).map_err(|err| format!("Invalid manifest URL: {err}"))?;
-    let path_ok = url
-        .path()
-        .strip_prefix("/ahpxex/read-aware/releases/download/v")
-        .is_some_and(|rest| rest.ends_with("/latest.json"));
+    let path_ok = is_release_manifest_path(url.path(), "latest.json");
     if url.scheme() != "https"
         || url.host_str() != Some("github.com")
         || !path_ok
@@ -142,4 +147,19 @@ pub async fn desktop_update_check(
 #[tauri::command]
 pub async fn desktop_update_install() -> Result<(), String> {
     Err("Desktop updates are not available on this platform.".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_release_manifest_path;
+
+    #[test]
+    fn accepts_versioned_and_beta_manifests_only() {
+        assert!(is_release_manifest_path("/ahpxex/read-aware/releases/download/v0.6.1-3/latest.json", "latest.json"));
+        assert!(is_release_manifest_path("/ahpxex/read-aware/releases/download/beta/latest.json", "latest.json"));
+        assert!(!is_release_manifest_path("/ahpxex/read-aware/releases/download/beta/latest-android.json", "latest.json"));
+        assert!(!is_release_manifest_path("/ahpxex/read-aware/releases/download/nightly/latest.json", "latest.json"));
+        assert!(!is_release_manifest_path("/ahpxex/read-aware/releases/download/beta/../v1/latest.json", "latest.json"));
+        assert!(!is_release_manifest_path("/someone/else/releases/download/beta/latest.json", "latest.json"));
+    }
 }
