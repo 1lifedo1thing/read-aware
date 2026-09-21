@@ -3,6 +3,10 @@
  * panels are open. The reader shell remounts on every book open, so this state
  * would otherwise reset each time; persisting it (keyed by library book id, like
  * `reader-overrides`) lets a book reopen with its panels exactly as left.
+ *
+ * Only the docked (desktop/tablet) layout reads and writes this store. The
+ * exclusive phone layout keeps its full-screen TOC/chat sheets transient in
+ * `useReaderPanels`, so a phone session neither restores nor records them here.
  */
 
 import { AppError, type ReaderPanelsView } from "@read-aware/core";
@@ -18,8 +22,12 @@ export function readerPanelRenderActor(previous: ReaderPanelsView | null, next: 
   if (controlsChanged) inputs.push(sources.controls);
   if (!previous || previous.layout !== next.layout) inputs.push(sources.environment);
   if (!previous || JSON.stringify(previous.sizes) !== JSON.stringify(next.sizes)) inputs.push(sources.sizes);
-  if (!previous || (["toc", "chat"] as const).some(panel => previous.panels[panel].open !== next.panels[panel].open)) inputs.push(sources.layout);
-  if (previous && (!controlsChanged || next.controlsVisible) && (["annotations", "appearance"] as const).some(panel => previous.panels[panel].open !== next.panels[panel].open)) inputs.push(sources.transient);
+  // Docked TOC/chat come from the persisted layout store; every other open
+  // change (popovers, and TOC/chat sheets in exclusive layout) is transient.
+  const changedPanels = (["toc", "chat", "annotations", "appearance"] as const).filter(panel => !previous || previous.panels[panel].open !== next.panels[panel].open);
+  const persisted = (panel: (typeof changedPanels)[number]) => (panel === "toc" || panel === "chat") && next.layout === "docked";
+  if (!previous || changedPanels.some(persisted)) inputs.push(sources.layout);
+  if (previous && (!controlsChanged || next.controlsVisible) && changedPanels.some(panel => !persisted(panel))) inputs.push(sources.transient);
   return actorFromEvent(mergeEventCauses(inputs.map(origin => stampEventCause({}, origin)), {}));
 }
 

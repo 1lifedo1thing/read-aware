@@ -166,13 +166,39 @@ if (process.env.PANEL_LAYOUT_CASE === "1") {
     await act(async () => { pending.shift()!.commit(); await tick(); }); await second;
     expect(state.toc).toBe(false); expect(state.chat).toBe(true);
   });
-  test("exclusive pane switch uses one durable write and failure restores both fields", async () => {
-    hold = false; const first = requestPanel("toc", true); await flush(); await first;
-    await act(async () => { render("book", true); }); hold = true;
-    const request = requestPanel("chat", true).catch(error => error); await flush();
-    expect(pending).toHaveLength(1); expect(JSON.parse(pending[0].value).book).toEqual({ tocOpen: false, notesOpen: true });
-    await act(async () => { pending.shift()!.reject({ code: "db/locked", message: "switch failed" }); await tick(); }); await request;
-    expect(state.toc).toBe(true); expect(state.chat).toBe(false); expect(state.chatFocusRequestId).toBe(0);
+  test("exclusive sheets are transient: one at a time, closed with chrome, never written or restored", async () => {
+    await act(async () => { render("book", true); });
+    const before = disk.get(key);
+    const toc = requestPanel("toc", true); await flush(); await toc;
+    expect(pending).toHaveLength(0); expect(state.toc).toBe(true);
+    expect(readerPanels.snapshot()).toMatchObject({ layout: "exclusive", panels: { toc: { open: true, visible: true } } });
+    const chat = requestPanel("chat", true); await flush(); await chat;
+    expect(state.toc).toBe(false); expect(state.chat).toBe(true); expect(state.chatFocusRequestId).toBe(1);
+    expect(dom.window.document.querySelector('[aria-label="chat"]')!.hasAttribute("inert")).toBe(false);
+    const hide = begin(() => readingRuntime.setControls(false)); await flush(); await hide;
+    expect(state.chat).toBe(false); expect(readerPanels.snapshot()?.panels.chat).toEqual({ open: false, visible: false });
+    const reveal = begin(() => readingRuntime.setControls(true)); await flush(); await reveal;
+    expect(state.toc).toBe(false); expect(state.chat).toBe(false);
+    expect(pending).toHaveLength(0); expect(disk.get(key)).toBe(before);
+    // A book whose docked layout remembers open panels still opens clean on a phone.
+    await act(async () => { open("other"); render("other", true); await tick(); });
+    expect(getReaderPanelLayout("other")).toEqual({ tocOpen: true, notesOpen: true });
+    expect(state.toc).toBe(false); expect(state.chat).toBe(false);
+    expect(readerPanels.snapshot()).toMatchObject({ bookId: "other", layout: "exclusive", panels: { toc: { open: false }, chat: { open: false } } });
+  });
+  test("breakpoint changes hand TOC/chat to the other store and drop the sheets being left", async () => {
+    await act(async () => { render("book", true); });
+    const toc = requestPanel("toc", true); await flush(); await toc; expect(state.toc).toBe(true);
+    await act(async () => { render("book", false); await tick(); });
+    expect(state.toc).toBe(false); expect(readerPanels.snapshot()?.layout).toBe("docked");
+    await act(async () => { render("book", true); await tick(); });
+    expect(state.toc).toBe(false); expect(pending).toHaveLength(0);
+    hold = false; const docked = (async () => { await act(async () => { render("book", false); await tick(); }); const p = requestPanel("chat", true); await flush(); await p; })();
+    await docked; expect(state.chat).toBe(true); expect(JSON.parse(disk.get(key)!).book).toEqual({ tocOpen: false, notesOpen: true });
+    await act(async () => { render("book", true); await tick(); });
+    expect(state.chat).toBe(false);
+    await act(async () => { render("book", false); await tick(); });
+    expect(state.chat).toBe(true);
   });
   test("external writes and rollback mirror to React and the public snapshot without write echo", async () => {
     let external!: Promise<unknown>;
@@ -366,6 +392,6 @@ if (process.env.PANEL_LAYOUT_CASE === "1") {
   test("isolated shared panel service, persistence and React lifecycle cases", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], { env: { ...process.env, PANEL_LAYOUT_CASE: "1" }, stdout: "ignore", stderr: "pipe" });
     const output = await new Response(child.stderr).text();
-    expect(await child.exited, output).toBe(0); expect(output).toContain("20 pass");
+    expect(await child.exited, output).toBe(0); expect(output).toContain("21 pass");
   }, 30_000);
 }

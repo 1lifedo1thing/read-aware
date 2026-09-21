@@ -42,12 +42,23 @@ function usePanelIntent(bookId: string, channel: "panel" | "ask", intent: Reader
   }, [bookId, channel, id, targetBook, panel, origin, report, store]);
 }
 
-/** Native controls and external actors use the same bound presentation adapter. */
+type TransientPanels = { bookId: string; toc: boolean; chat: boolean; annotations: boolean; appearance: boolean; origin: DomainActor };
+const closedTransient = (bookId: string, origin: DomainActor): TransientPanels =>
+  ({ bookId, toc: false, chat: false, annotations: false, appearance: false, origin });
+
+/** Native controls and external actors use the same bound presentation adapter.
+ *
+ * Docked (desktop/tablet) layout persists the TOC and chat docks per book so a
+ * book reopens as it was left. Exclusive (phone) layout shows them as
+ * full-screen sheets over the page, where a restored or remembered sheet is an
+ * obstacle rather than a convenience: there they are transient like the
+ * annotations/appearance popovers, close whenever the chrome hides, and never
+ * touch the persisted docked layout. */
 export function useReaderPanels(bookId: string, visible: boolean, exclusive: boolean, controlsOrigin: DomainActor = "system", layoutOrigin?: DomainActor) {
   const sizes = useAtomValue(readerPanelSizesAtom);
   const layoutState = useSyncExternalStore(readerPanelLayoutStore.subscribe, readerPanelLayoutStore.getRenderSnapshot);
   const layout = useMemo(() => getReaderPanelLayout(bookId, layoutState.raw), [bookId, layoutState]);
-  const [transient, setTransient] = useState(() => ({ bookId, annotations: false, appearance: false, origin: causalActor("system") }));
+  const [transient, setTransient] = useState(() => closedTransient(bookId, causalActor("system")));
   const environmentOrigin = useMemo(() => causalActor(layoutOrigin ?? "system"), [exclusive, layoutOrigin]);
   const [token, setToken] = useState(0);
   const [chatFocus, setChatFocus] = useState(() => ({ id: 0, origin: causalActor("system") }));
@@ -56,9 +67,12 @@ export function useReaderPanels(bookId: string, visible: boolean, exclusive: boo
   const boundBook = useRef<string | null>(null);
   const committed = useRef<ReaderPanelsView | null>(null);
   const environment = useRef({ exclusive });
-  const selected = { toc: layout.tocOpen, chat: layout.notesOpen,
-    annotations: visible && transient.bookId === bookId && transient.annotations,
-    appearance: visible && transient.bookId === bookId && transient.appearance };
+  const currentTransient = visible && transient.bookId === bookId ? transient : null;
+  const selected = {
+    toc: exclusive ? currentTransient?.toc === true : layout.tocOpen,
+    chat: exclusive ? currentTransient?.chat === true : layout.notesOpen,
+    annotations: currentTransient?.annotations === true,
+    appearance: currentTransient?.appearance === true };
   useLayoutEffect(() => {
     environment.current = { exclusive };
     const view: ReaderPanelsView = { controlsVisible: visible, sizes, layout: exclusive ? "exclusive" : "docked", panels: {
@@ -72,7 +86,15 @@ export function useReaderPanels(bookId: string, visible: boolean, exclusive: boo
     committed.current = view;
     if (boundBook.current === bookId) binding.current?.publish(view, token, origin);
   });
-  useEffect(() => { if (!visible) setTransient({ bookId, annotations: false, appearance: false, origin: causalActor(controlsOrigin) }); }, [visible, bookId, controlsOrigin]);
+  useEffect(() => { if (!visible) setTransient(closedTransient(bookId, causalActor(controlsOrigin))); }, [visible, bookId, controlsOrigin]);
+  // A breakpoint change swaps which store owns the TOC/chat selection. Drop the
+  // sheets of the layout being left so they cannot resurface on the way back.
+  const publishedLayout = useRef(exclusive);
+  useEffect(() => {
+    if (publishedLayout.current === exclusive) return;
+    publishedLayout.current = exclusive;
+    setTransient(previous => previous.toc || previous.chat ? { ...previous, toc: false, chat: false, origin: environmentOrigin } : previous);
+  }, [exclusive, environmentOrigin]);
   useEffect(() => {
     let sessionId: string | null = null;
     const stop = readingRuntime.observe(state => {
@@ -86,13 +108,15 @@ export function useReaderPanels(bookId: string, visible: boolean, exclusive: boo
         applyWidth: updateReaderPanelWidth,
         apply: async (panel, open, signal, origin) => {
           signal.throwIfAborted();
-          if (panel === "toc" || panel === "chat") {
+          const dock = panel === "toc" || panel === "chat";
+          if (dock && !environment.current.exclusive) {
             const key = panel === "toc" ? "tocOpen" : "notesOpen";
-            await updateReaderPanelLayout(bookId, previous => ({ ...previous, [key]: open,
-              ...(open && environment.current.exclusive ? { [key === "tocOpen" ? "notesOpen" : "tocOpen"]: false } : {}),
-            }), signal, origin);
+            await updateReaderPanelLayout(bookId, previous => ({ ...previous, [key]: open }), signal, origin);
           } else setTransient(previous => signal.aborted ? previous : ({
-            ...(previous.bookId === bookId ? previous : { bookId, annotations: false, appearance: false }), [panel]: open, origin,
+            ...(previous.bookId === bookId ? previous : closedTransient(bookId, origin)),
+            // Phone sheets are full-screen, so opening one replaces the other.
+            ...(dock && open ? { toc: false, chat: false } : {}),
+            [panel]: open, origin,
           }));
           signal.throwIfAborted();
           if (panel === "chat" && open) setChatFocus(value => signal.aborted ? value : { id: value.id + 1, origin });

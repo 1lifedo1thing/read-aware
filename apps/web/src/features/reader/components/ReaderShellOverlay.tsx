@@ -117,8 +117,9 @@ export function ReaderShellOverlay({
   // Chapter ticks for the progress bar, and the labels its scrub readout names.
   const progressMarks = useMemo(() => buildProgressMarks(tocEntries), [tocEntries]);
 
-  // TOC + chat panels persist per book (restored when the book reopens); the
-  // appearance popover is transient and resets each session.
+  // Docked TOC + chat panels persist per book (restored when the book reopens).
+  // Phone-width sheets and the appearance popover are transient: they close
+  // with the chrome and never come back on their own.
   const { exclusive: isPhone, origin: layoutOrigin } = useReaderResponsiveLayout();
   const { toc: tocOpen, chat: notesOpen, appearance: appearanceOpen, annotations: annotationsOpen, chatFocusRequestId, chatFocusOrigin, setPanel } = useReaderPanels(bookId, visible, isPhone, visibilityOrigin, layoutOrigin);
   const setTocOpen = (open: boolean) => setPanel("toc", open);
@@ -448,9 +449,10 @@ export function ReaderShellOverlay({
       </div>
 
       {/* Middle zone -- panels dock to the edges while the reader shows through.
-          The panels stay mounted and preserve their open state; `visible` only
-          gates whether they are revealed, so dismissing then re-opening the
-          header restores whatever was showing (and avoids a re-fetch flash). */}
+          The panels stay mounted; `visible` only gates whether they are revealed.
+          Docked panels keep their open state, so dismissing then re-opening the
+          header restores whatever was showing (and avoids a re-fetch flash);
+          phone sheets are closed by the hook when the chrome hides. */}
       <div className="pointer-events-none relative z-10 flex min-h-0 flex-1 items-stretch justify-between">
         {/* Table of contents (left) */}
         <section

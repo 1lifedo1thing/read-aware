@@ -200,7 +200,7 @@ export function buildReaderTools(scope: ThreadScope, deps: RuntimeDeps, state?: 
   };
   const panelControl: AgentTool = {
     name: "set_reader_panel", label: "Set reader panel",
-    description: "Explicitly open or close toc, annotations, appearance or chat for a user request. Query get_reader_panels first. Opening also reveals reader controls; TOC/chat choices persist per book and are exclusive in a narrow window. Annotations/appearance are transient. Completes after required persistence and a UI commit, not animation or data loading. Does not change reading position or start an AI turn.",
+    description: "Explicitly open or close toc, annotations, appearance or chat for a user request. Query get_reader_panels first. Opening also reveals reader controls; In docked layout TOC/chat choices persist per book; in exclusive (narrow-window) layout they are transient full-screen sheets, only one open at a time, and close when controls hide. Annotations/appearance are always transient. Completes after required persistence and a UI commit, not animation or data loading. Does not change reading position or start an AI turn.",
     parameters: Type.Object({ panel: Type.Union([Type.Literal("toc"), Type.Literal("annotations"), Type.Literal("appearance"), Type.Literal("chat")]), open: Type.Boolean() }),
     executionMode: "sequential",
     execute: async (_id, params, signal) => {

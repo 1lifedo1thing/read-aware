@@ -3249,9 +3249,12 @@ acknowledges the requested state. Same-value operations still require a fresh
 commit but do not write unchanged preferences or increment semantic revision.
 Opening reveals controls first. Closing does not reveal hidden controls.
 
-TOC/chat use the book-scoped shared KV store; in narrow windows opening one
-closes the other in one write. Annotations/appearance are transient and close
-when chrome hides or the book changes. Native controls, mode-bar panel intents,
+In docked layout TOC/chat use the book-scoped shared KV store. In exclusive
+(narrow-window) layout they are transient full-screen sheets: opening one closes
+the other, nothing is written, the persisted docked layout is neither read nor
+changed, and the sheets close when chrome hides or the breakpoint changes.
+Annotations/appearance are transient in every layout and close when chrome
+hides or the book changes. Native controls, mode-bar panel intents,
 Ask AI presentation, Agent and plugin commands share the same owner. Initial
 intents wait for a ready binding; successful presentation acknowledgements
 survive a reader remount without consuming ChatPanel's independent attachment
