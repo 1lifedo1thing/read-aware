@@ -329,10 +329,17 @@ export function useTextUnitNavigator({
     const root = readerRootRef.current;
     const frame = range.startContainer?.ownerDocument?.defaultView?.frameElement;
     if (!root || !(frame instanceof HTMLElement)) return true;
+    const visible = visibleRangeRef.current;
+    // The renderer clips content inside its margins (and across columns).
+    // Host-window coordinates alone can call a clipped previous unit visible.
+    if (visible?.startContainer.ownerDocument === range.startContainer.ownerDocument
+      && (range.compareBoundaryPoints(Range.START_TO_START, visible) < 0
+        || range.compareBoundaryPoints(Range.END_TO_END, visible) > 0)) return false;
     const rects = Array.from(range.getClientRects()).filter(
       (rect) => rect.width > 1 && rect.height > 1,
     );
-    if (!rects.length) return true;
+    // A hidden source/chapter has no geometry; it still needs navigation.
+    if (!rects.length) return false;
     const rootRect = root.getBoundingClientRect();
     const frameRect = frame.getBoundingClientRect();
     const comfortBottom = viewRef.current?.renderer?.scrolled
@@ -476,6 +483,18 @@ export function useTextUnitNavigator({
       },
       navigate: async target => {
         check();
+        const section = sectionRef.current;
+        const units = unitsRef.current;
+        if (typeof target !== "number" && section && units && layoutReadyRef.current
+          && view.resolveCFI(target.location.cfi).index === section.index) {
+          const ordinal = resolveTextUnitPosition(view, target.location.cfi, section.doc, section.index, units);
+          const resting = restingRef.current;
+          // Re-entering an already indexed resting unit is a logical step,
+          // not a request to reposition the viewport. Reveal the destination
+          // only when it leaves the same comfort band used by applyIndex.
+          if ((resting?.sectionIndex === section.index && resting.cfiRange === target.location.cfi)
+            || rangeComfortablyVisible(units[ordinal]!)) return;
+        }
         const resolved = await view.goTo(typeof target === "number" ? target : target.location.cfi, context);
         check();
         if (!resolved) throw new AppError("reader/target-not-found", "Reader could not resolve the unit target");
@@ -496,7 +515,7 @@ export function useTextUnitNavigator({
     return { outcome, feedback: { status: settled.count ? "ready" : "empty", cfiRange: appliedCfiRef.current,
       progress: currentIndexRef.current < 0 ? null : { ordinal: currentIndexRef.current, total: settled.count },
       position: restingRef.current?.cfiRange ? position(restingRef.current.cfiRange) : null } };
-  }, [viewRef, positionWaiter, applyIndex, waitForPosition]);
+  }, [viewRef, positionWaiter, applyIndex, waitForPosition, rangeComfortablyVisible]);
 
   const unmanagedStepRef = useRef<AbortController | null>(null);
   useEffect(() => () => unmanagedStepRef.current?.abort(positionUnavailable()), []);

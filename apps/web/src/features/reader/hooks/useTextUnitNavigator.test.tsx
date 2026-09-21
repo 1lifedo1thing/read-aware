@@ -25,6 +25,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
   const commits: KVCommit[] = [];
   const stopCommits = onLocalKVCommit(commit => { if (commit.entries.some(entry => entry.key === "read-aware-navigator-state:unit-build-test")) commits.push(commit); });
   const painted: string[] = [];
+  const navigated: string[] = [];
   let crosses = 0;
   const pending: { text: string; resolve(value: { start: number; end: number }[]): void; reject(error: unknown): void }[] = [];
   const segmenter: Parameters<typeof useTextUnitNavigator>[0]["segmentText"] = ({ text }) => new Promise((resolve, reject) => pending.push({ text, resolve, reject }));
@@ -36,7 +37,11 @@ test("navigator handles both event orders, same-index replacements, provider fai
     } }),
     addAnnotation: async (annotation: { value: string }) => { painted.push(annotation.value); },
     deleteAnnotation: async () => {},
-    goTo: async (target: unknown) => { if (typeof target === "number") crosses++; return { index: 0 }; },
+    goTo: async (target: unknown) => {
+      if (typeof target === "number") crosses++;
+      else navigated.push(String(target));
+      return { index: 0 };
+    },
     book: { sections: [{ id: "first" }] },
   } as unknown as FoliateView;
   const options: Parameters<typeof useTextUnitNavigator>[0] = {
@@ -105,20 +110,56 @@ test("navigator handles both event orders, same-index replacements, provider fai
     expect(state.current).toBeNull();
     expect(painted.filter(value => value === "Replacement.")).toHaveLength(1);
 
-    const two = new dom.window.DOMParser().parseFromString("<p>First unit.</p><p>Second unit.</p>", "text/html");
+    const readerRoot = dom.window.document.createElement("div");
+    const frame = dom.window.document.createElement("iframe");
+    dom.window.document.body.append(readerRoot); readerRoot.append(frame);
+    readerRoot.getBoundingClientRect = () => new dom.window.DOMRect(0, 0, 400, 800);
+    frame.getBoundingClientRect = () => new dom.window.DOMRect(0, 0, 400, 800);
+    const two = frame.contentDocument!;
+    two.body.innerHTML = "<p>First unit.</p><p>Second unit.</p>";
+    const unitTops = new Map([["First unit.", 100], ["Second unit.", 300]]);
+    Object.defineProperty(two.defaultView!.Range.prototype, "getClientRects", { value: function (this: Range) {
+      const top = unitTops.get(this.toString()) ?? 100;
+      return Number.isNaN(top) ? [] : [new dom.window.DOMRect(20, top, 100, 20)];
+    } });
+    options.readerRootRef.current = readerRoot;
+    Object.assign(view, { renderer: { scrolled: true } });
     await act(async () => { state.handleSectionLoad(two, 0); relocate(two); render(true, "paragraph"); });
     await act(async () => { finish(6); finish(7); });
     await act(async () => { state.next(); });
     expect(state.current?.text).toBe("Second unit.");
+    expect(navigated).toEqual([]); // Visible units move the wash, not the viewport.
     expect(actorOrigin(state.origin)).toBe("user");
     expect(actorCause(state.origin)?.root).not.toBe(actorCause(actor)?.root);
     await act(async () => { await state.stepNative(-1, new AbortController().signal, actor); });
     expect(state.current?.text).toBe("First unit.");
     expect(state.origin).toBe(actor);
     expect(eventCause(commits.at(-1)!)).toBe(actorCause(actor));
+    expect(navigated).toEqual([]);
+    unitTops.set("Second unit.", 700); // Below the scroll-mode comfort band.
     await act(async () => { state.next(); });
     expect(state.current?.text).toBe("Second unit.");
     expect(actorOrigin(state.origin)).toBe("user");
+    expect(navigated).toEqual(["Second unit."]);
+    // Going back to a comfortable unit must not first scroll to the old one.
+    await act(async () => { await state.stepNative(-1, new AbortController().signal, actor); });
+    expect(navigated).toEqual(["Second unit."]);
+    unitTops.set("Second unit.", 300);
+    await act(async () => { state.next(); });
+    expect(state.current?.text).toBe("Second unit.");
+    expect(navigated).toEqual(["Second unit."]);
+    await act(async () => { await state.stepNative(-1, new AbortController().signal, actor); });
+    unitTops.set("Second unit.", NaN); // Hidden chapter content is not visible.
+    await act(async () => { state.next(); });
+    expect(navigated).toEqual(["Second unit.", "Second unit."]);
+    unitTops.set("Second unit.", 300);
+    const clipped = two.createRange(); clipped.selectNodeContents(two.body.lastElementChild!);
+    await act(async () => { state.handleRelocate({ range: clipped } as FoliateRelocateDetail); });
+    await act(async () => { await state.stepNative(-1, new AbortController().signal, actor); });
+    expect(navigated.at(-1)).toBe("First unit."); // Above the renderer's clipped viewport.
+    await act(async () => { relocate(two); state.next(); });
+    expect(state.current?.text).toBe("Second unit.");
+    options.readerRootRef.current = null;
     await act(async () => { render(false, "paragraph", true); });
     expect(state.current).toBeNull();
     expect(state.canReturn).toBe(true);
