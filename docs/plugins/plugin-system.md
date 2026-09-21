@@ -37,6 +37,13 @@
 > 2026-09-19: Workspace Profiles was removed outright; its code, desktop
 > probes and evidence live only in Git history, and sections citing it are
 > historical.
+>
+> 2026-09-21: Reading Goals and Annotations were removed outright; their code,
+> desktop probes and evidence live only in Git history. Sections citing them
+> (goal context/memory candidates, annotation list/detail/batch/export
+> composition, the editor consumer) are historical. The native reader owns
+> annotations; the agent context and memory-candidate provider seams remain
+> host capabilities without a first-party plugin consumer.
 > The [original baseline](../archive/capabilities/plugin-capability-baseline.md)
 > is historical. Do not infer that every old GAP is still open or now closed.
 
@@ -6435,7 +6442,7 @@ inline row and one "More" overflow menu:
 Priority only decides placement. It does not change enablement, confirmation,
 busy handling, keyboard access or focus, which the host owns for both the row and
 the menu. Annotations 0.10 marks New note primary and refresh, select and export
-secondary; Jumper and Reading Goals rely on the defaults.
+secondary; Jumper relies on the defaults.
 
 ## 12. Lifecycle
 
@@ -6554,8 +6561,6 @@ additional source plugin in this checkout:
 | Theme Schedule | Settings domain, options/commands, storage/UI, committed schedule, settings schema |
 | WebDAV Sync | sync transport, storage, secrets, network, settings schema |
 | Jumper | one go-to box (views 1.12 plugin-computed search) answering chapters, printed pages via `listNavigationTargets` and a cancellable live precise text search, shared locations with back/forward history, named bookmarks with list pagination and global bookmark tools |
-| Annotations | paged annotation list through host pagination, note/highlight creation returning to the list with a toast, live detail with conditional edits, batch review, export |
-| Reading Goals | single per-book goal form, agent context provider, opt-in memory candidate provider, honors the host `ai.preferences.buildMemory` setting, private documents and goal tools |
 
 The host never switches on these plugin IDs. Product-specific behavior belongs
 in their packages and registered capabilities.

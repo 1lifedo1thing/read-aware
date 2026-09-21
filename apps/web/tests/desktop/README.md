@@ -14,8 +14,12 @@ still exercised through the synthetic inline plugin actors and Agent tools.
 On 2026-09-16 Listening Desk was removed as well (the native reader owns
 playback and mode controls), Annotation Desk was renamed Annotations
 (`plugins/annotations`, id `annotations`), and the compiled-plugin probes
-follow the new path and id.
-The directory currently holds 136 modules.
+followed the new path and id. On 2026-09-21 Reading Goals and Annotations were
+removed outright together with their probes (reading-goals acceptance, memory,
+memory-result composition, reading-time, annotation composition and
+observation, book-grant restart, editor consumer); that evidence lives only in
+Git history.
+The directory currently holds 130 entries.
 
 ## Stage One Checks
 

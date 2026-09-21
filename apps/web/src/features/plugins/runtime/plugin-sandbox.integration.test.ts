@@ -277,7 +277,7 @@ test("real Worker rejects oversized results before transport and remains callabl
   }
 });
 
-test("Worker durable KV bypasses its mirror and Reading Goals nested source callbacks use real RPC", async () => {
+test("Worker durable KV bypasses its mirror and nested reading-intent source callbacks use real RPC", async () => {
   const durable = await command("durable-storage");
   const call = await durable.next(message => message.method === "services.storage.getDurable");
   expect(data(call.args!)).toEqual(["result"]);

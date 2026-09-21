@@ -1,9 +1,36 @@
-import type { PluginModule } from "@read-aware/plugin-types";
-import { readingGoalSource } from "../../../../plugins/reading-goals/src/context-source";
+import type { PluginAgentContextProvider, PluginContext, PluginModule } from "@read-aware/plugin-types";
+
+/**
+ * A reading-intent source with nested prepare/read callbacks over a private
+ * document collection — the shape the retired Reading Goals plugin used, kept
+ * here so the wire test still exercises nested source callbacks through RPC.
+ */
+function intentionSource(ctx: PluginContext): NonNullable<PluginAgentContextProvider["readingIntent"]> {
+  type Record = { version: 1; goal: { text: string } | null };
+  const storage = ctx.services.storage;
+  const id = (scope: { kind: string; id?: string }) => {
+    if (scope.kind !== "book" || typeof scope.id !== "string") throw Object.assign(Error("Book scope required"), { code: "plugin/invalid-input" });
+    return scope.id;
+  };
+  return {
+    scopes: ["book"],
+    prepare: async scope => {
+      const book = id(scope);
+      await storage.collection("goals").get<Record>(book);
+      if (await storage.getDurable(`goal:${book}`) !== null) await storage.remove(`goal:${book}`);
+      await storage.flush();
+    },
+    read: async scope => {
+      const doc = await storage.collection("goals").get<Record>(id(scope));
+      if (!doc) return { revision: null, text: null };
+      return { revision: doc.revision, text: doc.data.goal?.text ?? null };
+    },
+  };
+}
 
 export default {
   activate(ctx) {
-    if (ctx.manifest.description === "intention-source") ctx.contributions.agentContextProviders!.register({ id: "goal", provide: () => [], readingIntent: readingGoalSource(ctx) });
+    if (ctx.manifest.description === "intention-source") ctx.contributions.agentContextProviders!.register({ id: "goal", provide: () => [], readingIntent: intentionSource(ctx) });
     ctx.contributions.commands.register({
       id: "test",
       title: "Wire probe",
