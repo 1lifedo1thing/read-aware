@@ -1,6 +1,18 @@
 import { AppError } from "@read-aware/core";
 import type { FoliateView } from "./foliate-engine";
 
+/** A page boundary strictly inside the unit leaves text to read before stepping.
+ * Document order also covers RTL and vertical layouts; adjacent units touching
+ * the boundary must not be mistaken for a continuation. */
+export function textUnitContinuesBeyondPage(unit: Range, visible: Range | null, direction: -1 | 1): boolean {
+  if (!visible || visible.collapsed || unit.startContainer.ownerDocument !== visible.startContainer.ownerDocument) return false;
+  const edge = visible.cloneRange(); edge.collapse(direction < 0);
+  const start = unit.cloneRange(); start.collapse(true);
+  const end = unit.cloneRange(); end.collapse(false);
+  return start.compareBoundaryPoints(start.START_TO_START, edge) < 0
+    && end.compareBoundaryPoints(end.START_TO_START, edge) > 0;
+}
+
 /** Re-resolve the engine CFI against this document; a cached ordinal is not an address. */
 export function resolveTextUnitPosition(view: Pick<FoliateView, "resolveCFI">, cfi: string | null, doc: Document, sectionIndex: number, units: Range[]): number {
   try {

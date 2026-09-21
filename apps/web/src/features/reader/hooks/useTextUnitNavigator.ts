@@ -9,7 +9,7 @@ import { TextUnitPositionWaiter, positionUnavailable } from "../lib/text-unit-po
 import type { ModeFeedback, ModeStepResult } from "../lib/reading-mode-controller";
 import { stepTextUnit, type TextUnitStepIndex } from "../lib/text-unit-stepper";
 import { waitForReadingPaint } from "../lib/reading-engine-adapter";
-import { resolveTextUnitPosition } from "../lib/text-unit-position";
+import { resolveTextUnitPosition, textUnitContinuesBeyondPage } from "../lib/text-unit-position";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { readingRenderActor, readingRenderContext } from "../lib/reading-render-context";
@@ -522,21 +522,34 @@ export function useTextUnitNavigator({
   const step = useCallback((direction: -1 | 1) => {
     const session = readingRuntime.snapshot();
     const id = bookIdRef.current;
+    const view = viewRef.current;
+    const range = unitsRef.current?.[currentIndexRef.current];
+    // A visual Next/Previous gesture first reveals the current unit's other
+    // page. Semantic stepMode calls (including read-aloud) still advance one
+    // whole unit and must not replay a sentence once per displayed page.
+    const continuePage = view?.renderer?.scrolled === false && range
+      && textUnitContinuesBeyondPage(range, visibleRangeRef.current, direction);
     let work: Promise<unknown>;
     if (id && session.bookId === id && session.status === "ready") {
-      work = readingRuntime.stepMode(direction === 1 ? "next" : "previous", undefined, { bookId: id, sessionId: session.sessionId! }, "user");
+      const move = direction === 1 ? "next" : "previous";
+      const guard = { bookId: id, sessionId: session.sessionId! };
+      work = continuePage ? readingRuntime.step(move, undefined, guard, "user")
+        : readingRuntime.stepMode(move, undefined, guard, "user");
     } else {
       // Component stories have no application session, but retain the same native traversal.
       unmanagedStepRef.current?.abort(positionUnavailable());
       const abort = new AbortController(); unmanagedStepRef.current = abort;
       const timer = setTimeout(() => abort.abort(new AppError("reader/timeout", "Unit stepping timed out")), 30_000);
-      work = stepNative(direction, abort.signal).finally(() => clearTimeout(timer));
+      work = (continuePage && view
+        ? (direction === 1 ? view.next(undefined, readingRenderContext("user")) : view.prev(undefined, readingRenderContext("user")))
+          .then(() => waitForReadingPaint(view))
+        : stepNative(direction, abort.signal)).finally(() => clearTimeout(timer));
     }
     void work.catch(error => {
       log.warn("reading mode step failed", error);
       if (errorCode(error) !== "reader/superseded") toastRef.current({ description: describeError(error).body, variant: "destructive" });
     });
-  }, [stepNative]);
+  }, [stepNative, viewRef]);
 
   const handleSectionLoad = useCallback(
     async (doc: Document, index: number, origin: DomainActor = "system") => {

@@ -159,6 +159,29 @@ test("navigator handles both event orders, same-index replacements, provider fai
     expect(navigated.at(-1)).toBe("First unit."); // Above the renderer's clipped viewport.
     await act(async () => { relocate(two); state.next(); });
     expect(state.current?.text).toBe("Second unit.");
+    const secondText = two.body.lastElementChild!.firstChild!;
+    const page = (start: number, end: number) => {
+      const range = two.createRange(); range.setStart(secondText, start); range.setEnd(secondText, end);
+      state.handleRelocate({ range } as FoliateRelocateDetail);
+    };
+    let nextPages = 0, previousPages = 0;
+    Object.assign(view, { renderer: { scrolled: false },
+      next: async () => { nextPages++; page(6, 12); },
+      prev: async () => { previousPages++; page(0, 6); },
+    });
+    await act(async () => { page(0, 6); state.next(); });
+    expect(nextPages).toBe(1);
+    expect(state.current?.text).toBe("Second unit.");
+    await act(async () => { state.prev(); });
+    expect(previousPages).toBe(1);
+    expect(state.current?.text).toBe("Second unit.");
+    // Semantic unit stepping used by playback must still advance whole units.
+    await act(async () => { await state.stepNative(-1, new AbortController().signal, actor); });
+    expect(state.current?.text).toBe("First unit.");
+    await act(async () => { await state.stepNative(1, new AbortController().signal, actor); });
+    expect(state.current?.text).toBe("Second unit.");
+    expect(nextPages).toBe(1);
+    expect(previousPages).toBe(1);
     options.readerRootRef.current = null;
     await act(async () => { render(false, "paragraph", true); });
     expect(state.current).toBeNull();
