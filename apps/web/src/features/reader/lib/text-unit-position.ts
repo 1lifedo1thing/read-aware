@@ -13,6 +13,13 @@ export function textUnitContinuesBeyondPage(unit: Range, visible: Range | null, 
     && end.compareBoundaryPoints(end.START_TO_START, edge) > 0;
 }
 
+/** Whether any part of the unit is on the displayed page (ranges overlap). */
+export function textUnitOnPage(unit: Range, visible: Range | null): boolean {
+  if (!visible || unit.startContainer.ownerDocument !== visible.startContainer.ownerDocument) return false;
+  return unit.compareBoundaryPoints(Range.START_TO_END, visible) > 0
+    && unit.compareBoundaryPoints(Range.END_TO_START, visible) < 0;
+}
+
 /** Re-resolve the engine CFI against this document; a cached ordinal is not an address. */
 export function resolveTextUnitPosition(view: Pick<FoliateView, "resolveCFI">, cfi: string | null, doc: Document, sectionIndex: number, units: Range[]): number {
   try {

@@ -9,7 +9,7 @@ import { TextUnitPositionWaiter, positionUnavailable } from "../lib/text-unit-po
 import type { ModeFeedback, ModeStepResult } from "../lib/reading-mode-controller";
 import { stepTextUnit, type TextUnitStepIndex } from "../lib/text-unit-stepper";
 import { waitForReadingPaint } from "../lib/reading-engine-adapter";
-import { resolveTextUnitPosition, textUnitContinuesBeyondPage } from "../lib/text-unit-position";
+import { resolveTextUnitPosition, textUnitContinuesBeyondPage, textUnitOnPage } from "../lib/text-unit-position";
 import { readingRuntime } from "../../../domain/reading-runtime";
 import { causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { isEditableKeyTarget } from "../../../platform/app-keydown";
@@ -34,6 +34,7 @@ import {
 import {
   anchorTextUnitIndex,
   buildTextUnitRanges,
+  lastVisibleTextUnitIndex,
   type TextUnitId,
 } from "../lib/text-unit-index";
 
@@ -63,10 +64,15 @@ export type TextUnitNavigator = {
   /** Text of the unit after the resting one, within the loaded section. */
   peekNext: () => string | null;
   /** Bring the reader back to the unit the navigator rests on — even when
-   *  page turns or chapter jumps have carried the view somewhere else. */
+   *  page turns or chapter jumps have carried the view somewhere else. With a
+   *  return point (see `hasReturnPoint`), go back to that abandoned unit. */
   returnToCurrent: () => void;
   /** Whether the navigator has a resting unit to return to. */
   canReturn: boolean;
+  /** A paginated step taken on a page the reader turned to re-anchors the
+   *  wash there and keeps the abandoned unit as a return point until the
+   *  reader goes back to it or leaves the mode. */
+  hasReturnPoint: boolean;
   /** Engine bridges — invoke from the reader's `load` / `relocate` handlers. */
   handleSectionLoad: (doc: Document, index: number, origin?: DomainActor) => void;
   handleContentVersion: (bookId: string, contentVersion: string, origin?: DomainActor) => void;
@@ -121,9 +127,11 @@ const SCROLL_COMFORT_BOTTOM_MAX_PX = 240;
  * stepping — including crossing into adjacent sections at either end.
  *
  * Manual moves (page turns, scrolling, chapter jumps) never displace the
- * navigator: the wash keeps its unit, off-screen if need be, and is
- * restored when its section is flipped back into view. Stepping continues
- * from that resting unit, even when the viewport has moved elsewhere.
+ * navigator by themselves: the wash keeps its unit, off-screen if need be,
+ * and is restored when its section is flipped back into view. Semantic
+ * stepping continues from that resting unit wherever the viewport is. A
+ * visual step on a paginated page the reader turned to instead re-anchors
+ * there and keeps the abandoned unit as a return point (`hasReturnPoint`).
  */
 export function useTextUnitNavigator({
   configurationRevision = 0,
@@ -156,6 +164,12 @@ export function useTextUnitNavigator({
   const [current, setCurrent] = useState<TextUnitTarget | null>(null);
   const [progress, setProgress] = useState<TextUnitProgress | null>(null);
   const [canReturn, setCanReturn] = useState(false);
+  const [hasReturnPoint, setHasReturnPoint] = useState(false);
+  const returnPointRef = useRef<TextUnitResting | null>(null);
+  const setReturnPoint = useCallback((point: TextUnitResting | null) => {
+    returnPointRef.current = point;
+    setHasReturnPoint(point != null);
+  }, []);
 
   // Current + progress travel together: both describe where the wash rests
   // in the loaded section, so every "nowhere" transition clears the pair.
@@ -229,7 +243,8 @@ export function useTextUnitNavigator({
     // Do not restore or overwrite a saved position before the loader provides
     // the actual content identity (file hash or virtual-content version).
     setResting(null);
-  }, [bookId, buildSession, setResting]);
+    setReturnPoint(null);
+  }, [bookId, buildSession, setResting, setReturnPoint]);
 
   useEffect(() => () => {
     buildSession.invalidate();
@@ -276,9 +291,10 @@ export function useTextUnitNavigator({
     const saved = readTextUnitModeState(id);
     const key = modeKeyRef.current;
     setResting(persistedActiveRef.current && key && isTextUnitModeStateCompatible(saved, key, unitIdRef.current, version) ? saved.resting : null);
+    setReturnPoint(null);
     // An exit while the file was loading could not yet persist its preference.
     persistState(origin);
-  }, [buildSession, clearUnit, setResting, persistState]);
+  }, [buildSession, clearUnit, setResting, setReturnPoint, persistState]);
 
   const waitForPosition = useCallback((position: ReadingModePosition, signal: AbortSignal): Promise<ModeFeedback> =>
     positionWaiter.wait(() => {
@@ -525,6 +541,26 @@ export function useTextUnitNavigator({
     const id = bookIdRef.current;
     const view = viewRef.current;
     const range = unitsRef.current?.[currentIndexRef.current];
+    // Manual page turns leave the wash where it was. On a page the reader
+    // turned to on purpose, a visual step reads from that page instead of
+    // dragging the viewport back: the wash re-anchors here and the abandoned
+    // unit becomes the return point. Scroll mode keeps its comfort-band
+    // behaviour, and semantic stepping (read-aloud, plugin commands) never
+    // re-anchors: a listener who flips ahead still hears the next sentence.
+    const section = sectionRef.current;
+    const units = unitsRef.current;
+    const visible = visibleRangeRef.current;
+    const resting = restingRef.current;
+    if (view?.renderer?.scrolled === false && section && units?.length && visible && layoutReadyRef.current && resting
+      && visible.startContainer.ownerDocument === section.doc
+      && !(resting.sectionIndex === section.index && range && textUnitOnPage(range, visible))) {
+      const index = direction === 1 ? anchorTextUnitIndex(units, visible) : lastVisibleTextUnitIndex(units, visible);
+      if (index >= 0) {
+        setReturnPoint(resting);
+        applyIndex(index, { scroll: false, origin: "user" });
+        return;
+      }
+    }
     // A visual Next/Previous gesture first reveals the current unit's other
     // page. Semantic stepMode calls (including read-aloud) still advance one
     // whole unit and must not replay a sentence once per displayed page.
@@ -550,7 +586,7 @@ export function useTextUnitNavigator({
       log.warn("reading mode step failed", error);
       if (errorCode(error) !== "reader/superseded") toastRef.current({ description: describeError(error).body, variant: "destructive" });
     });
-  }, [stepNative, viewRef]);
+  }, [stepNative, viewRef, applyIndex, setReturnPoint]);
 
   const handleSectionLoad = useCallback(
     async (doc: Document, index: number, origin: DomainActor = "system") => {
@@ -689,10 +725,11 @@ export function useTextUnitNavigator({
     unitsRef.current = null;
     currentIndexRef.current = -1;
     if (!suspended) setResting(null);
+    setReturnPoint(null);
     persistState(origin);
     pendingAnchorRef.current = null;
     clearUnit(origin);
-  }, [active, suspended, configurationRevision, configurationOrigin, applyIndex, buildSession, buildUnits, clearWash, persistState, setResting, restoredIndex]);
+  }, [active, suspended, configurationRevision, configurationOrigin, applyIndex, buildSession, buildUnits, clearWash, persistState, setResting, setReturnPoint, restoredIndex]);
 
   // Mode or unit switch: re-segment the loaded section under the new plugin
   // policy. Contribution identity matters even when two plugins reuse the same
@@ -725,6 +762,7 @@ export function useTextUnitNavigator({
     unitsRef.current = null;
     currentIndexRef.current = -1;
     setResting(null);
+    setReturnPoint(null);
     persistState(origin);
     if (!activeRef.current || !sectionRef.current) {
       if (activeRef.current) clearUnit(origin);
@@ -737,7 +775,7 @@ export function useTextUnitNavigator({
       if (index >= 0) applyIndex(index, { scroll: false, origin });
       else clearUnit(origin);
     })();
-  }, [active, suspended, modeKey, unitId, segmentText, configurationOrigin, applyIndex, buildSession, buildUnits, persistState, setResting]);
+  }, [active, suspended, modeKey, unitId, segmentText, configurationOrigin, applyIndex, buildSession, buildUnits, persistState, setResting, setReturnPoint]);
 
   // Android: while the mode is on, the volume keys step units (volume
   // down = forward). The shell captures them only for the mode's duration and
@@ -791,9 +829,35 @@ export function useTextUnitNavigator({
   const returnToCurrent = useCallback(() => {
     if (!activeRef.current) return;
     const view = viewRef.current;
-    const resting = restingRef.current;
     const id = bookIdRef.current;
     const version = contentVersionRef.current;
+    const returnPoint = returnPointRef.current;
+    if (returnPoint) {
+      // Going back adopts the abandoned unit as the resting unit again; the
+      // section handlers then restore the wash there once its document shows.
+      setReturnPoint(null);
+      setResting(returnPoint);
+      const origin = causalActor("user");
+      persistState(origin);
+      const section = sectionRef.current;
+      const units = unitsRef.current;
+      if (!view || !id || !version) return;
+      if (section && units?.length && returnPoint.sectionIndex === section.index) {
+        applyIndex(restoredIndex(units, section.doc, section.index, origin), { origin });
+        return;
+      }
+      if (!returnPoint.cfiRange) return;
+      const session = readingRuntime.snapshot();
+      const travel = session.bookId === id && session.status === "ready"
+        ? readingRuntime.navigate({ bookId: id, contentVersion: version, cfi: returnPoint.cfiRange }, undefined, "user")
+        : view.goTo(returnPoint.cfiRange, readingRenderContext(origin));
+      void travel.catch(error => {
+        log.warn("return to abandoned reading unit failed", error);
+        toastRef.current({ description: describeError(error).body, variant: "destructive" });
+      });
+      return;
+    }
+    const resting = restingRef.current;
     if (!view || !resting || !id || !version) return;
     const session = readingRuntime.snapshot();
     if (session.bookId === id && session.status === "ready" && resting.cfiRange) {
@@ -815,7 +879,7 @@ export function useTextUnitNavigator({
         log.warn("unmanaged reader mode return failed", error);
       });
     }
-  }, [applyIndex, viewRef, restoredIndex]);
+  }, [applyIndex, viewRef, restoredIndex, setResting, setReturnPoint, persistState]);
 
   /** The unit after the resting one — read-aloud prefetches its audio while
    *  the current one plays. Stays inside the loaded section: peeking across
@@ -846,6 +910,7 @@ export function useTextUnitNavigator({
     peekNext,
     returnToCurrent,
     canReturn,
+    hasReturnPoint,
     handleSectionLoad,
     handleContentVersion,
     handleRelocate,

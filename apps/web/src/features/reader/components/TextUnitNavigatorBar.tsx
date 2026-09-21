@@ -35,6 +35,10 @@ type TextUnitNavigatorBarProps = {
   containerRef: RefObject<HTMLElement | null>;
   /** Whether the navigator has a resting unit to jump back to. */
   canReturn: boolean;
+  /** The reader stepped on a page they turned to; the abandoned unit waits
+   *  behind the return action, which is shown pressed (and on compact
+   *  layouts in the main row) until they go back. */
+  returnPending?: boolean;
   /** False while indexing or after a segmentation failure; empty sections may be crossed. */
   canStep?: boolean;
   /** Whether a page tap steps forward. On touch screens that makes the page
@@ -115,6 +119,7 @@ export function TextUnitNavigatorBar({
   mode,
   containerRef,
   canReturn,
+  returnPending = false,
   canStep = true,
   tapToAdvance,
   unitId,
@@ -192,6 +197,11 @@ export function TextUnitNavigatorBar({
                 className={actionButtonClass} icon={<TextUnderline size={14} aria-hidden="true" />} />
               <BarButton label={t("menu.addNote")} disabled={!canAnnotate} onClick={onAddNote}
                 className={actionButtonClass} icon={<NotePencil size={14} aria-hidden="true" />} />
+              {returnPending && (
+                <BarButton label={resolvePluginText(mode.copy.returnToCurrent, locale)} disabled={!canReturn} pressed
+                  onClick={onReturnToCurrent} className={actionButtonClass}
+                  icon={<Crosshair size={14} weight="regular" aria-hidden="true" />} />
+              )}
             </>
           )}
 
@@ -234,6 +244,7 @@ export function TextUnitNavigatorBar({
               <BarButton
                 label={resolvePluginText(mode.copy.returnToCurrent, locale)}
                 disabled={!canReturn}
+                pressed={returnPending}
                 onClick={onReturnToCurrent}
                 className={actionButtonClass}
                 icon={<Crosshair size={14} weight="regular" aria-hidden="true" />}
@@ -304,7 +315,7 @@ export function TextUnitNavigatorBar({
                 items={[
                   { label: prevStepLabel, disabled: !canStep, onClick: onPrev, icon: <CaretLeft size={16} /> },
                   ...(showNextStep ? [{ label: nextStepLabel, disabled: !canStep, onClick: onNext, icon: <CaretRight size={16} /> }] : []),
-                  { label: resolvePluginText(mode.copy.returnToCurrent, locale), disabled: !canReturn, onClick: onReturnToCurrent, icon: <Crosshair size={14} /> },
+                  { label: resolvePluginText(mode.copy.returnToCurrent, locale), disabled: !canReturn, checked: returnPending || undefined, onClick: onReturnToCurrent, icon: <Crosshair size={14} /> },
                   ...quickUnits.map(unit => ({
                     label: resolvePluginText(unit.toggleLabel ?? unit.label, locale),
                     checked: unit.id === activeUnit.id,

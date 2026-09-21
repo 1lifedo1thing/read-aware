@@ -2347,6 +2347,7 @@ export function FoliateReaderView({
           mode={textUnitMode}
           containerRef={readerRootRef}
           canReturn={textUnitNavigator.canReturn}
+          returnPending={textUnitNavigator.hasReturnPoint}
           canStep={textUnitNavigator.status === "ready" || textUnitNavigator.status === "empty"}
           tapToAdvance={textUnitModeSettings.tapToAdvance}
           unitId={activeUnitId}

@@ -225,6 +225,21 @@ export async function buildTextUnitRanges(
  * Falls back to the first unit with no viewport, and to the last when the
  * viewport sits past every unit. Returns -1 only for an empty list.
  */
+/** The last unit that begins on the displayed page: where a backward step
+ *  from a page the reader turned to should start. */
+export function lastVisibleTextUnitIndex(units: Range[], visible: Range | null): number {
+  if (!units.length) return -1;
+  if (!visible) return units.length - 1;
+  for (let i = units.length - 1; i >= 0; i--) {
+    try {
+      if (units[i].compareBoundaryPoints(Range.END_TO_START, visible) < 0) return i;
+    } catch {
+      return units.length - 1;
+    }
+  }
+  return 0;
+}
+
 export function anchorTextUnitIndex(units: Range[], visible: Range | null): number {
   if (!units.length) return -1;
   if (!visible) return 0;

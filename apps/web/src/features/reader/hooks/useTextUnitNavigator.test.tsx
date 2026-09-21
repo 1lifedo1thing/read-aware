@@ -175,6 +175,34 @@ test("navigator handles both event orders, same-index replacements, provider fai
     await act(async () => { state.prev(); });
     expect(previousPages).toBe(1);
     expect(state.current?.text).toBe("Second unit.");
+    // A page the reader turned to (the resting unit is not on it): the visual
+    // step re-anchors here instead of dragging the viewport back, remembers
+    // the abandoned unit, and the return action goes back to it.
+    const firstText = two.body.firstElementChild!.firstChild!;
+    const firstOnly = two.createRange(); firstOnly.setStart(firstText, 0); firstOnly.setEnd(firstText, 11);
+    const travelled = navigated.length;
+    await act(async () => { state.handleRelocate({ range: firstOnly } as FoliateRelocateDetail); state.next(); });
+    expect(state.current?.text).toBe("First unit.");
+    expect(state.hasReturnPoint).toBe(true);
+    expect(nextPages).toBe(1);
+    expect(navigated.length).toBe(travelled); // No trip back to the abandoned page.
+    await act(async () => { state.returnToCurrent(); });
+    expect(state.current?.text).toBe("Second unit.");
+    expect(state.hasReturnPoint).toBe(false);
+    // Backward from a turned-to page starts at its last unit.
+    await act(async () => { state.handleRelocate({ range: firstOnly } as FoliateRelocateDetail); state.prev(); });
+    expect(state.current?.text).toBe("First unit.");
+    expect(previousPages).toBe(1);
+    await act(async () => { state.returnToCurrent(); });
+    expect(state.current?.text).toBe("Second unit.");
+    // Semantic stepping (playback) never re-anchors from the viewport.
+    await act(async () => { state.handleRelocate({ range: firstOnly } as FoliateRelocateDetail); await state.stepNative(1, new AbortController().signal, actor); });
+    expect(state.hasReturnPoint).toBe(false);
+    await act(async () => { await state.stepNative(-1, new AbortController().signal, actor); });
+    expect(state.current?.text).toBe("First unit.");
+    await act(async () => { page(0, 12); state.next(); });
+    expect(state.current?.text).toBe("Second unit.");
+    await act(async () => { page(0, 12); });
     // Semantic unit stepping used by playback must still advance whole units.
     await act(async () => { await state.stepNative(-1, new AbortController().signal, actor); });
     expect(state.current?.text).toBe("First unit.");
