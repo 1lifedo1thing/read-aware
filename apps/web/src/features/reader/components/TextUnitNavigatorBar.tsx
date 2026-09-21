@@ -106,8 +106,9 @@ function BarButton({
  * to the resting unit, switch the step unit, read aloud, and exit.
  *
  * Compact layouts put marks and notes first, with other actions in More.
- * The anchored sentence menu still carries the full set of selection actions.
- * Tap-to-advance owns the forward step on touch; the grip moves the whole bar.
+ * Tap-to-advance owns the forward step on touch — including taps landing on
+ * the resting sentence, whose anchored menu is a precise-pointer affordance
+ * (see `resolveDrawnRangeTap`); the grip moves the whole bar.
  */
 export function TextUnitNavigatorBar({
   visible,

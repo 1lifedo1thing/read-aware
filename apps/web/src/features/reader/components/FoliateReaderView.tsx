@@ -74,6 +74,7 @@ import { useAskAiEnabled } from "../../ai/hooks/useAskAiEnabled";
 import type { Note, Highlight } from "../../annotations/lib/annotation-types";
 import { observeReaderAnnotations } from "../lib/observe-reader-annotations";
 import { hasCoarsePointer, isIOS, suppressNativeContextMenu } from "../../../platform/environment";
+import { resolveDrawnRangeTap } from "../lib/content-tap";
 import {
   forwardKeyDownToApp,
   isEditableKeyTarget,
@@ -1509,10 +1510,10 @@ export function FoliateReaderView({
 
     // While tap-to-advance is on, rapid stepping clicks must not turn into a
     // word-selecting double-click (selection is mousedown's default action at
-    // detail > 1) — except over a drawn range (the navigator's resting wash or
-    // a user mark), where single clicks don't step anyway (the click handler's
-    // hit test swallows them), so double-click keeps selecting words there.
-    // Drag and long-press selection still work everywhere.
+    // detail > 1) — except over a drawn range whose single click doesn't step
+    // (a user mark, or the resting wash under a precise pointer: the click
+    // handler's hit test routes those to menus), so double-click keeps
+    // selecting words there. Drag and long-press selection still work everywhere.
     doc.addEventListener("mousedown", (event) => {
       if (!textUnitModeActiveStateRef.current || !tapToAdvanceRef.current) return;
       if (event.detail <= 1) return;
@@ -1520,7 +1521,10 @@ export function FoliateReaderView({
         ?.getContents?.()
         .find((content) => content.index === index)
         ?.overlayer?.hitTest({ x: event.clientX, y: event.clientY });
-      if (hit && hit[0]) return;
+      if (hit && hit[0] && resolveDrawnRangeTap({
+        hitValue: hit[0], restingCfi: textUnitNavigatorRef.current.current?.cfiRange,
+        modeActive: true, tapToAdvance: true, coarsePointer: hasCoarsePointer(),
+      }) !== "step") return;
       event.preventDefault();
     }, true);
 
@@ -1623,19 +1627,24 @@ export function FoliateReaderView({
         .find((content) => content.index === index)
         ?.overlayer?.hitTest({ x: event.clientX, y: event.clientY });
       if (hit && hit[0]) {
-        cancelPendingShellOpen();
         // hitTest 回的是绘制的 value（CFI），不是 overlayKey —— 与静息句的
-        // cfiRange 相等即命中导航 wash：开合句级动作菜单（用户标注的命中
-        // 仍走 show-annotation 的重着色菜单，互不相扰）。
-        const restingCfi = textUnitNavigatorRef.current.current?.cfiRange;
-        if (
-          textUnitModeActiveStateRef.current &&
-          restingCfi != null &&
-          hit[0] === restingCfi
-        ) {
-          unitMenuToggleRef.current(doc, event.clientX, event.clientY);
+        // cfiRange 相等即命中导航 wash：精确指针下开合句级动作菜单（用户
+        // 标注的命中仍走 show-annotation 的重着色菜单，互不相扰）。触屏且
+        // 点按即前进时，静息句一两步就会走到手指下方；吞掉这一下去开菜单会让
+        // 步进彻底停住，所以按普通正文点按继续往下走（长按选区仍能到同一套
+        // 动作，紧凑工具栏也带着标注动作）。
+        const tap = resolveDrawnRangeTap({
+          hitValue: hit[0],
+          restingCfi: textUnitNavigatorRef.current.current?.cfiRange,
+          modeActive: textUnitModeActiveStateRef.current,
+          tapToAdvance: tapToAdvanceRef.current,
+          coarsePointer: hasCoarsePointer(),
+        });
+        if (tap !== "step") {
+          cancelPendingShellOpen();
+          if (tap === "unit-menu") unitMenuToggleRef.current(doc, event.clientX, event.clientY);
+          return;
         }
-        return;
       }
       // A tap on empty content dismisses any open recolor menu.
       setActiveAnnotation(null);
