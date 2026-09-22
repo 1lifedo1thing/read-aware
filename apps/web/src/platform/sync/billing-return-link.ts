@@ -6,11 +6,10 @@
  * while the app runs.
  */
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
-
-const BILLING_SUCCESS_PATTERN = /^readaware:\/\/billing\/success\/?(?:[?#]|$)/i;
+import { appLinkScheme } from "../app-identity";
 
 export function isBillingSuccessUrl(url: string): boolean {
-  return BILLING_SUCCESS_PATTERN.test(url.trim());
+  return new RegExp(`^${appLinkScheme()}://billing/success/?(?:[?#]|$)`, "i").test(url.trim());
 }
 
 function hasBillingSuccess(urls: readonly string[] | null | undefined): boolean {

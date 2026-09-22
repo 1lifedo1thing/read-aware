@@ -1,4 +1,5 @@
 import { isAndroid, isMobileOS, isTauri } from "../../../platform/environment";
+import { isDevBundle } from "../../../platform/app-identity";
 import { betaManifestUrl } from "./update-channel";
 import { getUpdateChannel } from "./update-channel";
 import { invoke } from "../../../platform/ipc";
@@ -48,7 +49,7 @@ async function invokeWithTimeout<T>(
 let desktopUpdateReady = false;
 
 export function canUseSoftwareUpdater(): boolean {
-  return isTauri() && (isAndroid() || !isMobileOS());
+  return !import.meta.env.DEV && !isDevBundle() && isTauri() && (isAndroid() || !isMobileOS());
 }
 
 export async function readCurrentAppVersion(): Promise<string | null> {
@@ -87,6 +88,7 @@ export async function findSoftwareUpdate(): Promise<AvailableSoftwareUpdate | nu
 export async function installSoftwareUpdate(
   onProgress: (progress: DownloadProgress) => void,
 ): Promise<InstallSoftwareUpdateResult> {
+  if (!canUseSoftwareUpdater()) throw new AppError("ui/unavailable", "Software updates are unavailable in this app environment.");
   if (isAndroid()) {
     onProgress({ phase: "downloading", progress: null });
     return invokeWithTimeout<InstallSoftwareUpdateResult>(

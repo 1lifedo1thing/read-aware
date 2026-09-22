@@ -7,11 +7,10 @@
  * arriving while the app runs (onOpenUrl).
  */
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
-
-const SYNC_LOGIN_PATTERN = /^readaware:\/\/sync\/login\/([^/?#]+)/i;
+import { appLinkScheme } from "../app-identity";
 
 export function parseSyncLoginUrl(url: string): string | null {
-  const match = SYNC_LOGIN_PATTERN.exec(url.trim());
+  const match = new RegExp(`^${appLinkScheme()}://sync/login/([^/?#]+)`, "i").exec(url.trim());
   if (!match) return null;
   try {
     return decodeURIComponent(match[1]);

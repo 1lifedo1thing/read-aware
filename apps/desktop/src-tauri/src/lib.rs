@@ -1,4 +1,5 @@
 mod android_update;
+mod app_environment;
 mod book_metadata;
 mod covers;
 mod web_image_cache;
@@ -670,6 +671,11 @@ fn install_panic_log_hook() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
+    // This precedes even single-instance dispatch: a misconfigured local dev
+    // launch must not forward events to the installed production application.
+    app_environment::validate(context.config(), cfg!(dev))
+        .expect("unsafe ReadAware application identity");
     // Before the builder: a panic anywhere past logger init must reach the
     // file. (Panics before the log plugin initializes still hit the chained
     // default hook and print to stderr, exactly as today.)
@@ -1214,7 +1220,7 @@ pub fn run() {
     }
 
     let app = builder
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building ReadAware desktop application");
     app.run(|_app_handle, _event| {
         // Preview expiry tasks retain AppHandles, so managed state may outlive

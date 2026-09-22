@@ -137,7 +137,7 @@ pub fn is_book_path(path: &Path) -> bool {
 /// The deep-link plugin also forwards file:// Apple Events. Only application
 /// links may bypass the file-intake policy to bring the window forward.
 pub fn is_app_link_scheme(scheme: &str) -> bool {
-    scheme == "readaware"
+    matches!(scheme, "readaware" | "readaware-dev")
 }
 
 /// Book files among raw launch/relaunch args. Skips flags and anything that is
@@ -254,6 +254,7 @@ mod tests {
     #[test]
     fn file_urls_cannot_use_the_auth_link_focus_path() {
         assert!(is_app_link_scheme("readaware"));
+        assert!(is_app_link_scheme("readaware-dev"));
         assert!(!is_app_link_scheme("file"));
         assert!(!is_app_link_scheme("https"));
     }

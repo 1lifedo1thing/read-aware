@@ -74,6 +74,10 @@ pub async fn desktop_update_check(
     use tauri::Manager;
     use tauri_plugin_updater::UpdaterExt;
 
+    if !crate::app_environment::can_update(&app.config().identifier) {
+        return Ok(None);
+    }
+
     let mut builder = app.updater_builder();
     if let Some(raw) = endpoint {
         let url = validate_manifest_url(&raw)?;
@@ -104,6 +108,10 @@ pub async fn desktop_update_check(
 #[tauri::command]
 pub async fn desktop_update_install(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::{Emitter, Manager};
+
+    if !crate::app_environment::can_update(&app.config().identifier) {
+        return Err("Software updates are unavailable for development installations.".into());
+    }
 
     let update = {
         let state: tauri::State<'_, DesktopUpdateState> = app.state();

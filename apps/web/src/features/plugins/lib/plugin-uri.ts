@@ -1,6 +1,7 @@
 import { atom, getDefaultStore } from "jotai";
 import type { PluginUriHandler, PluginUriRequest } from "@read-aware/plugin-types";
 import { createInteractiveContributionRegistry } from "../state/interactive-contribution-registry";
+import { appLinkScheme } from "../../../platform/app-identity";
 
 export type PluginUri = { pluginId: string; handlerId: string; request: PluginUriRequest; url: string };
 export type RegisteredUriHandler = PluginUriHandler & { key: string; pluginId: string; pluginName: string };
@@ -10,9 +11,9 @@ export function parsePluginUri(raw: string): PluginUri | null {
   if (typeof raw !== "string" || raw.length > 4096 || /[\u0000-\u0020\u007f-\u009f]/u.test(raw)) return null;
   let url: URL;
   try { url = new URL(raw); } catch { return null; }
-  if (url.protocol !== "readaware:" || url.hostname !== "plugin" || url.username || url.password || url.port || url.hash) return null;
+  if (url.protocol !== `${appLinkScheme()}:` || url.hostname !== "plugin" || url.username || url.password || url.port || url.hash) return null;
   // No encoded identifiers, traversal normalization or extra route segments.
-  const match = /^readaware:\/\/plugin\/([a-z0-9_-]+)\/([a-z0-9_-]+)(?:\?[^#]*)?$/.exec(raw);
+  const match = new RegExp(`^${appLinkScheme()}://plugin/([a-z0-9_-]+)/([a-z0-9_-]+)(?:\\?[^#]*)?$`).exec(raw);
   if (!match || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(match[1]!) || !identifier.test(match[2]!)) return null;
   const parameters: PluginUriRequest["parameters"] = [];
   for (const [key,value] of url.searchParams) {

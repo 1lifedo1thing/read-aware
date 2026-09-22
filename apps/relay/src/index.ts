@@ -41,6 +41,7 @@ type Env = {
   RESEND_API_KEY?: string;
   MAIL_FROM?: string;
   APP_ORIGIN?: string;
+  APP_LINK_SCHEME?: "readaware" | "readaware-dev";
   /** Where `client=web` OAuth finishes land; defaults to the app origin. */
   WEB_APP_ORIGIN?: string;
   /** The relay's own public origin (Stripe success redirects); dev overrides
@@ -136,6 +137,7 @@ function portsFromEnv(env: Env, ctx?: { waitUntil(promise: Promise<unknown>): vo
     config: {
       ...DEFAULT_CONFIG,
       echoMagicToken: env.MAGIC_LINK_ECHO === "1",
+      appLinkScheme: env.APP_LINK_SCHEME === "readaware-dev" ? "readaware-dev" : "readaware",
       webAppOrigin: env.WEB_APP_ORIGIN ?? env.APP_ORIGIN ?? DEFAULT_CONFIG.webAppOrigin,
       relayOrigin: env.RELAY_ORIGIN ?? DEFAULT_CONFIG.relayOrigin,
       maxAccountBlobBytes:

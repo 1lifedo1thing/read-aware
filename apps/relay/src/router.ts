@@ -48,9 +48,9 @@ import { BILLING_PAGE, PAGE, resolveLang, type RelayLang } from "./i18n";
  * TTL as a magic link. (Tokens are base64url, safe verbatim in HTML and URLs;
  * the escape is defense in depth.)
  */
-function signInTokenPage(token: string, lang: RelayLang): Response {
+function signInTokenPage(token: string, lang: RelayLang, scheme: "readaware" | "readaware-dev"): Response {
   const esc = token.replace(/[&<>"']/g, "");
-  const deepLink = `readaware://sync/login/${esc}`;
+  const deepLink = `${scheme}://sync/login/${esc}`;
   const t = PAGE[lang];
   return new Response(
     `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -85,8 +85,8 @@ function signInTokenPage(token: string, lang: RelayLang): Response {
  * readaware:// deep link. Web-visitor checkouts never come here — they return
  * to the pricing page, whose banner explains the email-keyed sign-in.
  */
-function billingReturnPage(lang: RelayLang): Response {
-  const deepLink = "readaware://billing/success";
+function billingReturnPage(lang: RelayLang, scheme: "readaware" | "readaware-dev"): Response {
+  const deepLink = `${scheme}://billing/success`;
   const t = BILLING_PAGE[lang];
   return new Response(
     `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -353,7 +353,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
   async function handleOauth(req: Request, url: URL, providerId: string, action: string): Promise<Response> {
     const provider = ports.oauthProviders[providerId];
     if (!provider) return failure(404, "unknown oauth provider");
-    const redirectUri = `${url.origin}/v1/auth/oauth/${providerId}/callback`;
+    const redirectUri = `${config.relayOrigin}/v1/auth/oauth/${providerId}/callback`;
 
     if (action === "start" && req.method === "GET") {
       // Every start mints a state row — an anonymous, unbounded loop would
@@ -410,7 +410,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
           302,
         );
       }
-      return signInTokenPage(signIn, lang);
+      return signInTokenPage(signIn, lang, config.appLinkScheme);
     }
     return failure(405, "method not allowed");
   }
@@ -1017,7 +1017,7 @@ export function createRelayHandler(ports: RelayPorts): (req: Request) => Promise
     // Stripe's success redirect for app-initiated checkouts — a public page,
     // like the OAuth finish; it carries nothing but a language.
     if (req.method === "GET" && path === "/v1/billing/return") {
-      return billingReturnPage(resolveLang(url.searchParams.get("lang")));
+      return billingReturnPage(resolveLang(url.searchParams.get("lang")), config.appLinkScheme);
     }
     if (path.startsWith("/v1/auth/oauth/")) {
       const [providerId, action] = path.slice("/v1/auth/oauth/".length).split("/");

@@ -296,6 +296,8 @@ export type RelayConfig = {
   maxAiOutputTokens: number;
   /** Where a `client=web` OAuth finish is allowed to land (no open redirect). */
   webAppOrigin: string;
+  /** Local relay callbacks must open the isolated development app. */
+  appLinkScheme: "readaware" | "readaware-dev";
   /**
    * The relay's own public origin, for URLs it hands to third parties (the
    * Stripe success redirect). NEVER derived from `req.url`: wrangler dev
@@ -337,6 +339,7 @@ export const DEFAULT_CONFIG: RelayConfig = {
   maxAiRequestBytes: 2 * 1024 * 1024,
   maxAiOutputTokens: 32_768,
   webAppOrigin: "https://readaware.app",
+  appLinkScheme: "readaware",
   relayOrigin: "https://relay.readaware.app",
   maxReportBytes: 512 * 1024,
   maxReportsPerIpPerDay: 10,

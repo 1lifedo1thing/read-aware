@@ -53,7 +53,7 @@ import {
 } from "./transport-registry";
 import { createTransportFeedRelay, type TransportFeedJournal } from "./transport-feed";
 import { TransportSessionCache } from "./transport-session-cache";
-import { defaultRelayUrl } from "./relay-url";
+import { resolveRelayUrl } from "./relay-url";
 import { lastSuccessfulSyncAt } from "./sync-status";
 
 export { DEFAULT_RELAY_URL } from "./relay-url";
@@ -67,14 +67,7 @@ const PULL_INTERVAL_MS = 5 * 60_000;
 const PUSH_DEBOUNCE_MS = 3_000;
 
 export function relayBaseUrl(): string {
-  const raw = localKV.getItem(RELAY_URL_KV_KEY);
-  if (!raw) return defaultRelayUrl();
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return typeof parsed === "string" && parsed.length > 0 ? parsed : defaultRelayUrl();
-  } catch {
-    return raw;
-  }
+  return resolveRelayUrl(localKV.getItem(RELAY_URL_KV_KEY));
 }
 
 // ── Status (subscribable snapshot for useSyncExternalStore) ──────────────────

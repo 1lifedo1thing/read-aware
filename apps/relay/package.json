@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --var MAGIC_LINK_ECHO:1",
+    "dev": "wrangler dev --local --ip 127.0.0.1 --port 8787 --var MAGIC_LINK_ECHO:1 --var APP_LINK_SCHEME:readaware-dev --var RELAY_ORIGIN:http://localhost:8787 --var APP_ORIGIN:http://localhost:5175 --var WEB_APP_ORIGIN:http://localhost:5175",
     "deploy": "bun run deploy:migrations && wrangler deploy",
     "deploy:migrations": "wrangler d1 migrations apply read-aware-relay --remote",
     "test": "bun test",

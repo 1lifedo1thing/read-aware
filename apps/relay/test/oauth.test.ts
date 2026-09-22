@@ -34,6 +34,20 @@ async function startOauth(
 }
 
 describe("oauth sign-in", () => {
+  test("local relay callbacks stay local even if Wrangler rewrites the request host", async () => {
+    const { handle } = makeRelay({ relayOrigin: "http://localhost:8787", appLinkScheme: "readaware-dev" }, { google: fakeProvider() });
+    const start = await handle(new Request("https://relay.readaware.app/v1/auth/oauth/google/start"));
+    const authorize = new URL(start.headers.get("location")!);
+    expect(authorize.searchParams.get("redirect_uri")).toBe("http://localhost:8787/v1/auth/oauth/google/callback");
+    const state = authorize.searchParams.get("state")!;
+    const callback = await handle(get(`/v1/auth/oauth/google/callback?code=good-code&state=${encodeURIComponent(state)}`));
+    const html = await callback.text();
+    expect(html).toContain("readaware-dev://sync/login/");
+    expect(html).not.toContain("readaware://");
+    const billing = await handle(get("/v1/billing/return"));
+    expect(await billing.text()).toContain("readaware-dev://billing/success");
+  });
+
   test("start redirects to the provider with a state and the callback URI", async () => {
     const { handle } = makeRelay({}, { google: fakeProvider() });
     const res = await handle(get("/v1/auth/oauth/google/start"));

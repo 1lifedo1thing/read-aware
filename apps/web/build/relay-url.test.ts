@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
+import { readFileSync } from "node:fs";
 import { build, normalizePath } from "vite";
 
 const web = resolve(import.meta.dir, "..");
@@ -30,9 +31,11 @@ async function bundle(options: { development?: boolean; relay?: string; site?: s
         load(id) {
           if (id !== "virtual:relay-url-test") return;
           return [
-            ["defaultRelayUrl", "src/platform/sync/relay-url.ts"],
+            ["defaultRelayUrl, resolveRelayUrl", "src/platform/sync/relay-url.ts"],
             ["siteBaseUrl", "src/platform/site-url.ts"],
             ["hydrateAppIdentity", "src/platform/app-identity.ts"],
+            ["parseSyncLoginUrl", "src/platform/sync/sync-login-link.ts"],
+            ["isBillingSuccessUrl", "src/platform/sync/billing-return-link.ts"],
           ].map(([name, path]) => `export { ${name} } from ${JSON.stringify(normalizePath(resolve(web, path!)))};`).join("\n");
         },
       }],
@@ -55,11 +58,13 @@ async function bundle(options: { development?: boolean; relay?: string; site?: s
   }
 }
 
-async function endpoints(code: string, url: string, productName = "ReadAware") {
+async function runtime(code: string, url: string, productName = "ReadAware", failIdentity = false) {
   const context = {
+    URL,
     window: {
       location: new URL(url),
       __TAURI_INTERNALS__: { invoke: async (command: string) => {
+        if (failIdentity) throw new Error("Identity unavailable");
         if (command !== "plugin:app|name") throw new Error(`Unexpected IPC: ${command}`);
         return productName;
       } },
@@ -69,8 +74,16 @@ async function endpoints(code: string, url: string, productName = "ReadAware") {
     hydrateAppIdentity(): Promise<void>;
     defaultRelayUrl(): string;
     siteBaseUrl(): string;
+    resolveRelayUrl(raw: string | null): string;
+    parseSyncLoginUrl(url: string): string | null;
+    isBillingSuccessUrl(url: string): boolean;
   };
   await api.hydrateAppIdentity();
+  return api;
+}
+
+async function endpoints(code: string, url: string, productName = "ReadAware") {
+  const api = await runtime(code, url, productName);
   return { relay: api.defaultRelayUrl(), site: api.siteBaseUrl() };
 }
 
@@ -110,4 +123,53 @@ test("dev server keeps local defaults and follows a LAN host without using Tauri
 test("dev server prefers the Tauri CLI host for devices", async () => {
   const code = await bundle({ development: true, relay: localRelay, devHost: "192.168.1.10" });
   expect((await endpoints(code, "http://tauri.localhost")).relay).toBe("http://192.168.1.10:8787");
+});
+
+test("dev cannot reach production through env, legacy KV or host replacement", async () => {
+  for (const development of [true, false]) {
+    const code = await bundle({ development, relay: productionRelay });
+    const api = await runtime(code, "http://tauri.localhost", "ReadAware Dev");
+    expect(api.defaultRelayUrl()).toBe(localRelay);
+    for (const raw of [null, productionRelay, JSON.stringify(productionRelay), '"https://RELAY.readaware.app.:443/"']) {
+      expect(api.resolveRelayUrl(raw)).toBe(localRelay);
+    }
+    expect(api.resolveRelayUrl('"http://192.168.1.9:8787"')).toBe("http://192.168.1.9:8787");
+  }
+  const code = await bundle({ development: true, devHost: "relay.readaware.app" });
+  expect((await endpoints(code, "http://tauri.localhost", "ReadAware Dev")).relay).toBe(localRelay);
+});
+
+test("missing dev env still selects local, and unreadable native identity stops boot", async () => {
+  const code = await bundle({ development: true });
+  expect((await endpoints(code, "http://localhost:5173")).relay).toBe(localRelay);
+  await expect(runtime(code, "http://localhost:5173", "ReadAware Dev", true)).rejects.toThrow("Identity unavailable");
+});
+
+test("dev and release accept only their own login and billing callbacks", async () => {
+  const code = await bundle();
+  for (const [name, own, other] of [["ReadAware", "readaware", "readaware-dev"], ["ReadAware Dev", "readaware-dev", "readaware"]]) {
+    const api = await runtime(code, "tauri://localhost", name);
+    expect(api.parseSyncLoginUrl(`${own}://sync/login/test-token`)).toBe("test-token");
+    expect(api.parseSyncLoginUrl(`${other}://sync/login/test-token`)).toBeNull();
+    expect(api.isBillingSuccessUrl(`${own}://billing/success`)).toBe(true);
+    expect(api.isBillingSuccessUrl(`${other}://billing/success`)).toBe(false);
+  }
+});
+
+test("the standard desktop dev entry selects a separate identity and protocol", () => {
+  const json = (path: string) => JSON.parse(readFileSync(resolve(web, path), "utf8"));
+  expect(json("../../package.json").scripts.dev).toBe("turbo run dev --filter=@read-aware/desktop");
+  expect(json("../desktop/package.json").scripts.dev).toBe("tauri dev --config src-tauri/tauri.dev.conf.json");
+  const dev = json("../desktop/src-tauri/tauri.dev.conf.json");
+  const prod = json("../desktop/src-tauri/tauri.conf.json");
+  expect(dev.identifier).toBe("com.readaware.app.dev");
+  expect(dev.identifier).not.toBe(prod.identifier);
+  expect(dev.productName).toBe("ReadAware Dev");
+  expect(dev.plugins["deep-link"].desktop.schemes).toEqual(["readaware-dev"]);
+  expect(prod.plugins["deep-link"].desktop.schemes).toEqual(["readaware"]);
+  expect(dev.plugins.updater.endpoints).toEqual([]);
+  const relayDev = json("../relay/package.json").scripts.dev;
+  expect(relayDev).toContain("--local");
+  expect(relayDev).toContain("--var APP_LINK_SCHEME:readaware-dev");
+  expect(relayDev).toContain("--var RELAY_ORIGIN:http://localhost:8787");
 });

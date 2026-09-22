@@ -54,6 +54,23 @@ v53 迁移只从已有日志补回更远位置，不重复累计时长或重建�
 完整性，不能把任意数据库文件当作可信快照。不具备检查点能力的中继有明确兼容路径；
 已有数据的合并与完整备份恢复遵守各自入口的前置条件。
 
+## 本地开发隔离
+
+从仓库根目录运行 `bun run dev`，桌面入口固定加载
+[开发配置](../../apps/desktop/src-tauri/tauri.dev.conf.json)：应用名为 `ReadAware Dev`，
+包标识为 `com.readaware.app.dev`。SQLite、blob、插件与 `secret.key` 使用该标识对应的
+应用数据目录；正式版使用 `com.readaware.app`。原生启动在插件和数据库初始化之前检查
+身份，漏用开发配置的 `tauri dev` 会拒绝启动；已有独立 capability-e2e 验收身份仍可使用。
+
+开发版默认连接 `http://localhost:8787`，设备调试可使用开发机的 LAN 地址。
+缺少环境变量、清空本地设置或误留生产 Relay 地址都不会让开发版回落到生产 Relay；
+应用身份读取失败会停止启动。正式构建的开发包仍按开发身份处理，正式版忽略开发环境
+变量。地址选择集中在 [relay-url.ts](../../apps/web/src/platform/sync/relay-url.ts)。
+
+在 `apps/relay` 运行 `bun run dev` 使用 Wrangler 本地 D1、DO 和 R2，认证回显只在本地
+启用。开发 Relay 的 OAuth 回调地址来自本地配置，回到 `readaware-dev://`；正式版使用
+`readaware://`，两者不接收对方的登录回跳。开发版也不检查或安装正式软件更新。
+
 ## 失败、退出与恢复
 
 网络故障、登录失效、额度限制、不可恢复的文件拒绝和用户取消是不同结果。

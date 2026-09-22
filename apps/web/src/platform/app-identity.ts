@@ -9,8 +9,8 @@
  * dev-IDENTIFIED bundle never defaults to the production relay, no matter
  * how it was built (see sync/relay-url.ts defaultRelayUrl).
  *
- * Hydrated once at boot (`getName` is async IPC); false until then — boot
- * awaits it before any consumer can ask (main.tsx).
+ * Hydrated at boot (`getName` is async IPC); boot must succeed before any
+ * consumer can ask. An identity failure stops boot rather than guessing prod.
  */
 import { isTauri } from "./environment";
 
@@ -24,15 +24,14 @@ let devBundle = false;
 /** Boot-time hydrate; safe to call repeatedly, resolved once. */
 export async function hydrateAppIdentity(): Promise<void> {
   if (!isTauri()) return;
-  try {
-    const { getName } = await import("@tauri-apps/api/app");
-    devBundle = isDevProductName(await getName());
-  } catch {
-    // An unresolvable identity is not fatal: the relay default then behaves
-    // like a production bundle (which is what an unnamed build is).
-  }
+  const { getName } = await import("@tauri-apps/api/app");
+  devBundle = isDevProductName(await getName());
 }
 
 export function isDevBundle(): boolean {
   return devBundle;
+}
+
+export function appLinkScheme(): "readaware" | "readaware-dev" {
+  return import.meta.env.DEV || isDevBundle() ? "readaware-dev" : "readaware";
 }
