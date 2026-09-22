@@ -290,6 +290,10 @@ explicit/contextual `any`, unsafe double assertions, and suppression comments.
   Scrolling across a source seam updates the active CFI without reloading or
   turning a page; visible text includes all intersecting resident ranges.
   Styles, relayout and annotation layers apply to every resident part.
+  A turn with nowhere to go — past the last page or before the first, whether
+  from `next()`/`prev()` or a touch swipe's snap — dispatches `edge` with
+  `{ dir, context }`, so the host can treat pushing past the end as finishing
+  the book without duplicating the swipe gesture.
   `tests/runtime/foliate-scroll-chapter-regressions.ts` covers prefetch and
   release while reading, position stability across window changes, restoring
   released sources, multi-source bookmarks, source leases, failure/retry,

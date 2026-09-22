@@ -5,7 +5,7 @@ import type { Anchor, Book, BookSection, MaybePromise, ResolvedNavigation, Resou
 import type { Overlayer } from './overlayer.js'
 import { RendererResizeObserver } from './resize-observer.js'
 
-import type { Content, LoadDetail, RelocateDetail, RelocateReason, NativeInputBridge } from './renderer.js'
+import type { Content, EdgeDetail, LoadDetail, RelocateDetail, RelocateReason, NativeInputBridge } from './renderer.js'
 
 
 type Styles = string | [string, string] | null | undefined
@@ -789,13 +789,21 @@ export class Paginator extends HTMLElement {
         const min = Math.abs(offset) - a
         const max = Math.abs(offset) + b
         const d = velocity * (this.#rtl ? -size : size)
-        const page = Math.floor(
-            Math.max(min, Math.min(max, (start + end) / 2
-                + (isNaN(d) ? 0 : d))) / size)
+        const target = (start + end) / 2 + (isNaN(d) ? 0 : d)
+        const page = Math.floor(Math.max(min, Math.min(max, target)) / size)
+        // READAWARE: at the book's first or last page the drag is held in
+        // place (the bound is closed), so the snap can never reach the spacer
+        // page. A swipe that would have turned a page anywhere else is the
+        // reader pushing past the book's edge; tell the host. The edge must
+        // already be the resting page: a swipe that merely arrives there is
+        // not a push past it.
+        const wanted = Math.floor(target / size)
+        const pushed = wanted >= pages - 1 && this.atEnd ? 1 : wanted <= 0 && this.atStart ? -1 : null
 
         this.#scrollToPage(page, 'snap').then(() => {
             const dir = page <= 0 ? -1 : page >= pages - 1 ? 1 : null
             if (dir) return this.#goToAdjacent(dir)
+            if (pushed) this.dispatchEvent(new CustomEvent<EdgeDetail>('edge', { detail: { dir: pushed } }))
         })
     }
     #onTouchStart(e: TouchEvent) {
@@ -1257,7 +1265,12 @@ export class Paginator extends HTMLElement {
             return
         }
         const index = this.#adjacentIndex(dir, edge?.index)
-        if (index !== undefined) await this.#goTo({ index, anchor: dir < 0 ? 1 : 0, context })
+        if (index !== undefined) { await this.#goTo({ index, anchor: dir < 0 ? 1 : 0, context }); return }
+        // READAWARE: a turn with nowhere to go — past the last page or before
+        // the first — is the reader pushing against the book's edge. Touch
+        // swipes reach here through snap() without passing the host's own turn
+        // routing, so the host learns of it from the engine.
+        this.dispatchEvent(new CustomEvent<EdgeDetail>('edge', { detail: { dir, context } }))
     }
     prev(distance?: number, context?: object) {
         return this.#turnPage(-1, distance, context)

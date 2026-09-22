@@ -34,6 +34,8 @@ import {
   createFootnoteHandler,
   isFixedLayout as isFixedLayoutBook,
   isFixedLayoutFormat,
+  isAtEndOfBook,
+  type FoliateEdgeDetail,
   type FoliateFootnoteBeforeRenderDetail,
   type FoliateFootnoteHandler,
   type FoliateFootnoteRenderDetail,
@@ -2246,6 +2248,18 @@ export function FoliateReaderView({
             ?.catch(error => log.warn('Could not render footnote', error));
           void nativeLinks?.handle(event as CustomEvent<FoliateLinkDetail>);
         };
+
+        // Pushing past the last page — a touch swipe's snap turns pages inside
+        // the engine, so this is the only place that gesture can finish the
+        // book; keyboard, wheel and tap turns already ask isAtEndOfBook first.
+        const onEdge = (event: Event) => {
+          if (cancelled) return;
+          const detail = (event as CustomEvent<FoliateEdgeDetail>).detail;
+          if (detail?.dir === 1 && isAtEndOfBook(view)) openCompletion();
+        };
+        const renderer = view.renderer;
+        renderer?.addEventListener("edge", onEdge);
+        cleanups.push(() => renderer?.removeEventListener("edge", onEdge));
 
         view.addEventListener("relocate", onRelocate);
         view.addEventListener("load", onLoad);

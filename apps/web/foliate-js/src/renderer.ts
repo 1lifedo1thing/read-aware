@@ -9,6 +9,8 @@ export type RelocateDetail = {
     size?: number
     context?: object
 }
+/** READAWARE: a turn that found nothing beyond the book's first or last page. */
+export type EdgeDetail = { dir: -1 | 1; context?: object }
 export type Content = { doc: Document; index: number; overlayer?: Overlayer }
 export type LoadDetail = { doc: Document; index: number; context?: object }
 export type CreateOverlayerDetail = LoadDetail & { attach: (overlayer: Overlayer) => void }

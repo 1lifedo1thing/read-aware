@@ -10,7 +10,7 @@ import type { DrawFunction } from "../../../../foliate-js/src/overlayer";
 
 export type { FoliateBook, FoliateLanguageMap, FoliateView, FoliateRenderer };
 export type { BookMetadata as FoliateMetadata, TOCItem as FoliateTocItem, ResolvedNavigation as FoliateResolved } from "../../../../foliate-js/src/book";
-export type { RelocateReason as FoliateRelocateReason, LoadDetail as FoliateLoadDetail, Content as FoliateContent } from "../../../../foliate-js/src/renderer";
+export type { RelocateReason as FoliateRelocateReason, LoadDetail as FoliateLoadDetail, Content as FoliateContent, EdgeDetail as FoliateEdgeDetail } from "../../../../foliate-js/src/renderer";
 export type {
   Annotation as FoliateAnnotation, DrawAnnotationDetail as FoliateDrawAnnotationDetail,
   ShowAnnotationDetail as FoliateShowAnnotationDetail, LinkDetail as FoliateLinkDetail,
@@ -124,12 +124,17 @@ const SCROLL_EDGE_EPSILON = 2;
  * hard to get otherwise — "no following section" — so it gates the check, and
  * the page comparison supplies the precision.
  */
+/**
+ * Whether the reader is showing the book's last page, so advancing means
+ * finishing. The renderer's `atEnd` already answers precisely: in paginated
+ * flow a document is laid out with one blank spacer column at each end, so its
+ * last text page is `pages - 2` (the value `atEnd` tests), and `pages - 1` is
+ * the trailing spacer no reader ever rests on. Tightening the test to that
+ * spacer made finishing unreachable.
+ */
 export function isAtEndOfBook(view: FoliateView | null | undefined): boolean {
   const renderer = view?.renderer;
-  if (!renderer || !("atEnd" in renderer) || renderer.atEnd !== true) return false;
-  const pages = renderer.pages ?? 0;
-  if (pages <= 1) return true; // single screen: showing it is reaching the end
-  return (renderer.page ?? 0) >= pages - 1;
+  return !!renderer && "atEnd" in renderer && renderer.atEnd === true;
 }
 
 /**
