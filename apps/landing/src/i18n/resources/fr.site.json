@@ -171,6 +171,53 @@
     "leadIn": " : ",
     "entries": [
       {
+        "version": "0.6.2",
+        "date": "2026-09-22",
+        "codename": "Cambria",
+        "summary": "Ce correctif de Cambria donne au Lecteur de phrases un menu d’appui prolongé sur téléphone, dessine vos marques dès que vous les créez, répare à l’ouverture les sommaires cassés et ramène l’écran de fin de livre.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Un menu d’appui prolongé pour le Lecteur de phrases sur téléphone",
+                "body": "La barre d’outils inférieure disparaît sur téléphone et tablette. Appuyez longuement n’importe où sur la page pour ouvrir sous votre doigt les actions de la phrase en cours : surligner, souligner, annoter, demander à l’IA, copier et lire à voix haute. Glissez sur une action et relâchez pour l’exécuter, ou relâchez sur place puis touchez. La navigation, le commutateur phrase/paragraphe, les recherches de plugins, les volets et la sortie se cachent derrière « Plus ». Toucher la phrase en surbrillance ouvre le même menu."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Un affichage instantané des marques",
+                "body": "Un nouveau surlignage ou soulignement est dessiné dès son enregistrement au lieu d’apparaître jusqu’à une seconde plus tard, et les livres riches en marques ne les redessinent plus toutes à chaque nouvelle marque."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Des sommaires qui envoyaient tous les chapitres sur la couverture",
+                "body": "Certains livres convertis listent tous les chapitres mais les pointent tous vers la première page : la navigation atterrissait sur la couverture, le libellé du chapitre était erroné et le défilement continu traitait tout le livre comme un seul chapitre. Le lecteur réaffecte désormais ces entrées aux chapitres qui s’ouvrent sur leur titre."
+              },
+              {
+                "title": "L’écran de fin de livre est de nouveau accessible",
+                "body": "Tourner au-delà de la dernière page ne faisait rien, sur ordinateur comme sur téléphone. Clavier, molette, appui et glissement terminent désormais le livre."
+              },
+              {
+                "title": "Les actions de phrase au toucher",
+                "body": "Toucher la phrase en surbrillance ouvre de nouveau ses actions ; la version précédente passait à la phrase suivante."
+              },
+              {
+                "title": "Les fournisseurs d’IA sur des ports personnalisés",
+                "body": "Les adresses HTTP de fournisseurs comportant un port non standard sont désormais acceptées."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.1",
         "date": "2026-09-21",
         "codename": "Cambria",

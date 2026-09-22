@@ -171,6 +171,53 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.2",
+        "date": "2026-09-22",
+        "codename": "Cambria",
+        "summary": "This Cambria patch gives Sentence Reader a hold menu on phones, draws your marks the moment you make them, repairs broken tables of contents on open, and brings back the end-of-book screen.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "A hold menu for Sentence Reader on phones",
+                "body": "The bottom toolbar is gone on phones and tablets. Press and hold anywhere on the page to open the current sentence's actions under your finger: highlight, underline, note, ask AI, copy and read aloud. Slide onto an action and lift to run it, or lift in place and tap. Navigation, the sentence and paragraph switch, plugin lookups, the panels and exit sit behind More. Tapping the highlighted sentence opens the same menu."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Marks appear instantly",
+                "body": "A new highlight or underline is drawn as soon as it is saved instead of up to a second later, and books with many marks no longer repaint all of them for each new one."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Tables of contents that aimed every chapter at the cover",
+                "body": "Some converted books list every chapter but point them all at the first page, so navigation landed on the cover, the chapter label was wrong and continuous scroll treated the whole book as one chapter. The reader now relocates those entries to the chapters that open with their titles."
+              },
+              {
+                "title": "The end-of-book screen is reachable again",
+                "body": "Turning past the last page did nothing on desktop or phones. Keyboard, wheel, tap and swipe now all finish the book."
+              },
+              {
+                "title": "Sentence actions on touch",
+                "body": "Tapping the highlighted sentence opens its actions again; the previous release stepped to the next sentence instead."
+              },
+              {
+                "title": "AI providers on custom ports",
+                "body": "HTTP provider addresses with a non-default port are accepted."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.1",
         "date": "2026-09-21",
         "codename": "Cambria",

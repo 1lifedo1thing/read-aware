@@ -171,6 +171,53 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.2",
+        "date": "2026-09-22",
+        "codename": "Cambria",
+        "summary": "Este parche de Cambria da a Sentence Reader un menú de pulsación larga en el teléfono, dibuja tus marcas en el momento en que las creas, repara las tablas de contenidos rotas al abrir y recupera la pantalla de fin de libro.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Un menú de pulsación larga para Sentence Reader en el teléfono",
+                "body": "La barra de herramientas inferior desaparece en teléfonos y tabletas. Mantén pulsada cualquier parte de la página para abrir bajo tu dedo las acciones de la frase actual: resaltar, subrayar, nota, preguntar a la IA, copiar y leer en voz alta. Desliza hasta una acción y levanta el dedo para ejecutarla, o levántalo en su sitio y toca. La navegación, el cambio entre frase y párrafo, las consultas de plugins, los paneles y la salida quedan detrás de Más. Tocar la frase resaltada abre el mismo menú."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Las marcas aparecen al instante",
+                "body": "Un resaltado o subrayado nuevo se dibuja en cuanto se guarda, en lugar de hasta un segundo después, y los libros con muchas marcas ya no vuelven a dibujarlas todas con cada marca nueva."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Tablas de contenidos que apuntaban todos los capítulos a la portada",
+                "body": "Algunos libros convertidos enumeran todos los capítulos pero los dirigen a la primera página, de modo que la navegación caía en la portada, la etiqueta del capítulo era errónea y el desplazamiento continuo trataba todo el libro como un solo capítulo. El lector ahora reubica esas entradas en los capítulos que se abren con sus títulos."
+              },
+              {
+                "title": "La pantalla de fin de libro vuelve a ser accesible",
+                "body": "Pasar de la última página no hacía nada en el escritorio ni en el teléfono. El teclado, la rueda, el toque y el deslizamiento ahora terminan el libro."
+              },
+              {
+                "title": "Acciones de la frase al tocar",
+                "body": "Tocar la frase resaltada vuelve a abrir sus acciones; la versión anterior pasaba a la frase siguiente."
+              },
+              {
+                "title": "Proveedores de IA en puertos personalizados",
+                "body": "Se aceptan direcciones de proveedor HTTP con un puerto no predeterminado."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.1",
         "date": "2026-09-21",
         "codename": "Cambria",

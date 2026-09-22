@@ -171,6 +171,53 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.2",
+        "date": "2026-09-22",
+        "codename": "Cambria",
+        "summary": "Dieser Cambria-Patch gibt dem Sentence Reader auf Telefonen ein Menü für langes Drücken, zeichnet deine Markierungen in dem Moment, in dem du sie setzt, repariert beschädigte Inhaltsverzeichnisse beim Öffnen und bringt den Bildschirm am Buchende zurück.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Ein Menü für langes Drücken im Sentence Reader auf Telefonen",
+                "body": "Die untere Werkzeugleiste entfällt auf Telefonen und Tablets. Drücke eine beliebige Stelle auf der Seite und halte sie gedrückt, um die Aktionen des aktuellen Satzes unter deinem Finger zu öffnen: Hervorheben, Unterstreichen, Notiz, KI fragen, Kopieren und Vorlesen. Fahre auf eine Aktion und lass los, um sie auszuführen, oder lass an Ort und Stelle los und tippe. Navigation, der Wechsel zwischen Satz und Absatz, das Nachschlagen über Plugins, die Panels und das Verlassen liegen hinter „Mehr“. Ein Tipp auf den hervorgehobenen Satz öffnet dasselbe Menü."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Markierungen erscheinen sofort",
+                "body": "Eine neue Hervorhebung oder Unterstreichung wird schon beim Speichern gezeichnet statt erst bis zu einer Sekunde später, und in Büchern mit vielen Markierungen werden nicht mehr für jede neue sämtliche neu gezeichnet."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Inhaltsverzeichnisse, die jedes Kapitel auf das Cover verwiesen",
+                "body": "Manche konvertierten Bücher listen jedes Kapitel auf, verweisen aber alle auf die erste Seite; die Navigation landete daher auf dem Cover, die Kapitelbezeichnung war falsch und der fortlaufende Scroll-Modus behandelte das ganze Buch als ein Kapitel. Der Reader verschiebt diese Einträge jetzt in die Kapitel, die mit ihren Titeln beginnen."
+              },
+              {
+                "title": "Der Bildschirm am Buchende ist wieder erreichbar",
+                "body": "Das Umblättern über die letzte Seite hinaus tat auf dem Desktop und auf Telefonen nichts. Tastatur, Mausrad, Tipp und Wisch beenden das Buch jetzt alle."
+              },
+              {
+                "title": "Satzaktionen bei Berührung",
+                "body": "Ein Tipp auf den hervorgehobenen Satz öffnet seine Aktionen wieder; die vorherige Version schritt stattdessen zum nächsten Satz."
+              },
+              {
+                "title": "KI-Anbieter mit benutzerdefinierten Ports",
+                "body": "HTTP-Adressen von Anbietern mit einem vom Standard abweichenden Port werden akzeptiert."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.1",
         "date": "2026-09-21",
         "codename": "Cambria",
