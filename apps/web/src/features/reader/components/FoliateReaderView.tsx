@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TFunction } from "i18next";
 import { useAtom, useSetAtom } from "jotai";
-import { Spinner } from "@read-aware/ui";
+import { Spinner, useToast } from "@read-aware/ui";
 import { AppError } from "@read-aware/core";
 import { cn } from "@read-aware/ui/cn";
 import { ReaderFailureView } from "./ReaderFailureView";
@@ -53,7 +53,7 @@ import {
 import { parseBookFile } from "../lib/parse-book";
 import { ensureUsableToc } from "../lib/toc-synthesis";
 import { useReadAloud } from "../hooks/useReadAloud";
-import { createReaderPanelIntent, readerPanelIntentAtom } from "../state/panel-intent";
+import { createReaderPanelIntent, readerPanelIntentAtom, type ReaderPanelKind } from "../state/panel-intent";
 import { useTextUnitNavigator } from "../hooks/useTextUnitNavigator";
 import { readTextUnitModeState } from "../lib/text-unit-mode-state";
 import type { ModeRequest, ReadingModeController } from "../lib/reading-mode-controller";
@@ -74,6 +74,10 @@ import { useAskAiEnabled } from "../../ai/hooks/useAskAiEnabled";
 import type { Note, Highlight } from "../../annotations/lib/annotation-types";
 import { observeReaderAnnotations } from "../lib/observe-reader-annotations";
 import { hasCoarsePointer, isIOS, suppressNativeContextMenu } from "../../../platform/environment";
+import { localKV } from "../../../platform/local-store";
+import { ReaderHoldMenu } from "./ReaderHoldMenu";
+import { useReaderHoldMenu } from "../hooks/useReaderHoldMenu";
+import { useTextUnitHoldActions } from "../hooks/useTextUnitHoldActions";
 import { resolveDrawnRangeTap } from "../lib/content-tap";
 import {
   forwardKeyDownToApp,
@@ -215,6 +219,8 @@ const TOUCH_STEP_THRESHOLD_PX = 48;
 // be turned at all on a touch device.
 const FIXED_SWIPE_MIN_PX = 60;
 const FIXED_SWIPE_MAX_MS = 600;
+/** Device-local flag: the hold menu's one-time introduction has been shown. */
+const HOLD_MENU_HINT_KEY = "read-aware-hold-menu-hint";
 
 /** Map a reading mode to the foliate renderer's `flow` + column attributes. */
 function layoutForReadingMode(mode: ReadingMode): {
@@ -574,6 +580,9 @@ export function FoliateReaderView({
           ),
     );
   };
+  // Touch: the tap on the resting sentence opens the hold menu where the
+  // finger landed (set once the hold menu hook exists below).
+  const holdMenuOpenAtRef = useRef<(doc: Document, x: number, y: number) => void>(() => {});
 
   /** Map an in-book element's rect to reader-viewport coords for anchoring. */
   const anchorRectForElement = useCallback((el: Element): SelectionOverlayRect | null => {
@@ -1009,6 +1018,74 @@ export function FoliateReaderView({
   // 导航条的面板直达按钮：意图 atom 由 session（点亮 chrome）与
   // ReaderShellOverlay（打开目标面板）各自消费。
   const dispatchPanelIntent = useSetAtom(readerPanelIntentAtom);
+  const openReaderPanel = useCallback((panel: ReaderPanelKind) => {
+    const id = selectedBook?.id;
+    if (id) dispatchPanelIntent(createReaderPanelIntent(id, panel));
+  }, [dispatchPanelIntent, selectedBook?.id]);
+
+  // ── Touch: the hold menu stands in for the navigator bar ──────────────────
+  // A finger held on the page opens the resting unit's actions where it
+  // rests; the desktop keeps the floating bar and the anchored sentence menu.
+  const coarsePointer = hasCoarsePointer();
+  const holdMenuRowRef = useRef<HTMLDivElement | null>(null);
+  const holdContent = useTextUnitHoldActions({
+    mode: textUnitMode,
+    unitId: activeUnitId,
+    tapToAdvance: textUnitModeSettings.tapToAdvance,
+    canStep: textUnitNavigator.status === "ready" || textUnitNavigator.status === "empty",
+    canReturn: textUnitNavigator.canReturn,
+    returnPending: textUnitNavigator.hasReturnPoint,
+    canAnnotate: textUnitNavigator.status === "ready" && textUnitNavigator.current?.cfiRange != null,
+    askAiEnabled,
+    readAloud: { available: readAloud.available, playing: readAloud.playing,
+      canStart: readAloud.snapshot.unavailableReason === null, toggle: readAloud.toggle },
+    pluginInput: pluginInputForSource("navigator"),
+    on: {
+      highlight: () => { void handleNavigatorMark("highlight"); },
+      underline: () => { void handleNavigatorMark("underline"); },
+      addNote: handleNavigatorAddNote,
+      askAI: handleNavigatorAskAI,
+      copy: () => { void copyTargetText(textUnitNavigator.current?.text ?? ""); },
+      prev: textUnitNavigator.prev,
+      next: textUnitNavigator.next,
+      returnToCurrent: textUnitNavigator.returnToCurrent,
+      unitChange: (unitId) => { if (onModeUnitChange) onModeUnitChange(unitId); else patchTextUnitModeSettings({ unitId }); },
+      openPanel: openReaderPanel,
+      exit: () => onExitTextUnitModeRef.current?.(),
+    },
+  });
+  const holdActionsRef = useRef(holdContent.actions);
+  holdActionsRef.current = holdContent.actions;
+  const holdMenu = useReaderHoldMenu({
+    enabled: textUnitModeEngineActive && coarsePointer,
+    readerRootRef,
+    menuRef: holdMenuRowRef,
+    liveDocuments: () => viewRef.current?.renderer?.getContents().map(content => content.doc) ?? [],
+    run: index => holdActionsRef.current[index]?.run(),
+    itemCount: holdContent.actions.length + 1,
+  });
+  const holdMenuRef = useRef(holdMenu);
+  holdMenuRef.current = holdMenu;
+  holdMenuOpenAtRef.current = (doc, clientX, clientY) => {
+    if (holdMenu.isOpen()) { holdMenu.close(); return; }
+    const readerRoot = readerRootRef.current;
+    const frameElement = doc.defaultView?.frameElement;
+    if (!readerRoot || !(frameElement instanceof HTMLElement)) return;
+    const frameRect = frameElement.getBoundingClientRect();
+    const anchor = clampRectToViewport({ left: clientX, top: clientY, width: 1, height: 1 }, frameRect,
+      readerRoot.getBoundingClientRect(), frameScaleOf(frameElement, frameRect));
+    if (anchor) holdMenu.openAt({ x: anchor.left, y: anchor.top });
+  };
+
+  // A hidden gesture gets one introduction per device, the first time the
+  // mode is entered on a touch screen.
+  const { toast } = useToast();
+  useEffect(() => {
+    if (!(textUnitModeEngineActive && coarsePointer)) return;
+    if (localKV.getItem(HOLD_MENU_HINT_KEY)) return;
+    localKV.setItem(HOLD_MENU_HINT_KEY, "1");
+    toast({ description: t("holdMenu.hint"), duration: 8000 });
+  }, [coarsePointer, t, textUnitModeEngineActive, toast]);
 
   // Stepping to another unit is a "resume reading" gesture: it dismisses
   // overlays raised for the one left behind (footnote and annotation menu)
@@ -1396,6 +1473,9 @@ export function FoliateReaderView({
   const attachDocListeners = useCallback((doc: Document, index: number) => {
     // Desktop: kill the webview's native right-click menu inside book content too.
     suppressNativeContextMenu(doc);
+    // Touch: a held finger opens the text-unit mode's action menu. Listeners
+    // live as long as the section document does.
+    holdMenuRef.current.attach(doc);
 
     // Reading-activity signal for the time tracker. Pointer movement, keys,
     // scrolling, and wheel inside the book all mean "still reading" — vital in
@@ -1617,6 +1697,11 @@ export function FoliateReaderView({
     );
 
     doc.addEventListener("click", (event) => {
+      // The click a touch synthesizes after a hold gesture is not a tap; and
+      // while the hold menu rests open, a tap on the page only dismisses it.
+      const holdMenu = holdMenuRef.current;
+      if (holdMenu.consumeClick()) { cancelPendingShellOpen(); return; }
+      if (holdMenu.isOpen()) { holdMenu.close(); cancelPendingShellOpen(); return; }
       // Tapping an existing mark opens its recolor menu (via `show-annotation`);
       // skip the tap-to-toggle-shell handling so the two don't fight.
       const hit = viewRef.current?.renderer
@@ -1635,7 +1720,11 @@ export function FoliateReaderView({
           modeActive: textUnitModeActiveStateRef.current,
         });
         cancelPendingShellOpen();
-        if (tap === "unit-menu") unitMenuToggleRef.current(doc, event.clientX, event.clientY);
+        if (tap === "unit-menu") {
+          // Touch has one sentence menu — the hold menu — opened by tap or hold alike.
+          if (hasCoarsePointer()) holdMenuOpenAtRef.current(doc, event.clientX, event.clientY);
+          else unitMenuToggleRef.current(doc, event.clientX, event.clientY);
+        }
         return;
       }
       // A tap on empty content dismisses any open recolor menu.
@@ -2301,7 +2390,7 @@ export function FoliateReaderView({
           （含用户在设置里的排布），只是目标换成静息句。与选区菜单互斥：
           活动选区在场时句级菜单让位（关闭 effect 之外再加渲染护栏，任何
           时序下两者都不可能同帧出现）。 */}
-      {textUnitModeEngineActive && !selection && textUnitNavigator.current && (
+      {textUnitModeEngineActive && !coarsePointer && !selection && textUnitNavigator.current && (
         <ReaderSelectionMenu
           selection={
             unitMenuAnchor
@@ -2333,7 +2422,19 @@ export function FoliateReaderView({
           pluginInput={pluginInputForSource("navigator")}
         />
       )}
-      {textUnitMode && (
+      {textUnitMode && coarsePointer && (
+        <ReaderHoldMenu
+          state={holdMenu.state}
+          title={holdContent.title}
+          actions={holdContent.actions}
+          moreLabel={holdContent.moreLabel}
+          moreItems={holdContent.moreItems}
+          menuRef={holdMenuRowRef}
+          onMoreOpenChange={holdMenu.setMoreOpen}
+          onClose={holdMenu.close}
+        />
+      )}
+      {textUnitMode && !coarsePointer && (
         <TextUnitNavigatorBar
           visible={textUnitModeEngineActive && !isLoading && !error}
           mode={textUnitMode}
@@ -2344,10 +2445,7 @@ export function FoliateReaderView({
           tapToAdvance={textUnitModeSettings.tapToAdvance}
           unitId={activeUnitId}
           onUnitChange={(unitId) => onModeUnitChange ? onModeUnitChange(unitId) : patchTextUnitModeSettings({ unitId })}
-          onOpenPanel={(panel) => {
-            const id = selectedBook?.id;
-            if (id) dispatchPanelIntent(createReaderPanelIntent(id, panel));
-          }}
+          onOpenPanel={openReaderPanel}
           onPrev={textUnitNavigator.prev}
           onNext={textUnitNavigator.next}
           onReturnToCurrent={textUnitNavigator.returnToCurrent}

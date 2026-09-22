@@ -56,6 +56,9 @@
     "askAi": "Ask AI about this",
     "remove": "Remove"
   },
+  "holdMenu": {
+    "hint": "Press and hold the page to open actions for the current sentence or paragraph. Slide onto one and lift to run it."
+  },
   "recolor": "Recolor {{color}}",
   "colors": {
     "yellow": "yellow",

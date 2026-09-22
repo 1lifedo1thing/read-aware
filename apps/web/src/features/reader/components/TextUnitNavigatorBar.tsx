@@ -111,7 +111,8 @@ function BarButton({
  *
  * Compact layouts put marks and notes first, with other actions in More.
  * The anchored sentence menu still carries the full set of selection actions.
- * Tap-to-advance owns the forward step on touch; the grip moves the whole bar.
+ * Touch screens do not show the bar at all: the hold menu (ReaderHoldMenu)
+ * carries the same actions there, so this strip is a precise-pointer control.
  */
 export function TextUnitNavigatorBar({
   visible,

@@ -56,6 +56,9 @@
     "askAi": "Preguntar a la IA sobre esto",
     "remove": "Quitar"
   },
+  "holdMenu": {
+    "hint": "Mantén pulsada la página para abrir las acciones de la frase o el párrafo actual. Desliza hasta una acción y suelta para ejecutarla."
+  },
   "recolor": "Cambiar a color {{color}}",
   "colors": {
     "yellow": "amarillo",

@@ -56,6 +56,9 @@
     "askAi": "KI dazu fragen",
     "remove": "Entfernen"
   },
+  "holdMenu": {
+    "hint": "Halte die Seite gedrückt, um die Aktionen für den aktuellen Satz oder Absatz zu öffnen. Ziehe auf eine Aktion und lass los, um sie auszuführen."
+  },
   "recolor": "In {{color}} umfärben",
   "colors": {
     "yellow": "Gelb",

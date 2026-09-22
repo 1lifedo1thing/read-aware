@@ -56,6 +56,9 @@
     "askAi": "就此询问 AI",
     "remove": "移除"
   },
+  "holdMenu": {
+    "hint": "长按正文可打开当前句或段的操作菜单；按住滑到某项后松手即可执行。"
+  },
   "recolor": "改为{{color}}",
   "colors": {
     "yellow": "黄色",
