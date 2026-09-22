@@ -7,7 +7,7 @@
  * — exactly the build where every VITE_* env default (`.env.development`) is
  * absent. This is what lets the sync layer hold its invariant: a
  * dev-IDENTIFIED bundle never defaults to the production relay, no matter
- * how it was built (see sync-scheduler.ts defaultRelayUrl).
+ * how it was built (see sync/relay-url.ts defaultRelayUrl).
  *
  * Hydrated once at boot (`getName` is async IPC); false until then — boot
  * awaits it before any consumer can ask (main.tsx).

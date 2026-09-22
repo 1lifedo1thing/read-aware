@@ -334,6 +334,9 @@ jobs:
             exit 1
           fi
 
+      - name: Verify production account and site URLs survive preloaded dev env
+        run: bun test apps/web/build/relay-url.test.ts apps/web/src/platform/app-identity.test.ts
+
       - name: Require Apple signing secrets
         if: startsWith(matrix.platform, 'macos')
         run: |

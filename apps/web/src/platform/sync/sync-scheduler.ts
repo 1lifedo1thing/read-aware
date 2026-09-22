@@ -53,68 +53,15 @@ import {
 } from "./transport-registry";
 import { createTransportFeedRelay, type TransportFeedJournal } from "./transport-feed";
 import { TransportSessionCache } from "./transport-session-cache";
-import { isDevBundle } from "../app-identity";
+import { defaultRelayUrl } from "./relay-url";
 import { lastSuccessfulSyncAt } from "./sync-status";
+
+export { DEFAULT_RELAY_URL } from "./relay-url";
 
 const log = createLogger("sync");
 
-export const DEFAULT_RELAY_URL = "https://relay.readaware.app";
 /** Dev override (localKV): point the client at `wrangler dev`. */
 const RELAY_URL_KV_KEY = "read-aware-sync-relay-url";
-
-/**
- * Dev-session default when no KV override exists: `VITE_READAWARE_RELAY_URL`
- * baked by the dev server. The KV override is DATA, so "Delete all data"
- * rightly wipes it — which used to silently re-point a dev install at
- * production mid-test. Env-var fallback survives any wipe; production builds
- * never see it (DEV-gated, and the release pipeline sets no such var).
- */
-/** Where a dev-IDENTIFIED bundle points when nothing else says otherwise. */
-const DEV_BUNDLE_RELAY_URL = "http://localhost:8787";
-
-function defaultRelayUrl(): string {
-  // Present ONLY when a developer bakes it (dev server env, or a dev-signed
-  // bundled build for a device that cannot reach a dev server) — the release
-  // pipeline sets no such variable, so production always falls through.
-  const dev = import.meta.env.VITE_READAWARE_RELAY_URL as string | undefined;
-  if (dev) {
-    if (import.meta.env.DEV) {
-      // On a phone, "localhost" is the phone — the URL needs the dev
-      // machine's address instead. The Tauri CLI knows it exactly
-      // (TAURI_DEV_HOST, baked in by vite.config), so prefer that ground
-      // truth over any guessing.
-      const devHost = import.meta.env.VITE_TAURI_DEV_HOST as string | undefined;
-      if (devHost) return dev.replace("localhost", devHost);
-      // No TAURI_DEV_HOST: fall back to the page's own hostname — the
-      // frontend was served from the dev machine, so on a LAN-served device
-      // that hostname reaches it. But NEVER substitute a `*.localhost` host:
-      // that is Tauri's own proxy scheme (`tauri.localhost` on mobile dev
-      // without TAURI_DEV_HOST), and its interceptor answers EVERY port with
-      // the SPA itself — the relay would "reply" 200 index.html and every
-      // sync call would fail with a misleading decode error. Keeping
-      // "localhost" fails honestly (connection refused) instead.
-      const pageHost = window.location.hostname;
-      if (
-        pageHost &&
-        pageHost !== "localhost" &&
-        pageHost !== "127.0.0.1" &&
-        !pageHost.endsWith(".localhost")
-      ) {
-        return dev.replace("localhost", pageHost);
-      }
-    }
-    // Bundled dev builds load from tauri://localhost — no page host to
-    // follow, so the baked URL must already be the reachable address.
-    return dev;
-  }
-  // The last fallback is gated on runtime identity: a dev-IDENTIFIED bundle
-  // built in release mode (`tauri build --config tauri.dev.conf.json`) sees
-  // no VITE_* defaults at all, and without this guard would silently point a
-  // dev install at the production relay. Local relay or bust — an
-  // unreachable local relay fails loudly instead of polluting production.
-  if (isDevBundle()) return DEV_BUNDLE_RELAY_URL;
-  return DEFAULT_RELAY_URL;
-}
 
 const PULL_INTERVAL_MS = 5 * 60_000;
 const PUSH_DEBOUNCE_MS = 3_000;
