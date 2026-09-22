@@ -16,12 +16,20 @@ export type QueryObservationSources = {
 };
 
 /** One bounded poll and callback at a time. Keep write provenance through
- * coalescing, failed reads and callback retries, without keeping an event log. */
+ * coalescing, failed reads and callback retries, without keeping an event log.
+ *
+ * A tracked change (a domain broadcast, a projection invalidation) announced
+ * while no poll is running is read at once, so a reader who just made a mark
+ * sees it as soon as the store answers rather than at the next scheduled tick.
+ * Changes announced during a poll invalidate its sample and wait for the
+ * scheduler: a burst of announcements costs one read per tick, never a read
+ * per announcement. The scheduler also paces the periodic re-read that catches
+ * changes no source announces. */
 export function observeQuery<T>(read: () => Promise<T>, handler: (event: QueryObservation<T>) => unknown,
   deps: { schedule(work: () => void): () => void; report(error: unknown): void; failureCode: string; release(): void },
   lifetime?: AbortSignal, sources?: QueryObservationSources): () => void {
   const controller = new AbortController(), causes = new ObservationCauses(sources?.origin);
-  let disposed = false, revision = 0, delivered: string | undefined;
+  let disposed = false, polling = false, revision = 0, delivered: string | undefined;
   let cancelTimer: (() => void) | undefined, unsubscribe: (() => void) | undefined;
   let retry: { identity: string; source: object } | undefined, unread: object | undefined;
   const dispose = () => {
@@ -35,7 +43,19 @@ export function observeQuery<T>(read: () => Promise<T>, handler: (event: QueryOb
   const schedule = () => {
     if (!disposed) cancelTimer = deps.schedule(() => { cancelTimer = undefined; void poll(); });
   };
+  // A change announced while a poll is running is caught by that poll's
+  // revision check and read at the next tick; otherwise read it now.
+  const pollNow = () => {
+    if (disposed || polling) return;
+    cancelTimer?.(); cancelTimer = undefined;
+    void poll();
+  };
   const poll = async () => {
+    if (polling) return;
+    polling = true;
+    try { await pollOnce(); } finally { polling = false; }
+  };
+  const pollOnce = async () => {
     // Native writes can be visible before their completion broadcast. Await
     // short durable work only, never model tasks or observation callbacks.
     if (sources) {
@@ -71,7 +91,7 @@ export function observeQuery<T>(read: () => Promise<T>, handler: (event: QueryOb
     schedule();
   };
   try {
-    unsubscribe = sources?.subscribe(source => { if (!disposed) causes.add(source); });
+    unsubscribe = sources?.subscribe(source => { if (!disposed) { causes.add(source); pollNow(); } });
     lifetime?.addEventListener("abort", dispose, { once: true });
     if (lifetime?.aborted) dispose();
     else void poll();

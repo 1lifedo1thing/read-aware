@@ -23,6 +23,17 @@ test("reconciliation removes obsolete anchors, updates style and restores a note
     { value: "shared", id: "n", color: "#78716c", style: "note" }]);
   expect(f.errors).toEqual([]);
 });
+test("marks that did not change are not repainted; a recolor and a new mark are", async () => {
+  const f = fixture();
+  const kept = highlight("kept", "kept"), recolored = highlight("re", "re"), noted = note("n", "noted");
+  await reconcileAnnotationMarks(f.view, [kept, recolored, noted],
+    [kept, { ...recolored, color: "green" }, noted, highlight("added", "added")],
+    new AbortController().signal, error => f.errors.push(error));
+  expect(f.deleted).toEqual([]);
+  expect(f.added.map(item => item.value)).toEqual(["re", "added"]);
+  expect(f.added[0]!.color).toBe("#4ade80");
+  expect(f.errors).toEqual([]);
+});
 test("a shared anchor is painted once with the same first highlight the menu resolves", async () => {
   const f = fixture();
   await reconcileAnnotationMarks(f.view, [], [note("n", "same"), highlight("first", "same"), highlight("second", "same")],

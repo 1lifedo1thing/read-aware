@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { AppError, normalizeAnnotationObservation, type AnnotationObservation, type AnnotationObservationQuery, type AnnotationObservationResult } from "@read-aware/core";
 import { AnnotationObserver } from "./annotation-observer";
+import { stampEventCause } from "../platform/domain-actor";
 
 const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0));
 const empty: AnnotationObservationResult = { kind: "page", page: { items: [], nextCursor: null, consistency: "live" } };
@@ -41,6 +42,23 @@ test("queries/results cannot be mutated by callers and failed callbacks are retr
   query.query.bookId = "other"; await tick(); fail = false; await f.next(); await f.next();
   expect(accepted.every(q => q.kind === "page" && q.query?.bookId === "b")).toBe(true);
   expect(seen).toHaveLength(2); expect(seen[1]).toMatchObject({ revision: 2, result: empty }); expect(empty.page.nextCursor).toBeNull(); stop();
+});
+
+test("an announced change is read at once; changes during a read wait for the scheduler", async () => {
+  const f = fixture(), seen: unknown[] = []; let reads = 0, result = 0, notify!: (source: object) => void;
+  let gate: (() => void) | undefined;
+  const sources = { subscribe: (fn: (source: object) => void) => { notify = fn; return () => {}; }, settle: async () => {}, hasPending: () => false };
+  const stop = f.observer.observeSnapshot(async () => { reads++; if (gate) await new Promise<void>(r => { gate = r; }); return result; }, event => { seen.push(event); }, undefined, sources);
+  await tick(); expect(reads).toBe(1); expect(seen).toHaveLength(1); expect(f.timers.size).toBe(1);
+  // Idle observer: the broadcast of a new mark polls without waiting for the tick.
+  result = 1; notify(stampEventCause({})); await tick();
+  expect(reads).toBe(2); expect(seen).toHaveLength(2); expect(f.timers.size).toBe(1);
+  // A change during an in-flight read invalidates that sample; the next tick re-reads once.
+  gate = () => {}; result = 2; await f.next(); expect(reads).toBe(3);
+  notify(stampEventCause({})); notify(stampEventCause({})); result = 3; const release = gate; gate = undefined; release(); await tick();
+  expect(reads).toBe(3); expect(seen).toHaveLength(2); expect(f.timers.size).toBe(1);
+  await f.next(); expect(reads).toBe(4); expect(seen).toHaveLength(3); expect(seen.at(-1)).toMatchObject({ status: "ready", result: 3 });
+  stop(); expect(f.timers.size).toBe(0);
 });
 
 test("no overlapping reads/deliveries and disposal drops pending reads and render callbacks", async () => {

@@ -258,21 +258,35 @@ export function applyNotes(view: FoliateView, notes: Note[], highlights: Highlig
 }
 
 /** Reconcile only stored marks, never the separate navigator overlay namespace. */
+/** The mark each anchored range shows for a set of stored annotations. A
+ *  highlight owns a shared range; notes remain reachable through its menu. */
+function marksFor(items: ReadonlyArray<Highlight | Note>): Map<string, FoliateAnnotation> {
+  const marks = new Map<string, FoliateAnnotation>();
+  for (const item of items) {
+    if (item.type !== "highlight") continue;
+    const mark = toFoliateAnnotation(item);
+    if (mark && !marks.has(mark.value)) marks.set(mark.value, mark);
+  }
+  for (const item of items) {
+    if (item.type === "note" && item.cfiRange && !marks.has(item.cfiRange)) {
+      marks.set(item.cfiRange, { value: item.cfiRange, id: item.id, color: NOTE_STROKE, style: "note" });
+    }
+  }
+  return marks;
+}
+
+const sameMark = (a: FoliateAnnotation | undefined, b: FoliateAnnotation) =>
+  !!a && a.value === b.value && a.id === b.id && a.color === b.color && a.style === b.style;
+
+/** Bring the drawn marks from `previous` to `next`: remove anchors that lost
+ *  their mark, paint anchors whose mark is new or changed, and leave unchanged
+ *  marks alone. Each engine paint resolves a CFI and redraws, so a book with
+ *  many marks must not repaint them all for one new highlight; documents that
+ *  load later receive every mark through overlay recreation instead. */
 export async function reconcileAnnotationMarks(view: Pick<FoliateView, "addAnnotation" | "deleteAnnotation">,
   previous: Array<Highlight | Note>, next: Array<Highlight | Note>, signal: AbortSignal,
   report: (error: unknown) => void): Promise<void> {
-  const desired = new Map<string, FoliateAnnotation>();
-  // A highlight owns a shared range; notes remain reachable through its menu.
-  for (const item of next) {
-    if (item.type !== "highlight") continue;
-    const mark = toFoliateAnnotation(item);
-    if (mark && !desired.has(mark.value)) desired.set(mark.value, mark);
-  }
-  for (const item of next) {
-    if (item.type === "note" && item.cfiRange && !desired.has(item.cfiRange)) {
-      desired.set(item.cfiRange, { value: item.cfiRange, id: item.id, color: NOTE_STROKE, style: "note" });
-    }
-  }
+  const drawn = marksFor(previous), desired = marksFor(next);
   for (const value of new Set(previous.map(item => item.cfiRange).filter((value): value is string => !!value))) {
     if (signal.aborted) return;
     if (!desired.has(value)) {
@@ -282,6 +296,7 @@ export async function reconcileAnnotationMarks(view: Pick<FoliateView, "addAnnot
   }
   for (const mark of desired.values()) {
     if (signal.aborted) return;
+    if (sameMark(drawn.get(mark.value), mark)) continue;
     try { await view.addAnnotation(mark); }
     catch (error) { if (!signal.aborted) report(error); }
   }
