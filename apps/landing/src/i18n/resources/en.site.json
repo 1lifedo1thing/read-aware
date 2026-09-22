@@ -171,6 +171,27 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.3",
+        "date": "2026-09-23",
+        "codename": "Cambria",
+        "summary": "This Cambria patch starts ReadAware again on e-readers with an older browser engine, and reopens books where you last read, including after turning back.",
+        "groups": [
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Could not start on some Android e-readers",
+                "body": "Devices whose system web engine dates from before late 2023, such as many e-ink readers without Google Play, have stopped at a \"Could not start\" screen since 0.6.0. The app now fills in the engine features it relies on itself, and that screen names the engine version so a report can be acted on."
+              },
+              {
+                "title": "Books reopening at a page you had left",
+                "body": "Since 0.6.0 the app kept the furthest page you had reached and ignored turning back, so closing a book after going back to an earlier page reopened it at the later one. A book now reopens where you last were, on every device, and existing progress is corrected from your reading history on first launch."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.2",
         "date": "2026-09-22",
         "codename": "Cambria",

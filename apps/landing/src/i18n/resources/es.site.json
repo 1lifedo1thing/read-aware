@@ -171,6 +171,27 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.3",
+        "date": "2026-09-23",
+        "codename": "Cambria",
+        "summary": "Este parche de Cambria hace que ReadAware vuelva a arrancar en lectores de libros electrónicos con un motor de navegador antiguo y reabre los libros donde los dejaste, incluso después de volver atrás.",
+        "groups": [
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "No arrancaba en algunos lectores de libros electrónicos Android",
+                "body": "Desde 0.6.0, los dispositivos cuyo motor web del sistema data de antes de finales de 2023, como muchos lectores de tinta electrónica sin Google Play, se quedaban en una pantalla «No se pudo iniciar». La aplicación ahora rellena por sí misma las funciones del motor en las que se apoya, y esa pantalla indica la versión del motor para que un informe pueda atenderse."
+              },
+              {
+                "title": "Los libros reabren donde los dejaste",
+                "body": "Desde 0.6.0 la aplicación conservaba la página más lejana que habías alcanzado y pasaba por alto que volvieras atrás, de modo que cerrar un libro tras regresar a una página anterior lo reabría en la posterior. Ahora un libro reabre donde estabas por última vez, en todos los dispositivos, y el progreso existente se corrige a partir de tu historial de lectura en el primer arranque."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.2",
         "date": "2026-09-22",
         "codename": "Cambria",

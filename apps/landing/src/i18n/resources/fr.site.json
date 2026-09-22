@@ -171,6 +171,27 @@
     "leadIn": " : ",
     "entries": [
       {
+        "version": "0.6.3",
+        "date": "2026-09-23",
+        "codename": "Cambria",
+        "summary": "Ce correctif de Cambria relance ReadAware sur les liseuses dotées d’un moteur de navigation plus ancien, et rouvre les livres là où vous en étiez, y compris après un retour en arrière.",
+        "groups": [
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Un démarrage impossible sur certaines liseuses Android",
+                "body": "Les appareils dont le moteur Web du système date d’avant fin 2023, comme de nombreuses liseuses à encre électronique sans Google Play, restaient bloqués depuis 0.6.0 sur un écran « Impossible de démarrer ». L’application fournit désormais elle-même les fonctions du moteur sur lesquelles elle s’appuie, et cet écran précise la version du moteur afin qu’un signalement puisse être traité."
+              },
+              {
+                "title": "Des livres qui rouvrent à la page où vous les avez laissés",
+                "body": "Depuis 0.6.0, l’application retenait la page la plus avancée atteinte et ignorait les retours en arrière : fermer un livre après être revenu à une page antérieure le rouvrait donc à la plus avancée. Un livre rouvre désormais là où vous vous étiez arrêté, sur tous les appareils, et la progression existante est corrigée à partir de votre historique de lecture au premier lancement."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.2",
         "date": "2026-09-22",
         "codename": "Cambria",

@@ -171,6 +171,27 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.3",
+        "date": "2026-09-23",
+        "codename": "Cambria",
+        "summary": "Dieser Cambria-Patch startet ReadAware wieder auf E-Readern mit älterer Browser-Engine und öffnet Bücher wieder an der Stelle, an der du zuletzt gelesen hast, auch nach dem Zurückblättern.",
+        "groups": [
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Start auf manchen Android-E-Readern nicht möglich",
+                "body": "Geräte, deren System-Web-Engine aus der Zeit vor Ende 2023 stammt, etwa viele E-Ink-Reader ohne Google Play, blieben seit 0.6.0 auf einem „Konnte nicht starten“-Bildschirm hängen. Die App stellt die Engine-Funktionen, auf die sie angewiesen ist, jetzt selbst bereit, und dieser Bildschirm nennt die Engine-Version, damit einer Meldung nachgegangen werden kann."
+              },
+              {
+                "title": "Bücher öffnen sich wieder an der letzten Lesestelle",
+                "body": "Seit 0.6.0 merkte sich die App die am weitesten fortgeschrittene Seite und ignorierte das Zurückblättern: Wer zu einer früheren Seite zurückging und das Buch dann schloss, fand es beim nächsten Öffnen wieder auf der späteren Seite. Ein Buch öffnet sich jetzt auf jedem Gerät wieder an der Stelle, an der du zuletzt warst, und der vorhandene Fortschritt wird beim ersten Start anhand deiner Lesegeschichte korrigiert."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.2",
         "date": "2026-09-22",
         "codename": "Cambria",
