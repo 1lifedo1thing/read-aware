@@ -674,7 +674,10 @@ pub fn run() {
     let context = tauri::generate_context!();
     // This precedes even single-instance dispatch: a misconfigured local dev
     // launch must not forward events to the installed production application.
-    app_environment::validate(context.config(), cfg!(dev))
+    // The mobile dev build is the generated Android/iOS project itself: it
+    // carries the production package name by construction and has no
+    // installed sibling to forward into, so only desktop dev must rename.
+    app_environment::validate(context.config(), cfg!(all(dev, desktop)))
         .expect("unsafe ReadAware application identity");
     // Before the builder: a panic anywhere past logger init must reach the
     // file. (Panics before the log plugin initializes still hit the chained
