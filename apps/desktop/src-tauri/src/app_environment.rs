@@ -2,6 +2,15 @@
 //! an existing installation. Frontend dev mode alone cannot isolate native data.
 pub(crate) const PRODUCTION_ID: &str = "com.readaware.app";
 
+/// Acceptance harnesses that a local dev launch may run under: each owns a
+/// disposable, non-production data root, and its driver script refuses any
+/// other profile (`apps/web/tests/desktop/*-acceptance.ts`, the capability
+/// e2e config). Keep this list and those scripts in step.
+const ACCEPTANCE_IDS: &[&str] = &[
+    "com.readaware.app.capability-e2e",
+    "com.readaware.app.progress-acceptance-20260920",
+];
+
 pub(crate) fn validate(config: &tauri::Config, local_dev: bool) -> Result<(), &'static str> {
     let identifier = config.identifier.as_str();
     let dev_name = config.product_name.as_deref().unwrap_or("").starts_with("ReadAware Dev");
@@ -9,8 +18,7 @@ pub(crate) fn validate(config: &tauri::Config, local_dev: bool) -> Result<(), &'
     if dev_name != dev_id {
         return Err("ReadAware Dev must use an isolated development bundle identifier");
     }
-    // The existing acceptance harness has its own non-production data root.
-    if local_dev && !dev_id && identifier != "com.readaware.app.capability-e2e" {
+    if local_dev && !dev_id && !ACCEPTANCE_IDS.contains(&identifier) {
         return Err("Local dev requires the development identity. Start with `bun run dev`.");
     }
     Ok(())
@@ -35,6 +43,9 @@ mod tests {
         assert!(validate(&config("com.readaware.app.dev", "ReadAware"), true).is_err());
         assert!(validate(&config("com.readaware.app.dev", "ReadAware Dev"), true).is_ok());
         assert!(validate(&config("com.readaware.app.capability-e2e", "ReadAware Capability Tests"), true).is_ok());
+        assert!(validate(&config("com.readaware.app.progress-acceptance-20260920", "ReadAware Progress Acceptance"), true).is_ok());
+        assert!(validate(&config("com.readaware.app.progress-acceptance-20260920", "ReadAware Dev Progress Acceptance"), true).is_err());
+        assert!(validate(&config("com.readaware.app.anything-else", "ReadAware"), true).is_err());
     }
 
     #[test]
