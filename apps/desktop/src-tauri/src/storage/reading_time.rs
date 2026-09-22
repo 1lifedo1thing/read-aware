@@ -520,11 +520,12 @@ pub struct ReadingSessionBucket {
     /// Epoch ms of the first and latest tick/page turn in the bucket.
     pub started_at: i64,
     pub last_at: i64,
-    /// The furthest position seen (the `book.progressed`-shaped payload the
+    /// The latest position noted (the `book.progressed`-shaped payload the
     /// reader reports), or null when only time accrued.
     pub progress: Value,
     /// When that position was observed — moves with page turns only, never
-    /// with ticks. Only breaks ties between equal positions.
+    /// with ticks, and never backwards. This is the clock the projection's
+    /// last-observed rule compares once the bucket's event is flushed.
     pub position_at: Option<i64>,
 }
 
@@ -587,9 +588,12 @@ pub(crate) fn reading_session_accrue_inner(
     read_session(conn, book_id, local_day, local_hour)
 }
 
-/// A page turn: advance the bucket's furthest position (creating the bucket
-/// with no time yet if the first tick has not fired). `at_epoch_ms` records
-/// when this position was observed; a later backward turn cannot replace it.
+/// A page turn: the bucket's position becomes `progress` (creating the bucket
+/// with no time yet if the first tick has not fired). Calls arrive in reading
+/// order through the trace's write queue, so the latest call IS the latest
+/// position — turning back to reread counts like any other turn. The
+/// position's clock only ever advances: a wall clock stepped backwards must
+/// not make this observation look older than the one it replaces.
 pub(crate) fn reading_session_position_inner(
     conn: &Connection,
     book_id: &str,
@@ -607,14 +611,8 @@ pub(crate) fn reading_session_position_inner(
          VALUES (?1, ?2, ?3, 0, ?4, ?4, ?5, ?4)
          ON CONFLICT(book_id, local_day, local_hour) DO UPDATE SET
             last_at = MAX(last_at, excluded.last_at),
-            progress_json = CASE WHEN progress_json IS NULL
-                OR ra_progress_compare(excluded.progress_json, progress_json) > 0
-                OR (ra_progress_compare(excluded.progress_json, progress_json) = 0 AND excluded.position_at >= position_at)
-                                 THEN excluded.progress_json ELSE progress_json END,
-            position_at = CASE WHEN progress_json IS NULL
-                OR ra_progress_compare(excluded.progress_json, progress_json) > 0
-                OR (ra_progress_compare(excluded.progress_json, progress_json) = 0 AND excluded.position_at >= position_at)
-                THEN excluded.position_at ELSE position_at END",
+            progress_json = excluded.progress_json,
+            position_at = MAX(COALESCE(position_at, 0), excluded.position_at)",
         params![book_id, local_day, local_hour, at_epoch_ms, progress.to_string()],
     )?;
     read_session(conn, book_id, local_day, local_hour)
@@ -698,14 +696,16 @@ pub(crate) fn reading_session_flush_in_transaction(
             params![book_id, local_day, local_hour, ms],
         )?;
         // Retired when nothing newer than the event remains: no unflushed
-        // time, nothing after the event's `endedAt`, and no position observed
-        // after the one the event carries.
+        // time, nothing after the event's `endedAt`, and no position noted
+        // after the one the event carries — a turn that landed between the
+        // caller reading the bucket and this flush shows as a later clock or,
+        // when the clock did not move, as a different position.
         tx.execute(
             "DELETE FROM reading_sessions_pending
               WHERE book_id = ?1 AND local_day = ?2 AND local_hour = ?3
                 AND ms <= 0 AND last_at <= ?4
                 AND (position_at IS NULL OR position_at <= ?5)
-                AND (progress_json IS NULL OR (?6 IS NOT NULL AND ra_progress_compare(progress_json, ?6) <= 0))",
+                AND (progress_json IS NULL OR (?6 IS NOT NULL AND ra_progress_compare(progress_json, ?6) = 0))",
             params![book_id, local_day, local_hour, ended_at, observed_at,
                 ev.payload.get("progress").filter(|p| p.is_object()).map(Value::to_string)],
         )?;

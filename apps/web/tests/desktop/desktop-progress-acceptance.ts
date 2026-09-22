@@ -37,7 +37,7 @@ export async function verifyProgressResume(bookId: string, page: number, section
 
 export async function runDesktopProgressAcceptance() {
   const path = await isolated();
-  const chapters = Array.from({ length: 5 }, (_, chapter) => `<section><title><p>Chapter ${chapter + 1}</p></title>${Array.from({ length: 40 }, (_, line) => `<p>Chapter ${chapter + 1}, paragraph ${line + 1}. Offline reading must keep the furthest position when a device reconnects. Another device may have a newer observation of an earlier page.</p>`).join("")}</section>`).join("");
+  const chapters = Array.from({ length: 5 }, (_, chapter) => `<section><title><p>Chapter ${chapter + 1}</p></title>${Array.from({ length: 40 }, (_, line) => `<p>Chapter ${chapter + 1}, paragraph ${line + 1}. A book reopens where it was last read, on any device, even after turning back. Another device's newer observation of an earlier page wins over an older one of a later page.</p>`).join("")}</section>`).join("");
   const source = `<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>science</genre><author><first-name>Acceptance</first-name><last-name>Fixture</last-name></author><book-title>Offline Progress Acceptance</book-title><lang>en</lang></title-info><document-info><author><nickname>Acceptance</nickname></author><date>2026-09-20</date><id>${crypto.randomUUID()}</id><version>1.0</version></document-info></description><body>${chapters}</body></FictionBook>`;
   const book = await createLibraryDomain("user").commands.books.importBook({ fileName: "offline-progress.fb2", data: new TextEncoder().encode(source) });
   const reader = createReadingDomain("user").commands;
@@ -56,7 +56,18 @@ export async function runDesktopProgressAcceptance() {
   const nearPosition = atSection(1), farPosition = atSection(3);
   await reader.close();
   const offlinePage = (await getBookRecord(book.id))?.progress?.currentLocation;
-  assert(offlinePage && offlinePage > nearPosition.currentLocation, "Offline session did not persist the farther position");
+  assert(offlinePage && offlinePage > nearPosition.currentLocation, "Offline session did not persist the third section");
+
+  // Turning BACK is a position like any other: reopen, go back one section,
+  // close — the book must reopen there, not at the furthest page (issue: the
+  // 0.6.0–0.6.2 furthest-position rule reopened at the old page every time).
+  await reader.openBook(book.id);
+  await reader.goTo({ bookId: book.id, contentVersion: readingRuntime.snapshot().location?.contentVersion, sectionIndex: 1 });
+  assert(readingRuntime.snapshot().pagination?.section.index === 1, "Reader did not turn back to the second section");
+  await reader.close();
+  const backPage = (await getBookRecord(book.id))?.progress?.currentLocation;
+  assert(backPage && backPage < offlinePage, "Turning back was not persisted");
+  const afterBack = await verifyProgressResume(book.id, backPage, 1);
 
   const relay = fakeRelay(), key = crypto.getRandomValues(new Uint8Array(32));
   const store = createIpcSyncStore();
@@ -70,21 +81,27 @@ export async function runDesktopProgressAcceptance() {
       localDay: "2026-09-20", localHour: 10,
       progress: { ...position, observedAt } },
   });
-  // Reconnect pulls the newer-but-earlier position before pushing offline work.
-  const near = remote(nearPosition, now + 1000, 0);
-  await relay.pushEvents([sealEvent(key, near)]);
+  // Reconnect pulls another device's LATER observation of a farther page
+  // before pushing offline work: the later observation wins.
+  await relay.pushEvents([sealEvent(key, remote(farPosition, now + 1000, 0))]);
   const pulled = await engine.pullOnce();
-  assert(pulled === 1, "The newer-but-earlier remote event was not actually pulled");
-  const afterNear = await verifyProgressResume(book.id, offlinePage, 2);
-  const pushed = await engine.pushOnce();
-  await engine.pullOnce(); // Echoes are idempotent, including our own session.
-  await verifyProgressResume(book.id, offlinePage, 2);
-
-  // A farther position wins even with an older position observation.
-  await relay.pushEvents([sealEvent(key, remote(farPosition, now - 10000, 1))]);
-  await engine.pullOnce();
+  assert(pulled === 1, "The newer remote event was not actually pulled");
   const afterFar = await verifyProgressResume(book.id, farPosition.currentLocation, 3);
+  const pushed = await engine.pushOnce();
+  await engine.pullOnce(); // Echoes are idempotent, including our own sessions.
+  await verifyProgressResume(book.id, farPosition.currentLocation, 3);
+
+  // The other device turns back: its newer observation of an EARLIER page wins.
+  await relay.pushEvents([sealEvent(key, remote(nearPosition, now + 2000, 1))]);
+  await engine.pullOnce();
+  const afterNear = await verifyProgressResume(book.id, nearPosition.currentLocation, 1);
+
+  // A farther page with an OLDER observation (an offline session that closed
+  // late) cannot override it, and a full replay lands on the same answer.
+  await relay.pushEvents([sealEvent(key, remote(farPosition, now - 10000, 2))]);
+  await engine.pullOnce();
+  const afterStale = await verifyProgressResume(book.id, nearPosition.currentLocation, 1);
   await invoke("rebuild_projections");
-  const afterReplay = await verifyProgressResume(book.id, farPosition.currentLocation, 3);
-  return { path, bookId: book.id, pulled, pushed, afterNear, afterFar, afterReplay };
+  const afterReplay = await verifyProgressResume(book.id, nearPosition.currentLocation, 1);
+  return { path, bookId: book.id, pulled, pushed, afterBack, afterFar, afterNear, afterStale, afterReplay };
 }

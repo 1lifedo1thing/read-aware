@@ -235,10 +235,13 @@ export type DomainEvent =
    * reached, observed at `endedAt`. Reading is modelled as sessions (one
    * event per book per local hour, closed by the hour rolling over, the book
    * or app closing, or a pause), so neither page turns nor ticks reach the
-   * log. `progress` is the furthest position reached in the bucket; the
-   * projection keeps the furthest position across devices, independent of
-   * observation or upload time. Supersedes `book.progressed` + `book.timeRecorded`, which
-   * remain replayable.
+   * log. `progress` is the position's own state — the LAST one observed in
+   * the bucket, back or forward; the projection keeps the LATEST OBSERVATION
+   * (`progress.observedAt`) across devices, never the latest event or the
+   * furthest page — a session that closes late on one device cannot
+   * overwrite a newer position from another, and a reader who turns back
+   * reopens where they turned back to. Supersedes `book.progressed` +
+   * `book.timeRecorded`, which remain replayable.
    */
   | DomainEventEnvelope<
       "book.sessionRecorded",

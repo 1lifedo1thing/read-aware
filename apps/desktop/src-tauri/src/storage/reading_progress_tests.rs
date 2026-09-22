@@ -14,6 +14,10 @@ fn saved(conn: &Connection) -> Value {
     .unwrap()
 }
 
+fn total_ms(conn: &Connection) -> i64 {
+    scalar::<i64>(conn, "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'")
+}
+
 #[test]
 fn ordering_agrees_with_frontend_fixtures() {
     let cases: Vec<Value> =
@@ -30,188 +34,146 @@ fn ordering_agrees_with_frontend_fixtures() {
 }
 
 #[test]
-fn offline_furthest_position_converges_in_both_orders_and_survives_replay() {
-    let far = session_event(
-        "tablet",
-        2000,
-        "b1",
-        60000,
-        1000,
-        2000,
-        10,
-        Some(observed(at(300), 2000)),
-    );
-    let near = session_event(
-        "computer",
-        3000,
-        "b1",
-        40000,
-        2000,
-        3000,
-        10,
-        Some(observed(at(200), 3000)),
-    );
+fn last_observed_position_converges_in_both_orders_and_survives_replay() {
+    // The tablet read on to page 300; the computer then turned BACK to 200.
+    let far = session_event("tablet", 2000, "b1", 60000, 1000, 2000, 10, Some(observed(at(300), 2000)));
+    let near = session_event("computer", 3000, "b1", 40000, 2000, 3000, 10, Some(observed(at(200), 3000)));
     for (local, remote) in [(&far, &near), (&near, &far)] {
         let (mut conn, dir) = conn_with_dir();
-        commit_events_inner(&mut conn, &[imported("import", 1000, "b1", "Furthest")]).unwrap();
+        commit_events_inner(&mut conn, &[imported("import", 1000, "b1", "Latest")]).unwrap();
         commit_events_inner(&mut conn, std::slice::from_ref(local)).unwrap();
-        super::super::events::apply_remote_events_inner(
-            &mut conn,
-            &dir,
-            std::slice::from_ref(remote),
-            None,
-        )
-        .unwrap();
-        assert_eq!(saved(&conn)["currentLocation"], 300);
-        assert_eq!(saved(&conn)["cfi"], at(300)["locator"]);
-        super::super::events::apply_remote_events_inner(
-            &mut conn,
-            &dir,
-            std::slice::from_ref(remote),
-            None,
-        )
-        .unwrap();
-        assert_eq!(
-            scalar::<i64>(
-                &conn,
-                "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
-            ),
-            100000
-        );
-        // An older observation from another offline device can still advance.
-        let further = session_event(
-            "further",
-            1500,
-            "b1",
-            50000,
-            1100,
-            1400,
-            10,
-            Some(observed(at(400), 1200)),
-        );
+        super::super::events::apply_remote_events_inner(&mut conn, &dir, std::slice::from_ref(remote), None).unwrap();
+        assert_eq!(saved(&conn)["currentLocation"], 200, "the page read last is where the book reopens");
+        assert_eq!(saved(&conn)["cfi"], at(200)["locator"]);
+        assert_eq!(scalar::<i64>(&conn, "SELECT progress_observed_at FROM books WHERE id='b1'"), 3000);
+        super::super::events::apply_remote_events_inner(&mut conn, &dir, std::slice::from_ref(remote), None).unwrap();
+        assert_eq!(total_ms(&conn), 100000, "redelivery counts no time twice");
+        // A farther page from a third device counts only by its own clock:
+        // observed before the computer's turn back, it cannot override it.
+        let further = session_event("further", 1500, "b1", 50000, 1100, 1400, 10, Some(observed(at(400), 1200)));
         super::super::events::apply_remote_events_inner(&mut conn, &dir, &[further], None).unwrap();
-        assert_eq!(saved(&conn)["currentLocation"], 400);
+        assert_eq!(saved(&conn)["currentLocation"], 200);
+        // Observed after it, any page wins — further or not.
+        let later = session_event("later", 3600, "b1", 10000, 3400, 3600, 10, Some(observed(at(250), 3500)));
+        super::super::events::apply_remote_events_inner(&mut conn, &dir, &[later], None).unwrap();
+        assert_eq!(saved(&conn)["currentLocation"], 250);
         let before = saved(&conn);
         let tx = conn.transaction().unwrap();
         replay_into(&tx).unwrap();
         tx.commit().unwrap();
-        assert_eq!(saved(&conn), before);
-        assert_eq!(
-            scalar::<i64>(
-                &conn,
-                "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
-            ),
-            150000
-        );
+        assert_eq!(saved(&conn), before, "a full replay lands on the same position");
+        assert_eq!(total_ms(&conn), 160000);
     }
 }
 
 #[test]
-fn pending_session_keeps_furthest_page_and_flush_race_cannot_erase_it() {
+fn pending_session_keeps_the_latest_page_and_a_flush_race_cannot_erase_it() {
     let mut conn = migrated_conn();
-    commit_events_inner(&mut conn, &[imported("import", 1000, "b1", "Furthest")]).unwrap();
+    commit_events_inner(&mut conn, &[imported("import", 1000, "b1", "Latest")]).unwrap();
     reading_session_position_inner(&conn, "b1", "2026-09-07", 10, 2000, &at(300)).unwrap();
-    let near =
-        reading_session_position_inner(&conn, "b1", "2026-09-07", 10, 3000, &at(200)).unwrap();
-    assert_eq!(near.progress["currentLocation"], 300);
-    assert_eq!(near.position_at, Some(2000));
-    let flush = session_event(
-        "flush",
-        4000,
-        "b1",
-        0,
-        2000,
-        3000,
-        10,
-        Some(observed(at(300), 2000)),
-    );
-    // A farther page arrives with an earlier wall clock while the old flush is in flight.
-    reading_session_position_inner(&conn, "b1", "2026-09-07", 10, 1500, &at(301)).unwrap();
+    // Turning back is a page turn like any other: the bucket follows.
+    let back = reading_session_position_inner(&conn, "b1", "2026-09-07", 10, 3000, &at(200)).unwrap();
+    assert_eq!(back.progress["currentLocation"], 200);
+    assert_eq!(back.position_at, Some(3000));
+    let flush = session_event("flush", 4000, "b1", 0, 2000, 3000, 10, Some(observed(at(200), 3000)));
+    // While that flush is in flight the wall clock steps BACK and a turn to
+    // 301 lands: the position moves, its clock does not run backwards.
+    let stepped = reading_session_position_inner(&conn, "b1", "2026-09-07", 10, 1500, &at(301)).unwrap();
+    assert_eq!((stepped.progress["currentLocation"].as_i64(), stepped.position_at), (Some(301), Some(3000)));
     reading_session_flush_inner(&mut conn, &[flush]).unwrap();
-    assert_eq!(
-        reading_sessions_pending_inner(&conn).unwrap()[0].progress["currentLocation"],
-        301
-    );
-    let rest = session_event(
-        "rest",
-        5000,
-        "b1",
-        0,
-        1500,
-        3000,
-        10,
-        Some(observed(at(301), 1500)),
-    );
+    assert_eq!(saved(&conn)["currentLocation"], 200, "the flushed observation is projected");
+    let pending = reading_sessions_pending_inner(&conn).unwrap();
+    assert_eq!(pending.len(), 1, "a different position at the same clock keeps the bucket open");
+    assert_eq!(pending[0].progress["currentLocation"], 301);
+    let rest = session_event("rest", 5000, "b1", 0, 2000, 3000, 10, Some(observed(at(301), 3000)));
     reading_session_flush_inner(&mut conn, &[rest]).unwrap();
-    assert_eq!(saved(&conn)["currentLocation"], 301);
+    assert_eq!(saved(&conn)["currentLocation"], 301, "equal clocks fall back to the further page");
     assert!(reading_sessions_pending_inner(&conn).unwrap().is_empty());
 }
 
 #[test]
-fn legacy_events_and_cfi_starts_advance_inside_a_rounded_percentage() {
+fn legacy_events_follow_their_own_clock_and_equal_clocks_break_by_position() {
     let mut conn = migrated_conn();
-    commit_events_inner(&mut conn, &[imported("import", 1000, "b1", "Furthest")]).unwrap();
+    commit_events_inner(&mut conn, &[imported("import", 1000, "b1", "Latest")]).unwrap();
     for (id, wall, page) in [("a", 2000, 300), ("b", 3000, 301), ("c", 4000, 300)] {
         let mut p = at(page);
         p["bookId"] = json!("b1");
         commit_events_inner(&mut conn, &[ev(id, wall, "book.progressed", p)]).unwrap();
     }
-    assert_eq!(saved(&conn)["currentLocation"], 301);
-    let mut p = at(301);
+    assert_eq!(saved(&conn)["currentLocation"], 300, "the latest stamp wins, not the furthest page");
+    let mut p = at(300);
     p["locator"] = json!("epubcfi(/6/2!/4/2/1:302)");
     p["bookId"] = json!("b1");
     commit_events_inner(&mut conn, &[ev("d", 5000, "book.progressed", p)]).unwrap();
     assert_eq!(saved(&conn)["cfi"], "epubcfi(/6/2!/4/2/1:302)");
+    // Same wall clock (distinct HLC counters, or the unique HLC index would
+    // treat them as redeliveries): the further CFI start wins, an earlier
+    // one loses.
+    let mut p = at(300);
+    p["locator"] = json!("epubcfi(/6/2!/4/2/1:303)");
+    p["bookId"] = json!("b1");
+    let mut further = ev("e", 5000, "book.progressed", p);
+    further.hlc.counter = 1;
+    commit_events_inner(&mut conn, &[further]).unwrap();
+    assert_eq!(saved(&conn)["cfi"], "epubcfi(/6/2!/4/2/1:303)");
+    let mut p = at(300);
+    p["bookId"] = json!("b1");
+    let mut earlier = ev("f", 5000, "book.progressed", p);
+    earlier.hlc.counter = 2;
+    commit_events_inner(&mut conn, &[earlier]).unwrap();
+    assert_eq!(saved(&conn)["cfi"], "epubcfi(/6/2!/4/2/1:303)");
 }
 
 #[test]
-fn upgrade_recovers_progress_without_double_counting_or_rebuilding_legacy_data() {
+fn upgrade_settles_the_last_observed_page_without_double_counting_or_rebuilding_legacy_data() {
     let mut conn = test_conn();
-    super::super::schema::run_migrations_up_to(&mut conn, 52).unwrap();
+    super::super::schema::run_migrations_up_to(&mut conn, 53).unwrap();
     commit_events_inner(
         &mut conn,
         &[
-            imported("import", 1000, "b1", "Furthest"),
+            imported("import", 1000, "b1", "Latest"),
             session_event("far", 2000, "b1", 60000, 1000, 2000, 10, Some(at(300))),
             session_event("near", 3000, "b1", 40000, 2000, 3000, 10, Some(at(200))),
         ],
     )
     .unwrap();
-    // Recreate the v52 last-observation-wins projection and an unrelated legacy field.
-    conn.execute("UPDATE books SET progress_json=?1,progress_percent=20,progress_observed_at=3000,author='Legacy author' WHERE id='b1'",
-        params![json!({"currentLocation":200,"totalLocations":1000,"progressPercent":20,"cfi":at(200)["locator"]}).to_string()]).unwrap();
+    // Recreate the v53 furthest-position projection and an unrelated legacy field.
+    conn.execute("UPDATE books SET progress_json=?1,progress_percent=30,progress_observed_at=2000,author='Legacy author' WHERE id='b1'",
+        params![json!({"currentLocation":300,"totalLocations":1000,"progressPercent":30,"cfi":at(300)["locator"]}).to_string()]).unwrap();
     run_migrations(&mut conn).unwrap();
-    assert_eq!(saved(&conn)["currentLocation"], 300);
-    assert_eq!(
-        scalar::<i64>(
-            &conn,
-            "SELECT total_ms FROM reading_time_totals WHERE book_id='b1'"
-        ),
-        100000
-    );
+    assert_eq!(saved(&conn)["currentLocation"], 200, "the page turned back to comes back");
+    assert_eq!(scalar::<i64>(&conn, "SELECT progress_observed_at FROM books WHERE id='b1'"), 3000);
+    assert_eq!(total_ms(&conn), 100000, "recovery replays positions, not time");
     assert_eq!(
         scalar::<String>(&conn, "SELECT author FROM books WHERE id='b1'"),
         "Legacy author"
     );
     run_migrations(&mut conn).unwrap();
-    assert_eq!(saved(&conn)["currentLocation"], 300);
+    assert_eq!(saved(&conn)["currentLocation"], 200);
+    // A pre-v27 row carries a position but no clock: any logged observation settles it.
+    conn.execute("UPDATE books SET progress_json=?1,progress_percent=90,progress_observed_at=NULL WHERE id='b1'",
+        params![at(900).to_string()]).unwrap();
+    let tx = conn.transaction().unwrap();
+    super::super::apply::recover_logged_progress(&tx).unwrap();
+    tx.commit().unwrap();
+    assert_eq!(saved(&conn)["currentLocation"], 200);
 }
 
 #[test]
 fn upgrade_defers_incomplete_log_replay_and_ignores_old_checkpoints() {
     let (mut conn, dir) = conn_with_dir();
-    commit_events_inner(&mut conn, &[imported("import", 1000, "b1", "Furthest")]).unwrap();
+    commit_events_inner(&mut conn, &[imported("import", 1000, "b1", "Latest")]).unwrap();
     let checkpoint = create_checkpoint(&mut conn, &dir, "local", None).unwrap();
     conn.execute(
-        "UPDATE projection_checkpoints SET schema_version=52 WHERE id=?1",
+        "UPDATE projection_checkpoints SET schema_version=53 WHERE id=?1",
         params![checkpoint.id],
     )
     .unwrap();
     assert!(super::super::checkpoints::newest_checkpoint(&conn)
         .unwrap()
         .is_none());
-    // Upgrade an actual incomplete v52 schema. Do not erase its checkpoint-derived books.
-    conn.execute("DELETE FROM schema_migrations WHERE version=53", [])
+    // Upgrade an actual incomplete v53 schema. Do not erase its checkpoint-derived books.
+    conn.execute("DELETE FROM schema_migrations WHERE version=54", [])
         .unwrap();
     super::super::checkpoints::set_log_complete(&conn, false).unwrap();
     run_migrations(&mut conn).unwrap();
@@ -231,9 +193,9 @@ fn upgrade_defers_incomplete_log_replay_and_ignores_old_checkpoints() {
 }
 
 #[test]
-fn book_merge_and_upgrade_recovery_keep_precise_progress_with_aliases() {
+fn book_merge_and_upgrade_recovery_keep_the_last_read_position_with_aliases() {
     let mut conn = test_conn();
-    super::super::schema::run_migrations_up_to(&mut conn, 52).unwrap();
+    super::super::schema::run_migrations_up_to(&mut conn, 53).unwrap();
     let mut keeper = at(300);
     keeper["bookId"] = json!("b1");
     let mut merged = at(301);
@@ -241,34 +203,40 @@ fn book_merge_and_upgrade_recovery_keep_precise_progress_with_aliases() {
     commit_events_inner(
         &mut conn,
         &[
-            imported("import", 1000, "b1", "Furthest"),
+            imported("import", 1000, "b1", "Latest"),
             imported("duplicate", 1001, "b2", "Duplicate"),
             ev("keeper", 2000, "book.progressed", keeper),
             ev("merged", 2001, "book.progressed", merged),
-            ev(
-                "merge",
-                3000,
-                "book.merged",
-                json!({"keepId":"b1","mergedId":"b2"}),
-            ),
+            ev("merge", 3000, "book.merged", json!({"keepId":"b1","mergedId":"b2"})),
         ],
     )
     .unwrap();
-    assert_eq!(
-        saved(&conn)["currentLocation"],
-        301,
-        "merge must compare more than rounded percent"
-    );
+    assert_eq!(saved(&conn)["currentLocation"], 301, "the record read last supplies the keeper's position");
     conn.execute(
-        "UPDATE books SET progress_json=?1,progress_percent=30 WHERE id='b1'",
+        "UPDATE books SET progress_json=?1,progress_percent=30,progress_observed_at=2000 WHERE id='b1'",
         params![at(300).to_string()],
     )
     .unwrap();
     run_migrations(&mut conn).unwrap();
-    assert_eq!(
-        saved(&conn)["currentLocation"],
-        301,
-        "history of the merged id advances the keeper"
-    );
+    assert_eq!(saved(&conn)["currentLocation"], 301, "history of the merged id settles the keeper");
     assert_eq!(scalar::<i64>(&conn, "SELECT COUNT(*) FROM books"), 1);
+
+    // The other way round: the merged record is FURTHER but was read earlier.
+    let mut conn = migrated_conn();
+    let mut keeper = at(300);
+    keeper["bookId"] = json!("b1");
+    let mut merged = at(301);
+    merged["bookId"] = json!("b2");
+    commit_events_inner(
+        &mut conn,
+        &[
+            imported("import", 1000, "b1", "Latest"),
+            imported("duplicate", 1001, "b2", "Duplicate"),
+            ev("merged", 2000, "book.progressed", merged),
+            ev("keeper", 2001, "book.progressed", keeper),
+            ev("merge", 3000, "book.merged", json!({"keepId":"b1","mergedId":"b2"})),
+        ],
+    )
+    .unwrap();
+    assert_eq!(saved(&conn)["currentLocation"], 300, "an earlier page on the merged record does not move the keeper");
 }

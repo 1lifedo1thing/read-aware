@@ -48,8 +48,10 @@ function comparePath(left: number[][][], right: number[][][]): number {
   return left.length - right.length;
 }
 
-/** Optimistic shelf state follows the same monotonic rule as native storage.
- * Live reader page/cursor state remains owned by the reader session. */
+/** The position order native storage uses to break ties between observations
+ * made at the same instant (`ra_progress_compare`); the shared fixtures keep
+ * both sides in agreement. The resume position itself is decided by WHEN a
+ * position was observed, not by this order. */
 export function compareReadingProgress(left: NonNullable<BookProgress>, right: NonNullable<BookProgress>): number {
   const distance = fraction(left) - fraction(right);
   if (distance) return distance;
@@ -67,14 +69,16 @@ export function getReadingStatus(progressPercent: number): ReadingStatus {
   return "unread";
 }
 
+/** The reader just observed `progress`: it is the newest observation this
+ * device has, so the shelf follows it — forward or back — exactly as the
+ * projection will once the session flushes. A guard that kept the farther
+ * position here (0.6.0–0.6.2) left the shelf and the reopened book on a page
+ * the reader had deliberately left. */
 export function createProgressPatch(
   book: LibraryBook,
   progress: BookProgress,
   timestamp = new Date().toISOString(),
 ): LibraryBook {
-  if (book.progress && (!progress || compareReadingProgress(progress, book.progress) < 0)) {
-    return { ...book, updatedAt: timestamp, lastOpenedAt: timestamp };
-  }
   const progressPercent = progress ? Math.max(0, Math.min(100, Math.round(progress.progressPercent))) : 0;
 
   return {

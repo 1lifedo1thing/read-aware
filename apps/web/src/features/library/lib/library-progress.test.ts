@@ -11,9 +11,14 @@ test("optimistic ordering agrees with native storage fixtures", () => {
   }
 });
 
-test("optimistic shelf progress retains the farther anchor and advances within one percent", () => {
+test("optimistic shelf progress follows the latest observation, back or forward", () => {
   const old = progress({ currentLocation: 300, totalLocations: 1000, progressPercent: 30, cfi: "epubcfi(/6/2!/4/2/1:300)" });
   const book = { id: "book", progress: old, progressPercent: 30, readingStatus: "reading" } as LibraryBook;
-  expect(createProgressPatch(book, progress({ currentLocation: 200, totalLocations: 1000, progressPercent: 20 })).progress).toEqual(old);
+  const back = createProgressPatch(book, progress({ currentLocation: 200, totalLocations: 1000, progressPercent: 20 }));
+  expect(back.progress?.currentLocation).toBe(200);
+  expect(back.progressPercent).toBe(20);
   expect(createProgressPatch(book, progress({ currentLocation: 301, totalLocations: 1000, progressPercent: 30 })).progress?.currentLocation).toBe(301);
+  const cleared = createProgressPatch(book, null);
+  expect(cleared.progress).toBeNull();
+  expect(cleared.readingStatus).toBe("unread");
 });

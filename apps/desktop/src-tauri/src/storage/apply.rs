@@ -371,31 +371,30 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
             tx.execute("DELETE FROM chapter_digests WHERE book_id = ?1", params![merged])
                 ?;
             // The keeper's metadata wins; reading STATE takes whichever record
-            // got further (progress trio moves together), stars are sticky,
-            // and an unfiled keeper adopts the merged record's shelf.
+            // was read LAST (the same last-observed rule as `apply_position`,
+            // the progress trio moving together), stars are sticky, and an
+            // unfiled keeper adopts the merged record's shelf.
             tx.execute(
-                "UPDATE books SET
-                    starred = MAX(starred, COALESCE((SELECT starred FROM books WHERE id = ?1), 0)),
-                    collection_id = COALESCE(collection_id, (SELECT collection_id FROM books WHERE id = ?1)),
-                    narrativity = COALESCE(narrativity, (SELECT narrativity FROM books WHERE id = ?1)),
-                    spoiler_sensitive = COALESCE(spoiler_sensitive, (SELECT spoiler_sensitive FROM books WHERE id = ?1)),
-                    last_opened_at = COALESCE(
-                        MAX(last_opened_at, (SELECT last_opened_at FROM books WHERE id = ?1)),
-                        last_opened_at,
-                        (SELECT last_opened_at FROM books WHERE id = ?1)),
-                    progress_json = CASE
-                        WHEN ra_progress_compare((SELECT COALESCE(progress_json, json_object('progressPercent', progress_percent)) FROM books WHERE id = ?1), COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0
-                        THEN (SELECT progress_json FROM books WHERE id = ?1) ELSE progress_json END,
-                    progress_observed_at = CASE
-                        WHEN ra_progress_compare((SELECT COALESCE(progress_json, json_object('progressPercent', progress_percent)) FROM books WHERE id = ?1), COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0
-                        THEN (SELECT progress_observed_at FROM books WHERE id = ?1) ELSE progress_observed_at END,
-                    reading_status = CASE
-                        WHEN ra_progress_compare((SELECT COALESCE(progress_json, json_object('progressPercent', progress_percent)) FROM books WHERE id = ?1), COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0
-                        THEN (SELECT reading_status FROM books WHERE id = ?1) ELSE reading_status END,
-                    progress_percent = CASE
-                        WHEN ra_progress_compare((SELECT COALESCE(progress_json, json_object('progressPercent', progress_percent)) FROM books WHERE id = ?1), COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0
-                        THEN (SELECT progress_percent FROM books WHERE id = ?1) ELSE progress_percent END
-                 WHERE id = ?2",
+                &format!(
+                    "UPDATE books SET
+                        starred = MAX(starred, COALESCE((SELECT starred FROM books WHERE id = ?1), 0)),
+                        collection_id = COALESCE(collection_id, (SELECT collection_id FROM books WHERE id = ?1)),
+                        narrativity = COALESCE(narrativity, (SELECT narrativity FROM books WHERE id = ?1)),
+                        spoiler_sensitive = COALESCE(spoiler_sensitive, (SELECT spoiler_sensitive FROM books WHERE id = ?1)),
+                        last_opened_at = COALESCE(
+                            MAX(last_opened_at, (SELECT last_opened_at FROM books WHERE id = ?1)),
+                            last_opened_at,
+                            (SELECT last_opened_at FROM books WHERE id = ?1)),
+                        progress_json = CASE WHEN {MERGED_POSITION_WINS}
+                            THEN (SELECT progress_json FROM books WHERE id = ?1) ELSE progress_json END,
+                        progress_observed_at = CASE WHEN {MERGED_POSITION_WINS}
+                            THEN (SELECT progress_observed_at FROM books WHERE id = ?1) ELSE progress_observed_at END,
+                        reading_status = CASE WHEN {MERGED_POSITION_WINS}
+                            THEN (SELECT reading_status FROM books WHERE id = ?1) ELSE reading_status END,
+                        progress_percent = CASE WHEN {MERGED_POSITION_WINS}
+                            THEN (SELECT progress_percent FROM books WHERE id = ?1) ELSE progress_percent END
+                     WHERE id = ?2"
+                ),
                 params![merged, keep],
             )
             ?;
@@ -453,7 +452,8 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
 
         // ── Reading ─────────────────────────────────────────────────────────
         "book.progressed" => {
-            // Legacy positions participate in the same furthest-position rule.
+            // Legacy positions participate in the same last-observed rule,
+            // clocked by their own stamp.
             let id = require(p, "bookId", t)?;
             apply_position(tx, &id, p, ev.hlc.wall_ms, &at)?;
         }
@@ -875,8 +875,25 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
     Ok(true)
 }
 
-/// All devices share the furthest position, independently of observation,
-/// upload or replay order. The observation clock only resolves equal positions.
+/// `book.merged`: the merged record (`?1`) supplies the keeper's (`?2`)
+/// position when it was observed later, or at the same instant and further —
+/// the merge-side twin of `apply_position`'s rule. A row without a clock
+/// counts as older than any clocked one.
+const MERGED_POSITION_WINS: &str = "
+    (COALESCE((SELECT progress_observed_at FROM books WHERE id = ?1), -1) > COALESCE(progress_observed_at, -1)
+     OR (COALESCE((SELECT progress_observed_at FROM books WHERE id = ?1), -1) = COALESCE(progress_observed_at, -1)
+         AND ra_progress_compare(
+                (SELECT COALESCE(progress_json, json_object('progressPercent', progress_percent)) FROM books WHERE id = ?1),
+                COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0))";
+
+/// The resume position is the LAST OBSERVED one: a page turn's own clock
+/// (`observedAt`) decides, never the event's upload or replay order, so every
+/// device converges on where the reader actually was — including when they
+/// turned BACK to reread. A rule that kept the furthest position instead
+/// (0.6.0 to 0.6.2) made backward jumps unrecoverable: the book reopened at
+/// the old page every time. Equal clocks fall back to the furthest position
+/// so replays stay deterministic; a pre-v27 row without a clock yields to
+/// any logged observation.
 fn apply_position(
     tx: &Transaction<'_>,
     book_id: &str,
@@ -911,9 +928,10 @@ fn apply_position(
                 updated_at = MAX(updated_at, ?5),
                 progress_observed_at = ?6
           WHERE id = ?1
-            AND (ra_progress_compare(?2, COALESCE(progress_json, json_object('progressPercent', progress_percent))) > 0
-                OR (ra_progress_compare(?2, COALESCE(progress_json, json_object('progressPercent', progress_percent))) = 0
-                    AND (progress_observed_at IS NULL OR progress_observed_at <= ?6)))",
+            AND (progress_observed_at IS NULL
+                OR progress_observed_at < ?6
+                OR (progress_observed_at = ?6
+                    AND ra_progress_compare(?2, COALESCE(progress_json, json_object('progressPercent', progress_percent))) >= 0))",
         params![
             book_id,
             progress.to_string(),
@@ -928,9 +946,11 @@ fn apply_position(
 
 /// Upgrade only reading positions. Replaying entire session events here would
 /// count time twice, and rebuilding every projection would discard legacy rows.
-/// Start with existing positions and advance from available history. An
-/// incomplete bootstrap remains stale until its normal backfill/full replay.
-pub(crate) fn recover_furthest_progress(tx: &Transaction<'_>) -> Result<(), CommandError> {
+/// Start with existing positions and let the logged observations settle them
+/// under the current rule (v54: a later observation replaces the furthest
+/// page v53 had kept). An incomplete bootstrap remains stale until its normal
+/// backfill/full replay.
+pub(crate) fn recover_logged_progress(tx: &Transaction<'_>) -> Result<(), CommandError> {
     super::events::for_each_event_after(tx, None, |ev| {
         let (position, observed_at, at) = match ev.event_type.as_str() {
             "book.progressed" => (&ev.payload, ev.hlc.wall_ms, event_time(ev)),

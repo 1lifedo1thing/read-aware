@@ -925,6 +925,12 @@ pub(crate) const MIGRATIONS: &[(i64, &str, &str)] = &[
     (51, "credential_publication_sources", "ALTER TABLE restored_credential_publications ADD COLUMN source_json TEXT;"),
     (52, "book_spoiler_policy", "ALTER TABLE books ADD COLUMN spoiler_sensitive INTEGER CHECK(spoiler_sensitive IN (0, 1));"),
     (53, "furthest_reading_progress", "UPDATE sync_profile SET projections_stale=1 WHERE log_complete=0;"),
+    // v53 kept the FURTHEST position per book, which made every backward
+    // jump unrecoverable (the book reopened at the old page). The resume
+    // position is the LAST OBSERVED one again; `recover_logged_progress`
+    // settles existing rows from the log under that rule, and an incomplete
+    // bootstrap replays once its backfill completes.
+    (54, "latest_reading_progress", "UPDATE sync_profile SET projections_stale=1 WHERE log_complete=0;"),
 ];
 
 /// Rebuild the annotation FTS index from the table. Required after any VACUUM
@@ -943,7 +949,7 @@ pub(crate) fn rebuild_annotations_fts(conn: &Connection) -> Result<(), CommandEr
 /// The schema version a projection checkpoint is stamped with. Restoring one
 /// is only sound when the derived tables' shapes match exactly, so a
 /// checkpoint from a different version is ignored in favour of the log.
-pub(crate) const SCHEMA_VERSION: i64 = 53;
+pub(crate) const SCHEMA_VERSION: i64 = 54;
 
 /// The migration after which `materialize_legacy_covers` must run: the cover
 /// projection columns exist, the inline data-URL column still does.
@@ -971,7 +977,10 @@ pub(crate) fn run_migrations_up_to(conn: &mut Connection, max_version: i64) -> R
         if *version > current && *version <= max_version {
             let tx = conn.transaction()?;
             tx.execute_batch(sql)?;
-            if *version == 53 { super::apply::recover_furthest_progress(&tx)?; }
+            // v53's own recovery is superseded: a database that still has to
+            // pass it reaches v54 in the same run, which settles positions
+            // under the rule this build applies.
+            if *version == 54 { super::apply::recover_logged_progress(&tx)?; }
             if *version == 36 { super::context_bundle_publication::install_source_clock(&tx)?; }
             if *version == 37 { super::context_bundle_publication::install_blob_source_clock(&tx)?; }
             if *version == 38 {
