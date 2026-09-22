@@ -20,10 +20,16 @@ function describeBootError(error: unknown): string {
   return String(error);
 }
 
+/** The engine behind the failure. A missing built-in (#30) is only diagnosable
+ * from the WebView version, which a photo of the screen otherwise never shows. */
+function describeEngine(): string {
+  return `Engine: ${navigator.userAgent}`;
+}
+
 export function showBootFailure(error: unknown): void {
   // The next healthy launch reads this and offers a diagnostics report.
   markCrash("boot");
-  const details = describeBootError(error);
+  const details = `${describeBootError(error)}\n\n${describeEngine()}`;
 
   const host = document.getElementById("ra-splash") ?? document.body;
   // A splash mid-fade must come back: the failure notice is now the screen.

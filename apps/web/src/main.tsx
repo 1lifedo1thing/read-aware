@@ -1,3 +1,6 @@
+// First import, always: fills ES2023/ES2024 built-ins that older WebViews lack
+// before any module — ours or a dependency's — can evaluate against them.
+import { installedPolyfills } from "./platform/polyfills";
 import { applyPlatformAttributes, disableNativeContextMenu } from "./platform/environment";
 import { syncAndroidSafeArea } from "./platform/safe-area";
 import { recoverPluginUpdates } from "./platform/plugin-update-recovery";
@@ -41,6 +44,9 @@ const log = createLogger("boot");
 
 void (async () => {
   log.info("start");
+  // An engine that needed filling is the first thing to know from a device
+  // report; a modern engine logs nothing here.
+  if (installedPolyfills.length) log.info(`polyfilled ${installedPolyfills.join(", ")}`);
   await recoverPluginUpdates();
   log.info("plugin updates recovered");
   await hydrateLocalStore();

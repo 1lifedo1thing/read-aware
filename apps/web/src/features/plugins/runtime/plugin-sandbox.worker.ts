@@ -24,6 +24,9 @@
  *     which cannot be cloned. They stay here; the host gets a serializable
  *     description plus a handle and calls back through `invoke`.
  */
+// A worker is its own realm: plugin code gets the same ES2024 floor the host
+// guarantees itself, so the import stays first.
+import "../../../platform/polyfills";
 import { preparePluginCall, pluginCallDrainsCancellation } from "./plugin-call-options";
 import type {
   PluginActionRegistration,
