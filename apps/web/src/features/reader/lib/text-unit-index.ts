@@ -67,68 +67,47 @@ function isReadingAside(el: Element): boolean {
   return name === "sup" && REFERENCE_MARK.test(el.textContent ?? "");
 }
 
-/** Accept text/CDATA, descend through elements, skip script/style/hidden and
- *  inline asides (note markers, ruby annotations). */
-function acceptTextNode(node: Node): number {
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    const el = node as Element;
-    const name = el.tagName.toLowerCase();
-    if (name === "script" || name === "style") return NodeFilter.FILTER_REJECT;
-    if (!isRendered(el) || isReadingAside(el)) return NodeFilter.FILTER_REJECT;
-    return NodeFilter.FILTER_SKIP;
-  }
-  return NodeFilter.FILTER_ACCEPT;
-}
-
-/** Descend through rendered elements only; hidden subtrees are not read. */
-function acceptBlockNode(node: Node): number {
-  return isRendered(node as Element) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-}
-
-/** Ranges spanning from each block element's start to the next block's start. */
-function* blockRanges(doc: Document): Generator<Range> {
+/**
+ * The readable text nodes of a section, grouped per block, in reading order.
+ *
+ * One pass over the document. A block element opens a new group; text joins
+ * the most recently opened block in document order, so trailing text after a
+ * nested block stays with that block, as a Range from each block's start to
+ * the next block's start would. Hidden subtrees contribute neither text nor
+ * block boundaries; script/style and inline asides (note markers, ruby
+ * annotations) keep their block boundaries but contribute no text. Text
+ * before the first block is read only when the body has no blocks at all.
+ *
+ * A per-block walk from each range's common ancestor would revisit every
+ * preceding sibling (and restyle each element) for every block — quadratic in
+ * a chapter's paragraph count, which stalled opening a long chapter in a
+ * text-unit mode on phones.
+ */
+function readingBlocks(doc: Document): Node[][] {
   const body = doc.body;
-  if (!body) return;
-  let last: Range | null = null;
-  const walker = doc.createTreeWalker(body, NodeFilter.SHOW_ELEMENT, {
-    acceptNode: acceptBlockNode,
-  });
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (!BLOCK_TAGS.has((node as Element).tagName.toLowerCase())) continue;
-    if (last) {
-      last.setEndBefore(node);
-      if (last.toString().trim()) yield last;
+  if (!body) return [];
+  const blocks: Node[][] = [];
+  const leading: Node[] = [];
+  let current: Node[] | null = null;
+  const visit = (parent: Node, readable: boolean) => {
+    for (let child = parent.firstChild; child; child = child.nextSibling) {
+      if (child.nodeType === Node.TEXT_NODE || child.nodeType === Node.CDATA_SECTION_NODE) {
+        if (readable && child.nodeValue) (current ?? leading).push(child);
+        continue;
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) continue;
+      const el = child as Element;
+      if (!isRendered(el)) continue;
+      const name = el.tagName.toLowerCase();
+      if (BLOCK_TAGS.has(name)) {
+        current = [];
+        blocks.push(current);
+      }
+      visit(el, readable && name !== "script" && name !== "style" && !isReadingAside(el));
     }
-    last = doc.createRange();
-    last.setStart(node, 0);
-  }
-  if (!last) {
-    last = doc.createRange();
-    last.setStart(body.firstChild ?? body, 0);
-  }
-  last.setEndAfter(body.lastChild ?? body);
-  if (last.toString().trim()) yield last;
-}
-
-/** The non-empty text nodes inside a block range, in document order. */
-function collectTextNodes(range: Range): Node[] {
-  const root = range.commonAncestorContainer;
-  const walker = root.ownerDocument!.createTreeWalker(root,
-    NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_CDATA_SECTION, {
-    acceptNode: acceptTextNode,
-  });
-  const nodes: Node[] = [];
-  for (
-    let node: Node | null = walker.currentNode;
-    node;
-    node = walker.nextNode()
-  ) {
-    if (node.nodeType === Node.ELEMENT_NODE) continue;
-    const compare = range.comparePoint(node, 0);
-    if (compare > 0) break;
-    if (compare === 0 && (node.nodeValue?.length ?? 0) > 0) nodes.push(node);
-  }
-  return nodes;
+  };
+  visit(body, true);
+  return blocks.length ? blocks : [leading];
 }
 
 /** Map trimmed segment offsets back onto the block's text nodes as Ranges. */
@@ -183,7 +162,8 @@ export async function buildTextUnitRanges(
   if (signal?.aborted) throw signal.reason;
   const results: Range[][] = [];
   const language = doc.documentElement?.lang || undefined;
-  const blocks = blockRanges(doc);
+  const blocks = readingBlocks(doc);
+  let next = 0;
   let ordinal = 0;
   let failed = false;
   // Keep Worker round trips bounded and preserve document order even when
@@ -191,9 +171,8 @@ export async function buildTextUnitRanges(
   const worker = async () => {
     while (!failed) {
       if (signal?.aborted) throw signal.reason;
-      const block = blocks.next();
-      if (block.done) return;
-      const nodes = collectTextNodes(block.value);
+      if (next >= blocks.length) return;
+      const nodes = blocks[next++];
       const text = nodes.map(node => node.nodeValue ?? "").join("");
       if (!nodes.length || !text.trim()) continue;
       const index = ordinal++;
@@ -215,7 +194,6 @@ export async function buildTextUnitRanges(
     return results.flat();
   } finally {
     failed = true;
-    blocks.return(undefined);
   }
 }
 

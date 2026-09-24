@@ -100,3 +100,28 @@ test("note reference markers and ruby annotations stay out of the segmented text
   // Ranges still span the live DOM; the highlight covers the markers in between.
   expect(units.map(range => range.toString())).toEqual(["He said hello.1 Then he left.2 Water is H2O.", "漢かん字じを読む。"]);
 });
+
+// DOMParser documents have no window; these need computed styles.
+const styledDocumentWith = (html: string) => new JSDOM(html).window.document;
+
+test("text after a nested block stays with that block; hidden subtrees are neither text nor boundaries", async () => {
+  const doc = styledDocumentWith(
+    "<div>Intro.<p>Para.</p>Tail.</div>"
+    + "<div style=\"display:none\"><p>Hidden.</p></div>"
+    + "<p>Last.</p>",
+  );
+  const seen: string[] = [];
+  await buildTextUnitRanges(doc, "paragraph", async ({ text }) => { seen.push(text); return [{ start: 0, end: text.length }]; });
+  expect(seen).toEqual(["Intro.", "Para.Tail.", "Last."]);
+});
+
+test("a long section styles each element once instead of rescanning per block", async () => {
+  const doc = styledDocumentWith(Array.from({ length: 400 }, (_, i) => `<p>Sentence ${i}.</p>`).join(""));
+  const view = doc.defaultView!;
+  const original = view.getComputedStyle.bind(view);
+  let styled = 0;
+  view.getComputedStyle = ((el: Element) => { styled++; return original(el); }) as typeof view.getComputedStyle;
+  const units = await buildTextUnitRanges(doc, "sentence", ({ text }) => [{ start: 0, end: text.length }]);
+  expect(units).toHaveLength(400);
+  expect(styled).toBeLessThanOrEqual(400);
+});
