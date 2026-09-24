@@ -21,9 +21,17 @@ export function ChatPanel({
   focusRequestId = 0,
   focusOrigin,
   readingCursor = null,
+  revealed = true,
 }: {
   bookId: string;
   bookTitle: string;
+  /**
+   * Whether the host currently shows the panel. The conversation binding stays
+   * live while hidden (agent and plugin turn requests target it), but the
+   * transcript renders from the first reveal on: laying out a long Markdown
+   * history behind a closed panel was a large share of opening a book.
+   */
+  revealed?: boolean;
   /**
    * Bumped by the host each time the reader *opens* this panel — that gesture,
    * and only that one, puts the caret in the composer. It is deliberately not a
@@ -44,6 +52,8 @@ export function ChatPanel({
     useState<ChatSelectionAttachment | null>(null);
   const composerRef = useRef<ChatComposerHandle | null>(null);
   const turnRequests = useConversationTurnRequests({ kind: "book", id: bookId }, conversation, composerRef);
+  const [transcriptShown, setTranscriptShown] = useState(revealed);
+  if (revealed && !transcriptShown) setTranscriptShown(true);
 
   // Focus the composer when the host reports the panel was just opened (a frame
   // later, after the slide-in has started so focus lands cleanly).
@@ -82,14 +92,18 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <ChatTranscript
-        messages={conversation.messages}
-        isLoading={conversation.isLoading}
-        isStreaming={conversation.isStreaming}
-        streamingParts={conversation.streamingParts}
-        status={conversation.status}
-        onRetry={conversation.retry}
-      />
+      {transcriptShown ? (
+        <ChatTranscript
+          messages={conversation.messages}
+          isLoading={conversation.isLoading}
+          isStreaming={conversation.isStreaming}
+          streamingParts={conversation.streamingParts}
+          status={conversation.status}
+          onRetry={conversation.retry}
+        />
+      ) : (
+        <div className="min-h-0 flex-1" />
+      )}
       <ChatTurnRequest request={turnRequests.request} onAccept={turnRequests.accept} onDismiss={turnRequests.dismiss} />
       <ChatComposer
         readerBookId={bookId}

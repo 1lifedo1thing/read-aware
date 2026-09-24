@@ -73,6 +73,12 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     useLayoutEffect(() => {
       const el = textareaRef.current;
       if (!el) return;
+      // An empty draft is one row at its CSS size. Measuring it would force a
+      // synchronous layout of the whole surface while it is still mounting.
+      if (!value) {
+        el.style.height = "";
+        return;
+      }
       el.style.height = "auto";
       // scrollHeight is 0 while the chat tab is display:none (not yet shown).
       // Don't lock the height to 0 — leave it to the CSS min-height until the

@@ -574,6 +574,7 @@ export function ReaderShellOverlay({
             focusRequestId={chatFocusRequestId}
             focusOrigin={chatFocusOrigin}
             readingCursor={readingCursor}
+            revealed={visible && notesOpen}
           />
         </section>
       </div>

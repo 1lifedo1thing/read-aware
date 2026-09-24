@@ -90,19 +90,18 @@ export function useTranscriptAutoScroll({
   }, []);
 
   // Conversation (re)load — jump straight to the latest turns; a switch of
-  // books also dissolves the previous live turn.
-  const wasLoadingRef = useRef(isLoading);
+  // books also dissolves the previous live turn. A transcript that mounts onto
+  // an already-loaded conversation (a panel revealed after the load) starts at
+  // the latest turns too.
   useEffect(() => {
-    if (wasLoadingRef.current && !isLoading) {
-      liveTurnIdRef.current = null;
-      setLiveTurn(null);
-      engagedRef.current = true;
-      // Same commit mounted the ScrollArea with the loaded messages, so the
-      // jump can happen right here — no frame to wait for.
-      const container = containerRef.current;
-      if (container) container.scrollTop = container.scrollHeight;
-    }
-    wasLoadingRef.current = isLoading;
+    if (isLoading) return;
+    liveTurnIdRef.current = null;
+    setLiveTurn(null);
+    engagedRef.current = true;
+    // Same commit mounted the ScrollArea with the loaded messages, so the
+    // jump can happen right here — no frame to wait for.
+    const container = containerRef.current;
+    if (container) container.scrollTop = container.scrollHeight;
   }, [isLoading]);
 
   // Turn start: the just-sent user message becomes the live turn.
