@@ -66,6 +66,28 @@ test("MOBI rejects encryption with an actionable code and rejects malformed comp
   expect(() => getVarLen(Uint8Array.of(1, 2))).toThrow("Truncated");
 }));
 
+test("MOBI strips well-formed trailing entries and reports a damaged text record as a parse failure", () => withDom(async () => {
+  // 0x81: a one-byte backward varint of length 1 — the entry is just itself.
+  const book = await new MOBI({ unzlib: unzlibSync }).open(makeMOBI6Fixture({ trailingEntry: [0x81] }).file);
+  try { expect((await book.sections[2].createDocument!()).querySelector("h1")?.textContent).toBe("Hello MOBI"); }
+  finally { book.destroy(); }
+  // 0x80: an entry claiming zero bytes, as in a file damaged past some record.
+  await expect(new MOBI({ unzlib: unzlibSync }).open(makeMOBI6Fixture({ trailingEntry: [0x80] }).file))
+    .rejects.toMatchObject({ code: "book/parse-failed" });
+}));
+
+test("a combo boundary that points at a non-header record falls back to MOBI6 instead of reading it as DRM", () => withDom(async () => {
+  const warnings: unknown[] = [];
+  const warn = console.warn;
+  console.warn = (...args: unknown[]) => { warnings.push(args[0]); };
+  try {
+    const book = await new MOBI({ unzlib: unzlibSync }).open(makeMOBI6Fixture({ kf8Boundary: 2 }).file);
+    expect(book).toBeInstanceOf(MOBI6);
+    book.destroy();
+  } finally { console.warn = warn; }
+  expect(warnings[0]).toMatchObject({ code: "book/parse-failed" });
+}));
+
 test.each([true, false])("HUFF/CDIC decodes %s first-level lookup and catches recursive dictionary cycles", direct => {
   const huff = writeStruct(HUFF_HEADER, { magic: "HUFF", offset1: 24, offset2: 1048 }, 1304);
   const view = new DataView(huff.buffer);

@@ -1,5 +1,5 @@
 import type { BookFile, BookMetadata } from './book.js'
-import { UnsupportedEncryptionError } from './errors.js'
+import { BookParseError, UnsupportedEncryptionError } from './errors.js'
 import { unescapeHTML } from './mobi-html.js'
 import { MOBI6 } from './mobi6.js'
 import { KF8 } from './kf8.js'
@@ -38,7 +38,7 @@ class PDB {
             .map((start, i, all) => {
                 const end = all[i + 1] ?? file.size
                 if (start < 78 + pdb.numRecords * 8 || end < start || end > file.size)
-                    throw new Error('Invalid Palm database record offsets')
+                    throw new BookParseError('Invalid Palm database record offsets')
                 return [start, end]
             })
     }
@@ -98,13 +98,16 @@ export class MOBI extends PDB {
         return isKF8 ? new KF8(this).init() : new MOBI6(this).init()
     }
     #getHeaders(buf: ArrayBuffer): Headers {
+        // Identify the header before trusting its fields: a combo file whose
+        // KF8 boundary points at some other record would otherwise read that
+        // record's bytes as an "encryption" flag and be reported as DRM.
+        if (buf.byteLength < 20 || getString(buf.slice(16, 20)) !== 'MOBI') throw new BookParseError('Missing MOBI header')
         const palmdoc = getStruct(PALMDOC_HEADER, buf)
         if (palmdoc.encryption) throw new UnsupportedEncryptionError('MOBI')
         const base = getStruct(MOBI_HEADER, buf)
         const lang = MOBI_LANG[base.localeLanguage]
         const mobi = { ...base, title: buf.slice(base.titleOffset, base.titleOffset + base.titleLength),
             language: lang?.[base.localeRegion >> 2] ?? lang?.[0] ?? undefined }
-        if (mobi.magic !== 'MOBI') throw new Error('Missing MOBI header')
 
         const exth = mobi.exthFlag & 0b100_0000
             ? getEXTH(buf.slice(mobi.length + 16), mobi.encoding) : null
@@ -124,7 +127,7 @@ export class MOBI extends PDB {
             : compression === 2 ? decompressPalmDOC
             : compression === 17480 ? await huffcdic(mobi, this.loadRecord.bind(this))
             : undefined
-        if (!this.#decompress) throw new Error('Unknown compression type')
+        if (!this.#decompress) throw new BookParseError('Unknown MOBI compression type')
 
         // set up function for removing trailing bytes
         const { trailingFlags } = mobi
@@ -133,7 +136,7 @@ export class MOBI extends PDB {
         this.#removeTrailingEntries = array => {
             for (let i = 0; i < numTrailingEntries; i++) {
                 const length = getVarLenFromEnd(array)
-                if (!length || length > array.length) throw new Error('Invalid MOBI trailing entry length')
+                if (!length || length > array.length) throw new BookParseError('Invalid MOBI trailing entry length')
                 array = array.subarray(0, -length)
             }
             if (multibyte) {

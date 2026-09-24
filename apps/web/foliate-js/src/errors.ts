@@ -7,3 +7,13 @@ export class UnsupportedEncryptionError extends Error {
         this.name = 'UnsupportedEncryptionError'
     }
 }
+
+/** The file is structurally malformed (damaged or truncated), not merely unsupported. */
+export class BookParseError extends Error {
+    readonly code = 'book/parse-failed'
+    readonly retryable = false
+    constructor(message: string) {
+        super(message)
+        this.name = 'BookParseError'
+    }
+}

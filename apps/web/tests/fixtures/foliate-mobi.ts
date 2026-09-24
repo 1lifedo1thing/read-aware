@@ -34,16 +34,18 @@ const uint32 = (value: number) => {
   const bytes = new Uint8Array(4); new DataView(bytes.buffer).setUint32(0, value); return bytes;
 };
 const image = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg=="), char => char.charCodeAt(0));
-const exth = () => {
+const exth = (extra: Array<[number, Uint8Array]> = []) => {
   const records: Array<[number, Uint8Array]> = [[100, encoder.encode("Ada Writer")],
-    [503, encoder.encode("MOBI &amp; KF8 Fixture")], [201, uint32(0)], [524, encoder.encode("en")]];
+    [503, encoder.encode("MOBI &amp; KF8 Fixture")], [201, uint32(0)], [524, encoder.encode("en")], ...extra];
   const data = records.map(([type, value]) => joinBytes(uint32(type), uint32(value.length + 8), value));
   return joinBytes(writeStruct(EXTH_HEADER, { magic: "EXTH", length: 12 + data.reduce((sum, item) => sum + item.length, 0), count: data.length }, 12), ...data);
 };
-const header = (version: 6 | 8, resourceStart: number, compression: 1 | 2, encrypted: boolean, rawLength: number) => {
-  const size = version === 8 ? 264 : 248, metadata = exth(), title = encoder.encode("Fallback title");
+const header = (version: 6 | 8, resourceStart: number, compression: 1 | 2, encrypted: boolean, rawLength: number,
+  { trailingFlags = 0, kf8Boundary }: { trailingFlags?: number; kf8Boundary?: number } = {}) => {
+  const size = version === 8 ? 264 : 248, title = encoder.encode("Fallback title");
+  const metadata = exth(kf8Boundary === undefined ? [] : [[121, uint32(kf8Boundary)]]);
   const bytes = writeStruct(MOBI_HEADER, { magic: "MOBI", length: size - 16, type: 2,
-    encoding: 65001, uid: 42, version, resourceStart, indx: 0xffffffff, exthFlag: 64,
+    encoding: 65001, uid: 42, version, resourceStart, indx: 0xffffffff, exthFlag: 64, trailingFlags,
     titleOffset: size + metadata.length, titleLength: title.length, localeLanguage: 9 }, size);
   bytes.set(writeStruct(PALMDOC_HEADER, { compression, numTextRecords: 1, recordSize: 4096, encryption: encrypted ? 2 : 0 }, 16));
   new DataView(bytes.buffer).setUint32(4, rawLength);
@@ -61,7 +63,13 @@ const pack = (records: Uint8Array[], name: string) => {
   return new File([joinBytes(pdb, ...records)], name, { type: "application/x-mobipocket-ebook" });
 };
 
-export const makeMOBI6Fixture = ({ compression = 1, encrypted = false }: { compression?: 1 | 2; encrypted?: boolean } = {}) => {
+/**
+ * `trailingEntry` appends one trailing-entry field (backward varint bytes) to
+ * the text record; `kf8Boundary` adds an EXTH 121 combo boundary pointing at
+ * a record index (the image record, 2, is not a KF8 header).
+ */
+export const makeMOBI6Fixture = ({ compression = 1, encrypted = false, trailingEntry, kf8Boundary }:
+  { compression?: 1 | 2; encrypted?: boolean; trailingEntry?: number[]; kf8Boundary?: number } = {}) => {
   let html = '<html><head><guide><reference type="toc" title="Contents" filepos="1111111111"/></guide></head><body><p>中文 opening.</p><mbp:pagebreak/><h1>Contents</h1><p><a filepos="2222222222">Second Chapter</a></p><mbp:pagebreak/><h1>Hello MOBI</h1><p id="text">A real chapter.</p><img recindex="1"/></body></html>';
   const toc = encoder.encode(html.slice(0, html.indexOf("<h1>Contents"))).length;
   const chapter = encoder.encode(html.slice(0, html.indexOf("<h1>Hello MOBI"))).length;
@@ -72,7 +80,10 @@ export const makeMOBI6Fixture = ({ compression = 1, encrypted = false }: { compr
     const part = raw.slice(index, index + 8);
     compressed.push(Uint8Array.of(part.length), part);
   }
-  return { file: pack([header(6, 2, compression, encrypted, raw.length), compression === 2 ? joinBytes(...compressed) : raw, image], "fixture.mobi"), raw, chapter };
+  const text = compression === 2 ? joinBytes(...compressed) : raw;
+  const record = trailingEntry ? joinBytes(text, Uint8Array.from(trailingEntry)) : text;
+  const options = { trailingFlags: trailingEntry ? 0b10 : 0, kf8Boundary };
+  return { file: pack([header(6, 2, compression, encrypted, raw.length, options), record, image], "fixture.mobi"), raw, chapter };
 };
 
 const indexRecords = (name: string, tags: Array<[number, number[]]>, cncx?: string): Uint8Array[] => {
