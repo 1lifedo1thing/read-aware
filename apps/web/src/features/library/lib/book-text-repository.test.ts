@@ -14,7 +14,7 @@ const prose = "A complete chapter with enough text for the existing chapter inde
 const makeBook = (readers: (() => Promise<string>)[]) => ({ sections: readers.map((getText, i) => ({ id: `s${i}`, getText })) } as FoliateBook);
 function harness(book = makeBook([async () => prose])) {
   let source: TextSource = { format: "fb2", contentVersion: "sha256:a" };
-  let exists = true, saved: unknown = null, parses = 0;
+  let exists = true, saved: unknown = null, parses = 0, reads = 0;
   let sourceError: unknown, writeError: unknown;
   let beforeWrite = async () => {};
   const warnings: unknown[] = [], sourceReads: boolean[] = [], signals: AbortSignal[] = [], changes: DomainActor[] = [];
@@ -25,14 +25,14 @@ function harness(book = makeBook([async () => prose])) {
       if (!exists) throw new AppError("library/book-not-found", "gone");
       return { ...source };
     },
-    read: async () => structuredClone(saved),
+    read: async () => { reads++; return structuredClone(saved); },
     write: async record => { await beforeWrite(); if (writeError) throw writeError; saved = structuredClone(record); },
     remove: async () => { saved = null; },
     content: async (_id, _version, signal, read) => { parses++; signals.push(signal); return read(book); },
     yieldToReader: async () => {}, warn: (_message, error) => { warnings.push(error); },
     changed: (_bookId, actor) => { changes.push(actor); },
   });
-  return { repo, warnings, sourceReads, signals, changes, saved: () => saved, parses: () => parses,
+  return { repo, warnings, sourceReads, signals, changes, saved: () => saved, parses: () => parses, reads: () => reads,
     source: (value: TextSource) => { source = value; }, book: (value: FoliateBook) => { book = value; },
     exists: (value: boolean) => { exists = value; }, seed: (value: unknown) => { saved = value; },
     sourceError: (value?: unknown) => { sourceError = value; }, writeError: (value?: unknown) => { writeError = value; },
@@ -396,4 +396,20 @@ test("last-lease cancellation can await physical parser cleanup", async () => {
   gate.resolve();
   expect(await work).toMatchObject({ code: "library/text-cancelled" });
   expect(h.saved()).toBeNull();
+});
+
+test("a complete record is read once until this repository writes or removes it", async () => {
+  const h = harness();
+  await h.repo.prepare("book");
+  const before = h.reads();
+  expect(await h.repo.persisted("book")).toHaveLength(1);
+  expect((await h.repo.snapshot("book")).status).toBe("ready");
+  expect(await h.repo.ensure("book")).toHaveLength(1);
+  expect(h.reads() - before).toBeLessThanOrEqual(1);
+  await h.repo.remove("book");
+  expect(await h.repo.persisted("book")).toBeNull();
+  await h.repo.prepare("book", { rebuild: true });
+  expect(await h.repo.persisted("book")).toHaveLength(1);
+  h.source({ format: "fb2", contentVersion: "sha256:b" });
+  expect(await h.repo.persisted("book")).toBeNull();
 });

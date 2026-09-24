@@ -41,6 +41,14 @@ export class BookTextRepository {
   private jobs = new Map<string, Job>();
   private failures = new Map<string, { version: string; sourceRevision?: string; code: string }>();
   private writes = new Map<string, Promise<void>>();
+  /**
+   * The last complete record read. A finished extraction is fixed for its
+   * content version, while every durable read costs the whole text over IPC
+   * plus a main-thread JSON parse — and the graph catch-up asks once per
+   * chapter. Partial records are never kept (extraction resumes from them);
+   * any write or removal through this repository drops the entry first.
+   */
+  private completeRecord: BookTextRecord | null = null;
   private readonly scheduler: BookTextScheduler;
   constructor(private readonly deps: BookTextDependencies) { this.scheduler = new BookTextScheduler(deps.yieldToReader); }
   private changed(bookId: string, origin: DomainActor): void {
@@ -52,7 +60,11 @@ export class BookTextRepository {
     return this.deps.source(bookId, fetchMissing);
   }
   private async record(bookId: string, version: string): Promise<BookTextRecord | null> {
-    return parseBookTextRecord(await this.deps.read(bookId), bookId, version);
+    const cached = this.completeRecord;
+    if (cached?.bookId === bookId && cached.contentVersion === version) return cached;
+    const record = parseBookTextRecord(await this.deps.read(bookId), bookId, version);
+    if (record && textComplete(record) && !this.writes.has(bookId)) this.completeRecord = record;
+    return record;
   }
   private async checkSource(bookId: string, version: string | null, signal?: AbortSignal, revision?: string): Promise<void> {
     signal?.throwIfAborted();
@@ -61,6 +73,7 @@ export class BookTextRepository {
     signal?.throwIfAborted();
   }
   private queueWrite(bookId: string, write: () => Promise<void>): Promise<void> {
+    if (this.completeRecord?.bookId === bookId) this.completeRecord = null;
     const prior = this.writes.get(bookId);
     const task = (prior ?? Promise.resolve()).catch(() => { /* Prior callers receive their own write failure. */ }).then(write);
     this.writes.set(bookId, task);
