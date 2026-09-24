@@ -1,6 +1,8 @@
 // Show/hide the iOS status bar for the reader's immersive view.
 //
-// Called from Rust (the `set_status_bar_hidden` command) over plain C FFI.
+// Called from Rust (the `set_status_bar_hidden` command) over plain C FFI:
+// a load-time constructor registers the entry point with the Rust side, since
+// release builds strip the export table a runtime symbol lookup would need.
 // iOS status-bar visibility is view-controller driven, and the root view
 // controller belongs to wry — so instead of subclassing it ahead of time we
 // install a `prefersStatusBarHidden` override on its concrete class at
@@ -17,10 +19,7 @@ static BOOL ra_prefersStatusBarHidden(id self, SEL _cmd) {
   return raStatusBarHidden;
 }
 
-// `used` + default visibility: Rust resolves this via dlsym at runtime, so
-// nothing references it statically and the linker must not dead-strip it.
-__attribute__((used, visibility("default")))
-void ra_set_status_bar_hidden(bool hidden) {
+static void ra_set_status_bar_hidden(bool hidden) {
   dispatch_async(dispatch_get_main_queue(), ^{
     raStatusBarHidden = hidden ? YES : NO;
 
@@ -60,4 +59,12 @@ void ra_set_status_bar_hidden(bool hidden) {
 
     [rootViewController setNeedsStatusBarAppearanceUpdate];
   });
+}
+
+// Defined in the Rust crate (src/lib.rs); resolved when the app links libapp.a.
+extern void ra_register_status_bar_bridge(void (*bridge)(bool));
+
+__attribute__((constructor))
+static void ra_install_status_bar_bridge(void) {
+  ra_register_status_bar_bridge(ra_set_status_bar_hidden);
 }

@@ -377,25 +377,27 @@ fn book_pick_poll() -> Option<String> {
 /// iOS counterpart: a small ObjC bridge in the Xcode project (see
 /// gen/apple/Sources/read-aware-desktop/StatusBarBridge.m) installs a
 /// `prefersStatusBarHidden` override on wry's root view controller and hops
-/// to the main queue itself. The bridge lives in the app binary, which links
-/// AFTER cargo builds this crate's cdylib — so the symbol is resolved at
-/// runtime via dlsym instead of at link time.
+/// to the main queue itself. The bridge is compiled into the app target, which
+/// links AFTER cargo builds this crate, so this crate cannot name it. Looking
+/// it up with dlsym failed in every release build (Xcode strips the
+/// executable's export table), so the bridge hands its entry point over from a
+/// load-time constructor instead — a link-time reference into this crate.
+#[cfg(target_os = "ios")]
+static STATUS_BAR_BRIDGE: std::sync::OnceLock<extern "C" fn(bool)> = std::sync::OnceLock::new();
+
+#[cfg(target_os = "ios")]
+#[no_mangle]
+pub extern "C" fn ra_register_status_bar_bridge(bridge: extern "C" fn(bool)) {
+    let _ = STATUS_BAR_BRIDGE.set(bridge);
+}
+
 #[cfg(target_os = "ios")]
 #[tauri::command]
 fn set_status_bar_hidden(hidden: bool) {
-    use std::os::raw::{c_char, c_void};
-    unsafe extern "C" {
-        fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
+    match STATUS_BAR_BRIDGE.get() {
+        Some(bridge) => bridge(hidden),
+        None => log::error!("set_status_bar_hidden: StatusBarBridge was not registered"),
     }
-    // Apple's RTLD_DEFAULT: search every image in the process.
-    const RTLD_DEFAULT: *mut c_void = -2isize as *mut c_void;
-    let ptr = unsafe { dlsym(RTLD_DEFAULT, c"ra_set_status_bar_hidden".as_ptr()) };
-    if ptr.is_null() {
-        log::error!("set_status_bar_hidden: StatusBarBridge symbol not found");
-        return;
-    }
-    let bridge: extern "C" fn(bool) = unsafe { std::mem::transmute(ptr) };
-    bridge(hidden);
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
