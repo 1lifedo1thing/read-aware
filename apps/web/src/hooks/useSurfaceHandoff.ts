@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LibraryBook } from "../features/library/lib/library-types";
-import type { ReaderLoadError } from "../features/reader/hooks/useReaderSession";
 import { prefersReducedMotion } from "../features/settings/lib/app-settings";
 import { AppError } from "@read-aware/core";
 
@@ -25,7 +24,8 @@ import { AppError } from "@read-aware/core";
 
 type ReaderSessionSlice = {
   selectedBook: LibraryBook | null;
-  readerLoadError: ReaderLoadError | null;
+  /** A session-level load error or an engine failure: either shows the error surface. */
+  readerFailed: boolean;
   currentPage: number;
   totalPages: number;
   openReader: (book: LibraryBook, navigationIntent?: number) => void;
@@ -107,7 +107,7 @@ export function useSurfaceHandoff(reader: ReaderSessionSlice) {
   // The first relocate populates the page counters; a load failure shows the
   // error surface. Either counts as "the reader has something to show".
   const readerHasRendered =
-    !!reader.readerLoadError || reader.currentPage > 0 || reader.totalPages > 0;
+    reader.readerFailed || reader.currentPage > 0 || reader.totalPages > 0;
 
   // Holding → fading. The rAF loop is the FAST path: once the reader is
   // eligible and frames flow smoothly again, fade immediately. The timeout is

@@ -22,7 +22,7 @@ test("surface close joins persistence, shares concurrent callers and cannot tear
   const root = createRoot(dom.window.document.getElementById("root")!);
   let state!: ReturnType<typeof useSurfaceHandoff>;
   let fail = false;
-  const reader = { selectedBook: null, readerLoadError: null, currentPage: 0, totalPages: 0,
+  const reader = { selectedBook: null, readerFailed: false, currentPage: 0, totalPages: 0,
     openReader() {}, closeReader: async () => {
       calls++;
       await new Promise<void>(resolve => { release = resolve; });
@@ -53,6 +53,39 @@ test("surface close joins persistence, shares concurrent callers and cannot tear
     await act(async () => { failure = state.closeBook().catch(error => error); fade(); release(); });
     expect(await failure).toMatchObject({ code: "db/locked" });
     expect(state.readerExiting).toBe(false);
+  } finally {
+    await act(async () => { root.unmount(); }); dom.window.close();
+    for (const [key, value] of globals) {
+      if (value) Object.defineProperty(globalThis, key, value); else Reflect.deleteProperty(globalThis, key);
+    }
+  }
+});
+
+test("an engine load failure releases the held shelf without waiting for the render-signal timeout", async () => {
+  const dom = new JSDOM("<div id='root'></div>", { url: "http://localhost" });
+  // Frames never arrive here, so only the failsafe timeout can end the hold.
+  const values = { window: dom.window, document: dom.window.document, IS_REACT_ACT_ENVIRONMENT: true,
+    requestAnimationFrame: () => 0, cancelAnimationFrame: () => {} };
+  const globals = new Map(Object.keys(values).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  for (const [key, value] of Object.entries(values)) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+  const delays: number[] = [];
+  dom.window.setTimeout = ((_callback: () => void, delay: number) => { delays.push(delay); return delays.length; }) as typeof dom.window.setTimeout;
+  dom.window.clearTimeout = () => {};
+  const root = createRoot(dom.window.document.getElementById("root")!);
+  let state!: ReturnType<typeof useSurfaceHandoff>;
+  const book = { id: "book" } as LibraryBook;
+  const reader = (readerFailed: boolean) => ({ selectedBook: book, readerFailed, currentPage: 0, totalPages: 0,
+    openReader() {}, closeReader: async () => {} });
+  function Harness({ failed }: { failed: boolean }) { state = useSurfaceHandoff(reader(failed)); return null; }
+  try {
+    await act(async () => { root.render(<Harness failed={false} />); });
+    await act(async () => { state.openBook(book); });
+    expect(state.shelfHandoff).toBe("holding");
+    // Still loading: held until the render signal (3 s) plus the grace period.
+    expect(delays.at(-1)).toBeGreaterThan(3000);
+    await act(async () => { root.render(<Harness failed />); });
+    // Failed: only the grace period remains before the error surface shows.
+    expect(delays.at(-1)).toBeLessThanOrEqual(800);
   } finally {
     await act(async () => { root.unmount(); }); dom.window.close();
     for (const [key, value] of globals) {

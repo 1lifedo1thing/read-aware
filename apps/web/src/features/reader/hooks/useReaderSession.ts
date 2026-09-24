@@ -60,6 +60,14 @@ export function useReaderSession({
   const [readerSource, setReaderSource] = useState<ReaderSource>(null);
   const [readerLoadError, setReaderLoadError] = useState<ReaderLoadError | null>(null);
   const [isReaderLoading, setIsReaderLoading] = useState(false);
+  // The engine reports parse/render failures to the reading runtime rather
+  // than through this hook. The surface handoff needs them too: otherwise it
+  // keeps the shelf over a reader that will never paint a page until its
+  // fallback timeout, and the error surface appears seconds late.
+  const [failedSessionId, setFailedSessionId] = useState<string | null>(null);
+  useEffect(() => readingRuntime.observe(state => {
+    if (state.status === "error" && state.sessionId) setFailedSessionId(state.sessionId);
+  }), []);
   const { controls, visible: shellVisible, origin: overlayOrigin, setVisible: setShellVisible } = useReaderControls();
   const controlsBinding = useRef<(() => void) | undefined>(undefined);
   useEffect(() => () => controlsBinding.current?.(), []);
@@ -307,6 +315,7 @@ export function useReaderSession({
     selectedBook,
     readerSource,
     readerLoadError,
+    readerFailed: !!readerLoadError || (!!trace && failedSessionId === trace.id),
     isReaderLoading,
     readerToc,
     currentChapterHref,
