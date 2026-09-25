@@ -4,12 +4,30 @@ import { cn } from "./lib/cn";
 const sizeClasses = {
   sm: "h-7 w-7",
   md: "h-9 w-9",
+  // An equal-width slot of a phone toolbar: the whole slot is the target,
+  // at least 44px tall (the platform's minimum touch target).
+  toolbar: "h-11 w-full min-w-0 rounded-md",
 } as const;
 
 const toneClasses = {
   default: "text-fg-muted hover:text-fg",
   danger: "text-red-800 hover:bg-red-50 hover:text-red-950 active:bg-red-100",
 } as const;
+
+/**
+ * IconButton's styling, for components that render their own button (a
+ * Popover trigger) but must match the icon buttons beside them.
+ */
+export function iconButtonClassName({ size = "md", tone = "default" }: {
+  size?: keyof typeof sizeClasses;
+  tone?: keyof typeof toneClasses;
+} = {}): string {
+  return cn(
+    "inline-flex items-center justify-center bg-transparent transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg disabled:pointer-events-none disabled:opacity-40",
+    sizeClasses[size],
+    toneClasses[tone],
+  );
+}
 
 type IconButtonProps = {
   icon: ReactNode;
@@ -36,12 +54,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         ref={ref}
         type={type}
         aria-label={label}
-        className={cn(
-          "inline-flex items-center justify-center bg-transparent transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg disabled:pointer-events-none disabled:opacity-40",
-          sizeClasses[size],
-          toneClasses[tone],
-          className,
-        )}
+        className={cn(iconButtonClassName({ size, tone }), className)}
         {...props}
       >
         {icon}

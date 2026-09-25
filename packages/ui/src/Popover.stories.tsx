@@ -47,3 +47,17 @@ export const CenterAligned: Story = {
     align: "center",
   },
 };
+
+/** Opens upward, for triggers docked at the bottom of the screen. */
+export const OpensUpward: Story = {
+  render: (args) => (
+    <div className="flex h-72 items-end">
+      <Popover {...args} />
+    </div>
+  ),
+  args: {
+    trigger: <Button variant="outline" size="sm">Appearance</Button>,
+    children: <p className="text-sm text-fg-muted">The panel opens above its trigger.</p>,
+    side: "top",
+  },
+};

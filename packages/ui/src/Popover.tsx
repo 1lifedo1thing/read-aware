@@ -1,4 +1,4 @@
-import { useRef, useEffect, useId, useCallback, type ReactNode } from "react";
+import { useRef, useEffect, useId, useCallback, useLayoutEffect, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { useLocalAtom } from "./lib/useLocalAtom";
 import { cn } from "./lib/cn";
 import { useHorizontalViewportCollision } from "./lib/useHorizontalViewportCollision";
@@ -22,6 +22,12 @@ type PopoverProps = {
   triggerClassName?: string;
   children: ReactNode;
   align?: "left" | "right" | "center";
+  /**
+   * Which side of the trigger the panel opens on (default "bottom"). "top"
+   * serves triggers docked at the bottom of the screen, such as a phone's
+   * bottom toolbar; the panel's height is then capped to the space above.
+   */
+  side?: "bottom" | "top";
   className?: string;
   /** Extra classes for the floating panel itself (the `role="dialog"` element),
    *  as opposed to `className` which styles the inline-block trigger wrapper.
@@ -45,6 +51,7 @@ export function Popover({
   triggerClassName,
   children,
   align = "left",
+  side = "bottom",
   className,
   panelClassName,
   open: openProp,
@@ -59,6 +66,7 @@ export function Popover({
   const isControlled = openProp !== undefined;
   const open = isControlled ? openProp : internalOpen;
   const { floatingRef, positionStyle } = useHorizontalViewportCollision(open, align);
+  const spaceAbove = useSpaceAbove(open && side === "top", containerRef);
 
   const setOpen = useCallback(
     (next: boolean | ((current: boolean) => boolean)) => {
@@ -121,9 +129,10 @@ export function Popover({
       {open && (
         <div
           ref={floatingRef}
-          style={positionStyle}
+          style={spaceAbove === null ? positionStyle : { ...positionStyle, "--ra-popover-space": `${spaceAbove}px` } as CSSProperties}
           className={cn(
-            "absolute z-50 mt-2 w-max max-w-[calc(100vw-1rem)]",
+            "absolute z-50 w-max max-w-[calc(100vw-1rem)]",
+            side === "top" ? "bottom-full mb-2" : "mt-2",
             align === "center" && "-translate-x-1/2",
           )}
         >
@@ -131,10 +140,13 @@ export function Popover({
             id={panelId}
             role="dialog"
             className={cn(
-              "ra-motion-overlay-pop max-h-[calc(100dvh-3.5rem)] min-w-[200px] max-w-full overflow-y-auto rounded-md border border-border bg-[var(--ra-main-surface-color)] p-4",
-              align === "left" && "origin-top-left",
-              align === "right" && "origin-top-right",
-              align === "center" && "origin-top",
+              "min-w-[200px] max-w-full overflow-y-auto rounded-md border border-border bg-[var(--ra-main-surface-color)] p-4",
+              side === "top"
+                ? "ra-motion-overlay-pop-up max-h-[var(--ra-popover-space,calc(100dvh-3.5rem))]"
+                : "ra-motion-overlay-pop max-h-[calc(100dvh-3.5rem)]",
+              side === "top"
+                ? align === "left" ? "origin-bottom-left" : align === "right" ? "origin-bottom-right" : "origin-bottom"
+                : align === "left" ? "origin-top-left" : align === "right" ? "origin-top-right" : "origin-top",
               panelClassName,
             )}
           >
@@ -144,4 +156,38 @@ export function Popover({
       )}
     </div>
   );
+}
+
+/** Viewport margin kept free above an upward panel. */
+const SPACE_ABOVE_GAP = 8;
+
+/**
+ * Height available above the trigger for an upward panel, re-measured while
+ * open as the viewport changes (rotation, on-screen keyboard). Null when the
+ * panel is closed or opens downward.
+ */
+function useSpaceAbove(active: boolean, anchorRef: RefObject<HTMLDivElement | null>): number | null {
+  const [space, setSpace] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!active) {
+      setSpace(null);
+      return;
+    }
+    const measure = () => {
+      const anchor = anchorRef.current;
+      if (!anchor) return;
+      const viewportTop = window.visualViewport?.offsetTop ?? 0;
+      // The panel sits 0.5rem (mb-2) above the trigger.
+      const next = Math.max(0, Math.floor(anchor.getBoundingClientRect().top - viewportTop - 8 - SPACE_ABOVE_GAP));
+      setSpace((current) => (current === next ? current : next));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+    };
+  }, [active, anchorRef]);
+  return space;
 }
