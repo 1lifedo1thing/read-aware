@@ -23,8 +23,8 @@ type ReaderProgressScrubberProps = {
    * its buttons, for a finger — a hairline is no target for a thumb, while the
    * title band around it has nothing else to do with a sideways drag. The
    * header's controls row must stack above (it is `relative z-[1]`) so its
-   * buttons keep their own taps. The line itself stays on the edge either
-   * way, with its knob showing at rest to say it can be dragged.
+   * buttons keep their own taps. The line itself looks the same either way:
+   * a bare hairline on the edge, its knob showing only while it is in hand.
    */
   hitArea?: "edge" | "header";
 };
@@ -183,14 +183,13 @@ export function ReaderProgressScrubber({
           ))}
         </div>
 
-        {/* Knob, centered on the track line and revealed with it (always
-            shown where the whole header is the handle). */}
+        {/* Knob, centered on the track line and revealed with it. */}
         {enabled && (
           <span
             aria-hidden="true"
             className={cn(
               "pointer-events-none absolute h-2 w-2 rounded-full bg-fg-muted transition-opacity duration-150 group-focus-visible:opacity-100",
-              scrub.active || wholeHeader ? "opacity-100" : "opacity-0",
+              scrub.active ? "opacity-100" : "opacity-0",
             )}
             style={{
               left: `${fillFraction * 100}%`,
