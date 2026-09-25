@@ -193,10 +193,11 @@ const EMPTY_READER_SEGMENTER: RegisteredReaderMode["segmentText"] = () => [];
 // Touch selection settles (handles released, no further changes) for this long
 // before the selection menu appears; each drag of a handle defers it again.
 const TOUCH_SELECTION_SETTLE_MS = 350;
-// A center tap toggles the reader shell, but a double-click (to select a word)
-// begins with a single click too. Defer the toggle by this window so the second
-// click — or the resulting selection — can cancel it, instead of the shell
-// flashing up mid-selection. A genuine single tap just toggles after the wait.
+// A center click toggles the reader shell, but a mouse double-click (to select
+// a word) begins with a single click too. Defer opening by this window so the
+// second click — or the resulting selection — can cancel it, instead of the
+// shell flashing up mid-selection. A genuine single click opens after the wait;
+// a touch tap, which cannot double-click-select, opens at once.
 const SHELL_TOGGLE_DBLCLICK_GUARD_MS = 250;
 // Touch uses a lower threshold: wheel deltas are synthetic momentum units, but
 // a finger drag maps 1:1 to CSS pixels, loses the system's touch slop, and a
@@ -261,6 +262,8 @@ function syncRendererAnimated(renderer: FoliateRenderer | undefined): void {
 type ShellTapIntent = {
   eligible: boolean;
   moved: boolean;
+  /** From pointerdown: the click a touch synthesizes reports a mouse. */
+  pointerType: string;
   startedAt: number;
   startedWithSelection: boolean;
   startX: number;
@@ -423,6 +426,8 @@ export function FoliateReaderView({
   const suppressContentClickTimeoutRef = useRef<number | null>(null);
   const shellTapIntentRef = useRef<ShellTapIntent | null>(null);
   const shouldOpenShellOnClickRef = useRef(false);
+  // The pointer behind the click that may open the shell (see the click handler).
+  const shellTapPointerRef = useRef("mouse");
   const pendingShellToggleTimerRef = useRef<number | null>(null);
   const highlightsRef = useRef<Highlight[]>([]);
   const notesRef = useRef<Note[]>([]);
@@ -1577,6 +1582,7 @@ export function FoliateReaderView({
       shellTapIntentRef.current = {
         eligible: event.isPrimary && event.button === 0,
         moved: false,
+        pointerType: event.pointerType,
         startedAt: performance.now(),
         startedWithSelection: hadSelection,
         startX: event.clientX,
@@ -1645,6 +1651,7 @@ export function FoliateReaderView({
         const wasQuickTap = performance.now() - intent.startedAt <= SHELL_TAP_MAX_DURATION_MS;
         shouldOpenShellOnClickRef.current =
           wasQuickTap && !intent.startedWithSelection && !selectionRef.current;
+        shellTapPointerRef.current = intent.pointerType;
       } else {
         cancelPendingShellOpen();
       }
@@ -1774,6 +1781,15 @@ export function FoliateReaderView({
       // open closes it first and the next tap steps.
       if (textUnitModeActiveStateRef.current && tapToAdvanceRef.current) {
         textUnitModeActionsRef.current?.next();
+        return;
+      }
+
+      // Only a mouse double-clicks to select a word. A touch selects by holding
+      // (which never reaches here as a tap), and a quick second tap is just
+      // another tap, so the guard below would only make the shell slow to
+      // appear: a touch opens it at once.
+      if (shellTapPointerRef.current === "touch") {
+        onContentClickRef.current?.();
         return;
       }
 
