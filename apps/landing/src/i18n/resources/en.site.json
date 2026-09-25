@@ -171,6 +171,61 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.4",
+        "date": "2026-09-25",
+        "codename": "Cambria",
+        "summary": "This Cambria patch moves the reader's controls within reach of your thumb on a phone, lets panels swipe away, and opens books faster on iPhone.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Phone reader controls at the bottom",
+                "body": "On a phone, contents, notes, reading mode, appearance and chat sit in a toolbar at the bottom of the screen, while the top bar keeps back, the title and More. Arrange the toolbar in Settings → Customize, separately from the desktop header."
+              },
+              {
+                "title": "Appearance and notes open from the bottom bar",
+                "body": "The bar grows upward to hold them instead of a card floating over the page; pull it down to close it. Appearance leads with text size and page colors, with fonts and finer typography one tap away."
+              },
+              {
+                "title": "Swipe panels away",
+                "body": "Contents and chat close with the back swipe from the left edge, or by dragging them out the way they came. A note swipes left to delete it."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Faster book opening on iPhone",
+                "body": "Large books open markedly faster; a long biography went from about 1.3 seconds to 0.5 on an iPhone 14 Pro."
+              },
+              {
+                "title": "Controls that appear at once",
+                "body": "A tap on the page no longer waits a quarter second before showing the reader's controls."
+              },
+              {
+                "title": "Notes that are easier to scan",
+                "body": "The notes list uses the app's own type rather than the book's, with each highlight's color beside its passage."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Status bar on iPhone",
+                "body": "The status bar hides while reading again."
+              },
+              {
+                "title": "Damaged MOBI files",
+                "body": "A damaged MOBI file is reported as a damaged copy instead of as DRM-protected."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.3",
         "date": "2026-09-23",
         "codename": "Cambria",

@@ -171,6 +171,61 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.4",
+        "date": "2026-09-25",
+        "codename": "Cambria",
+        "summary": "Este parche de Cambria pone los controles del lector al alcance del pulgar en el teléfono, permite cerrar los paneles con un deslizamiento y abre los libros más rápido en iPhone.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Controles del lector en la parte inferior del teléfono",
+                "body": "En el teléfono, el índice, las notas, el modo de lectura, la apariencia y el chat están en una barra de herramientas en la parte inferior de la pantalla, mientras que la barra superior conserva el botón de atrás, el título y Más. Ordena la barra en Ajustes → Personalizar, por separado del encabezado de escritorio."
+              },
+              {
+                "title": "Apariencia y notas se abren desde la barra inferior",
+                "body": "La barra crece hacia arriba para alojarlas en lugar de una tarjeta flotante sobre la página; tírala hacia abajo para cerrarla. Apariencia empieza por el tamaño del texto y los colores de la página, con las fuentes y los ajustes tipográficos más finos a un toque."
+              },
+              {
+                "title": "Desliza los paneles para cerrarlos",
+                "body": "El índice y el chat se cierran con el deslizamiento de atrás desde el borde izquierdo, o arrastrándolos hacia fuera por donde entraron. Una nota se desliza a la izquierda para eliminarse."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Los libros se abren más rápido en iPhone",
+                "body": "Los libros grandes se abren sensiblemente más rápido; una biografía extensa pasó de unos 1,3 segundos a 0,5 en un iPhone 14 Pro."
+              },
+              {
+                "title": "Controles que aparecen al instante",
+                "body": "Un toque en la página ya no espera un cuarto de segundo antes de mostrar los controles del lector."
+              },
+              {
+                "title": "Notas más fáciles de leer de un vistazo",
+                "body": "La lista de notas usa la tipografía propia de la aplicación en lugar de la del libro, con el color de cada resaltado junto a su fragmento."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Barra de estado en iPhone",
+                "body": "La barra de estado vuelve a ocultarse durante la lectura."
+              },
+              {
+                "title": "Archivos MOBI dañados",
+                "body": "Un archivo MOBI dañado se notifica como copia dañada en lugar de como protegido con DRM."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.3",
         "date": "2026-09-23",
         "codename": "Cambria",

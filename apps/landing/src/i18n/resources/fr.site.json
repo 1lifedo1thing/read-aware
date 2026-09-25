@@ -171,6 +171,61 @@
     "leadIn": " : ",
     "entries": [
       {
+        "version": "0.6.4",
+        "date": "2026-09-25",
+        "codename": "Cambria",
+        "summary": "Ce correctif de Cambria place les commandes du lecteur à portée de votre pouce sur téléphone, permet de refermer les panneaux d’un balayage et accélère l’ouverture des livres sur iPhone.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Des commandes de lecture en bas de l’écran sur téléphone",
+                "body": "Sur téléphone, le sommaire, les notes, le mode de lecture, l’apparence et la discussion se trouvent dans une barre d’outils en bas de l’écran, tandis que la barre supérieure conserve le bouton retour, le titre et le menu « Plus ». Organisez cette barre dans Paramètres → Personnaliser, indépendamment de l’en-tête sur ordinateur."
+              },
+              {
+                "title": "Apparence et notes s’ouvrent depuis la barre du bas",
+                "body": "La barre grandit vers le haut pour les accueillir, au lieu d’une carte flottante au-dessus de la page ; tirez-la vers le bas pour la refermer. L’apparence commence par la taille du texte et les couleurs de la page ; les polices et les réglages typographiques plus fins ne sont qu’à un appui."
+              },
+              {
+                "title": "Des panneaux qui se referment d’un balayage",
+                "body": "Le sommaire et la discussion se ferment par le balayage de retour depuis le bord gauche, ou en les faisant glisser hors de l’écran dans le sens où ils sont apparus. Une note se supprime d’un balayage vers la gauche."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Une ouverture des livres plus rapide sur iPhone",
+                "body": "Les livres volumineux s’ouvrent nettement plus vite ; une longue biographie est passée d’environ 1,3 seconde à 0,5 seconde sur un iPhone 14 Pro."
+              },
+              {
+                "title": "Des commandes qui apparaissent immédiatement",
+                "body": "Un appui sur la page n’attend plus un quart de seconde avant d’afficher les commandes du lecteur."
+              },
+              {
+                "title": "Des notes plus faciles à parcourir",
+                "body": "La liste des notes utilise la police de l’application plutôt que celle du livre, avec la couleur de chaque surlignage à côté du passage correspondant."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "La barre d’état sur iPhone",
+                "body": "La barre d’état se masque de nouveau pendant la lecture."
+              },
+              {
+                "title": "Les fichiers MOBI endommagés",
+                "body": "Un fichier MOBI endommagé est désormais signalé comme une copie endommagée plutôt que comme un fichier protégé par DRM."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.3",
         "date": "2026-09-23",
         "codename": "Cambria",

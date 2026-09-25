@@ -171,6 +171,61 @@
     "leadIn": ". ",
     "entries": [
       {
+        "version": "0.6.4",
+        "date": "2026-09-25",
+        "codename": "Cambria",
+        "summary": "Dieser Cambria-Patch bringt die Bedienelemente des Readers auf dem Telefon in Reichweite deines Daumens, lässt Bedienfelder per Wischgeste verschwinden und öffnet Bücher auf dem iPhone schneller.",
+        "groups": [
+          {
+            "kind": "new",
+            "items": [
+              {
+                "title": "Reader-Bedienelemente am unteren Rand auf dem Telefon",
+                "body": "Auf dem Telefon liegen Inhaltsverzeichnis, Notizen, Lesemodus, Erscheinungsbild und Chat in einer Symbolleiste am unteren Bildschirmrand, während die obere Leiste Zurück, den Titel und „Mehr“ behält. Ordne die Symbolleiste unter Einstellungen → Anpassen an, getrennt von der Desktop-Kopfzeile."
+              },
+              {
+                "title": "Erscheinungsbild und Notizen öffnen sich über die untere Leiste",
+                "body": "Die Leiste wächst nach oben und nimmt sie auf, statt dass eine Karte über der Seite schwebt; ziehe sie nach unten, um sie zu schließen. Beim Erscheinungsbild stehen zuerst Schriftgröße und Seitenfarben, Schriften und feinere Typografie liegen einen Tipp entfernt."
+              },
+              {
+                "title": "Bedienfelder wegwischen",
+                "body": "Inhaltsverzeichnis und Chat schließen sich mit der Zurück-Wischgeste vom linken Rand oder lassen sich in die Richtung herausziehen, aus der sie erschienen sind. Eine Notiz löschst du, indem du sie nach links wischst."
+              }
+            ]
+          },
+          {
+            "kind": "improved",
+            "items": [
+              {
+                "title": "Schnelleres Öffnen von Büchern auf dem iPhone",
+                "body": "Große Bücher öffnen sich deutlich schneller; eine lange Biografie ging auf einem iPhone 14 Pro von rund 1,3 Sekunden auf 0,5 zurück."
+              },
+              {
+                "title": "Bedienelemente, die sofort erscheinen",
+                "body": "Ein Tipp auf die Seite wartet nicht mehr eine Viertelsekunde, bevor die Bedienelemente des Readers erscheinen."
+              },
+              {
+                "title": "Notizen, die sich schneller überblicken lassen",
+                "body": "Die Notizenliste verwendet die eigene Schrift der App statt der des Buches, und neben jeder Textstelle steht die Farbe der zugehörigen Markierung."
+              }
+            ]
+          },
+          {
+            "kind": "fixed",
+            "items": [
+              {
+                "title": "Statusleiste auf dem iPhone",
+                "body": "Die Statusleiste wird beim Lesen wieder ausgeblendet."
+              },
+              {
+                "title": "Beschädigte MOBI-Dateien",
+                "body": "Eine beschädigte MOBI-Datei wird als beschädigte Kopie gemeldet und nicht mehr als DRM-geschützt."
+              }
+            ]
+          }
+        ]
+      },
+      {
         "version": "0.6.3",
         "date": "2026-09-23",
         "codename": "Cambria",
