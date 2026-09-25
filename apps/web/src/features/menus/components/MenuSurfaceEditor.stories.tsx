@@ -66,7 +66,7 @@ const selectionActions: RegisteredSelectionAction[] = [
 
 /** A config built from the app's own defaults, patched per story. */
 function config(patch: Partial<Record<MenuSurface, SurfaceLayout>> = {}): MenuConfig {
-  const surfaces: MenuSurface[] = ["primaryNav", "shelfHeader", "readerHeader", "selection"];
+  const surfaces: MenuSurface[] = ["primaryNav", "shelfHeader", "readerHeader", "readerToolbar", "selection"];
   return Object.fromEntries(
     surfaces.map((surface) => [
       surface,
@@ -129,6 +129,11 @@ export const PrimaryNav: Story = {
 /** The reader header, whose plugin contributions are a different set. */
 export const ReaderHeader: Story = {
   args: { surface: "readerHeader" },
+};
+
+/** The phone reader's bottom toolbar: contents and notes are arrangeable too. */
+export const ReaderToolbar: Story = {
+  args: { surface: "readerToolbar" },
 };
 
 /** The selection menu, the densest surface. */

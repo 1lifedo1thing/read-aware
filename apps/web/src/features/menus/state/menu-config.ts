@@ -1,5 +1,5 @@
 /**
- * User-arranged menu layout for the three customizable surfaces: which items
+ * User-arranged menu layout for the customizable surfaces: which items
  * (built-in AND plugin-contributed) are visible, in what order, and which sit
  * in the vertical-dots overflow menu. The Menus settings page edits this;
  * the surfaces render from it.
@@ -17,6 +17,7 @@ export type MenuSurface =
   | "primaryNav"
   | "shelfHeader"
   | "readerHeader"
+  | "readerToolbar"
   | "selection";
 
 export type SurfaceLayout = {
@@ -43,6 +44,10 @@ export const CORE_MENU_DEFAULTS: Record<MenuSurface, string[]> = {
   ],
   // Right cluster only — back/TOC/notes stay fixed on the left.
   readerHeader: ["core:navigator", "core:appearance", "core:chat"],
+  // The phone reader's bottom toolbar. Back and the overflow menu stay fixed
+  // in the top bar, so every action here — contents and notes included — is
+  // the user's to arrange; what doesn't fit the width joins the overflow.
+  readerToolbar: ["core:toc", "core:notes", "core:navigator", "core:appearance", "core:chat"],
   selection: [
     "core:copy",
     "core:highlight",
@@ -61,6 +66,7 @@ export const CORE_OVERFLOW_DEFAULTS: Record<MenuSurface, string[]> = {
   primaryNav: ["core:stats"],
   shelfHeader: [],
   readerHeader: [],
+  readerToolbar: [],
   selection: [],
 };
 
@@ -74,6 +80,7 @@ export const SURFACE_RULES: Record<
   primaryNav: { minVisible: 1, maxVisible: 4 },
   shelfHeader: { minVisible: 0, maxVisible: null },
   readerHeader: { minVisible: 0, maxVisible: null },
+  readerToolbar: { minVisible: 0, maxVisible: null },
   selection: { minVisible: 0, maxVisible: null },
 };
 
@@ -98,6 +105,7 @@ function defaultConfig(): MenuConfig {
     primaryNav: defaultLayout("primaryNav"),
     shelfHeader: defaultLayout("shelfHeader"),
     readerHeader: defaultLayout("readerHeader"),
+    readerToolbar: defaultLayout("readerToolbar"),
     selection: defaultLayout("selection"),
   };
 }
@@ -125,6 +133,7 @@ function readStored(): MenuConfig {
       primaryNav: sanitizeLayout(parsed.primaryNav, base.primaryNav),
       shelfHeader: sanitizeLayout(parsed.shelfHeader, base.shelfHeader),
       readerHeader: sanitizeLayout(parsed.readerHeader, base.readerHeader),
+      readerToolbar: sanitizeLayout(parsed.readerToolbar, base.readerToolbar),
       selection: sanitizeLayout(parsed.selection, base.selection),
     };
   } catch {

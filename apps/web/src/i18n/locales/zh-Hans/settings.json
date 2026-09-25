@@ -755,6 +755,7 @@
       "primaryNav": "主导航",
       "shelfHeader": "书架顶栏",
       "readerHeader": "阅读器顶栏",
+      "readerToolbar": "阅读器底栏（手机）",
       "selection": "选区菜单"
     },
     "items": {
@@ -769,6 +770,7 @@
       "notes": "笔记",
       "appearance": "外观",
       "chat": "聊天",
+      "navigator": "阅读模式",
       "copy": "复制",
       "highlight": "高亮",
       "underline": "下划线",

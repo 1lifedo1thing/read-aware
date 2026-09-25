@@ -759,6 +759,7 @@
       "primaryNav": "Primary navigation",
       "shelfHeader": "Shelf header",
       "readerHeader": "Reader header",
+      "readerToolbar": "Reader toolbar (phone)",
       "selection": "Selection menu"
     },
     "items": {
@@ -773,6 +774,7 @@
       "notes": "Notes",
       "appearance": "Appearance",
       "chat": "Chat",
+      "navigator": "Reading mode",
       "copy": "Copy",
       "highlight": "Highlight",
       "underline": "Underline",

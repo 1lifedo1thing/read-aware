@@ -664,6 +664,7 @@
       "primaryNav": "メインナビゲーション",
       "shelfHeader": "本棚ヘッダー",
       "readerHeader": "リーダーヘッダー",
+      "readerToolbar": "リーダーツールバー（スマートフォン）",
       "selection": "選択メニュー"
     },
     "items": {
@@ -678,6 +679,7 @@
       "notes": "ノート",
       "appearance": "外観",
       "chat": "チャット",
+      "navigator": "読書モード",
       "copy": "コピー",
       "highlight": "ハイライト",
       "underline": "下線",

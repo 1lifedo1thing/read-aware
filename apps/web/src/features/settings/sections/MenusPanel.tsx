@@ -1,6 +1,6 @@
 /**
  * Settings → Menus: arrange the customizable surfaces (primary navigation,
- * shelf header, reader header, selection menu) by dragging items between
+ * shelf header, reader header, the phone reader toolbar, selection menu) by dragging items between
  * Shown and the overflow menu — core and plugin items alike
  * (docs/plugins/plugin-system.md §7).
  */
@@ -14,6 +14,7 @@ const SURFACES: MenuSurface[] = [
   "primaryNav",
   "shelfHeader",
   "readerHeader",
+  "readerToolbar",
   "selection",
 ];
 

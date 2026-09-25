@@ -664,6 +664,7 @@
       "primaryNav": "主導覽",
       "shelfHeader": "書架頂欄",
       "readerHeader": "閱讀器頂欄",
+      "readerToolbar": "閱讀器底欄（手機）",
       "selection": "選取選單"
     },
     "items": {
@@ -678,6 +679,7 @@
       "notes": "筆記",
       "appearance": "外觀",
       "chat": "聊天",
+      "navigator": "閱讀模式",
       "copy": "複製",
       "highlight": "螢光標記",
       "underline": "底線",

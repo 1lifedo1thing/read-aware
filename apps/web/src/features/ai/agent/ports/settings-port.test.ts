@@ -120,6 +120,10 @@ beforeEach(() => {
       visible: [...CORE_MENU_DEFAULTS.readerHeader],
       overflow: [],
     },
+    readerToolbar: {
+      visible: [...CORE_MENU_DEFAULTS.readerToolbar],
+      overflow: [],
+    },
     selection: { visible: [...CORE_MENU_DEFAULTS.selection], overflow: [] },
   });
   store.set(aiPreferencesAtom, {

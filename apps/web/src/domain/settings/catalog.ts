@@ -397,6 +397,12 @@ const MENU_SURFACES: Array<{
   },
   { surface: "shelfHeader", label: "Shelf header" },
   { surface: "readerHeader", label: "Reader header" },
+  {
+    surface: "readerToolbar",
+    label: "Reader toolbar (phone)",
+    description:
+      "The reader's bottom toolbar at phone widths; items that do not fit the width join the top bar's overflow menu",
+  },
   { surface: "selection", label: "Selection menu" },
 ];
 

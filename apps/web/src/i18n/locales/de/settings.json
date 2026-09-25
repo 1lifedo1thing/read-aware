@@ -668,6 +668,7 @@
       "primaryNav": "Hauptnavigation",
       "shelfHeader": "Regal-Kopfleiste",
       "readerHeader": "Reader-Kopfleiste",
+      "readerToolbar": "Reader-Werkzeugleiste (Smartphone)",
       "selection": "Auswahlmenü"
     },
     "items": {
@@ -682,6 +683,7 @@
       "notes": "Notizen",
       "appearance": "Darstellung",
       "chat": "Chat",
+      "navigator": "Lesemodus",
       "copy": "Kopieren",
       "highlight": "Markieren",
       "underline": "Unterstreichen",

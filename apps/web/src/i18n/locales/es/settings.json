@@ -672,6 +672,7 @@
       "primaryNav": "Navegación principal",
       "shelfHeader": "Barra de la estantería",
       "readerHeader": "Barra del lector",
+      "readerToolbar": "Barra inferior del lector (móvil)",
       "selection": "Menú de selección"
     },
     "items": {
@@ -686,6 +687,7 @@
       "notes": "Notas",
       "appearance": "Apariencia",
       "chat": "Chat",
+      "navigator": "Modo de lectura",
       "copy": "Copiar",
       "highlight": "Subrayar",
       "underline": "Subrayado",

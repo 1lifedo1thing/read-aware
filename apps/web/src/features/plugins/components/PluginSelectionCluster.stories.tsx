@@ -38,6 +38,7 @@ function layout(visible: string[], overflow: string[]): MenuConfig {
     primaryNav: empty,
     shelfHeader: empty,
     readerHeader: empty,
+    readerToolbar: empty,
     selection: { visible, overflow },
   };
 }

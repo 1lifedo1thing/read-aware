@@ -15,7 +15,9 @@ import {
   Copy,
   GearSix,
   Highlighter,
+  ListBullets,
   MagnifyingGlass,
+  Notebook,
   NotePencil,
   Plus,
   Rows,
@@ -52,6 +54,13 @@ export const CORE_MENU_ITEMS: Record<MenuSurface, CoreMenuItemMeta[]> = {
     { id: "core:settings", labelKey: "settings", Icon: GearSix },
   ],
   readerHeader: [
+    { id: "core:navigator", labelKey: "navigator", Icon: Rows },
+    { id: "core:appearance", labelKey: "appearance", Icon: TextAa },
+    { id: "core:chat", labelKey: "chat", Icon: ChatCircle },
+  ],
+  readerToolbar: [
+    { id: "core:toc", labelKey: "toc", Icon: ListBullets },
+    { id: "core:notes", labelKey: "notes", Icon: Notebook },
     { id: "core:navigator", labelKey: "navigator", Icon: Rows },
     { id: "core:appearance", labelKey: "appearance", Icon: TextAa },
     { id: "core:chat", labelKey: "chat", Icon: ChatCircle },

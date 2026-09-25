@@ -65,6 +65,8 @@ const CORE_ITEM_LABELS: Record<string, string> = {
   import: "Import book",
   viewControl: "Shelf view",
   settings: "Settings",
+  toc: "Table of contents",
+  notes: "Notes",
   navigator: "Text-unit navigator",
   appearance: "Appearance",
   chat: "Chat",

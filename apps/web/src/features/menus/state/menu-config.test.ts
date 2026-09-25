@@ -76,3 +76,20 @@ describe("selection menu contribution placement", () => {
     });
   });
 });
+
+describe("phone reader toolbar", () => {
+  test("arranges contents and notes itself, unlike the desktop header's fixed left cluster", () => {
+    expect(CORE_MENU_DEFAULTS.readerToolbar).toEqual(expect.arrayContaining(["core:toc", "core:notes"]));
+    expect(CORE_MENU_DEFAULTS.readerHeader).not.toContain("core:toc");
+    expect(CORE_MENU_DEFAULTS.readerHeader).not.toContain("core:notes");
+  });
+
+  test("keeps notes where the user tucked it and sends new plugin actions to overflow", () => {
+    const layout = resolveSurfaceLayout(
+      { visible: ["core:toc", "core:chat"], overflow: ["core:notes"] },
+      [...CORE_MENU_DEFAULTS.readerToolbar, "plugin:tts:speak"],
+    );
+    expect(layout.visible).toEqual(["core:toc", "core:chat", "core:navigator", "core:appearance"]);
+    expect(layout.overflow).toEqual(["core:notes", "plugin:tts:speak"]);
+  });
+});
