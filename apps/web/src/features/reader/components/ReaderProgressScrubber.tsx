@@ -17,6 +17,16 @@ type ReaderProgressScrubberProps = {
   marks?: ProgressMark[];
   /** Absent (or no position) leaves the bar a plain, inert hairline. */
   onSeek?: (fraction: number) => void;
+  /**
+   * Where a press takes hold of the bar. "edge" (default): the 10px strip at
+   * the header's bottom edge, for a mouse. "header": the whole header behind
+   * its buttons, for a finger — a hairline is no target for a thumb, while the
+   * title band around it has nothing else to do with a sideways drag. The
+   * header's controls row must stack above (it is `relative z-[1]`) so its
+   * buttons keep their own taps. The line itself stays on the edge either
+   * way, with its knob showing at rest to say it can be dragged.
+   */
+  hitArea?: "edge" | "header";
 };
 
 /** A keyboard step of one page, or 1% where the book reports no page count. */
@@ -47,7 +57,9 @@ export function ReaderProgressScrubber({
   totalPages = 0,
   marks = [],
   onSeek,
+  hitArea = "edge",
 }: ReaderProgressScrubberProps) {
+  const wholeHeader = hitArea === "header";
   const { t } = useTranslation("reader");
   const enabled = onSeek != null && fraction != null;
   const stepFraction = totalPages > 0 ? 1 / totalPages : FALLBACK_STEP_FRACTION;
@@ -87,7 +99,7 @@ export function ReaderProgressScrubber({
     readoutPercent < 12 ? "start" : readoutPercent > 88 ? "end" : "center";
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0">
+    <div className={cn("pointer-events-none absolute inset-x-0 bottom-0", wholeHeader && "top-0")}>
       {enabled && readoutFraction != null && (
         <div
           aria-hidden="true"
@@ -132,7 +144,8 @@ export function ReaderProgressScrubber({
           // No focus ring: a box drawn around a full-width 10px strip reads as a
           // stray border across the header. Focus shows in the bar itself — it
           // thickens and grows a knob, the same cue hovering gives.
-          "group relative h-2.5 w-full",
+          "group relative w-full",
+          wholeHeader ? "h-full" : "h-2.5",
           enabled && "pointer-events-auto cursor-pointer touch-none focus-visible:outline-none",
         )}
         data-tauri-drag-region="false"
@@ -170,13 +183,14 @@ export function ReaderProgressScrubber({
           ))}
         </div>
 
-        {/* Knob, centered on the track line and revealed with it. */}
+        {/* Knob, centered on the track line and revealed with it (always
+            shown where the whole header is the handle). */}
         {enabled && (
           <span
             aria-hidden="true"
             className={cn(
               "pointer-events-none absolute h-2 w-2 rounded-full bg-fg-muted transition-opacity duration-150 group-focus-visible:opacity-100",
-              scrub.active ? "opacity-100" : "opacity-0",
+              scrub.active || wholeHeader ? "opacity-100" : "opacity-0",
             )}
             style={{
               left: `${fillFraction * 100}%`,

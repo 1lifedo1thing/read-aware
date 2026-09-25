@@ -70,9 +70,6 @@ export function ReaderNotesPopover({
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
-  const groups = groupByTocOrder(annotations, tocEntries);
-  const failure = describeErrorCode(loadErrorCode);
-
   return (
     <Popover
       open={open}
@@ -82,17 +79,59 @@ export function ReaderNotesPopover({
       triggerLabel={t("notes")}
       triggerTooltip={t("notes")}
       triggerClassName={cn(TRIGGER_CLASS, open && "text-fg")}
-      trigger={
-        <Notebook size={18} weight={open ? "bold" : "regular"} aria-hidden="true" />
-      }
+      trigger={<Notebook size={18} weight={open ? "bold" : "regular"} aria-hidden="true" />}
       panelClassName="flex max-h-[min(28rem,70vh)] w-[clamp(18rem,28vw,26rem)] flex-col overflow-hidden p-0"
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2.5">
+      <ReaderNotesContent
+        annotations={annotations}
+        loadFailed={loadFailed}
+        loadErrorCode={loadErrorCode}
+        isLoading={isLoading}
+        onRetryLoad={onRetryLoad}
+        tocEntries={tocEntries}
+        onNavigate={(cfiRange) => {
+          onNavigate(cfiRange);
+          setOpen(false);
+        }}
+        onDelete={onDelete}
+      />
+    </Popover>
+  );
+}
+
+type ReaderNotesContentProps = Pick<ReaderNotesPopoverProps,
+  "annotations" | "loadFailed" | "loadErrorCode" | "isLoading" | "onRetryLoad" | "tocEntries" | "onNavigate" | "onDelete"> & {
+  /** Show the "Notes" eyebrow and count; a host with its own title omits it. */
+  heading?: boolean;
+};
+
+/**
+ * The notes list itself, shared by the header popover, the dialog that hosts
+ * it when no header trigger does, and the phone bottom bar's drawer.
+ */
+export function ReaderNotesContent({
+  annotations,
+  loadFailed = false,
+  loadErrorCode,
+  isLoading = false,
+  onRetryLoad,
+  tocEntries,
+  onNavigate,
+  onDelete,
+  heading = true,
+}: ReaderNotesContentProps) {
+  const { t } = useTranslation(["reader", "common"]);
+  const groups = groupByTocOrder(annotations, tocEntries);
+  const failure = describeErrorCode(loadErrorCode);
+
+  return (
+    <>
+      {heading && <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2.5">
         <Eyebrow as="span">{t("notes")}</Eyebrow>
         <span className="text-xs tabular-nums text-fg-subtle">
           {loadFailed || isLoading ? null : formatNumber(annotations.length)}
         </span>
-      </div>
+      </div>}
 
       {loadFailed ? (
         <div className="px-4 py-6">
@@ -110,11 +149,14 @@ export function ReaderNotesPopover({
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex flex-col gap-4 px-3 py-3">
+          <div data-swipe-reveal-scope className="flex flex-col gap-3 px-3 pb-3">
             {groups.map((group, index) => (
               <div key={group.label ?? `__rest__${index}`}>
+                {/* Pinned while its chapter's notes scroll past. It needs the
+                    host's surface color to cover them: a host other than a
+                    popover sets --ra-panel-surface. */}
                 {group.label && (
-                  <p className="mb-1 px-2 font-sans text-[13px] font-medium text-fg-subtle">
+                  <p className="sticky top-0 z-[1] bg-[var(--ra-panel-surface,var(--ra-main-surface-color))] px-2 py-1.5 font-sans text-xs font-medium text-fg-subtle">
                     {group.label}
                   </p>
                 )}
@@ -123,10 +165,7 @@ export function ReaderNotesPopover({
                     <AnnotationRow
                       key={annotation.id}
                       annotation={annotation}
-                      onNavigate={(cfiRange) => {
-                        onNavigate(cfiRange);
-                        setOpen(false);
-                      }}
+                      onNavigate={onNavigate}
                       onDelete={onDelete}
                     />
                   ))}
@@ -136,6 +175,6 @@ export function ReaderNotesPopover({
           </div>
         </div>
       )}
-    </Popover>
+    </>
   );
 }

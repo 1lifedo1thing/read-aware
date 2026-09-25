@@ -1,9 +1,9 @@
 import type { DomainActor } from "../../../platform/domain-actor";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useId, useMemo, useRef, type CSSProperties, type ReactNode } from "react";
 import { useReaderFocusTarget } from "../hooks/useReaderFocusTarget";
 import { useAtomValue } from "jotai";
 import type { ReadingModeSnapshot } from "@read-aware/core";
-import { CaretLeft, ChatCircle, ListBullets } from "@phosphor-icons/react";
+import { CaretLeft, ChatCircle, ListBullets, ListChecks, Notebook, TextAa } from "@phosphor-icons/react";
 import { cn } from "@read-aware/ui/cn";
 import { useReaderResponsiveLayout } from "../hooks/useReaderResponsiveLayout";
 import { Body, Dialog, IconButton, ScrollArea, Tooltip, useToast } from "@read-aware/ui";
@@ -34,12 +34,19 @@ import { useReaderPanels } from "../hooks/useReaderPanels";
 import { useReaderPanelSizes } from "../hooks/useReaderPanelSizes";
 import { useReaderModeSelection } from "../hooks/useReaderModeSelection";
 import type { TocEntry } from "../lib/reader-types";
-import { ReaderNotesPopover } from "./ReaderNotesPopover";
+import { ReaderNotesContent, ReaderNotesPopover } from "./ReaderNotesPopover";
 import { ReaderProgressScrubber } from "./ReaderProgressScrubber";
 import { ReaderResizeHandle } from "./ReaderResizeHandle";
 import { ReaderAppearanceFields, ReaderAppearanceMenu } from "./ReaderAppearanceMenu";
+import { ReaderAppearanceCompact } from "./ReaderAppearanceCompact";
 import { ReaderModePicker } from "./ReaderModePicker";
+import { ReaderBottomBar, type ReaderBottomBarDrawer } from "./ReaderBottomBar";
+import { useToolbarSlotCapacity } from "../hooks/useToolbarSlotCapacity";
+import { usePanelSwipeDismiss } from "../hooks/usePanelSwipeDismiss";
 import { contributionText } from "../../plugins/lib/plugin-i18n";
+
+/** Panels a phone opens in the bottom bar's drawer. */
+type ReaderDrawer = "appearance" | "notes";
 
 type ReaderShellOverlayProps = {
   visible: boolean;
@@ -126,6 +133,8 @@ export function ReaderShellOverlay({
   const setNotesOpen = (open: boolean) => setPanel("chat", open);
   const setAppearanceOpen = (open: boolean) => setPanel("appearance", open);
   const setAnnotationsOpen = (open: boolean) => setPanel("annotations", open);
+  // The phone bottom bar's drawer, named by the toolbar icons that open it.
+  const drawerId = useId();
   const { sizes, adjust: adjustPanel, persist: persistPanelSizes } = useReaderPanelSizes();
 
   // Phone-width: the side docks become full-screen sheets (below the top bar),
@@ -139,6 +148,11 @@ export function ReaderShellOverlay({
   // page, so there back keeps its usual close-the-book meaning.
   useBackInterceptor(() => {
     if (!visible || !isPhone) return false;
+    if (appearanceOpen || annotationsOpen) {
+      if (appearanceOpen) setAppearanceOpen(false);
+      if (annotationsOpen) setAnnotationsOpen(false);
+      return true;
+    }
     if (notesOpen) {
       setNotesOpen(false);
       return true;
@@ -173,6 +187,14 @@ export function ReaderShellOverlay({
   );
   const readerLayout = resolveSurfaceLayout(menuConfig.readerHeader, [
     ...readerCoreItems,
+    ...readerPluginActions.map((action) => pluginMenuId(action.key)),
+  ]);
+  // Phones arrange their own bottom toolbar (Settings → Menus), contents and
+  // notes included; back and the overflow menu stay fixed in the top bar.
+  const toolbarLayout = resolveSurfaceLayout(menuConfig.readerToolbar, [
+    ...CORE_MENU_DEFAULTS.readerToolbar.filter(
+      (id) => id !== "core:navigator" || textUnitMode !== null || canSelectMode,
+    ),
     ...readerPluginActions.map((action) => pluginMenuId(action.key)),
   ]);
 
@@ -230,12 +252,14 @@ export function ReaderShellOverlay({
   };
 
   const coreReaderRun: Record<string, (() => void) | undefined> = {
+    "core:toc": toggleToc,
+    "core:notes": () => setAnnotationsOpen(true),
     "core:navigator": textUnitModeAvailable ? onToggleTextUnitMode : undefined,
     "core:chat": toggleNotes,
     "core:appearance": () => setAppearanceOpen(true),
   };
-  const readerOverflowEntries = readerLayout.overflow
-    .map((id): MenuOverflowEntry | null => {
+  const menuSurface = isPhone ? "readerToolbar" : "readerHeader";
+  const toOverflowEntry = (id: string): MenuOverflowEntry | null => {
       if (id.startsWith("plugin:")) {
         const action = readerPluginActions.find((entry) => pluginMenuId(entry.key) === id);
         if (!action) return null;
@@ -251,7 +275,7 @@ export function ReaderShellOverlay({
             }),
         };
       }
-      const meta = coreMenuMeta("readerHeader", id);
+      const meta = coreMenuMeta(menuSurface, id);
       if (!meta) return null;
       if (id === "core:navigator" && canSelectMode) {
         return {
@@ -275,10 +299,201 @@ export function ReaderShellOverlay({
             : <meta.Icon size={16} weight="regular" aria-hidden="true" />,
         run,
       };
-    })
+  };
+  const readerOverflowEntries = readerLayout.overflow
+    .map(toOverflowEntry)
     .filter((entry): entry is MenuOverflowEntry => entry !== null);
 
+  const removeAnnotationReporting = (id: string) =>
+    void removeAnnotation(id).catch((error) => {
+      log.error("failed to remove annotation", error);
+      toast({
+        variant: "destructive",
+        title: t("annotations.deleteFailed"),
+        description: describeError(error).body,
+      });
+    });
+  const notesPopover = () => (
+    <ReaderNotesPopover
+      key="notes"
+      annotations={annotations}
+      loadFailed={annotationsLoadFailed}
+      loadErrorCode={annotationsLoadErrorCode}
+      isLoading={annotationsLoading}
+      onRetryLoad={() => void refreshAnnotations()}
+      tocEntries={tocEntries}
+      onNavigate={(cfiRange) => onAnnotationSelect?.(cfiRange)}
+      onDelete={removeAnnotationReporting}
+      open={annotationsOpen}
+      onOpenChange={setAnnotationsOpen}
+    />
+  );
+
+  // Phone widths: the arranged toolbar items render in order while they fit
+  // the width; the rest, and everything arranged into overflow, sit behind
+  // the top bar's "More".
+  const { rowRef: toolbarRowRef, capacity: toolbarCapacity } = useToolbarSlotCapacity(isPhone);
+  const toolbarInline = toolbarLayout.visible.slice(0, toolbarCapacity);
+  const toolbarModePickerEntry: MenuOverflowEntry | null =
+    toolbarInline.includes("core:navigator") && textUnitModeAvailable && canSelectMode && modeSnapshot
+      ? {
+          // The slot holds the text-unit toggle; the mode provider picker
+          // that shares it in the header moves into the menu.
+          id: "core:navigator:provider",
+          label: String(tMenus("menus.items.navigator")),
+          icon: <ListChecks size={16} weight="regular" aria-hidden="true" />,
+          node: <ReaderModePicker key={bookId} mode={modeSnapshot} {...modeSelection} />,
+        }
+      : null;
+  const toolbarOverflowEntries = [
+    ...[...toolbarLayout.visible.slice(toolbarInline.length), ...toolbarLayout.overflow].map(toOverflowEntry),
+    toolbarModePickerEntry,
+  ].filter((entry): entry is MenuOverflowEntry => entry !== null);
+  const toolbarNode = (id: string): ReactNode => {
+    if (id.startsWith("plugin:")) {
+      const action = readerPluginActions.find((entry) => pluginMenuId(entry.key) === id);
+      return action ? (
+        <PluginHeaderItem
+          key={id}
+          variant="toolbar"
+          action={action}
+          input={{ book: { id: book.id, title: book.title, author: book.author } }}
+          buttonClassName="pointer-events-auto"
+        />
+      ) : null;
+    }
+    switch (id) {
+      case "core:toc":
+        return (
+          <IconButton
+            key={id}
+            size="toolbar"
+            label={t("tableOfContents")}
+            aria-pressed={tocOpen}
+            onClick={toggleToc}
+            className={cn(tocOpen && "text-fg")}
+            icon={<ListBullets size={20} weight={tocOpen ? "bold" : "regular"} aria-hidden="true" />}
+          />
+        );
+      case "core:notes":
+        return (
+          <IconButton
+            key={id}
+            size="toolbar"
+            label={t("notes")}
+            aria-expanded={annotationsOpen}
+            aria-controls={drawerId}
+            onClick={() => setAnnotationsOpen(!annotationsOpen)}
+            className={cn(annotationsOpen && "text-fg")}
+            icon={<Notebook size={20} weight={annotationsOpen ? "bold" : "regular"} aria-hidden="true" />}
+          />
+        );
+      case "core:navigator":
+        if (textUnitModeAvailable && textUnitMode) {
+          return (
+            <IconButton
+              key={id}
+              size="toolbar"
+              label={resolvePluginText(textUnitModeActive ? textUnitMode.copy.exit : textUnitMode.copy.enable, locale)}
+              aria-pressed={textUnitModeActive}
+              onClick={onToggleTextUnitMode}
+              className={cn(textUnitModeActive && "text-fg")}
+              icon={renderPluginIcon(textUnitMode.icon, 20, textUnitModeActive ? "bold" : "regular")}
+            />
+          );
+        }
+        return canSelectMode && modeSnapshot
+          ? <ReaderModePicker key={`${id}:${bookId}`} variant="toolbar" mode={modeSnapshot} {...modeSelection} />
+          : null;
+      case "core:appearance":
+        return (
+          <IconButton
+            key={id}
+            size="toolbar"
+            label={t("readingAppearance")}
+            aria-expanded={appearanceOpen}
+            aria-controls={drawerId}
+            onClick={() => setAppearanceOpen(!appearanceOpen)}
+            className={cn(appearanceOpen && "text-fg")}
+            icon={<TextAa size={20} weight={appearanceOpen ? "bold" : "regular"} aria-hidden="true" />}
+          />
+        );
+      case "core:chat":
+        return (
+          <IconButton
+            key={id}
+            size="toolbar"
+            label={t("chat")}
+            aria-pressed={notesOpen}
+            onClick={toggleNotes}
+            className={cn(notesOpen && "text-fg")}
+            icon={<ChatCircle size={20} weight={notesOpen ? "bold" : "regular"} aria-hidden="true" />}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+  const toolbarSlots = isPhone
+    ? toolbarInline.map(toolbarNode).filter((node) => node !== null)
+    : [];
+  // Phones open appearance and notes in the bottom bar's drawer, whether
+  // their icon is in the toolbar or in "More". The desktop header needs a
+  // dialog for appearance once it is arranged into the overflow menu.
+  const appearanceDialog = !isPhone && !readerLayout.visible.includes("core:appearance");
+  const drawer: ReaderDrawer | null = !isPhone ? null
+    : appearanceOpen ? "appearance" : annotationsOpen ? "notes" : null;
+  const closeDrawer = () => {
+    if (appearanceOpen) setAppearanceOpen(false);
+    if (annotationsOpen) setAnnotationsOpen(false);
+  };
+  const renderDrawer = (key: ReaderDrawer): ReaderBottomBarDrawer => key === "appearance"
+    ? {
+        title: t("readingAppearance"),
+        body: (
+          <div className="min-h-0 overflow-y-auto px-4 pb-5 pt-1">
+            <ReaderAppearanceCompact bookId={bookId} fixedLayout={fixedLayout} />
+          </div>
+        ),
+      }
+    : {
+        title: t("notes"),
+        body: (
+          <div className="flex min-h-0 flex-col">
+            <ReaderNotesContent
+              heading={false}
+              annotations={annotations}
+              loadFailed={annotationsLoadFailed}
+              loadErrorCode={annotationsLoadErrorCode}
+              isLoading={annotationsLoading}
+              onRetryLoad={() => void refreshAnnotations()}
+              tocEntries={tocEntries}
+              onNavigate={(cfiRange) => {
+                onAnnotationSelect?.(cfiRange);
+                setAnnotationsOpen(false);
+              }}
+              onDelete={removeAnnotationReporting}
+            />
+          </div>
+        ),
+      };
+
   const activeTocIndex = findTocIndexForHref(tocEntries, currentChapterHref);
+  const currentChapterLabel = activeTocIndex >= 0 ? tocEntries[activeTocIndex]?.label ?? null : null;
+
+  // Phone sheets close by swipe as well as from the toolbar: the iOS back
+  // swipe from the left edge, or a drag toward the side each one leaves by.
+  const tocSheetRef = useRef<HTMLElement | null>(null);
+  const chatSheetRef = useRef<HTMLElement | null>(null);
+  usePanelSwipeDismiss(tocSheetRef, {
+    open: tocOpen, enabled: isPhone && visible && tocOpen, exit: "left", onDismiss: () => setTocOpen(false),
+  });
+  usePanelSwipeDismiss(chatSheetRef, {
+    open: notesOpen, enabled: isPhone && visible && notesOpen, exit: "right", onDismiss: () => setNotesOpen(false),
+  });
+  // A phone sheet ends at the bottom toolbar, which already clears the home
+  // indicator, so nothing inside it should pad for that inset again.
+  const phoneSheetInsets = isPhone ? ({ "--ra-safe-bottom": "0px" } as CSSProperties) : undefined;
 
   // Reveal the current chapter when the contents panel opens (or the chapter
   // changes while it's open), centering it so it's easy to find.
@@ -303,7 +518,7 @@ export function ReaderShellOverlay({
         "pointer-events-none fixed inset-0 z-50 flex min-h-0 flex-col overflow-clip",
       )}
     >
-      {!readerLayout.visible.includes("core:appearance") && (
+      {appearanceDialog && (
         <Dialog open={appearanceOpen} onClose={() => setAppearanceOpen(false)} title={t("readingAppearance")}
           className="max-h-full overflow-y-auto">
           <ReaderAppearanceFields bookId={bookId} fixedLayout={fixedLayout} />
@@ -345,9 +560,25 @@ export function ReaderShellOverlay({
             : "-translate-y-full opacity-0 pointer-events-none",
         )}
       >
-        <div className="pointer-events-none flex h-full items-center gap-3">
-          {/* Left cluster: back to shelf + contents toggle */}
-          <div className="ml-2 flex shrink-0 items-center gap-0.5">
+        {/* On phones the progress scrubber takes hold of the whole header
+            behind this row; lifting the row keeps its buttons' taps. */}
+        <div className={cn("pointer-events-none flex h-full items-center gap-3", isPhone && "relative z-[1]")}>
+          {/* Phones keep back to the left of the title and "More" to its
+              right; everything else lives in the bottom toolbar. Equal-width
+              sides keep the title centered even when "More" has nothing. */}
+          {isPhone && (
+            <div className="flex w-9 shrink-0 items-center">
+              <IconButton
+                label={t("backToShelf")}
+                onClick={onBack}
+                className="pointer-events-auto"
+                icon={<CaretLeft size={20} weight="regular" aria-hidden="true" />}
+              />
+            </div>
+          )}
+
+          {/* Left cluster: back to shelf + contents toggle. */}
+          {!isPhone && <div className="ml-2 flex shrink-0 items-center gap-0.5">
             <Tooltip content={t("shelf")} side="bottom" className="pointer-events-auto">
               <IconButton
                 size="sm"
@@ -372,28 +603,8 @@ export function ReaderShellOverlay({
                 }
               />
             </Tooltip>
-            <ReaderNotesPopover
-              annotations={annotations}
-              loadFailed={annotationsLoadFailed}
-              loadErrorCode={annotationsLoadErrorCode}
-              isLoading={annotationsLoading}
-              onRetryLoad={() => void refreshAnnotations()}
-              tocEntries={tocEntries}
-              onNavigate={(cfiRange) => onAnnotationSelect?.(cfiRange)}
-              onDelete={(id) =>
-                void removeAnnotation(id).catch((error) => {
-                  log.error("failed to remove annotation", error);
-                  toast({
-                    variant: "destructive",
-                    title: t("annotations.deleteFailed"),
-                    description: describeError(error).body,
-                  });
-                })
-              }
-              open={annotationsOpen}
-              onOpenChange={setAnnotationsOpen}
-            />
-          </div>
+            {notesPopover()}
+          </div>}
 
           {/* Center: title (prominent) with a small progress readout beneath. */}
           {title && (
@@ -403,7 +614,19 @@ export function ReaderShellOverlay({
               </Body>
               {/* Arbitrary px size: tailwind-merge would strip a custom
                   `text-*` size token when a `text-*` color is also present. */}
-              {progressLabel && (
+              {/* Phones name the chapter there too; the percentage keeps
+                  its place when a long chapter name truncates. */}
+              {isPhone && currentChapterLabel ? (
+                <span className="mt-0.5 flex justify-center gap-1 font-sans text-[11px] leading-none text-fg-subtle">
+                  <span className="min-w-0 truncate">{currentChapterLabel}</span>
+                  {percent != null && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span className="shrink-0 tabular-nums">{formatPercent(percent)}</span>
+                    </>
+                  )}
+                </span>
+              ) : progressLabel && (
                 <span className="mt-0.5 block truncate font-sans text-[11px] leading-none tabular-nums text-fg-subtle">
                   {progressLabel}
                 </span>
@@ -413,7 +636,12 @@ export function ReaderShellOverlay({
 
           {/* Right cluster: user-arranged (navigator/appearance/chat + plugin
               items), remainder behind the vertical-dots overflow. */}
-          <div className="flex shrink-0 items-center justify-end gap-0.5">
+          {isPhone && (
+            <div className="flex w-9 shrink-0 items-center justify-end">
+              <MenuOverflow entries={toolbarOverflowEntries} className="pointer-events-auto" />
+            </div>
+          )}
+          {!isPhone && <div className="flex shrink-0 items-center justify-end gap-0.5">
             {readerLayout.visible.map((id) => {
               if (id.startsWith("plugin:")) {
                 const action = readerPluginActions.find(
@@ -435,16 +663,18 @@ export function ReaderShellOverlay({
               entries={readerOverflowEntries}
               className="pointer-events-auto"
             />
-          </div>
+          </div>}
         </div>
 
         {/* Reading progress, merged into the header's bottom edge — and the
-            scrubber: hover it for a readout, drag it to jump. */}
+            scrubber: hover it for a readout, drag it to jump. On phones a
+            sideways drag anywhere across the header scrubs. */}
         <ReaderProgressScrubber
           fraction={progress ?? null}
           totalPages={totalPages}
           marks={progressMarks}
           onSeek={onSeek}
+          hitArea={isPhone ? "header" : "edge"}
         />
       </div>
 
@@ -454,8 +684,14 @@ export function ReaderShellOverlay({
           header restores whatever was showing (and avoids a re-fetch flash);
           phone sheets are closed by the hook when the chrome hides. */}
       <div className="pointer-events-none relative z-10 flex min-h-0 flex-1 items-stretch justify-between">
+        {/* While the bottom bar's drawer is open, a tap on the page closes
+            the drawer rather than reaching the book (and toggling the chrome). */}
+        {drawer && (
+          <div aria-hidden="true" className="pointer-events-auto absolute inset-0 z-[1]" onClick={closeDrawer} />
+        )}
         {/* Table of contents (left) */}
         <section
+          ref={tocSheetRef}
           aria-label={t("tableOfContents")}
           inert={!(visible && tocOpen)}
           className={cn(
@@ -471,6 +707,7 @@ export function ReaderShellOverlay({
           style={{
             width: isPhone ? undefined : sizes.toc,
             backgroundColor: "var(--ra-main-surface-color)",
+            ...phoneSheetInsets,
           }}
         >
           <ScrollArea className="h-full min-h-0 flex-1">
@@ -541,6 +778,7 @@ export function ReaderShellOverlay({
 
         {/* AI conversation (right) */}
         <section
+          ref={chatSheetRef}
           aria-label={t("aiChat")}
           // Hidden via transforms (still in the DOM), so without `inert` a focused
           // composer would keep receiving keystrokes off-screen; `inert` also
@@ -558,6 +796,7 @@ export function ReaderShellOverlay({
           style={{
             width: isPhone ? undefined : sizes.chat,
             backgroundColor: "var(--ra-main-surface-color)",
+            ...phoneSheetInsets,
           }}
         >
           {!isPhone && (
@@ -578,6 +817,18 @@ export function ReaderShellOverlay({
           />
         </section>
       </div>
+
+      {isPhone && (
+        <ReaderBottomBar
+          visible={visible}
+          drawerId={drawerId}
+          drawer={drawer}
+          renderDrawer={renderDrawer}
+          onCloseDrawer={closeDrawer}
+          slotRowRef={toolbarRowRef}
+          slots={toolbarSlots}
+        />
+      )}
     </div>
   );
 }

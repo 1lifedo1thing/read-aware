@@ -114,8 +114,10 @@ export function useReaderPanels(bookId: string, visible: boolean, exclusive: boo
             await updateReaderPanelLayout(bookId, previous => ({ ...previous, [key]: open }), signal, origin);
           } else setTransient(previous => signal.aborted ? previous : ({
             ...(previous.bookId === bookId ? previous : closedTransient(bookId, origin)),
-            // Phone sheets are full-screen, so opening one replaces the other.
-            ...(dock && open ? { toc: false, chat: false } : {}),
+            // Phone panels each take the room between the bars (the sheets
+            // fill it, the bottom bar's drawer grows into it), so opening
+            // one closes whichever else is showing.
+            ...(open && environment.current.exclusive ? { toc: false, chat: false, annotations: false, appearance: false } : {}),
             [panel]: open, origin,
           }));
           signal.throwIfAborted();

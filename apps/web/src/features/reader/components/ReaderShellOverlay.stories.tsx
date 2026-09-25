@@ -46,6 +46,12 @@ const textUnitMode = {
   key: "sentence-reader:sentence",
   label: { default: "Sentence" },
   icon: "paragraph",
+  copy: {
+    title: { default: "Read by sentence or paragraph" },
+    enable: { default: "Start reading by sentence or paragraph" },
+    exit: { default: "Exit reading by sentence or paragraph" },
+    menuLabel: { default: "Sentence navigator" },
+  },
 } as unknown as RegisteredReaderMode;
 
 /**
@@ -167,4 +173,19 @@ export const LongTitle: Story = {
       author: "John Angus McPhee",
     },
   },
+};
+
+/**
+ * Phone width: the top keeps back, the title with chapter and percentage, and
+ * "More", with the progress line on its edge (drag sideways across the bar to
+ * scrub); the actions move to a bottom toolbar within thumb reach.
+ */
+export const Phone: Story = {
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};
+
+/** Phone width with a text-unit mode: more actions than fit fold into "More". */
+export const PhoneWithTextUnitMode: Story = {
+  ...Phone,
+  args: { ...WithTextUnitMode.args },
 };

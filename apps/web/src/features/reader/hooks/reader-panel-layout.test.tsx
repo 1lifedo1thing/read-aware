@@ -174,6 +174,13 @@ if (process.env.PANEL_LAYOUT_CASE === "1") {
     expect(readerPanels.snapshot()).toMatchObject({ layout: "exclusive", panels: { toc: { open: true, visible: true } } });
     const chat = requestPanel("chat", true); await flush(); await chat;
     expect(state.toc).toBe(false); expect(state.chat).toBe(true); expect(state.chatFocusRequestId).toBe(1);
+    // The bottom bar's drawer panels share the same room: each replaces the rest.
+    const appearance = requestPanel("appearance", true); await flush(); await appearance;
+    expect(state.chat).toBe(false); expect(state.appearance).toBe(true);
+    const annotations = requestPanel("annotations", true); await flush(); await annotations;
+    expect(state.appearance).toBe(false); expect(state.annotations).toBe(true);
+    const back = requestPanel("chat", true); await flush(); await back;
+    expect(state.annotations).toBe(false); expect(state.chat).toBe(true);
     expect(dom.window.document.querySelector('[aria-label="chat"]')!.hasAttribute("inert")).toBe(false);
     const hide = begin(() => readingRuntime.setControls(false)); await flush(); await hide;
     expect(state.chat).toBe(false); expect(readerPanels.snapshot()?.panels.chat).toEqual({ open: false, visible: false });

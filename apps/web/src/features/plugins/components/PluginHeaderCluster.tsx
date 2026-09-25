@@ -9,7 +9,7 @@
 import { PuzzlePiece } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useAtomValue } from "jotai";
-import { DropdownMenu, IconButton, Popover, Tooltip } from "@read-aware/ui";
+import { DropdownMenu, IconButton, Popover, Tooltip, iconButtonClassName } from "@read-aware/ui";
 import { cn } from "@read-aware/ui/cn";
 import { useTranslation } from "../../../i18n";
 import { openHeaderActionDialog } from "../lib/open-header-action";
@@ -128,14 +128,30 @@ export function PluginHeaderItem({
   input = {},
   onOpenPage,
   buttonClassName,
+  variant = "icon",
 }: {
   action: RegisteredHeaderAction;
   input?: HeaderActionInput;
   onOpenPage?: (key: string) => void;
   buttonClassName?: string;
+  /** "toolbar": a phone bottom-toolbar slot whose popup opens upward. */
+  variant?: "icon" | "toolbar";
 }) {
   if (!actionVisible(action)) return null;
   if (action.surface === "shelf" && action.presentation === "page") {
+    if (variant === "toolbar") {
+      return (
+        <IconButton
+          size="toolbar"
+          label={contributionText(action.title)}
+          icon={renderPluginIcon(action.icon, 20)}
+          disabled={!actionEnabled(action)}
+          aria-pressed={action.state?.checked}
+          onClick={() => onOpenPage?.(action.key)}
+          className={cn(action.state?.checked && "text-fg", buttonClassName)}
+        />
+      );
+    }
     return (
       <Tooltip content={contributionText(action.title)} side="bottom">
         <IconButton
@@ -154,7 +170,7 @@ export function PluginHeaderItem({
     );
   }
   return (
-    <PluginHeaderPopupButton action={action} input={input} buttonClassName={buttonClassName} />
+    <PluginHeaderPopupButton action={action} input={input} buttonClassName={buttonClassName} variant={variant} />
   );
 }
 
@@ -163,11 +179,14 @@ function PluginHeaderPopupButton({
   action,
   input,
   buttonClassName,
+  variant = "icon",
 }: {
   action: RegisteredHeaderAction;
   input: HeaderActionInput;
   buttonClassName?: string;
+  variant?: "icon" | "toolbar";
 }) {
+  const toolbar = variant === "toolbar";
   const [open, setOpen] = useState(false);
   const { view } = usePluginViewSource(action.view, open, () => action.view(input),
     () => { showPluginFailureToast(action.pluginName); setOpen(false); }, input.book?.id ?? input.thread?.id);
@@ -177,16 +196,22 @@ function PluginHeaderPopupButton({
       open={open}
       onOpenChange={setOpen}
       align="right"
+      side={toolbar ? "top" : "bottom"}
       triggerLabel={contributionText(action.title)}
       triggerDisabled={!actionEnabled(action)}
       triggerPressed={action.state?.checked}
-      triggerTooltip={contributionText(action.title)}
-      className={buttonClassName}
-      trigger={
+      triggerTooltip={toolbar ? undefined : contributionText(action.title)}
+      className={cn(buttonClassName, toolbar && "block w-full")}
+      triggerClassName={toolbar
+        ? cn(iconButtonClassName({ size: "toolbar" }), (open || action.state?.checked) && "text-fg")
+        : undefined}
+      trigger={toolbar ? (
+        renderPluginIcon(action.icon, 20)
+      ) : (
         <span className="flex h-8 w-8 items-center justify-center rounded-md text-fg-muted hover:text-fg">
           {renderPluginIcon(action.icon, 16)}
         </span>
-      }
+      )}
       panelClassName="w-[28rem] max-w-[calc(100vw-2rem)] p-4"
     >
       <PluginViewRenderer
