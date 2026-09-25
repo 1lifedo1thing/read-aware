@@ -90,7 +90,7 @@ export function AnnotationsPopoverView({
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex flex-col gap-4 px-3 py-3">
+          <div data-swipe-reveal-scope className="flex flex-col gap-4 px-3 py-3">
             {[...grouped.entries()].map(([bookId, items]) => {
               const book = bookMap.get(bookId);
               const openBook = () => {

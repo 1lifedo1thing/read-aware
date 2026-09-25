@@ -47,7 +47,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      // List-row width, as in the chapter-annotations flyout.
+      // List-row width, as in the notes popover and the phone drawer.
       <div className="max-w-sm">
         <Story />
       </div>
@@ -58,10 +58,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** A highlight: colour swatch mark plus the quoted passage. */
+/** A highlight: a rule in its colour beside the quoted passage. */
 export const HighlightRow: Story = {};
 
-/** A note: pencil mark, quoted passage, then the note body underneath. */
+/** A note: neutral rule, quoted passage, then the note body with its pencil mark. */
 export const NoteRow: Story = {
   args: { annotation: note },
 };

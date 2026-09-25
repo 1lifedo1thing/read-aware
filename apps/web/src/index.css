@@ -491,16 +491,6 @@ html[data-tauri="true"][data-os="ios"] #root {
   line-height: var(--ra-content-line-height);
 }
 
-/* Dense variant for list rows (annotation excerpts), where the full reading
-   size would turn a scannable list into a stack of paragraphs. The ratio
-   reproduces today's 12px against the 14px default, so the look is unchanged
-   until the reader moves the size — then it moves with everything else. */
-.ra-content-type-sm {
-  font-family: var(--ra-content-font-family);
-  font-size: calc(var(--ra-content-font-size) * 0.857);
-  line-height: var(--ra-content-line-height);
-}
-
 .ra-chat-markdown {
   font-family: var(--ra-content-font-family);
   font-size: var(--ra-content-font-size);

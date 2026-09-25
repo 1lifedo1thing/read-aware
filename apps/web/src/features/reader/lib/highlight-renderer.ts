@@ -34,8 +34,11 @@ const HIGHLIGHT_FILL: Record<Highlight["color"], string> = {
   pink: "#fb7185",
 };
 
-/** Saturated strokes for underlines — a thin rule needs more weight than a fill. */
-const UNDERLINE_STROKE: Record<Highlight["color"], string> = {
+/**
+ * Saturated strokes for thin marks — underlines, and the rule beside a
+ * highlight in an annotation list. A thin line needs more weight than a fill.
+ */
+export const UNDERLINE_STROKE: Record<Highlight["color"], string> = {
   yellow: "#eab308",
   green: "#22c55e",
   blue: "#3b82f6",

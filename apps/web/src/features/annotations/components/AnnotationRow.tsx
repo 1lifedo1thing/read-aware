@@ -1,36 +1,32 @@
+import { useRef } from "react";
 import { ChatCircleDots, NotePencil, Trash } from "@phosphor-icons/react";
 import { IconButton } from "@read-aware/ui";
+import { cn } from "@read-aware/ui/cn";
 import { formatDate, useTranslation } from "../../../i18n";
-import { HIGHLIGHT_COLORS } from "../../reader/lib/highlight-renderer";
-import type { Annotation, Highlight, Note } from "../lib/annotation-types";
+import { UNDERLINE_STROKE } from "../../reader/lib/highlight-renderer";
+import { useSwipeReveal } from "../hooks/useSwipeReveal";
+import type { Annotation } from "../lib/annotation-types";
 
-function AnnotationIcon({ annotation }: { annotation: Annotation }) {
-  if (annotation.type === "highlight") {
-    const color =
-      HIGHLIGHT_COLORS[(annotation as Highlight).color] ?? HIGHLIGHT_COLORS.yellow;
-    return (
-      <span
-        className="mt-0.5 block h-3 w-3 shrink-0 rounded-sm"
-        style={{ backgroundColor: color }}
-      />
-    );
-  }
-  if (annotation.type === "ask") {
-    return (
-      <ChatCircleDots size={14} weight="regular" className="mt-0.5 shrink-0 text-fg-subtle" />
-    );
-  }
-  return <NotePencil size={14} weight="regular" className="mt-0.5 shrink-0 text-fg-subtle" />;
-}
+/** How far a row slides open on touch, uncovering its delete action. */
+const DELETE_REVEAL_PX = 80;
 
 function formatTimestamp(iso: string): string {
   return formatDate(new Date(iso), { month: "short", day: "numeric" });
 }
 
 /**
- * One annotation in a list: its mark (highlight swatch / note icon), the quoted
- * passage, any note body, and a timestamp. Clicking navigates to the passage;
- * the trash control deletes it. Used by the chapter-annotations flyout.
+ * One annotation in a list: a rule in its highlight color beside the quoted
+ * passage, any note beneath it, and the date. Tapping it navigates to the
+ * passage.
+ *
+ * Set in the app's own type, not the reading typography: a list of excerpts
+ * is for scanning back through, and at a book's face and size it reads as a
+ * stack of paragraphs instead.
+ *
+ * Deleting is a hover trash control for a mouse. On touch the row swipes left
+ * to uncover a Delete action instead of showing a trash can on every row; the
+ * control stays in the accessibility tree there, for a screen reader that
+ * cannot swipe.
  */
 export function AnnotationRow({
   annotation,
@@ -42,38 +38,72 @@ export function AnnotationRow({
   onDelete: (id: string) => void;
 }) {
   const { t } = useTranslation("ai");
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const reveal = useSwipeReveal(rowRef, DELETE_REVEAL_PX);
+  const rule = annotation.type === "highlight" ? UNDERLINE_STROKE[annotation.color] : undefined;
+
   return (
-    <div className="group flex items-start gap-2 rounded-md p-2 transition-colors hover:bg-fg/5">
-      <button
-        type="button"
-        onClick={() => {
-          if (annotation.cfiRange) onNavigate(annotation.cfiRange);
-        }}
-        className="flex min-w-0 flex-1 gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg"
+    <div ref={rowRef} className="relative overflow-hidden rounded-md">
+      {reveal.offset < 0 && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={() => onDelete(annotation.id)}
+          style={{ width: -reveal.offset }}
+          className="absolute inset-y-0 right-0 flex items-center justify-center overflow-hidden bg-red-700 font-sans text-[13px] font-medium text-white"
+        >
+          <span className="px-2">{t("annotation.delete")}</span>
+        </button>
+      )}
+      <div
+        style={{ transform: reveal.offset ? `translateX(${reveal.offset}px)` : undefined }}
+        className={cn(
+          "group flex items-start gap-1 rounded-md transition-colors hover:bg-fg/5",
+          !reveal.dragging && "transition-[transform,background-color] duration-200 ease-out",
+        )}
       >
-        <AnnotationIcon annotation={annotation} />
-        <div className="min-w-0 flex-1">
-          {/* ask = 提问痕迹：text 是问题本身，不加引号（不是书里的原文） */}
-          <p className="ra-content-type-sm line-clamp-2 text-fg-muted">
-            {annotation.type === "ask" ? annotation.text : <>&ldquo;{annotation.text}&rdquo;</>}
-          </p>
-          {annotation.type === "note" && (
-            <p className="ra-content-type-sm mt-0.5 line-clamp-2 text-fg-muted">
-              {(annotation as Note).content}
-            </p>
-          )}
-          <p className="mt-1 text-[10px] text-fg-subtle">
-            {formatTimestamp(annotation.createdAt)}
-          </p>
-        </div>
-      </button>
-      <IconButton
-        label={t("annotation.delete")}
-        size="sm"
-        onClick={() => onDelete(annotation.id)}
-        className="shrink-0 text-fg-subtle opacity-0 hover:text-red-600 group-hover:opacity-100 pointer-coarse:opacity-100"
-        icon={<Trash size={12} weight="regular" />}
-      />
+        <button
+          type="button"
+          onClick={() => {
+            // A tap on an open row closes it rather than leaving the list.
+            if (reveal.offset) reveal.close();
+            else if (annotation.cfiRange) onNavigate(annotation.cfiRange);
+          }}
+          className="flex min-w-0 flex-1 gap-3 rounded-md py-2 pl-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg"
+        >
+          <span
+            aria-hidden="true"
+            className={cn("w-[3px] shrink-0 self-stretch rounded-full", !rule && "bg-border-strong")}
+            style={rule ? { backgroundColor: rule } : undefined}
+          />
+          <div className="min-w-0 flex-1 font-sans">
+            {annotation.type === "ask" ? (
+              // ask = 提问痕迹：text 是问题本身，不加引号（不是书里的原文）
+              <p className="flex gap-1.5 text-[13px] leading-relaxed text-fg">
+                <ChatCircleDots size={14} aria-hidden="true" className="mt-[3px] shrink-0 text-fg-subtle" />
+                <span className="line-clamp-3">{annotation.text}</span>
+              </p>
+            ) : (
+              <p className="line-clamp-3 text-[13px] leading-relaxed text-fg">&ldquo;{annotation.text}&rdquo;</p>
+            )}
+            {annotation.type === "note" && (
+              <p className="mt-1 flex gap-1.5 text-[13px] leading-relaxed text-fg-muted">
+                <NotePencil size={14} aria-hidden="true" className="mt-[3px] shrink-0 text-fg-subtle" />
+                <span className="line-clamp-3">{annotation.content}</span>
+              </p>
+            )}
+            <p className="mt-1 text-[11px] text-fg-subtle">{formatTimestamp(annotation.createdAt)}</p>
+          </div>
+        </button>
+        <IconButton
+          label={t("annotation.delete")}
+          size="sm"
+          onClick={() => onDelete(annotation.id)}
+          className="mt-1 shrink-0 text-fg-subtle opacity-0 hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100 pointer-coarse:sr-only"
+          icon={<Trash size={12} weight="regular" />}
+        />
+      </div>
     </div>
   );
 }

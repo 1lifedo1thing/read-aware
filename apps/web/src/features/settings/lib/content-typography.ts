@@ -1,7 +1,8 @@
 /**
  * Typography for the app's *content* surfaces — the chat transcript (in-book
- * panel and the global Context page alike), the notes panel, plugin markdown
- * views, and the composer you type into.
+ * panel and the global Context page alike), the note editor, plugin markdown
+ * views, and the composer you type into. Annotation lists are not among them:
+ * a list of excerpts is for scanning, so its rows stay in the app's type.
  *
  * The book already had full typographic control, injected into the foliate
  * iframe (`reader-css.ts`); everything outside it was frozen at Inter/14px.
