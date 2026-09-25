@@ -101,3 +101,19 @@ export function applyReaderThemeSelection(
   if (typography.paragraphSpacing) next.paragraphSpacing = typography.paragraphSpacing;
   return next;
 }
+
+/**
+ * How a page-color choice looks, for a swatch: its background and text colors,
+ * plus the dark pair for `auto`, which switches between light and dark with
+ * the app.
+ */
+export function readerThemeSwatch(
+  theme: ReaderThemePreference,
+  pluginThemes: readonly RegisteredPluginTheme[],
+): { colors: { background: string; foreground: string }; alternate?: { background: string; foreground: string } } {
+  const pair = (palette: ReaderPalette) => ({ background: palette.bg, foreground: palette.text });
+  if (theme === "auto") {
+    return { colors: pair(BUILTIN_READER_PALETTES.light), alternate: pair(BUILTIN_READER_PALETTES.dark) };
+  }
+  return { colors: pair(resolveReaderPalette(theme, pluginThemes)) };
+}

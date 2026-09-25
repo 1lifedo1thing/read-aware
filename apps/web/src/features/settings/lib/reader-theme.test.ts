@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   applyReaderThemeSelection,
   BUILTIN_READER_PALETTES,
+  readerThemeSwatch,
   resolveReaderPalette,
 } from "./reader-theme";
 import {
@@ -61,6 +62,24 @@ describe("resolveReaderPalette", () => {
     expect(
       resolveReaderPalette("plugin:editorial-themes:nocturne", [appOnly]),
     ).toBe(BUILTIN_READER_PALETTES.warm);
+  });
+});
+
+describe("readerThemeSwatch", () => {
+  test("a theme shows its own page and text colors", () => {
+    expect(readerThemeSwatch("warm", [])).toEqual({
+      colors: { background: BUILTIN_READER_PALETTES.warm.bg, foreground: BUILTIN_READER_PALETTES.warm.text },
+    });
+    expect(readerThemeSwatch("plugin:editorial-themes:nocturne", [NOCTURNE]).colors).toEqual({
+      background: "#161a22",
+      foreground: "#ccd2dd",
+    });
+  });
+
+  test("auto shows the light and dark pages it switches between", () => {
+    const swatch = readerThemeSwatch("auto", []);
+    expect(swatch.colors.background).toBe(BUILTIN_READER_PALETTES.light.bg);
+    expect(swatch.alternate?.background).toBe(BUILTIN_READER_PALETTES.dark.bg);
   });
 });
 
