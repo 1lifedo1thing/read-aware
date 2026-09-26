@@ -121,6 +121,7 @@ TanStack Router, Jotai, Tailwind CSS v4, Vite, and Tauri 2.
 - `packages/core`: contracts, entities, events and `StorageAdapter`.
 - `packages/agent`: agent runtime, tools, memory and context assembly.
 - `packages/plugin-types` and `plugins`: public plugin API and first-party consumers.
+- `marketing`: promotional material outside the product, such as the Remotion pitch video.
 
 Read references when their subject is needed for the current task. The
 [documentation index](docs/README.md) is the full map; `docs/archive/` contains

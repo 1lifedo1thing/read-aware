@@ -64,26 +64,6 @@
         "wrangler": "^4.33.1",
       },
     },
-    "apps/pitch-video": {
-      "name": "@read-aware/pitch-video",
-      "version": "0.1.0",
-      "dependencies": {
-        "@phosphor-icons/react": "^2.1.10",
-        "@remotion/cli": "4.0.529",
-        "@remotion/fonts": "4.0.529",
-        "@remotion/media": "4.0.529",
-        "@remotion/transitions": "4.0.529",
-        "react": "^19.1.0",
-        "react-dom": "^19.1.0",
-        "remotion": "4.0.529",
-      },
-      "devDependencies": {
-        "@read-aware/tsconfig": "workspace:*",
-        "@types/react": "^19.1.8",
-        "@types/react-dom": "^19.1.6",
-        "typescript": "~5.8.3",
-      },
-    },
     "apps/relay": {
       "name": "@read-aware/relay",
       "version": "0.1.0",
@@ -151,6 +131,26 @@
         "tailwindcss": "^4.2.1",
         "typescript": "~5.8.3",
         "vite": "^7.0.4",
+      },
+    },
+    "marketing/pitch-video": {
+      "name": "@read-aware/pitch-video",
+      "version": "0.1.0",
+      "dependencies": {
+        "@phosphor-icons/react": "^2.1.10",
+        "@remotion/cli": "4.0.529",
+        "@remotion/fonts": "4.0.529",
+        "@remotion/media": "4.0.529",
+        "@remotion/transitions": "4.0.529",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0",
+        "remotion": "4.0.529",
+      },
+      "devDependencies": {
+        "@read-aware/tsconfig": "workspace:*",
+        "@types/react": "^19.1.8",
+        "@types/react-dom": "^19.1.6",
+        "typescript": "~5.8.3",
       },
     },
     "packages/agent": {
@@ -725,7 +725,7 @@
 
     "@read-aware/landing": ["@read-aware/landing@workspace:apps/landing"],
 
-    "@read-aware/pitch-video": ["@read-aware/pitch-video@workspace:apps/pitch-video"],
+    "@read-aware/pitch-video": ["@read-aware/pitch-video@workspace:marketing/pitch-video"],
 
     "@read-aware/plugin-dictionary": ["@read-aware/plugin-dictionary@workspace:plugins/dictionary"],
 
