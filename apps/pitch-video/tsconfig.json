@@ -1,0 +1,8 @@
+{
+  "extends": "../../packages/tsconfig/base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["bun"]
+  },
+  "include": ["src", "scripts", "remotion.config.ts"]
+}
