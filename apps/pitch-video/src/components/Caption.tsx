@@ -10,7 +10,7 @@ export function Caption({
   eyebrow,
   title,
   start = 0,
-  top = 78,
+  top = 46,
 }: {
   eyebrow: string;
   title: string;
@@ -44,7 +44,7 @@ export function Caption({
       <div
         style={{
           marginTop: 14,
-          fontFamily: font.serif,
+          fontFamily: font.book,
           fontSize: 58,
           lineHeight: 1.1,
           letterSpacing: "-0.012em",

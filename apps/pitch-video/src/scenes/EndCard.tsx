@@ -23,7 +23,7 @@ export function EndCard() {
       <div
         style={{
           marginTop: 18,
-          fontFamily: font.serif,
+          fontFamily: font.book,
           fontSize: 112,
           lineHeight: 1,
           letterSpacing: "-0.02em",
@@ -36,7 +36,7 @@ export function EndCard() {
       <div
         style={{
           marginTop: 24,
-          fontFamily: font.serif,
+          fontFamily: font.book,
           fontSize: 38,
           color: color.fgMuted,
           ...arrive(progress(frame, 10, 20), 16, 6),

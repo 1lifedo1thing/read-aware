@@ -1,312 +1,176 @@
-import {
-  DatabaseIcon,
-  GearSixIcon,
-  InfoIcon,
-  KeyboardIcon,
-  MagnifyingGlassIcon,
-  PaletteIcon,
-  PuzzlePieceIcon,
-  SlidersHorizontalIcon,
-  SparkleIcon,
-  BookOpenIcon,
-  RowsIcon,
-  WrenchIcon,
-} from "@phosphor-icons/react";
 import { AbsoluteFill } from "remotion";
 import { AppWindow } from "../components/AppWindow";
+import { Camera, WINDOW, blendShot, leanShot, type Shot } from "../components/Camera";
 import { Caption } from "../components/Caption";
-import { Toggle } from "../components/Toggle";
-import { arrive, easeInOut, mix, progress } from "../motion";
-import { color, font, shadow } from "../theme";
-import { BEAT } from "../timeline";
+import { Composer, StreamedText, ToolActivity, ToolStep, UserTurn, WordReferenceCard } from "../components/app/Chat";
+import { PluginRow, PluginsPanelHeader, SettingsDialog, type InstalledPlugin } from "../components/app/Settings";
+import { ShelfGrid } from "../components/app/Shelf";
+import { arrive, easeIn, easeInOut, mix, progress, typed } from "../motion";
 import { useSceneFrame } from "../scene-frame";
+import { color } from "../theme";
+import { BAR, BEAT } from "../timeline";
 
 /**
- * Settings → Plugins. Switches flip on the beat; each plugin that contributes
- * agent tools hands them to the agent, which lists them as its own.
+ * Two bars. First, Settings → Plugins over the shelf: switches turn on with
+ * the beat. Then the Agent page: asked about a word, the agent calls the
+ * Dictionary plugin's own tool and answers with its entry — a plugin handing
+ * the agent a skill.
  *
- * Names, versions, descriptions, permission chips and tool names are the
- * first-party plugins' real manifests and agentTools registrations.
+ * Plugin names, versions, descriptions and permission chips come from the
+ * first-party manifests and the permission names in the app's en locale; the
+ * tool label is the Dictionary plugin's registered `lookup_word` label.
  */
 
-const WIN = { x: 240, y: 236, w: 1440, h: 800 };
-
-type Plugin = {
-  name: string;
-  version: string;
-  description: string;
-  chips: string[];
-  tools: string[];
-};
-
-const PLUGINS: Plugin[] = [
+const PLUGINS: InstalledPlugin[] = [
   {
     name: "Dictionary",
     version: "1.4.0",
-    description: "Look up words as you read and keep them on a searchable timeline.",
-    chips: ["AI requests", "Agent tools"],
-    tools: ["lookup_word", "save_word"],
-  },
-  {
-    name: "TTS Voices",
-    version: "0.6.0",
-    description: "Read-aloud voices from ElevenLabs, OpenAI, Kokoro, Piper and more.",
-    chips: ["Network"],
-    tools: [],
+    description: "Look up words while you read, save them, and revisit full dictionary entries on a searchable timeline.",
+    permissions: ["Read reading activity", "Read library", "AI requests", "Agent tools", "Agent retrieval"],
+    bookAccess: true,
   },
   {
     name: "Editorial Themes",
     version: "1.0.0",
-    description: "Gutenberg and Nocturne: two editorial themes set in EB Garamond.",
-    chips: ["Themes"],
-    tools: [],
+    description:
+      "Two editorial themes for the whole app and the book page — Gutenberg, an aged-paper light theme, and Nocturne, a quiet ink-blue dark theme — set in the EB Garamond book face.",
+    permissions: ["Themes"],
+    bookAccess: true,
   },
   {
     name: "RSS Reader",
     version: "0.24.0",
-    description: "Read feeds as books on your shelf — articles become chapters.",
-    chips: ["Network", "Manage shelf", "Agent tools"],
-    tools: ["subscribe_feed", "refresh_feed"],
+    description: "Subscribe to RSS/Atom feeds and read each one as a book on your shelf — articles become chapters.",
+    permissions: ["Network", "Manage library", "Control reading", "Agent tools"],
+    bookAccess: true,
   },
   {
-    name: "Jumper",
-    version: "0.13.0",
-    description: "Jump to any chapter, page or passage, and keep named bookmarks.",
-    chips: ["Agent tools"],
-    tools: ["save_bookmark"],
+    name: "TTS Voices",
+    version: "0.6.0",
+    description:
+      "Read-aloud voices from cloud and local TTS engines: ElevenLabs, Fish Audio, OpenAI, or any OpenAI-compatible endpoint (Kokoro, Piper, LocalAI…).",
+    permissions: ["Network"],
+    bookAccess: false,
   },
 ];
 
-/** Local frame at which plugin `i` switches on: one per beat from beat 1. */
-const switchAt = (i: number) => BEAT * (i + 1) - 4;
+const AGENT_SHOT: Shot = { scale: 1.4, fx: WINDOW.w / 2, fy: 210, ax: 960, ay: 580 };
+
+/** Dialog height: min(85vh, 42rem) inside the window. */
+const DIALOG_H = Math.min(WINDOW.h * 0.85, 672);
+
+// Frames, local to the scene.
+const SWITCH_AT = [BEAT - 4, BEAT * 2 - 4, BEAT * 3 - 4];
+const SCROLL = { from: BEAT * 2 + 2, to: BEAT * 3 - 6, by: 205 };
+const CLOSE = BAR;
+const ASK_IN = BAR + 4;
+const QUESTION = "What does “entailed” mean in Pride and Prejudice?";
+const TOOL = { from: ASK_IN + 6, done: ASK_IN + 16 };
+/** The plugin's entry lands as soon as its tool returns; the answer follows. */
+const CARD_IN = TOOL.done + 1;
+const REPLY =
+  "An entail fixes who may inherit an estate. Longbourn can pass only to a male heir — so the Bennet daughters inherit nothing.";
+const ANSWER = { from: CARD_IN + 6, rate: 6 };
 
 export function PluginsScene() {
   const frame = useSceneFrame();
-  // Settle in, then lean slowly toward the switches and the agent's tools.
-  const camera = mix(1.03, 1, progress(frame, 0, 30)) * mix(1, 1.06, progress(frame, 24, 120, easeInOut));
+  const open = progress(frame, 0, 12);
+  const close = progress(frame, CLOSE, 8, easeIn);
+  const dialog = open * (1 - close);
+  const toAgent = progress(frame, CLOSE + 2, 10);
+  const scroll = progress(frame, SCROLL.from, SCROLL.to - SCROLL.from, easeInOut) * SCROLL.by;
+  const lean = progress(frame, 0, BAR, easeInOut);
+  const agentLean = progress(frame, CLOSE, 40, easeInOut);
+  // Settings: a slow lean toward the dialog. Agent: in close on the
+  // conversation, framed below the caption.
+  const shot = blendShot(leanShot(mix(1, 1.05, lean), WINDOW.w / 2, 360), AGENT_SHOT, agentLean);
+
   return (
     <AbsoluteFill>
-      <div
-        style={{
-          position: "absolute",
-          left: WIN.x,
-          top: WIN.y,
-          transform: `scale(${camera})`,
-          transformOrigin: "62% 55%",
-        }}
-      >
-        <AppWindow width={WIN.w} height={WIN.h} topBar="library" background={color.surface}>
-          <SettingsNav />
-          <div style={{ position: "absolute", left: 300, top: 0, right: 0, bottom: 0, padding: "34px 52px" }}>
-            <div style={{ fontFamily: font.serif, fontSize: 40, color: color.fg }}>Plugins</div>
-            <Tabs />
-            <div style={{ display: "flex", gap: 44, marginTop: 8 }}>
-              <div style={{ width: 640 }}>
-                {PLUGINS.map((plugin, i) => (
-                  <PluginRow key={plugin.name} plugin={plugin} frame={frame} index={i} />
-                ))}
-              </div>
-              <AgentTools frame={frame} />
+      <Camera shot={shot}>
+        {toAgent < 1 && (
+          <AppWindow header="library">
+            <div style={{ position: "absolute", inset: 0, filter: `blur(${(8 * dialog).toFixed(2)}px)` }}>
+              <ShelfGrid />
             </div>
+          </AppWindow>
+        )}
+        {/* The dialog's scrim covers the whole window, header included. */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: 11,
+            background: `rgba(12,10,9,${(0.35 * dialog).toFixed(3)})`,
+          }}
+        />
+        {dialog > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              left: (WINDOW.w - 768) / 2,
+              top: (WINDOW.h - DIALOG_H) / 2,
+              opacity: dialog,
+              transform: `scale(${mix(0.98, 1, open) * mix(1, 0.98, close)})`,
+            }}
+          >
+            <SettingsDialog height={DIALOG_H}>
+              <div style={{ padding: "40px 40px 0", transform: `translateY(${-scroll}px)` }}>
+                <PluginsPanelHeader />
+                <div style={{ marginTop: 6 }}>
+                  {PLUGINS.map((plugin, i) => (
+                    <PluginRow
+                      key={plugin.name}
+                      plugin={plugin}
+                      on={i < SWITCH_AT.length ? progress(frame, SWITCH_AT[i]!, 6, easeInOut) : 0}
+                    />
+                  ))}
+                </div>
+              </div>
+            </SettingsDialog>
           </div>
-        </AppWindow>
-      </div>
+        )}
+        {toAgent > 0 && (
+          <div style={{ position: "absolute", inset: 0, opacity: toAgent }}>
+            <AppWindow header="agent">
+              <AgentPage frame={frame} />
+            </AppWindow>
+          </div>
+        )}
+      </Camera>
       <Caption eyebrow="Plugins" title="Extend the reader — and the agent." start={4} />
     </AbsoluteFill>
   );
 }
 
-function SettingsNav() {
-  const items = [
-    [SlidersHorizontalIcon, "General"],
-    [BookOpenIcon, "Reading"],
-    [SparkleIcon, "AI"],
-    [PuzzlePieceIcon, "Plugins"],
-    [PaletteIcon, "Theme"],
-    [RowsIcon, "Customize"],
-    [KeyboardIcon, "Shortcuts"],
-    [DatabaseIcon, "Data & Sync"],
-    [InfoIcon, "About"],
-  ] as const;
+/** The Agent page: the transcript column (max-w-2xl) over the library-wide composer. */
+function AgentPage({ frame }: { frame: number }) {
+  const reply = typed(REPLY, frame, ANSWER.from, ANSWER.rate);
+  const toolsDone = frame >= TOOL.done;
   return (
-    <div
-      style={{
-        position: "absolute",
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: 300,
-        borderRight: `1px solid ${color.border}`,
-        background: color.paper,
-        padding: "36px 22px",
-        fontFamily: font.sans,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 21, fontWeight: 500, color: color.fg, padding: "0 12px 18px" }}>
-        <GearSixIcon size={22} /> Settings
-      </div>
-      {items.map(([Icon, label]) => {
-        const active = label === "Plugins";
-        return (
-          <div
-            key={label}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 14,
-              height: 46,
-              padding: "0 12px",
-              borderRadius: 8,
-              fontSize: 18,
-              background: active ? color.fillStrong : "transparent",
-              color: active ? color.fg : color.fgMuted,
-              fontWeight: active ? 500 : 400,
-            }}
-          >
-            <Icon size={20} weight={active ? "fill" : "regular"} />
-            {label}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function Tabs() {
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: 32,
-        marginTop: 18,
-        borderBottom: `1px solid ${color.border}`,
-        fontFamily: font.sans,
-        fontSize: 18,
-      }}
-    >
-      {["Installed", "Marketplace"].map((tab, i) => (
-        <div
-          key={tab}
-          style={{
-            paddingBottom: 12,
-            color: i === 0 ? color.fg : color.fgMuted,
-            fontWeight: i === 0 ? 500 : 400,
-            borderBottom: i === 0 ? `2px solid ${color.fg}` : "2px solid transparent",
-            marginBottom: -1,
-          }}
-        >
-          {tab}
-        </div>
-      ))}
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, color: color.fgSubtle, paddingBottom: 12 }}>
-        <MagnifyingGlassIcon size={18} /> Search plugins…
-      </div>
-    </div>
-  );
-}
-
-function PluginRow({ plugin, frame, index }: { plugin: Plugin; frame: number; index: number }) {
-  const rise = progress(frame, -6 + index * 3, 16);
-  const on = progress(frame, switchAt(index), 7, easeInOut);
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 24,
-        padding: "13px 0",
-        borderTop: index === 0 ? "none" : `1px solid ${color.border}`,
-        fontFamily: font.sans,
-        ...arrive(rise, 16, 3),
-      }}
-    >
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <span style={{ fontSize: 20, fontWeight: 500, color: color.fg }}>{plugin.name}</span>
-          <span style={{ fontSize: 15, color: color.fgSubtle }}>v{plugin.version}</span>
-        </div>
-        <div style={{ marginTop: 5, fontSize: 15.5, lineHeight: 1.45, color: color.fgMuted }}>
-          {plugin.description}
-        </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
-          {plugin.chips.map((chip) => (
-            <span
-              key={chip}
-              style={{
-                fontSize: 13.5,
-                padding: "4px 9px",
-                borderRadius: 6,
-                background: color.fill,
-                color: color.fgMuted,
-              }}
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
-      </div>
-      <Toggle on={on} />
-    </div>
-  );
-}
-
-function AgentTools({ frame }: { frame: number }) {
-  const granted = PLUGINS.flatMap((plugin, i) =>
-    plugin.tools.map((tool) => ({ tool, from: plugin.name, at: switchAt(i) + 6 })),
-  );
-  const count = granted.filter((g) => frame >= g.at).length;
-  const card = progress(frame, 0, 18);
-  return (
-    <div
-      style={{
-        flex: 1,
-        alignSelf: "flex-start",
-        marginTop: 18,
-        padding: "22px 24px 18px",
-        borderRadius: 14,
-        background: color.paper,
-        outline: `1px solid ${color.border}`,
-        fontFamily: font.sans,
-        ...arrive(card, 16, 3),
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 18, fontWeight: 500, color: color.fg }}>
-        <WrenchIcon size={20} />
-        Agent tools
-        <span style={{ marginLeft: "auto", fontSize: 15, fontWeight: 400, color: color.fgMuted, fontVariantNumeric: "tabular-nums" }}>
-          +{count} from plugins
-        </span>
-      </div>
-      <div style={{ marginTop: 6, fontSize: 15, color: color.fgMuted, lineHeight: 1.45 }}>
-        The agent picks up new tools the moment a plugin is enabled.
-      </div>
-      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 9 }}>
-        {granted.map((g) => {
-          const p = progress(frame, g.at, 12);
-          if (p <= 0) return null;
-          return (
-            <div
-              key={g.tool}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 14px",
-                borderRadius: 9,
-                background: color.surface,
-                boxShadow: shadow.float,
-                transform: `translateX(${(1 - p) * -36}px) scale(${mix(0.96, 1, p)})`,
-                opacity: p,
-              }}
-            >
-              <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 16, color: color.fg }}>
-                {g.tool}
-              </span>
-              <span style={{ fontSize: 14, color: color.fgSubtle }}>{g.from}</span>
+    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", background: color.paper }}>
+      <div style={{ flex: 1, overflow: "hidden", padding: "28px 24px 0" }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: 18 }}>
+          <UserTurn text={QUESTION} style={arrive(progress(frame, ASK_IN, 10), 10, 3)} />
+          {frame >= TOOL.from && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {toolsDone ? <ToolActivity summary="1 tool call" /> : <ToolStep label="Look up word" running frame={frame} />}
+              {frame >= CARD_IN && (
+                <WordReferenceCard
+                  term="entail"
+                  pronunciation="/ɪnˈteɪl/"
+                  partOfSpeech="verb"
+                  definition="settle the inheritance of an estate over generations, so that it passes only to a fixed line of heirs."
+                  example="the estate was entailed on the nearest male relation"
+                  style={{ maxWidth: 440, ...arrive(progress(frame, CARD_IN, 10), 8, 2) }}
+                />
+              )}
+              {frame >= ANSWER.from && <StreamedText text={reply} done={reply.length === REPLY.length} />}
             </div>
-          );
-        })}
+          )}
+        </div>
       </div>
+      <Composer placeholder="Ask about your library…" maxWidth={672} />
     </div>
   );
 }
