@@ -42,6 +42,8 @@ pub const CODE_UPDATE_NETWORK: &str = "update/network";
 /// The release manifest or artifact failed validation or verification.
 pub const CODE_UPDATE_INVALID_RELEASE: &str = "update/invalid-release";
 pub const CODE_UPDATE_INSTALL_FAILED: &str = "update/install-failed";
+/// A save target that the native save dialog did not issue (or that expired).
+pub const CODE_EXPORT_TARGET_INVALID: &str = "export/target-invalid";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct CommandError {

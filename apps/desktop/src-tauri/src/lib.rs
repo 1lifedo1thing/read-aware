@@ -13,6 +13,7 @@ mod comic_metadata;
 mod diagnostics;
 mod error;
 mod exit_coordination;
+mod export_file;
 mod external_open;
 mod fb2_metadata;
 mod metadata;
@@ -93,29 +94,6 @@ async fn read_book_head(
     .await
 }
 
-
-/// Write exported content to a path chosen by the user in the native save
-/// dialog. `base64: true` marks binary content that crossed the IPC encoded.
-#[tauri::command]
-async fn write_export_file(
-    path: String,
-    content: String,
-    base64: Option<bool>,
-) -> Result<(), CommandError> {
-    blocking("write_export_file", move || {
-        let bytes: Vec<u8> = if base64.unwrap_or(false) {
-            use base64::Engine as _;
-            base64::engine::general_purpose::STANDARD
-                .decode(content.as_bytes())
-                .map_err(|err| CommandError::internal(format!("invalid base64 export payload: {err}")))?
-        } else {
-            content.into_bytes()
-        };
-        std::fs::write(&path, bytes)
-            .map_err(|err| CommandError::context(&format!("Failed to write exported file {path}"), err))
-    })
-    .await
-}
 
 #[cfg(target_os = "macos")]
 fn inherit_system_proxy() {
@@ -785,6 +763,7 @@ pub fn run() {
         .manage(exit_coordination::ExitCoordination::default())
         .manage(local_api::LocalApi::default())
         .manage(external_open::ExternalOpenQueue::new(launch_open_paths))
+        .manage(export_file::ExportTargets::default())
         .manage(storage::BlobReadSessions::default())
         .manage(storage::BlobWriteSessions::default())
         .manage(resources::ResourceFiles::default())
@@ -1168,7 +1147,8 @@ pub fn run() {
             diagnostics::diagnostics_log_dir,
             book_file_size,
             read_book_head,
-            write_export_file,
+            export_file::export_choose_target,
+            export_file::write_export_file,
             resources::resource_open_file,
             resources::external::resource_open_associated,
             resources::directories::resource_open_directory,

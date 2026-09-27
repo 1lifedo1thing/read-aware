@@ -1,5 +1,4 @@
 import { invoke } from "./ipc";
-import { save } from "@tauri-apps/plugin-dialog";
 import { isTauri, isMobileOS } from "./environment";
 import { nativeResourceFiles } from "./resource-files";
 import { exportResourceBytes } from "./resource-export";
@@ -52,23 +51,22 @@ export async function exportTextFile(file: FileExport, signal?: AbortSignal): Pr
   }
 
   if (isTauri()) {
-    const extension = extensionOf(filename);
-    const path = await save({
-      defaultPath: filename,
-      filters: extension
-        ? [{ name: `${extension.toUpperCase()} file`, extensions: [extension] }]
-        : undefined,
+    // The native side opens the save dialog and hands back a single-use
+    // token for the picked destination; the webview never names a path.
+    const token = await invoke<string | null>("export_choose_target", {
+      filename,
+      extension: extensionOf(filename),
     });
     signal?.throwIfAborted();
-    if (!path) return false;
+    if (token === null) return false;
     if (binary) {
       await invoke("write_export_file", {
-        path,
+        token,
         content: bytesToBase64(toBytes(file.content as Uint8Array | ArrayBuffer)),
         base64: true,
       });
     } else {
-      await invoke("write_export_file", { path, content: file.content });
+      await invoke("write_export_file", { token, content: file.content });
     }
     return true;
   }

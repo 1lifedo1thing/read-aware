@@ -76,6 +76,7 @@ const ASYNC_ONLY: &[(&str, &str)] = &[
     ("local_api_token", "awaits an async mutex and pooled secret reads"),
     ("local_api_rotate_token", "awaits an async mutex, pooled secret I/O and the async server"),
     ("local_api_complete", "hands a response to an async channel"),
+    ("export_choose_target", "awaits the dialog plugin's callback; the dialog runs off the runtime"),
 ];
 
 /// Async commands that briefly take a std mutex on plain in-memory state that
