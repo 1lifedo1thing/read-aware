@@ -35,7 +35,9 @@ const failed: ChatMessage = { id: "e1", role: "assistant", content: "", createdA
 test("a save is one native call: facts ride only in events, presentation carries only local columns", async () => {
   const h = host();
   await saveConversation("thread-save-one", [user, answer, failed]);
-  expect(h.calls.map(call => call.command)).toEqual(["ai_chat_load", "local_device_get", "ai_chat_commit"]);
+  // `local_device_get` is memoized per process, so only the writes are asserted: exactly one, the atomic commit.
+  expect(h.calls.map(call => call.command).filter(command => command !== "local_device_get"))
+    .toEqual(["ai_chat_load", "ai_chat_commit"]);
   const [{ args }] = h.commits();
   expect(args.conversationId).toBe("thread-save-one");
   expect(args.events.map((event: any) => [event.type, event.payload.messageId ?? null])).toEqual([
