@@ -148,7 +148,8 @@ Use bun from the repo root. Available scripts include `bun run dev` (Tauri),
 scripts provide focused checks, such as `test:runtime` in `apps/web` for the reader
 suites in headless Chrome. `bun run lint` is type-aware oxlint (`.oxlintrc.json`)
 plus a check that no promise rejection is discarded without a log or a comment.
-`bun run format` applies Biome (`biome.json`); Rust uses `cargo fmt`.
+`bun run format` applies Biome (`biome.json`); Rust uses `cargo fmt` with the toolchain
+pinned in `rust-toolchain.toml` (bump it together with the workflows' `toolchain:`).
 `.github/workflows/ci.yml` gates PRs and `main` on typecheck, lint, formatting, tests, `lint:deps`,
 docs, the runtime suites, and rustfmt/clippy. `lint:deps` only accepts a shrinking
 `.dependency-cruiser-known-violations.json`; after fixing violations, run

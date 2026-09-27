@@ -18,7 +18,10 @@ mod connection;
 pub use connection::SharedConnection;
 mod execution;
 mod reading_progress;
-pub(crate) use execution::{blocking, on_main_thread};
+pub(crate) use execution::blocking;
+// Only AppKit (macOS) and the Android activity need the UI thread.
+#[cfg(any(target_os = "macos", target_os = "android"))]
+pub(crate) use execution::on_main_thread;
 mod library;
 pub use library::*;
 mod library_cleanup;

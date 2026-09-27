@@ -22,6 +22,7 @@ pub(crate) async fn blocking<T: Send + 'static>(
 /// JNI into the Android activity — hop there, and the command awaits the
 /// result without blocking any thread. The task runs on the UI thread, so it
 /// must stay brief and never wait on I/O or locks.
+#[cfg(any(target_os = "macos", target_os = "android"))]
 pub(crate) async fn on_main_thread<T: Send + 'static>(
     app: &tauri::AppHandle,
     task: impl FnOnce() -> T + Send + 'static,

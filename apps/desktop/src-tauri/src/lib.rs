@@ -38,7 +38,9 @@ mod window_state;
 use tauri::Manager;
 
 use error::CommandError;
-use storage::{blocking, on_main_thread};
+use storage::blocking;
+#[cfg(any(target_os = "macos", target_os = "android"))]
+use storage::on_main_thread;
 
 /// Open a picked book through the fs plugin (Android `content://` URIs too).
 fn open_picked_book(app: &tauri::AppHandle, path: &str) -> Result<std::fs::File, CommandError> {

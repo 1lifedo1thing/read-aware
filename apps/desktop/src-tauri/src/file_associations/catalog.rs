@@ -1,6 +1,8 @@
 //! One bundled format catalog drives native handler registration on both OSes.
 pub(super) struct BookType {
     pub extensions: Vec<String>,
+    /// The ProgID Windows registers under; Linux desktop entries have no equivalent.
+    #[cfg(any(target_os = "windows", test))]
     pub legacy_class: String,
     pub mime: String,
     pub description: String,
@@ -20,6 +22,7 @@ pub(super) fn book_types() -> Vec<BookType> {
                 .iter()
                 .map(|ext| ext.as_str().expect("extension").to_owned())
                 .collect(),
+            #[cfg(any(target_os = "windows", test))]
             legacy_class: entry["name"].as_str().expect("legacy class").into(),
             mime: entry["mimeType"].as_str().expect("MIME type").into(),
             description: entry["description"].as_str().expect("description").into(),
