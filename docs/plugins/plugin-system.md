@@ -1070,9 +1070,10 @@ not the same as per-operation Agent approval.
 frozen detail/batch snapshots remain unchanged; this migration does not replace
 stale drafts or add hidden retries. All source native/Worker test consumers are
 migrated. Eight localized public sample manifests now request annotations 2 and
-awaited storage 2. The host-only backup restore `saveAnnotation/annotation_put`,
-one-time import, replay and remote-event ingestion remain trusted restoration
-paths, not exported edit commands. This change is local optimistic concurrency,
+awaited storage 2. The one-time pre-SQLite import
+(`annotation_put`), full-backup restore, replay and remote-event ingestion
+remain trusted restoration paths, not exported edit commands; the former v1
+backup `saveAnnotation` path was removed with v1 on 2026-09-27. This change is local optimistic concurrency,
 not distributed CAS or a prohibition on host restoration.
 
 [环境] Annotations 2 evidence
@@ -5933,6 +5934,14 @@ scope; compiled Worker, business-plugin and actual Tauri/remote acceptance remai
 concentrated E2E work.
 
 ### Backup Completion Flows (Maintenance 1.2)
+
+[代码] 2026-09-27: the v1 JSON library backup is retired in both directions.
+Both buttons now drive only the complete encrypted archive described in
+[full backup](../features/full-backup.md); a retired `.json` file picked for
+restore is rejected with the localized `backup/legacy-format` error. The
+`backup-file-actions.ts`, v1 schema and v1 merge paragraphs below are historical
+evidence, not current behavior. The request surface and its receipts are
+unchanged.
 
 [代码] `services.maintenance.requestBackup(action, options?)` and dual-scope Agent
 `request_backup` accept `import` or `export`. They navigate to Data & Sync and

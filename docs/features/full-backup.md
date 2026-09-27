@@ -1,6 +1,6 @@
 # 完整备份实现边界
 
-OPS08 完整加密备份与合并恢复已接通，并通过隔离 macOS Tauri 的代表性成功与失败验收。用户可在设置中选择完整归档或旧 v1 书库子集；完整恢复提供口令、认证预检、差异选择、程序授权、执行结果与重载。下文说明历史验证范围和未验证边界。
+OPS08 完整加密备份与合并恢复已接通，并通过隔离 macOS Tauri 的代表性成功与失败验收。完整加密归档是唯一的备份格式；恢复提供口令、认证预检、差异选择、程序授权、执行结果与重载。旧 v1 JSON 书库备份已于 2026-09-27 在导出与导入两端退役。下文说明历史验证范围和未验证边界。
 
 ## 数据覆盖与保留规则
 
@@ -8,11 +8,11 @@ OPS08 完整加密备份与合并恢复已接通，并通过隔离 macOS Tauri �
 
 归档里的本机状态不等于可直接安装：恢复保留目标设备身份、账号会话、同步游标、已有凭据key与插件运行队列；不复制来源任务句柄或待处理journal。候选目录、更新回滚副本、日志、临时资源和可重建文件缓存不打包。来源新增普通表虽会被捕获，当前预检不认识的结构必须拒绝，不能静默漏恢复。
 
-完整导出先补齐登记blob；远端不可取、文件缺失、大小/哈希错误或缺凭据key均拒绝，不能省略并称完整。捕获前在来源设备结算全部待处理阅读桶，使用正式事件身份；内部旧format1不能猜测阅读身份，明确拒绝。旧v1 JSON是另一个格式，继续保留原书库子集及非事务合并语义，不提供完整恢复的原子性承诺。
+完整导出先补齐登记blob；远端不可取、文件缺失、大小/哈希错误或缺凭据key均拒绝，不能省略并称完整。捕获前在来源设备结算全部待处理阅读桶，使用正式事件身份；内部旧format1不能猜测阅读身份，明确拒绝。旧 v1 JSON 书库备份已退役：设置中不再提供导出，导入时原生 `backup_import_open` 在 age 解析前识别其 `{"app":"read-aware","kind":"backup"` 前缀，返回 `backup/legacy-format`，界面经 `describeError` 显示八语提示，要求改选完整加密备份；其他非 age 文件返回 `backup/invalid-archive`，不会误报为口令错误。v1 使用的投影直写恢复路径（`restoreLibraryBook`、`restoreCollection`、`saveAnnotation` 及 `profile_restore` 长摘要入口）一并删除。
 
 ## 用户与Actor入口
 
-`DataSyncPanel` → `useBackupActions` → `useBackupExport` / `useBackupImport` 共用已有 `HostActionFlow`。Agent `request_backup` 与插件 maintenance1.2 `requestBackup` 只定位设置按钮，用户点击后输入口令并使用原生文件对话框。Actor只能取得imported/exported/cancelled，不取得密码、文件路径、内容、任务ID或计数；状态也不证明用户选择了完整格式或已经重载。
+`DataSyncPanel` → `useBackupActions` → `useBackupExport` / `useBackupImport` 共用已有 `HostActionFlow`。Agent `request_backup` 与插件 maintenance1.2 `requestBackup` 只定位设置按钮，用户点击后输入口令并使用原生文件对话框。Actor只能取得imported/exported/cancelled，不取得密码、文件路径、内容、任务ID或计数；状态也不证明已经重载。
 
 完整导出校验口令与重复确认，捕获后释放应用写屏障，再执行原生加密保存。完整导入在屏障外解密和预检，短暂暂停生产者以固定目标快照，审阅期间恢复普通写入；最终执行必须重新检查数据库及文件版本。选择变更后需重新检查约束，再由用户确认恢复。表单取消、所属窗口关闭/组件卸载会取消自己的任务，并等待物理操作结束及清理；迟到取消不能把已保存或已提交的成功回执改称回滚。
 

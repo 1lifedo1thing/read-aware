@@ -53,13 +53,14 @@ historical event rolls back the migration rather than marking it applied.
 
 #### Summary Migration Contract
 
-Native `profile_initialize`, `profile_inspect`, `profile_commit` and
-`profile_restore` now implement the transaction side below. They are registered
-internal IPC commands, not new plugin/model authority. Startup now invokes
-initialization, removes the legacy settings mirror and logs migration failure;
-profile operations retry initialization rather than reading a stale KV fallback.
-ProfilePort, prompt assembly, onboarding, public pages/edits/observations and v1
-backup summary handling now share this projection through memory domain 2.
+Native `profile_initialize`, `profile_inspect` and `profile_commit` implement
+the transaction side below. They are registered internal IPC commands, not new
+plugin/model authority. Startup now invokes initialization, removes the legacy
+settings mirror and logs migration failure; profile operations retry
+initialization rather than reading a stale KV fallback. ProfilePort, prompt
+assembly, onboarding and public pages/edits/observations share this projection
+through memory domain 2. The complete encrypted backup restores the summary
+with the rest of the event log and projections.
 
 The host initializes the summary with a system-origin event envelope minted by
 the existing frontend HLC service. Native code supplies the actual durable KV
@@ -71,28 +72,21 @@ a second independently writable summary cache.
 
 Profile revisions become `profile2:` hashes of `[summary, lastProfileEventId]`.
 Native writes compare the observed revision inside an immediate transaction;
-an A-to-B-to-A change invalidates an old decision. Normal edits remain limited
-to 16000 UTF-16 units. Internal v1 backup restore preserves larger historical
-summaries through a separate host-only restore entry, not an actor override flag.
-Both use profile.updated and reject stale event clocks before committing.
+an A-to-B-to-A change invalidates an old decision. Edits are limited to 16000
+UTF-16 units, use profile.updated and reject stale event clocks before
+committing. The host-only `profile_restore` entry that let v1 backups restore
+longer historical summaries was removed when the v1 backup was retired
+(2026-09-27).
 Memory domain 2 records the persistence contract as event-log, not device-local.
 
 The native reader refuses unretired legacy KV or stale projections instead of
 reporting an empty summary. Commit requires a fresh local-device envelope after
 the entire log/checkpoint frontier and rejects duplicate IDs. Equal text is a
 no-op only after the observed revision and envelope pass validation. Origin is
-provenance, not authorization: the host must keep restore/initialization outside
+provenance, not authorization: the host must keep initialization outside
 the Agent/plugin bridge and retain existing grants for normal profile edits.
 
-The v1 backup wire format remains the same subset: export materializes the
-current summary under its historical KV key, import removes that key from raw
-KV restoration and conditionally writes the profile event instead. This does
-not turn v1 into a full profile/entity/event-log backup or a context bundle.
-An absent historical key leaves the current summary alone; an empty string
-restores an intentionally empty summary. The archive observes the current
-revision before restoring other KV, then submits it to conditional profile
-restore. Conflicts fail visibly; earlier sequential archive writes do not roll
-back. Normal onboarding takes a fresh snapshot and uses the same conditional
+Normal onboarding takes a fresh snapshot and uses the same conditional
 summary write; its subsequent memory seeds remain separate transactions.
 
 Public reads remain bounded and writes conditional on the observed revision.
