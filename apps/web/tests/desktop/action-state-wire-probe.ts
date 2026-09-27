@@ -1,4 +1,5 @@
 import type { PluginModule } from "@read-aware/plugin-types";
+import { hostAcknowledgement } from "./host-acknowledgement";
 
 const plugin: PluginModule = {
   activate(ctx) {
@@ -6,7 +7,7 @@ const plugin: PluginModule = {
       const registration = ctx.contributions.commands.register({ id: "child", title: "Child", run() {} });
       const pending = registration.updateState({ revision: 1, enabled: false, visible: true, checked: true });
       const first = await pending;
-      const acknowledged = await registration;
+      const acknowledged = await hostAcknowledgement(registration);
       const second = await acknowledged.updateState({ revision: 2, enabled: true, visible: false });
       acknowledged.dispose();
       const retired = await registration.updateState({ revision: 3, enabled: true, visible: true });

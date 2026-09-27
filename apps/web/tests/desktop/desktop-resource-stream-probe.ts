@@ -9,6 +9,7 @@ import { startPluginWorker } from "../../src/features/plugins/runtime/plugin-wor
 import { parseProbeToast } from "./probe-toast";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { buildResourceTools } from "../../../../packages/agent/src/tools/resource-tools";
+import { withProbeCleanup } from "./probe-cleanup";
 
 /** Exercises real Worker structured-clone and native temporary files, without replacing I/O. */
 export async function runResourceStreamProbe() {
@@ -33,7 +34,7 @@ export async function runResourceStreamProbe() {
     workers.push(worker); await worker.checkHealth(); worker.promote(); return worker;
   };
   const observations: Record<string, unknown> = {};
-  try {
+  await withProbeCleanup(async () => {
     await start("resource-stream-79-a");
     const write = await command("resource-stream-79-a", "write") as { resource: { id: string } };
     observations.write = write;
@@ -42,7 +43,7 @@ export async function runResourceStreamProbe() {
     observations.read = await command("resource-stream-79-a", "read");
     observations.quotaAndAbort = await command("resource-stream-79-a", "quotaAndAbort");
     observations.abandoned = await command("resource-stream-79-a", "leaveOpen");
-  } finally {
+  }, async () => {
     try {
       const failures: unknown[] = [];
       for (const worker of workers.reverse()) {
@@ -54,7 +55,7 @@ export async function runResourceStreamProbe() {
       for (const disposable of disposables.reverse()) disposable.dispose();
       resourceAdapter.create = originalCreate;
     }
-  }
+  });
   const released = [];
   for (const id of nativeIds) {
     let code = "accepted";
@@ -85,7 +86,7 @@ export async function runAgentResourceTextProbe() {
     const value = await owner.create({ name: "resource79-text.txt", mimeType: "text/plain" });
     ids.push(value.id); await owner.append(value.id, 0, data); await owner.commit(value.id); return value.id;
   };
-  try {
+  return withProbeCleanup(async () => {
     const expected = "\uFEFFA中🙂e\u0301文Z", bytes = new TextEncoder().encode(expected), id = await create(bytes);
     const chunks: { text: string; nextOffset: number; eof: boolean }[] = [];
     let offset = 0, text = "";
@@ -113,8 +114,8 @@ export async function runAgentResourceTextProbe() {
     if (midCodePoint !== "ui/invalid-target" || crossThread !== "fs/not-found" || rejected.some(code => code !== "ui/invalid-target") || originalExportOnly !== "memory/forbidden" || afterRelease !== "fs/not-found") throw Error("Agent resource guard failed");
     return { byteLength: bytes.length, chunks, reconstructed: text, midCodePoint, crossThread,
       binaryInvalidTruncated: rejected, originalExportOnly, release, repeatRelease, afterRelease };
-  } finally {
+  }, async () => {
     const results = await Promise.allSettled(ids.map(id => owner.release(id)));
     if (results.some(result => result.status === "rejected")) throw Error("Agent resource fixture cleanup failed");
-  }
+  });
 }

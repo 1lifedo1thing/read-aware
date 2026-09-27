@@ -1,12 +1,12 @@
 import { AppError } from "@read-aware/core";
-import type { AgentFetch, WebClient, WebProvider, WebSearchResult } from "@read-aware/agent";
+import { fetchInputUrl, type AgentFetch, type WebClient, type WebProvider, type WebSearchResult } from "@read-aware/agent";
 import { createRequestCache } from "../../../platform/request-cache";
 
 /** Cache complete provider responses, before excerpt slicing, so nextOffset
  * reuses the same page snapshot instead of downloading that page again. */
 export function createWebResponseCache(transport: AgentFetch, ttlMs: number) {
   const cache = createRequestCache<{ text: string; retrievedAt: string }>({ ttlMs, maxBytes: 16 * 1024 * 1024, maxEntries: 32, sizeOf: value => value.text.length * 2 });
-  const keyOf = (url: Parameters<AgentFetch>[0], init?: Parameters<AgentFetch>[1]) => JSON.stringify([String(url), init?.method ?? "GET", init?.body ?? null]);
+  const keyOf = (url: Parameters<AgentFetch>[0], init?: Parameters<AgentFetch>[1]) => JSON.stringify([fetchInputUrl(url), init?.method ?? "GET", init?.body ?? null]);
   const fetch: AgentFetch = async (url, init) => {
     const key = keyOf(url, init);
     const value = await cache.get(key, async signal => {

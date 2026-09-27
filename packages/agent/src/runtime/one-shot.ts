@@ -18,7 +18,8 @@ export type OneShotInput = InferenceSourceTracking & InferenceBudgetOptions & {
   model?: ModelRole;
   readingContext?: ModelReadingContext;
   schema?: Record<string, unknown>;
-  onText?: (delta: string) => void;
+  /** A returned promise paces the stream: the next delta waits for it. */
+  onText?: (delta: string) => unknown;
   signal?: AbortSignal;
   /** Requested output cap for each attempt, not a total cost/token budget. */
   maxOutputTokens?: number;

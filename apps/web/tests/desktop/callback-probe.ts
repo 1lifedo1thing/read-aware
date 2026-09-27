@@ -1,13 +1,14 @@
 import type { PluginModule } from "@read-aware/plugin-types";
+import { hostAcknowledgement } from "./host-acknowledgement";
 
 export default {
   activate(ctx) {
     ctx.contributions.commands.register({
       id: "test", title: "Callback lifetime probe",
       run: async () => {
-        const registration = await ctx.contributions.commands.register({
+        const registration = await hostAcknowledgement(ctx.contributions.commands.register({
           id: "temporary", title: "Temporary callback", run: () => ({ toast: "live" }),
-        });
+        }));
         const records = ctx.services.storage.collection("wire");
         const marker = {
           __fn: "h1", __disposable: "d1", nested: [{ __fn: "h2", ordinary: true }],

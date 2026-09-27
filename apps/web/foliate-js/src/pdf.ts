@@ -126,7 +126,7 @@ const renderCoverPage = async (page: PDFPage, deadline: number) => {
 const rgbChannels = (color: string): number[] | null => {
     const hex = String(color).trim().replace(/^#/, '')
     const full = hex.length === 3 || hex.length === 4
-        ? [...hex.slice(0, 3)].map(c => c + c).join('')
+        ? hex.slice(0, 3).split('').map(c => c + c).join('')
         : hex.slice(0, 6)
     if (!/^[0-9a-fA-F]{6}$/.test(full)) return null
     return [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16))
@@ -337,7 +337,7 @@ const render = async (page: PDFPage, doc: Document, zoom: number,
     container.replaceChildren()
     annotationContainer.replaceChildren()
     const textLayer = new pdfjsLib.TextLayer({
-        textContentSource: await page.streamTextContent(),
+        textContentSource: page.streamTextContent(),
         container, viewport,
     })
     const abortText = () => textLayer.cancel()

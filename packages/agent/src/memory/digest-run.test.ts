@@ -24,7 +24,7 @@ test("catch-up passes empty and failing predecessors once, reports partial, then
   };
   const report = await digestBookCatchUp({ deps, bookId: "b", model, concurrency: 2, complete: async () => reply() });
   expect(report).toEqual({ status: "partial", eligible: 5, attempted: 5, digested: 3, remaining: 2, emptyChapters: [0], failures: [{ chapterIndex: 1, errorCode: "db/locked" }] });
-  expect(attempted.sort()).toEqual([0, 1, 2, 3, 4]); expect(warnings).toHaveLength(1);
+  expect(attempted.sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]); expect(warnings).toHaveLength(1);
   deps.bookText.getChapterText = original;
   const retry = await digestBookCatchUp({ deps, bookId: "b", model, complete: async () => reply() });
   expect(retry).toMatchObject({ status: "complete", attempted: 2, digested: 2, remaining: 0 });
@@ -63,7 +63,7 @@ test("model termination/invalid payload and write failures stay pending without 
   } });
   expect(report).toMatchObject({ status: "partial", attempted: 5, digested: 2, remaining: 3,
     failures: [{ chapterIndex: 0, errorCode: "ai/provider" }, { chapterIndex: 1, errorCode: "ai/provider" }, { chapterIndex: 2, errorCode: "db/locked" }] });
-  expect((await deps.bookMemory.listDigests("b")).map(d => d.chapterIndex).sort()).toEqual([3, 4]);
+  expect((await deps.bookMemory.listDigests("b")).map(d => d.chapterIndex).sort((a, b) => a - b)).toEqual([3, 4]);
 });
 
 test("repaired early chapters never receive later stored names or aliases", async () => {
@@ -127,7 +127,7 @@ test("two independently generated candidates cannot both replace the same chapte
   const run = () => digestMissingChapters({ ...deps, bookId: "b", beforeChapterIndex: 5, model, maxChapters: 1, complete: async () => { if (++calls === 2) started.resolve(); await release.promise; return reply(); } });
   const a = run(), b = run(); await started.promise; release.resolve();
   const results = await Promise.all([a,b]);
-  expect(results.map(r => r.digested).sort()).toEqual([0,1]);
+  expect(results.map(r => r.digested).sort((a, b) => a - b)).toEqual([0,1]);
   expect(results.flatMap(r => r.failures)).toEqual([{ chapterIndex: 0, errorCode: "memory/conflict" }]);
   const snapshot = (await deps.bookMemory.inspectDigest("b", 0))!;
   const other = (await deps.bookMemory.inspectDigest("b", 1))!;

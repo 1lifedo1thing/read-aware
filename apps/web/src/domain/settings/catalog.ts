@@ -607,7 +607,7 @@ function pluginFieldDefinition(
     },
     write: (draft, value) => {
       const current = {
-        ...(draft.pluginSettings.values[plugin.pluginId] ?? {}),
+        ...draft.pluginSettings.values[plugin.pluginId],
       };
       // null resets an optional field back to unset (the declared default).
       if (value === null) delete current[field.id];

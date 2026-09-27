@@ -313,7 +313,7 @@ var plugin = {
     for (const { vendor, fieldId } of DYNAMIC_VOICE_FIELDS) {
       ctx.contributions.settingsOptions.register(fieldId, async (values) => {
         const endpoint = typeof values.customEndpoint === "string" ? values.customEndpoint : normalizeSettings({
-          ...ctx.services.storage.get("settings") ?? {},
+          ...ctx.services.storage.get("settings"),
           vendor: "custom"
         }).endpoint;
         const apiKey = await ctx.services.secrets.get(secretName(vendor));

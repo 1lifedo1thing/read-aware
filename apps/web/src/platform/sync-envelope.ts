@@ -85,8 +85,10 @@ export function sealEvent(key: Uint8Array, event: PlainEvent): SealedEvent {
  * disagrees with its clear routing fields — a seal this module never produced.
  */
 export function openEvent(key: Uint8Array, sealed: SealedEvent): PlainEvent {
-  if (sealed.v !== ENVELOPE_VERSION) {
-    throw new Error(`sync envelope: unsupported event envelope version ${sealed.v}`);
+  // The version arrives off the wire; report whatever was actually sent.
+  const version: unknown = sealed.v;
+  if (version !== ENVELOPE_VERSION) {
+    throw new Error(`sync envelope: unsupported event envelope version ${String(version)}`);
   }
   const cipher = xchacha20poly1305(
     key,

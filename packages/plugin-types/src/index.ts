@@ -1388,7 +1388,8 @@ export type PluginDomainEvent<K extends DomainEventType = DomainEventType> = {
 /** Subscribe helper: one domain's event names, canonical, fully typed. */
 export type DomainSubscribe<E extends DomainEventType> = <K extends E>(
   event: K,
-  handler: (event: PluginDomainEvent<K>) => void,
+  /** An async handler keeps its event reaction until the returned promise settles. */
+  handler: (event: PluginDomainEvent<K>) => unknown,
   options?: {
     /**
      * Skip events produced by this plugin's own writes (origin
@@ -1802,7 +1803,8 @@ export type PluginSettingsDomain = {
   };
   events: {
     subscribe(
-      handler: (event: SettingsChangedEvent & PluginReactionEvent) => void,
+      /** An async handler keeps its event reaction until the returned promise settles. */
+      handler: (event: SettingsChangedEvent & PluginReactionEvent) => unknown,
       options?: { ignoreSelf?: boolean; ruleId?: string },
     ): PluginDisposable;
   };

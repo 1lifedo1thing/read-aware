@@ -5,6 +5,7 @@ import { buildProviderRegistry, setModelCatalogReader } from "./registry";
 import { createModelResolver } from "./accounts";
 import { createCompleteFn } from "./complete";
 import type { AgentFetch } from "./transport";
+import { fetchInputUrl } from "./transport";
 
 const provider = "zai-coding-cn";
 function model(id = "glm-future"): CatalogModel {
@@ -48,7 +49,7 @@ describe("remote model catalog", () => {
     let requests = 0;
     const kit = setup(async (url, init) => {
       requests++;
-      expect(String(url)).toBe("https://pi.dev/api/models/providers/zai-coding-cn");
+      expect(fetchInputUrl(url)).toBe("https://pi.dev/api/models/providers/zai-coding-cn");
       expect(new Headers(init?.headers).has("authorization")).toBe(false);
       return Response.json({ future: model() }, { headers: { ETag: '"catalog-1"' } });
     });
@@ -136,9 +137,9 @@ describe("remote model catalog", () => {
     const resolve = createModelResolver(account, { smart: "glm-future", fast: "glm-future" }, registry);
     let request: Record<string, unknown> | undefined;
     const complete = createCompleteFn(registry, account, "high", async (url, init) => {
-      expect(String(url)).toBe("https://open.bigmodel.cn/api/coding/paas/v4/chat/completions");
+      expect(fetchInputUrl(url)).toBe("https://open.bigmodel.cn/api/coding/paas/v4/chat/completions");
       expect(new Headers(init?.headers).get("authorization")).toBe("Bearer test-key");
-      request = JSON.parse(String(init?.body));
+      request = JSON.parse(init?.body as string);
       return new Response([
         'data: {"id":"test","choices":[{"index":0,"delta":{"role":"assistant","content":"ok"},"finish_reason":null}]}',
         'data: {"id":"test","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
@@ -211,7 +212,7 @@ describe("remote model catalog", () => {
 
   test("Ollama uses its public discovery endpoint without built-in IDs", async () => {
     const kit = setup(async (url) => {
-      expect(String(url)).toBe("https://ollama.com/v1/models");
+      expect(fetchInputUrl(url)).toBe("https://ollama.com/v1/models");
       return Response.json({ data: [{ id: "new-ollama-model" }] });
     });
     await kit.store.refresh("ollama-cloud");

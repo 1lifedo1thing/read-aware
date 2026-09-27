@@ -12,6 +12,7 @@ import { respondToUserInteraction } from "../../src/features/ai/agent/ports/user
 import { buildAnnotationTools } from "../../../../packages/agent/src/tools/annotation-tools";
 import { buildThreadTools } from "../../../../packages/agent/src/tools/library-tools";
 import { interactionFromToolDetails } from "../../../../packages/agent/src/tools/user-interaction";
+import { withProbeCleanup } from "./probe-cleanup";
 
 /** Real Agent tools, native SQLite and a WebKit Worker; synthetic traces only. */
 export async function runDesktopAnnotationProbe(bookId: string) {
@@ -30,7 +31,7 @@ export async function runDesktopAnnotationProbe(bookId: string) {
   const annotations = createAnnotationsDomain("agent");
   const created: string[] = [];
   const results: Record<string, unknown> = {};
-  try {
+  return withProbeCleanup(async () => {
     const highlight = await call("create_annotation", { kind: "highlight", text: "Annotation capability probe", style: "underline", color: "blue" });
     created.push(highlight.id);
     results.agentCreated = highlight;
@@ -46,20 +47,20 @@ export async function runDesktopAnnotationProbe(bookId: string) {
         description: readOnly ? "read-only" : "write", permissions: [readOnly ? "annotations:read" : "annotations:write"],
         requires: { domains: { annotations: "^2.0.0" }, services: { storage: "^2.0.0" } } };
       const worker = await startPluginWorker(manifest, "0.5.4", disposables, { moduleUrl: new URL("./annotation-probe.ts", import.meta.url).href });
-      try {
+      await withProbeCleanup(async () => {
         await worker.checkHealth(); worker.promote();
         const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === id);
         if (!command) throw new Error("Probe command did not register");
         await command.run();
         const disk = await invoke<Record<string, string>>("load_kv_all");
         results[readOnly ? "reader" : "writer"] = JSON.parse(disk[prefix + "result"]);
-      } finally {
+      }, async () => {
         try { await worker.terminate(); }
         finally { for (const disposable of disposables.reverse()) disposable.dispose(); }
         await localKV.removeItemAsync(prefix + "input");
         await localKV.removeItemAsync(prefix + "result");
         if (inspectContributions(id).length) throw new Error("Annotation probe left contributions");
-      }
+      });
     }
     const agentAsk = await annotations.commands.createAsk({ bookId, text: "Synthetic Agent deletion probe" });
     created.push(agentAsk.id);
@@ -80,12 +81,12 @@ export async function runDesktopAnnotationProbe(bookId: string) {
       }
     } finally { clearTimeout(timeout); }
     return { dataDir, results, approvalDriver: "actual interaction port answered programmatically, not chat UI or LLM" };
-  } finally {
+  }, async () => {
     const failures = await Promise.allSettled(created.map(async id => {
       const snapshot = await annotations.queries.inspect(id);
       if (snapshot) await annotations.commands.applyChanges([{ op: "remove", kind: snapshot.annotation.kind, annotationId: id, expectedRevision: snapshot.revision }]);
     }));
     const errors = failures.filter(result => result.status === "rejected");
     if (errors.length) throw new AggregateError(errors.map(result => result.reason), "Probe annotation cleanup failed");
-  }
+  });
 }

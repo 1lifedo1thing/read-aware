@@ -3,6 +3,7 @@ import { createTinyFishClient } from "./tinyfish";
 import { createBraveClient } from "./brave";
 import { optionalImages } from "./optional-images";
 import { webImages } from "./images";
+import { fetchInputUrl } from "../models/transport";
 
 const page = "https://museum.example.org/roof";
 const picture = "https://images.example.org/roof.jpg";
@@ -50,8 +51,8 @@ test("image deadline settles even for a transport ignoring abort; user cancellat
 test("Brave starts native images alongside web search, keeps attribution and preview, filters domains", async () => {
   const paths: string[] = [];
   const client = createBraveClient("fixture", async (url, init) => {
-    expect((init?.headers as Record<string, string>)["X-Subscription-Token"]).toBe("fixture");
-    const path = new URL(String(url)).pathname; paths.push(path);
+    expect(new Headers(init?.headers).get("X-Subscription-Token")).toBe("fixture");
+    const path = new URL(fetchInputUrl(url)).pathname; paths.push(path);
     await new Promise(resolve => setTimeout(resolve, 3));
     expect(paths).toHaveLength(2);
     return json(path.includes("/images/") ? { type: "images", results: [
@@ -66,7 +67,7 @@ test("Brave starts native images alongside web search, keeps attribution and pre
 test("Brave image access failure falls back to existing web thumbnails without losing sources", async () => {
   let imageCalls = 0;
   const client = createBraveClient("fixture", async url => {
-    if (String(url).includes("/images/")) { imageCalls++; return new Response(null, { status: 403 }); }
+    if (fetchInputUrl(url).includes("/images/")) { imageCalls++; return new Response(null, { status: 403 }); }
     return json({ type: "search", web: { results: [{ url: page, title: "Roof", thumbnail: { src: thumb } }] } });
   });
   await client.search({ query: "roof" }); expect(imageCalls).toBe(0);
@@ -96,7 +97,7 @@ test("completing a provider response detaches its native request from later pare
 test("Brave does not silently return unfiltered image-index results for a dated query", async () => {
   let calls = 0;
   const client = createBraveClient("fixture", async url => {
-    calls++; expect(String(url)).toContain("/web/search?");
+    calls++; expect(fetchInputUrl(url)).toContain("/web/search?");
     return json({ type: "search", web: { results: [{ url: page, title: "Roof", thumbnail: { src: thumb } }] } });
   });
   const result = await client.search({ query: "roof", recencyDays: 7, includeImages: true });

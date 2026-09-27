@@ -27,7 +27,7 @@ const DEDUPE_BUCKET_CHARS = 200;
 /** 词元化：按标点/空白切，丢弃单字符碎片。CJK 不分词 —— 靠标点边界就够用。 */
 function tokenize(query: string): string[] {
   return query
-    .split(/[\s,.。，！？!?；;：:、"'“”‘’()（）《》〈〉【】\[\]\-—…·]+/)
+    .split(/[\s,.。，！？!?；;：:、"'“”‘’()（）《》〈〉【】[\]\-—…·]+/)
     .map((token) => token.trim())
     .filter((token) => token.length >= 2);
 }

@@ -62,7 +62,7 @@ export type ObservedDomainEvent<K extends DomainEventType = DomainEventType> = E
  */
 export type DomainEventSubscribe<E extends DomainEventType> = <K extends E>(
   event: K,
-  handler: (event: ObservedDomainEvent<K>) => void,
+  handler: (event: ObservedDomainEvent<K>) => unknown,
 ) => () => void;
 
 /**
@@ -73,7 +73,7 @@ export function domainSubscribe<E extends DomainEventType>(
   roster: readonly E[],
   consumerLabel: string,
 ): DomainEventSubscribe<E> {
-  return ((event: DomainEventType, handler: (event: DomainEventBroadcast) => void) => {
+  return ((event: DomainEventType, handler: (event: DomainEventBroadcast) => unknown) => {
     if (!(roster as readonly DomainEventType[]).includes(event)) {
       throw new Error(`"${event}" is not an event of this domain`);
     }
@@ -84,7 +84,7 @@ export function domainSubscribe<E extends DomainEventType>(
       try {
         // A sandboxed consumer's handler is an async proxy into its Worker —
         // its failures arrive as a rejection, not a throw.
-        const result = handler(broadcast) as unknown;
+        const result = handler(broadcast);
         if (result instanceof Promise) result.catch(report);
       } catch (error) {
         report(error);

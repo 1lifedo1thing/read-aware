@@ -8,7 +8,7 @@ test("settlement waits for every dispatched write, including ones dispatched mea
   let settled = false;
   const settling = writes.settle().then(() => { settled = true; });
   await Bun.sleep(0); expect(settled).toBe(false);
-  writes.track(second.promise);
+  void writes.track(second.promise);
   first.resolve(7); await Bun.sleep(0); expect(settled).toBe(false);
   second.reject(new Error("write failed")); await settling;
   expect(settled).toBe(true); expect(await tracked).toBe(7); expect(writes.size).toBe(0);
@@ -16,7 +16,7 @@ test("settlement waits for every dispatched write, including ones dispatched mea
   await expect(failing).rejects.toMatchObject({ message: "still rejects" });
   await writes.settle();
   const controller = new AbortController(); controller.abort(new Error("caller gone"));
-  writes.track(new Promise(() => {}));
+  void writes.track(new Promise(() => {}));
   await expect(writes.settle(controller.signal)).rejects.toMatchObject({ message: "caller gone" });
 });
 
@@ -27,7 +27,7 @@ test("accepted preparation and observer follow-up stay pending; aborting a waite
   const operation = writes.run(async () => {
     started = true;
     await prepare.promise;
-    writes.run(() => followup.promise);
+    void writes.run(() => followup.promise);
     return 9;
   });
   expect(started).toBe(false); expect(writes.size).toBe(1);

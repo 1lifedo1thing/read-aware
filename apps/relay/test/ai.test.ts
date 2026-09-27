@@ -27,9 +27,9 @@ const accountOf = async (handle: Handle, session: string): Promise<AccountRespon
 function fakeUpstream(respond: (body: Record<string, unknown>) => Response) {
   const requests: { url: string; auth: string | null; body: Record<string, unknown> }[] = [];
   const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    const body = JSON.parse(init?.body as string) as Record<string, unknown>;
     requests.push({
-      url: String(input),
+      url: input instanceof Request ? input.url : String(input),
       auth: new Headers(init?.headers).get("authorization"),
       body,
     });

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai";
+import type { Api, AssistantMessage, Context, Model } from "@earendil-works/pi-ai";
+import { messageText } from "../testing/message-text";
 import type { Id } from "@read-aware/core";
 import type { ChapterDigest } from "../ports";
 import {
@@ -83,7 +84,7 @@ describe("extractChapterDigest", () => {
     let systemPrompt = "";
     const digest = await extractChapterDigest({
       complete: async (_model, context) => {
-        systemPrompt = String((context as { systemPrompt?: unknown }).systemPrompt ?? "");
+        systemPrompt = context.systemPrompt ?? "";
         return reply(
           '{"summary": "本章立论：群体智力低于个体。", "concepts": [{"name": "群体心理", "aliases": ["集体心理"], "note": "个体聚成群后的共同心理状态"}, {"name": "无意识"}], "relations": [{"from": "无意识", "kind": "支配", "to": "群体心理"}]}',
         );
@@ -205,8 +206,8 @@ describe("digestMissingChapters", () => {
           saved.push({ bookId, digest });
         },
       },
-      complete: async (_model: unknown, context: { messages: Array<{ content: unknown }> }) => {
-        const text = String(context.messages[0]?.content ?? "");
+      complete: async (_model: unknown, context: Context) => {
+        const text = messageText(context.messages[0]);
         const match = text.match(/chapterIndex \(not a printed chapter number\): (\d+)/);
         digested.push(Number(match?.[1]));
         return reply(`{"summary": "第${match?.[1]}章摘要", "characters": [], "relations": []}`);
@@ -344,13 +345,13 @@ describe("digestMissingChapters", () => {
           saved.push(digest);
         },
       },
-      complete: (async (_model: unknown, context: { systemPrompt?: string; messages: Array<{ content: unknown }> }) => {
+      complete: (async (_model: unknown, context: Context) => {
         inFlight += 1;
         peakInFlight = Math.max(peakInFlight, inFlight);
         await new Promise((resolve) => setTimeout(resolve, 5));
         inFlight -= 1;
-        knownBlocks.push(String(context.systemPrompt ?? "").split("Characters already known")[1] ?? "");
-        const match = String(context.messages[0]?.content ?? "").match(/chapterIndex \(not a printed chapter number\): (\d+)/);
+        knownBlocks.push((context.systemPrompt ?? "").split("Characters already known")[1] ?? "");
+        const match = messageText(context.messages[0]).match(/chapterIndex \(not a printed chapter number\): (\d+)/);
         return reply(
           `{"summary": "第${match?.[1]}章摘要", "characters": [{"name": "人物${match?.[1]}"}], "relations": []}`,
         );
@@ -366,7 +367,7 @@ describe("digestMissingChapters", () => {
     });
     expect(count.digested).toBe(5);
     expect(peakInFlight).toBe(3); // 滑动窗口确实保持 3 章在飞
-    expect(saved.map((digest) => digest.chapterIndex).sort()).toEqual([0, 1, 2, 3, 4]);
+    expect(saved.map((digest) => digest.chapterIndex).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
     // 起跑的前 3 章在任何完成之前启动——锚名录为空；后续补位的章启动时
     // 已有完成章落库，锚名录携带其实体。
     expect(knownBlocks.slice(0, 3).every((block) => block.includes("(none yet)"))).toBe(true);

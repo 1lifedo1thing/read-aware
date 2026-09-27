@@ -110,7 +110,7 @@ export function CodeBlock({ code, language }: { code: string; language: string }
           size="sm"
           label={copyLabel}
           title={copyLabel}
-          onClick={copyCode}
+          onClick={() => void copyCode()}
           icon={
             copied ? (
               <Check aria-hidden="true" size={15} />

@@ -122,7 +122,11 @@ export function PluginPermissionPreview({
             <PreviewGroup title={copy.declarationsTitle} empty={copy.none}>
               <li>
                 {copy.schemaVersion}:{" "}
-                <code>{String(parsed.declarations.schemaVersion ?? "—")}</code>
+                <code>
+                  {parsed.declarations.schemaVersion === undefined
+                    ? "—"
+                    : JSON.stringify(parsed.declarations.schemaVersion)}
+                </code>
               </li>
               {parsed.declarations.schedules > 0 && (
                 <li>{copy.schedules(parsed.declarations.schedules)}</li>

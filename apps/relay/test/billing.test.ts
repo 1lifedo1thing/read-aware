@@ -32,9 +32,9 @@ function fakeStripe(
     idempotencyKey: string | null;
   }[] = [];
   const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
+    const url = input instanceof Request ? input.url : String(input);
     const method = init?.method ?? "GET";
-    const form = init?.body ? new URLSearchParams(String(init.body)) : null;
+    const form = init?.body ? new URLSearchParams(init.body as string) : null;
     const idempotencyKey = new Headers(init?.headers).get("idempotency-key");
     calls.push({ url, method, form, idempotencyKey });
     if (url.includes("/v1/prices")) {

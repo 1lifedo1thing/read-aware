@@ -87,7 +87,7 @@ if (process.env.PERSISTENCE_SHUTDOWN_PROOF === "1") {
     take("commit_events").resolve({ appended: 1, applied: 1 });
     const receipt = await closing;
     expect(receipt.status).toBe("ready");
-    expect(receipt.owners.slice(0, 2).map(owner => [owner.name, owner.phase]).sort()).toEqual([
+    expect(receipt.owners.slice(0, 2).map(owner => [owner.name, owner.phase]).sort(([a], [b]) => a.localeCompare(b))).toEqual([
       ["credentials", "persist"], ["local-kv", "persist"],
     ]);
     expect(receipt.owners.at(-1)).toMatchObject({ name: "domain-events", phase: "receipts" });

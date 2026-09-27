@@ -151,6 +151,8 @@ async function priceIdFor(ctx: BillingContext, plan: BillingPlan): Promise<strin
 }
 
 const TERMINAL_SUBSCRIPTION_STATUSES = new Set(["canceled", "incomplete_expired"]);
+const isTerminalSubscription = (object: Record<string, unknown> | null) =>
+  typeof object?.status === "string" && TERMINAL_SUBSCRIPTION_STATUSES.has(object.status);
 
 async function hasCurrentReadAwareSubscription(
   ctx: BillingContext,
@@ -170,7 +172,7 @@ async function hasCurrentReadAwareSubscription(
         const object = asRecord(subscription);
         return (
           belongsToReadAware(object) &&
-          !TERMINAL_SUBSCRIPTION_STATUSES.has(String(object?.status ?? ""))
+          !isTerminalSubscription(object)
         );
       })
     ) {
@@ -209,7 +211,7 @@ export async function cancelReadAwareSubscriptions(
     for (const subscription of subscriptions) {
       const object = asRecord(subscription);
       if (!belongsToReadAware(object)) continue;
-      if (TERMINAL_SUBSCRIPTION_STATUSES.has(String(object?.status ?? ""))) continue;
+      if (isTerminalSubscription(object)) continue;
       if (typeof object?.id !== "string") continue;
       await stripeApi(ctx.stripe, "DELETE", `/v1/subscriptions/${object.id}`);
     }

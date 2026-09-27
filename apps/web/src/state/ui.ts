@@ -225,7 +225,8 @@ export const textUnitModeSettingsAtom = atom(
   },
   (get, _set, patch: Partial<TextUnitModeSettings>) => {
     const mode = get(textUnitReaderModeAtom);
-    if (mode) updateTextUnitModeSettings(mode.key, patch);
+    // observedWrite logs a failed save; the atom setter has no caller to report to.
+    if (mode) void updateTextUnitModeSettings(mode.key, patch);
   },
 );
 

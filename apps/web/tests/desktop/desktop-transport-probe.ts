@@ -56,7 +56,7 @@ export async function runDesktopTransportProbe() {
       else if (mode === "secret") await setPluginSecret(id, "password", "credential-free-probe");
       else await worker.terminate();
       const codes = await Promise.all(pending);
-      if (codes.some(code => code !== "plugin/unavailable" && code !== "plugin/cancelled")) throw new Error(`Unexpected transport result: ${codes}`);
+      if (codes.some(code => code !== "plugin/unavailable" && code !== "plugin/cancelled")) throw new Error(`Unexpected transport result: ${codes.join(",")}`);
       await until(async () => (await evidence()).slice(before).every(row => row.aborted && !row.completed));
       let stale = "";
       try { await session.getMeta("stale"); } catch (error) { stale = (error as { code?: string }).code ?? ""; }

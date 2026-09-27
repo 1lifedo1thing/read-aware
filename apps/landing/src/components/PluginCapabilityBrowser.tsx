@@ -443,7 +443,7 @@ function CapabilityDetail({
           <ArrowLeft size={16} aria-hidden="true" />
           {copy.explorer.back}
         </Button>
-        <Button type="button" variant="link" size="sm" onClick={copyLink}>
+        <Button type="button" variant="link" size="sm" onClick={() => void copyLink()}>
           {status === "copied" ? (
             <Check size={15} aria-hidden="true" />
           ) : (

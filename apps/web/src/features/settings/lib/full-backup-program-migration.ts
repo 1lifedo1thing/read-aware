@@ -53,6 +53,7 @@ export async function migrateFullBackupPrograms(
     });
     let termination: Promise<void> | undefined;
     const stop = () => termination ??= worker.terminate(origin);
+    // The same termination is awaited in the finally below, which reports its failure.
     const abort = () => { void stop().catch(() => {}); };
     signal?.addEventListener("abort", abort, { once: true });
     let migration: ReturnType<typeof planPluginDataMigration>;

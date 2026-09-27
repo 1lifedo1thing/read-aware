@@ -321,25 +321,25 @@ export function validateThemeContributions(
           typography.fontFamily = t.fontFamily;
         }
         if (t.fontSize != null) {
-          if (!FONT_SIZES.has(String(t.fontSize))) {
+          if (typeof t.fontSize !== "string" || !FONT_SIZES.has(t.fontSize)) {
             throw new Error(`theme "${id}" typography fontSize is invalid`);
           }
           typography.fontSize = t.fontSize as NonNullable<typeof typography>["fontSize"];
         }
         if (t.fontWeight != null) {
-          if (!FONT_WEIGHTS.has(String(t.fontWeight))) {
+          if (typeof t.fontWeight !== "string" || !FONT_WEIGHTS.has(t.fontWeight)) {
             throw new Error(`theme "${id}" typography fontWeight is invalid`);
           }
           typography.fontWeight = t.fontWeight as NonNullable<typeof typography>["fontWeight"];
         }
         if (t.lineSpacing != null) {
-          if (!LINE_SPACINGS.has(String(t.lineSpacing))) {
+          if (typeof t.lineSpacing !== "string" || !LINE_SPACINGS.has(t.lineSpacing)) {
             throw new Error(`theme "${id}" typography lineSpacing is invalid`);
           }
           typography.lineSpacing = t.lineSpacing as NonNullable<typeof typography>["lineSpacing"];
         }
         if (t.paragraphSpacing != null) {
-          if (!PARAGRAPH_SPACINGS.has(String(t.paragraphSpacing))) {
+          if (typeof t.paragraphSpacing !== "string" || !PARAGRAPH_SPACINGS.has(t.paragraphSpacing)) {
             throw new Error(`theme "${id}" typography paragraphSpacing is invalid`);
           }
           typography.paragraphSpacing =

@@ -48,7 +48,7 @@ export class PluginNetworkRequests {
     private readonly received: (bytes: number) => void = () => {},
   ) {
     signal.addEventListener("abort", () => {
-      for (const entry of this.entries.values()) this.retire(entry, pluginNetworkAbort(signal.reason));
+      for (const entry of this.entries.values()) void this.retire(entry, pluginNetworkAbort(signal.reason));
     }, { once: true });
   }
 
@@ -67,10 +67,10 @@ export class PluginNetworkRequests {
         controller.signal.throwIfAborted();
         return this.request(initial, { signal: controller.signal }, retry);
       }),
-      timer: setTimeout(() => this.retire(entry, new AppError("plugin/network-timeout", "Network response lifetime expired")), this.limits.timeoutMs),
+      timer: setTimeout(() => { void this.retire(entry, new AppError("plugin/network-timeout", "Network response lifetime expired")); }, this.limits.timeoutMs),
       expiresAt, closed: false, offset: 0, received: 0, limit, buffered: new Uint8Array(0), detach: () => {},
     };
-    const abort = () => this.retire(entry, pluginNetworkAbort(initial.signal.reason));
+    const abort = () => { void this.retire(entry, pluginNetworkAbort(initial.signal.reason)); };
     initial.signal.addEventListener("abort", abort, { once: true });
     entry.detach = () => initial.signal.removeEventListener("abort", abort);
     this.entries.set(entry.id, entry);
@@ -91,7 +91,7 @@ export class PluginNetworkRequests {
         url: response.url, redirected: response.redirected, headers: [...response.headers], expiresAt };
     } catch (error) {
       const failure = entry.closed ? entry.error ?? error : pluginNetworkError(error);
-      this.retire(entry, failure);
+      void this.retire(entry, failure);
       throw failure;
     } finally {
       controller.signal.removeEventListener("abort", stopWaiting);
@@ -103,7 +103,7 @@ export class PluginNetworkRequests {
     const info = await this.open(initial, undefined, MAX_PLUGIN_NETWORK_BODY_BYTES, retry);
     const entry = this.entries.get(info.id);
     if (!entry) throw new AppError("plugin/network-closed", "Network response has already closed");
-    const abort = () => this.retire(entry, pluginNetworkAbort(initial.signal.reason));
+    const abort = () => { void this.retire(entry, pluginNetworkAbort(initial.signal.reason)); };
     initial.signal.addEventListener("abort", abort, { once: true });
     entry.detach = () => initial.signal.removeEventListener("abort", abort);
     if (initial.signal.aborted) abort();
@@ -149,7 +149,7 @@ export class PluginNetworkRequests {
         if (!next.done) this.received(next.value.byteLength);
         this.assertOpen(entry);
         if (next.done) {
-          this.retire(entry, undefined, true);
+          void this.retire(entry, undefined, true);
           return { offset: entry.offset, bytes: new ArrayBuffer(0), done: true };
         }
         entry.received += next.value.byteLength;
@@ -167,7 +167,7 @@ export class PluginNetworkRequests {
       return { offset, bytes: bytes.buffer, done: false };
     } catch (error) {
       const failure = entry.closed ? entry.error ?? error : pluginNetworkError(error);
-      this.retire(entry, failure);
+      void this.retire(entry, failure);
       throw failure;
     }
   }
@@ -178,12 +178,14 @@ export class PluginNetworkRequests {
   }
 
   private assertOpen(entry: Entry): void {
-    if (!entry.closed && Date.now() >= entry.expiresAt) this.retire(entry, new AppError("plugin/network-timeout", "Network response lifetime expired"));
+    if (!entry.closed && Date.now() >= entry.expiresAt) void this.retire(entry, new AppError("plugin/network-timeout", "Network response lifetime expired"));
     if (entry.closed) throw entry.error ?? new AppError("plugin/network-closed", "Network response is closed");
     this.signal.throwIfAborted();
     entry.controller.signal.throwIfAborted();
   }
 
+  /** The cleanup never rejects and is registered with trackCleanup, so callers
+   * that only start retirement discard the receipt with `void`. */
   private retire(entry: Entry, error?: unknown, completed = false): Promise<void> {
     if (entry.closed) return entry.cleanup!;
     entry.closed = true;
@@ -195,6 +197,7 @@ export class PluginNetworkRequests {
     if (!completed) entry.controller.abort(entry.error);
     // Keep the slot until even an abort-ignoring native operation has settled.
     const cleanup = Promise.resolve().then(async () => {
+      // A failed opening is reported to open()'s caller; here only a live body needs releasing.
       const response = await entry.opening.catch(() => undefined);
       try {
         if (!completed) {

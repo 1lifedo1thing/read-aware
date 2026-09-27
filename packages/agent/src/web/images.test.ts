@@ -43,7 +43,7 @@ for (const id of ["brave", "exa", "tavily", "serpapi"] as const) test(`${id} ret
 for (const id of ["tinyfish", "exa", "tavily", "brave"] as const) test(`${id} fetch requests and normalizes source images with the same provider`, async () => {
   let body: Record<string, unknown> = {};
   const client = WEB_PROVIDERS[id].create("fixture-key", async (_url, init) => {
-    body = JSON.parse(String(init?.body));
+    body = JSON.parse(init?.body as string);
     return json(id === "brave" ? { grounding: { generic: [{ url: source, title: "Museum", snippets: ["Building description"] }] }, sources: { [`${source}/`]: { thumbnail: { src: image, original: image } } } }
       : { results: [{ url: source, final_url: source, title: "Museum", text: "Building description", raw_content: "Building description", image_links: [image], extras: { imageLinks: [image] }, images: [image] }], errors: [], failed_results: [] });
   });

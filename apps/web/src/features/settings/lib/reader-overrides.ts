@@ -36,7 +36,7 @@ export type ReaderOverrides = Record<string, BookReaderOverride>;
 function normalizeSettings(
   value: Partial<ReaderSettingsPreferences> | undefined,
 ): ReaderSettingsPreferences {
-  const merged = { ...DEFAULT_READER_PREFERENCES, ...(value ?? {}) };
+  const merged = { ...DEFAULT_READER_PREFERENCES, ...value };
   // Coerce the fields whose representation has changed so legacy overrides
   // (named font sizes, sans/serif presets) keep resolving.
   return {

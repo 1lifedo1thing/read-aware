@@ -496,6 +496,7 @@ export class AgentThread {
         cursor?.chapter !== undefined &&
         cursor.chapterIndex === undefined
       ) {
+        // The TOC only refines the cursor; without it the chapter stays unresolved, as it was.
         const toc = await call.wait(this.deps.bookText.getToc(this.scope.bookId).catch(() => undefined));
         const chapter = toc ? findChapterByHref(toc, cursor.chapter) : undefined;
         if (chapter) {

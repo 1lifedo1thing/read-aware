@@ -9,6 +9,7 @@ import { inspectContributions } from "../../src/features/plugins/state/contribut
 import { startPluginWorker } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { buildThreadTools } from "../../../../packages/agent/src/tools/library-tools";
+import { withProbeCleanup } from "./probe-cleanup";
 
 /** Native IPC + the real Agent port and Worker bridge; never touches user data. */
 export async function runDesktopAnnotationPageProbe(bookId: string) {
@@ -26,7 +27,7 @@ export async function runDesktopAnnotationPageProbe(bookId: string) {
   const query = `pageprobe${crypto.randomUUID().replaceAll("-", "")}`;
   const created: string[] = [];
   const results: Record<string, unknown> = {};
-  try {
+  return withProbeCleanup(async () => {
     const notes = [];
     for (let n = 0; n < 5; n++) {
       const note = await domain.commands.createNote({ bookId, body: `${query} note ${n}` });
@@ -47,7 +48,7 @@ export async function runDesktopAnnotationPageProbe(bookId: string) {
       const manifest: PluginManifest = { id, name: "Annotation pages probe", version: "1.0.0", schemaVersion: 1,
         permissions: authorized ? ["annotations:read"] : [], requires: { domains: { annotations: "^2.0.0" }, services: { storage: "^2.0.0" } } };
       const worker = await startPluginWorker(manifest, "0.5.4", disposables, { moduleUrl: new URL("./annotation-page-probe.ts", import.meta.url).href });
-      try {
+      await withProbeCleanup(async () => {
         await worker.checkHealth(); worker.promote();
         const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === id);
         if (!command) throw new Error("Page probe command missing");
@@ -56,13 +57,13 @@ export async function runDesktopAnnotationPageProbe(bookId: string) {
         const result = JSON.parse(disk[prefix + "result"]);
         if (result.authorized !== authorized) throw new Error("Wrong annotation permission boundary");
         results[authorized ? "worker" : "denied"] = result;
-      } finally {
+      }, async () => {
         try { await worker.terminate(); }
         finally { for (const disposable of disposables.reverse()) disposable.dispose(); }
         await localKV.removeItemAsync(prefix + "input");
         await localKV.removeItemAsync(prefix + "result");
         if (inspectContributions(id).length) throw new Error("Page probe left contributions");
-      }
+      });
     }
     const removed = (await domain.queries.inspect(first.items[1].id))!;
     await domain.commands.applyChanges([{ op: "remove", kind: removed.annotation.kind, annotationId: removed.annotation.id, expectedRevision: removed.revision }]);
@@ -72,12 +73,12 @@ export async function runDesktopAnnotationPageProbe(bookId: string) {
     if (JSON.stringify(continued.items.map(item => item.id)) !== JSON.stringify(expectedIds.slice(2)) || continued.nextCursor !== null) throw new Error("Live bookmark shifted after concurrent writes");
     results.afterConcurrentWrites = continued;
     return { dataDir, query, results, verification: "actual Agent tool, SQLite and WebKit Worker; not LLM or UI interaction" };
-  } finally {
+  }, async () => {
     const cleanup = await Promise.allSettled(created.map(async id => {
       const snapshot = await domain.queries.inspect(id);
       if (snapshot) await domain.commands.applyChanges([{ op: "remove", kind: snapshot.annotation.kind, annotationId: id, expectedRevision: snapshot.revision }]);
     }));
     const failures = cleanup.filter(result => result.status === "rejected");
     if (failures.length) throw new AggregateError(failures.map(result => result.reason), "Page probe cleanup failed");
-  }
+  });
 }

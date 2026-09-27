@@ -7,6 +7,7 @@ import { retainBook } from "../../src/features/reader/lib/book-lifetime";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { startPluginWorker, type SandboxedPlugin } from "../../src/features/plugins/runtime/plugin-worker-host";
+import { withProbeCleanup } from "./probe-cleanup";
 
 /** Inject an explicitly held document load, over an actual imported book/parser. */
 export async function runRangeLifetimeProbe(bookId: string) {
@@ -28,7 +29,7 @@ export async function runRangeLifetimeProbe(bookId: string) {
     let worker: SandboxedPlugin | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(Error("Range retirement timeout")), 10000); });
-    try {
+    return withProbeCleanup(async () => {
       worker = await startPluginWorker({ id, name: "Range retirement", version: "1.0.0", schemaVersion: 1,
         permissions: ["library:read"], requires: { domains: { library: "^1.7.0" } }, description: JSON.stringify(range) }, "0.5.4", disposables,
       { moduleUrl: new URL("./range-lifetime-probe.ts", import.meta.url).href });
@@ -48,14 +49,14 @@ export async function runRangeLifetimeProbe(bookId: string) {
       const stoppedBeforeRelease = finished;
       unblock(); await Promise.race([Promise.all([destroyed, stopping]), timeout]);
       return { beforeRetirement, beforeLoadReleased, afterLoadReleased: destroys, stoppedBeforeRelease, outcome };
-    } finally {
+    }, async () => {
       unblock(); unregister(); await releaseOwner();
       try { await worker?.terminate(); }
       finally {
-      for (const item of disposables.reverse()) item.dispose();
-      if (timer) clearTimeout(timer);
-      if (inspectContributions(id).length) throw Error("Range retirement left contributions");
+        for (const item of disposables.reverse()) item.dispose();
+        if (timer) clearTimeout(timer);
       }
-    }
+      if (inspectContributions(id).length) throw Error("Range retirement left contributions");
+    });
   });
 }

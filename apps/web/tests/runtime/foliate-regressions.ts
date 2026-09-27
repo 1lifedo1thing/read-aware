@@ -133,7 +133,7 @@ export async function runFoliateRegressions(cfi: typeof CFI, foundation?: Founda
       await view.prev(100);
       equal(renderer.start - start, 100);
     } finally {
-      view.close();
+      await view.close();
       view.remove();
       URL.revokeObjectURL(url);
     }

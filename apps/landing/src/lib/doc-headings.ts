@@ -11,7 +11,7 @@ export const headingId = (text: string) =>
 export function docHeadings(body: string) {
   let fenced = false;
   return body.split("\n").flatMap((line) => {
-    if (/^```/.test(line)) {
+    if (line.startsWith("```")) {
       fenced = !fenced;
       return [];
     }

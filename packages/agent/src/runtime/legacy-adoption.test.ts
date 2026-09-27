@@ -6,6 +6,7 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Api, Model } from "@earendil-works/pi-ai";
+import { messageText } from "../testing/message-text";
 import { registerFauxProvider, streamSimple } from "@earendil-works/pi-ai/compat";
 import {
   fauxAssistantMessage,
@@ -47,7 +48,7 @@ describe("legacy thread adoption", () => {
   function trackingComplete(calls: Array<{ kind: string; content: string }>): CompleteFn {
     return async (_model, context) => {
       const system = String(context.systemPrompt ?? "");
-      const content = String(context.messages[0]?.content ?? "");
+      const content = messageText(context.messages[0]);
       if (system.includes("existed BEFORE the summary system")) {
         calls.push({ kind: "bootstrap", content });
         return fauxAssistantMessage("历史摘要：读者关注叶文洁的动机与人物心理。");

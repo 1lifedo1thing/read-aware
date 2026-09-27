@@ -265,327 +265,330 @@ function evalDataPlugin(): Plugin {
         manualSessionHandles.clear();
       });
 
-      server.middlewares.use(async (req, res, next) => {
-        const url = new URL(req.url ?? "/", "http://localhost");
-        if (!url.pathname.startsWith("/api/")) return next();
-        try {
-          if (url.pathname === "/api/catalog") {
-            if (!catalogCache) {
-              // ssrLoadModule 现场编译 agent 包 TS；套件构造会加载真书
-              // fixture 全文（一次约一两秒），进程内缓存。
-              const agent = (await server.ssrLoadModule("@read-aware/agent/evals")) as {
-                evalSuites: Record<
-                  string,
-                  {
-                    id: string;
-                    displayName: string;
-                    code: string;
-                    description: string;
-                    scenarios: Array<{
+      // Every API route answers inside its own try/catch, so the handler never rejects.
+      server.middlewares.use((req, res, next) => {
+        void (async () => {
+          const url = new URL(req.url ?? "/", "http://localhost");
+          if (!url.pathname.startsWith("/api/")) return next();
+          try {
+            if (url.pathname === "/api/catalog") {
+              if (!catalogCache) {
+                // ssrLoadModule 现场编译 agent 包 TS；套件构造会加载真书
+                // fixture 全文（一次约一两秒），进程内缓存。
+                const agent = (await server.ssrLoadModule("@read-aware/agent/evals")) as {
+                  evalSuites: Record<
+                    string,
+                    {
                       id: string;
+                      displayName: string;
+                      code: string;
                       description: string;
-                      tags?: string[];
-                      input: unknown;
-                    }>;
+                      scenarios: Array<{
+                        id: string;
+                        description: string;
+                        tags?: string[];
+                        input: unknown;
+                      }>;
+                    }
+                  >;
+                  evalSuiteGroups: Record<
+                    string,
+                    { id: string; description: string; suiteIds: string[] }
+                  >;
+                };
+                catalogCache = Object.entries(agent.evalSuiteGroups)
+                  .flatMap(([, definition]) =>
+                    definition.suiteIds.map((suiteId) => ({
+                      suite: agent.evalSuites[suiteId]!,
+                      group: definition.id as "behavior" | "realbook",
+                    })),
+                  )
+                  .map(({ suite, group }) => ({
+                    id: suite.id,
+                    displayName: suite.displayName,
+                    code: suite.code,
+                    group,
+                    description: suite.description,
+                    scenarios: suite.scenarios.map((scenario, index) => ({
+                      ref: `${suite.code}.${index + 1}`,
+                      id: scenario.id,
+                      description: scenario.description,
+                      tags: scenario.tags ?? [],
+                      input: scenario.input,
+                    })),
+                  }))
+                  .sort((a, b) => a.code.localeCompare(b.code));
+              }
+              return sendJson(res, catalogCache);
+            }
+            if (url.pathname === "/api/runs") {
+              return sendJson(res, await listRuns());
+            }
+            if (url.pathname === "/api/events") {
+              res.writeHead(200, {
+                "content-type": "text/event-stream",
+                "cache-control": "no-cache",
+                connection: "keep-alive",
+              });
+              res.write(`data: connected\n\n`);
+              sseClients.add(res);
+              req.on("close", () => sseClients.delete(res));
+              return;
+            }
+            if (url.pathname === "/api/attention") {
+              // 各套件"最新一次 run"里的失败/错误场景聚合——打开页面第一眼
+              // 要看的就是"现在什么是红的、为什么"。
+              const latest = new Map<string, RunListing & { directory?: string }>();
+              for (const root of EVAL_ROOTS) {
+                if (!existsSync(root)) continue;
+                for (const entry of readdirSync(root)) {
+                  const directory = join(root, entry);
+                  const manifest = readJson(join(directory, "manifest.json")) as
+                    | { runId?: string; plan?: { suiteId?: string } }
+                    | undefined;
+                  const summary = readJson(join(directory, "summary.json")) as
+                    | { generatedAt?: string }
+                    | undefined;
+                  if (!manifest?.plan?.suiteId || !summary?.generatedAt) continue;
+                  const known = latest.get(manifest.plan.suiteId);
+                  if (!known || (known.generatedAt ?? "") < summary.generatedAt) {
+                    latest.set(manifest.plan.suiteId, {
+                      runId: manifest.runId ?? entry,
+                      suiteId: manifest.plan.suiteId,
+                      generatedAt: summary.generatedAt,
+                      directory,
+                    } as RunListing & { directory: string });
                   }
-                >;
-                evalSuiteGroups: Record<
-                  string,
-                  { id: string; description: string; suiteIds: string[] }
-                >;
+                }
+              }
+              const attention: Array<{
+                suiteId: string;
+                runId: string;
+                scenarioId: string;
+                status: string;
+                failedChecks: Array<{ id: string; message: string }>;
+              }> = [];
+              for (const run of Array.from(latest.values())) {
+                const directory = (run as { directory?: string }).directory;
+                if (!directory || !existsSync(join(directory, "runs.jsonl"))) continue;
+                const reviews = await readHumanReviews(directory);
+                for (const line of readFileSync(join(directory, "runs.jsonl"), "utf8").split("\n")) {
+                  if (!line) continue;
+                  const record = JSON.parse(line) as EvalRunRecord;
+                  const verdict = qualityVerdict(record, reviews);
+                  // Pending samples appear in coverage; this list is for observed concerns.
+                  if (verdict === "pass" || (verdict === "pending" && record.status === "passed")) continue;
+                  attention.push({
+                    suiteId: run.suiteId,
+                    runId: run.runId,
+                    scenarioId: record.scenarioId,
+                    status: verdict === "pending" ? "diagnostic" : verdict,
+                    failedChecks:
+                      (reviews[`run:${record.id}`]?.notes ? [{ id: "primary-review", message: reviews[`run:${record.id}`]!.notes }] : undefined) ?? record.assessment?.checks
+                        ?.filter((check) => !check.passed)
+                        .map(({ id, message }) => ({ id, message })) ??
+                      (record.error ? [{ id: "error", message: record.error.message }] : []),
+                  });
+                }
+              }
+              return sendJson(res, attention);
+            }
+            const reviewMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/human-reviews$/);
+            if (reviewMatch && req.method === "POST") {
+              const directory = findRunDirectory(reviewMatch[1]!);
+              if (!directory) return sendJson(res, { error: "run not found" }, 404);
+              const input = (await readRequestJson(req)) as HumanReviewInput;
+              if (typeof input.targetId !== "string" || !(await reviewTargetExists(directory, input.targetId))) {
+                return sendJson(res, { error: "review target not found in this run" }, 404);
+              }
+              const review = await saveHumanReview(directory, input);
+              if (existsSync(join(directory, "summary.json"))) await refreshReviewReport(directory);
+              broadcast();
+              return sendJson(res, review);
+            }
+            const createSessionMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/manual-sessions$/);
+            if (createSessionMatch && req.method === "POST") {
+              const runId = createSessionMatch[1]!;
+              const directory = findRunDirectory(runId);
+              if (!directory) return sendJson(res, { error: "run not found" }, 404);
+              const body = (await readRequestJson(req)) as Partial<CreateManualSessionInput>;
+              if (typeof body.scenarioId !== "string" || typeof body.variantId !== "string") {
+                return sendJson(res, { error: "scenarioId and variantId are required" }, 400);
+              }
+              const manifest = readJson(join(directory, "manifest.json")) as
+                | {
+                    plan?: {
+                      suiteId?: string;
+                      variants?: Array<{ id?: string; metadata?: Record<string, unknown> }>;
+                    };
+                  }
+                | undefined;
+              const suiteId = manifest?.plan?.suiteId;
+              const variant = manifest?.plan?.variants?.find((entry) => entry.id === body.variantId);
+              if (!suiteId || !variant) {
+                return sendJson(res, { error: "run variant not found" }, 404);
+              }
+              const agent = (await server.ssrLoadModule("@read-aware/agent/evals")) as {
+                evalSuites: Record<string, { scenarios: Array<{ id: string }> }>;
+                createManualEvalSession: (options: {
+                  scenario: unknown;
+                  provider: string;
+                  modelId?: string;
+                  thinkingLevel: ThinkingLevel;
+                  inheritSelection: boolean;
+                }) => Promise<ManualEvalSession>;
               };
-              catalogCache = Object.entries(agent.evalSuiteGroups)
-                .flatMap(([, definition]) =>
-                  definition.suiteIds.map((suiteId) => ({
-                    suite: agent.evalSuites[suiteId]!,
-                    group: definition.id as "behavior" | "realbook",
-                  })),
-                )
-                .map(({ suite, group }) => ({
-                  id: suite.id,
-                  displayName: suite.displayName,
-                  code: suite.code,
-                  group,
-                  description: suite.description,
-                  scenarios: suite.scenarios.map((scenario, index) => ({
-                    ref: `${suite.code}.${index + 1}`,
-                    id: scenario.id,
-                    description: scenario.description,
-                    tags: scenario.tags ?? [],
-                    input: scenario.input,
-                  })),
-                }))
-                .sort((a, b) => a.code.localeCompare(b.code));
-            }
-            return sendJson(res, catalogCache);
-          }
-          if (url.pathname === "/api/runs") {
-            return sendJson(res, await listRuns());
-          }
-          if (url.pathname === "/api/events") {
-            res.writeHead(200, {
-              "content-type": "text/event-stream",
-              "cache-control": "no-cache",
-              connection: "keep-alive",
-            });
-            res.write(`data: connected\n\n`);
-            sseClients.add(res);
-            req.on("close", () => sseClients.delete(res));
-            return;
-          }
-          if (url.pathname === "/api/attention") {
-            // 各套件"最新一次 run"里的失败/错误场景聚合——打开页面第一眼
-            // 要看的就是"现在什么是红的、为什么"。
-            const latest = new Map<string, RunListing & { directory?: string }>();
-            for (const root of EVAL_ROOTS) {
-              if (!existsSync(root)) continue;
-              for (const entry of readdirSync(root)) {
-                const directory = join(root, entry);
-                const manifest = readJson(join(directory, "manifest.json")) as
-                  | { runId?: string; plan?: { suiteId?: string } }
-                  | undefined;
-                const summary = readJson(join(directory, "summary.json")) as
-                  | { generatedAt?: string }
-                  | undefined;
-                if (!manifest?.plan?.suiteId || !summary?.generatedAt) continue;
-                const known = latest.get(manifest.plan.suiteId);
-                if (!known || (known.generatedAt ?? "") < summary.generatedAt) {
-                  latest.set(manifest.plan.suiteId, {
-                    runId: manifest.runId ?? entry,
-                    suiteId: manifest.plan.suiteId,
-                    generatedAt: summary.generatedAt,
-                    directory,
-                  } as RunListing & { directory: string });
-                }
-              }
-            }
-            const attention: Array<{
-              suiteId: string;
-              runId: string;
-              scenarioId: string;
-              status: string;
-              failedChecks: Array<{ id: string; message: string }>;
-            }> = [];
-            for (const run of Array.from(latest.values())) {
-              const directory = (run as { directory?: string }).directory;
-              if (!directory || !existsSync(join(directory, "runs.jsonl"))) continue;
-              const reviews = await readHumanReviews(directory);
-              for (const line of readFileSync(join(directory, "runs.jsonl"), "utf8").split("\n")) {
-                if (!line) continue;
-                const record = JSON.parse(line) as EvalRunRecord;
-                const verdict = qualityVerdict(record, reviews);
-                // Pending samples appear in coverage; this list is for observed concerns.
-                if (verdict === "pass" || (verdict === "pending" && record.status === "passed")) continue;
-                attention.push({
-                  suiteId: run.suiteId,
-                  runId: run.runId,
-                  scenarioId: record.scenarioId,
-                  status: verdict === "pending" ? "diagnostic" : verdict,
-                  failedChecks:
-                    (reviews[`run:${record.id}`]?.notes ? [{ id: "primary-review", message: reviews[`run:${record.id}`]!.notes }] : undefined) ?? record.assessment?.checks
-                      ?.filter((check) => !check.passed)
-                      .map(({ id, message }) => ({ id, message })) ??
-                    (record.error ? [{ id: "error", message: record.error.message }] : []),
-                });
-              }
-            }
-            return sendJson(res, attention);
-          }
-          const reviewMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/human-reviews$/);
-          if (reviewMatch && req.method === "POST") {
-            const directory = findRunDirectory(reviewMatch[1]!);
-            if (!directory) return sendJson(res, { error: "run not found" }, 404);
-            const input = (await readRequestJson(req)) as HumanReviewInput;
-            if (typeof input.targetId !== "string" || !(await reviewTargetExists(directory, input.targetId))) {
-              return sendJson(res, { error: "review target not found in this run" }, 404);
-            }
-            const review = await saveHumanReview(directory, input);
-            if (existsSync(join(directory, "summary.json"))) await refreshReviewReport(directory);
-            broadcast();
-            return sendJson(res, review);
-          }
-          const createSessionMatch = url.pathname.match(/^\/api\/runs\/([^/]+)\/manual-sessions$/);
-          if (createSessionMatch && req.method === "POST") {
-            const runId = createSessionMatch[1]!;
-            const directory = findRunDirectory(runId);
-            if (!directory) return sendJson(res, { error: "run not found" }, 404);
-            const body = (await readRequestJson(req)) as Partial<CreateManualSessionInput>;
-            if (typeof body.scenarioId !== "string" || typeof body.variantId !== "string") {
-              return sendJson(res, { error: "scenarioId and variantId are required" }, 400);
-            }
-            const manifest = readJson(join(directory, "manifest.json")) as
-              | {
-                  plan?: {
-                    suiteId?: string;
-                    variants?: Array<{ id?: string; metadata?: Record<string, unknown> }>;
-                  };
-                }
-              | undefined;
-            const suiteId = manifest?.plan?.suiteId;
-            const variant = manifest?.plan?.variants?.find((entry) => entry.id === body.variantId);
-            if (!suiteId || !variant) {
-              return sendJson(res, { error: "run variant not found" }, 404);
-            }
-            const agent = (await server.ssrLoadModule("@read-aware/agent/evals")) as {
-              evalSuites: Record<string, { scenarios: Array<{ id: string }> }>;
-              createManualEvalSession: (options: {
-                scenario: unknown;
-                provider: string;
-                modelId?: string;
-                thinkingLevel: ThinkingLevel;
-                inheritSelection: boolean;
-              }) => Promise<ManualEvalSession>;
-            };
-            const scenario = agent.evalSuites[suiteId]?.scenarios.find(
-              (entry) => entry.id === body.scenarioId,
-            );
-            if (!scenario) return sendJson(res, { error: "scenario not found" }, 404);
-            const metadata = variant.metadata ?? {};
-            if (typeof metadata.provider !== "string") {
-              return sendJson(res, { error: "variant provider is missing" }, 400);
-            }
-            const handle = await agent.createManualEvalSession({
-              scenario,
-              provider: metadata.provider,
-              ...(typeof metadata.model === "string" ? { modelId: metadata.model } : {}),
-              thinkingLevel: thinkingLevel(metadata.thinkingLevel),
-              inheritSelection: body.inheritSelection === true,
-            });
-            const id = `manual-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
-            const record: ManualReviewSession = {
-              id,
-              runId,
-              scenarioId: body.scenarioId,
-              variantId: body.variantId,
-              createdAt: new Date().toISOString(),
-              model: {
-                provider: handle.metadata.provider,
-                id: handle.metadata.model,
-                thinkingLevel: handle.metadata.thinkingLevel,
-              },
-              inheritSelection: body.inheritSelection === true,
-              turns: [],
-              active: true,
-            };
-            manualSessionHandles.set(id, {
-              handle,
-              directory,
-              record,
-              touchedAt: Date.now(),
-            });
-            await saveManualSession(directory, { ...record, active: undefined });
-            broadcast();
-            return sendJson(res, record);
-          }
-          const askSessionMatch = url.pathname.match(/^\/api\/manual-sessions\/([^/]+)\/turns$/);
-          if (askSessionMatch && req.method === "POST") {
-            const session = manualSessionHandles.get(askSessionMatch[1]!);
-            if (!session) {
-              return sendJson(
-                res,
-                { error: "manual session expired; start a new session from this scenario" },
-                410,
+              const scenario = agent.evalSuites[suiteId]?.scenarios.find(
+                (entry) => entry.id === body.scenarioId,
               );
-            }
-            const body = (await readRequestJson(req)) as { question?: unknown };
-            if (typeof body.question !== "string" || !body.question.trim()) {
-              return sendJson(res, { error: "question is required" }, 400);
-            }
-            if (body.question.length > 20_000) {
-              return sendJson(res, { error: "question is too long" }, 400);
-            }
-            const observation = await session.handle.ask(body.question);
-            const turn: ManualReviewTurn = {
-              id: `${session.record.id}:${session.record.turns.length + 1}`,
-              question: body.question.trim(),
-              answer: observation.answer,
-              input: observation.turns[0]?.input,
-              reviewEvidence: observation.reviewEvidence,
-              state: observation.state,
-              tools: observation.tools.map(({ name, args, output, isError }) => ({
-                name,
-                ...(args === undefined ? {} : { args }),
-                ...(output === undefined ? {} : { output }),
-                ...(isError === undefined ? {} : { isError }),
-              })),
-              interactions: observation.interactions.map(({ phase, kind, value }) => ({
-                phase,
-                ...(kind === undefined ? {} : { kind }),
-                value,
-              })),
-              telemetry: observation.telemetry,
-              createdAt: new Date().toISOString(),
-            };
-            session.record.turns.push(turn);
-            session.touchedAt = Date.now();
-            await saveManualSession(session.directory, {
-              ...session.record,
-              active: undefined,
-            });
-            broadcast();
-            return sendJson(res, turn);
-          }
-          const runMatch = url.pathname.match(/^\/api\/runs\/([^/]+)$/);
-          if (runMatch) {
-            const directory = findRunDirectory(runMatch[1]!);
-            if (!directory) return sendJson(res, { error: "run not found" }, 404);
-            const manifest = readJson(join(directory, "manifest.json"));
-            const rescoreRoot = join(directory, "rescored");
-            const rescores = existsSync(rescoreRoot)
-              ? readdirSync(rescoreRoot)
-                  .filter((id) => /^[A-Za-z0-9._-]+$/.test(id))
-                  .flatMap((id) => {
-                    const value = readJson(join(rescoreRoot, id, "manifest.json")) as
-                      | { createdAt?: string; compatibility?: { comparable?: boolean } }
-                      | undefined;
-                    return value ? [{ id, ...value }] : [];
-                  })
-                  .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id))
-              : [];
-            const requestedRescore = url.searchParams.get("rescore") ?? undefined;
-            const selectedRescore = rescores.some((entry) => entry.id === requestedRescore)
-              ? requestedRescore
-              : undefined;
-            const dataDirectory = selectedRescore
-              ? join(rescoreRoot, selectedRescore)
-              : directory;
-            const summary = readJson(join(dataDirectory, "summary.json"));
-            const rawRecords = existsSync(join(dataDirectory, "runs.jsonl"))
-              ? readFileSync(join(dataDirectory, "runs.jsonl"), "utf8")
-              : "";
-            const records: unknown[] = [];
-            for (const line of rawRecords.split("\n")) {
-              if (!line) continue;
-              try {
-                records.push(JSON.parse(line));
-              } catch {
-                // 进行中 run 的半行
+              if (!scenario) return sendJson(res, { error: "scenario not found" }, 404);
+              const metadata = variant.metadata ?? {};
+              if (typeof metadata.provider !== "string") {
+                return sendJson(res, { error: "variant provider is missing" }, 400);
               }
+              const handle = await agent.createManualEvalSession({
+                scenario,
+                provider: metadata.provider,
+                ...(typeof metadata.model === "string" ? { modelId: metadata.model } : {}),
+                thinkingLevel: thinkingLevel(metadata.thinkingLevel),
+                inheritSelection: body.inheritSelection === true,
+              });
+              const id = `manual-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+              const record: ManualReviewSession = {
+                id,
+                runId,
+                scenarioId: body.scenarioId,
+                variantId: body.variantId,
+                createdAt: new Date().toISOString(),
+                model: {
+                  provider: handle.metadata.provider,
+                  id: handle.metadata.model,
+                  thinkingLevel: handle.metadata.thinkingLevel,
+                },
+                inheritSelection: body.inheritSelection === true,
+                turns: [],
+                active: true,
+              };
+              manualSessionHandles.set(id, {
+                handle,
+                directory,
+                record,
+                touchedAt: Date.now(),
+              });
+              await saveManualSession(directory, { ...record, active: undefined });
+              broadcast();
+              return sendJson(res, record);
             }
-            const status = summary ? "complete" : livenessOf(directory);
-            const [humanReviews, storedManualSessions] = await Promise.all([
-              readHumanReviews(directory),
-              readManualSessions(directory),
-            ]);
-            const manualSessions = storedManualSessions.map((session) => ({
-              ...session,
-              active: manualSessionHandles.has(session.id),
-            }));
-            return sendJson(res, {
-              manifest,
-              summary: summary && typeof summary === "object" ? { ...summary, quality: summarizeQuality(records as EvalRunRecord[], humanReviews) } : summary,
-              records,
-              status,
-              rescores,
-              humanReviews,
-              manualSessions,
-              ...(selectedRescore ? { selectedRescore } : {}),
-            });
+            const askSessionMatch = url.pathname.match(/^\/api\/manual-sessions\/([^/]+)\/turns$/);
+            if (askSessionMatch && req.method === "POST") {
+              const session = manualSessionHandles.get(askSessionMatch[1]!);
+              if (!session) {
+                return sendJson(
+                  res,
+                  { error: "manual session expired; start a new session from this scenario" },
+                  410,
+                );
+              }
+              const body = (await readRequestJson(req)) as { question?: unknown };
+              if (typeof body.question !== "string" || !body.question.trim()) {
+                return sendJson(res, { error: "question is required" }, 400);
+              }
+              if (body.question.length > 20_000) {
+                return sendJson(res, { error: "question is too long" }, 400);
+              }
+              const observation = await session.handle.ask(body.question);
+              const turn: ManualReviewTurn = {
+                id: `${session.record.id}:${session.record.turns.length + 1}`,
+                question: body.question.trim(),
+                answer: observation.answer,
+                input: observation.turns[0]?.input,
+                reviewEvidence: observation.reviewEvidence,
+                state: observation.state,
+                tools: observation.tools.map(({ name, args, output, isError }) => ({
+                  name,
+                  ...(args === undefined ? {} : { args }),
+                  ...(output === undefined ? {} : { output }),
+                  ...(isError === undefined ? {} : { isError }),
+                })),
+                interactions: observation.interactions.map(({ phase, kind, value }) => ({
+                  phase,
+                  ...(kind === undefined ? {} : { kind }),
+                  value,
+                })),
+                telemetry: observation.telemetry,
+                createdAt: new Date().toISOString(),
+              };
+              session.record.turns.push(turn);
+              session.touchedAt = Date.now();
+              await saveManualSession(session.directory, {
+                ...session.record,
+                active: undefined,
+              });
+              broadcast();
+              return sendJson(res, turn);
+            }
+            const runMatch = url.pathname.match(/^\/api\/runs\/([^/]+)$/);
+            if (runMatch) {
+              const directory = findRunDirectory(runMatch[1]!);
+              if (!directory) return sendJson(res, { error: "run not found" }, 404);
+              const manifest = readJson(join(directory, "manifest.json"));
+              const rescoreRoot = join(directory, "rescored");
+              const rescores = existsSync(rescoreRoot)
+                ? readdirSync(rescoreRoot)
+                    .filter((id) => /^[A-Za-z0-9._-]+$/.test(id))
+                    .flatMap((id) => {
+                      const value = readJson(join(rescoreRoot, id, "manifest.json")) as
+                        | { createdAt?: string; compatibility?: { comparable?: boolean } }
+                        | undefined;
+                      return value ? [{ id, ...value }] : [];
+                    })
+                    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id))
+                : [];
+              const requestedRescore = url.searchParams.get("rescore") ?? undefined;
+              const selectedRescore = rescores.some((entry) => entry.id === requestedRescore)
+                ? requestedRescore
+                : undefined;
+              const dataDirectory = selectedRescore
+                ? join(rescoreRoot, selectedRescore)
+                : directory;
+              const summary = readJson(join(dataDirectory, "summary.json"));
+              const rawRecords = existsSync(join(dataDirectory, "runs.jsonl"))
+                ? readFileSync(join(dataDirectory, "runs.jsonl"), "utf8")
+                : "";
+              const records: unknown[] = [];
+              for (const line of rawRecords.split("\n")) {
+                if (!line) continue;
+                try {
+                  records.push(JSON.parse(line));
+                } catch {
+                  // 进行中 run 的半行
+                }
+              }
+              const status = summary ? "complete" : livenessOf(directory);
+              const [humanReviews, storedManualSessions] = await Promise.all([
+                readHumanReviews(directory),
+                readManualSessions(directory),
+              ]);
+              const manualSessions = storedManualSessions.map((session) => ({
+                ...session,
+                active: manualSessionHandles.has(session.id),
+              }));
+              return sendJson(res, {
+                manifest,
+                summary: summary && typeof summary === "object" ? { ...summary, quality: summarizeQuality(records as EvalRunRecord[], humanReviews) } : summary,
+                records,
+                status,
+                rescores,
+                humanReviews,
+                manualSessions,
+                ...(selectedRescore ? { selectedRescore } : {}),
+              });
+            }
+            return sendJson(res, { error: "unknown endpoint" }, 404);
+          } catch (error) {
+            return sendJson(res, { error: String(error) }, 500);
           }
-          return sendJson(res, { error: "unknown endpoint" }, 404);
-        } catch (error) {
-          return sendJson(res, { error: String(error) }, 500);
-        }
+        })();
       });
     },
   };

@@ -7,6 +7,7 @@ import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-stor
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { startPluginWorker } from "../../src/features/plugins/runtime/plugin-worker-host";
 import type { PluginDisposable, PluginManifest } from "@read-aware/plugin-types";
+import { withProbeCleanup } from "./probe-cleanup";
 
 /** Invoked only by the desktop E2E driver; refuses the user's real app data. */
 export async function runDesktopWireProbe(scenario: "request-storage" | "pre-abort" | "live-abort" | "stop") {
@@ -27,7 +28,7 @@ export async function runDesktopWireProbe(scenario: "request-storage" | "pre-abo
   const worker = await startPluginWorker(manifest, "0.5.4", disposables, {
     moduleUrl: new URL("./wire-probe.ts", import.meta.url).href,
   });
-  try {
+  return withProbeCleanup(async () => {
     await worker.checkHealth(); worker.promote();
     const command = getDefaultStore().get(pluginCommandsAtom).find(item => item.pluginId === id);
     if (!command) throw new Error("Probe command did not register in the real host");
@@ -45,11 +46,11 @@ export async function runDesktopWireProbe(scenario: "request-storage" | "pre-abo
     } else result = await command.run();
     const disk = await invoke<Record<string, string>>("load_kv_all");
     return { scenario, result, durableResult: disk[prefix + "result"] ?? null, dataDir };
-  } finally {
+  }, async () => {
     try { await worker.terminate(); }
     finally { for (const disposable of disposables.reverse()) disposable.dispose(); }
     if (inspectContributions(id).length) throw new Error("Probe left registered contributions behind");
-  }
+  });
 }
 
 /** Real WebKit Worker + host registrations + native plugin document storage. */
@@ -64,7 +65,7 @@ export async function runDesktopCallbackProbe() {
     id, name: "Callback wire probe", version: "1.0.0", schemaVersion: 1, permissions: [],
     requires: { services: { storage: "^2.0.0" } },
   }, "0.5.4", disposables, { moduleUrl: new URL("./callback-probe.ts", import.meta.url).href });
-  try {
+  return withProbeCleanup(async () => {
     await worker.checkHealth(); worker.promote();
     const commands = () => getDefaultStore().get(pluginCommandsAtom).filter(item => item.pluginId === id);
     const main = commands().find(item => item.id === "test");
@@ -86,12 +87,12 @@ export async function runDesktopCallbackProbe() {
       results.push({ live: live.toast, released: released.toast, staleCode });
     }
     return { dataDir, iterations: results.length, results, cleanupOwners: disposables.length, ordinaryMarkerDocumentPreserved: true };
-  } finally {
+  }, async () => {
     try {
       await worker.terminate();
       if (inspectContributions(id).length) throw new Error("Worker termination did not dispose its registration scope");
     }
     finally { for (const disposable of disposables.reverse()) disposable.dispose(); }
     if (inspectContributions(id).length) throw new Error("Callback probe left registered contributions behind");
-  }
+  });
 }

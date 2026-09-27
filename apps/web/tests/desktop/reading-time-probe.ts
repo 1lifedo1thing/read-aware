@@ -1,4 +1,5 @@
 import type { PluginDisposable, PluginModule, ReadingTimeObservation } from "@read-aware/plugin-types";
+import { hostAcknowledgement } from "./host-acknowledgement";
 
 export default {
   activate(ctx) {
@@ -12,10 +13,10 @@ export default {
     let subscription: PluginDisposable | undefined;
     for (const id of ["inspect", "page", "observe", "stop", "insights"] as const) ctx.contributions.commands.register({
       id, title: id, run: async () => {
-        if (id === "observe" && reading && !subscription) subscription = await reading.events.observeTime({ bookId, limit: 1 }, event => {
+        if (id === "observe" && reading && !subscription) subscription = await hostAcknowledgement(reading.events.observeTime({ bookId, limit: 1 }, event => {
           seen.push(event); if (seen.length > 16) seen.shift();
-        });
-        if (id === "stop") { (await subscription)?.dispose(); subscription = undefined; }
+        }));
+        if (id === "stop") { (await hostAcknowledgement(subscription))?.dispose(); subscription = undefined; }
         const current = reading ? await reading.queries.stats.time({ bookId, limit: 1 }) : null;
         const next = id === "page" && current?.nextCursor
           ? await reading!.queries.stats.time({ bookId, limit: 1, after: current.nextCursor }) : null;

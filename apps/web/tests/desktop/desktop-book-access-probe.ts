@@ -6,6 +6,7 @@ import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-stor
 import { startPluginWorker } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { createReadingDomain } from "../../src/domain/reading";
+import { withProbeCleanup } from "./probe-cleanup";
 
 /** Open a caller-prepared fixture through the actual isolated reader. */
 export async function openFull2AccessFixture(bookId: string) {
@@ -24,7 +25,7 @@ export async function runDesktopBookAccessProbe(grant: PluginBookAccess, allowed
   const disposables: PluginDisposable[] = [];
   await localKV.setItemAsync(key, JSON.stringify({ allowed, other }));
   let worker: Awaited<ReturnType<typeof startPluginWorker>> | undefined;
-  try {
+  return withProbeCleanup(async () => {
     worker = await startPluginWorker({
       id, name: "Book access proof", version: "1.0.0", schemaVersion: 1,
       permissions: ["library:read", "annotations:read"],
@@ -36,12 +37,12 @@ export async function runDesktopBookAccessProbe(grant: PluginBookAccess, allowed
     const result = await command.run();
     if (typeof result?.toast !== "string") throw new Error("Worker produced no verification receipt");
     return JSON.parse(result.toast) as unknown;
-  } finally {
+  }, async () => {
     try { await worker?.terminate(); }
     finally {
       for (const disposable of disposables.reverse()) disposable.dispose();
       await localKV.removeItemAsync(key);
     }
     if (inspectContributions(id).length) throw new Error("Book access proof leaked contributions");
-  }
+  });
 }

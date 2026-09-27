@@ -4,9 +4,9 @@ import { Checkbox, ChoiceGroup, Toggle } from "@read-aware/ui";
 
 test("boolean and choice controls associate visible errors with their input/group", () => {
   for (const element of [
-    <Checkbox label="Delete" description="Selected items" error="Confirm first" checked={false} onChange={() => {}} />,
-    <ChoiceGroup label="Color" error="Conflict" value="yellow" options={[{ value: "yellow", label: "Yellow" }]} onChange={() => {}} />,
-    <Toggle aria-label="Enable" error="Unavailable" checked={false} onChange={() => {}} />,
+    <Checkbox key="checkbox" label="Delete" description="Selected items" error="Confirm first" checked={false} onChange={() => {}} />,
+    <ChoiceGroup key="choice" label="Color" error="Conflict" value="yellow" options={[{ value: "yellow", label: "Yellow" }]} onChange={() => {}} />,
+    <Toggle key="toggle" aria-label="Enable" error="Unavailable" checked={false} onChange={() => {}} />,
   ]) {
     const html = renderToStaticMarkup(element);
     expect(html).toContain('aria-invalid="true"');

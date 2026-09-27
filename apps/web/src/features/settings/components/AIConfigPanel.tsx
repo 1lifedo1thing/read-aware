@@ -443,7 +443,7 @@ export function AIConfigPanel({ advancedContent }: AIConfigPanelProps) {
         <div className="flex gap-3">
           <Button
             ref={connectionTestRef}
-            onClick={handleTest}
+            onClick={() => void handleTest()}
             disabled={isIncomplete || isTesting}
           >
             {isTesting ? t("aiConfig.testing") : t("aiConfig.test")}

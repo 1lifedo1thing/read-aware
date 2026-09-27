@@ -153,7 +153,7 @@ if (process.env.CONTEXT_BUNDLE_SETTINGS_CASE === "1") {
       expect(f.controls.released).toHaveLength(4); expect(body()).not.toContain("PRIVATE MISSING VERSION");
 
       const gate = Promise.withResolvers<void>(); f.controls.saveGate = gate.promise;
-      await act(async () => { flow.save(version); flow.save(version); flow.capture(); await tick(); });
+      await act(async () => { void flow.save(version); void flow.save(version); void flow.capture(); await tick(); });
       expect(flow.busy).toBe(`save:${version}`); expect(f.calls.filter(call => call.op === "save")).toHaveLength(5);
       expect(f.calls.filter(call => call.op === "capture")).toHaveLength(1);
       await act(async () => { root.unmount(); gate.resolve(); await tick(); });

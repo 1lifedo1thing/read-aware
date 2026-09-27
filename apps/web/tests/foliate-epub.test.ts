@@ -24,7 +24,9 @@ test("EPUB package, compact reading order, TOC and original CFI spine paths agre
       const restored = book.resolveCFI(value);
       expect(restored.index).toBe(0);
       if (typeof restored.anchor !== "function") throw new Error("CFI has no document anchor");
-      expect(restored.anchor(doc)?.toString()).toBe("EPUB");
+      const anchor = restored.anchor(doc);
+      if (!anchor || typeof anchor === "number" || !("cloneContents" in anchor)) throw new Error("CFI did not restore a Range");
+      expect(anchor.toString()).toBe("EPUB");
     }
     expect(book.resolveHref("OPS/missing.xhtml")).toBeNull();
     expect((await book.getCover())?.type).toBe("image/svg+xml");

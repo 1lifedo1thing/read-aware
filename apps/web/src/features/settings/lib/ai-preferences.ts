@@ -64,7 +64,7 @@ export function getAIPreferences(): AIPreferences {
 /** Keep only supported fields when reading or saving older preferences. */
 export function normalizeAIPreferences(parsed: Partial<AIPreferences>): AIPreferences {
   return {
-    features: { ...DEFAULT_AI_PREFERENCES.features, ...(parsed.features ?? {}) },
+    features: { ...DEFAULT_AI_PREFERENCES.features, ...parsed.features },
     buildMemory: parsed.buildMemory ?? DEFAULT_AI_PREFERENCES.buildMemory,
     sendHighlightedText: parsed.sendHighlightedText ?? DEFAULT_AI_PREFERENCES.sendHighlightedText,
     sendSurroundingContext:

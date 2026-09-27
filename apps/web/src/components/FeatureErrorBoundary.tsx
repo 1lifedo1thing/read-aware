@@ -54,6 +54,7 @@ class Boundary extends Component<BoundaryProps, BoundaryState> {
 
   componentDidUpdate(prev: BoundaryProps) {
     if (this.state.error !== null && prev.resetKey !== this.props.resetKey) {
+      // oxlint-disable-next-line react/no-did-update-set-state -- guarded reset: a new resetKey clears the caught error once
       this.setState({ error: null, copied: false });
     }
   }
@@ -66,7 +67,7 @@ class Boundary extends Component<BoundaryProps, BoundaryState> {
     const detail = [`${error.name}: ${error.message}`, error.stack ?? ""].filter(Boolean).join("\n");
     navigator.clipboard?.writeText(detail).then(
       () => this.setState({ copied: true }),
-      () => {},
+      (copyError: unknown) => log.warn("Could not copy the crash details", copyError),
     );
   };
 

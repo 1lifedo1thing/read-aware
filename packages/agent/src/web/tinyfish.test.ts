@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createTinyFishClient, publicWebUrl } from "./tinyfish";
 import type { AgentFetch } from "../models/transport";
+import { fetchInputUrl } from "../models/transport";
 
 const key = "test-secret-never-returned";
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
@@ -8,7 +9,7 @@ describe("TinyFish provider boundary", () => {
   test("search sends only supported fields, authenticates privately, and enforces domain constraints", async () => {
     let seen: URL | undefined;
     const client = createTinyFishClient(key, async (url, init) => {
-      seen = new URL(String(url));
+      seen = new URL(fetchInputUrl(url));
       expect(new Headers(init?.headers).get("X-API-Key")).toBe(key);
       expect(init?.redirect).toBe("error");
       return json({ query: "test", results: [
@@ -29,7 +30,7 @@ describe("TinyFish provider boundary", () => {
   test("fetch bounds output, supports continuation, and declares cache freshness", async () => {
     const bodies: Record<string, unknown>[] = [];
     const client = createTinyFishClient(key, async (_url, init) => {
-      bodies.push(JSON.parse(String(init?.body)));
+      bodies.push(JSON.parse(init?.body as string));
       return json({ results: [{ url: "https://example.com/", final_url: "https://example.com/article", title: "Page", text: "a".repeat(1300) }], errors: [] });
     });
     const first = await client.fetch({ url: "https://example.com", maxChars: 500 });

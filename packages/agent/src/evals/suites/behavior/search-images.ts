@@ -4,6 +4,7 @@ import type { WebPort } from "../../../web/types";
 import { defineAgentEvalScenario } from "../../agent-harness";
 import { assessmentFromChecks, combineAssessments, evaluateAgentTrace } from "../../assertions";
 import type { AgentEvalObservation } from "../../types";
+import { fetchInputUrl } from "../../../models/transport";
 
 const source = "https://museum.example.org/roof";
 const figure = "https://images.example.org/roof-section.png";
@@ -16,7 +17,7 @@ function web(provider: "tinyfish" | "tavily" | "brave", mode: Mode): WebPort {
   const images = mode === "empty" ? [] : mode === "unrelated" ? [{ url: unrelated, description: "Unrelated sponsor logo; NOT a roof diagram" }]
     : [{ url: figure, description: "Museum roof cross-section: interlocking timber beams and joints" }, { url: unrelated, description: "Unrelated sponsor logo" }];
   const client = WEB_PROVIDERS[provider].create("fixture-key", async (raw, init) => {
-    const path = new URL(String(raw)).pathname;
+    const path = new URL(fetchInputUrl(raw)).pathname;
     const json = (body: unknown) => new Response(JSON.stringify(body));
     const text = mode === "match" ? original : "The museum roof uses interlocking timber beams without metal fasteners. No roof diagrams are available on this page. Any image is an unrelated sponsor logo.";
     if (provider === "tinyfish") {

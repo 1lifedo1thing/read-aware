@@ -36,8 +36,9 @@ function harness(origins = ["https://a.test"], respond: (url: string, init: Para
   lifecycle.promote();
   const service = createPluginNetworkService({ origins }, lifecycle, async (input, init) => {
     const index = calls.length;
-    calls.push({ url: String(input), init: { ...init, headers: new Headers(init?.headers) } });
-    return respond(String(input), init, index);
+    const url = input instanceof Request ? input.url : String(input);
+    calls.push({ url, init: { ...init, headers: new Headers(init?.headers) } });
+    return respond(url, init, index);
   }, owner);
   return { service, calls, lifecycle };
 }

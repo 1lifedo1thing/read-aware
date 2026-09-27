@@ -17,6 +17,7 @@ function harness(lifetime?: AbortSignal) {
   let readError: unknown;
   const owner = new BookTextTaskOwner({
     snapshot: async bookId => { if (readError) throw readError; return state(bookId); },
+    // oxlint-disable-next-line typescript/no-useless-default-assignment -- `options` is optional (BookTextRepository.prepare defaults it); tsgolint drops the optionality
     prepare: async (_bookId, options = {}) => { const result = deferred<BookTextSnapshot>(); work.push({ options, result }); return result.promise; },
   }, (_message, error) => { warnings.push(error); }, lifetime);
   return { owner, work, warnings, failRead: (error: unknown) => { readError = error; } };

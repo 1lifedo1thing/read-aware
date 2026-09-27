@@ -45,7 +45,7 @@ export async function runPDFRegressions(modules: Modules): Promise<Result[]> {
       equal(renderer.index, 2);
       equal(view.lastLocation?.section.current, 2);
       if (!renderer.getContents().some(content => content.index === 2)) throw new Error("Saved page was not rendered");
-    } finally { view.close(); view.remove(); await book.destroy(); }
+    } finally { await view.close(); view.remove(); await book.destroy(); }
   });
 
   await check("PDF parses through byte ranges, extracts text and resolves outline sections", async () => {
@@ -113,7 +113,7 @@ export async function runPDFRegressions(modules: Modules): Promise<Result[]> {
       if (!link) throw new Error("PDF link annotation is missing");
       link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       await waitFor("PDF link navigation", () => renderer.index === 2);
-    } finally { view.close(); view.remove(); await book.destroy(); }
+    } finally { await view.close(); view.remove(); await book.destroy(); }
   });
 
   for (const synchronous of [false, true]) await check(`PDF ${synchronous ? "synchronous" : "asynchronous"} range read failures reject instead of hanging`, async () => {

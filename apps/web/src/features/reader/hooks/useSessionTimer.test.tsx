@@ -28,37 +28,37 @@ test("session time pauses on idle/background, resumes from iframe activity, and 
     return null;
   }
   const root = createRoot(dom.window.document.getElementById("root")!);
-  const render = (enabled: boolean) => act(() => root.render(<StrictMode><Harness enabled={enabled} /></StrictMode>));
+  const render = (enabled: boolean) => act(async () => root.render(<StrictMode><Harness enabled={enabled} /></StrictMode>));
   const tick = async (seconds: number) => {
-    await act(() => { for (let i = 0; i < seconds; i++) { time += 1000; for (const callback of callbacks.values()) callback(); } });
+    await act(async () => { for (let i = 0; i < seconds; i++) { time += 1000; for (const callback of callbacks.values()) callback(); } });
   };
   try {
     await render(true);
     expect(callbacks.size).toBe(1);
     await tick(5);
     expect(result.elapsed).toBe("0:05");
-    await act(() => { focused = false; dom.window.dispatchEvent(new dom.window.Event("blur")); });
+    await act(async () => { focused = false; dom.window.dispatchEvent(new dom.window.Event("blur")); });
     await tick(10);
     expect(result.elapsed).toBe("0:05");
-    await act(() => { focused = true; dom.window.dispatchEvent(new dom.window.Event("focus")); });
+    await act(async () => { focused = true; dom.window.dispatchEvent(new dom.window.Event("focus")); });
     await tick(SESSION_TIMER_IDLE_MS / 1000 + 5);
     expect(result.elapsed).toBe("1:05");
     // Moving within the book iframe forwards activity without a window event.
-    await act(() => activityRef.current?.());
+    await act(async () => activityRef.current?.());
     await tick(3);
     expect(result.elapsed).toBe("1:08");
-    await act(() => result.toggleClock());
+    await act(async () => result.toggleClock());
     expect(result.showClock).toBe(true);
     await tick(2);
-    await act(() => result.toggleClock());
+    await act(async () => result.toggleClock());
     expect(result.showClock).toBe(false);
     expect(result.elapsed).toBe("1:10");
-    await act(() => { hidden = true; dom.window.document.dispatchEvent(new dom.window.Event("visibilitychange")); });
+    await act(async () => { hidden = true; dom.window.document.dispatchEvent(new dom.window.Event("visibilitychange")); });
     await tick(10);
     expect(result.elapsed).toBe("1:10");
-    await act(() => { hidden = false; dom.window.document.dispatchEvent(new dom.window.Event("visibilitychange")); });
+    await act(async () => { hidden = false; dom.window.document.dispatchEvent(new dom.window.Event("visibilitychange")); });
     // Sleep/wake without any visibility event must not charge the gap.
-    await act(() => { time += 30_000; for (const callback of callbacks.values()) callback(); });
+    await act(async () => { time += 30_000; for (const callback of callbacks.values()) callback(); });
     expect(result.elapsed).toBe("1:10");
     await tick(2);
     expect(result.elapsed).toBe("1:12");
@@ -72,7 +72,7 @@ test("session time pauses on idle/background, resumes from iframe activity, and 
     await tick(1);
     expect(result.elapsed).toBe("0:01");
   } finally {
-    await act(() => root.unmount());
+    await act(async () => root.unmount());
     for (const spy of spies) spy.mockRestore();
     dom.window.close();
     for (const [key, descriptor] of saved) {

@@ -33,7 +33,7 @@ function toBookStats(book: LibraryBook, time: BookReadingStats | undefined): Boo
       time?.firstStartedAt != null ? new Date(time.firstStartedAt).toISOString() : undefined,
     lastReadAt:
       time?.lastReadAt != null ? new Date(time.lastReadAt).toISOString() : undefined,
-    daily: { ...(time?.daily ?? {}) },
+    daily: { ...time?.daily },
   };
 }
 

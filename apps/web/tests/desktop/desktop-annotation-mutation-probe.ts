@@ -12,6 +12,7 @@ import { respondToUserInteraction } from "../../src/features/ai/agent/ports/user
 import { buildAnnotationTools } from "../../../../packages/agent/src/tools/annotation-tools";
 import { buildThreadTools } from "../../../../packages/agent/src/tools/library-tools";
 import { interactionFromToolDetails } from "../../../../packages/agent/src/tools/user-interaction";
+import { withProbeCleanup } from "./probe-cleanup";
 
 export async function runDesktopAnnotationMutationProbe(bookId: string) {
   const dataDir = await appDataDir();
@@ -29,7 +30,7 @@ export async function runDesktopAnnotationMutationProbe(bookId: string) {
   };
   const created: string[] = [];
   const results: Record<string, unknown> = {};
-  try {
+  return withProbeCleanup(async () => {
     const note = await domain.commands.createNote({ bookId, body: "Mutation probe original" }); created.push(note.id);
     const highlight = await domain.commands.createHighlight({ bookId, text: "Mutation probe quotation" }); created.push(highlight.id);
     const observed = await call("get_annotations", { annotationId: note.id });
@@ -40,7 +41,7 @@ export async function runDesktopAnnotationMutationProbe(bookId: string) {
       const prefix = `read-aware-plugin.${id}.`;
       const disposables: PluginDisposable[] = [];
       let worker: Awaited<ReturnType<typeof startPluginWorker>> | undefined;
-      try {
+      await withProbeCleanup(async () => {
         await localKV.setItemAsync(prefix + "input", JSON.stringify({ stale, highlightId: highlight.id }));
         const manifest: PluginManifest = { id, name: "Annotation mutations probe", version: "1.0.0", schemaVersion: 1, description: readOnly ? "read-only" : "write",
           permissions: [readOnly ? "annotations:read" : "annotations:write"], requires: { domains: { annotations: "^2.0.0" }, services: { storage: "^2.0.0" } } };
@@ -51,12 +52,12 @@ export async function runDesktopAnnotationMutationProbe(bookId: string) {
         await command.run();
         const kv = await invoke<Record<string, string>>("load_kv_all");
         results[readOnly ? "reader" : "writer"] = JSON.parse(kv[prefix + "result"]);
-      } finally {
+      }, async () => {
         try { await worker?.terminate(); }
         finally { for (const disposable of disposables.reverse()) disposable.dispose(); }
         await localKV.removeItemAsync(prefix + "input"); await localKV.removeItemAsync(prefix + "result");
         if (inspectContributions(id).length) throw new Error("Mutation probe left contributions");
-      }
+      });
     }
     const fresh = await call("get_annotations", { annotationId: note.id });
     results.agentEdit = await call("apply_annotation_changes", { changes: [{ op: "updateNote", annotationId: note.id, body: "Agent conditional edit", expectedRevision: fresh.revision }] });
@@ -92,12 +93,12 @@ export async function runDesktopAnnotationMutationProbe(bookId: string) {
       }
     } finally { clearTimeout(timeout); }
     return { dataDir, created, results, verification: "Actual Agent tools/interaction port, SQLite and WebKit Worker. Approval responses are programmatic, not LLM/chat UI." };
-  } finally {
+  }, async () => {
     const cleanup = await Promise.allSettled(created.map(async id => {
       const snapshot = await domain.queries.inspect(id);
       if (snapshot) await domain.commands.applyChanges([{ op: "remove", kind: snapshot.annotation.kind, annotationId: id, expectedRevision: snapshot.revision }]);
     }));
     const failures = cleanup.filter(result => result.status === "rejected");
     if (failures.length) throw new AggregateError(failures.map(result => result.reason), "Mutation probe cleanup failed");
-  }
+  });
 }

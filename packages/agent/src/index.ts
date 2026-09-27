@@ -33,6 +33,7 @@ export { classifyModelFailure } from "./models/failure";
 export type { MemoryBuildPolicy } from "./memory/build-policy";
 export type { ReadingContextPolicy, ReadingContextPermissions } from "./runtime/reading-context-policy";
 export type { AgentFetch } from "./models/transport";
+export { fetchInputUrl } from "./models/transport";
 export { testLlmConnection } from "./models/test-connection";
 export { extractJsonObject, schemaViolations } from "./structured";
 export * from "./onboarding";

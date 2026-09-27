@@ -44,7 +44,7 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
       await view.goTo("OPS/two.xhtml#note");
       equal(rendererOf(view).getContents()[0]?.index, 1);
       equal(rendererOf(view).getContents()[0]?.doc.querySelector("aside")?.textContent, "Footnote text.");
-    } finally { view.close(); view.remove(); book.destroy(); }
+    } finally { await view.close(); view.remove(); book.destroy(); }
   });
 
   for (const name of ["santi", "karamazov", "lebon", "refactoring", "berger"]) {
@@ -76,7 +76,7 @@ export async function runEPUBRegressions(modules: Modules): Promise<Result[]> {
           range.selectNodeContents(text);
           equal(anchorRangeOf(view.resolveCFI(view.getCFI(index, range)), content.doc).toString(), range.toString());
         }
-      } finally { view.close(); view.remove(); await book.destroy?.(); }
+      } finally { await view.close(); view.remove(); await book.destroy?.(); }
     });
   }
   return results;

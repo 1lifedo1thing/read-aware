@@ -120,7 +120,7 @@ export function buildJudgePrompt(input: {
         ...(turn.stateAfter === undefined ? [] : [`State after turn: ${JSON.stringify(turn.stateAfter)}`]),
         ...(turn.assistant === undefined
           ? []
-          : [`Turn ${index + 1} assistant:\n\"\"\"\n${turn.assistant}\n\"\"\"`]),
+          : [`Turn ${index + 1} assistant:\n"""\n${turn.assistant}\n"""`]),
       ].join("\n"),
     )
     .join("\n\n");

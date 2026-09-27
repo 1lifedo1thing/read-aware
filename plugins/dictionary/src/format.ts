@@ -36,7 +36,7 @@ export function definitionForExport(entry: PluginDictionaryEntry): string {
     .join("\n\n");
 }
 
-export function csvCell(value: unknown): string {
+export function csvCell(value: string | number | null | undefined): string {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 

@@ -6,7 +6,7 @@ import { PluginEventReactions } from "./plugin-event-reactions";
  * immutable per-call actors, resources and activation owners stay in the host. */
 export function bindPluginEventContext(event: PluginReactionEvent | undefined, reactions: PluginEventReactions,
   contextForActor: (actor: DomainActor) => PluginContext): PluginContext {
-  const token = event?.reaction!;
+  const token = event?.reaction;
   const context = contextForActor(reactions.actor(token));
   const wrap = (namespace: object, path: string): object => Object.fromEntries(Object.entries(namespace).map(([key, value]) => {
     const method = `${path}.${key}`;

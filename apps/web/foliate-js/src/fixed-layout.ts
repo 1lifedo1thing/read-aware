@@ -573,7 +573,7 @@ export class FixedLayout extends HTMLElement {
         }
         void (async () => {
             const current = [this.#left, this.#right, this.#center]
-            await Promise.allSettled(current.map(frame => frame?.renderPromise))
+            await Promise.allSettled(current.flatMap(frame => frame?.renderPromise ? [frame.renderPromise] : []))
             for (const spreadIndex of order) {
                 if (token !== this.#preloadToken) return
                 if (spreadIndex === this.#index) continue
@@ -588,7 +588,7 @@ export class FixedLayout extends HTMLElement {
                     this.#eachFrame(frames, frame => this.#renderFrameAt(frame, scale, context))
                     await Promise.allSettled(
                         [frames.left, frames.right, frames.center]
-                            .map(frame => frame?.renderPromise))
+                            .flatMap(frame => frame?.renderPromise ? [frame.renderPromise] : []))
                 } catch (error) {
                     console.error(error)
                 }

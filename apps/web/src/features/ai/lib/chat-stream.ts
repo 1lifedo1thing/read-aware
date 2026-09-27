@@ -295,7 +295,8 @@ export function toolTraceText(value: unknown): string | undefined {
     try {
       text = JSON.stringify(normalized, null, 2);
     } catch {
-      text = String(normalized);
+      // Cyclic or BigInt-bearing values do not serialize; name that instead of "[object Object]".
+      text = typeof normalized === "bigint" ? normalized.toString() : "[unserializable value]";
     }
   }
   if (!text.trim()) return undefined;

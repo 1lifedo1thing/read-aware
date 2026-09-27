@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Api, Context, Model } from "@earendil-works/pi-ai";
+import { messageText } from "../testing/message-text";
 import { registerFauxProvider, streamSimple } from "@earendil-works/pi-ai/compat";
 import {
   fauxAssistantMessage,
@@ -141,7 +142,7 @@ describe("narrative output guard", () => {
       readingCursor: { chapterIndex: 0, visibleText: "读者眼前只有红岸基地。" },
     }));
 
-    const payload = JSON.parse(String(repairContext?.messages[0]?.content));
+    const payload = JSON.parse(messageText(repairContext?.messages[0]));
     expect(payload.recentTurns).toHaveLength(12);
     expect(payload.recentTurns[0].content).toBe("旧问题 1");
     expect(payload.recentTurns.at(-1).content).toBe("后来原文是“不要回答”。");

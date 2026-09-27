@@ -44,7 +44,8 @@ function normalizeIpcFailure(command: string, raw: unknown): IpcError {
   if (typeof raw === "object" && raw !== null) {
     const { code, message } = raw as { code?: unknown; message?: unknown };
     if (typeof code === "string" && code.length > 0) {
-      return new IpcError(code, typeof message === "string" ? message : String(raw), command, {
+      // IPC failures arrive JSON-deserialized, so the payload serializes back losslessly.
+      return new IpcError(code, typeof message === "string" ? message : JSON.stringify(raw), command, {
         retryable: RETRYABLE_CODES.has(code),
       });
     }

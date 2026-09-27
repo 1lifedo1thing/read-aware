@@ -65,7 +65,7 @@ export function MenuOverflow({
       // so the nested panel grows outward past the menu bounds. Scroll capping
       // only applies to plain action lists.
       panelClassName={
-        entries.some((entry) => entry.node)
+        entries.some((entry) => Boolean(entry.node))
           ? "w-56 overflow-visible p-1"
           : "max-h-72 w-56 overflow-y-auto p-1"
       }

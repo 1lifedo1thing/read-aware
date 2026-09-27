@@ -67,7 +67,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
     await act(async () => { render(); });
     await act(async () => { state.handleContentVersion("unit-build-test", "v1"); });
     const first = doc("First.");
-    await act(async () => { state.handleSectionLoad(first, 0, navigationActor); relocate(first); });
+    await act(async () => { void state.handleSectionLoad(first, 0, navigationActor); relocate(first); });
     expect(state.status).toBe("building");
     await act(async () => { finish(0); });
     expect(state.current?.text).toBe("First.");
@@ -75,7 +75,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
     expect(eventCause(commits.at(-1)!)).toBe(actorCause(navigationActor));
 
     const second = doc("Second.");
-    await act(async () => { state.handleSectionLoad(second, 0, navigationActor); });
+    await act(async () => { void state.handleSectionLoad(second, 0, navigationActor); });
     await act(async () => { finish(1); });
     expect(state.current).toBeNull();
     await act(async () => { relocate(second); });
@@ -84,8 +84,8 @@ test("navigator handles both event orders, same-index replacements, provider fai
 
     const obsolete = doc("Obsolete.");
     const replacement = doc("Replacement.");
-    await act(async () => { state.handleSectionLoad(obsolete, 0); });
-    await act(async () => { state.handleSectionLoad(replacement, 0); relocate(replacement); });
+    await act(async () => { void state.handleSectionLoad(obsolete, 0); });
+    await act(async () => { void state.handleSectionLoad(replacement, 0); relocate(replacement); });
     await act(async () => { finish(2); });
     expect(state.current).toBeNull();
     await act(async () => { finish(3); });
@@ -124,7 +124,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
     } });
     options.readerRootRef.current = readerRoot;
     Object.assign(view, { renderer: { scrolled: true } });
-    await act(async () => { state.handleSectionLoad(two, 0); relocate(two); render(true, "paragraph"); });
+    await act(async () => { void state.handleSectionLoad(two, 0); relocate(two); render(true, "paragraph"); });
     await act(async () => { finish(6); finish(7); });
     await act(async () => { state.next(); });
     expect(state.current?.text).toBe("Second unit.");
@@ -221,12 +221,12 @@ test("navigator handles both event orders, same-index replacements, provider fai
     expect(state.position?.location.contentVersion).toBe("v1");
 
     const oldRevision = doc("Old revision.");
-    await act(async () => { state.handleSectionLoad(oldRevision, 0); });
+    await act(async () => { void state.handleSectionLoad(oldRevision, 0); });
     await act(async () => { state.handleContentVersion("unit-build-test", "v2"); });
     expect(state.canReturn).toBe(false);
     expect(state.position).toBeNull();
     const newRevision = doc("New revision.");
-    await act(async () => { state.handleSectionLoad(newRevision, 0); relocate(newRevision); });
+    await act(async () => { void state.handleSectionLoad(newRevision, 0); relocate(newRevision); });
     await act(async () => { finish(10); });
     expect(state.current).toBeNull();
     await act(async () => { finish(11); });
@@ -235,7 +235,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
 
     const position = state.position!;
     const returningDocument = doc("New revision.");
-    await act(async () => { state.handleSectionLoad(returningDocument, 0); relocate(returningDocument); });
+    await act(async () => { void state.handleSectionLoad(returningDocument, 0); relocate(returningDocument); });
     let returned = false;
     const returning = state.waitForPosition(position, new AbortController().signal).then(value => { returned = true; return value; });
     await act(async () => {});
@@ -245,7 +245,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
     await expect(state.waitForPosition({ ...position, location: { ...position.location, contentVersion: "v1" } }, new AbortController().signal))
       .rejects.toMatchObject({ code: "reader/stale-location" });
 
-    await act(async () => { state.handleSectionLoad(doc("New revision."), 0); });
+    await act(async () => { void state.handleSectionLoad(doc("New revision."), 0); });
     const failedReturn = state.waitForPosition(position, new AbortController().signal).catch(error => error);
     await act(async () => { pending[13]!.reject(new Error("provider rejected return")); });
     expect(await failedReturn).toMatchObject({ code: "reader/segmentation-failed" });
@@ -253,7 +253,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
     await act(async () => { state.handleContentVersion("unit-build-test", "v2"); });
     expect(state.position).toBeNull();
     expect(readTextUnitModeState("unit-build-test").active).toBe(false);
-    writeTextUnitModeState("pending-version-test", { active: true, modeKey: "test-mode:reader", unitId: "paragraph", contentVersion: "v2",
+    void writeTextUnitModeState("pending-version-test", { active: true, modeKey: "test-mode:reader", unitId: "paragraph", contentVersion: "v2",
       resting: { sectionIndex: 0, ordinal: 0, cfiRange: "New revision." } });
     options.bookId = "pending-version-test";
     await act(async () => { render(false, "paragraph"); });
@@ -274,7 +274,7 @@ test("navigator handles both event orders, same-index replacements, provider fai
       state.handleRelocate({ range, section: { current: index, total: 2 } } as FoliateRelocateDetail);
     };
     await act(async () => {
-      state.handleSectionLoad(continuation, 1);
+      void state.handleSectionLoad(continuation, 1);
       relocateSource(visible, 0);
       render(true);
     });

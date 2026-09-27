@@ -34,7 +34,7 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
     document.body.append(view);
     return view;
   };
-  const dispose = (view: View) => { view.close(); view.remove(); };
+  const dispose = async (view: View) => { await view.close(); view.remove(); };
   const page = (index: number) => URL.createObjectURL(new Blob([
     `<!doctype html><html><head></head><body><p>Fixed page ${index}</p></body></html>`,
   ], { type: "text/html" }));
@@ -64,7 +64,7 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       await renderer.goTo({ index: 1, context: current });
       slow.resolve({ index: 0, context: old }); await pending;
       equal(renderer.index, 1); equal(relocations.at(-1)?.context, current);
-    } finally { gate.resolve(urls[0]); dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
+    } finally { gate.resolve(urls[0]); await dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
   });
 
   await check("same-spread navigation reports the selected side and its context", async () => {
@@ -79,7 +79,7 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       renderer.addEventListener("relocate", event => events.push((event as CustomEvent<RelocateDetail>).detail));
       await view.goTo(1, first); await view.goTo(2, next);
       equal(renderer.index, 2); equal(events.at(-1)?.index, 2); equal(events.at(-1)?.context, next);
-    } finally { dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
+    } finally { await dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
   });
 
   await check("FB2 loads native XHTML and preserves notes and CFI selections", async () => {
@@ -100,7 +100,7 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       equal(anchorRangeOf(restored, doc).toString(), "world");
       await view.goTo("#note-one");
       equal(rendererOf(view).getContents()[0]?.index, 2);
-    } finally { dispose(view); book.destroy(); }
+    } finally { await dispose(view); book.destroy(); }
   });
 
   await check("fixed pages keep book viewport, spreads, direction and continuous scrolling", async () => {
@@ -137,7 +137,7 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       equal(renderer.index, 1);
       await view.next();
       equal(renderer.index, 2);
-    } finally { dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
+    } finally { await dispose(view); urls.forEach(url => URL.revokeObjectURL(url)); }
 
     const rtlView = mount();
     const rtlUrls = [0, 1, 2].map(page);
@@ -151,7 +151,7 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       await rtlView.goTo(0);
       await rtlView.goLeft();
       equal(renderer.index, 1);
-    } finally { dispose(rtlView); rtlUrls.forEach(url => URL.revokeObjectURL(url)); }
+    } finally { await dispose(rtlView); rtlUrls.forEach(url => URL.revokeObjectURL(url)); }
   });
 
   await check("fixed lazy render redraws after palette changes", async () => {
@@ -177,7 +177,7 @@ export async function runLayoutRegressions(modules: Modules): Promise<Result[]> 
       await waitFor(() => calls.includes("#101010"));
       const doc = renderer.getContents()[0]?.doc;
       equal(doc?.defaultView?.getComputedStyle(doc.body).backgroundColor, "rgb(16, 16, 16)");
-    } finally { dispose(view); URL.revokeObjectURL(url); }
+    } finally { await dispose(view); URL.revokeObjectURL(url); }
   });
 
   await check("destroyed fixed renderers cannot resurrect a late-loading spread", async () => {

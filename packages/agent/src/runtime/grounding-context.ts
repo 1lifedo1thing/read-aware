@@ -65,7 +65,7 @@ function locate(
 export function selectionQueries(selection: string): string[] {
   const trimmed = selection.trim();
   const tokens = trimmed
-    .split(/[\s,.。，！？!?；;：:、"'“”‘’()（）《》〈〉【】\[\]\-—…·]+/)
+    .split(/[\s,.。，！？!?；;：:、"'“”‘’()（）《》〈〉【】[\]\-—…·]+/)
     .map((token) => token.trim())
     .filter((token) => token.length >= 4)
     .sort((a, b) => b.length - a.length)

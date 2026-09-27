@@ -35,7 +35,7 @@ function describe(value: unknown): string {
     if (value.cause instanceof Error) {
       text += `\ncaused by ${value.cause.name}: ${value.cause.message}`;
     } else if (value.cause !== undefined) {
-      text += `\ncaused by ${String(value.cause)}`;
+      text += `\ncaused by ${describe(value.cause)}`;
     }
     return text;
   }
@@ -64,6 +64,7 @@ function fileLog(): Promise<Record<ForwardLevel, (message: string) => Promise<vo
     filePort = isTauri()
       ? import("@tauri-apps/plugin-log")
           .then(({ info, warn, error }) => ({ info, warn, error }))
+          // Without the native log plugin the logger degrades to console-only.
           .catch(() => null)
       : Promise.resolve(null);
   }

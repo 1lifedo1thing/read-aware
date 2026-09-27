@@ -51,7 +51,7 @@ export async function runMOBIRegressions(modules: Modules, extraFiles: File[] = 
       }
       results.push({ name, passed: true });
     } catch (error) { results.push({ name, passed: false, details: String(error) }); }
-    finally { view.close(); view.remove(); await book?.destroy?.(); }
+    finally { await view.close(); view.remove(); await book?.destroy?.(); }
   }
   return results;
 }

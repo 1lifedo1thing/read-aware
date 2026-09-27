@@ -10,7 +10,7 @@ test('chapter marks await asynchronous EPUB, KF8 and PDF navigation without chan
   const view: Pick<FoliateView, 'getSectionFractions' | 'resolveNavigation'> = {
     getSectionFractions: () => [0, 0.2, 0.6, 1],
     resolveNavigation: async target => {
-      const index = ['epub', 'kf8', 'pdf'].indexOf(String(target));
+      const index = typeof target === 'string' ? ['epub', 'kf8', 'pdf'].indexOf(target) : -1;
       return index < 0 ? undefined : { index };
     },
   };

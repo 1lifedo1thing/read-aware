@@ -10,7 +10,7 @@ const MIN_CJK_TOKEN_CHARS = 2;
 
 function tokenize(query: string): string[] {
   return query
-    .split(/[\s,.。，！？!?；;：:、"'“”‘’()（）《》〈〉【】\[\]\-—…·/|]+/)
+    .split(/[\s,.。，！？!?；;：:、"'“”‘’()（）《》〈〉【】[\]\-—…·/|]+/)
     .map((token) => token.trim())
     .filter((token) => {
       if (!token) return false;

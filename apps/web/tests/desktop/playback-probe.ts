@@ -5,7 +5,7 @@ function tone(): ArrayBuffer {
   const samples = 16_000 * 2;
   const bytes = new ArrayBuffer(44 + samples * 2);
   const data = new DataView(bytes);
-  const ascii = (offset: number, text: string) => [...text].forEach((char, index) => data.setUint8(offset + index, char.charCodeAt(0)));
+  const ascii = (offset: number, text: string) => text.split("").forEach((char, index) => data.setUint8(offset + index, char.charCodeAt(0)));
   ascii(0, "RIFF"); data.setUint32(4, bytes.byteLength - 8, true); ascii(8, "WAVE"); ascii(12, "fmt ");
   data.setUint32(16, 16, true); data.setUint16(20, 1, true); data.setUint16(22, 1, true);
   data.setUint32(24, 16_000, true); data.setUint32(28, 32_000, true); data.setUint16(32, 2, true); data.setUint16(34, 16, true);

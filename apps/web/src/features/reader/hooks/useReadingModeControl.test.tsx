@@ -32,7 +32,7 @@ test("provider replacement and external preferences converge without replaying a
     const id = readingRuntime.begin("mode-owner-test");
     const location = { bookId: "mode-owner-test", contentVersion: "v1", cfi: "first" };
     const detachEngine = readingRuntime.attach(id, { navigate: async () => location, step: async () => location }, location);
-    updateTextUnitModeSettings("mode-owner-a:reader", { unitId: "paragraph" });
+    void updateTextUnitModeSettings("mode-owner-a:reader", { unitId: "paragraph" });
     const removalActor = reactionActor("plugin:mode-owner", "remove-provider", eventCause(stampEventCause({}))!);
     off = register("mode-owner-a", removalActor);
     await act(async () => { root.render(<Harness />); });
@@ -43,7 +43,7 @@ test("provider replacement and external preferences converge without replaying a
     expect(state.controller.snapshot().unavailableReason).toBe("no-provider");
     expect(readingRuntime.operationAvailability(query).conditions).toContainEqual({ kind: "provider", state: "unconfigured", reason: "no-provider", errorCode: "reader/unavailable" });
     expect(eventCause(readingRuntime.snapshot())).toBe(actorCause(removalActor));
-    updateTextUnitModeSettings("mode-owner-b:reader", { unitId: "sentence" });
+    void updateTextUnitModeSettings("mode-owner-b:reader", { unitId: "sentence" });
     await act(async () => { off = register("mode-owner-b"); });
     expect(state.request.modeKey).toBe("mode-owner-a:reader");
     expect(state.snapshot.unavailableReason).toBe("no-provider");
@@ -104,7 +104,7 @@ test("provider replacement and external preferences converge without replaying a
     expect(state.request).toMatchObject({ active: false, unitId: "sentence" });
     expect(readTextUnitModeSettings("mode-owner-b:reader").unitId).toBe("sentence");
     await act(async () => { work = readingRuntime.configureMode({ active: true, unitId: "paragraph" }).catch(error => error); });
-    writeTextUnitModeState("mode-owner-test", { active: true, modeKey: "mode-owner-b:reader", unitId: "paragraph", resting: null, contentVersion: "v1" });
+    void writeTextUnitModeState("mode-owner-test", { active: true, modeKey: "mode-owner-b:reader", unitId: "paragraph", resting: null, contentVersion: "v1" });
     await act(async () => { readingRuntime.closed(); await work; });
     expect(state.request.active).toBe(false);
     expect(readTextUnitModeState("mode-owner-test").active).toBe(false);

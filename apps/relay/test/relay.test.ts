@@ -100,7 +100,7 @@ describe("the numbered mailbox", () => {
     const batch = [sealed("e1"), sealed("e2"), sealed("e3")];
     const first = await handle(post("/v1/events", { events: batch }, session));
     const { seqs } = (await first.json()) as { seqs: Record<string, number> };
-    expect(Object.values(seqs).sort()).toEqual([1, 2, 3]);
+    expect(Object.values(seqs).sort((a, b) => a - b)).toEqual([1, 2, 3]);
 
     // A crashed client re-pushes the same batch plus one new event.
     const second = await handle(

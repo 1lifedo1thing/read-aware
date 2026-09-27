@@ -221,7 +221,7 @@ describe("Worker endpoint", () => {
     ).toBe(400);
     const malformed = request();
     expect(
-      (await worker.fetch(new Request(malformed, { body: "{" }), env)).status,
+      (await worker.fetch(new Request(malformed, { method: "POST", body: "{" }), env)).status,
     ).toBe(400);
     expect(points).toEqual([]);
   });

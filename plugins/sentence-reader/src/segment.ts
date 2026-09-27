@@ -86,7 +86,7 @@ const NON_TERMINAL_ABBREVIATIONS = new Set([
   "p", "pp", "ed", "eds", "op", "loc", "Inc", "Ltd", "Co", "Corp", "Bros",
 ]);
 // The last word of a segment when it ends in a period: "Mr." / "e.g." / "J.".
-const ABBREVIATION_TAIL = /(?:^|[\s(\[\u201C\u2018])([A-Za-z](?:\.[A-Za-z])?|[A-Za-z][a-z]{0,5})\.$/;
+const ABBREVIATION_TAIL = /(?:^|[\s([\u201C\u2018])([A-Za-z](?:\.[A-Za-z])?|[A-Za-z][a-z]{0,5})\.$/;
 
 /**
  * UAX #29 has no abbreviation knowledge of its own; the exception data that

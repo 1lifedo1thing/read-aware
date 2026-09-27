@@ -71,7 +71,7 @@ export async function changeWordLanguage(
     anchor: doc.anchor,
   });
   if (nextId !== doc.id) await wordCollection(ctx).delete(doc.id);
-  saveTargetLanguage(ctx, targetLanguage);
+  await saveTargetLanguage(ctx, targetLanguage);
 
   return {
     ...doc,

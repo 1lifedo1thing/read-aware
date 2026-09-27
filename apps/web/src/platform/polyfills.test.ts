@@ -7,6 +7,7 @@ import {
 /** A realm that predates every ES2023/ES2024 built-in the app relies on. */
 function bareGlobals(): PolyfillGlobals {
   class BarePromise<T> extends Promise<T> {}
+  // oxlint-disable-next-line typescript/no-floating-promises -- defineProperty returns the constructor, not a promise
   Object.defineProperty(BarePromise, "withResolvers", { value: undefined, configurable: true });
   const arrayPrototype = Object.create(Array.prototype, {
     toSorted: { value: undefined, configurable: true },
@@ -73,7 +74,7 @@ describe("Map.groupBy", () => {
     const byObject = mapGroupBy([1, 2, 3], n => (n < 3 ? a : b));
     expect(byObject.get(a)).toEqual([1, 2]);
     expect(byObject.get(b)).toEqual([3]);
-    const byZero = mapGroupBy([-1, 1], n => n * 0);
+    const byZero = mapGroupBy([-1, 1], n => (n < 0 ? -0 : 0));
     expect(byZero.size).toBe(1);
     expect(Object.is([...byZero.keys()][0], 0)).toBe(true);
     expect(byZero.get(0)).toEqual([-1, 1]);
@@ -82,9 +83,11 @@ describe("Map.groupBy", () => {
 
 describe("change Array by copy", () => {
   test("toSorted sorts a copy, reads holes as undefined and validates the comparator first", () => {
+    // oxlint-disable-next-line no-sparse-arrays -- the hole is the behavior under test
     const source: (number | undefined)[] = [3, , 1];
     const sorted = arrayToSorted.call(source) as (number | undefined)[];
     expect(sorted).toEqual([1, 3, undefined]);
+    // oxlint-disable-next-line no-sparse-arrays -- the source must keep its hole
     expect(source).toEqual([3, , 1]);
     expect(2 in source).toBe(true);
     expect(arrayToSorted.call([3, 1, 2], (a, b) => (b as number) - (a as number))).toEqual([3, 2, 1]);

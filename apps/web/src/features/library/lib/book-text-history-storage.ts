@@ -20,5 +20,6 @@ export function createTextTaskHistory(origin: DomainActor, trackCleanup?: (work:
     write: value => localKV.setItemAsync(key, value),
     run: runDomainWrite,
   };
-  return new BookTextTaskHistory(key, storage, work => { durableWrites.track(work); trackCleanup?.(work); });
+  // The history owns each write's outcome; tracking only lets shutdown wait for it.
+  return new BookTextTaskHistory(key, storage, work => { void durableWrites.track(work); trackCleanup?.(work); });
 }

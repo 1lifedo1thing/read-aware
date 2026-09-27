@@ -6,6 +6,11 @@ export type AgentFetch = (
   init?: RequestInit,
 ) => Promise<Response>;
 
+/** The URL a fetch input addresses; `String(request)` would read "[object Request]". */
+export function fetchInputUrl(input: RequestInfo | URL): string {
+  return typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+}
+
 /**
  * pi types fetch as the runtime's complete global fetch object. Bun adds a
  * `preconnect` method to that type, while browser/Tauri transports only need

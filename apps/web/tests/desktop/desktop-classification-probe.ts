@@ -2,6 +2,7 @@ import { appDataDir } from "@tauri-apps/api/path";
 import { changeBookClassification, inspectBookClassification } from "../../src/domain/book-classification";
 import { createLibraryPort } from "../../src/features/ai/agent/ports/library-port";
 import { createLibraryDomain } from "../../src/domain/library";
+import { withProbeCleanup } from "./probe-cleanup";
 
 export async function runClassificationStorageProbe() {
   const path = await appDataDir();
@@ -9,7 +10,7 @@ export async function runClassificationStorageProbe() {
   const domain = createLibraryDomain("user"), library = createLibraryPort();
   const xml = `<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><genre>science</genre><author><nickname>Tests</nickname></author><book-title>Classification probe ${crypto.randomUUID()}</book-title><lang>en</lang></title-info><document-info><author><nickname>Tests</nickname></author><date>2026-09-10</date><id>${crypto.randomUUID()}</id><version>1</version></document-info></description><body><section><title><p>One</p></title><p>Classification test source.</p></section></body></FictionBook>`;
   const { id: bookId } = await domain.commands.books.importBook({ fileName: "classification-probe.fb2", data: new TextEncoder().encode(xml) });
-  try {
+  return withProbeCleanup(async () => {
     const initial = (await inspectBookClassification(bookId))!;
     const first = await library.classifyBookIfUnclassified(bookId, "narrative");
     const classified = (await inspectBookClassification(bookId))!;
@@ -27,8 +28,8 @@ export async function runClassificationStorageProbe() {
     return { bookId, initial: initial.narrativity, automatic: first, edited: edited.snapshot.narrativity, late,
       lateDidNotWrite: afterLate.revision === edited.snapshot.revision, conflict, cancellation,
       final: final.narrativity, failedWritesDidNotChangeRevision: final.revision === afterLate.revision };
-  } finally {
+  }, async () => {
     await domain.commands.books.remove(bookId);
     if (await inspectBookClassification(bookId)) throw Error("Owned classification probe cleanup failed");
-  }
+  });
 }

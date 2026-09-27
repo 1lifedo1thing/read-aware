@@ -35,7 +35,7 @@ export class ResourceDownloadService {
     let streamId: string | undefined, resourceId: string | undefined;
     let completed = false;
     let port: ResourcePort | undefined;
-    try {
+    const transfer = async (): Promise<ResourceDownloadReceipt> => {
       port = this.resources(threadKey);
       const response = await requests.open(input.url, { method: "GET", credentials: "omit", redirect: "manual", signal: controller.signal });
       streamId = response.id;
@@ -72,7 +72,8 @@ export class ResourceDownloadService {
       controller.signal.throwIfAborted();
       completed = true;
       return { status: "downloaded", resource: sealed };
-    } finally {
+    };
+    const settle = async () => {
       clearTimeout(timer); signal?.removeEventListener("abort", cancel);
       const aborted = controller.signal.aborted ? controller.signal.reason : undefined;
       controller.abort();
@@ -90,6 +91,16 @@ export class ResourceDownloadService {
         } catch (error) { this.report(error); }
         this.active.delete(threadKey);
       }
+    };
+    let receipt: ResourceDownloadReceipt;
+    try { receipt = await transfer(); }
+    catch (error) {
+      // The transfer failure outranks a stream-close or release failure.
+      try { await settle(); } catch (cleanupError) { this.report(cleanupError); }
+      throw error;
     }
+    // After a completed transfer, a late abort or cleanup failure fails the download.
+    await settle();
+    return receipt;
   }
 }

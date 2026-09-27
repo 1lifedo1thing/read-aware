@@ -333,18 +333,21 @@ async function loadAndOverlayRows(origin: DomainActor): Promise<{ rows: Preferen
     const ids = eligible.flatMap(row => /^read-aware-plugin\.([a-z0-9-]+)\./.exec(row.key)?.[1] ?? []);
     try {
       return await withPluginDataWrites(ids, async () => {
-        let failed = false;
-        try { return { rows, changed: await overlayRows(eligible, origin) }; }
-        catch (error) { failed = true; throw error; }
-        finally {
-          // Even a later overlay failure must drain every earlier native write.
+        // Even a later overlay failure must drain every earlier native write.
+        const drain = async () => {
           const results = await Promise.allSettled([...new Set(ids)].map(id => flushLocalKV(`read-aware-plugin.${id}.`)));
-          const failure = results.find(result => result.status === "rejected");
-          if (failure?.status === "rejected") {
-            if (!failed) throw failure.reason;
-            log.warn("Plugin preference drain also failed", failure.reason);
-          }
+          return results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+        };
+        let changed: string[];
+        try { changed = await overlayRows(eligible, origin); }
+        catch (error) {
+          const failure = await drain();
+          if (failure) log.warn("Plugin preference drain also failed", failure.reason);
+          throw error;
         }
+        const failure = await drain();
+        if (failure) throw failure.reason;
+        return { rows, changed };
       });
     } catch (error) {
       if (errorCode(error) !== "plugin/data-busy") throw error;

@@ -8,7 +8,7 @@ const PLUGIN_LIMIT = 60;
 const APP_LIMIT = 300;
 const MAX_FIELDS = 12;
 const MAX_ENTRY_CHARS = 1500;
-const EVENT_NAME = /^[a-z][a-z0-9_.\/-]{0,95}$/;
+const EVENT_NAME = /^[a-z][a-z0-9_./-]{0,95}$/;
 const FIELD_NAME = /^[a-z][a-zA-Z0-9_]{0,31}$/;
 
 /** One shared rolling window. At most APP_LIMIT entries remain in memory;

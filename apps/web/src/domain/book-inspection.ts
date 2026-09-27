@@ -16,14 +16,33 @@ export async function listBookFormats(): Promise<BookFormatCapability[]> {
 }
 
 async function inspect(resource: NativeResource, signal?: AbortSignal): Promise<BookInspection> {
+  const opened: { book?: FoliateBook } = {};
+  let result: BookInspection;
+  try { result = await inspectOpened(resource, opened, signal); }
+  catch (error) {
+    // The inspection failure (abort, lease or storage) outranks a cleanup failure.
+    try { await opened.book?.destroy?.(); }
+    catch (cleanupError) { log.warn("Book inspection cleanup also failed", cleanupError); }
+    throw error;
+  }
+  if (opened.book) {
+    try { await opened.book.destroy?.(); }
+    catch (error) {
+      log.warn("Book inspection cleanup failed", error);
+      throw new AppError("internal", "Book inspection cleanup failed");
+    }
+  }
+  return result;
+}
+
+async function inspectOpened(resource: NativeResource, opened: { book?: FoliateBook }, signal?: AbortSignal): Promise<BookInspection> {
   const file = resourceBookFile(resource, signal);
   let formatHint = formatFromName(resource.name, resource.mimeType);
-  let book: FoliateBook | undefined;
   try {
     signal?.throwIfAborted();
     if (!formatHint) formatHint = await sniffBookFormat(new File([await file.slice(0, 65536).arrayBuffer()], resource.name));
     if (!file.size) return { formatHint, coverage: "initialization", status: "failed", errorCode: "book/parse-failed", sectionCount: null };
-    book = await parseBookFile(file);
+    const book = opened.book = await parseBookFile(file);
     signal?.throwIfAborted();
     return { formatHint, coverage: "initialization", status: "parsed", sectionCount: book.sections.length, errorCode: null };
   } catch (error) {
@@ -35,14 +54,6 @@ async function inspect(resource: NativeResource, signal?: AbortSignal): Promise<
     if (code && !code.startsWith("book/")) throw error;
     return { formatHint, coverage: "initialization", status: encrypted ? "encrypted" : code === "book/unsupported-format" ? "unsupported" : "failed",
       sectionCount: null, errorCode: encrypted ? "book/unsupported-encryption" : code ?? "book/parse-failed" };
-  } finally {
-    if (book) {
-      try { await book.destroy?.(); }
-      catch (error) {
-        log.warn("Book inspection cleanup failed", error);
-        throw new AppError("internal", "Book inspection cleanup failed");
-      }
-    }
   }
 }
 

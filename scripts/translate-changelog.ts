@@ -184,7 +184,7 @@ for (const locale of localesArg) {
   try {
     translated = translate(language, anchor, source);
   } catch (error) {
-    console.error(`  GIVING UP on ${locale}: ${error}`);
+    console.error(`  GIVING UP on ${locale}: ${error instanceof Error ? error.message : String(error)}`);
     failures.push(locale);
     continue;
   }

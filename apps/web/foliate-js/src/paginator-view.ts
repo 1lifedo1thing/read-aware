@@ -75,7 +75,7 @@ export class SectionView {
     }
     get isScrolled() { return !this.#column }
     async load(src: string, afterLoad?: (doc: Document) => void, beforeRender?: (input: BeforeRender) => Layout) {
-        if (typeof src !== 'string') throw new Error(`${src} is not string`)
+        if (typeof src !== 'string') throw new TypeError(`Expected a string source, got ${typeof src}`)
         if (this.#destroyed) throw new DOMException('Page view was destroyed', 'AbortError')
         return new Promise<void>((resolve, reject) => {
             const cleanup = () => {
@@ -106,7 +106,8 @@ export class SectionView {
                     this.#observer.observe(doc.body)
 
                     // Firefox's iframe resize observer can miss font-driven changes.
-                    doc.fonts.ready.then(() => this.refreshStyles())
+                    void doc.fonts.ready.then(() => this.refreshStyles())
+                        .catch((error: unknown) => console.warn('Could not refresh styles after fonts loaded', error))
                     resolve()
                 } catch (error) { reject(error) }
                 finally { cleanup() }

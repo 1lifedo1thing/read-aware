@@ -39,11 +39,11 @@ test('search preserves section CFIs, progress and cooperative cancellation', () 
     createDocument: () => new DOMParser().parseFromString('<p>One needle two needle</p>', 'text/html'),
   })) };
   const all = [];
-  for await (const item of searchBook(book, 'needle', undefined, {}, (index, range) => `${index}:${range}`, new AbortController().signal)) all.push(item);
+  for await (const item of searchBook(book, 'needle', undefined, {}, (index, range) => `${index}:${range.toString()}`, new AbortController().signal)) all.push(item);
   expect(all).toHaveLength(4);
   expect(all.at(-1)).toEqual({ progress: 1 });
   const controller = new AbortController();
-  const iter = searchBook(book, 'needle', 0, {}, (index, range) => `${index}:${range}`, controller.signal);
+  const iter = searchBook(book, 'needle', 0, {}, (index, range) => `${index}:${range.toString()}`, controller.signal);
   expect((await iter.next()).value).toMatchObject({ cfi: '0:needle' });
   controller.abort();
   expect((await iter.next()).done).toBe(true);

@@ -13,7 +13,8 @@ export class PluginInferenceReceipts {
   constructor(private readonly lifecycle: PluginLifecycleController, storage?: InferenceHistoryStorage) {
     let raw: string | null = null;
     this.history = new PluginInferenceHistory(storage ?? { key: crypto.randomUUID(), read: async () => raw, write: async value => { raw = value; }, run: work => work() }, work => {
-      durableWrites.track(work); lifecycle.trackCleanup(work);
+      // The history owns each write's outcome; tracking only lets shutdown wait for it.
+      void durableWrites.track(work); lifecycle.trackCleanup(work);
     });
   }
 

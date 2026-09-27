@@ -300,7 +300,7 @@ var NON_TERMINAL_ABBREVIATIONS = new Set([
   "Corp",
   "Bros"
 ]);
-var ABBREVIATION_TAIL = /(?:^|[\s(\[\u201C\u2018])([A-Za-z](?:\.[A-Za-z])?|[A-Za-z][a-z]{0,5})\.$/;
+var ABBREVIATION_TAIL = /(?:^|[\s([\u201C\u2018])([A-Za-z](?:\.[A-Za-z])?|[A-Za-z][a-z]{0,5})\.$/;
 function mergeAbbreviationBreaks(text, segments) {
   const merged = [];
   for (const segment of segments) {

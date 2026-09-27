@@ -23,7 +23,7 @@ test('engine gate rejects contextual any, generic defaults, double casts and sup
     const source = program.getSourceFile(path);
     if (!source) throw new Error('Missing type-check fixture');
     const diagnostics = checkFoliateTypes(program, [source]);
-    const messages = diagnostics.map(item => String(item.messageText));
+    const messages = diagnostics.map(item => ts.flattenDiagnosticMessageText(item.messageText, '\n'));
     expect(messages.some(message => message.includes('explicit any'))).toBe(true);
     expect(messages.some(message => message.includes('Map<any, any>'))).toBe(true);
     expect(messages.some(message => message.includes('inferred any: any'))).toBe(true);

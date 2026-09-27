@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { fauxAssistantMessage } from "@earendil-works/pi-ai/providers/faux";
+import { messageText } from "../testing/message-text";
 import { AppError, type DigestReport } from "@read-aware/core";
 import { BookGraphTaskOwner, type BookGraphTaskExecution } from "./book-graph-tasks";
 import { createInMemoryDeps } from "../testing/fixtures";
@@ -134,12 +135,12 @@ test("late execution callbacks cannot alter a terminal retry plan or retained re
   const report: DigestReport = { ...empty, status: "partial", remaining: 1, failures: [] };
   const owner = new BookGraphTaskOwner(async input => {
     execution = input;
-    input.onPlan(input.targets ? [...input.targets] : [0, 1]);
+    await input.onPlan(input.targets ? [...input.targets] : [0, 1]);
     input.onChapterCommitted(1);
     return report;
   }, () => {});
   const first = await done(owner, (await owner.start("b", "rebuild")).taskId);
-  execution.onPlan([2]); execution.onChapterCommitted(0);
+  await execution.onPlan([2]); execution.onChapterCommitted(0);
   report.remaining = 999; report.failures.push({ chapterIndex: 9, errorCode: "ai/provider" });
   expect(await owner.get("b", first.taskId)).toEqual(first);
   await owner.retry("b", first.taskId);
@@ -185,7 +186,7 @@ test("chapter attempts are bounded across concurrency, failures, empty text and 
   const seen: number[] = []; let fail = true;
   const owner = new BookGraphTaskOwner(input => digestBookTick({ ...input, deps, model: { id: "fixture" } as DigestBookTickInput["model"], concurrency: 2,
     complete: async (_model, context) => {
-      const chapter = Number(String(context.messages[0]!.content).match(/chapterIndex \(not a printed chapter number\): (\d+)/)![1]); seen.push(chapter);
+      const chapter = Number(messageText(context.messages[0]).match(/chapterIndex \(not a printed chapter number\): (\d+)/)![1]); seen.push(chapter);
       if (fail && chapter === 1) throw new AppError("ai/provider", "failure");
       return fauxAssistantMessage('{"summary":"Saved","characters":[],"relations":[]}');
     },

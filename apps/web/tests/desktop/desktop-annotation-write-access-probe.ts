@@ -14,6 +14,7 @@ import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-stor
 import { startPluginWorker } from "../../src/features/plugins/runtime/plugin-worker-host";
 import { parseProbeToast } from "./probe-toast";
 import { assertFull2BookAccessProfile } from "./desktop-book-access-fixture";
+import { withProbeCleanup } from "./probe-cleanup";
 
 const DENIED = "plugin/object-access-denied";
 
@@ -139,7 +140,7 @@ export async function runDesktopAnnotationWriteAccessProbe(
   const cleanupIds = new Set<string>();
   let markerBeforeWorker = new Set<string>();
 
-  try {
+  return withProbeCleanup(async () => {
     const baseline = await annotations.commands.createNote({
       bookId: otherBookId,
       body: `${marker} baseline note`,
@@ -226,7 +227,7 @@ export async function runDesktopAnnotationWriteAccessProbe(
       worker: workerResult,
       verification: "Actual compiled Worker, public annotations domain, SQLite and Full2 Tauri bridge.",
     };
-  } finally {
+  }, async () => {
     try {
       await worker?.terminate();
     } finally {
@@ -235,8 +236,8 @@ export async function runDesktopAnnotationWriteAccessProbe(
         await localKV.removeItemAsync(inputKey);
       } finally {
         await removeOwnedAnnotations(annotations, [...cleanupIds], bookIds, marker, beforeMarkerIds);
-        if (inspectContributions(id).length) throw new Error("Annotation write probe left contributions");
       }
     }
-  }
+    if (inspectContributions(id).length) throw new Error("Annotation write probe left contributions");
+  });
 }

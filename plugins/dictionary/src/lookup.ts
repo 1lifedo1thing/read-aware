@@ -21,8 +21,8 @@ export function getTargetLanguage(ctx: DictionaryContext): TargetLanguage {
   return isTargetLanguage(raw) ? raw : "auto";
 }
 
-export function saveTargetLanguage(ctx: DictionaryContext, language: TargetLanguage): void {
-  ctx.services.storage.set(LANGUAGE_KEY, language);
+export function saveTargetLanguage(ctx: DictionaryContext, language: TargetLanguage): Promise<void> {
+  return ctx.services.storage.set(LANGUAGE_KEY, language);
 }
 
 /** Resolve a preference (possibly "auto") to a model-ready language name. */

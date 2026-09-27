@@ -29,7 +29,8 @@ export type WheelPhaseEdge = "touch" | "momentum" | "end";
  * whose registration may outlive the reader that requested it.
  */
 export function subscribeWheelPhaseEdges(
-  onEdge: (edge: WheelPhaseEdge) => void,
+  /** Async consumers are awaited only for failure reporting. */
+  onEdge: (edge: WheelPhaseEdge) => unknown,
 ): () => void {
   if (!isTauri()) return () => {};
   const target = window;

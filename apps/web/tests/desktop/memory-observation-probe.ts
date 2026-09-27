@@ -1,4 +1,5 @@
 import type { MemoryObservation, PluginDisposable, PluginModule } from "@read-aware/plugin-types";
+import { hostAcknowledgement } from "./host-acknowledgement";
 
 export default {
   activate(ctx) {
@@ -25,9 +26,9 @@ export default {
           const query = action === "search" ? { kind: "search" as const, query: { scopes: ["user" as const], query: seed.marker } }
             : action === "record" ? { kind: "inspect" as const, memoryId: seed.memoryId }
             : { kind: "bookGraph" as const, bookId: seed.bookId };
-          subscriptions.set(action, await memory.events.observe(query, event => {
+          subscriptions.set(action, await hostAcknowledgement(memory.events.observe(query, event => {
             events[action]!.push(event); if (events[action]!.length > 32) events[action]!.shift();
-          }));
+          })));
         }
         return events;
       }) });

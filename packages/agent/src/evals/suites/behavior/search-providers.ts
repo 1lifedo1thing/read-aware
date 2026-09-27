@@ -4,6 +4,7 @@ import { WEB_PROVIDERS, type WebProviderId } from "../../../web/providers";
 import type { WebPort } from "../../../web/types";
 import { assessmentFromChecks, combineAssessments, evaluateAgentTrace } from "../../assertions";
 import { defineAgentEvalScenario } from "../../agent-harness";
+import { fetchInputUrl } from "../../../models/transport";
 
 const source = "https://atlas.example.org/releases/september";
 const original = "Atlas Library official release, 17 September 2026: version 4.2 introduces Cedar exports. Offline annotations remain supported.";
@@ -14,8 +15,8 @@ type Mode = "success" | "extract-failed" | "quota" | "fresh" | "wrong-url";
  * HTTP is replayed; AgentThread and the model are real. No live search quota. */
 function providerWeb(id: WebProviderId, mode: Mode): WebPort {
   const transport: AgentFetch = async (raw, init) => {
-    const url = new URL(String(raw));
-    const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {};
+    const url = new URL(fetchInputUrl(raw));
+    const body = init?.body ? JSON.parse(init.body as string) as Record<string, unknown> : {};
     const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
     const expectedHost = { exa: "api.exa.ai", tavily: "api.tavily.com", brave: "api.search.brave.com", serpapi: "serpapi.com", tinyfish: "api.search.tinyfish.ai" }[id];
     if (url.hostname !== expectedHost) throw new AppError("search/provider", "Cross-provider fallback is forbidden");

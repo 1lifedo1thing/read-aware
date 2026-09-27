@@ -17,7 +17,7 @@ const ids = new Set(groups.flatMap(g => g.rows.map(r => r.id)));
 export type Inventory = { family: string; name: string; rows: string[]; note: string };
 const inventory: Inventory[] = [];
 function add(family: string, name: string, rows: string[] | undefined, note = "[代码] 注册库存已映射，不表示产品 E2E 通过") {
-  if (!rows?.length || rows.some(id => !ids.has(id))) throw new Error(`Unmapped ${family}: ${name} -> ${rows}`);
+  if (!rows?.length || rows.some(id => !ids.has(id))) throw new Error(`Unmapped ${family}: ${name} -> ${rows?.join(",") ?? "(none)"}`);
   inventory.push({ family, name, rows, note });
 }
 const words = (s: string) => s.split(/\s+/).filter(Boolean);
@@ -520,7 +520,7 @@ export function collectInventory(): Inventory[] {
     const manifest = JSON.parse(readFileSync(`plugins/${directory.name}/manifest.json`,"utf8"));
     add("First-party source plugin", manifest.id, expectedPlugins[directory.name], `[代码] 源码版本 ${manifest.version}；源码存在不等于打包、安装、启用或模型可调用`);
     for (const field of manifest.settings ?? []) add("Plugin setting declaration", `plugins.${manifest.id}.${field.id}`, [field.kind === "secret" || field.inputMode === "password" ? "SYS04" : "CFG09"], `${field.kind}；${field.kind === "secret" || field.inputMode === "password" ? "不进入 Agent/普通 settings catalog" : "非敏感配置；字段存在不等于其功能有 Agent 工具"}`);
-    for (const file of readdirSync(`plugins/${directory.name}/src`,{recursive:true}).filter(name=>/\.(ts|tsx)$/.test(String(name)) && !/\.test\./.test(String(name))).sort()) {
+    for (const file of readdirSync(`plugins/${directory.name}/src`,{recursive:true,encoding:"utf8"}).filter(name=>/\.(ts|tsx)$/.test(name) && !/\.test\./.test(name)).sort()) {
       function visitRegistration(node: import("../apps/web/node_modules/typescript").Node) {
         if (ts.isCallExpression(node) && /\.contributions\.(agentTools|agentRetrievalProviders)\.register$/.test(node.expression.getText())) {
           const retrieval = node.expression.getText().includes("agentRetrievalProviders");
@@ -542,7 +542,7 @@ export function collectInventory(): Inventory[] {
   const assertRoster = (family:string, expected:string[]) => {
     const actual = new Set(inventory.filter(row=>row.family===family).map(row=>row.name.split("::").at(-1)!));
     const stale = expected.filter(name=>!actual.has(name));
-    if (stale.length) throw new Error(`Stale ${family} mappings: ${stale}`);
+    if (stale.length) throw new Error(`Stale ${family} mappings: ${stale.join(",")}`);
   };
   assertRoster("Agent global",Object.keys(agentMap));
   assertRoster("Native command",Object.keys(nativeMap));

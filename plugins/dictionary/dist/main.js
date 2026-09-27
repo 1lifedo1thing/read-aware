@@ -78,7 +78,7 @@ function getTargetLanguage(ctx) {
   return isTargetLanguage(raw) ? raw : "auto";
 }
 function saveTargetLanguage(ctx, language) {
-  ctx.services.storage.set(LANGUAGE_KEY, language);
+  return ctx.services.storage.set(LANGUAGE_KEY, language);
 }
 function resolveLanguageName(ctx, language) {
   const concrete = language === "auto" ? isTargetLanguage(ctx.locale) ? ctx.locale : "en" : language;
@@ -238,7 +238,7 @@ async function changeWordLanguage(ctx, doc, targetLanguage) {
   });
   if (nextId !== doc.id)
     await wordCollection(ctx).delete(doc.id);
-  saveTargetLanguage(ctx, targetLanguage);
+  await saveTargetLanguage(ctx, targetLanguage);
   return {
     ...doc,
     id: nextId,
@@ -367,7 +367,7 @@ function registerAgentTools(ctx) {
       additionalProperties: false
     },
     execute: async (params) => {
-      const term = String(params.term ?? "").trim();
+      const term = typeof params.term === "string" ? params.term.trim() : "";
       if (!term)
         throw new Error("term is required");
       const context = typeof params.context === "string" ? params.context : undefined;
@@ -432,7 +432,7 @@ function registerAgentTools(ctx) {
       additionalProperties: false
     },
     execute: async (params) => {
-      const term = String(params.word ?? "").trim();
+      const term = typeof params.word === "string" ? params.word.trim() : "";
       if (!term)
         throw new Error("word is required");
       const { language } = await saveWord(ctx, {

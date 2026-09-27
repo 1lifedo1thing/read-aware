@@ -195,7 +195,7 @@ class FaultWorker {
     if (message.t === "boot") {
       if (FaultWorker.bootFault === "clone") throw new DOMException("Could not clone boot", "DataCloneError");
       const response = FaultWorker.bootFault === "failed" ? { t: "failed", error: "activation rejected" } : { t: "ready", protocolVersion: 1, hasMigration: false };
-      queueMicrotask(async () => {
+      void Promise.resolve().then(async () => {
         if (FaultWorker.bootFault === "early-call") await this.deliver({ t: "call", id: 1, method: "contributions.commands.register", args: this.callbacks.encode([]) });
         await this.deliver({ t: "hello", protocolVersion: FaultWorker.bootFault === "version" ? 2 : 1 });
         await FaultWorker.beforeReady?.(this);
@@ -974,7 +974,7 @@ test("shutdown still drains durable writes and terminates its Worker when regist
 
 test("restore Worker uses private committed storage before RPC acknowledgement and ignores live sync", async () => {
   const { createBackupProgramStorage } = await import("./backup-program-storage");
-  const values = new Map([["value", '\"source\"']]);
+  const values = new Map([["value", '"source"']]);
   const storage = createBackupProgramStorage("callback-host-test", Object.fromEntries(values), async <T>(query: import("./backup-program-storage").BackupProgramStageQuery) => {
     if (query.kind === "get") return (values.get(query.key) ?? null) as T;
     if (query.kind === "set") { values.set(query.key, query.json); return null as T; }
@@ -983,7 +983,7 @@ test("restore Worker uses private committed storage before RPC acknowledgement a
   });
   const { worker, runtime, close } = await hostFixture([], false, undefined, { restoreStorage: storage, instanceId: "restore:test" });
   try {
-    expect(worker.sent.find(message => message.t === "boot")?.storage).toEqual({ value: '\"source\"' });
+    expect(worker.sent.find(message => message.t === "boot")?.storage).toEqual({ value: '"source"' });
     const before = worker.sent.length;
     emitAppEvent("plugin-storage-changed", { pluginId: "callback-host-test" });
     await Bun.sleep(0);
@@ -993,8 +993,8 @@ test("restore Worker uses private committed storage before RPC acknowledgement a
     await worker.deliver({ t: "call", id: 1200, method: "services.storage.set", args: worker.callbacks.encode(["value", "migrated"]) });
     const receiptIndex = worker.sent.findIndex(message => message.t === "result" && message.id === 1200);
     expect(worker.sent[receiptIndex]).toMatchObject({ ok: true });
-    expect(worker.sent[receiptIndex - 1]).toMatchObject({ t: "sync", patch: { storage: { value: '\"migrated\"' } } });
-    expect(storage.snapshot()).toEqual({ value: '\"migrated\"' });
+    expect(worker.sent[receiptIndex - 1]).toMatchObject({ t: "sync", patch: { storage: { value: '"migrated"' } } });
+    expect(storage.snapshot()).toEqual({ value: '"migrated"' });
     await worker.deliver({ t: "call", id: 1201, method: "services.storage.set", args: worker.callbacks.encode(["schedule-state", {}]) });
     expect(worker.sent.find(message => message.t === "result" && message.id === 1201)).toMatchObject({ ok: false });
     await worker.deliver({ t: "migrated", id: request.id, ok: true });

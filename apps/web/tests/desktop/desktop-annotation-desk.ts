@@ -15,7 +15,7 @@ export async function seedAnnotationDesk(bookId: string) {
   if (owned.size) throw new Error("Clean up the existing fixture before seeding again");
   if (!(await createLibraryDomain("agent").queries.books.get(bookId))) throw new Error("Fixture book missing");
   for (let index = 0; index < 23; index++) {
-    const note = await domain.commands.createNote({ bookId, body: `Desk E2E note ${String(index).padStart(2, "0")}\n中文 annotation \"quoted\", line two`, quotedText: "Reading Capability Probe" });
+    const note = await domain.commands.createNote({ bookId, body: `Desk E2E note ${String(index).padStart(2, "0")}\n中文 annotation "quoted", line two`, quotedText: "Reading Capability Probe" });
     owned.set(note.id, "note");
   }
   for (let index = 0; index < 2; index++) {

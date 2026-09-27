@@ -35,6 +35,6 @@ describe("agent tool registry", () => {
   test("global book overview requires the id that list_books resolved", () => {
     const { deps } = createInMemoryDeps();
     const tool = buildAgentTools({ kind: "global", threadId: "t1" }, deps).find(t => t.name === "get_book_overview");
-    expect((tool?.parameters as { required?: string[] }).required).toEqual(["bookId"]);
+    expect((tool?.parameters as { required?: string[] } | undefined)?.required).toEqual(["bookId"]);
   });
 });

@@ -24,7 +24,7 @@ afterEach(() => {
 function stubFetch(handler: (url: string) => Response) {
   const hosts: string[] = [];
   globalThis.fetch = (async (input: RequestInfo | URL) => {
-    const url = String(input);
+    const url = input instanceof Request ? input.url : String(input);
     hosts.push(new URL(url).hostname);
     return handler(url);
   }) as typeof fetch;

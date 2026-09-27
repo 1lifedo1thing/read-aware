@@ -12,8 +12,8 @@ const concatTypedArray = (a: Uint8Array, b: Uint8Array) => {
 }
 
 const strcmp = (a: string, b: string): -1 | 0 | 1 => {
-    a = a.toLowerCase(), b = b.toLowerCase()
-    return a < b ? -1 : a > b ? 1 : 0
+    const left = a.toLowerCase(), right = b.toLowerCase()
+    return left < right ? -1 : left > right ? 1 : 0
 }
 
 class DictZip {

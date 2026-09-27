@@ -36,7 +36,7 @@ test("scope catalogs exactly match registered tools, include extensions and surv
       expect(page.semantics).toContain("not-live-readiness");
       if (revision) expect(page.revision).toBe(revision);
       revision = page.revision; offset = page.nextOffset; all.push(...page.items);
-      if (offset === null) expect(all.map(entry => entry.name).sort()).toEqual(registered.map(tool => tool.name).sort());
+      if (offset === null) expect(all.map(entry => entry.name ?? "").sort()).toEqual(registered.map(tool => tool.name).sort());
     }
     expect(all.find(entry => entry.name === `plugin_${scope.kind}_lookup`)?.source).toBe("extension");
     expect(all.find(entry => entry.name === "get_host_capabilities")?.source).toBe("host");
@@ -95,7 +95,7 @@ test("escaped extension metadata is paged by actual JSON size and oversized entr
     expect(page.items.every(entry => entry.textTruncated)).toBe(true);
     all.push(...page.items); offset = page.nextOffset; revision = page.revision;
   }
-  expect(all.map(entry => entry.name).sort()).toEqual(extensions.map(tool => tool.name).sort());
+  expect(all.map(entry => entry.name ?? "").sort()).toEqual(extensions.map(tool => tool.name).sort());
   const oversized = buildCapabilityTool(scopes[0], [], [extension("z".repeat(13_000))]);
   const first = parse(await oversized.execute("first", { catalog: "tools" }));
   await expect(oversized.execute("oversized", { catalog: "tools", offset: first.nextOffset, revision: first.revision })).rejects.toMatchObject({ code: "ai/capability-catalog-unavailable" });

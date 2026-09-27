@@ -59,21 +59,23 @@ export function useLibraryController() {
     bookReadyPendingRef.current.add(book.id);
     const releaseBook = retainBook(foliateBook);
     void (async () => {
-      await enrichFromOpenBook(book, foliateBook);
-      // Text extraction always starts on first open, reusing the reader's
-      // already-parsed book. It yields between sections and (for long books)
-      // checkpoints its progress, so a big scanned PDF neither freezes the UI
-      // nor loses its work when the reader closes mid-pass.
-      await ensureBookTextExtracted(book.id, foliateBook);
-      // 正文就绪后立刻并行追平这本书的图谱欠账（读者在读 = 这本书的图
-      // 最值得建）。存量进度从开卷起补，不等空闲节拍或聊天。
-      catchUpBookGraph(book.id, book.progress?.href ?? undefined);
-    })()
-      .catch((error) => log.warn("post-open enrichment failed", error))
-      .finally(async () => {
+      try {
+        await enrichFromOpenBook(book, foliateBook);
+        // Text extraction always starts on first open, reusing the reader's
+        // already-parsed book. It yields between sections and (for long books)
+        // checkpoints its progress, so a big scanned PDF neither freezes the UI
+        // nor loses its work when the reader closes mid-pass.
+        await ensureBookTextExtracted(book.id, foliateBook);
+        // 正文就绪后立刻并行追平这本书的图谱欠账（读者在读 = 这本书的图
+        // 最值得建）。存量进度从开卷起补，不等空闲节拍或聊天。
+        catchUpBookGraph(book.id, book.progress?.href ?? undefined);
+      } catch (error) {
+        log.warn("post-open enrichment failed", error);
+      } finally {
         bookReadyPendingRef.current.delete(book.id);
         await releaseBook().catch(error => log.warn('Could not close parsed book', error));
-      });
+      }
+    })();
   }, []);
 
   return {

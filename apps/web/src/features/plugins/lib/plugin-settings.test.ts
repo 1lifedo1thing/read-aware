@@ -28,11 +28,11 @@ const manifest: PluginManifest = {
 beforeEach(() => storage.clear());
 
 describe("plugin settings", () => {
-  test("builds a reactive form and persists its complete value object", () => {
+  test("builds a reactive form and persists its complete value object", async () => {
     const view = buildPluginSettingsView(manifest);
 
     expect(view?.submitMode).toBe("change");
-    view?.onSubmit({ endpoint: "https://reader.example", enabled: false });
+    await view?.onSubmit({ endpoint: "https://reader.example", enabled: false });
 
     expect(readPluginSettingsValues(manifest.id)).toEqual({
       endpoint: "https://reader.example",
@@ -40,8 +40,8 @@ describe("plugin settings", () => {
     });
   });
 
-  test("prefills the reactive form from stored values", () => {
-    buildPluginSettingsView(manifest)?.onSubmit({
+  test("prefills the reactive form from stored values", async () => {
+    await buildPluginSettingsView(manifest)?.onSubmit({
       endpoint: "https://saved.example",
       enabled: false,
     });

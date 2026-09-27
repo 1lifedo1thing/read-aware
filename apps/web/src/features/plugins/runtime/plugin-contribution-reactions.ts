@@ -54,7 +54,7 @@ export class PluginContributionReactions {
   }
 
   bind<T extends PluginDisposable>(event: PluginReactionEvent | undefined, registration: T): PluginEventRegistration<T> {
-    const token = event?.reaction!;
+    const token = event?.reaction;
     this.reactions.actor(token);
     const operations = registration && this.handles.get(registration);
     if (!operations) throw new AppError("plugin/invalid-cause", "Contribution registration belongs to another activation or is not a contribution");

@@ -39,6 +39,7 @@ export async function readPDFReferences(page: Pick<PDFPage, 'getAnnotations'>, s
 export async function readPDFPageText(page: Pick<PDFPage, 'streamTextContent'>, signal?: AbortSignal): Promise<string> {
     signal?.throwIfAborted()
     const reader = page.streamTextContent().getReader()
+    // Cancelling a stream that already errored rejects; the read reports the real failure.
     const cancel = () => { void reader.cancel(signal?.reason).catch(() => {}) }
     signal?.addEventListener('abort', cancel, { once: true })
     let text = '', finished = false
@@ -57,6 +58,7 @@ export async function readPDFPageText(page: Pick<PDFPage, 'streamTextContent'>, 
         return checkContentText(text).replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
     } finally {
         signal?.removeEventListener('abort', cancel)
+        // Best-effort release; the read's own error, if any, is already propagating.
         if (!finished) await reader.cancel().catch(() => {})
         reader.releaseLock()
     }

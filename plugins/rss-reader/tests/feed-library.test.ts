@@ -156,7 +156,7 @@ test("OPML pages distinguish existing, added and failed entries and never refres
 test("concurrent OPML imports create each subscription once and UI returns a paged outcome", async () => {
   const f = fixture(), input = opml([url]);
   const results = await Promise.all([importOpml(f.ctx, input), importOpml(f.ctx, input)]);
-  expect(results.map(result => result.added).sort()).toEqual([0, 1]); expect(f.state.fetches).toBe(1);
+  expect(results.map(result => result.added).sort((a, b) => a - b)).toEqual([0, 1]); expect(f.state.fetches).toBe(1);
   const form = importOpmlView(f.ctx, input);
   expect(form.fields[0]).toMatchObject({ value: input });
   expect(await form.onSubmit({ opml: "" })).toHaveProperty("fieldErrors.opml");

@@ -285,7 +285,7 @@ export function encodeAIConfig(config: AIConfig): string {
   const resolvedThinkingLevel = thinkingLevel ?? DEFAULT_THINKING_LEVEL;
   const resolvedCustomMaxOutputTokens = positiveInteger(customMaxOutputTokens);
   // Merge this provider's settings into the map; other providers keep theirs.
-  const models = { ...(readStored()?.models ?? {}) };
+  const models = { ...readStored()?.models };
   const resolvedRouting =
     provider === "openrouter" ? sanitizeOpenRouterRouting(openRouterRouting) : undefined;
   models[provider] = {

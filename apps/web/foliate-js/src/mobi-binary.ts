@@ -226,7 +226,10 @@ export const countBitsSet = (x: number) => {
 export const countUnsetEnd = (x: number) => {
     if (!x) return 0
     let count = 0
-    while ((x & 1) === 0) x = x >> 1, count++
+    while ((x & 1) === 0) {
+        x = x >> 1
+        count++
+    }
     return count
 }
 

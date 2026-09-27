@@ -5,6 +5,7 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Api, Model } from "@earendil-works/pi-ai";
+import { messageText } from "../testing/message-text";
 import { registerFauxProvider, streamSimple } from "@earendil-works/pi-ai/compat";
 import {
   fauxAssistantMessage,
@@ -39,7 +40,7 @@ describe("chat-driven graph catch-up", () => {
         return fauxAssistantMessage('{"narrativity": "expository", "spoilerSensitive": false, "confidence": 0.9}');
       }
       if (system.includes("Digest ONE chapter")) {
-        const match = String(context.messages[0]?.content ?? "").match(/chapterIndex \(not a printed chapter number\): (\d+)/);
+        const match = messageText(context.messages[0]).match(/chapterIndex \(not a printed chapter number\): (\d+)/);
         log.push(`digest:${match?.[1]}`);
         return fauxAssistantMessage(
           '{"summary": "本章要点。", "concepts": [{"name": "概念"}], "relations": []}',
@@ -102,7 +103,7 @@ describe("chat-driven graph catch-up", () => {
       "digest:2",
     ]);
     const digests = stores.chapterDigests.get("b1") ?? [];
-    expect(digests.map((digest) => digest.chapterIndex).sort()).toEqual([0, 1, 2]);
+    expect(digests.map((digest) => digest.chapterIndex).sort((a, b) => a - b)).toEqual([0, 1, 2]);
     expect(digests.every((digest) => digest.flavor === "expository")).toBe(true);
 
     await drain("第三条消息。");

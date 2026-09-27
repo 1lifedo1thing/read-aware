@@ -17,7 +17,9 @@ function plainText(children: ReactNode): string {
     .map((child) =>
       isValidElement<{ children?: ReactNode }>(child)
         ? plainText(child.props.children)
-        : String(child),
+        : typeof child === "string" || typeof child === "number"
+          ? String(child)
+          : "",
     )
     .join("");
 }
@@ -48,19 +50,19 @@ const components: Components = {
   pre({ children }) {
     if (isValidElement(children)) {
       const codeElement = children as ReactElement<{
-        children?: unknown;
+        children?: ReactNode;
         className?: string;
       }>;
       const language =
         codeElement.props.className?.match(/language-([^\s]+)/)?.[1];
       return (
         <CodeBlock
-          code={String(codeElement.props.children ?? "").replace(/\n$/, "")}
+          code={plainText(codeElement.props.children).replace(/\n$/, "")}
           language={language ?? "text"}
         />
       );
     }
-    return <CodeBlock code={String(children)} language="text" />;
+    return <CodeBlock code={plainText(children)} language="text" />;
   },
 };
 

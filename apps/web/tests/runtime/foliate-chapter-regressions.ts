@@ -33,7 +33,7 @@ export async function runChapterRegressions(ViewClass: typeof View): Promise<Res
         ] }],
         resolveHref: href => ({ index: Number(href[0]), anchor: doc => doc.getElementById(href.split("#")[1]!) }),
         splitTOCHref: href => [href[0]!, href.split("#")[1]],
-        getTOCFragment: (doc, fragment) => doc.getElementById(String(fragment)),
+        getTOCFragment: (doc, fragment) => (typeof fragment === "string" ? doc.getElementById(fragment) : null),
       };
       try {
         const starts = await prepareReaderChapterStarts(book);

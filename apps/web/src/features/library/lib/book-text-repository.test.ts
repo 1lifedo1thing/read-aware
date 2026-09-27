@@ -318,8 +318,9 @@ test("shared extraction inherits live consumer priority and cancellation downgra
     const request = repo.prepare(id, { signal, priority: () => priorities.get(id)! }); requests.push(request.catch(e => e)); return request;
   };
   const settle = async () => { for (let i = 0; i < 45; i++) await Promise.resolve(); };
-  start("a", "normal"); start("b", "normal"); await settle(); expect(entered).toEqual(["a", "b"]);
-  start("shared", "background"); start("other", "normal"); await settle();
+  // start() records each request's outcome in `requests`; the returned promise is not needed here.
+  void start("a", "normal"); void start("b", "normal"); await settle(); expect(entered).toEqual(["a", "b"]);
+  void start("shared", "background"); void start("other", "normal"); await settle();
   const high = new AbortController();
   requests.push(repo.prepare("shared", { signal: high.signal, priority: () => "normal" }).catch(e => e)); await settle();
   // Cancelling its high-priority consumer must not cancel the background owner.

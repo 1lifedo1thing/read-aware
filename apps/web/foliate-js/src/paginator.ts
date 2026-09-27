@@ -329,9 +329,9 @@ export class Paginator extends HTMLElement {
                 || selRange.startOffset !== selected.startOffset || selRange.endOffset !== selected.endOffset) return
             const backward = selectionIsBackward(sel)
             if (backward && selRange.compareBoundaryPoints(Range.START_TO_START, range) < 0)
-                this.prev(undefined, context)
+                void this.prev(undefined, context).catch((error: unknown) => console.error('Could not follow the selection backward', error))
             else if (!backward && selRange.compareBoundaryPoints(Range.END_TO_END, range) > 0)
-                this.next(undefined, context)
+                void this.next(undefined, context).catch((error: unknown) => console.error('Could not follow the selection forward', error))
         }, 700)
         this.addEventListener('load', event => {
             const { doc } = (event as CustomEvent<LoadDetail>).detail
@@ -356,7 +356,8 @@ export class Paginator extends HTMLElement {
                     const selRange = sel.getRangeAt(0).cloneRange()
                     const backward = selectionIsBackward(sel)
                     if (!backward) selRange.collapse()
-                    this.#scrollToAnchor(selRange, 'anchor', context)
+                    void this.#scrollToAnchor(selRange, 'anchor', context)
+                        .catch((error: unknown) => console.error('Could not follow the keyboard selection', error))
                 }
             })
             doc.addEventListener('focusin', e => {
@@ -800,11 +801,11 @@ export class Paginator extends HTMLElement {
         const wanted = Math.floor(target / size)
         const pushed = wanted >= pages - 1 && this.atEnd ? 1 : wanted <= 0 && this.atStart ? -1 : null
 
-        this.#scrollToPage(page, 'snap').then(() => {
+        void this.#scrollToPage(page, 'snap').then(() => {
             const dir = page <= 0 ? -1 : page >= pages - 1 ? 1 : null
             if (dir) return this.#goToAdjacent(dir)
             if (pushed) this.dispatchEvent(new CustomEvent<EdgeDetail>('edge', { detail: { dir: pushed } }))
-        })
+        }).catch((error: unknown) => console.error('Could not settle the swipe', error))
     }
     #onTouchStart(e: TouchEvent) {
         const touch = e.changedTouches[0]
@@ -1327,7 +1328,8 @@ export class Paginator extends HTMLElement {
         })
 
         // needed because the resize observer doesn't work in Firefox
-        doc.fonts?.ready.then(() => { if (this.#entries.some(entry => entry.view === view) && revision === this.#styleRevision) view.refreshStyles() })
+        void doc.fonts?.ready.then(() => { if (this.#entries.some(entry => entry.view === view) && revision === this.#styleRevision) view.refreshStyles() })
+            .catch((error: unknown) => console.warn('Could not refresh styles after fonts loaded', error))
     }
     focusView(context: object = {}) {
         const doc = this.#view?.document

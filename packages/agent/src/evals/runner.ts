@@ -107,6 +107,7 @@ async function runWithTimeout<T>(
     throw new EvalTimeoutError(timeoutMs);
   } finally {
     if (timeout) clearTimeout(timeout);
+    // A timed-out task runs on detached; its late rejection has no one left to inform.
     if (controller.signal.aborted) void task.catch(() => undefined);
   }
 }

@@ -11,6 +11,7 @@ import { runPluginContribution } from "../../src/features/plugins/lib/run-result
 import { buildReaderTools } from "../../../../packages/agent/src/tools/reader-tools";
 import { buildNavigationTools } from "../../../../packages/agent/src/tools/navigation-tools";
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
+import { withProbeCleanup } from "./probe-cleanup";
 
 async function assertIsolated(): Promise<string> {
   const path = (await appDataDir()).replace(/[/\\]$/, "");
@@ -40,18 +41,18 @@ export async function runDesktopReadingProbe(bookId: string, readOnly = false) {
   };
   const disposables: PluginDisposable[] = [];
   const worker = await startPluginWorker(manifest, "0.5.4", disposables, { moduleUrl: new URL("./reading-probe.ts", import.meta.url).href });
-  try {
+  return withProbeCleanup(async () => {
     await worker.checkHealth(); worker.promote();
     const command = getDefaultStore().get(pluginCommandsAtom).find(command => command.pluginId === id);
     if (!command) throw new Error("Reading probe command did not register");
     await command.run();
     const disk = await invoke<Record<string, string>>("load_kv_all");
     return { dataDir, result: JSON.parse(disk[prefix + "result"] ?? "null") as unknown };
-  } finally {
+  }, async () => {
     try { await worker.terminate(); }
     finally { for (const disposable of disposables.reverse()) disposable.dispose(); }
     if (inspectContributions(id).length) throw new Error("Reading probe left contributions behind");
-  }
+  });
 }
 
 export async function runDesktopAgentReadingProbe(bookId: string) {

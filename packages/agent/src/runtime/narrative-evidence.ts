@@ -151,7 +151,7 @@ function possibleTransliteratedNames(answer: string): string[] {
 
 function wordRuns(text: string): string[][] {
   return text
-    .split(/[\n。！？!?；;：:,，、（）()【】\[\]]+/u)
+    .split(/[\n。！？!?；;：:,，、（）()【】[\]]+/u)
     .map((part) =>
       [...segmenter.segment(part)]
         .filter((segment) => segment.isWordLike)

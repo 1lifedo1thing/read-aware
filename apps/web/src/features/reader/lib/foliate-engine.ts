@@ -82,6 +82,7 @@ export async function loadContentNavigation(): Promise<Pick<EngineAPI, "contentC
  * whole vendored module tree. Failures are swallowed; a real open retries.
  */
 export function preloadFoliateEngine(): void {
+  // Warmup only: the next real open loads the engine again and reports its failure.
   void loadEngine().catch(() => {});
 }
 

@@ -41,7 +41,7 @@ export async function runDocumentLayoutRegressions(ViewClass: typeof View): Prom
       sections: [{ id: "file", size: 1000, load: () => url }],
       toc: [{ label: "One", href: "one" }, { label: "Two", href: "two", subitems: [{ label: "Minor", href: "minor" }] }],
       resolveHref: async href => ({ index: 0, anchor: doc => doc.getElementById(href) }),
-      splitTOCHref: href => ["file", href], getTOCFragment: (doc, fragment) => doc.getElementById(String(fragment)),
+      splitTOCHref: href => ["file", href], getTOCFragment: (doc, fragment) => (typeof fragment === "string" ? doc.getElementById(fragment) : null),
     };
     try {
       const starts = await prepareReaderChapterStarts(book);

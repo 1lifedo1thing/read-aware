@@ -38,7 +38,7 @@ if (process.env.READAWARE_SERVICE_WORKER_PROOF !== "1") {
       const commands = getDefaultStore().get(pluginCommandsAtom).filter(command => command.pluginId === "service-caller");
       expect(await commands.find(command => command.id === "transaction-denied")!.run()).toMatchObject({ toast: "plugin/permission-denied" });
       const result = await commands.find(command => command.id === "book")!.run();
-      expect(JSON.parse(String(result?.toast))).toEqual({ activated: false, canWrite: false, bookId: "book", foreignError: "plugin/object-access-denied", privateError: "plugin/service-forbidden" });
+      expect(JSON.parse(result?.toast as string)).toEqual({ activated: false, canWrite: false, bookId: "book", foreignError: "plugin/object-access-denied", privateError: "plugin/service-forbidden" });
       const denied = await Promise.resolve(commands.find(command => command.id === "foreign")!.run()).catch(error => error);
       expect(denied).toMatchObject({ code: "plugin/object-access-denied" });
     } finally { await caller.terminate(); await provider.terminate(); }

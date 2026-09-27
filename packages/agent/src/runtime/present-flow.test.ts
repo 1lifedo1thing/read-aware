@@ -96,7 +96,7 @@ describe("present flow", () => {
       fauxAssistantMessage("Again."),
     ]);
     expect(references(await collect(thread.sendTurn({ text: "Show again" })))).toHaveLength(1);
-    await thread.dispose();
+    thread.dispose();
   });
 
   test("present_books validates ids, hydrates snapshots, emits one reference chunk", async () => {

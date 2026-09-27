@@ -4,6 +4,7 @@ import { createExaClient } from "./exa";
 import { createTavilyClient } from "./tavily";
 import { createSerpApiClient } from "./serpapi";
 import { createBraveClient } from "./brave";
+import { fetchInputUrl } from "../models/transport";
 
 const key = "private-provider-test-key";
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
@@ -15,8 +16,8 @@ test("Exa maps filters and highlights; contents freshness uses maxAgeHours, not 
   const bodies: Record<string, unknown>[] = [];
   const client = createExaClient(key, async (request, init) => {
     expect(new Headers(init?.headers).get("x-api-key")).toBe(key);
-    const body = JSON.parse(String(init?.body)); bodies.push(body);
-    return String(request).endsWith("/search") ? json({ results: [{ title: "Release", url, highlights: ["Cedar 4.2"], publishedDate: "2026-09-19" }] })
+    const body = JSON.parse(init?.body as string); bodies.push(body);
+    return fetchInputUrl(request).endsWith("/search") ? json({ results: [{ title: "Release", url, highlights: ["Cedar 4.2"], publishedDate: "2026-09-19" }] })
       : json({ results: [{ url, title: "Release", text: "x".repeat(800) }] });
   });
   const result = await client.search(query);
@@ -35,8 +36,8 @@ test("Tavily requests basic search without answer/auto upgrade; failed extractio
   const bodies: Record<string, unknown>[] = [];
   const client = createTavilyClient(key, async (request, init) => {
     expect(new Headers(init?.headers).get("Authorization")).toBe(`Bearer ${key}`);
-    bodies.push(JSON.parse(String(init?.body)));
-    return String(request).endsWith("/search") ? json({ answer: "untrusted generated answer", results: [{ title: "Release", url, content: "Cedar 4.2" }] })
+    bodies.push(JSON.parse(init?.body as string));
+    return fetchInputUrl(request).endsWith("/search") ? json({ answer: "untrusted generated answer", results: [{ title: "Release", url, content: "Cedar 4.2" }] })
       : json({ results: [{ url, raw_content: "Original article" }], failed_results: [] });
   });
   expect((await client.search(query)).sources).toEqual([source]);
@@ -51,7 +52,7 @@ test("Tavily requests basic search without answer/auto upgrade; failed extractio
 
 test("SerpAPI uses Google organic sources, encodes its required query credential, and rejects HTTP 200 errors", async () => {
   const client = createSerpApiClient(key, async (request, init) => {
-    const params = new URL(String(request)).searchParams;
+    const params = new URL(fetchInputUrl(request)).searchParams;
     expect(params.get("engine")).toBe("google"); expect(params.get("api_key")).toBe(key);
     expect(params.get("q")).toBe("release (site:example.org)");
     expect(params.get("tbs")).toBe("qdr:d7"); expect(params.get("hl")).toBe("zh");
@@ -72,7 +73,7 @@ test("Brave maps Chinese variants, preserves dates/snippets, recognizes omitted 
   for (const [input, mapped] of [["zh", "zh-hans"], ["zh-TW", "zh-hant"], ["en-US", "en"], ["pt-BR", "pt-br"]]) {
     const client = createBraveClient(key, async (request, init) => {
       expect(new Headers(init?.headers).get("X-Subscription-Token")).toBe(key);
-      const params = new URL(String(request)).searchParams;
+      const params = new URL(fetchInputUrl(request)).searchParams;
       expect(params.get("search_lang")).toBe(mapped); expect(params.get("count")).toBe("1");
       expect(params.get("freshness")).toMatch(/^\d{4}-\d{2}-\d{2}to\d{4}-\d{2}-\d{2}$/);
       return json({ type: "search", web: { results: [{ title: "Release", url, description: "Cedar 4.2", extra_snippets: ["Official release"], page_age: "2026-09-19" }] } });
@@ -87,10 +88,10 @@ test("Brave maps Chinese variants, preserves dates/snippets, recognizes omitted 
 test("Brave reads only exact-URL chunks through its own key and reports partial/freshness limits", async () => {
   const calls: string[] = [];
   const client = createBraveClient(key, async (request, init) => {
-    calls.push(String(request));
-    expect(String(request)).toBe("https://api.search.brave.com/res/v1/llm/context");
+    calls.push(fetchInputUrl(request));
+    expect(fetchInputUrl(request)).toBe("https://api.search.brave.com/res/v1/llm/context");
     expect(new Headers(init?.headers).get("X-Subscription-Token")).toBe(key);
-    expect(JSON.parse(String(init?.body))).toMatchObject({ q: url, maximum_number_of_tokens_per_url: 8192,
+    expect(JSON.parse(init?.body as string)).toMatchObject({ q: url, maximum_number_of_tokens_per_url: 8192,
       context_threshold_mode: "disabled", enable_local: false });
     return json({ grounding: { generic: [
       { url: "https://example.org/related", title: "Wrong page", snippets: ["Not the requested page"] },
