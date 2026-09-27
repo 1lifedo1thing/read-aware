@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useLocalAtom } from "./lib/useLocalAtom";
 import { Sidebar } from "./Sidebar";
@@ -14,6 +15,21 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+function SidebarDemo({ side, label, children }: { side?: "left" | "right"; label: string; children: ReactNode }) {
+  const [open, setOpen] = useLocalAtom(false);
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Open sidebar</Button>
+      <Sidebar open={open} onClose={() => setOpen(false)} side={side} label={label}>
+        <div className="p-6">
+          <p className="text-sm text-fg-muted">{children}</p>
+          <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Close</Button>
+        </div>
+      </Sidebar>
+    </>
+  );
+}
+
 export const Left: Story = {
   args: {
     side: "left",
@@ -22,20 +38,7 @@ export const Left: Story = {
     label: "Navigation",
     children: null,
   },
-  render: (args) => {
-    const [open, setOpen] = useLocalAtom(false);
-    return (
-      <>
-        <Button onClick={() => setOpen(true)}>Open sidebar</Button>
-        <Sidebar open={open} onClose={() => setOpen(false)} side={args.side} label="Navigation">
-          <div className="p-6">
-            <p className="text-sm text-fg-muted">Sidebar content</p>
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Close</Button>
-          </div>
-        </Sidebar>
-      </>
-    );
-  },
+  render: (args) => <SidebarDemo side={args.side} label="Navigation">Sidebar content</SidebarDemo>,
 };
 
 export const Right: Story = {
@@ -46,18 +49,5 @@ export const Right: Story = {
     label: "Context panel",
     children: null,
   },
-  render: (args) => {
-    const [open, setOpen] = useLocalAtom(false);
-    return (
-      <>
-        <Button onClick={() => setOpen(true)}>Open sidebar</Button>
-        <Sidebar open={open} onClose={() => setOpen(false)} side={args.side} label="Context panel">
-          <div className="p-6">
-            <p className="text-sm text-fg-muted">Context panel</p>
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Close</Button>
-          </div>
-        </Sidebar>
-      </>
-    );
-  },
+  render: (args) => <SidebarDemo side={args.side} label="Context panel">Context panel</SidebarDemo>,
 };

@@ -127,18 +127,19 @@ export function ReaderWorkspace({
   const [isFixedLayout, setIsFixedLayout] = useState(false);
   const modeControl = useReadingModeControl(selectedBook.id, !isFixedLayout);
   const textUnitMode = modeControl.mode;
+  const { setActive: setModeActive } = modeControl;
   const textUnitModeActive = modeControl.request.active;
   const [readingCursor, setReadingCursor] = useState<ReadingCursor | null>(null);
   useEffect(() => {
     setReadingCursor(null);
   }, [selectedBook.id, readerSource]);
   const toggleTextUnitMode = useCallback(() => {
-    modeControl.setActive(!textUnitModeActive);
+    setModeActive(!textUnitModeActive);
     // Entering the mode is a "start reading" gesture — drop the chrome so the
     // wash and the floating bar take over immediately.
     if (!textUnitModeActive) onHideShell();
-  }, [modeControl.setActive, textUnitModeActive, onHideShell]);
-  const exitTextUnitMode = useCallback(() => modeControl.setActive(false), [modeControl.setActive]);
+  }, [setModeActive, textUnitModeActive, onHideShell]);
+  const exitTextUnitMode = useCallback(() => setModeActive(false), [setModeActive]);
 
   // Track active reading time once the book is rendered. Reader relocate/page
   // callbacks bump activity so in-iframe reading isn't mistaken for idle.

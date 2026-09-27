@@ -58,12 +58,15 @@ if (process.env.READER_TYPOGRAPHY_CASE === "1") {
     const layoutForReadingMode = () => ({ maxColumnCount: 1 });
     const isFixedLayoutRef = { current: false }, readingModeRef = { current: "scroll" as const };
     function Harness() {
-      useAppearance(); appearance = useReaderAppearance("book");
-      engineSource = useReaderEngineLoadSource(loadedBook, "book", appearance.effective.readingMode, appearance.effective);
+      useAppearance();
+      const readerAppearance = useReaderAppearance("book");
+      appearance = readerAppearance;
+      engineSource = useReaderEngineLoadSource(loadedBook, "book", readerAppearance.effective.readingMode, readerAppearance.effective);
+      const readingMode = readerAppearance.effective.readingMode;
       useEffect(() => {
         const detach = attachReadingEngine(viewRef.current, sessionId, "book", "version", "version", engineSource.current!.origin);
         return () => { retirements.push(stampEventCause({}, engineSource.current!.origin)); detach(engineSource.current!.origin); };
-      }, [appearance.effective.readingMode]);
+      }, [readingMode]);
       typography = useReaderTypography({ readerSettings: appearance.effective, viewRef, readerRootRef: viewportRef, viewportRef,
         isFixedLayoutRef, readingModeRef, layoutForReadingMode });
       return null;

@@ -11,7 +11,7 @@
  * lives here and survives the user leaving to fetch their token; it resets
  * only on a successful connect.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import { GithubLogo, GoogleLogo } from "@phosphor-icons/react";
 import { Button, Caption, Dialog, Spinner, TextField, useToast } from "@read-aware/ui";
@@ -140,12 +140,12 @@ export function SyncConnectDialog({ open, onClose, sync }: SyncConnectDialogProp
   // opens must be on screen before any passphrase is asked for. Consumed
   // once, on open.
   const [linkToken, setLinkToken] = useAtom(syncLoginTokenAtom);
+  const verifyLinkToken = useEffectEvent((token: string) => { void verifyToken(token, "link"); });
   useEffect(() => {
     if (!open || !linkToken || sync.busy) return;
+    // Fires exactly once per delivered link token: it is consumed here.
     setLinkToken(null);
-    void verifyToken(linkToken, "link");
-    // Fires exactly once per delivered link token (consumed above); the
-    // verifyToken closure is recreated per render, which is fine here.
+    verifyLinkToken(linkToken);
   }, [open, linkToken, setLinkToken, sync.busy]);
 
   const handleOauth = (provider: "google" | "github") => {

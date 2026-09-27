@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useLocalAtom } from "./lib/useLocalAtom";
 import { TimeField } from "./TimeField";
@@ -10,12 +11,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+function ControlledTimeField(args: ComponentProps<typeof TimeField>) {
+  const [value, setValue] = useLocalAtom(args.value ?? "");
+  return <TimeField {...args} value={value} onChange={setValue} />;
+}
+
 export const Default: Story = {
   args: { label: "Day starts at", value: "07:00" },
-  render: (args) => {
-    const [value, setValue] = useLocalAtom(args.value ?? "");
-    return <TimeField {...args} value={value} onChange={setValue} />;
-  },
+  render: (args) => <ControlledTimeField {...args} />,
 };
 
 export const WithHelperText: Story = {
@@ -24,28 +27,19 @@ export const WithHelperText: Story = {
     value: "19:00",
     helperText: "Runs until the day slot starts again.",
   },
-  render: (args) => {
-    const [value, setValue] = useLocalAtom(args.value ?? "");
-    return <TimeField {...args} value={value} onChange={setValue} />;
-  },
+  render: (args) => <ControlledTimeField {...args} />,
 };
 
 /** Finer granularity for schedules that care about the quarter hour. */
 export const MinuteSteps: Story = {
   args: { label: "Reminder at", value: "21:45", minuteStep: 15 },
-  render: (args) => {
-    const [value, setValue] = useLocalAtom(args.value ?? "");
-    return <TimeField {...args} value={value} onChange={setValue} />;
-  },
+  render: (args) => <ControlledTimeField {...args} />,
 };
 
 /** An unparseable stored value reads as unset rather than as midnight. */
 export const Unset: Story = {
   args: { label: "Starts at", value: "" },
-  render: (args) => {
-    const [value, setValue] = useLocalAtom(args.value ?? "");
-    return <TimeField {...args} value={value} onChange={setValue} />;
-  },
+  render: (args) => <ControlledTimeField {...args} />,
 };
 
 export const WithError: Story = {

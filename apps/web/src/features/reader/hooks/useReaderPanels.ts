@@ -59,6 +59,7 @@ export function useReaderPanels(bookId: string, visible: boolean, exclusive: boo
   const layoutState = useSyncExternalStore(readerPanelLayoutStore.subscribe, readerPanelLayoutStore.getRenderSnapshot);
   const layout = useMemo(() => getReaderPanelLayout(bookId, layoutState.raw), [bookId, layoutState]);
   const [transient, setTransient] = useState(() => closedTransient(bookId, causalActor("system")));
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- a layout flip mints a fresh environment actor: each flip is its own cause
   const environmentOrigin = useMemo(() => causalActor(layoutOrigin ?? "system"), [exclusive, layoutOrigin]);
   const [token, setToken] = useState(0);
   const [chatFocus, setChatFocus] = useState(() => ({ id: 0, origin: causalActor("system") }));

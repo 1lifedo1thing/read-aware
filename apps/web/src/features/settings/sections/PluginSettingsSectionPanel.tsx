@@ -35,6 +35,7 @@ export function PluginSettingsSectionPanel({
   const view = useMemo(() => {
     const built = buildPluginSettingsView(manifest);
     return built ? { ...built, title: undefined } : null;
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- revision invalidates the storage-backed values the builder reads
   }, [manifest, revision]);
   // A plugin that provides a sync backend (`sync:transport`) gets its whole
   // sync surface here — connect, status, sync now, disconnect — instead of

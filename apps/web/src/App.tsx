@@ -104,7 +104,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useAtom(settingsOpenAtom);
   const generalSettings = useAtomValue(generalSettingsAtom);
   const pluginsReady = useAtomValue(pluginsReadyAtom);
-  const softwareUpdate = useSoftwareUpdate();
+  const { loadCurrentVersion, checkForUpdates } = useSoftwareUpdate();
   // Latch: mount the (lazy) settings dialog on first open and keep it mounted,
   // preserving the always-mounted dialog's state/exit-animation behavior while
   // keeping its chunk out of the boot path.
@@ -172,6 +172,7 @@ function App() {
     replaceBookInState: library.replaceBookInState,
     reportError: library.reportError,
   });
+  const { openReader } = reader;
 
   // Shelf ⇄ reader surface handoff: opaque-incoming / fading-outgoing, with
   // the open-direction fade deferred until the reader has rendered and the
@@ -182,7 +183,7 @@ function App() {
   const createGlobalConversation = useCallback(() => {
     setActiveGlobalThreadId(newGlobalThreadId());
     setActiveTopNav("agent");
-    if (reader.selectedBook) closeBook();
+    if (reader.selectedBook) void closeBook();
   }, [
     closeBook,
     reader.selectedBook,
@@ -212,12 +213,12 @@ function App() {
   });
 
   useEffect(() => {
-    void softwareUpdate.loadCurrentVersion();
-  }, [softwareUpdate.loadCurrentVersion]);
+    void loadCurrentVersion();
+  }, [loadCurrentVersion]);
 
   useEffect(() => {
-    if (generalSettings.autoUpdate) void softwareUpdate.checkForUpdates();
-  }, [generalSettings.autoUpdate, softwareUpdate.checkForUpdates]);
+    if (generalSettings.autoUpdate) void checkForUpdates();
+  }, [generalSettings.autoUpdate, checkForUpdates]);
 
   // While the shelf holds over the opening reader it must stay VISUALLY
   // frozen: opening bumps lastOpenedAt, and the recency sort would otherwise
@@ -312,7 +313,7 @@ function App() {
         return;
       }
       if (reader.selectedBook) {
-        closeBook();
+        void closeBook();
         return;
       }
       if (inSecondary) {
@@ -336,6 +337,7 @@ function App() {
     inCollection,
     closeBook,
     setSettingsOpen,
+    setSearchModalOpen,
     setShelfSelection,
     setActiveTopNav,
     setActiveCollectionId,
@@ -344,7 +346,7 @@ function App() {
   const openAppSurface = useCallback(
     (surface: TopNav) => {
       setActiveTopNav(surface);
-      if (reader.selectedBook) closeBook();
+      if (reader.selectedBook) void closeBook();
     },
     [closeBook, reader.selectedBook, setActiveTopNav],
   );
@@ -363,14 +365,14 @@ function App() {
         !readerExiting &&
         shelfHandoff === "idle"
       ) {
-        if (reader.selectedBook.id !== book.id) reader.openReader(book);
+        if (reader.selectedBook.id !== book.id) openReader(book);
         return;
       }
       handleOpenBook(book);
     },
     [
       handleOpenBook,
-      reader.openReader,
+      openReader,
       reader.selectedBook,
       readerExiting,
       shelfHandoff,
@@ -442,7 +444,7 @@ function App() {
                 readerProgress={reader.readerProgress}
                 currentPage={reader.currentPage}
                 totalPages={reader.totalPages}
-                onCloseReader={closeBook}
+                onCloseReader={() => void closeBook()}
                 onRetryOpen={handleOpenBook}
                 onReimportBook={library.openImportPicker}
                 onOpenSyncSettings={reader.openSyncSettings}

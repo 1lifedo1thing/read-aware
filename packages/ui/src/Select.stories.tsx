@@ -10,6 +10,21 @@ const sampleOptions = [
   { label: "Rating", value: "rating" },
 ];
 
+function ControlledSelect() {
+  const [value, setValue] = useLocalAtom("title");
+  return (
+    <div className="flex flex-col gap-4">
+      <Select
+        label="Sort by"
+        options={sampleOptions}
+        value={value}
+        onChange={setValue}
+      />
+      <p className="text-sm text-fg-muted">Selected: {value}</p>
+    </div>
+  );
+}
+
 const meta = {
   title: "Design System/Components/Select",
   component: Select,
@@ -72,20 +87,7 @@ export const OutlinedWithError: Story = {
 };
 
 export const Controlled: Story = {
-  render: () => {
-    const [value, setValue] = useLocalAtom("title");
-    return (
-      <div className="flex flex-col gap-4">
-        <Select
-          label="Sort by"
-          options={sampleOptions}
-          value={value}
-          onChange={setValue}
-        />
-        <p className="text-sm text-fg-muted">Selected: {value}</p>
-      </div>
-    );
-  },
+  render: () => <ControlledSelect />,
   args: {
     label: "",
     options: [],

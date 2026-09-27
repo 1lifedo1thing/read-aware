@@ -17,14 +17,16 @@ export function useConversationTurnRequests(target: ConversationTarget, conversa
   const current = useRef({ conversation, targetId: target.id });
   current.current = { conversation, targetId: target.id };
   useSyncExternalStore(subscribe, revision, revision);
-  useEffect(() => conversationTurnRequests.bind(target, {
-    state: () => ({ loading: current.current.targetId !== target.id || current.current.conversation.isLoading || conversationRuntime.isControlling(target.id),
-      ready: !current.current.conversation.isLoading && !current.current.conversation.isStreaming && conversationRuntime.canStart(target.id),
+  // The binding is keyed by the target's value; a new object for the same target keeps it.
+  const { kind: targetKind, id: targetId } = target;
+  useEffect(() => conversationTurnRequests.bind({ kind: targetKind, id: targetId }, {
+    state: () => ({ loading: current.current.targetId !== targetId || current.current.conversation.isLoading || conversationRuntime.isControlling(targetId),
+      ready: !current.current.conversation.isLoading && !current.current.conversation.isStreaming && conversationRuntime.canStart(targetId),
       generation: current.current.conversation.messages, canRetry: current.current.conversation.messages.some(message => message.role === "user") }),
     draft: text => composerRef.current?.adoptDraft(text) ?? false,
     send: text => current.current.conversation.send(text),
     retry: () => current.current.conversation.retry(),
-  }), [target.kind, target.id, composerRef]);
+  }), [targetKind, targetId, composerRef]);
 
   return {
     request: conversationTurnRequests.pending(target.id),

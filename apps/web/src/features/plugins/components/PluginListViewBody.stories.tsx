@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ScrollArea } from "@read-aware/ui";
 import type { Decorator } from "@storybook/react-vite";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import type { PluginListItem, PluginListView } from "../lib/plugin-types";
 import { PluginListViewBody } from "./PluginListViewBody";
 import { noopRunner, sampleActions } from "./plugin.fixtures";
@@ -66,29 +66,31 @@ type Story = StoryObj<typeof meta>;
  * to rows — here a go-to box that reads a number as chapter and page. The
  * story answers locally; in the app the session swaps the answer in place.
  */
+function GoToSearch(args: ComponentProps<typeof PluginListViewBody>) {
+  const [view, setView] = useState<PluginListView>(args.view);
+  const [searchQuery, setSearchQuery] = useState("");
+  const answer = (query: string): PluginListView => ({
+    ...args.view,
+    items: query
+      ? [
+          { id: "chapter", title: `Chapter ${query}`, icon: "book-open", onSelect: () => undefined },
+          { id: "page", title: `Page ${query}`, icon: "file-text", onSelect: () => undefined },
+          { id: "search", title: `Search the text for “${query}”`, icon: "magnifying-glass", onSelect: () => undefined },
+        ]
+      : args.view.items,
+  });
+  return (
+    <PluginListViewBody
+      {...args}
+      view={view}
+      searchQuery={searchQuery}
+      onQuery={async (query) => { setSearchQuery(query); setView(answer(query)); }}
+    />
+  );
+}
+
 export const PluginSearch: Story = {
-  render: (args) => {
-    const [view, setView] = useState<PluginListView>(args.view);
-    const [searchQuery, setSearchQuery] = useState("");
-    const answer = (query: string): PluginListView => ({
-      ...args.view,
-      items: query
-        ? [
-            { id: "chapter", title: `Chapter ${query}`, icon: "book-open", onSelect: () => undefined },
-            { id: "page", title: `Page ${query}`, icon: "file-text", onSelect: () => undefined },
-            { id: "search", title: `Search the text for “${query}”`, icon: "magnifying-glass", onSelect: () => undefined },
-          ]
-        : args.view.items,
-    });
-    return (
-      <PluginListViewBody
-        {...args}
-        view={view}
-        searchQuery={searchQuery}
-        onQuery={async (query) => { setSearchQuery(query); setView(answer(query)); }}
-      />
-    );
-  },
+  render: (args) => <GoToSearch {...args} />,
   args: {
     view: {
       kind: "list",

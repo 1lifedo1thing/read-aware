@@ -47,6 +47,7 @@ export function AboutPanel() {
   const { t } = useTranslation(["settings", "common"]);
   const openLink = useExternalLink();
   const update = useSoftwareUpdate();
+  const { loadCurrentVersion } = update;
   const updateControlRef = useMaintenanceSurface("updates");
   const channel = useSyncExternalStore(subscribeUpdateChannel, getUpdateChannel);
   const buildLabel = !isTauri()
@@ -58,8 +59,8 @@ export function AboutPanel() {
         : t("about.buildDesktop");
 
   useEffect(() => {
-    void update.loadCurrentVersion();
-  }, [update.loadCurrentVersion]);
+    void loadCurrentVersion();
+  }, [loadCurrentVersion]);
 
   const busy =
     update.state.phase === "checking" ||

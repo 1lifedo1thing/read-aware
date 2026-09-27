@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { AppError, errorCode, type ReadingModePosition } from "@read-aware/core";
 import { useToast } from "@read-aware/ui";
@@ -73,8 +73,9 @@ export type TextUnitNavigator = {
    *  wash there and keeps the abandoned unit as a return point until the
    *  reader goes back to it or leaves the mode. */
   hasReturnPoint: boolean;
-  /** Engine bridges — invoke from the reader's `load` / `relocate` handlers. */
-  handleSectionLoad: (doc: Document, index: number, origin?: DomainActor) => void;
+  /** Engine bridges — invoke from the reader's `load` / `relocate` handlers.
+   *  Section loads settle once segmentation lands; failures surface as status. */
+  handleSectionLoad: (doc: Document, index: number, origin?: DomainActor) => Promise<void>;
   handleContentVersion: (bookId: string, contentVersion: string, origin?: DomainActor) => void;
   handleRelocate: (detail: FoliateRelocateDetail) => void;
   /** Invoke from the reader's `create-overlay` handler: the engine rebuilds a
@@ -228,6 +229,8 @@ export function useTextUnitNavigator({
 
   // Drop outgoing document references before activation. Persisted positions
   // are restored only after the loader supplies the actual content version.
+  // A new configuration actor alone is not a new book: it is read, not tracked.
+  const clearForBook = useEffectEvent(() => clearUnit(configurationOrigin));
   useEffect(() => {
     buildSession.invalidate();
     bookIdRef.current = bookId;
@@ -239,7 +242,7 @@ export function useTextUnitNavigator({
     layoutReadyRef.current = false;
     appliedCfiRef.current = null;
     pendingAnchorRef.current = null;
-    clearUnit(configurationOrigin);
+    clearForBook();
     // Do not restore or overwrite a saved position before the loader provides
     // the actual content identity (file hash or virtual-content version).
     setResting(null);
@@ -729,7 +732,7 @@ export function useTextUnitNavigator({
     persistState(origin);
     pendingAnchorRef.current = null;
     clearUnit(origin);
-  }, [active, suspended, configurationRevision, configurationOrigin, applyIndex, buildSession, buildUnits, clearWash, persistState, setResting, setReturnPoint, restoredIndex]);
+  }, [active, suspended, configurationRevision, configurationOrigin, applyIndex, buildSession, buildUnits, clearUnit, clearWash, persistState, setResting, setReturnPoint, restoredIndex]);
 
   // Mode or unit switch: re-segment the loaded section under the new plugin
   // policy. Contribution identity matters even when two plugins reuse the same
@@ -775,7 +778,7 @@ export function useTextUnitNavigator({
       if (index >= 0) applyIndex(index, { scroll: false, origin });
       else clearUnit(origin);
     })();
-  }, [active, suspended, modeKey, unitId, segmentText, configurationOrigin, applyIndex, buildSession, buildUnits, persistState, setResting, setReturnPoint]);
+  }, [active, suspended, modeKey, unitId, segmentText, configurationOrigin, applyIndex, buildSession, buildUnits, clearUnit, persistState, setResting, setReturnPoint]);
 
   // Android: while the mode is on, the volume keys step units (volume
   // down = forward). The shell captures them only for the mode's duration and

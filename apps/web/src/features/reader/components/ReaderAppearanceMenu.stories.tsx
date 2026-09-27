@@ -21,7 +21,7 @@ function appearance(
         ? {
             [BOOK_ID]: {
               scope: bookOverride.scope,
-              settings: { ...prefs, ...(bookOverride.settings ?? {}) },
+              settings: { ...prefs, ...bookOverride.settings },
             },
           }
         : {},

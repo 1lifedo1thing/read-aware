@@ -58,6 +58,7 @@ export function useReferencePreview(bookId: string | undefined, fallbackLabel: s
         unbind = binding.dispose; nativeInterrupt.current = binding.interrupt;
       }
     });
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- revision is a generation counter, not a node: cleanup bumps the live value
     return () => { alive = false; revision.current++; stop(); unbind(); nativeInterrupt.current = () => {}; clearCommit(new AppError("reader/superseded", "Preview renderer unmounted")); };
   }, [bookId, clearCommit]);
   const beginNativeFootnote = useCallback(() => {

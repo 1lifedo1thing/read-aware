@@ -102,7 +102,7 @@ export const ConfirmedIdentity: Story = {
     await expect(body.getByText("attacker@example.com")).toBeVisible();
     // Identity confirmation is a separate action: no password control exists
     // until the user explicitly continues from the displayed account.
-    expect(body.queryByLabelText("Encryption passphrase")).not.toBeInTheDocument();
+    await expect(body.queryByLabelText("Encryption passphrase")).not.toBeInTheDocument();
   },
 };
 

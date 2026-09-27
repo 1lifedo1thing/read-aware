@@ -59,6 +59,7 @@ export function usePluginViewSource(
     return () => {
       unwatch();
       live.current = false;
+      // oxlint-disable-next-line react-hooks/exhaustive-deps -- revision is a generation counter, not a node: cleanup bumps the live value
       revision.current++;
       discard(current.current);
       current.current = null;

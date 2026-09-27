@@ -24,7 +24,7 @@ export function usePluginTree(view: PluginTreeView, busy: boolean, onResult: Plu
       setFocused(focusedId);
       if (ownsFocus.current && focusedId) elements.current.get(focusedId)?.focus();
     }
-  });
+  }, [rows, focused, focusedId]);
   useLayoutEffect(() => {
     const branches = pluginTreeBranches(view.nodes);
     setExpanded(current => {
@@ -77,7 +77,7 @@ export function usePluginTree(view: PluginTreeView, busy: boolean, onResult: Plu
       const now = Date.now(), character = key.toLocaleLowerCase();
       const text = now - search.current.time > 700 ? character : search.current.text + character;
       search.current = { text, time: now };
-      const prefix = [...text].every(letter => letter === character) ? character : text;
+      const prefix = text.split("").every(letter => letter === character) ? character : text;
       const order = [...rows.slice(index + 1), ...rows.slice(0, index + 1)];
       focus(order.find(candidate => candidate.node.title.toLocaleLowerCase().startsWith(prefix))?.node.id);
     }

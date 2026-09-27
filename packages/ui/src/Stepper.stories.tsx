@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stepper } from "./Stepper";
 
@@ -12,27 +12,29 @@ type Story = StoryObj<typeof meta>;
 
 const SIZES = ["XXS", "XS", "Small", "Medium", "Large", "XL", "XXL", "XXXL"];
 
+function SizeStepper(args: ComponentProps<typeof Stepper>) {
+  const [index, setIndex] = useState(3);
+  return (
+    <div className="w-80">
+      <Stepper
+        {...args}
+        valueText={SIZES[index]!}
+        canDecrement={index > 0}
+        canIncrement={index < SIZES.length - 1}
+        onDecrement={() => setIndex((i) => Math.max(0, i - 1))}
+        onIncrement={() => setIndex((i) => Math.min(SIZES.length - 1, i + 1))}
+      />
+    </div>
+  );
+}
+
 /** Plus / minus through an ordered range; each end disables its button. */
 export const Default: Story = {
   args: {
     label: "Font Size", valueText: "Medium", onDecrement: () => {}, onIncrement: () => {},
     decrementLabel: "Smaller text", incrementLabel: "Larger text",
   },
-  render: (args) => {
-    const [index, setIndex] = useState(3);
-    return (
-      <div className="w-80">
-        <Stepper
-          {...args}
-          valueText={SIZES[index]!}
-          canDecrement={index > 0}
-          canIncrement={index < SIZES.length - 1}
-          onDecrement={() => setIndex((i) => Math.max(0, i - 1))}
-          onIncrement={() => setIndex((i) => Math.min(SIZES.length - 1, i + 1))}
-        />
-      </div>
-    );
-  },
+  render: (args) => <SizeStepper {...args} />,
 };
 
 /** The reader's text-size control: a small and a large "A" for the glyphs. */

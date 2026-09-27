@@ -82,7 +82,7 @@ export function Select({
       onChange?.(val);
       setOpen(false);
     },
-    [controlledValue, onChange],
+    [controlledValue, onChange, setInternalValue, setOpen],
   );
 
   // close on outside click / escape — the listbox is portaled to <body>, so it
@@ -105,7 +105,7 @@ export function Select({
       document.removeEventListener("mousedown", onMouseDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   // Anchor the portaled listbox to the trigger with fixed coordinates, so it
   // floats above any scroll container (e.g. a settings dialog) instead of

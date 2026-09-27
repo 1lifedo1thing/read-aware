@@ -49,6 +49,7 @@ function Reader({ source, bookId, readingMode, label, onToggle, log }: {
     open: (session: ReaderEngineSession<Source, string>) => {
       log.opened.push(`${session.key.source.name}/${session.key.bookId}/${session.key.readingMode}@${label}`);
       const section = document.getElementById("section")!;
+      // oxlint-disable-next-line react-hooks/rules-of-hooks -- open runs inside useReaderEngineSession's effect event, like FoliateReaderView
       const listener = () => handleSectionClick();
       section.addEventListener("click", listener);
       session.onClose(origin => {

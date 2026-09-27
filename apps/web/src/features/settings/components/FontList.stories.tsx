@@ -20,11 +20,13 @@ const meta = {
   title: "Interface/Settings/FontList",
   component: FontList as (props: FontListArgs) => ReturnType<typeof FontList>,
   args: { value: toCuratedFont(CURATED_FONTS[2]!.id), onChange: () => {} },
-  render: (args) => {
-    const [value, setValue] = useState(args.value);
-    return <div className="w-[358px]"><FontList {...args} value={value} onChange={setValue} /></div>;
-  },
+  render: (args) => <ControlledFontList {...args} />,
 } satisfies Meta<FontListArgs>;
+
+function ControlledFontList(args: FontListArgs) {
+  const [value, setValue] = useState(args.value);
+  return <div className="w-[358px]"><FontList {...args} value={value} onChange={setValue} /></div>;
+}
 
 export default meta;
 type Story = StoryObj<typeof meta>;

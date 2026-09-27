@@ -13,7 +13,7 @@
  * first cycle itself — the user just asked for this remote; making them find
  * "Sync now" next would be a second ask for the same intent.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Button, Caption, Dialog, Spinner, TextField, useToast } from "@read-aware/ui";
 import { describeError, useTranslation } from "../../../i18n";
 import { createLogger } from "../../../platform/logger";
@@ -78,13 +78,15 @@ export function TransportConnectDialog({
 
   // Fresh ritual per opening: no passphrase and no probe verdict survives
   // from a previous attempt or a different transport.
+  // The ritual is keyed by the transport; `probe` reads the current sync ports.
+  const startRitual = useEffectEvent((targetRef: string | null) => {
+    if (targetRef) void probe(targetRef);
+    else probeAttempt.current += 1;
+  });
   useEffect(() => {
     setPassphrase("");
     setPassphraseError(null);
-    if (ref) void probe(ref);
-    else probeAttempt.current += 1;
-    // `probe` is recreated per render; the ritual is keyed by the transport.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    startRitual(ref);
   }, [ref]);
 
   const handleClose = () => {

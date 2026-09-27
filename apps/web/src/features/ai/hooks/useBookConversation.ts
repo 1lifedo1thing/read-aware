@@ -281,7 +281,7 @@ export function useBookConversation(
       })();
       conversationRuntime.track(bookId, stop, work);
     },
-    [bookId, bookTitle, thread, persist, reloadFromStore, setIsStreaming, t],
+    [bookId, bookTitle, thread, persist, setIsStreaming, t],
   );
 
   const send = useCallback(

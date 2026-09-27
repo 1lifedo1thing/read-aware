@@ -33,6 +33,7 @@ export function SyncAccountGroup() {
   const accountInfo = useSyncAccountInfo(sync.connected && sync.connectedTransport === null);
   const purchaseAllowed = useExternalPurchaseAllowed();
   const flows = useSyncAccountFlows(sync, purchaseAllowed);
+  const { setConnectOpen } = flows;
   const movingBookTitle = useBlobBookTitle(
     sync.status.state === "syncing" ? (sync.status.progress?.blobKey ?? null) : null,
   );
@@ -50,8 +51,8 @@ export function SyncAccountGroup() {
       setLinkToken(null);
       return;
     }
-    flows.setConnectOpen(true);
-  }, [linkToken, connected, sessionRejected, setLinkToken, sync.busy]);
+    setConnectOpen(true);
+  }, [linkToken, connected, sessionRejected, setLinkToken, setConnectOpen, sync.busy]);
 
   const handleSyncNow = async () => {
     try {

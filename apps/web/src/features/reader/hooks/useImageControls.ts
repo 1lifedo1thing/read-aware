@@ -19,10 +19,12 @@ export function useImageControls(zoom: ReturnType<typeof useZoomPan>,
   current.current = { zoom, onClose };
   const [token, setToken] = useState(0);
   const binding = useRef<ReturnType<ReaderImageService["bind"]> | null>(null);
+  // The binding follows the session's identity, not a new object for the same session.
+  const bookId = session?.bookId, sessionId = session?.sessionId;
   useLayoutEffect(() => {
-    if (!session) return;
+    if (bookId === undefined || sessionId === undefined) return;
     let bound: ReturnType<ReaderImageService["bind"]>;
-    try { bound = service.bind({ ...session, id: viewerId ?? id.current }, {
+    try { bound = service.bind({ bookId, sessionId, id: viewerId ?? id.current }, {
       close: origin => { source.closedBy ??= origin; current.current.onClose(origin); },
       apply: (request, nextToken, origin) => {
         const view = current.current.zoom;
@@ -63,8 +65,9 @@ export function useImageControls(zoom: ReturnType<typeof useZoomPan>,
     });
     if (stage) resize?.observe(stage);
     return () => { generation++; resize?.disconnect(); bound.dispose(source.closedBy ?? source.opening); if (binding.current === bound) binding.current = null; };
-  }, [service, session?.bookId, session?.sessionId, viewerId, source]);
+  }, [service, bookId, sessionId, viewerId, source]);
   // Parent renders do not make a new zoom intent. A geometry-only change is
   // published by its resize sample, not under the previous pan/zoom's source.
-  useLayoutEffect(() => { binding.current?.publish(zoom.snapshot(), token, zoom.origin); }, [zoom.snapshot, token, zoom.origin]);
+  const { snapshot: zoomSnapshot, origin: zoomOrigin } = zoom;
+  useLayoutEffect(() => { binding.current?.publish(zoomSnapshot(), token, zoomOrigin); }, [zoomSnapshot, token, zoomOrigin]);
 }

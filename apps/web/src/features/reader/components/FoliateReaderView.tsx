@@ -394,6 +394,8 @@ export function FoliateReaderView({
   // scroll). Derived from the library FORMAT, not the parsed book — the mode
   // keys the open effect, and a value that flipped mid-parse would tear the
   // engine down and open the book twice.
+  // Navigation follows the book's identity; a refreshed book object for the same id keeps it.
+  const selectedBookId = selectedBook?.id;
   const readingMode = isFixedLayoutFormat(selectedBook?.format)
     ? readerSettings.fixedLayoutReadingMode
     : readerSettings.readingMode;
@@ -410,11 +412,13 @@ export function FoliateReaderView({
   // scrub). Its relocate must not read as "the reader turned a page and wants
   // the chrome out of the way" — the reader is holding that chrome.
   const suppressShellDismissRef = useRef(false);
+  // Pagination is set up further down; its reset is stable and read when the shell opens.
+  const resetScrollTravelOnOpen = useEffectEvent(() => resetShellScrollTravel());
   useEffect(() => {
     shellVisibleRef.current = shellVisible;
     // Every fresh open starts the dismissal distance from zero, so scroll that
     // happened before the shell appeared can't dismiss it on the next tick.
-    if (shellVisible) resetShellScrollTravel();
+    if (shellVisible) resetScrollTravelOnOpen();
   }, [shellVisible]);
 
   // Parent callbacks are reached through effect events: engine and section-
@@ -599,7 +603,7 @@ export function FoliateReaderView({
       handler?.removeEventListener("render", onRender);
       footnoteHandlerRef.current = null;
     };
-  }, []);
+  }, [setFootnote]);
 
   const {
     settingsRef: readerSettingsRef,
@@ -783,13 +787,13 @@ export function FoliateReaderView({
     try {
       setError(null);
       clearSelection();
-      if (selectedBook && readingRuntime.snapshot().bookId === selectedBook.id) {
-        await readingRuntime.navigate({ bookId: selectedBook.id, href });
+      if (selectedBookId && readingRuntime.snapshot().bookId === selectedBookId) {
+        await readingRuntime.navigate({ bookId: selectedBookId, href });
       } else await view.goTo(href);
     } catch (nextError) {
       setError(describeReaderFailure(nextError));
     }
-  }, [clearSelection, selectedBook?.id]);
+  }, [clearSelection, describeReaderFailure, selectedBookId]);
 
   const revisitFromCompletion = useCallback((cfiRange: string) => {
     const view = viewRef.current;
@@ -819,30 +823,30 @@ export function FoliateReaderView({
     await crossTo(async () => {
       try {
         const target = Math.min(1, Math.max(0, fraction));
-        if (selectedBook && readingRuntime.snapshot().bookId === selectedBook.id) {
-          await readingRuntime.navigate({ bookId: selectedBook.id, fraction: target });
+        if (selectedBookId && readingRuntime.snapshot().bookId === selectedBookId) {
+          await readingRuntime.navigate({ bookId: selectedBookId, fraction: target });
         } else await viewRef.current?.goToFraction(target);
       } catch (nextError) {
         setError(describeReaderFailure(nextError));
       }
     });
     suppressShellDismissRef.current = false;
-  }, [clearSelection, crossTo, selectedBook?.id]);
+  }, [clearSelection, crossTo, describeReaderFailure, selectedBookId]);
 
   const goToAdjacentChapter = useCallback(async (direction: -1 | 1) => {
     const session = readingRuntime.snapshot();
-    if (selectedBook && session.bookId === selectedBook.id && session.sessionId) {
+    if (selectedBookId && session.bookId === selectedBookId && session.sessionId) {
       setError(null);
       clearSelection();
       try {
         await readingRuntime.step(direction === 1 ? "next-chapter" : "previous-chapter", undefined,
-          { bookId: selectedBook.id, sessionId: session.sessionId });
+          { bookId: selectedBookId, sessionId: session.sessionId });
       } catch (error) { setError(describeReaderFailure(error)); }
     } else {
       const next = adjacentTocEntry(tocEntriesRef.current, currentChapterHrefRef.current, direction);
       if (next) await goToChapter(next.href);
     }
-  }, [clearSelection, goToChapter, selectedBook?.id]);
+  }, [clearSelection, describeReaderFailure, goToChapter, selectedBookId]);
 
   // ----- plugin-defined text-unit mode ----------------------------------------
 
@@ -861,8 +865,8 @@ export function FoliateReaderView({
   // through `textUnitGestures`.
   const [textUnitModeSettings, patchTextUnitModeSettings] = useAtom(textUnitModeSettingsAtom);
   const persistedModeState = useMemo(
-    () => (selectedBook ? readTextUnitModeState(selectedBook.id) : null),
-    [selectedBook?.id],
+    () => (selectedBookId ? readTextUnitModeState(selectedBookId) : null),
+    [selectedBookId],
   );
   const prefsUnitId = textUnitMode ? textUnitModeSettings.unitId : null;
   const persistedUnitId =
@@ -906,11 +910,13 @@ export function FoliateReaderView({
   });
   useEffect(() => modeController?.bindPositionWaiter(textUnitNavigator.waitForPosition), [modeController, textUnitNavigator.waitForPosition]);
   useEffect(() => modeController?.bindStepper(textUnitNavigator.stepNative), [modeController, textUnitNavigator.stepNative]);
+  // Feedback is keyed on where the position points; a new object for the same place is not news.
+  const navigatorPosition = useEffectEvent(() => textUnitNavigator.position);
   useEffect(() => {
     modeController?.feedback(textUnitNavigator.configurationRevision, textUnitMode?.key ?? null, activeUnitId, {
       status: textUnitNavigator.status, errorCode: textUnitNavigator.errorCode,
       progress: textUnitNavigator.progress, cfiRange: textUnitNavigator.current?.cfiRange ?? null,
-      position: textUnitNavigator.position,
+      position: navigatorPosition(),
     }, textUnitNavigator.origin);
   }, [modeController, textUnitMode, activeUnitId, textUnitNavigator.configurationRevision,
     textUnitNavigator.status, textUnitNavigator.errorCode, textUnitNavigator.progress, textUnitNavigator.current,
@@ -1045,7 +1051,7 @@ export function FoliateReaderView({
     setActiveAnnotation(null);
     setUnitMenuAnchor(null);
     emitTextUnitModeStep();
-  }, [textUnitTargetKey]);
+  }, [textUnitTargetKey, setFootnote]);
 
   // 句级菜单的其余关闭时机：拉出选区（选区菜单接管）、模式关闭、页移
   // （锚点随布局失效；步进换句已在上面的 targetKey effect 里关）。
@@ -2019,6 +2025,7 @@ export function FoliateReaderView({
         if (selectedBook && sessionId) defer(registerActiveBookContent(selectedBook.id, parsedBook, contentVersion, contentProvider, invalidation, initialBook.virtual?.key));
         const chapterStarts = await prepareReaderChapterStarts(parsedBook);
         if (session.closed) return;
+        // oxlint-disable-next-line react-hooks/rules-of-hooks -- openEngine runs inside useReaderEngineSession's effect event
         if (selectedBook) currentTextUnitNavigator().handleContentVersion(selectedBook.id, contentVersion, openingActor);
         await view.open(parsedBook);
         if (session.closed) return;
@@ -2105,6 +2112,7 @@ export function FoliateReaderView({
           const visibleText = normalizeReadingCursorText(readingVisibleText(view).text);
           lastLocationTargetRef.current = cfi ?? href;
           const progressPercent = Math.round(fraction * 100);
+          // oxlint-disable-next-line react-hooks/rules-of-hooks -- openEngine runs inside useReaderEngineSession's effect event
           emitLocation({
             current,
             total,
@@ -2153,6 +2161,7 @@ export function FoliateReaderView({
             setUnitMenuAnchor(null);
           }
           prevReadingLocationRef.current = { current, cfi };
+          // oxlint-disable-next-line react-hooks/rules-of-hooks -- openEngine runs inside useReaderEngineSession's effect event
           currentTextUnitNavigator().handleRelocate(detail);
         };
 
@@ -2171,6 +2180,7 @@ export function FoliateReaderView({
           // continuations and cached pages that aren't the reading position.
           if (!docsWithListenersRef.current.has(doc)) {
             docsWithListenersRef.current.add(doc);
+            // oxlint-disable-next-line react-hooks/rules-of-hooks -- openEngine runs inside useReaderEngineSession's effect event
             attachDocListeners(doc, index);
           }
         };
@@ -2179,6 +2189,7 @@ export function FoliateReaderView({
           if (!view || session.closed) return;
           applyHighlights(view, highlightsRef.current);
           applyNotes(view, notesRef.current, highlightsRef.current);
+          // oxlint-disable-next-line react-hooks/rules-of-hooks -- openEngine runs inside useReaderEngineSession's effect event
           currentTextUnitNavigator().handleOverlayReady();
         };
 
@@ -2186,6 +2197,7 @@ export function FoliateReaderView({
         // marker opens that note for reading/editing.
         const onShowAnnotation = (event: Event) => {
           if (session.closed) return;
+          // oxlint-disable-next-line react-hooks/rules-of-hooks -- openEngine runs inside useReaderEngineSession's effect event
           showAnnotation((event as CustomEvent<FoliateShowAnnotationDetail>).detail);
         };
 
@@ -2267,12 +2279,13 @@ export function FoliateReaderView({
           defer(readingRuntime.bindSelection(sessionId, createReadingSelectionAdapter(view,
             () => selectionRef.current, (doc, index, origin) => captureSelectionFromDoc(doc, index, { origin }), clearSelection, selectionRender), openingActor));
           defer(readingEmphasis.bind(sessionId, selectedBook.id, contentVersion, emphasis));
-          defer((origin = openingActor) => {
+          defer(origin => {
             if (selectionContentRef.current !== identity) return;
             selectionContentRef.current = null;
             readingRuntime.selectionChanged(sessionId, null, origin);
           });
         }
+        // oxlint-disable-next-line react-hooks/rules-of-hooks -- openEngine runs inside useReaderEngineSession's effect event
         if (book && !session.closed) emitBookReady(book);
       } catch (nextError) {
         if (sessionId && !session.closed) readingRuntime.fail(sessionId, nextError, openingActor);
@@ -2501,7 +2514,7 @@ export function FoliateReaderView({
         isSaving={noteEditor.isSaving}
         selectedText={noteEditor.target?.text || ""}
         initialContent={noteEditor.current?.content || ""}
-        onSave={noteEditor.save}
+        onSave={content => void noteEditor.save(content)}
         onCancel={noteEditor.close}
         isEditing={!!noteEditor.current}
       />

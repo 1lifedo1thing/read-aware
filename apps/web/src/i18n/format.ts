@@ -67,15 +67,15 @@ export function formatDuration(ms: number): string {
  * Localized weekday names indexed by `Date.getDay()` (0 = Sunday … 6 = Saturday).
  * Anchored to a known week in UTC so the labels are deterministic.
  */
-export function getWeekdayNames(style: "long" | "short" | "narrow" = "short"): string[] {
-  const fmt = new Intl.DateTimeFormat(currentLocale(), { weekday: style, timeZone: "UTC" });
+export function getWeekdayNames(style: "long" | "short" | "narrow" = "short", locale: string = currentLocale()): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { weekday: style, timeZone: "UTC" });
   // 2023-01-01 is a Sunday.
   return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2023, 0, 1 + i))));
 }
 
 /** Localized month names indexed 0 = January … 11 = December. */
-export function getMonthNames(style: "long" | "short" | "narrow" = "short"): string[] {
-  const fmt = new Intl.DateTimeFormat(currentLocale(), { month: style, timeZone: "UTC" });
+export function getMonthNames(style: "long" | "short" | "narrow" = "short", locale: string = currentLocale()): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { month: style, timeZone: "UTC" });
   return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(Date.UTC(2023, i, 15))));
 }
 

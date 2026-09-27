@@ -56,14 +56,14 @@ export function DropdownMenu({
       if (!isControlled) setUncontrolledOpen(next);
       onOpenChangeRef.current?.(next);
     },
-    [isControlled],
+    [isControlled, setUncontrolledOpen],
   );
 
   const close = useCallback(() => {
     setOpen(false);
     setActiveIndex(-1);
     triggerRef.current?.focus();
-  }, [setOpen]);
+  }, [setOpen, setActiveIndex]);
 
   useEffect(() => {
     if (!open) return;
@@ -77,7 +77,7 @@ export function DropdownMenu({
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [open, setOpen]);
+  }, [open, setOpen, setActiveIndex]);
 
   // Focus active item
   useEffect(() => {

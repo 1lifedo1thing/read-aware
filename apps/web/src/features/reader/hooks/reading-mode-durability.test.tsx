@@ -27,11 +27,13 @@ if (process.env.MODE_DURABILITY_CASE === "1") {
   const disk = new Map<string, string>();
   const pending: { entries: [string, string | null][]; commit(): void; reject(error: unknown): void }[] = [];
   function Harness() {
-    state = useReadingModeControl(bookId, true);
+    const control = useReadingModeControl(bookId, true);
+    state = control;
+    const { controller, request } = control;
     useEffect(() => {
-      if (feedbackEnabled) state.controller.feedback(state.request.revision, state.request.modeKey, state.request.unitId,
-        { status: state.request.active ? "ready" : "inactive", cfiRange: null, progress: null });
-    }, [state.request]);
+      if (feedbackEnabled) controller.feedback(request.revision, request.modeKey, request.unitId,
+        { status: request.active ? "ready" : "inactive", cfiRange: null, progress: null });
+    }, [controller, request]);
     return null;
   }
   beforeEach(async () => {

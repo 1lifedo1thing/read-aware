@@ -50,6 +50,7 @@ export function useDiagnosticsReport() {
   const latest = useRef({ open, reset }); latest.current = { open, reset };
   useLayoutEffect(() => {
     const off = hostDiagnosticsFlows.bind({ open: (request, signal) => latest.current.open(request.action, signal, actorFromEvent(request)), close: () => latest.current.reset() });
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- generation is a counter, not a node: cleanup bumps the live value
     return () => { generation.current++; off(); };
   }, []);
 

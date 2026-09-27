@@ -26,6 +26,7 @@ export function useImageViewer(bookId: string | undefined) {
   useEffect(() => {
     let unbind: (origin?: DomainActor) => void = () => {}, sessionId: string | null = null;
     let alive = true;
+    const objectUrls = urls.current; // One map for the hook's lifetime.
     const stop = readingRuntime.observe(state => {
       const id = state.status === "ready" && state.bookId === bookId ? state.sessionId : null;
       if (sessionId === id) return;
@@ -35,7 +36,7 @@ export function useImageViewer(bookId: string | undefined) {
         const bound = readerImageOpen.bind(id, bookId, {
           present: (viewerId, data, origin) => {
             const src = URL.createObjectURL(data.blob);
-            urls.current.set(viewerId, src);
+            objectUrls.set(viewerId, src);
             present({ id: viewerId, src, alt: data.image.alt, session: { bookId, sessionId: id }, lifetime: { opening: origin } }, origin);
           },
           clear: (viewerId, origin) => { if (alive && desired.current?.id === viewerId) present(null, origin); },
@@ -45,8 +46,8 @@ export function useImageViewer(bookId: string | undefined) {
     });
     return () => {
       alive = false; stop(); unbind(); interrupt.current = () => {};
-      for (const url of urls.current.values()) URL.revokeObjectURL(url);
-      urls.current.clear();
+      for (const url of objectUrls.values()) URL.revokeObjectURL(url);
+      objectUrls.clear();
     };
   }, [bookId, present]);
   const setLightboxImage = useCallback((image: ActivatedImage & { session: ImageView["session"] }, origin: DomainActor = "user") => {

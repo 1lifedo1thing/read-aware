@@ -19,14 +19,16 @@ export function useReaderModeSelection(bookId: string, mode?: ReadingModeSnapsho
       pending.current = null;
     };
   }, [bookId]);
+  // Only these two fields feed a selection; a new snapshot object alone must not.
+  const requestedActive = mode?.requestedActive, modeKey = mode?.modeKey;
   const select = useCallback(async (selectModeKey: string) => {
-    if (!mode || pending.current) return false;
+    if (requestedActive === undefined || pending.current) return false;
     const controller = new AbortController();
     pending.current = controller;
     setBusy(true);
     try {
       const sessionId = readingRuntime.snapshot().sessionId ?? undefined;
-      await readingRuntime.configureMode({ active: mode.requestedActive, modeKey: mode.modeKey ?? undefined, selectModeKey },
+      await readingRuntime.configureMode({ active: requestedActive, modeKey: modeKey ?? undefined, selectModeKey },
         controller.signal, { bookId, sessionId });
       return true;
     } catch (error) {
@@ -39,6 +41,6 @@ export function useReaderModeSelection(bookId: string, mode?: ReadingModeSnapsho
     } finally {
       if (pending.current === controller) { pending.current = null; setBusy(false); }
     }
-  }, [bookId, mode?.modeKey, mode?.requestedActive, toast]);
+  }, [bookId, modeKey, requestedActive, toast]);
   return { select, busy };
 }

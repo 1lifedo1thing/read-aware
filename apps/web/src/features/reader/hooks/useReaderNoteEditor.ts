@@ -17,6 +17,7 @@ export function useReaderNoteEditor(bookId: string | undefined, clearSelection: 
     generation.current++;
     saving.current = null;
     setDraft(null); setIsSaving(false);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- generation is a counter, not a node: cleanup bumps the live value
     return () => { generation.current++; };
   }, [bookId]);
 

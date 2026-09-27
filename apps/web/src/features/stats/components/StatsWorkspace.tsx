@@ -18,7 +18,7 @@ type StatsWorkspaceProps = {
 };
 
 export function StatsWorkspace({ books, onOpenBook }: StatsWorkspaceProps) {
-  const { t, i18n } = useTranslation(["stats", "common"]);
+  const { t } = useTranslation(["stats", "common"]);
   const store = useAtomValue(readingStatsAtom);
   const annotations = useAnnotationCounts();
   const now = Date.now();
@@ -42,7 +42,8 @@ export function StatsWorkspace({ books, onOpenBook }: StatsWorkspaceProps) {
           </div>
         ),
       })),
-    [store, books, annotations, now, onOpenBook, t, i18n.language],
+    // `t` is rebound per language, so the labels rebuild on a switch.
+    [store, books, annotations, now, onOpenBook, t],
   );
 
   if (insights.totalMs === 0) {

@@ -10,6 +10,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+function InteractiveToggle({ label, checked: initial }: { label?: string; checked: boolean }) {
+  const [checked, setChecked] = useLocalAtom(initial);
+  return <Toggle label={label} checked={checked} onChange={setChecked} />;
+}
+
 export const Invalid: Story = {
   args: { label: "Sync", checked: false, onChange: () => {}, error: "Connection is unavailable." },
 };
@@ -24,10 +29,5 @@ export const On: Story = {
 
 export const Interactive: Story = {
   args: { label: "Show annotations", checked: false, onChange: () => {} },
-  render: (args) => {
-    const [checked, setChecked] = useLocalAtom(args.checked);
-    return (
-      <Toggle label={args.label} checked={checked} onChange={setChecked} />
-    );
-  },
+  render: (args) => <InteractiveToggle label={args.label} checked={args.checked} />,
 };

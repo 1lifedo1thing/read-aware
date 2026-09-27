@@ -20,7 +20,10 @@ type EditorState = {
   error?: string;
 };
 
-function stateFor(view: PluginEditorView): EditorState {
+/** The plugin-owned source a draft is reconciled against. */
+type EditorSource = Pick<PluginEditorView, "value" | "revision">;
+
+function stateFor(view: EditorSource): EditorState {
   return {
     draft: view.value,
     baseValue: view.value,
@@ -34,7 +37,7 @@ function firstFieldError(result: Awaited<ReturnType<PluginResultRunner>>): strin
   return Object.values(result.fieldErrors).find((value): value is string => typeof value === "string" && value.length > 0);
 }
 
-function reconcileSource(current: EditorState, view: PluginEditorView): EditorState {
+function reconcileSource(current: EditorState, view: EditorSource): EditorState {
   if (current.baseRevision === view.revision) return current;
   if (current.awaitingRevision && current.baseValue === view.value) {
     return { ...current, baseRevision: view.revision, stale: false, awaitingRevision: false };
@@ -57,9 +60,10 @@ export function PluginEditorViewBody({ view, busy, onResult }: PluginEditorViewB
   const latestView = useRef(view);
   latestView.current = view;
 
+  const { revision: sourceRevision, value: sourceValue } = view;
   useEffect(() => {
-    setState((current) => reconcileSource(current, view));
-  }, [view.revision, view.value]);
+    setState((current) => reconcileSource(current, { revision: sourceRevision, value: sourceValue }));
+  }, [sourceRevision, sourceValue]);
 
   const reload = () => {
     if (busy || saving) return;

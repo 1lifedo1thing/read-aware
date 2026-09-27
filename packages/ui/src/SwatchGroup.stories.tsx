@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { SwatchGroup } from "./SwatchGroup";
 
@@ -9,6 +9,11 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+function ControlledSwatchGroup(args: ComponentProps<typeof SwatchGroup>) {
+  const [value, setValue] = useState(args.value);
+  return <div className="w-80"><SwatchGroup {...args} value={value} onChange={setValue} /></div>;
+}
 
 const LIGHT = { background: "#ffffff", foreground: "#1c1917" };
 const DARK = { background: "#1c1917", foreground: "#e7e5e4" };
@@ -24,10 +29,7 @@ const OPTIONS = [
 /** Page colors by how they look; "Auto" shows both halves it switches between. */
 export const PageColors: Story = {
   args: { ariaLabel: "Page Color", value: "warm", options: OPTIONS, onChange: () => {} },
-  render: (args) => {
-    const [value, setValue] = useState(args.value);
-    return <div className="w-80"><SwatchGroup {...args} value={value} onChange={setValue} /></div>;
-  },
+  render: (args) => <ControlledSwatchGroup {...args} />,
 };
 
 /** With a visible label, like ChoiceGroup's. */

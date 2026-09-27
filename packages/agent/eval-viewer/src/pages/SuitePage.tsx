@@ -1,6 +1,6 @@
 import { summarizeQuality } from "../reviews";
 import { Select } from "@read-aware/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   fetchRun,
   turnsLanguage,
@@ -71,7 +71,7 @@ export function SuitePage({
   tick?: number;
 }) {
   const suite = catalog.find((entry) => entry.id === suiteId);
-  const history = runs.filter((run) => run.suiteId === suiteId);
+  const history = useMemo(() => runs.filter((run) => run.suiteId === suiteId), [runs, suiteId]);
   const [selectedRunId, setSelectedRunId] = useState(history[0]?.runId ?? "");
   const [detail, setDetail] = useState<RunDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +81,7 @@ export function SuitePage({
     setSelectedRunId((current) =>
       current && history.some((run) => run.runId === current) ? current : next,
     );
-  }, [suiteId, runs]);
+  }, [history]);
 
   useEffect(() => {
     if (!selectedRunId) {
@@ -98,6 +98,7 @@ export function SuitePage({
     if (!tick || !selectedRunId) return;
     fetchRun(selectedRunId)
       .then(setDetail)
+      // A live refresh keeps the last good detail; the initial load reports errors.
       .catch(() => {});
   }, [selectedRunId, tick]);
 
@@ -175,7 +176,7 @@ export function SuitePage({
                 ? {
                     ...current,
                     humanReviews: {
-                      ...(current.humanReviews ?? {}),
+                      ...current.humanReviews,
                       [review.targetId]: review,
                     },
                   }

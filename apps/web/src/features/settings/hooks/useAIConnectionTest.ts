@@ -25,6 +25,7 @@ export function useAIConnectionTest(config: AIConfig, canTest: boolean, beforeTe
       },
       close: () => {}, // No extra dialog or automatic action to dismiss.
     });
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- epoch is a generation counter, not a node: cleanup bumps the live value
     return () => { mounted.current = false; epoch.current++; off(); };
   }, []);
 

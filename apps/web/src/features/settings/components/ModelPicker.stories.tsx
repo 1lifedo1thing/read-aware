@@ -70,10 +70,10 @@ export const NearDialogBottom: Story = {
     const settings = page.getByRole("dialog", { name: "Settings" });
     const popup = page.getByRole("dialog", { name: "Model" });
     await expect(settings.contains(popup)).toBe(false);
-    await waitFor(() => {
+    await waitFor(async () => {
       const bounds = popup.getBoundingClientRect();
-      expect(bounds.top).toBeGreaterThanOrEqual(0);
-      expect(bounds.bottom).toBeLessThanOrEqual(window.innerHeight);
+      await expect(bounds.top).toBeGreaterThanOrEqual(0);
+      await expect(bounds.bottom).toBeLessThanOrEqual(window.innerHeight);
     });
     await userEvent.keyboard("{Escape}");
     await expect(settings).toBeVisible();

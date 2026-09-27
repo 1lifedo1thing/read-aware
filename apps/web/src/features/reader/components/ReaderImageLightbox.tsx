@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   ArrowClockwise,
   Check,
@@ -73,9 +73,11 @@ export function ReaderImageLightbox({ src, alt, onClose, session, viewerId, life
   // Take keyboard focus out of the section iframe: keydown fires in whichever
   // realm holds focus, and before this landed an Esc pressed while the book
   // still had it never reached the top window — the viewer felt stuck open.
-  useEffect(() => {
+  // Once per opening, attributed to the actor that opened the viewer.
+  const focusDialog = useEffectEvent(() => {
     if (dialogRef.current) focusWithReadingSource(dialogRef.current, lifetime?.opening ?? "user");
-  }, []);
+  });
+  useEffect(() => { focusDialog(); }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

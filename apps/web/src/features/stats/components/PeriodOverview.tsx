@@ -51,8 +51,7 @@ export function PeriodOverview({
 }: PeriodOverviewProps) {
   const { t, i18n } = useTranslation("stats");
   const insights = useMemo(
-    () => computePeriodInsights(store, period, now),
-    // `computePeriodInsights` reads the active locale for its bar/weekday labels.
+    () => computePeriodInsights(store, period, now, i18n.language),
     [store, period, now, i18n.language],
   );
   const byHour = useMemo(() => aggregateByHour(store), [store]);

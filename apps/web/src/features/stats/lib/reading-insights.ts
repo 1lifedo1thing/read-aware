@@ -13,7 +13,7 @@
  */
 
 import type { TFunction } from "i18next";
-import { getMonthNames, getWeekdayNames } from "../../../i18n";
+import { currentLocale, getMonthNames, getWeekdayNames } from "../../../i18n";
 import {
   localDayKey,
   type BookReadingStats,
@@ -353,10 +353,10 @@ export type StatsBar = {
 };
 
 /** One bar per day over the trailing `days` days, oldest→newest, ending today. */
-function dailyBars(daily: DailyReadingMap, now: number, days: number): StatsBar[] {
+function dailyBars(daily: DailyReadingMap, now: number, days: number, locale: string): StatsBar[] {
   const todayKey = localDayKey(now);
   const dense = days > 10; // months label by day-of-month; weeks by weekday letter
-  const weekdayNarrow = getWeekdayNames("narrow");
+  const weekdayNarrow = getWeekdayNames("narrow", locale);
   const bars: StatsBar[] = [];
   for (let i = days - 1; i >= 0; i -= 1) {
     const key = dayKeyAtOffset(now, i);
@@ -369,9 +369,9 @@ function dailyBars(daily: DailyReadingMap, now: number, days: number): StatsBar[
 }
 
 /** One bar per calendar month over the trailing `months` months, ending this month. */
-function monthlyBars(daily: DailyReadingMap, now: number, months: number): StatsBar[] {
+function monthlyBars(daily: DailyReadingMap, now: number, months: number, locale: string): StatsBar[] {
   const byMonth = dailyByMonth(daily);
-  const monthShort = getMonthNames("short");
+  const monthShort = getMonthNames("short", locale);
   const base = new Date(now);
   const curY = base.getFullYear();
   const curM = base.getMonth();
@@ -401,9 +401,9 @@ export type WeekdayBucket = { label: string; full: string; ms: number };
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Mon..Sun, indexing Date.getDay()
 
 /** Reading time summed by weekday (Mon→Sun) over the given daily map. */
-export function weekdayDistribution(daily: DailyReadingMap): WeekdayBucket[] {
-  const short = getWeekdayNames("short");
-  const narrow = getWeekdayNames("narrow");
+export function weekdayDistribution(daily: DailyReadingMap, locale: string = currentLocale()): WeekdayBucket[] {
+  const short = getWeekdayNames("short", locale);
+  const narrow = getWeekdayNames("narrow", locale);
   const byDow = new Array(7).fill(0);
   for (const [key, ms] of Object.entries(daily)) {
     const [y, m, d] = key.split("-").map(Number);
@@ -439,10 +439,12 @@ export type PeriodInsights = {
 };
 
 /** Headline rollup for one time period — the body of each period tab. */
+/** `locale` names the bar and weekday labels; it defaults to the app's current locale. */
 export function computePeriodInsights(
   store: ReadingStatsStore,
   period: StatsPeriod,
   now: number,
+  locale: string = currentLocale(),
 ): PeriodInsights {
   const daily = aggregateDaily(store);
 
@@ -461,8 +463,8 @@ export function computePeriodInsights(
       booksRead,
       avgPerDayMs: daysRead > 0 ? Math.round(totalMs / daysRead) : 0,
       deltaPct: null,
-      bars: monthlyBars(daily, now, monthsSpan(daily, now)),
-      weekday: weekdayDistribution(daily),
+      bars: monthlyBars(daily, now, monthsSpan(daily, now), locale),
+      weekday: weekdayDistribution(daily, locale),
     };
   }
 
@@ -502,8 +504,8 @@ export function computePeriodInsights(
     booksRead,
     avgPerDayMs: daysRead > 0 ? Math.round(totalMs / daysRead) : 0,
     deltaPct: prevMs > 0 ? (totalMs - prevMs) / prevMs : null,
-    bars: period === "year" ? monthlyBars(windowDaily, now, monthCount) : dailyBars(daily, now, days),
-    weekday: weekdayDistribution(windowDaily),
+    bars: period === "year" ? monthlyBars(windowDaily, now, monthCount, locale) : dailyBars(daily, now, days, locale),
+    weekday: weekdayDistribution(windowDaily, locale),
   };
 }
 

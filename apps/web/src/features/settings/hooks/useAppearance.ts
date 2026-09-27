@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { actorFromEvent, causalActor, type DomainActor } from "../../../platform/domain-actor";
 import { useAtomValue, useSetAtom } from "jotai";
 import { appSettingsAtom, resolvedAppThemeAtom } from "../../../state/ui";
@@ -31,13 +31,15 @@ export function useAppearance(): void {
   const pluginsReady = useAtomValue(pluginsReadyAtom);
   const setResolvedTheme = useSetAtom(resolvedAppThemeAtom);
   const previous = useRef<{ preference: string; theme: typeof theme; ready: boolean; origin: DomainActor } | undefined>(undefined);
+  // The actor of the settings write that changed the theme; other settings never re-apply it.
+  const settingsSource = useEffectEvent(() => actorFromEvent(appSettings));
+  const pref = appSettings.theme;
 
   useEffect(() => {
     const root = document.documentElement;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
 
     const apply = (origin: DomainActor) => {
-      const pref = appSettings.theme;
       let resolved: "light" | "dark";
       let skin: RegisteredPluginTheme | null = null;
       let bootPending = false;
@@ -70,15 +72,15 @@ export function useAppearance(): void {
     };
 
     const before = previous.current;
-    const source = before?.preference !== appSettings.theme ? actorFromEvent(appSettings)
+    const source = before?.preference !== pref ? settingsSource()
       : before.theme !== theme ? actorFromEvent(theme)
       : before.ready !== pluginsReady ? causalActor("system") : before.origin;
-    previous.current = { preference: appSettings.theme, theme, ready: pluginsReady, origin: source };
+    previous.current = { preference: pref, theme, ready: pluginsReady, origin: source };
     apply(source);
     const systemChanged = () => apply(causalActor("system"));
     media.addEventListener("change", systemChanged);
     return () => media.removeEventListener("change", systemChanged);
-  }, [appSettings.theme, theme, pluginsReady, setResolvedTheme]);
+  }, [pref, theme, pluginsReady, setResolvedTheme]);
 
   useEffect(() => {
     const root = document.documentElement;

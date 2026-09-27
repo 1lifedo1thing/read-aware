@@ -50,6 +50,7 @@ const SMOOTH_FRAME_MS = 50;
 const SMOOTH_FRAMES_REQUIRED = 3;
 
 export function useSurfaceHandoff(reader: ReaderSessionSlice) {
+  const { openReader, closeReader } = reader;
   const [shelfHandoff, setShelfHandoff] = useState<ShelfHandoff>("idle");
   const [readerExiting, setReaderExiting] = useState(false);
   const closeTimeoutRef = useRef<number | null>(null);
@@ -59,7 +60,7 @@ export function useSurfaceHandoff(reader: ReaderSessionSlice) {
   const openBook = useCallback(
     (book: LibraryBook, navigationIntent?: number) => {
       // Validate the navigation intent before changing the transition state.
-      reader.openReader(book, navigationIntent);
+      openReader(book, navigationIntent);
       // A reopen during the close fade must cancel the deferred teardown, or
       // it would tear down the freshly opened book a beat later.
       if (closeTimeoutRef.current !== null) {
@@ -74,7 +75,7 @@ export function useSurfaceHandoff(reader: ReaderSessionSlice) {
       holdStartRef.current = performance.now();
       setShelfHandoff(prefersReducedMotion() ? "idle" : "holding");
     },
-    [reader.openReader],
+    [openReader],
   );
 
   const closeBook = useCallback(() => {
@@ -90,7 +91,7 @@ export function useSurfaceHandoff(reader: ReaderSessionSlice) {
     void promise.catch(() => {});
     const finish = () => {
       closeTimeoutRef.current = null;
-      void reader.closeReader().then(resolve, reject).finally(() => {
+      void closeReader().then(resolve, reject).finally(() => {
         if (closingRef.current !== closing) return;
         closingRef.current = null;
         setReaderExiting(false);
@@ -102,7 +103,7 @@ export function useSurfaceHandoff(reader: ReaderSessionSlice) {
       closeTimeoutRef.current = window.setTimeout(finish, CLOSE_TEARDOWN_MS);
     }
     return promise;
-  }, [reader.closeReader]);
+  }, [closeReader]);
 
   // The first relocate populates the page counters; a load failure shows the
   // error surface. Either counts as "the reader has something to show".

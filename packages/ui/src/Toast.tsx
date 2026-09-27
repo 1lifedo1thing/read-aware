@@ -110,13 +110,16 @@ export function ToastProvider({
 
   useEffect(() => {
     const epoch = ++lifetimeRef.current;
+    // The maps live as long as the provider; only their contents change.
+    const timers = timersRef.current, pending = recordsRef.current;
     return () => {
       // StrictMode's setup/cleanup replay is not a real provider teardown.
       queueMicrotask(() => {
+        // oxlint-disable-next-line react-hooks/exhaustive-deps -- reads the latest epoch on purpose: a replayed setup has advanced it
         if (lifetimeRef.current !== epoch) return;
-        for (const timer of timersRef.current.values()) window.clearTimeout(timer);
-        timersRef.current.clear();
-        const records = [...recordsRef.current.values()]; recordsRef.current.clear();
+        for (const timer of timers.values()) window.clearTimeout(timer);
+        timers.clear();
+        const records = [...pending.values()]; pending.clear();
         for (const record of records) {
           try { record.onDismiss?.(); } catch (error) { console.error("Toast cleanup failed", error); }
         }

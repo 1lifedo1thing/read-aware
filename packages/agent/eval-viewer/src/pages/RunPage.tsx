@@ -10,6 +10,10 @@ import {
 } from "../api";
 import { RunReviewWorkspace } from "../components/RunReviewWorkspace";
 
+/** Variant metadata is free-form JSON; only scalars read as labels. */
+const metadataText = (value: unknown) =>
+  typeof value === "string" || typeof value === "number" ? String(value) : "";
+
 const refChipClass =
   "inline-block select-all rounded-[5px] bg-[var(--accent-bg)] px-2 py-0.5 font-mono text-[11px] text-[var(--accent)]";
 
@@ -54,6 +58,7 @@ export function RunPage({
     if (!tick) return;
     fetchRun(runId, activeRescore || undefined)
       .then(setDetail)
+      // A live refresh keeps the last good detail; the initial load reports errors.
       .catch(() => {});
   }, [runId, activeRescore, tick]);
 
@@ -159,7 +164,7 @@ export function RunPage({
               ? {
                   ...current,
                   humanReviews: {
-                    ...(current.humanReviews ?? {}),
+                    ...current.humanReviews,
                     [review.targetId]: review,
                   },
                 }
@@ -198,7 +203,7 @@ export function RunPage({
             {variants
               .map((variant) => {
                 const meta = variant.metadata ?? {};
-                return `${variant.id}: ${String(meta.provider ?? "")}:${String(meta.model ?? "")} · ${String(meta.thinkingLevel ?? "")}`;
+                return `${variant.id}: ${metadataText(meta.provider)}:${metadataText(meta.model)} · ${metadataText(meta.thinkingLevel)}`;
               })
               .join("\n") || "—"}
           </dd>
