@@ -322,7 +322,7 @@ const nativeMap = pairs([
   ["book_classification_inspect book_classification_commit", "MEM09"],
   ["book_digest_inspect book_digest_commit book_digest_receipt", "MEM10"],
   ["memory_create memories_snapshot memory_maintenance_commit", "MEM02 MEM04 MEM05"],
-  ["ai_chat_load ai_chat_load_all ai_chat_list ai_chat_replace ai_chat_commit ai_chat_clear", "AI01 AI02 AI03"],
+  ["ai_chat_load ai_chat_load_all ai_chat_list ai_chat_replace ai_chat_commit", "AI01 AI02 AI03"],
   ["plugin_docs_put plugin_docs_get plugin_docs_delete plugin_docs_list plugin_docs_clear vocabulary_migrate_to_plugin_documents", "SYS02 SYS03"],
   ["plugin_docs_snapshot plugin_docs_restore plugin_data_snapshot plugin_data_restore", "SYS03"],
   ["capability_changes_open capability_changes_read", "CON07 OPS05 SYS02"],

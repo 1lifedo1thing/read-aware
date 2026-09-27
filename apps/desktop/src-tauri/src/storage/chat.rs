@@ -352,31 +352,3 @@ pub async fn ai_chat_list(
     .await
 }
 
-/// Clear = delete the messages, keep the conversation row with a `cleared_at`
-/// tombstone (cross-device clear semantics per docs/archive/designs/sqlite-schema.sql).
-#[tauri::command]
-pub async fn ai_chat_clear(
-    conversation_id: String,
-    app: tauri::AppHandle,
-) -> Result<(), CommandError> {
-    crate::storage::blocking("ai_chat_clear", move || {
-        let db = tauri::Manager::state::<Db>(&app);
-        let conn = db.0.lock()?;
-        conn.execute(
-            "DELETE FROM ai_messages WHERE conversation_id = ?1",
-            params![conversation_id],
-        )
-        ?;
-        conn.execute(
-            "UPDATE ai_conversations
-         SET cleared_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'),
-             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-         WHERE id = ?1",
-            params![conversation_id],
-        )
-        ?;
-        Ok(())
-    })
-    .await
-}
-
