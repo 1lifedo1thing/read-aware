@@ -36,12 +36,27 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
       }
       if (command === "local_device_get") return { deviceId: "update-proof", lastHlcWallMs: null, lastHlcCounter: null };
       if (command === "preferences_load_all") return structuredClone(rows);
-      if (command === "commit_events") {
+      const logEvents = (events: any[]) => {
         if (failPublication) throw { code: "db/locked", message: "event log unavailable" };
-        publications.push(structuredClone(args.events));
-        for (const event of args.events) if (event.type === "preference.changed") {
+        publications.push(structuredClone(events));
+        for (const event of events) if (event.type === "preference.changed") {
           rows = [...rows.filter(row => row.key !== event.payload.key), { key: event.payload.key, valueJson: JSON.stringify(event.payload.value) }];
         }
+      };
+      if (command === "set_kv_batch") {
+        // One native transaction: a failed event append leaves KV untouched.
+        const commit = () => {
+          if (args.events?.length) logEvents(args.events);
+          for (const [key, value] of args.entries) { if (value === null) disk.delete(key); else disk.set(key, value); }
+        };
+        if (holdKV) return new Promise<void>((resolve, reject) => writes.push(error => {
+          if (error) { reject(error); return; }
+          try { commit(); resolve(); } catch (failure) { reject(failure); }
+        }));
+        commit(); return;
+      }
+      if (command === "commit_events") {
+        logEvents(args.events);
         return { appended: args.events.length, applied: args.events.length };
       }
       if (command === "plugins_update_begin") {
@@ -138,7 +153,7 @@ if (process.env.PLUGIN_SETTINGS_ISOLATION === "1") {
     const install = host.installPluginFiles(id, []);
     await tick(); expect(publications).toEqual([]);
     const roaming = await import("../../../platform/roaming-preferences");
-    roaming.publishRoamingPreference(prefix + "settings", { backfill: "must not escape" });
+    roaming.backfillRoamingPreference(prefix + "settings", JSON.stringify({ backfill: "must not escape" }));
     await tick(); expect(publications).toEqual([]);
     migration.resolve(); expect((await install).manifest.version).toBe("2.0.0"); await tick();
     expect(publications).toHaveLength(1);

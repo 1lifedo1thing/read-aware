@@ -9,7 +9,7 @@ if (process.env.PLUGIN_BACKUP_DATA_PROOF === "1") {
     invoke(command: string) {
       commands.push(command);
       if (command === "local_device_get") return Promise.resolve({ deviceId: "plugin-backup", lastHlcWallMs: null, lastHlcCounter: null });
-      if (["set_kv", "delete_kv", "secret_set", "secret_delete", "plugin_docs_put", "plugin_docs_delete", "plugin_docs_apply", "commit_events"].includes(command) && hold) {
+      if (["set_kv", "set_kv_batch", "delete_kv", "secret_set", "secret_delete", "plugin_docs_put", "plugin_docs_delete", "plugin_docs_apply", "commit_events"].includes(command) && hold) {
         return new Promise((resolve, reject) => pending.push({ command, resolve, reject }));
       }
       return Promise.resolve(command === "plugin_docs_apply" ? { status: "applied", documents: [] } : undefined);
@@ -44,9 +44,9 @@ if (process.env.PLUGIN_BACKUP_DATA_PROOF === "1") {
     for (const write of rejected) await expect(write).rejects.toMatchObject({ code: "backup/busy" });
     expect(commands).toHaveLength(count);
     for (const work of pending.splice(0)) work.resolve(work.command === "plugin_docs_apply" ? { status: "applied", documents: [] } : undefined);
+    // The roaming preference event committed inside the same KV transaction.
     await Promise.all(saved); await Bun.sleep(0);
-    expect(entered).toBe(false); expect(pending.map(work => work.command)).toEqual(["commit_events"]);
-    pending.shift()!.resolve({ appended: 1, applied: 1 }); await Bun.sleep(0);
+    expect(pending).toEqual([]); expect(commands).not.toContain("commit_events");
     expect(entered).toBe(true); expect(runtime.lifecycle.phase).toBe("active");
     io.resolve(); expect(await backup).toEqual({ action: "export", status: "exported" });
     hold = false;

@@ -41,3 +41,28 @@ fn atomic_domains_roll_back_together_and_reject_changed_preview() {
     assert_eq!(conn.query_row("SELECT value_json FROM app_kv WHERE key='read-aware-theme'", [], |row| row.get::<_, String>(0)).unwrap(), "\"paper\"");
 
 }
+
+#[test]
+fn atomic_roaming_settings_commit_their_preference_event_without_a_separate_guard() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    apply_connection_pragmas(&conn).unwrap();
+    register_sql_functions(&conn).unwrap();
+    run_migrations(&mut conn).unwrap();
+    let key = "read-aware-app-settings";
+    let input = |id: &str, event_key: &str, expected: Option<&str>| serde_json::from_value::<AtomicCommitInput>(serde_json::json!({
+        "journal": null, "guards": [],
+        "events": [{"id":id,"type":"preference.changed","hlc":{"wallMs":1000,"counter":0,"deviceId":"test"},
+            "aggregateType":"preference","aggregateId":event_key,"payload":{"key":event_key,"value":{"theme":"dark"}}}],
+        "settings": [{"key":key,"expected":expected,"value":"{\"theme\":\"dark\"}"}],
+        "documents": []
+    })).unwrap();
+    let logged = |conn: &Connection| conn.query_row("SELECT count(*) FROM domain_events", [], |row| row.get::<_, i64>(0)).unwrap();
+    // An unguarded event for a key this transaction does not write is still refused.
+    assert!(atomic_commit_inner(&mut conn, input("other", "read-aware-other", None)).is_err());
+    // A KV conflict rolls the preference event back with the setting.
+    assert!(matches!(atomic_commit_inner(&mut conn, input("stale", key, Some("{}"))).unwrap(), AtomicCommitResult::Conflict { .. }));
+    assert_eq!(logged(&conn), 0);
+    assert!(matches!(atomic_commit_inner(&mut conn, input("roamed", key, None)).unwrap(), AtomicCommitResult::Applied { .. }));
+    assert_eq!(logged(&conn), 1);
+    assert!(conn.query_row("SELECT value_json FROM synced_preferences WHERE key=?1", [key], |row| row.get::<_, String>(0)).unwrap().contains("dark"));
+}

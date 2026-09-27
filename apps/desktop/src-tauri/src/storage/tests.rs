@@ -2402,6 +2402,60 @@ fn kv_batch_commits_all_records_or_rolls_back() {
 }
 
 #[test]
+fn roaming_kv_write_and_its_preference_event_commit_together_or_not_at_all() {
+    let mut conn = migrated_conn();
+    let preference = |id: &str, wall: i64, key: &str, value: serde_json::Value| {
+        let mut event = ev(id, wall, "preference.changed", serde_json::json!({ "key": key, "value": value }));
+        event.aggregate_type = Some("preference".into());
+        event.aggregate_id = Some(key.into());
+        event
+    };
+    let key = "read-aware-app-settings";
+    set_kv_batch_with_preferences_inner(
+        &mut conn,
+        vec![(key.into(), Some(r#"{"theme":"dark"}"#.into()))],
+        &[preference("p1", 1_000, key, serde_json::json!({ "theme": "dark" }))],
+    ).unwrap();
+    let kv = |conn: &Connection| conn.query_row("SELECT value_json FROM app_kv WHERE key=?1", [key], |row| row.get::<_, String>(0)).unwrap();
+    let logged = |conn: &Connection| conn.query_row("SELECT count(*) FROM domain_events WHERE type='preference.changed'", [], |row| row.get::<_, i64>(0)).unwrap();
+    let projected = |conn: &Connection| conn.query_row("SELECT value_json FROM synced_preferences WHERE key=?1", [key], |row| row.get::<_, String>(0)).unwrap();
+    assert_eq!(kv(&conn), r#"{"theme":"dark"}"#);
+    assert_eq!(logged(&conn), 1);
+    assert!(projected(&conn).contains("dark"));
+
+    // A failed KV write rolls its event back, and a failed event append rolls
+    // the KV write back: neither side can land alone.
+    conn.execute_batch("CREATE TRIGGER fail_kv BEFORE UPDATE ON app_kv BEGIN SELECT RAISE(ABORT, 'kv failed'); END;").unwrap();
+    assert!(set_kv_batch_with_preferences_inner(
+        &mut conn,
+        vec![(key.into(), Some(r#"{"theme":"light"}"#.into()))],
+        &[preference("p2", 2_000, key, serde_json::json!({ "theme": "light" }))],
+    ).is_err());
+    assert_eq!((kv(&conn), logged(&conn)), (r#"{"theme":"dark"}"#.into(), 1));
+    assert!(projected(&conn).contains("dark"));
+    conn.execute_batch("DROP TRIGGER fail_kv; CREATE TRIGGER fail_event BEFORE INSERT ON domain_events BEGIN SELECT RAISE(ABORT, 'log failed'); END;").unwrap();
+    assert!(set_kv_batch_with_preferences_inner(
+        &mut conn,
+        vec![(key.into(), Some(r#"{"theme":"light"}"#.into()))],
+        &[preference("p3", 3_000, key, serde_json::json!({ "theme": "light" }))],
+    ).is_err());
+    assert_eq!((kv(&conn), logged(&conn)), (r#"{"theme":"dark"}"#.into(), 1));
+    conn.execute_batch("DROP TRIGGER fail_event;").unwrap();
+
+    // Only preference events for keys written in the same batch may join it.
+    for event in [
+        preference("p4", 4_000, "read-aware-other", serde_json::json!(true)),
+        ev("p5", 5_000, "book.starred", serde_json::json!({ "bookId": "b", "starred": true })),
+    ] {
+        assert_eq!(
+            set_kv_batch_with_preferences_inner(&mut conn, vec![(key.into(), Some("{}".into()))], &[event]).unwrap_err().code,
+            crate::error::CODE_INTERNAL
+        );
+    }
+    assert_eq!((kv(&conn), logged(&conn)), (r#"{"theme":"dark"}"#.into(), 1));
+}
+
+#[test]
 fn kv_batch_migration_delete_failure_preserves_source_and_destination() {
     let mut conn = migrated_conn();
     set_kv_batch_inner(&mut conn, vec![

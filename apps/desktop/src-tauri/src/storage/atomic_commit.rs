@@ -89,7 +89,15 @@ pub(crate) fn atomic_commit_inner(conn: &mut Connection, input: AtomicCommitInpu
     }
     let mut event_ids = std::collections::HashSet::new();
     for event in &input.events {
-        if !event_ids.insert(&event.id) || !guards.contains(&(event.aggregate_type.as_deref().unwrap_or(""), event.aggregate_id.as_deref().unwrap_or(""))) {
+        // A roaming setting written by this transaction carries its
+        // last-writer-wins preference event in the same commit; its KV
+        // `expected` bytes are the conflict guard, not an aggregate revision.
+        let roamed_setting = event.event_type == "preference.changed"
+            && event.aggregate_type.as_deref() == Some("preference")
+            && event.payload.get("key").and_then(Value::as_str) == event.aggregate_id.as_deref()
+            && input.settings.iter().any(|setting| Some(setting.key.as_str()) == event.aggregate_id.as_deref());
+        if !event_ids.insert(&event.id)
+            || (!roamed_setting && !guards.contains(&(event.aggregate_type.as_deref().unwrap_or(""), event.aggregate_id.as_deref().unwrap_or("")))) {
             return Err(invalid("Every distinct event requires an aggregate guard"));
         }
     }

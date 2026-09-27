@@ -1,7 +1,7 @@
 import { AppError } from "@read-aware/core";
 import { actorCause, type DomainActor } from "./domain-actor";
 import { broadcastDomainEvents, prepareAtomicEventRows, type DomainEventDraft, type CommitReport } from "./domain-events";
-import { commitLocalKVTransaction } from "./local-store";
+import { commitLocalKVTransaction, localKVEventDrafts } from "./local-store";
 import { withPluginDataWrites } from "./plugin-data-access";
 import { runDomainWrite } from "./domain-write-gate";
 import { isTauri } from "./environment";
@@ -38,7 +38,14 @@ export type FrozenAtomicHostPlan = {
 };
 export async function freezeAtomicHostPlan(plan: AtomicHostPlan, actor: DomainActor): Promise<FrozenAtomicHostPlan> {
   const frozen = structuredClone({ ...plan, events: plan.events.map(({ origin: _, ...event }) => event) });
-  return { plan: frozen, events: await prepareAtomicEventRows(frozen.events.map(event => ({ ...event, origin: actor })) as DomainEventDraft[]) };
+  return { plan: frozen, events: await prepareAtomicEventRows(atomicEventDrafts(frozen, actor)) };
+}
+
+/** Plan events plus the `preference.changed` events its roaming settings must
+ * carry; native commits both with the settings in one transaction. */
+function atomicEventDrafts(plan: AtomicHostPlan, actor: DomainActor): DomainEventDraft[] {
+  const events = plan.events.map(event => ({ ...event, origin: actor })) as DomainEventDraft[];
+  return [...events, ...localKVEventDrafts(new Map(plan.settings.map(entry => [entry.key, entry.value])), actor)];
 }
 
 export function atomicAggregateRevisions(aggregates: { aggregateType: string; aggregateId: string }[]): Promise<string[]> {
@@ -60,7 +67,7 @@ export async function commitAtomicHostPlan(plan: AtomicHostPlan, actor: DomainAc
   if (!isTauri()) throw new AppError("plugin/unavailable", "Atomic transactions require desktop");
   actorCause(actor); options.signal?.throwIfAborted();
   const frozen = structuredClone({ ...plan, events: plan.events.map(({ origin: _, ...event }) => event) });
-  const drafts = frozen.events.map(event => ({ ...event, origin: actor })) as DomainEventDraft[];
+  const drafts = atomicEventDrafts(frozen, actor);
   const owners = [...new Set([...frozen.documents.map(group => group.pluginId),
     ...frozen.settings.flatMap(entry => /^read-aware-plugin\.([a-z0-9-]+)\.settings$/.exec(entry.key)?.[1] ?? [])])];
   return withPluginDataWrites(owners, () => runDomainWrite(async () => {

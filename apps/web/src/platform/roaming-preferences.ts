@@ -9,7 +9,9 @@
  * The projection is the cross-device authority; the KV entry is this
  * device's cache of it:
  *
- * - a local save writes KV (unchanged) AND publishes the event;
+ * - a local save writes KV and its event in ONE native transaction; a failed
+ *   save rolls both back (the KV queue restores the optimistic value and
+ *   emits `local-write-failed`), so KV never diverges from the log;
  * - boot overlays the projection onto KV before any settings module reads;
  * - a sync pull re-overlays and announces changed keys, so mounted UI
  *   follows a remote change without a restart.
@@ -26,10 +28,10 @@ import { errorCode } from "@read-aware/core";
 import { waitForPluginDataUpdates, withPluginDataWrites } from "./plugin-data-access";
 import { invoke } from "./ipc";
 import { emitAppEvent } from "./app-events";
-import { commitDomainEvents } from "./domain-events";
+import { commitDomainEvents, type DomainEventDraft } from "./domain-events";
 import { runDomainWrite } from "./domain-write-gate";
 import { isTauri } from "./environment";
-import { localKV, onLocalKVWrite, flushLocalKV } from "./local-store";
+import { localKV, onLocalKVWrite, flushLocalKV, setLocalKVEventSource } from "./local-store";
 import { isPluginScheduleStateKey } from "./plugin-local-state";
 import { createLogger } from "./logger";
 import {
@@ -179,26 +181,23 @@ async function overlaySecret(slot: string, valueJson: string, origin: DomainActo
   });
 }
 
-/**
- * Record a local settings save in the log. Fire-and-forget: the KV write the
- * caller just made is the device's truth either way, and a dropped event is
- * healed by the next save of the same namespace (whole-object payloads).
- */
-export function publishRoamingPreference(key: RoamingPreferenceKey, value: unknown, origin: DomainActor = "system"): void {
-  origin = causalActor(origin);
-  if (!isTauri() || PluginPreferencePublication.blocks(key)) return;
-  const strip = roamingPolicyFor(key)?.stripOnPublish;
-  let published = value;
-  if (strip?.length && value && typeof value === "object" && !Array.isArray(value)) {
-    const clone = { ...(value as Record<string, unknown>) };
-    for (const field of strip) delete clone[field];
-    published = clone;
+/** The `preference.changed` event for a local write of `raw` to a roaming
+ * key, or null when the key does not roam here. Non-JSON KV values are outside
+ * the roaming contract; stripped fields never enter the log. */
+function preferenceDraft(key: RoamingPreferenceKey, raw: string | null, origin: DomainActor): DomainEventDraft | null {
+  const policy = roamingPolicyFor(key);
+  // A plugin namespace inside an update publishes through its own scope.
+  if (!policy || PluginPreferencePublication.blocks(key)) return null;
+  let value: unknown = null;
+  if (raw !== null) {
+    try { value = JSON.parse(raw); } catch { return null; }
   }
-  void commitDomainEvents({ type: "preference.changed", origin, payload: { key, value: published } }).catch(
-    (error) => {
-      log.error(`failed to log ${key} change`, error);
-    },
-  );
+  if (policy.stripOnPublish?.length && value && typeof value === "object" && !Array.isArray(value)) {
+    const clone = { ...(value as Record<string, unknown>) };
+    for (const field of policy.stripOnPublish) delete clone[field];
+    value = clone;
+  }
+  return { type: "preference.changed", origin: causalActor(origin), payload: { key, value } };
 }
 
 /** Final accepted values use the same event log as ordinary preferences. A
@@ -216,28 +215,34 @@ export function acceptPluginPreferencePublication(scope: PluginPreferencePublica
   }, error => log.error(`failed to log accepted plugin ${scope.pluginId} preferences`, error));
 }
 
+/** Log a KV value that is already durable but was never published (backfill).
+ * No KV write is involved, so there is nothing to roll back: a failed append is
+ * logged and retried by the next refresh's row-presence check. */
+export function backfillRoamingPreference(key: RoamingPreferenceKey, raw: string, origin: DomainActor = "system"): void {
+  if (!isTauri()) return;
+  const draft = preferenceDraft(key, raw, origin);
+  if (!draft) return;
+  void commitDomainEvents(draft).catch(error => log.error(`failed to backfill ${key}; retried on the next refresh`, error));
+}
+
 // ── The write seam ───────────────────────────────────────────────────────────
 //
-// Publishing is POLICY, not a call sites remember to make: every durable KV
-// write flows through localKV, the listener below matches it against the
-// roaming policies, and a matching write becomes its preference.changed
-// event automatically. Save functions know nothing about sync. The overlay
-// tags writes with their origin before persistence — without
-// that, every pull would echo its own contents straight back into the log.
+// Publishing is POLICY, not a call sites remember to make: every local KV
+// write asks this source for the events it must carry, and local-store
+// commits them in the same native transaction as the KV bytes. Save functions
+// know nothing about sync. Remote overlays are tagged before persistence and
+// never ask — otherwise every pull would echo its contents back into the log.
 
+setLocalKVEventSource((entries, actor) => {
+  if (!isTauri()) return [];
+  return [...entries].flatMap(([key, raw]) => preferenceDraft(key, raw, actor) ?? []);
+});
+
+// A plugin namespace inside an update scope defers publication to acceptance;
+// its scope records only exact durable receipts.
 onLocalKVWrite((key, raw, origin, actor) => {
-  if (origin === "remote" || !isTauri()) return;
-  if (!roamingPolicyFor(key)) return;
-  if (PluginPreferencePublication.record(key, raw, actor)) return;
-  if (raw === null) {
-    publishRoamingPreference(key, null, actor);
-    return;
-  }
-  try {
-    publishRoamingPreference(key, JSON.parse(raw), actor);
-  } catch {
-    // Non-JSON KV values are not part of the roaming contract.
-  }
+  if (origin === "remote" || !isTauri() || !roamingPolicyFor(key)) return;
+  PluginPreferencePublication.record(key, raw, actor);
 });
 
 type PreferenceRow = { key: string; valueJson: string };
@@ -362,12 +367,8 @@ function reconcileUnpublished(rows: PreferenceRow[]): void {
   const publishIfLocal = (key: string) => {
     if (present.has(key)) return;
     const raw = localKV.getItem(key);
-    if (!raw) return;
-    try {
-      publishRoamingPreference(key, JSON.parse(raw));
-    } catch {
-      // A malformed local blob is not worth replicating.
-    }
+    // A malformed (non-JSON) local blob yields no draft and is not replicated.
+    if (raw) backfillRoamingPreference(key, raw);
   };
   for (const key of Object.keys(ROAMING_POLICIES)) publishIfLocal(key);
   for (const { prefix } of ROAMING_PREFIXES) {

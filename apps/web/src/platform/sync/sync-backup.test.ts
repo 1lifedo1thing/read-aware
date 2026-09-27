@@ -35,6 +35,8 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
       if (command === "get_blob") return blobs.get(args.key) ?? new ArrayBuffer(0);
       if (command === "get_blob_info") return blobs.has(args.key) ? { byteSize: blobs.get(args.key)!.byteLength } : null;
       if (command === "commit_events") { await commitGate; return { appended: args.events.length, applied: args.events.length }; }
+      // A roaming KV write commits its preference event in the same transaction.
+      if (command === "set_kv_batch" && args.events?.length) { await commitGate; return; }
       return undefined;
     } },
   } });

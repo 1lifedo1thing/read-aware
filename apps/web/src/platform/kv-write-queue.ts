@@ -37,7 +37,7 @@ export class KVWriteQueue {
   }
 
   /** Atomic user edits publish only after the entire native transaction commits. */
-  batch(values: ReadonlyMap<string, string | null>, persist: () => Promise<void>, actor: DomainActor | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store"): Promise<void> {
+  batch(values: ReadonlyMap<string, string | null>, persist: (cause: DomainActor) => Promise<void>, actor: DomainActor | null = null, source: "local" | "restore" = "local", failureOwner: KVFailureOwner = "store"): Promise<void> {
     return this.enqueue(values, persist, "local", actor, source, failureOwner);
   }
 

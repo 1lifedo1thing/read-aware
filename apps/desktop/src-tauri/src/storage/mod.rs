@@ -397,16 +397,51 @@ pub(crate) fn set_kv_batch_in_transaction(
     Ok(())
 }
 
-/// A settings command can span several preference records, but commits all or none.
+/// Write KV entries and the `preference.changed` events that roam them in ONE
+/// transaction, so a roaming save never lands in KV without its event (or the
+/// reverse). Only preference events for keys written by this same batch are
+/// accepted; this is not a general event-commit entry.
+pub(crate) fn set_kv_batch_with_preferences_inner(
+    conn: &mut Connection,
+    entries: Vec<(String, Option<String>)>,
+    events: &[EventRow],
+) -> Result<(), CommandError> {
+    let keys: std::collections::HashSet<&str> = entries.iter().map(|(key, _)| key.as_str()).collect();
+    for event in events {
+        let key = event.payload.get("key").and_then(Value::as_str);
+        if event.event_type != "preference.changed"
+            || key.map_or(true, |key| !keys.contains(key))
+            || event.aggregate_id.as_deref() != key
+        {
+            // A host wiring defect, never user input.
+            return Err(CommandError::new(
+                crate::error::CODE_INTERNAL,
+                "Only preference events for keys in this batch may join a KV write",
+            ));
+        }
+    }
+    let tx = conn.transaction()?;
+    events::commit_events_in_transaction(&tx, events)?;
+    set_kv_batch_in_transaction(&tx, entries)?;
+    Ok(tx.commit()?)
+}
+
+/// A settings command can span several preference records, but commits all or
+/// none. Roaming keys pass their `preference.changed` events so the log entry
+/// commits with the KV write.
 #[tauri::command]
 pub async fn set_kv_batch(
     entries: Vec<(String, Option<String>)>,
+    events: Option<Vec<EventRow>>,
     app: tauri::AppHandle,
 ) -> Result<(), CommandError> {
     crate::storage::blocking("set_kv_batch", move || {
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
-        crate::desktop_preferences::commit_entries(&app, &entries, || set_kv_batch_inner(&mut conn, entries.clone()))
+        let events = events.unwrap_or_default();
+        crate::desktop_preferences::commit_entries(&app, &entries, || {
+            set_kv_batch_with_preferences_inner(&mut conn, entries.clone(), &events)
+        })
     })
     .await
 }

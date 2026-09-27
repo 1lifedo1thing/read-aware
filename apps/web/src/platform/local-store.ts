@@ -36,6 +36,7 @@ import { createLogger } from "./logger";
 import { hydrateSecrets } from "./secret-store";
 import { initializeUserProfile, LEGACY_PROFILE_KEY } from "../domain/user-profile";
 import { KVWriteQueue, type KVWriteOrigin, type KVCommit, type KVFailureOwner } from "./kv-write-queue";
+import { broadcastDomainEventDrafts, mintEventRows, type DomainEventDraft } from "./domain-events";
 import { clearWebviewStorage } from "./clear-webview-storage";
 export type { KVCommit } from "./kv-write-queue";
 
@@ -93,6 +94,31 @@ function notifyChange(key: string, value: string | null, origin: DomainActor = c
     try { listener(key, value, origin); } catch (error) { log.error("KV mirror observer failed", error); }
   } } finally { if (changing.get(key) === notification) changing.delete(key); }
 }
+/**
+ * Events that must commit in the SAME native transaction as a local KV write.
+ * The roaming layer registers its `preference.changed` policy here, so a
+ * roaming save either lands in KV together with its log entry or fails as a
+ * whole — the queue then rolls back the optimistic value and emits
+ * `local-write-failed`. A source must be pure: it cannot write KV.
+ */
+type KVEventSource = (entries: ReadonlyMap<string, string | null>, actor: DomainActor) => DomainEventDraft[];
+let kvEventSource: KVEventSource | null = null;
+export function setLocalKVEventSource(source: KVEventSource | null): void { kvEventSource = source; }
+/** The events a local write of `entries` must carry (empty for non-roaming keys). */
+export function localKVEventDrafts(entries: ReadonlyMap<string, string | null>, actor: DomainActor): DomainEventDraft[] {
+  return kvEventSource?.(entries, actor) ?? [];
+}
+
+/** Persist local entries, joining any required events to one native transaction. */
+async function persistLocalEntries(values: ReadonlyMap<string, string | null>, actor: DomainActor, plain: () => Promise<void>): Promise<void> {
+  const drafts = localKVEventDrafts(values, actor);
+  if (!drafts.length) return plain();
+  const events = await mintEventRows(drafts);
+  await invoke<void>("set_kv_batch", { entries: [...values], events });
+  // Observers see only events the store accepted.
+  broadcastDomainEventDrafts(drafts);
+}
+
 const writes = new KVWriteQueue({
   read: key => snapshot?.get(key) ?? null,
   mirror: (key, value, origin) => {
@@ -101,7 +127,11 @@ const writes = new KVWriteQueue({
     else (snapshot ??= new Map()).set(key, value);
     if (value !== previous) notifyChange(key, value, origin);
   },
-  persist: (key, value) => value === null ? invoke<void>("delete_kv", { key }) : invoke<void>("set_kv", { key, value }),
+  persist: (key, value, origin, actor) => {
+    const plain = () => value === null ? invoke<void>("delete_kv", { key }) : invoke<void>("set_kv", { key, value });
+    // Remote overlays already came from the log; only local edits publish.
+    return origin === "local" ? persistLocalEntries(new Map([[key, value]]), actor, plain) : plain();
+  },
   committed: notifyWrite,
   settled: notifyCommit,
   failed: (key, error, owner) => {
@@ -226,7 +256,8 @@ export function setLocalKVBatch(entries: ReadonlyMap<string, string | null>, act
   if (entries.size === 0) return Promise.resolve();
   const values = new Map(entries);
   if (isTauri()) {
-    return writeLocal(values.keys(), () => writes.batch(values, () => invoke("set_kv_batch", { entries: [...values] }), actor, source, failureOwner), failureOwner, run);
+    return writeLocal(values.keys(), () => writes.batch(values,
+      cause => persistLocalEntries(values, cause, () => invoke("set_kv_batch", { entries: [...values] })), actor, source, failureOwner), failureOwner, run);
   }
   // Storybook has no SQLite transaction. Restore its prior records on failure,
   // and do not notify observers until all writes have succeeded.

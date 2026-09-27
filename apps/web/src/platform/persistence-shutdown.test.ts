@@ -11,7 +11,7 @@ if (process.env.PERSISTENCE_SHUTDOWN_PROOF === "1") {
     invoke(command: string, args: Record<string, unknown>) {
       if (command === "secret_keys") return Promise.resolve([]);
       if (command === "restored_credentials_pending") return Promise.resolve([...credentialMarkers]);
-      if (["secret_set", "secret_delete", "set_kv", "local_device_get", "commit_events", "restored_credentials_publish"].includes(command) && hold) {
+      if (["secret_set", "secret_delete", "set_kv", "set_kv_batch", "local_device_get", "commit_events", "restored_credentials_publish"].includes(command) && hold) {
         return new Promise((resolve, reject) => pending.push({ command, args, resolve, reject })).then(value => {
           if (command === "secret_set" && args.roam && String(args.key).startsWith("ai-api-key")) credentialMarkers.add(String(args.key));
           if (command === "restored_credentials_publish") credentialMarkers.clear();
@@ -36,6 +36,15 @@ if (process.env.PERSISTENCE_SHUTDOWN_PROOF === "1") {
     expect(index).toBeGreaterThanOrEqual(0);
     return pending.splice(index, 1)[0]!;
   };
+  /** Supply held device identities until the awaited native command is dispatched. */
+  const settle = async (command: string) => {
+    for (let round = 0; round < 10 && !pending.some(work => work.command === command); round++) {
+      const identity = pending.findIndex(work => work.command === "local_device_get");
+      if (identity >= 0) pending.splice(identity, 1)[0]!.resolve(device);
+      await tick();
+    }
+    return take(command);
+  };
 
   test("actual KV/credential observers and delayed identity, IPC and post-commit work drain before shutdown", async () => {
     await secrets.hydrateSecrets();
@@ -57,17 +66,18 @@ if (process.env.PERSISTENCE_SHUTDOWN_PROOF === "1") {
     let closed = false;
     const closing = coordinator.prepare().then(receipt => { closed = true; return receipt; });
     await tick(); expect(closed).toBe(false);
-    take("secret_set").resolve(); take("set_kv").resolve();
-    await Promise.all([saved, setting]); await tick();
-    expect(closed).toBe(false); expect(durableWrites.size).toBe(2);
-    expect(pending.map(work => work.command)).toEqual(["local_device_get", "local_device_get"]);
-    take("local_device_get").resolve(device); take("local_device_get").resolve(device); await tick();
+    take("secret_set").resolve(); await saved;
+    // The roaming setting and its preference event are one native write.
+    const preference = await settle("set_kv_batch");
+    expect(preference.args.entries).toEqual([["read-aware-app-settings", '{"theme":"dark"}']]);
+    expect((preference.args.events as { payload: unknown }[]).map(event => event.payload)).toEqual([{ key: "read-aware-app-settings", value: { theme: "dark" } }]);
     expect(observed).toEqual([]); expect(closed).toBe(false);
-    const preference = take("commit_events"), credential = take("restored_credentials_publish");
+    preference.resolve(); await setting; await tick();
+    expect(observed).toEqual(["read-aware-app-settings"]); expect(closed).toBe(false);
+    const credential = await settle("restored_credentials_publish");
     const events = credential.args.events as { payload: { key: string; value: unknown } }[];
     expect(events.map(event => event.payload)).toEqual([{ key: "secret:ai-api-key.proof", value: null }]);
     expect(JSON.stringify([preference.args, credential.args])).not.toContain("synthetic-proof");
-    preference.resolve({ appended: 1, applied: 1 });
     await tick(); expect(closed).toBe(false); expect(observed).not.toContain("secret:ai-api-key.proof");
     // Native code owns sealing and atomic marker retirement. This host check proves
     // shutdown waits for that receipt and the event observer it subsequently starts.
@@ -93,10 +103,10 @@ if (process.env.PERSISTENCE_SHUTDOWN_PROOF === "1") {
     const saved = localKV.setItemAsync("read-aware-app-settings", '{"theme":"light"}');
     let closed = false;
     const closing = coordinator.prepare().then(receipt => { closed = true; return receipt; });
-    await tick(); take("secret_set").reject({ code: "db/locked" }); take("set_kv").resolve();
-    expect((await failed).code).toBe("db/locked"); await saved; await tick();
-    expect(closed).toBe(false); expect(secrets.getSecret("ai-api-key.failed")).toBe("");
-    take("commit_events").resolve({ appended: 1, applied: 1 });
+    await tick(); take("secret_set").reject({ code: "db/locked" });
+    expect((await failed).code).toBe("db/locked"); expect(secrets.getSecret("ai-api-key.failed")).toBe("");
+    await tick(); expect(closed).toBe(false);
+    (await settle("set_kv_batch")).resolve(); await saved;
     const receipt = await closing;
     expect(receipt.status).toBe("degraded");
     expect(receipt.owners.find(owner => owner.name === "credentials")).toMatchObject({ status: "failed", code: "db/locked" });

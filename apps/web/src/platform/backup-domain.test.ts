@@ -56,21 +56,23 @@ if (process.env.BACKUP_DOMAIN_PROOF === "1") {
   test("domain backup drains actual KV/secret publication tails and delayed envelope preparation", async () => {
     await secrets.hydrateSecrets();
     await secrets.setSecretAsync("sync.master-key", btoa(String.fromCharCode(...new Uint8Array(32).fill(17))));
-    holds.add("set_kv"); holds.add("secret_set"); holds.add("local_device_get"); holds.add("commit_events"); holds.add("restored_credentials_publish");
+    holds.add("set_kv_batch"); holds.add("secret_set"); holds.add("local_device_get"); holds.add("restored_credentials_publish");
     const setting = kv.localKV.setItemAsync("read-aware-app-settings", '{"theme":"dark"}');
     const secret = secrets.setSecretAsync("ai-api-key.proof", "synthetic");
     expect(kv.localKV.getItem("read-aware-app-settings")).toBe('{"theme":"dark"}');
     expect(secrets.getSecret("ai-api-key.proof")).toBe("synthetic");
     let captured = false;
     const backup = withDomainBackup(async () => { captured = true; });
-    await tick(); take("set_kv").resolve(); take("secret_set").resolve();
-    await Promise.all([setting, secret]); await tick(); expect(captured).toBe(false);
+    await tick(); take("secret_set").resolve(); await secret; await tick(); expect(captured).toBe(false);
+    // The roaming setting waits for its event envelope, then commits KV and
+    // event in one native write; the credential waits for its own envelope.
     const deviceReads = [take("local_device_get"), take("local_device_get")];
     for (const read of deviceReads) read.resolve({ deviceId: "domain-proof", lastHlcWallMs: null, lastHlcCounter: null });
     await tick(); expect(captured).toBe(false);
-    const commits = [take("commit_events")];
-    expect(JSON.stringify(commits.map(item => item.args))).not.toContain("synthetic");
-    for (const commit of commits) commit.resolve({ appended: 1, applied: 1 });
+    const write = take("set_kv_batch");
+    expect(JSON.stringify(write.args)).not.toContain("synthetic");
+    expect(write.args.events.map((event: any) => event.type)).toEqual(["preference.changed"]);
+    write.resolve(); await setting;
     await tick(); expect(captured).toBe(false);
     const publication = take("restored_credentials_publish");
     expect(JSON.stringify(publication.args)).not.toContain("synthetic");
@@ -126,7 +128,8 @@ if (process.env.BACKUP_DOMAIN_PROOF === "1") {
       settingMirror = "optimistic candidate";
       await tick();
       expect(settingMirror).toBe('{"theme":"dark"}');
-      expect(calls).toHaveLength(before);
+      // Rejected admissions only log; no domain, KV or credential IPC is dispatched.
+      expect(calls.slice(before).filter(command => command !== "plugin:log|log")).toEqual([]);
       expect(kv.localKV.getItem("read-aware-app-settings")).toBe('{"theme":"dark"}');
       expect(secrets.getSecret("ai-api-key.proof")).toBe("synthetic");
       expect(failures).toEqual([expect.objectContaining({ kind: "kv", code: "backup/busy" }), expect.objectContaining({ kind: "secret", code: "backup/busy" }), expect.objectContaining({ kind: "kv", code: "backup/busy" })]);
