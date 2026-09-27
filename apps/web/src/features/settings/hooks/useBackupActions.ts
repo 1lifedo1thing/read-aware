@@ -7,7 +7,7 @@ import { describeError } from "../../../i18n/describe-error";
 import { createLogger } from "../../../platform/logger";
 import { hostBackupFlows, hostMaintenance } from "../../../services/maintenance";
 import { useBackupImport, type BackupImportOutcome } from "./useBackupImport";
-import { useBackupExport, type BackupExportFormat } from "./useBackupExport";
+import { useBackupExport } from "./useBackupExport";
 
 const log = createLogger("backup-actions");
 
@@ -36,28 +36,16 @@ export function useBackupActions(blocked = false) {
     active.current = true; setBusy(true);
     const owner = lifetime.current;
     let operationSignal: AbortSignal | undefined, restarting = false;
-    const exportResult: { format: BackupExportFormat } = { format: "library" };
     try {
       const result = await hostBackupFlows.run<boolean | BackupImportOutcome>(action, async signal => {
         const combined = signal && owner ? AbortSignal.any([signal, owner.signal]) : signal ?? owner?.signal;
         operationSignal = combined;
-        if (action === "import") return importDialog.request(combined);
-        const exported = await exportDialog.request(combined);
-        exportResult.format = exported.format;
-        return exported.saved;
+        return action === "import" ? importDialog.request(combined) : exportDialog.request(combined);
       });
-      if (result && typeof result === "object") {
-        restarting = true;
-        // Reboot also performs the existing backup genesis reconciliation.
-        if (!("format" in result)) window.setTimeout(() => window.location.reload(), 900);
-      }
-      if (!result || owner?.signal.aborted || typeof result === "object" && "format" in result) return;
-      toast({ variant: "success", title: t("dataSync.noticeDone"), description: typeof result === "boolean"
-        ? t(exportResult.format === "full" ? "dataSync.exportDialog.success" : "dataSync.exportSuccess")
-        : t("dataSync.merge.summary", {
-          books: t("dataSync.merge.books", { count: result.books }), annotations: t("dataSync.merge.annotations", { count: result.annotations }),
-          collections: t("dataSync.merge.collections", { count: result.collections }), settings: t("dataSync.merge.settings", { count: result.settings }),
-        }) });
+      // A restore receipt keeps writes paused; its dialog owns the reload.
+      if (result && typeof result === "object") { restarting = true; return; }
+      if (!result || owner?.signal.aborted) return;
+      toast({ variant: "success", title: t("dataSync.noticeDone"), description: t("dataSync.exportDialog.success") });
     } catch (error) {
       log.error(`Backup ${action} failed`, error);
       if (errorCode(error) === "backup/recovery-required") restarting = true;

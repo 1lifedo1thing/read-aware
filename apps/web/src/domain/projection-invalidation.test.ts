@@ -5,7 +5,6 @@ import { broadcastDomainEventDrafts } from "../platform/domain-events";
 import { createProjectionInvalidationObserver } from "./projection-invalidation";
 import { buildPluginContext } from "../features/plugins/runtime/plugin-context";
 import { createIpcSyncStore } from "../platform/sync/sync-store";
-import { restoreCollection, restoreLibraryBook } from "../features/library/lib/library-db";
 import { eventCause, reactionActor, stampEventCause } from "../platform/domain-actor";
 
 const tick = () => Bun.sleep(0);
@@ -106,8 +105,6 @@ test("sync notifications follow committed projection commands, including partial
     result = { replayed: false }; await store.backfillEvents([], []); await tick(); expect(seen.length).toBe(4);
     result = { replayed: true }; await store.backfillEvents([], []); await tick(); expect(seen.length).toBe(5);
     result = { complete: true }; await store.settleBackfill(); await tick(); expect(seen.length).toBe(6);
-    await restoreCollection({ id: "restored", name: "Private" } as never); await tick(); expect(seen.at(-1)?.source).toBe("restore");
-    await restoreLibraryBook({ id: "restored", title: "Private" } as never, null); await tick(); expect(seen.length).toBe(8);
     expect(JSON.stringify(seen)).not.toMatch(/private|Private/);
   } finally {
     gate.resolve(); actor.lifecycle.stop();

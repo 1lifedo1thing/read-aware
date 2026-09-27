@@ -1,5 +1,5 @@
-import { causalActor, type DomainActor } from "../platform/domain-actor";
-import { runDomainWrite, type RunDomainWrite } from "../platform/domain-write-gate";
+import type { DomainActor } from "../platform/domain-actor";
+import { runDomainWrite } from "../platform/domain-write-gate";
 import { normalizeUserProfileChange, normalizeUserProfileQuery, userProfilePage,
   type UserProfileChange, type UserProfileQuery, type UserProfileReceipt, type UserProfileSnapshot } from "@read-aware/core";
 import { invoke } from "../platform/ipc";
@@ -11,36 +11,35 @@ type ProfileHost = { invoke: typeof invoke; mint: typeof mintEventRows; broadcas
 /** Initialization is shared housekeeping; actor cancellation only gates its own read/write. */
 export function createUserProfileService(host: ProfileHost) {
   let initialization: Promise<void> | undefined;
-  const initialize = (run: RunDomainWrite = runDomainWrite): Promise<void> => initialization ??= run(async () => {
+  const initialize = (): Promise<void> => initialization ??= runDomainWrite(async () => {
     const [event] = await host.mint([{ type: "profile.updated", payload: {}, origin: "system" }]);
     const result = await host.invoke<{ migrated: boolean; snapshot: UserProfileSnapshot }>("profile_initialize", { event });
     if (result.migrated) host.broadcast([{ type: "profile.updated", payload: { summary: result.snapshot.summary }, origin: "system" }]);
   }).catch(error => { initialization = undefined; throw error; });
 
-  const readSnapshot = async (signal?: AbortSignal, run: RunDomainWrite = runDomainWrite): Promise<UserProfileSnapshot> => {
+  const readSnapshot = async (signal?: AbortSignal): Promise<UserProfileSnapshot> => {
     signal?.throwIfAborted();
-    await initialize(run);
+    await initialize();
     signal?.throwIfAborted();
     const snapshot = await host.invoke<UserProfileSnapshot>("profile_inspect");
     signal?.throwIfAborted();
     return snapshot;
   };
-  const write = async (command: "profile_commit" | "profile_restore", input: UserProfileChange, origin: DomainActor, signal?: AbortSignal, run: RunDomainWrite = runDomainWrite) => {
+  const change = async (input: UserProfileChange, origin: DomainActor, signal?: AbortSignal) => {
+    const { summary, expectedRevision } = normalizeUserProfileChange(input);
     signal?.throwIfAborted();
-    await initialize(run);
+    await initialize();
     signal?.throwIfAborted();
-    const draft: DomainEventDraft = { type: "profile.updated", payload: { summary: input.summary }, origin };
-    return run(async () => {
+    const draft: DomainEventDraft = { type: "profile.updated", payload: { summary }, origin };
+    return runDomainWrite(async () => {
       const [event] = await host.mint([draft]);
       signal?.throwIfAborted();
-      const receipt = await host.invoke<UserProfileReceipt>(command, { event, expectedRevision: input.expectedRevision });
+      const receipt = await host.invoke<UserProfileReceipt>("profile_commit", { event, expectedRevision });
       // Dispatched transactions drain to their real result, even if the actor retires.
       if (receipt.changed) host.broadcast([draft]);
       return receipt;
     });
   };
-  const change = async (input: UserProfileChange, origin: DomainActor, signal?: AbortSignal) =>
-    write("profile_commit", normalizeUserProfileChange(input), origin, signal);
   return {
     initialize, readSnapshot, change,
     read: async () => (await readSnapshot()).summary ?? undefined,
@@ -54,8 +53,6 @@ export function createUserProfileService(host: ProfileHost) {
       const observed = await readSnapshot();
       await change({ summary, expectedRevision: observed.revision }, "agent");
     },
-    // Only the host archive workflow can reach this; no override flag in public edits.
-    restore: (summary: string, expectedRevision: string, run: RunDomainWrite = runDomainWrite, origin: DomainActor = "user") => write("profile_restore", { summary, expectedRevision }, causalActor(origin), undefined, run),
   };
 }
 
@@ -66,4 +63,3 @@ export const readUserProfile = service.read;
 export const readUserProfilePage = service.page;
 export const changeUserProfile = service.change;
 export const putUserProfile = service.put;
-export const restoreUserProfile = service.restore;

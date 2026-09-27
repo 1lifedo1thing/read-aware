@@ -31,7 +31,7 @@ export async function profileHost(summary: string | null = "Original") {
         if (controls.readFailure) throw controls.readFailure;
         return { ...snapshot } as T;
       }
-      if (command !== "profile_commit" && command !== "profile_restore") throw Error(`Unexpected IPC ${command}`);
+      if (command !== "profile_commit") throw Error(`Unexpected IPC ${command}`);
       const input = structuredClone(args) as { expectedRevision: string; event: { id: string; payload: { summary: string }; origin: string } };
       const result = serial.then(async () => {
         await controls.beforeCommit();

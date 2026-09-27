@@ -40,6 +40,9 @@ const WORK_FACTOR: u8 = 18;
 pub(crate) const CODE_INVALID: &str = "backup/invalid-archive";
 pub(crate) const CODE_UNLOCK: &str = "backup/unlock-failed";
 pub(crate) const CODE_PASSWORD: &str = "backup/password-policy";
+/// The source is a retired v1 JSON library backup. That format can no longer
+/// be restored; only complete encrypted archives are accepted.
+pub(crate) const CODE_LEGACY_FORMAT: &str = "backup/legacy-format";
 fn invalid(message: &str) -> CommandError {
     CommandError::new(CODE_INVALID, message)
 }

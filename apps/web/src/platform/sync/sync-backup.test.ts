@@ -8,13 +8,24 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
   let commitGate: Promise<void> | undefined;
   let failSecretDelete = false;
   let coverBacklog: Array<{ bookId: string; coverBlobKey: string }> = [];
+  let exportSources: string[] = [], planGate: Promise<void> | undefined, planEntered = false;
   const profile = { syncEnabled: true, remoteAccountId: null as string | null, encryptionKeyRef: "sync.master-key", lastPushAt: null, lastPullAt: null };
   Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => null } });
   Object.defineProperty(globalThis, "document", { configurable: true, value: { addEventListener() {}, removeEventListener() {} } });
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
     setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {},
-    __TAURI_INTERNALS__: { invoke: async (command: string, args: any) => {
+    __TAURI_INTERNALS__: { transformCallback: () => 1, invoke: async (command: string, args: any) => {
       commands.push(command);
+      if (command === "plugin:dialog|save") return "/synthetic/backup.age";
+      if (command === "plugin:dialog|open") return "/synthetic/source.age";
+      if (command === "backup_export_sources") return exportSources;
+      if (command === "backup_export_capture") { order.push("backup-read"); return { taskId: args.taskId, format: 2 }; }
+      if (command === "backup_import_open") return { taskId: args.taskId, format: 2, schemaVersion: 1, tables: {}, events: 0, blobs: 0, credentials: 0, pluginPrograms: 0 };
+      if (command === "backup_import_plan") {
+        planEntered = true; await planGate;
+        return { taskId: args.taskId, newEvents: 0, existingEvents: 0, conflictingEvents: 0, tables: {},
+          files: { sourceOnly: 0, targetOnly: 0, same: 0, different: 0, unavailable: 0 }, pluginPrograms: 0 };
+      }
       if (command === "secret_delete" && failSecretDelete) throw { code: "db/locked" };
       if (command === "sync_profile_get") return profile;
       if (command === "library_cover_backlog") return coverBacklog;
@@ -31,14 +42,13 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
   const roaming = await import("../roaming-preferences");
   const dedupe = await import("../book-dedupe");
   const kv = await import("../local-store");
-  const library = await import("../../features/library/lib/library-db");
-  const annotations = await import("../../features/annotations/lib/annotation-db");
-  const userProfile = await import("../../domain/user-profile");
   const secrets = await import("../secret-store");
   const { withPluginDataWrites, withPluginRuntimeDataWrite } = await import("../plugin-data-access");
   const { toBase64 } = await import("../sync-envelope");
   const scheduler = await import("./sync-scheduler");
-  const { exportBackup, importBackup } = await import("../../features/settings/lib/backup-io");
+  const { exportFullBackup } = await import("../../features/settings/lib/full-backup-export");
+  const { prepareFullBackupImport } = await import("../../features/settings/lib/full-backup-import");
+  const password = "a synthetic backup password";
   const outcome = { pulled: 1, pushed: 0, blobs: 0, verified: 0, backfilled: 0, backfillRemaining: 0, bootstrapped: false };
   let cycleGate: Promise<void> | undefined, downloadGate: Promise<void> | undefined;
   let cycles = 0;
@@ -101,18 +111,14 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
     refreshDownloadToken = () => withPluginRuntimeDataWrite(() => secrets.setPluginSecret("download-token", "refresh", "synthetic"));
     const first = Promise.withResolvers<void>(), source = Promise.withResolvers<void>();
     cycleGate = first.promise; downloadGate = source.promise;
-    const reads = [
-      spyOn(kv, "dumpLocalKV").mockImplementation(async () => { order.push("backup-read"); return {}; }),
-      spyOn(library, "listLibraryBooks").mockResolvedValue([{ id: "source" } as any]),
-      spyOn(library, "listCollections").mockResolvedValue([]),
-      spyOn(annotations, "listAnnotations").mockResolvedValue([]),
-      spyOn(userProfile, "readUserProfileSnapshot").mockResolvedValue({ summary: null, revision: "empty" }),
-    ];
+    exportSources = ["bookfile:source"];
     const origin = causalActor("plugin:sync-proof");
     const initial = scheduler.syncNow(origin); await Bun.sleep(0); expect(cycles).toBe(1);
     expect(eventCause(scheduler.getSyncStatusSnapshot())).toEqual(actorCause(origin));
     let saved = false;
-    const backup = exportBackup().then(json => { saved = true; return JSON.parse(json); });
+    const backup = exportFullBackup(password).then(result => { saved = true; return result; });
+    // The destination dialog settles before the export reserves sync admission.
+    await Bun.sleep(0); expect(commands).toContain("plugin:dialog|save");
     const laterCycle = scheduler.syncNow(), laterBlob = scheduler.fetchRemoteBlob("later");
     try {
     await Bun.sleep(0); expect(order).toEqual(["cycle"]); expect(downloads).toEqual([]);
@@ -121,29 +127,28 @@ if (process.env.SYNC_BACKUP_PROOF === "1") {
     expect(cycles).toBe(1); expect(downloads).toHaveLength(1); expect(downloads[0]).toContain("source");
     expect(saved).toBe(false);
     source.resolve(); downloadGate = undefined;
-    const result = await backup;
-    expect(order.indexOf("overlay")).toBeLessThan(order.indexOf("backup-read"));
-    expect(atob(result.files.source)).toBe("synthetic book");
+    expect(await backup).toBe(true);
+    expect(order.indexOf("overlay")).toBeLessThan(order.indexOf("fetch:bookfile:source"));
+    expect(order.indexOf("fetch:bookfile:source")).toBeLessThan(order.indexOf("backup-read"));
+    expect(new TextDecoder().decode(blobs.get("bookfile:source"))).toBe("synthetic book");
     await laterCycle; expect(await laterBlob).toEqual({ outcome: "fetched" });
     expect(cycles).toBe(2); expect(downloads).toContain("later");
     } finally {
       first.resolve(); source.resolve(); cycleGate = undefined; downloadGate = undefined;
       await Promise.allSettled([initial, backup, laterCycle, laterBlob]);
-      refreshDownloadToken = undefined;
-      for (const read of reads) read.mockRestore();
+      refreshDownloadToken = undefined; exportSources = [];
     }
   });
 
-  test("real import retains sync exclusion through its last write and caller cancellation", async () => {
-    const writing = Promise.withResolvers<void>(), controller = new AbortController();
-    let entered = false;
-    const write = spyOn(kv, "restoreLocalKV").mockImplementation(async () => { entered = true; await writing.promise; });
-    const imported = importBackup(JSON.stringify({ kind: "backup", books: [], kv: {} }), controller.signal);
-    await Bun.sleep(0); expect(entered).toBe(true);
+  test("real import planning retains sync exclusion through its physical plan and caller cancellation", async () => {
+    const planning = Promise.withResolvers<void>(), controller = new AbortController();
+    planGate = planning.promise; planEntered = false;
+    const imported = prepareFullBackupImport(password, controller.signal).catch(error => error);
+    while (!planEntered) await Bun.sleep(0);
     const before = cycles, cycle = scheduler.syncNow();
     controller.abort(); await Bun.sleep(0); expect(cycles).toBe(before);
-    writing.resolve(); expect(await imported).toMatchObject({ books: 0 });
-    await cycle; expect(cycles).toBe(before + 1); write.mockRestore();
+    planning.resolve(); planGate = undefined; expect(await imported).toMatchObject({ name: "AbortError" });
+    await cycle; expect(cycles).toBe(before + 1);
   });
 
   test("connection persistence waits outside backup; escaped backup fetchers cannot write later", async () => {

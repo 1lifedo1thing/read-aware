@@ -340,31 +340,12 @@ export async function hydrateLocalStore(): Promise<void> {
   }
 
   // Off the boot-critical path: synthesize creation events for projection rows
-  // the event log has never seen (pre-event-era data, v1 backup restores,
-  // dropped best-effort appends). Idempotent; a failure retries next launch.
+  // the event log has never seen (pre-event-era data, rows left by retired v1
+  // backup restores, dropped best-effort appends). Idempotent; a failure
+  // retries next launch.
   void reconcileGenesisEvents().catch((err) => {
     log.error("genesis event reconciliation failed", err);
   });
-}
-
-/** Snapshot every device-local `read-aware-*` value (for a full-backup export). */
-export async function dumpLocalKV(): Promise<Record<string, string>> {
-  await flushLocalKV();
-  if (isTauri()) return invoke<Record<string, string>>("load_kv_all");
-  const out: Record<string, string> = {};
-  for (let i = 0; i < localStorage.length; i += 1) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith("read-aware-")) {
-      const value = localStorage.getItem(key);
-      if (value != null) out[key] = value;
-    }
-  }
-  return out;
-}
-
-/** Merge a backup atomically before reload, retaining the existing roaming-publication policy. */
-export async function restoreLocalKV(entries: Record<string, string>, run: RunDomainWrite = runDomainWrite, origin: DomainActor = "user"): Promise<void> {
-  await setLocalKVBatch(new Map(Object.entries(entries)), causalActor(origin), "restore", "store", run);
 }
 
 /** Host rollback spanning KV and other SQLite tables, with the same queue/mirror contract. */

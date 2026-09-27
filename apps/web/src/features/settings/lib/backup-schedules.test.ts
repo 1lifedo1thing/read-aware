@@ -1,63 +1,59 @@
 import { expect, spyOn, test } from "bun:test";
-import * as kv from "../../../platform/local-store";
-import * as library from "../../library/lib/library-db";
-import * as annotations from "../../annotations/lib/annotation-db";
-import * as profile from "../../../domain/user-profile";
-import { pluginSchedules } from "../../plugins/runtime/plugin-scheduler";
-import { exportBackup, importBackup } from "./backup-io";
 
-const local = { "read-aware-plugin.backup-schedule.schedule-state": '{"job":{"deferred":{"requestId":"foreign"}}}',
-  "read-aware-plugin.backup-schedule.schedule-runs": '{"job":"old"}',
-  "read-aware-plugin.backup-schedule.settings": '{"chosen":true}',
-  "read-aware-plugin.backup-schedule.schedule-state-extra": '"user data"' };
+if (process.env.BACKUP_SCHEDULES_PROOF === "1") {
+  let capture: Promise<void> | undefined;
+  const native = async (command: string, args: any): Promise<unknown> => {
+    if (command === "plugin:dialog|save") return "/synthetic/backup.age";
+    if (command === "backup_export_capture") { await capture; return { taskId: args.taskId, format: 2 }; }
+    if (command === "local_device_get") return { deviceId: "schedule-proof", lastHlcWallMs: null, lastHlcCounter: null };
+    if (["backup_export_sources", "reading_sessions_pending", "backup_close_reading_sessions", "secret_keys", "restored_credentials_pending"].includes(command)) return [];
+    return undefined;
+  };
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: () => null } });
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {},
+    __TAURI_INTERNALS__: { invoke: native, transformCallback: () => 1 } } });
+  const kv = await import("../../../platform/local-store");
+  const { pluginSchedules } = await import("../../plugins/runtime/plugin-scheduler");
+  const { exportFullBackup } = await import("./full-backup-export");
+  const password = "a synthetic backup password";
 
-function reads() {
-  return [spyOn(kv, "dumpLocalKV").mockResolvedValue(local),
-    spyOn(library, "listLibraryBooks").mockResolvedValue([]), spyOn(library, "listCollections").mockResolvedValue([]),
-    spyOn(annotations, "listAnnotations").mockResolvedValue([]),
-    spyOn(profile, "readUserProfileSnapshot").mockResolvedValue({ summary: null, revision: "empty" })];
-}
-
-test("a production schedule can await the complete export path without joining its own flight", async () => {
-  const mocks = reads(), write = spyOn(kv.localKV, "setItemAsync").mockResolvedValue();
-  let exported: Record<string, unknown> | undefined;
-  const owner = pluginSchedules.register("backup-schedule", { id: "export", label: "Export", everyMinutes: 60 }, async () => {
-    exported = JSON.parse(await exportBackup()).kv;
+  test("a production schedule can await the complete export path without joining its own flight", async () => {
+    const write = spyOn(kv.localKV, "setItemAsync").mockResolvedValue();
+    let saved: boolean | undefined;
+    const owner = pluginSchedules.register("backup-schedule", { id: "export", label: "Export", everyMinutes: 60 }, async () => {
+      saved = await exportFullBackup(password);
+    });
+    try {
+      expect((await pluginSchedules.control({ pluginId: "backup-schedule", id: "export", action: "run" })).status).toBe("completed");
+      expect(saved).toBe(true);
+      expect(write).toHaveBeenCalledTimes(2);
+    } finally { owner.dispose(); await pluginSchedules.drainWrites("backup-schedule"); write.mockRestore(); }
   });
-  try {
-    expect((await pluginSchedules.control({ pluginId: "backup-schedule", id: "export", action: "run" })).status).toBe("completed");
-    expect(exported).toEqual({ "read-aware-plugin.backup-schedule.settings": '{"chosen":true}',
-      "read-aware-plugin.backup-schedule.schedule-state-extra": '"user data"' });
-    expect(write).toHaveBeenCalledTimes(2);
-  } finally { owner.dispose(); await pluginSchedules.drainWrites("backup-schedule"); write.mockRestore(); for (const mock of mocks) mock.mockRestore(); }
-});
 
-test("production export holds a task's final receipt until capture ends", async () => {
-  const mocks = reads(), write = spyOn(kv.localKV, "setItemAsync").mockResolvedValue();
-  const callback = Promise.withResolvers<void>(), capture = Promise.withResolvers<void>();
-  const dump = spyOn(kv, "dumpLocalKV").mockImplementation(async () => { await capture.promise; return local; });
-  const owner = pluginSchedules.register("backup-schedule", { id: "late", label: "Late", everyMinutes: 60 }, () => callback.promise);
-  const execution = pluginSchedules.control({ pluginId: "backup-schedule", id: "late", action: "run" });
-  let backup: Promise<string> | undefined;
-  try {
-    await Bun.sleep(0); expect(write).toHaveBeenCalledTimes(1);
-    backup = exportBackup(); await Bun.sleep(0);
-    callback.resolve(); await Bun.sleep(0); expect(write).toHaveBeenCalledTimes(1);
-    capture.resolve(); await backup; expect((await execution).schedule.lastOutcome).toBe("succeeded");
-    expect(write).toHaveBeenCalledTimes(2);
-  } finally {
-    callback.resolve(); capture.resolve(); await Promise.allSettled([execution, backup]);
-    owner.dispose(); await pluginSchedules.drainWrites("backup-schedule");
-    dump.mockRestore(); write.mockRestore(); for (const mock of mocks) mock.mockRestore();
-  }
-});
-
-test("legacy v1 import preserves device task identity while importing ordinary plugin settings", async () => {
-  const write = spyOn(kv, "restoreLocalKV").mockResolvedValue();
-  try {
-    const result = await importBackup(JSON.stringify({ kind: "backup", books: [], kv: local }));
-    expect(result.settings).toBe(2);
-    expect(write).toHaveBeenCalledWith({ "read-aware-plugin.backup-schedule.settings": '{"chosen":true}',
-      "read-aware-plugin.backup-schedule.schedule-state-extra": '"user data"' }, expect.any(Function));
-  } finally { write.mockRestore(); }
-});
+  test("production export holds a task's final receipt until capture ends", async () => {
+    const write = spyOn(kv.localKV, "setItemAsync").mockResolvedValue();
+    const callback = Promise.withResolvers<void>(), captured = Promise.withResolvers<void>();
+    capture = captured.promise;
+    const owner = pluginSchedules.register("backup-schedule", { id: "late", label: "Late", everyMinutes: 60 }, () => callback.promise);
+    const execution = pluginSchedules.control({ pluginId: "backup-schedule", id: "late", action: "run" });
+    let backup: Promise<boolean> | undefined;
+    try {
+      await Bun.sleep(0); expect(write).toHaveBeenCalledTimes(1);
+      backup = exportFullBackup(password); await Bun.sleep(0);
+      callback.resolve(); await Bun.sleep(0); expect(write).toHaveBeenCalledTimes(1);
+      captured.resolve(); expect(await backup).toBe(true); expect((await execution).schedule.lastOutcome).toBe("succeeded");
+      expect(write).toHaveBeenCalledTimes(2);
+    } finally {
+      callback.resolve(); captured.resolve(); capture = undefined; await Promise.allSettled([execution, backup]);
+      owner.dispose(); await pluginSchedules.drainWrites("backup-schedule"); write.mockRestore();
+    }
+  });
+} else {
+  test("isolated plugin schedules around the production full export", async () => {
+    const child = Bun.spawn([process.execPath, "test", import.meta.path], {
+      env: { ...process.env, BACKUP_SCHEDULES_PROOF: "1" }, stdout: "ignore", stderr: "pipe",
+    });
+    const output = await new Response(child.stderr).text();
+    expect(await child.exited, output).toBe(0); expect(output).toContain("2 pass");
+  }, 30_000);
+}

@@ -37,11 +37,6 @@ export const hostBackupFlows = new HostActionFlow<{ action: BackupAction }, "imp
   completion: (action, result) => {
     if (action === "export" && typeof result === "boolean") return result ? "exported" : "cancelled";
     if (action === "import" && result === null) return "cancelled";
-    if (action === "import" && result && typeof result === "object"
-      && ["books", "collections", "annotations", "settings"].every(key => {
-        const value = (result as Record<string, unknown>)[key];
-        return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
-      })) return "imported";
     if (action === "import" && result && typeof result === "object") {
       const full = result as Record<string, unknown>;
       if (full.format === 2 && typeof full.restoreId === "string" && /^[a-f0-9-]{36}$/.test(full.restoreId)

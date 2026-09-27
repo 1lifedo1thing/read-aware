@@ -12,8 +12,9 @@ import { interactionFromToolDetails } from "../../../../packages/agent/src/tools
 import { buildRuntimeDeps } from "../../src/features/ai/agent/ports";
 import { ChatInteractionPrompt } from "../../src/features/ai/components/ChatInteractionPrompt";
 import type { ChatInteractionPart } from "../../src/features/ai/lib/chat-types";
-import { getBookRecord, restoreLibraryBook, bookFileKey } from "../../src/features/library/lib/library-db";
-import { getDesktopBlob } from "../../src/platform/blob-store";
+import { getBookRecord, bookFileKey } from "../../src/features/library/lib/library-db";
+import { getDesktopBlob, putDesktopBlob } from "../../src/platform/blob-store";
+import { commitDomainEvents } from "../../src/platform/domain-events";
 import { seedTextStateBooks, cleanupTextStateProbe } from "./desktop-text-state-probe";
 import { inspectContributions } from "../../src/features/plugins/state/contribution-registry";
 import { pluginCommandsAtom } from "../../src/features/plugins/state/plugin-store";
@@ -129,7 +130,15 @@ export async function inspectAgentRemovalCleanup(query = {}) {
 }
 export async function restoreBatchProbeBook() {
   await isolated(); const first = originals.get(ids[0]); if (!first) throw Error("No saved probe book");
-  await restoreLibraryBook(first.book, first.bytes); return { restored: first.book.id };
+  // Re-admit the removed probe book under its original id through the event
+  // path, as a synced re-import would; projections are never written directly.
+  const { book, bytes } = first, sourceBlobKey = bookFileKey(book.id);
+  await putDesktopBlob(sourceBlobKey, bytes, book.mimeType || undefined);
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  const sourceSha256 = Array.from(digest, byte => byte.toString(16).padStart(2, "0")).join("");
+  await commitDomainEvents({ type: "book.imported", payload: { bookId: book.id, title: book.title, author: book.author,
+    format: book.format, fileName: book.fileName, mimeType: book.mimeType || undefined, fileSize: bytes.byteLength, sourceBlobKey, sourceSha256 } });
+  return { restored: book.id };
 }
 export async function cleanupBatchRemovalProbe() {
   await isolated(); if (pending) throw Error("Settle Agent request before cleanup");

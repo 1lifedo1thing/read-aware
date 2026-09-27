@@ -23,10 +23,6 @@ if (process.env.BACKUP_FILES_PROOF === "1") {
   const blobs = await import("./blob-store"), environment = await import("./environment");
   const { withDomainBackup } = await import("./domain-write-gate");
   const { saveConversation, clearConversation } = await import("../features/ai/lib/conversation-store");
-  const { importBackup } = await import("../features/settings/lib/backup-io");
-  const { pendingImportPlaceholder } = await import("../features/library/lib/book-import");
-  const library = await import("../features/library/lib/library-db");
-  const { saveAnnotation } = await import("../features/annotations/lib/annotation-db");
   const { durableWrites } = await import("./write-settlement");
   const tick = () => Bun.sleep(0);
   const take = (command: string) => {
@@ -113,32 +109,12 @@ if (process.env.BACKUP_FILES_PROOF === "1") {
     await tick(); expect(closed).toBe(false); take("commit_events").resolve({ appended: 1, applied: 1 });
     await clear; await closing; holds.clear(); expect(durableWrites.size).toBe(0);
   });
-
-  test("v1 owns complete book/file/collection/annotation restoration while ordinary restores remain fenced", async () => {
-    const book = pendingImportPlaceholder("restored", { kind: "native-path", path: "/unused/source.txt", name: "source.txt", size: 7 }, "txt");
-    const collection = { id: "collection", name: "Restored", createdAt: "2026-09-12T00:00:00Z" };
-    const annotation: import("../features/annotations/lib/annotation-types").Note = { id: "note", bookId: book.id, type: "note", text: "quote", content: "note", cfiRange: null, chapterHref: null, createdAt: collection.createdAt, updatedAt: collection.createdAt };
-    holds.add("put_blob"); holds.add("annotation_put"); const controller = new AbortController();
-    const backup = importBackup(JSON.stringify({ kind: "backup", books: [book], collections: [collection], annotations: [annotation], files: { [book.id]: btoa("example") } }), controller.signal);
-    let restored = false; void backup.then(() => { restored = true; });
-    await tick(); const file = take("put_blob");
-    expect(new TextDecoder().decode(file.args)).toBe("example");
-    expect(file.options.headers["x-blob-key"]).toBe(`bookfile:${book.id}`);
-    controller.abort();
-    for (const run of [() => library.restoreLibraryBook(book, null), () => library.restoreCollection(collection), () => saveAnnotation(annotation)]) {
-      await expect(run()).rejects.toMatchObject({ code: "backup/busy" });
-    }
-    file.resolve(receipt); await tick(); expect(restored).toBe(false);
-    take("annotation_put").resolve();
-    expect(await backup).toMatchObject({ books: 1, collections: 1, annotations: 1 });
-    holds.clear(); expect(durableWrites.size).toBe(0);
-  });
 } else {
-  test("isolated blob, presentation and production restore admission", async () => {
+  test("isolated blob and presentation backup admission", async () => {
     const child = Bun.spawn([process.execPath, "test", import.meta.path], {
       env: { ...process.env, BACKUP_FILES_PROOF: "1" }, stdout: "ignore", stderr: "pipe",
     });
     const output = await new Response(child.stderr).text();
-    expect(await child.exited, output).toBe(0); expect(output).toContain("10 pass");
+    expect(await child.exited, output).toBe(0); expect(output).toContain("9 pass");
   }, 30_000);
 }

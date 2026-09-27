@@ -1,4 +1,4 @@
-import { expect, spyOn, test } from "bun:test";
+import { expect, test } from "bun:test";
 
 if (process.env.BACKUP_READING_PROOF === "1") {
   const bucket = { bookId: "book", localDay: "2026-09-12", localHour: 10, ms: 20,
@@ -12,8 +12,20 @@ if (process.env.BACKUP_READING_PROOF === "1") {
   const published: any[] = [];
   let closeGate: Promise<void> | undefined;
   const writes: string[] = [];
+  let physicalIo: ((command: string) => Promise<void>) | undefined;
   Object.defineProperty(globalThis, "window", { configurable: true, value: { __TAURI_INTERNALS__: {
+    transformCallback: () => 1,
     invoke: async (command: string, args: any) => {
+      if (command === "plugin:dialog|save") return "/synthetic/backup.age";
+      if (command === "plugin:dialog|open") return "/synthetic/source.age";
+      if (command === "backup_export_sources") return [];
+      if (command === "backup_import_open") return { taskId: args.taskId, format: 2, schemaVersion: 1, tables: {}, events: 0, blobs: 0, credentials: 0, pluginPrograms: 0 };
+      if (command === "backup_export_capture") { await physicalIo?.(command); return { taskId: args.taskId, format: 2 }; }
+      if (command === "backup_import_plan") {
+        await physicalIo?.(command);
+        return { taskId: args.taskId, newEvents: 0, existingEvents: 0, conflictingEvents: 0, tables: {},
+          files: { sourceOnly: 0, targetOnly: 0, same: 0, different: 0, unavailable: 0 }, pluginPrograms: 0 };
+      }
       if (command === "reading_session_accrue" || command === "reading_session_position") {
         writes.push(command);
         let row = pending.find(row => row.bookId === args.bookId);
@@ -85,33 +97,22 @@ if (process.env.BACKUP_READING_PROOF === "1") {
 
   test("production backup entries close native facts before IO and retain later observations until IO ends", async () => {
     const { readingTraces } = await import("../features/reader/lib/reading-trace-runtime");
-    const { exportBackup, importBackup } = await import("../features/settings/lib/backup-io");
-    const kv = await import("./local-store");
-    const library = await import("../features/library/lib/library-db");
-    const annotations = await import("../features/annotations/lib/annotation-db");
-    const profile = await import("../domain/user-profile");
+    const { exportFullBackup } = await import("../features/settings/lib/full-backup-export");
+    const { prepareFullBackupImport } = await import("../features/settings/lib/full-backup-import");
+    const password = "a synthetic backup password";
     for (const mode of ["export", "import"] as const) {
       pending = []; failure = null;
       const closing = Promise.withResolvers<void>(), io = Promise.withResolvers<void>();
       closeGate = closing.promise;
       let entered = false;
-      const readOrWrite = async () => {
+      physicalIo = async () => {
         expect(pending).toEqual([]); entered = true;
         await io.promise; expect(pending).toEqual([]);
-        return {};
       };
-      const mocks = [
-        spyOn(kv, "dumpLocalKV").mockImplementation(readOrWrite),
-        spyOn(kv, "restoreLocalKV").mockImplementation(async () => { await readOrWrite(); }),
-        spyOn(library, "listLibraryBooks").mockResolvedValue([]),
-        spyOn(library, "listCollections").mockResolvedValue([]),
-        spyOn(annotations, "listAnnotations").mockResolvedValue([]),
-        spyOn(profile, "readUserProfileSnapshot").mockResolvedValue({ summary: null, revision: "empty" }),
-      ];
       const trace = readingTraces.begin(`backup-${mode}`, "book");
       const unbind = trace.bindSampler(() => trace.accrue(1000, 1020));
       const before = writes.length;
-      const result = mode === "export" ? exportBackup() : importBackup(JSON.stringify({ kind: "backup", version: 1, books: [], kv: {} }));
+      const result = mode === "export" ? exportFullBackup(password) : prepareFullBackupImport(password).then(review => review?.dispose());
       try {
         await Bun.sleep(0); expect(entered).toBe(false); expect(writes.length).toBe(before + 1);
         trace.position({ locator: "after-snapshot" }, 1040);
@@ -125,8 +126,7 @@ if (process.env.BACKUP_READING_PROOF === "1") {
       } finally {
         closing.resolve(); io.resolve(); closeGate = undefined;
         await result;
-        unbind(); await trace.retire();
-        for (const mock of mocks) mock.mockRestore();
+        unbind(); await trace.retire(); physicalIo = undefined;
       }
     }
   });

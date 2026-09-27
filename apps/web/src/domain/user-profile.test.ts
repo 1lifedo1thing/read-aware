@@ -1,4 +1,3 @@
-import { causalActor } from "../platform/domain-actor";
 import { expect, test } from "bun:test";
 import { AppError } from "@read-aware/core";
 import { deferred, profileHost } from "../../tests/helpers/profile-host";
@@ -76,15 +75,11 @@ test("cancellation before dispatch prevents the candidate write; no-op does not 
   expect(host.broadcasts).toHaveLength(0);
 });
 
-test("onboarding and host-only archive restore both use conditional event writes", async () => {
+test("onboarding writes are conditional events and ordinary edits keep the summary limit", async () => {
   const host = await profileHost();
   await host.service.put("Onboarding");
   expect(host.current().summary).toBe("Onboarding");
   const summary = "x".repeat(16001), observed = host.current().revision;
   await expect(host.service.change({ summary, expectedRevision: observed }, "agent")).rejects.toMatchObject({ code: "memory/invalid-input" });
-  const origin = causalActor("user");
-  await host.service.restore(summary, observed, undefined, origin);
-  expect(host.broadcasts.at(-1)?.origin).toEqual(origin);
-  expect(host.calls.at(-1)).toMatchObject({ command: "profile_restore", args: { expectedRevision: observed, event: { origin: "user", payload: { summary } } } });
-  expect(host.current().summary).toBe(summary);
+  expect(host.current().summary).toBe("Onboarding");
 });

@@ -325,20 +325,8 @@
     "description": "ReadAware is local-first: your data lives on this device. Sync is an encrypted relay, not a source of truth.",
     "noticeDone": "Done",
     "noticeError": "Error",
-    "exportSuccess": "Library backup (v1) exported.",
     "exportError": "Could not export your data.",
     "importError": "Could not import this file.",
-    "merge": {
-      "books_one": "{{count}} book",
-      "books_other": "{{count}} books",
-      "annotations_one": "{{count}} annotation",
-      "annotations_other": "{{count}} annotations",
-      "collections_one": "{{count}} collection",
-      "collections_other": "{{count}} collections",
-      "settings_one": "{{count}} setting",
-      "settings_other": "{{count}} settings",
-      "summary": "Merged {{books}}, {{annotations}}, {{collections}}, and {{settings}}. Reloading…"
-    },
     "sync": "Sync",
     "account": {
       "title": "Account",
@@ -362,11 +350,7 @@
     "reveal": "Reveal",
     "backup": {
       "title": "Backup & export",
-      "description": "Choose a complete encrypted backup or a library backup."
-    },
-    "fullBackup": {
-      "title": "Library backup (v1)",
-      "description": "Books, locally available original files, collections, annotations and stored preferences in one file."
+      "description": "Save and restore complete encrypted backups."
     },
     "contextBundles": {
       "title": "Context bundles",
@@ -537,12 +521,8 @@
     },
     "exportDialog": {
       "title": "Export a backup",
-      "description": "Choose a complete encrypted backup or a library backup.",
-      "format": "Backup type",
       "full": "Complete encrypted backup",
-      "library": "Library backup (v1)",
       "fullDescription": "Books, annotations, conversations, memory, settings, plugins and credentials, saved with password encryption.",
-      "restorePending": "Restoring a complete backup is not available yet. Import currently accepts library backups only.",
       "password": "Backup password",
       "passwordHint": "Keep this password: you will need it to restore the backup.",
       "passwordError": "Use at least 12 characters and no more than 1024 UTF-8 bytes.",
@@ -558,8 +538,7 @@
         "files": "Copying files…",
         "verifyingPrograms": "Checking plugins…",
         "encrypting": "Encrypting and saving…"
-      },
-      "libraryNotice": "This is not a full backup: AI chats, long-term memory, plugin documents, secrets and event history are excluded. Importing may overwrite matching records and cannot be undone automatically."
+      }
     },
     "importDialog": {
       "title": "Restore a backup",

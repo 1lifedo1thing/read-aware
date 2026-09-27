@@ -8,8 +8,6 @@ import { describeError } from "../../../i18n/describe-error";
 import { createLogger } from "../../../platform/logger";
 import { libraryBooksAtom } from "../../library/state/library-store";
 import { requestInstallConsent } from "../../plugins/state/plugin-store";
-import { backupFileActions } from "../lib/backup-file-actions";
-import type { BackupImportResult } from "../lib/backup-io";
 import { validBackupPassword } from "../lib/backup-password";
 import { prepareFullBackupImport } from "../lib/full-backup-import";
 import type { FullBackupReview, FullBackupImportProgress } from "../lib/full-backup-import-task";
@@ -21,10 +19,10 @@ import { backupChoicesComplete, chooseBackupData, chooseBackupRows, loadBackupRe
 import type { BackupReviewPage } from "../lib/backup-review-types";
 import type { BackupSide } from "../../plugins/runtime/backup-program-review";
 
-export type BackupImportOutcome = BackupImportResult | FullBackupRestoreReceipt | null;
+export type BackupImportOutcome = FullBackupRestoreReceipt | null;
 type ReviewView = { step: "review"; review: FullBackupReview; model: BackupReviewModel; table: string; rows: BackupRowsPage | null;
   catalogPages: Record<"files" | "programs" | "credentials", number>; fields: BackupFieldsPage | null; issues: Extract<BackupReviewPage, { kind: "rowIssues" }> | null; busy: boolean; error?: string; confirmed: boolean };
-type View = { step: "form"; format: "full" | "library"; password: string; error?: string }
+type View = { step: "form"; password: string; error?: string }
   | { step: "running"; progress: FullBackupImportProgress | "migrating" | null; cancelling: boolean }
   | ReviewView | { step: "consent" } | { step: "result"; receipt: FullBackupRestoreReceipt }
   | { step: "failure"; error: string; restart: boolean };
@@ -61,25 +59,24 @@ export function useBackupImport() {
         else if (currentView.current?.step === "running") publish({ ...currentView.current, cancelling: true });
       };
       flight.current = current; signal.addEventListener("abort", abort, { once: true });
-      publish({ step: "form", format: "full", password: "" });
+      publish({ step: "form", password: "" });
     });
   };
   const progress = (value: FullBackupImportProgress | "migrating") => {
     if (currentView.current?.step === "running") publish({ ...currentView.current, progress: value });
   };
-  const edit = (patch: { format?: "full" | "library"; password?: string }) => {
+  const edit = (patch: { password?: string }) => {
     const value = currentView.current;
-    if (value?.step === "form") publish({ ...value, ...patch, error: undefined, ...(patch.format ? { password: "" } : {}) });
+    if (value?.step === "form") publish({ ...value, ...patch, error: undefined });
   };
   const submit = async () => {
     const current = flight.current, value = currentView.current;
     if (!current || current.running || value?.step !== "form") return;
-    if (value.format === "full" && !validBackupPassword(value.password)) { publish({ ...value, error: "password" }); return; }
+    if (!validBackupPassword(value.password)) { publish({ ...value, error: "password" }); return; }
     current.running = true; publish({ step: "running", progress: null, cancelling: false });
     try {
-      if (value.format === "library") {
-        const result = await backupFileActions.import(current.signal); publish(null); finish(current, result); return;
-      }
+      // A retired v1 JSON file is identified natively and rejected with
+      // `backup/legacy-format`, which the form reports like any other source error.
       const review = await prepareFullBackupImport(value.password, current.signal, progress);
       if (!review) { publish(null); finish(current, null); return; }
       current.review = review;
@@ -90,8 +87,7 @@ export function useBackupImport() {
       log.warn("Backup preparation failed", error);
       await current.review?.dispose(); current.review = undefined;
       if (current.signal.aborted) { publish(null); finish(current, null); }
-      else if (value.format === "library") { publish(null); finish(current, null, error); }
-      else publish({ step: "form", format: value.format, password: "", error: describeError(error).body });
+      else publish({ step: "form", password: "", error: describeError(error).body });
     } finally { current.running = false; }
   };
   const reviewWork = async (operation: (value: ReviewView, current: Flight) => Promise<ReviewView>) => {

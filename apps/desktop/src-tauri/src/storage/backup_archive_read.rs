@@ -8,6 +8,7 @@ pub(crate) fn read_archive(
 ) -> Result<AuthenticatedBackup, CommandError> {
     password_policy(&password)?;
     check()?;
+    let source = identify_source(source)?;
     let limit = Rc::new(Cell::new(64 * 1024));
     let bounded = BoundedReader {
         input: source,
@@ -26,6 +27,39 @@ pub(crate) fn read_archive(
         .map_err(decrypt_error)?;
     check()?;
     extract(decrypted, staging_root, &mut check)
+}
+
+/// Every archive this app writes starts with age's binary header magic.
+const AGE_MAGIC: &[u8] = b"age-encryption.org/";
+/// The retired v1 library backup was compact `JSON.stringify` output whose
+/// first members were always `app` and then `kind`.
+const LEGACY_V1_PREFIX: &[u8] = br#"{"app":"read-aware","kind":"backup""#;
+const SOURCE_PREFIX: u64 = 256;
+
+/// Recognize the source format from its first bytes before age parses it, so a
+/// file that is not an encrypted archive is never reported as a password
+/// failure. The inspected prefix is replayed ahead of the rest of the stream.
+fn identify_source(mut source: impl Read) -> Result<impl Read, CommandError> {
+    let mut prefix = Vec::with_capacity(SOURCE_PREFIX as usize);
+    (&mut source)
+        .take(SOURCE_PREFIX)
+        .read_to_end(&mut prefix)
+        .map_err(input_error)?;
+    if prefix.starts_with(AGE_MAGIC) {
+        return Ok(io::Cursor::new(prefix).chain(source));
+    }
+    let text = prefix.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&prefix);
+    let start = text
+        .iter()
+        .position(|byte| !byte.is_ascii_whitespace())
+        .unwrap_or(text.len());
+    if text[start..].starts_with(LEGACY_V1_PREFIX) {
+        return Err(CommandError::new(
+            CODE_LEGACY_FORMAT,
+            "source is a retired v1 JSON library backup",
+        ));
+    }
+    Err(invalid("source is not an age-encrypted backup archive"))
 }
 
 /// Only called with authenticated-chunk age output in production. Even then no

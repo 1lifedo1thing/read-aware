@@ -325,24 +325,8 @@
     "description": "ReadAware es local-first: tus datos residen en este dispositivo. La sincronización es un relé cifrado, no una fuente de verdad.",
     "noticeDone": "Listo",
     "noticeError": "Error",
-    "exportSuccess": "Copia de seguridad de la biblioteca (v1) exportada.",
     "exportError": "No se pudieron exportar tus datos.",
     "importError": "No se pudo importar este archivo.",
-    "merge": {
-      "books_one": "{{count}} libro",
-      "books_many": "{{count}} libros",
-      "books_other": "{{count}} libros",
-      "annotations_one": "{{count}} anotación",
-      "annotations_many": "{{count}} anotaciones",
-      "annotations_other": "{{count}} anotaciones",
-      "collections_one": "{{count}} colección",
-      "collections_many": "{{count}} colecciones",
-      "collections_other": "{{count}} colecciones",
-      "settings_one": "{{count}} ajuste",
-      "settings_many": "{{count}} ajustes",
-      "settings_other": "{{count}} ajustes",
-      "summary": "Se combinaron {{books}}, {{annotations}}, {{collections}} y {{settings}}. Recargando…"
-    },
     "sync": "Sincronización",
     "account": {
       "title": "Cuenta",
@@ -366,11 +350,7 @@
     "reveal": "Mostrar",
     "backup": {
       "title": "Copia de seguridad y exportación",
-      "description": "Elige una copia completa cifrada o una copia de la biblioteca."
-    },
-    "fullBackup": {
-      "title": "Copia de la biblioteca (v1)",
-      "description": "Libros, archivos originales disponibles localmente, colecciones, anotaciones y preferencias guardadas en un archivo."
+      "description": "Guarda y restaura copias completas cifradas."
     },
     "contextBundles": {
       "title": "Paquetes de contexto",
@@ -541,12 +521,8 @@
     },
     "exportDialog": {
       "title": "Exportar una copia de seguridad",
-      "description": "Elige una copia completa cifrada o una copia de la biblioteca.",
-      "format": "Tipo de copia",
       "full": "Copia completa cifrada",
-      "library": "Copia de la biblioteca (v1)",
       "fullDescription": "Libros, anotaciones, conversaciones, memoria, ajustes, complementos y credenciales, cifrados con contraseña.",
-      "restorePending": "Aún no se pueden restaurar copias completas. La importación solo admite copias de la biblioteca.",
       "password": "Contraseña de la copia",
       "passwordHint": "Guarda esta contraseña: la necesitarás para restaurar la copia.",
       "passwordError": "Usa al menos 12 caracteres y un máximo de 1024 bytes UTF-8.",
@@ -562,8 +538,7 @@
         "files": "Copiando archivos…",
         "verifyingPrograms": "Comprobando complementos…",
         "encrypting": "Cifrando y guardando…"
-      },
-      "libraryNotice": "No es una copia completa: excluye chats de IA, memoria a largo plazo, documentos de plugins, secretos e historial de eventos. La importación puede sobrescribir registros coincidentes y no se puede deshacer automáticamente."
+      }
     }
   },
   "about": {

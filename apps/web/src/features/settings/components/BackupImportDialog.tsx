@@ -1,4 +1,4 @@
-import { Body, Button, ChoiceGroup, Dialog, Progress, Stack, TextField } from "@read-aware/ui";
+import { Body, Button, Dialog, Progress, Stack, TextField } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import type { useBackupImport } from "../hooks/useBackupImport";
 import { BackupImportReview } from "./BackupImportReview";
@@ -10,11 +10,9 @@ export function BackupImportDialog({ flow }: { flow: BackupImportFlow }) {
   return <Dialog open={view !== null && view.step !== "consent"} onClose={flow.cancel} title={t("dataSync.importDialog.title")}
     className="w-full max-w-4xl max-h-[calc(100dvh-3rem)] overflow-y-auto">
     {view?.step === "form" ? <form onSubmit={event => { event.preventDefault(); void flow.submit(); }}><Stack gap="md">
-      <ChoiceGroup label={t("dataSync.exportDialog.format")} value={view.format} onChange={format => flow.edit({ format })}
-        options={[{ value: "full", label: t("dataSync.exportDialog.full") }, { value: "library", label: t("dataSync.exportDialog.library") }]} />
-      <Body>{t(view.format === "full" ? "dataSync.importDialog.description" : "dataSync.exportDialog.libraryNotice")}</Body>
-      {view.format === "full" && <TextField type="password" autoComplete="current-password" label={t("dataSync.exportDialog.password")}
-        value={view.password} onChange={event => flow.edit({ password: event.target.value })} />}
+      <Body>{t("dataSync.importDialog.description")}</Body>
+      <TextField type="password" autoComplete="current-password" label={t("dataSync.exportDialog.password")}
+        value={view.password} onChange={event => flow.edit({ password: event.target.value })} />
       {view.error && <Body role="alert">{view.error === "password" ? t("dataSync.exportDialog.passwordError") : view.error}</Body>}
       <Stack direction="horizontal" justify="end" gap="sm"><Button type="button" variant="ghost" onClick={flow.cancel}>{t("dataSync.deleteAll.cancel")}</Button>
         <Button type="submit">{t("dataSync.importDialog.open")}</Button></Stack>

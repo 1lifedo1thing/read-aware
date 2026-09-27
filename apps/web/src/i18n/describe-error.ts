@@ -110,6 +110,7 @@ const CODE_COPY: Record<string, CopyEntry> = {
   "backup/invalid-archive": { key: "backupInvalidArchive", retryable: false },
   "backup/unlock-failed": { key: "backupUnlockFailed", retryable: false },
   "backup/password-policy": { key: "backupPasswordPolicy", retryable: false },
+  "backup/legacy-format": { key: "backupLegacyFormat", retryable: false },
   "backup/incomplete": { key: "backupIncomplete", retryable: false },
   "backup/recovery-required": { key: "backupRecoveryRequired", retryable: false },
   "backup/busy": { key: "backupBusy", retryable: true },

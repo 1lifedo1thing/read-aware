@@ -9,8 +9,8 @@
  * gone and stay gone).
  *
  * Running every boot (instead of once behind a flag) makes it a self-healing
- * invariant: a v1 backup restored next year, or a UX write whose best-effort
- * event append failed, is picked up on the next launch. Cost is one indexed
+ * invariant: legacy rows from the one-time pre-SQLite migration, or a UX write
+ * whose best-effort event append failed, are picked up on the next launch. Cost is one indexed
  * id query plus the projection loads, per boot.
  *
  * Synthesized envelopes carry the row's historical timestamp in `createdAt`

@@ -400,6 +400,34 @@ fn backup_archive_rejects_the_unreleased_v1_format_without_closed_reading_identi
     assert_eq!(manifest_members(&manifest).unwrap_err().code, CODE_INVALID);
 }
 
+#[test]
+fn backup_archive_identifies_retired_json_and_other_non_archives_before_decryption() {
+    let root = tempfile::tempdir().unwrap();
+    let read = |source: &[u8]| {
+        read_archive(source, password(), root.path(), || Ok(()))
+            .unwrap_err()
+            .code
+    };
+    let v1 = br#"{"app":"read-aware","kind":"backup","version":1,"exportedAt":"2026-01-01T00:00:00.000Z","kv":{},"books":[]}"#;
+    let decorated = [b"\xEF\xBB\xBF\r\n  ".as_slice(), v1.as_slice()].concat();
+    assert_eq!(read(v1), CODE_LEGACY_FORMAT);
+    assert_eq!(read(&decorated), CODE_LEGACY_FORMAT);
+    // Other JSON, an empty file or any non-age bytes are not a password failure.
+    for source in [
+        br#"{"app":"another-app","kind":"backup"}"#.as_slice(),
+        b"".as_slice(),
+        b"PK\x03\x04 not an archive".as_slice(),
+    ] {
+        assert_eq!(read(source), CODE_INVALID);
+    }
+    assert_eq!(
+        crate::storage::backup_staging::fixture_entries(root.path())
+            .unwrap()
+            .count(),
+        0
+    );
+}
+
 fn read_archive(
     source: impl Read,
     password: SecretString,

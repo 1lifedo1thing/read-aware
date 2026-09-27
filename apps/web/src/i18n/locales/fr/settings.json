@@ -325,24 +325,8 @@
     "description": "ReadAware est local d’abord : vos données résident sur cet appareil. La synchronisation est un relais chiffré, pas une source de vérité.",
     "noticeDone": "Terminé",
     "noticeError": "Erreur",
-    "exportSuccess": "Sauvegarde de la bibliothèque (v1) exportée.",
     "exportError": "Impossible d’exporter vos données.",
     "importError": "Impossible d’importer ce fichier.",
-    "merge": {
-      "books_one": "{{count}} livre",
-      "books_many": "{{count}} livres",
-      "books_other": "{{count}} livres",
-      "annotations_one": "{{count}} annotation",
-      "annotations_many": "{{count}} annotations",
-      "annotations_other": "{{count}} annotations",
-      "collections_one": "{{count}} collection",
-      "collections_many": "{{count}} collections",
-      "collections_other": "{{count}} collections",
-      "settings_one": "{{count}} paramètre",
-      "settings_many": "{{count}} paramètres",
-      "settings_other": "{{count}} paramètres",
-      "summary": "Fusion de {{books}}, {{annotations}}, {{collections}} et {{settings}}. Rechargement…"
-    },
     "sync": "Synchronisation",
     "account": {
       "title": "Compte",
@@ -366,11 +350,7 @@
     "reveal": "Afficher",
     "backup": {
       "title": "Sauvegarde et export",
-      "description": "Choisissez une sauvegarde complète chiffrée ou une sauvegarde de bibliothèque."
-    },
-    "fullBackup": {
-      "title": "Sauvegarde de la bibliothèque (v1)",
-      "description": "Livres, fichiers originaux disponibles localement, collections, annotations et préférences enregistrées dans un fichier."
+      "description": "Enregistrez et restaurez des sauvegardes complètes chiffrées."
     },
     "contextBundles": {
       "title": "Lots de contexte",
@@ -541,12 +521,8 @@
     },
     "exportDialog": {
       "title": "Exporter une sauvegarde",
-      "description": "Choisissez une sauvegarde complète chiffrée ou une sauvegarde de bibliothèque.",
-      "format": "Type de sauvegarde",
       "full": "Sauvegarde complète chiffrée",
-      "library": "Sauvegarde de bibliothèque (v1)",
       "fullDescription": "Livres, annotations, conversations, mémoire, réglages, extensions et identifiants, chiffrés par mot de passe.",
-      "restorePending": "La restauration des sauvegardes complètes n’est pas encore disponible. Seules les sauvegardes de bibliothèque peuvent être importées.",
       "password": "Mot de passe de la sauvegarde",
       "passwordHint": "Conservez ce mot de passe : il sera nécessaire pour restaurer la sauvegarde.",
       "passwordError": "Utilisez au moins 12 caractères et au maximum 1024 octets UTF-8.",
@@ -562,8 +538,7 @@
         "files": "Copie des fichiers…",
         "verifyingPrograms": "Vérification des extensions…",
         "encrypting": "Chiffrement et enregistrement…"
-      },
-      "libraryNotice": "Cette sauvegarde exclut les conversations IA, la mémoire à long terme, les documents des plugins, les secrets et l’historique des événements. L’import peut écraser les enregistrements correspondants et ne peut pas être annulé automatiquement."
+      }
     }
   },
   "about": {

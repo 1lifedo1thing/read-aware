@@ -1,5 +1,5 @@
-import { causalActor, actorOrigin, type DomainActor } from "../../../platform/domain-actor";
-import { runDomainWrite, type RunDomainWrite } from "../../../platform/domain-write-gate";
+import { actorOrigin, type DomainActor } from "../../../platform/domain-actor";
+import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { AppError, normalizeBookRemovalCleanupQuery, type BookRemovalCleanupPage, type BookRemovalCleanupQuery } from "@read-aware/core";
 import { removeBookBatch, releaseRemovedBookFiles } from "./book-removal";
@@ -8,7 +8,6 @@ import {
   getDesktopBlob,
   getDesktopBlobInfo,
   openDesktopBlobFile,
-  putDesktopBlob,
 } from "../../../platform/blob-store";
 import { commitBoundVirtualBook, type VirtualBookBinding } from "../../plugins/lib/virtual-books";
 import { commitDomainEvents } from "../../../platform/domain-events";
@@ -36,8 +35,6 @@ export const bookFileKey = (bookId: string) => `bookfile:${bookId}`;
 // WRITES GO THROUGH EVENTS. `commitDomainEvents` appends to the log and applies
 // the projection in one SQLite transaction, then these functions read the row
 // back — the store decides what was persisted, this module does not predict it.
-// `putBookRecord` survives for the one path that legitimately bypasses the
-// log: restoring a backup verbatim (genesis synthesizes its events at next boot).
 //
 // Import lives in `book-import.ts`; cover/metadata completion by the reading
 // engine in `book-enrichment.ts`. Covers are never data URLs here: the row
@@ -60,11 +57,6 @@ export async function getBookRecord(bookId: string): Promise<LibraryBook | null>
   return row ? withCoverUrl(row) : null;
 }
 
-async function putBookRecord(book: LibraryBook): Promise<void> {
-  assertDesktop("Saving a book");
-  await invoke("library_put_book", { book });
-}
-
 async function deleteBookRecords(bookIds: string[], origin?: DomainActor) {
   assertDesktop("Removing books");
   // `book.removed` drops the row and its annotations on apply; the blobs
@@ -80,11 +72,6 @@ async function deleteBookRecords(bookIds: string[], origin?: DomainActor) {
 async function getAllCollectionRecords(): Promise<Collection[]> {
   if (!isTauri()) return [];
   return invoke<Collection[]>("library_list_collections");
-}
-
-async function putCollectionRecord(collection: Collection): Promise<void> {
-  assertDesktop("Saving a collection");
-  await invoke("library_put_collection", { collection });
 }
 
 // --- Pure helpers (backend-agnostic) ----------------------------------------
@@ -197,19 +184,6 @@ async function fetchBookFile(bookId: string, fetchBlob = fetchRemoteBlob): Promi
               : "unreachable",
       };
   }
-}
-
-/** Pass null only for host capture phases that must not download or write. */
-export async function getStoredBookBlob(bookId: string, fetchBlob: typeof fetchRemoteBlob | null = fetchRemoteBlob): Promise<Blob | null> {
-  if (!isTauri()) return null;
-  let bytes = await getDesktopBlob(bookFileKey(bookId));
-  // Not on this device — the new-device bootstrap case: the manifest row came
-  // from replaying `book.imported`, the bytes live on the relay. Lazy-fetch
-  // decrypts into the local store, so this path runs once per book.
-  if (!bytes && fetchBlob && (await fetchBookFile(bookId, fetchBlob)).ok) {
-    bytes = await getDesktopBlob(bookFileKey(bookId));
-  }
-  return bytes ? new Blob([bytes]) : null;
 }
 
 type BookFileRef = Pick<LibraryBook, "id" | "format" | "fileName" | "mimeType">;
@@ -447,47 +421,4 @@ export async function removeLibraryBook(bookId: string, origin?: DomainActor) {
   // Preserve the existing single-delete error contract. Batch callers get the
   // committed/cleanup distinction and can retry the same IDs explicitly.
   if (receipt.files.status === "pending") throw new AppError(receipt.files.errorCode, "Book removed but local file release failed");
-}
-
-// --- Restore (import a previously-exported bundle; ids preserved) ------------
-
-async function putBookFileBytes(bookId: string, bytes: Uint8Array, run: RunDomainWrite): Promise<void> {
-  assertDesktop("Restoring a book file");
-  await putDesktopBlob(bookFileKey(bookId), bytes, undefined, run);
-}
-
-/**
- * Upsert a book record verbatim (id preserved) and, if given, its file bytes.
- * Restores deliberately emit no events: rows a backup brings in that the log
- * has never seen get their creation events synthesized by the boot-time
- * genesis reconciliation (platform/event-genesis.ts) on the next launch.
- * Cover state is decided by the store (a cover blob present on this device,
- * or a pre-v24 inline data URL the backup still carries); otherwise the book
- * starts `unchecked` and the engine job re-extracts from the restored file.
- */
-export async function restoreLibraryBook(
-  book: LibraryBook,
-  fileBytes: Uint8Array | null,
-  run: RunDomainWrite = runDomainWrite,
-  origin: DomainActor = "user",
-): Promise<void> {
-  origin = causalActor(origin);
-  return run(async () => {
-    await putBookRecord(book);
-    try {
-      if (fileBytes) await putBookFileBytes(book.id, fileBytes, run);
-    } finally {
-      // The row already committed even when restoring its file fails.
-      emitAppEvent("projections-invalidated", { source: "restore" }, origin);
-    }
-  });
-}
-
-/** Upsert a collection record verbatim (id preserved). */
-export async function restoreCollection(collection: Collection, run: RunDomainWrite = runDomainWrite, origin: DomainActor = "user"): Promise<void> {
-  origin = causalActor(origin);
-  return run(async () => {
-    await putCollectionRecord(collection);
-    emitAppEvent("projections-invalidated", { source: "restore" }, origin);
-  });
 }
