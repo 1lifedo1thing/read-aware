@@ -48,11 +48,4 @@ export function holdMenuItemAt(point: HoldMenuPoint, rects: readonly HoldMenuRec
   return null;
 }
 
-/** Map a point in a section document's client space to the reader root's
- *  space; the section iframe may be scaled by the layout. */
-export function pointInReaderRoot(point: HoldMenuPoint, frameRect: HoldMenuRect, rootRect: HoldMenuRect,
-  scale = 1): HoldMenuPoint {
-  return { x: frameRect.left + point.x * scale - rootRect.left, y: frameRect.top + point.y * scale - rootRect.top };
-}
-
 export const distanceBetween = (a: HoldMenuPoint, b: HoldMenuPoint) => Math.hypot(a.x - b.x, a.y - b.y);

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
-  distanceBetween, holdMenuItemAt, pointInReaderRoot, resolveHoldRelease,
+  distanceBetween, holdMenuItemAt, resolveHoldRelease,
   HOLD_MENU_MOVE_TOLERANCE_PX, HOLD_MENU_PRESS_MS, type HoldMenuPoint,
 } from "../lib/hold-menu";
+import { framePointToRoot, measureSectionToRoot } from "../lib/frame-geometry";
 
 export type HoldMenuState = {
   /** Where the menu is anchored, in reader-root coordinates; null = closed. */
@@ -102,11 +103,8 @@ export function useReaderHoldMenu({ enabled, readerRootRef, menuRef, liveDocumen
     const controller = new AbortController();
     const { signal } = controller;
     const toRoot = (point: HoldMenuPoint): HoldMenuPoint | null => {
-      const root = readerRootRef.current, frame = doc.defaultView?.frameElement;
-      if (!root || !frame) return null;
-      const frameRect = frame.getBoundingClientRect();
-      const scale = frame.clientWidth && frameRect.width ? frameRect.width / frame.clientWidth : 1;
-      return pointInReaderRoot(point, frameRect, root.getBoundingClientRect(), scale);
+      const mapping = measureSectionToRoot(doc, readerRootRef.current);
+      return mapping ? framePointToRoot(point, mapping) : null;
     };
 
     let pressTimer: number | null = null;

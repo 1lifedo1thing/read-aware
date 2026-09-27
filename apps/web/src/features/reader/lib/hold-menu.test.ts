@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { holdMenuItemAt, pointInReaderRoot, resolveHoldRelease } from "./hold-menu";
+import { holdMenuItemAt, resolveHoldRelease } from "./hold-menu";
 
 const rects = [
   { left: 100, top: 200, width: 36, height: 36 },
@@ -29,13 +29,5 @@ describe("holdMenuItemAt", () => {
   });
   test("the gap between neighbours belongs to the later one, as painted", () => {
     expect(holdMenuItemAt({ x: 137, y: 218 }, rects)).toBe(1);
-  });
-});
-
-describe("pointInReaderRoot", () => {
-  test("offsets by the frame and root and applies the frame scale", () => {
-    const frame = { left: 20, top: 100, width: 400, height: 800 }, root = { left: 20, top: 40, width: 400, height: 900 };
-    expect(pointInReaderRoot({ x: 50, y: 30 }, frame, root)).toEqual({ x: 50, y: 90 });
-    expect(pointInReaderRoot({ x: 50, y: 30 }, frame, root, 0.5)).toEqual({ x: 25, y: 75 });
   });
 });
