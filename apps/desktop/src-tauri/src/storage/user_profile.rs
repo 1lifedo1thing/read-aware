@@ -164,7 +164,6 @@ fn commit_summary(
     conn: &mut Connection,
     event: &EventRow,
     expected_revision: &str,
-    limit: Option<usize>,
 ) -> Result<ProfileMutationReceipt, CommandError> {
     validate_envelope(event)?;
     let payload = event.payload.as_object().ok_or_else(invalid)?;
@@ -172,7 +171,7 @@ fn commit_summary(
         .get("summary")
         .and_then(|v| v.as_str())
         .ok_or_else(invalid)?;
-    if payload.len() != 1 || limit.is_some_and(|max| summary.encode_utf16().count() > max) {
+    if payload.len() != 1 || summary.encode_utf16().count() > SUMMARY_LIMIT {
         return Err(invalid());
     }
     let hash = expected_revision
@@ -210,19 +209,7 @@ pub(crate) fn profile_commit_inner(
     event: &EventRow,
     expected_revision: &str,
 ) -> Result<ProfileMutationReceipt, CommandError> {
-    commit_summary(conn, event, expected_revision, Some(SUMMARY_LIMIT))
-}
-
-pub(crate) fn profile_restore_inner(
-    conn: &mut Connection,
-    event: &EventRow,
-    expected_revision: &str,
-) -> Result<ProfileMutationReceipt, CommandError> {
-    // Archive compatibility is a separate host entry, never an actor override flag.
-    if event.origin.as_deref() != Some("user") {
-        return Err(invalid());
-    }
-    commit_summary(conn, event, expected_revision, None)
+    commit_summary(conn, event, expected_revision)
 }
 
 #[tauri::command]
@@ -258,20 +245,6 @@ pub async fn profile_commit(
         let db = tauri::Manager::state::<Db>(&app);
         let mut conn = db.0.lock()?;
         profile_commit_inner(&mut conn, &event, &expected_revision)
-    })
-    .await
-}
-
-#[tauri::command]
-pub async fn profile_restore(
-    event: EventRow,
-    expected_revision: String,
-    app: tauri::AppHandle,
-) -> Result<ProfileMutationReceipt, CommandError> {
-    super::blocking("profile_restore", move || {
-        let db = tauri::Manager::state::<Db>(&app);
-        let mut conn = db.0.lock()?;
-        profile_restore_inner(&mut conn, &event, &expected_revision)
     })
     .await
 }

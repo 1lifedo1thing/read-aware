@@ -326,45 +326,21 @@ fn edit_sql_failure_rolls_back_and_reuses_the_uncommitted_decision() {
 }
 
 #[test]
-fn normal_edits_count_utf16_and_restore_keeps_large_archive_text_without_actor_override() {
+fn edits_count_utf16_against_the_summary_limit() {
     let mut conn = db();
     let limit = "\u{1f642}".repeat(SUMMARY_LIMIT / 2);
     change(&mut conn, "limit", &limit, 1);
     let revision = snapshot(&mut conn).revision;
-    let mut oversized = event("archive", json!({"summary":format!("{limit}x")}), 2);
+    let oversized = event("oversized", json!({"summary":format!("{limit}x")}), 2);
     assert_eq!(
         profile_commit_inner(&mut conn, &oversized, &revision)
             .unwrap_err()
             .code,
         "memory/invalid-input"
     );
-    for origin in ["system", "agent", "plugin:reading-goals"] {
-        oversized.origin = Some(origin.into());
-        assert_eq!(
-            profile_restore_inner(&mut conn, &oversized, &revision)
-                .unwrap_err()
-                .code,
-            "memory/invalid-input"
-        );
-    }
-    oversized.origin = Some("user".into());
-    assert!(
-        profile_restore_inner(&mut conn, &oversized, &revision)
-            .unwrap()
-            .changed
-    );
     assert_eq!(
         snapshot(&mut conn).summary.unwrap().encode_utf16().count(),
-        SUMMARY_LIMIT + 1
-    );
-    let mut stale_restore = oversized.clone();
-    stale_restore.id = "late-restore".into();
-    stale_restore.hlc.counter = 3;
-    assert_eq!(
-        profile_restore_inner(&mut conn, &stale_restore, &revision)
-            .unwrap_err()
-            .code,
-        "memory/conflict"
+        SUMMARY_LIMIT
     );
 }
 

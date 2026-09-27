@@ -775,7 +775,12 @@ pub async fn reading_session_flush(
     .await
 }
 
-/// Bulk replace (one-time app_kv migration; the stats demo seed).
+/// LEGACY-MIGRATION-ONLY projection writer, exempt from the `apply_event` rule
+/// in `apply.rs`. Its only caller is the one-time interim `app_kv` reading-stats
+/// migration (`apps/web/src/platform/interim-projections.ts`). It bulk-replaces
+/// the reading-time tables and clears the genesis stamp, so the next
+/// `reading_time_genesis` pass reconciles them with the log. Every other write
+/// goes through `commit_events` — do not add callers.
 #[tauri::command]
 pub async fn reading_time_import(
     wire: ReadingTimeWire,

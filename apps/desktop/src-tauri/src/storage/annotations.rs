@@ -118,6 +118,11 @@ pub async fn annotation_get(
     .await
 }
 
+/// LEGACY-MIGRATION-ONLY projection writer, exempt from the `apply_event` rule
+/// in `apply.rs`. Its only caller is the one-time, flag-gated pre-SQLite boot
+/// migration (`apps/web/src/platform/desktop-import.ts`); boot-time genesis
+/// reconciliation then synthesizes the creation events the log never saw.
+/// Every other write goes through `commit_events` — do not add callers.
 #[tauri::command]
 pub async fn annotation_put(
     annotation: Annotation,
@@ -152,21 +157,6 @@ pub async fn annotation_put(
             ],
         )
         ?;
-        Ok(())
-    })
-    .await
-}
-
-#[tauri::command]
-pub async fn annotation_delete(
-    id: String,
-    app: tauri::AppHandle,
-) -> Result<(), CommandError> {
-    crate::storage::blocking("annotation_delete", move || {
-        let db = tauri::Manager::state::<Db>(&app);
-        let conn = db.0.lock()?;
-        conn.execute("DELETE FROM annotations WHERE id = ?1", params![id])
-            ?;
         Ok(())
     })
     .await

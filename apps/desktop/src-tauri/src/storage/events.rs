@@ -483,51 +483,6 @@ pub async fn apply_remote_events(
     .map_err(|e| format!("apply_remote_events task failed: {e}"))?
 }
 
-#[tauri::command]
-pub async fn read_events_since(
-    after: Option<Hlc>,
-    app: tauri::AppHandle,
-) -> Result<Vec<EventRow>, CommandError> {
-    crate::storage::blocking("read_events_since", move || {
-        let db = tauri::Manager::state::<Db>(&app);
-        let conn = db.0.lock()?;
-        let mut out = Vec::new();
-        match after {
-            Some(a) => {
-                let mut stmt = conn
-                    .prepare(
-                        "SELECT * FROM domain_events
-                     WHERE (hlc_wall_ms, hlc_counter, hlc_device) > (?1, ?2, ?3)
-                     ORDER BY hlc_wall_ms, hlc_counter, hlc_device",
-                    )
-                    ?;
-                let iter = stmt
-                    .query_map(params![a.wall_ms, a.counter, a.device_id], row_to_event)
-                    ?;
-                for r in iter {
-                    out.push(r?);
-                }
-            }
-            None => {
-                let mut stmt = conn
-                    .prepare(
-                        "SELECT * FROM domain_events
-                     ORDER BY hlc_wall_ms, hlc_counter, hlc_device",
-                    )
-                    ?;
-                let iter = stmt
-                    .query_map([], row_to_event)
-                    ?;
-                for r in iter {
-                    out.push(r?);
-                }
-            }
-        }
-        Ok(out)
-    })
-    .await
-}
-
 /// Distinct aggregate ids that already have an event of one of the given types.
 /// Backs the boot-time genesis reconciliation: the frontend synthesizes
 /// creation events for projection rows whose aggregate never entered the log.

@@ -159,11 +159,16 @@ pub async fn library_get_book(
     .await
 }
 
-/// Upsert a row verbatim (id preserved) — backup restore and the legacy
-/// IndexedDB sweep. Cover state is NOT taken from the input: a restored row
-/// is 'ready' only if this device holds its cover blob (a pre-v24 record's
-/// inline data URL is lifted into the store first); anything else starts
-/// 'unchecked' and the engine job re-extracts from the book file.
+/// LEGACY-MIGRATION-ONLY projection writer, exempt from the `apply_event` rule
+/// in `apply.rs`. Its only caller is the one-time, flag-gated pre-SQLite boot
+/// migration (`apps/web/src/platform/desktop-import.ts`); boot-time genesis
+/// reconciliation then synthesizes the creation events the log never saw.
+/// Every other write goes through `commit_events` — do not add callers.
+///
+/// Upserts a row verbatim (id preserved). Cover state is NOT taken from the
+/// input: a migrated row is 'ready' only if this device holds its cover blob (a
+/// pre-v24 record's inline data URL is lifted into the store first); anything
+/// else starts 'unchecked' and the engine job re-extracts from the book file.
 #[tauri::command]
 pub async fn library_put_book(
     book: LibraryBook,
@@ -268,8 +273,13 @@ pub async fn library_list_collections(
     .await
 }
 
-/// Upsert a collection. On conflict the original `created_at` is preserved, so
-/// this doubles as rename.
+/// LEGACY-MIGRATION-ONLY projection writer, exempt from the `apply_event` rule
+/// in `apply.rs`. Its only caller is the one-time, flag-gated pre-SQLite boot
+/// migration (`apps/web/src/platform/desktop-import.ts`); boot-time genesis
+/// reconciliation then synthesizes the creation events the log never saw.
+/// Every other write goes through `commit_events` — do not add callers.
+///
+/// Upserts a collection; on conflict the original `created_at` is preserved.
 #[tauri::command]
 pub async fn library_put_collection(
     collection: Collection,
@@ -318,58 +328,4 @@ pub(crate) fn find_book_by_sha_inner(
         rusqlite::Error::QueryReturnedNoRows => Ok(None),
         other => Err(other.into()),
     })
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DuplicateBookEntry {
-    pub id: String,
-    pub created_at: String,
-}
-
-/// Groups of shelf books that share one source file (same bookfile sha256) —
-/// the post-pull merge detector's input. Each group is ordered oldest-first
-/// then by id, so `group[0]` IS the deterministic keeper on every device.
-#[tauri::command]
-pub async fn library_duplicate_book_groups(
-    app: tauri::AppHandle,
-) -> Result<Vec<Vec<DuplicateBookEntry>>, CommandError> {
-    crate::storage::blocking("library_duplicate_book_groups", move || {
-        let db = tauri::Manager::state::<Db>(&app);
-        let conn = db.0.lock()?;
-        let mut stmt = conn
-            .prepare(
-                "SELECT bo.sha256, b.id, b.created_at
-             FROM books b
-             JOIN blob_objects bo ON bo.key = 'bookfile:' || b.id
-             WHERE bo.sha256 IS NOT NULL AND bo.sha256 != ''
-               AND bo.sha256 IN (
-                 SELECT bo2.sha256 FROM books b2
-                 JOIN blob_objects bo2 ON bo2.key = 'bookfile:' || b2.id
-                 WHERE bo2.sha256 IS NOT NULL AND bo2.sha256 != ''
-                 GROUP BY bo2.sha256 HAVING COUNT(*) > 1)
-             ORDER BY bo.sha256, b.created_at, b.id",
-            )
-            ?;
-        let rows = stmt
-            .query_map([], |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    DuplicateBookEntry { id: row.get(1)?, created_at: row.get(2)? },
-                ))
-            })
-            ?;
-        let mut groups: Vec<Vec<DuplicateBookEntry>> = Vec::new();
-        let mut current_sha: Option<String> = None;
-        for row in rows {
-            let (sha, entry) = row?;
-            if current_sha.as_deref() != Some(&sha) {
-                current_sha = Some(sha);
-                groups.push(Vec::new());
-            }
-            groups.last_mut().expect("group pushed above").push(entry);
-        }
-        Ok(groups)
-    })
-    .await
 }

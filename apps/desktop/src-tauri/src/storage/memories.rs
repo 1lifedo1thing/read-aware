@@ -96,6 +96,12 @@ pub async fn memory_get(id: String, app: tauri::AppHandle) -> Result<Option<Memo
     .await
 }
 
+/// LEGACY-MIGRATION-ONLY projection writer, exempt from the `apply_event` rule
+/// in `apply.rs`. Its only caller is the one-time, flag-gated migration of
+/// webview IndexedDB memories (`importWebviewMemoriesIntoSqlite` in
+/// `apps/web/src/platform/desktop-import.ts`); boot-time genesis
+/// reconciliation then synthesizes the creation events the log never saw.
+/// Every other write goes through `commit_events` — do not add callers.
 #[tauri::command]
 pub async fn memory_put(memory: Memory, app: tauri::AppHandle) -> Result<(), CommandError> {
     crate::storage::blocking("memory_put", move || {

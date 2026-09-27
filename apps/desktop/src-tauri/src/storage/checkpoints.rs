@@ -954,18 +954,6 @@ pub fn checkpoint_schema_version() -> i64 {
     SCHEMA_VERSION
 }
 
-#[tauri::command]
-pub async fn checkpoint_list(
-    app: tauri::AppHandle,
-) -> Result<Vec<CheckpointInfo>, CommandError> {
-    crate::storage::blocking("checkpoint_list", move || {
-        let db = tauri::Manager::state::<Db>(&app);
-        let conn = db.0.lock()?;
-        list_checkpoints(&conn)
-    })
-    .await
-}
-
 /// Cut a local checkpoint if enough happened since the last one (see
 /// `maintain_checkpoints`). Off the main thread: it copies every derived table.
 #[tauri::command]

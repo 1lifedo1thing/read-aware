@@ -6,8 +6,9 @@
 //! could turn `domain_events` back into the tables the app reads, so the log
 //! could drift from the projections with no way to detect or repair it.
 //!
-//! `apply_event` is now the ONLY thing that writes a projection row. Two
-//! callers share it, which is what makes the log authoritative:
+//! `apply_event` is now the only thing that writes a projection row in normal
+//! operation (the single exception is listed below). Two callers share it,
+//! which is what makes the log authoritative:
 //!
 //!   - `commit_events` — the live write path. Append + apply run in ONE
 //!     transaction, so an event and the row it implies land together or not
@@ -15,6 +16,15 @@
 //!   - `rebuild_projections` — wipes the derived tables and replays the whole
 //!     log through the same function. Also backs `verify_projections`, which
 //!     replays into scratch tables and diffs against the live ones.
+//!
+//! The exception: the legacy-migration projection writers `library_put_book`,
+//! `library_put_collection`, `annotation_put`, `memory_put` and
+//! `reading_time_import`. Only the one-time, flag-gated migrations of
+//! pre-SQLite webview data (`apps/web/src/platform/desktop-import.ts`) and
+//! interim `app_kv` data (`apps/web/src/platform/interim-projections.ts`) call
+//! them; boot-time genesis reconciliation (`event-genesis.ts`,
+//! `reading_time_genesis`) then synthesizes the events those rows lack. No
+//! other path may write a projection row directly.
 //!
 //! Rules every arm here follows:
 //!   - **Idempotent.** Upsert or delete; never blind INSERT, never read-modify-
