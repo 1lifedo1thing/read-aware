@@ -32,6 +32,8 @@ jobs:
       # turbo builds what each task needs: the foliate runtime inside the web
       # scripts, jumper's bundle and the landing site before their tests.
       - run: bun run typecheck
+      - name: Lint (type-aware oxlint and swallowed promise rejections)
+        run: bun run lint
       - run: bun run test
       - name: Dependency boundaries (ratchet against the recorded baseline)
         run: bun run lint:deps

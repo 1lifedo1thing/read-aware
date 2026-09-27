@@ -35,11 +35,15 @@
     "translate": "bun packages/agent/src/translate-run.ts",
     "storybook": "turbo run storybook --filter=@read-aware/web",
     "build-storybook": "turbo run build-storybook --filter=@read-aware/web",
+    "lint": "oxlint && bun scripts/check-swallowed-rejections.ts",
     "lint:deps": "turbo run lint:deps",
     "eval:ui": "bun --filter @read-aware/agent eval:ui"
   },
   "devDependencies": {
     "@types/bun": "1.3.13",
-    "turbo": "^2.5.6"
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2003",
+    "turbo": "^2.5.6",
+    "typescript": "~5.8.3"
   }
 }

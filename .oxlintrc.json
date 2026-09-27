@@ -1,0 +1,116 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // One type-aware gate for every TypeScript workspace. tsgolint resolves each
+  // file through the nearest tsconfig.json (or one it references), so every
+  // linted TS directory owns one; a file outside all of them loses type info.
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "react"],
+  "categories": {
+    "correctness": "error"
+  },
+  "options": {
+    "typeAware": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/await-thenable": "error",
+    "typescript/no-base-to-string": "error",
+    "typescript/restrict-template-expressions": "error",
+    "eslint/no-unsafe-finally": "error",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+
+    // Destructuring a key away (`{ origin: _, ...event }`) is how this codebase
+    // omits fields; the rest sibling is the used value.
+    "eslint/no-unused-vars": ["error", {
+      "ignoreRestSiblings": true,
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_",
+      "caughtErrorsIgnorePattern": "^_",
+      "destructuredArrayIgnorePattern": "^_"
+    }],
+    // Retry and pagination loops are written `do { ... } while (true)` with an
+    // explicit break or return; constant conditions outside loops stay errors.
+    "eslint/no-constant-condition": ["error", { "checkLoops": "none" }],
+    // Input validators deliberately reject control characters, which is what
+    // this rule forbids matching.
+    "eslint/no-control-regex": "off",
+    // `[...set]` snapshots listener sets that callbacks mutate while they are
+    // iterated; the copy is the point, not a mistake.
+    "unicorn/no-useless-spread": "off",
+    // `unknown | Promise<unknown>` documents callbacks that may be async,
+    // notably across the public plugin API; tsc already rejects real conflicts.
+    "typescript/no-redundant-type-constituents": "off",
+    // Preallocated result arrays (`new Array(n)` filled by index or `.fill`)
+    // and deliberately sparse wire-budget fixtures are intended.
+    "unicorn/no-new-array": "off",
+
+    // Not adopted yet: the React Compiler rules (the app does not run the
+    // compiler) and unbound-method, whose findings are overwhelmingly
+    // intentional method references on bound or static objects.
+    "react/refs": "off",
+    "react/set-state-in-effect": "off",
+    "react/globals": "off",
+    "react/purity": "off",
+    "react/immutability": "off",
+    "react/incompatible-library": "off",
+    "react/preserve-manual-memoization": "off",
+    "typescript/unbound-method": "off"
+  },
+  "overrides": [
+    {
+      // bun-types 1.3 declares `expect(promise).rejects/.resolves` matchers as
+      // returning void although they return promises that must be awaited, so
+      // await-thenable reports every correct async assertion in bun tests.
+      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "typescript/await-thenable": "off"
+      }
+    },
+    {
+      // The foliate engine has no React; its `use*` names are ordinary helpers.
+      "files": ["apps/web/foliate-js/src/**"],
+      "rules": {
+        "react/rules-of-hooks": "off"
+      }
+    },
+    {
+      // JavaScript files carry no declared types, so element types are inferred
+      // as any and every default sort would be reported on a guess.
+      "files": ["**/*.js", "**/*.mjs", "**/*.cjs"],
+      "rules": {
+        "typescript/require-array-sort-compare": "off"
+      }
+    },
+    {
+      // Feature code composes @read-aware/ui controls. A native element stays
+      // only for a clickable card or row, or a specialized interaction with no
+      // shared control, and then carries a disable comment naming which.
+      "files": ["apps/web/src/features/**/*.tsx"],
+      // Test harnesses render bare elements to drive hooks.
+      "excludeFiles": ["**/*.test.tsx"],
+      "rules": {
+        "react/forbid-elements": ["error", {
+          "forbid": [
+            { "element": "button", "message": "Use Button or IconButton from @read-aware/ui; a native <button> needs a disable comment naming the specialized interaction." },
+            { "element": "input", "message": "Use TextField, SearchField, Checkbox, Toggle or ChoiceGroup from @read-aware/ui." },
+            { "element": "select", "message": "Use Select or SearchSelect from @read-aware/ui." },
+            { "element": "textarea", "message": "Use TextArea from @read-aware/ui." }
+          ]
+        }]
+      }
+    }
+  ],
+  // Generated and built output is skipped. foliate-js/src is the repository's
+  // own engine source and is linted; only its vendor/ tree is upstream code.
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/storybook-static/**",
+    "**/routeTree.gen.ts",
+    "apps/web/public/**",
+    "apps/web/foliate-js/src/vendor/**",
+    "apps/desktop/src-tauri/**",
+    "marketing/pitch-video/out/**"
+  ]
+}
