@@ -26,7 +26,7 @@ test('clean Foliate check/build needs no tracked runtime and preserves vendor as
     symlinkSync(join(web, 'node_modules'), join(directory, 'node_modules'), 'dir');
     for (const name of ['build-foliate.ts', 'foliate-checks.ts'])
       copyFileSync(join(web, 'scripts', name), join(scripts, name));
-    copyFileSync(join(web, 'tsconfig.foliate.json'), join(directory, 'tsconfig.foliate.json'));
+    copyFileSync(join(web, 'foliate-js/tsconfig.json'), join(directory, 'foliate-js/tsconfig.json'));
     const path = join(source, 'fixture.ts');
     writeFileSync(path, 'export const value: number = 42;\n');
 

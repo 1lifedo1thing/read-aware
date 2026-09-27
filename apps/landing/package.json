@@ -9,7 +9,7 @@
     "deploy": "bun run build && wrangler deploy",
     "preview": "vite preview",
     "preview:worker": "bun run build && wrangler dev",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
     "test": "bun run test:static",
     "test:static": "bun test tests",
     "docs:generate": "bun scripts/plugin-reference.ts",

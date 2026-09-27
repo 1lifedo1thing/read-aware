@@ -7,7 +7,7 @@ import { checkFoliateTypes } from './foliate-checks';
 const web = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const source = resolve(web, 'foliate-js/src');
 const output = resolve(web, 'public/foliate-js');
-const configPath = resolve(web, 'tsconfig.foliate.json');
+const configPath = resolve(web, 'foliate-js/tsconfig.json');
 const formatHost: ts.FormatDiagnosticsHost = {
   getCanonicalFileName: name => name,
   getCurrentDirectory: () => web,
@@ -69,7 +69,7 @@ if (watch) {
 } else {
   const config = ts.parseConfigFileTextToJson(configPath, readFileSync(configPath, 'utf8'));
   if (config.error) { report([config.error]); process.exit(1); }
-  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, web);
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, dirname(configPath), undefined, configPath);
   report(parsed.errors);
   if (parsed.errors.length || !build(ts.createProgram(parsed.fileNames, parsed.options))) process.exit(1);
 }

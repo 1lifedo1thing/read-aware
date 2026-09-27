@@ -11,7 +11,7 @@
     "build": "bun run build:foliate && vite build && tsc --noEmit",
     "test": "bun run build:foliate && bun test",
     "preview": "vite preview",
-    "typecheck": "bun run check:foliate && tsc --noEmit && bun run typecheck:tests && bun run typecheck:desktop",
+    "typecheck": "bun run check:foliate && tsc --noEmit && bun run typecheck:tests && bun run typecheck:desktop && tsc --noEmit -p .storybook",
     "typecheck:tests": "tsc --noEmit -p tests/tsconfig.json",
     "typecheck:desktop": "tsc --noEmit -p tests/desktop/tsconfig.json",
     "test:runtime": "bun scripts/run-runtime-regressions.ts",

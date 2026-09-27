@@ -1,6 +1,6 @@
 /** Regenerate the source-audited matrix, or --check for roster/document drift. */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { groups, sources, baselineCoverage, ineffectiveSettings, staticSettingPaths, type Actor } from "../docs/capabilities/host-capability-matrix.data";
+import { groups, sources, baselineCoverage, ineffectiveSettings, type Actor } from "../docs/capabilities/host-capability-matrix.data";
 import { collectInventory } from "./host-capability-inventory";
 
 const title = "ReadAware 宿主 × Agent × 插件能力矩阵";

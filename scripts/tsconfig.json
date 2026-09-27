@@ -1,0 +1,9 @@
+{
+  "extends": "../packages/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["bun"],
+    "moduleDetection": "force"
+  },
+  "include": ["**/*.ts"]
+}

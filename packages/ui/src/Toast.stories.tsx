@@ -15,7 +15,7 @@ type Story = StoryObj<typeof meta>;
 function Demo() {
   const { toast } = useToast();
   return (
-    <Stack gap={2} className="items-start">
+    <Stack gap="sm" className="items-start">
       <Button
         variant="outline"
         onClick={() =>
