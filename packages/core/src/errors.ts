@@ -53,6 +53,19 @@ export const ERR_BACKUP_RECOVERY_REQUIRED = "backup/recovery-required";
 export const ERR_PLUGIN_INVALID_ARGUMENT = "plugin/invalid-argument";
 export const ERR_PLUGIN_QUOTA_EXCEEDED = "plugin/quota-exceeded";
 export const ERR_PLUGIN_ASSET_CONFLICT = "plugin/asset-conflict";
+/** Native plugin file management (src-tauri plugins.rs). */
+export const ERR_PLUGIN_INVALID_PACKAGE = "plugin/invalid-package";
+export const ERR_PLUGIN_BUILT_IN = "plugin/built-in";
+export const ERR_PLUGIN_CANDIDATE_STALE = "plugin/candidate-stale";
+export const ERR_PLUGIN_NO_PREVIOUS_VERSION = "plugin/no-previous-version";
+/** Native software update checks and installs (desktop and Android). */
+export const ERR_UPDATE_UNAVAILABLE = "update/unavailable";
+export const ERR_UPDATE_NOT_READY = "update/not-ready";
+export const ERR_UPDATE_NETWORK = "update/network";
+export const ERR_UPDATE_INVALID_RELEASE = "update/invalid-release";
+export const ERR_UPDATE_INSTALL_FAILED = "update/install-failed";
+/** A write to a save target the native save dialog did not issue, or that expired. */
+export const ERR_EXPORT_TARGET_INVALID = "export/target-invalid";
 
 /** Sync/relay failure codes (classified in apps/web platform/sync). */
 export const ERR_SYNC_NETWORK = "sync/network";

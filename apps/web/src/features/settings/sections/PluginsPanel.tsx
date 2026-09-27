@@ -30,6 +30,8 @@ import {
 } from "../../plugins/state/plugin-store";
 import { createLogger } from "../../../platform/logger";
 import { PluginManifestError } from "../../plugins/lib/manifest";
+import { ERR_PLUGIN_INVALID_PACKAGE, errorCode } from "@read-aware/core";
+import { describeError } from "../../../i18n/describe-error";
 import { SettingsPage } from "../components/SettingsPage";
 import { SettingsRow } from "../components/SettingsRow";
 import { useMaintenanceSurface } from "../hooks/useMaintenanceSurface";
@@ -38,7 +40,7 @@ const log = createLogger("plugins");
 
 export function PluginsPanel() {
   const headingRef = useMaintenanceSurface("plugins");
-  const { t } = useTranslation("plugins");
+  const { t } = useTranslation(["plugins", "common"]);
   const { toast } = useToast();
   const installed = useAtomValue(installedPluginsAtom);
   const libraryBooks = useAtomValue(libraryBooksAtom);
@@ -52,11 +54,13 @@ export function PluginsPanel() {
   const desktop = isTauri();
   const books = libraryBooks.map(({ id, title }) => ({ id, title }));
 
-  /** A bad package is the one cause the user can act on; the rest is log-only. */
+  /** A bad package (web- or native-detected) gets its own line; other
+   * classified causes use the shared copy, the rest the generic failure. */
   function installFailureCopy(error: unknown): string {
-    return error instanceof PluginManifestError
-      ? t("settings.installFailedManifest")
-      : t("settings.installFailed");
+    if (error instanceof PluginManifestError || errorCode(error) === ERR_PLUGIN_INVALID_PACKAGE) {
+      return t("settings.installFailedManifest");
+    }
+    return describeError(error, { fallback: t("settings.installFailed") }).body;
   }
 
   async function handleInstall() {

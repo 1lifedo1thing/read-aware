@@ -19,8 +19,8 @@ fn update_dir(root: &Path, id: &str) -> Result<PathBuf, CommandError> {
     }
     Ok(root.join(".updates").join(id))
 }
-fn file_error(message: String) -> CommandError {
-    CommandError::new("plugin/recovery-required", message)
+fn file_error(error: impl Into<CommandError>) -> CommandError {
+    CommandError::new("plugin/recovery-required", error.into().message)
 }
 
 #[cfg(test)]
@@ -112,7 +112,7 @@ fn restore_files(root: &Path, journal: &storage::PluginUpdateJournal) -> Result<
     }
     let previous = directory.join("previous");
     if !previous.join("manifest.json").is_file() {
-        return Err(file_error("retained plugin baseline is missing".into()));
+        return Err(file_error("retained plugin baseline is missing"));
     }
     let restoring = directory.join("restoring");
     if restoring.exists() {
@@ -144,10 +144,10 @@ pub(crate) fn rollback_at(
     update_id: &str,
 ) -> Result<(), CommandError> {
     let journal = storage::read_plugin_update(conn, update_id)?
-        .ok_or_else(|| file_error("plugin recovery record is missing".into()))?;
+        .ok_or_else(|| file_error("plugin recovery record is missing"))?;
     if journal.phase != "prepared" {
         return Err(file_error(
-            "accepted plugin update cannot be rolled back".into(),
+            "accepted plugin update cannot be rolled back",
         ));
     }
     restore_files(root, &journal)?;
@@ -168,7 +168,7 @@ pub(crate) fn finish_at(
     };
     if journal.phase != "accepted" {
         return Err(file_error(
-            "unaccepted plugin update cannot be finalized".into(),
+            "unaccepted plugin update cannot be finalized",
         ));
     }
     cleanup_files(root, &journal)?;

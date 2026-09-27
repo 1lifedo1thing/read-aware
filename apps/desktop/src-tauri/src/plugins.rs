@@ -12,6 +12,12 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use tauri::Manager;
 
+use crate::error::{
+    CommandError, CODE_PLUGIN_BUILT_IN, CODE_PLUGIN_CANDIDATE_STALE, CODE_PLUGIN_INVALID_ARGUMENT,
+    CODE_PLUGIN_INVALID_PACKAGE, CODE_PLUGIN_NO_PREVIOUS_VERSION,
+};
+use crate::storage::blocking;
+
 #[derive(Serialize, Clone)]
 pub struct PluginEntry {
     /// Folder name under plugins/ — must equal manifest.id (web checks too).
@@ -31,13 +37,24 @@ pub struct PluginCandidate {
     pub manifest: String,
 }
 
-pub(crate) fn plugins_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("plugins");
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+fn invalid_package(message: impl Into<String>) -> CommandError {
+    CommandError::new(CODE_PLUGIN_INVALID_PACKAGE, message)
+}
+
+fn invalid_id() -> CommandError {
+    CommandError::new(CODE_PLUGIN_INVALID_ARGUMENT, "invalid plugin id")
+}
+
+fn built_in(id: &str, action: &str) -> CommandError {
+    CommandError::new(
+        CODE_PLUGIN_BUILT_IN,
+        format!("\"{id}\" is a built-in plugin and cannot be {action}"),
+    )
+}
+
+pub(crate) fn plugins_dir(app: &tauri::AppHandle) -> Result<PathBuf, CommandError> {
+    let dir = app.path().app_data_dir()?.join("plugins");
+    fs::create_dir_all(&dir)?;
     Ok(dir)
 }
 
@@ -53,27 +70,40 @@ fn valid_candidate_token(token: &str) -> bool {
     uuid::Uuid::parse_str(token).is_ok()
 }
 
-fn manifest_id(manifest: &str) -> Result<String, String> {
+fn manifest_id(manifest: &str) -> Result<String, CommandError> {
     let parsed: serde_json::Value = serde_json::from_str(manifest)
-        .map_err(|e| format!("manifest.json is not valid JSON: {e}"))?;
+        .map_err(|e| invalid_package(format!("manifest.json is not valid JSON: {e}")))?;
     let id = parsed
         .get("id")
         .and_then(|value| value.as_str())
-        .ok_or_else(|| "manifest.id is missing".to_string())?
+        .ok_or_else(|| invalid_package("manifest.id is missing"))?
         .to_string();
     if !valid_plugin_id(&id) {
-        return Err("manifest.id must be lowercase letters, digits, and hyphens".into());
+        return Err(invalid_package(
+            "manifest.id must be lowercase letters, digits, and hyphens",
+        ));
     }
     Ok(id)
 }
 
-pub(crate) fn candidate_at(plugins: &Path, token: &str) -> Result<(PathBuf, PluginCandidate), String> {
+pub(crate) fn candidate_at(
+    plugins: &Path,
+    token: &str,
+) -> Result<(PathBuf, PluginCandidate), CommandError> {
     if !valid_candidate_token(token) {
-        return Err("invalid plugin candidate token".into());
+        return Err(CommandError::new(
+            CODE_PLUGIN_CANDIDATE_STALE,
+            "invalid plugin candidate token",
+        ));
     }
     let path = candidates_dir(plugins).join(token);
-    let manifest = fs::read_to_string(path.join("manifest.json"))
-        .map_err(|_| "plugin candidate is missing manifest.json".to_string())?;
+    let manifest = fs::read_to_string(path.join("manifest.json")).map_err(|error| {
+        CommandError::context_coded(
+            CODE_PLUGIN_CANDIDATE_STALE,
+            "plugin candidate is missing manifest.json",
+            error,
+        )
+    })?;
     let id = manifest_id(&manifest)?;
     Ok((
         path,
@@ -85,16 +115,35 @@ pub(crate) fn candidate_at(plugins: &Path, token: &str) -> Result<(PathBuf, Plug
     ))
 }
 
-fn fresh_candidate_paths(plugins: &Path) -> Result<(String, PathBuf, PathBuf), String> {
+fn fresh_candidate_paths(plugins: &Path) -> Result<(String, PathBuf, PathBuf), CommandError> {
     let root = candidates_dir(plugins);
-    fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&root)?;
     let token = uuid::Uuid::new_v4().to_string();
     let staged = root.join(&token);
     let temp = root.join(format!(".staging-{token}"));
     Ok((token, temp, staged))
 }
 
-fn recover_interrupted_commits(plugins: &Path) -> Result<(), String> {
+/// Build a candidate in `temp`, then publish it under its token in one
+/// rename. A failed build never leaves a half-written candidate behind.
+fn finalize_candidate(
+    temp: &Path,
+    staged: &Path,
+    build: impl FnOnce() -> Result<(), CommandError>,
+) -> Result<(), CommandError> {
+    let result = build().and_then(|()| {
+        fs::rename(temp, staged)
+            .map_err(|e| CommandError::context("could not finalize plugin candidate", e))
+    });
+    if result.is_err() {
+        if let Err(error) = fs::remove_dir_all(temp) {
+            log::warn!("abandoned plugin candidate cleanup deferred: {error}");
+        }
+    }
+    result
+}
+
+fn recover_interrupted_commits(plugins: &Path) -> Result<(), CommandError> {
     let rollback = rollback_dir(plugins);
     if let Ok(entries) = fs::read_dir(&rollback) {
         for entry in entries.flatten() {
@@ -102,8 +151,9 @@ fn recover_interrupted_commits(plugins: &Path) -> Result<(), String> {
             let backup = entry.path();
             let active = plugins.join(&id);
             if valid_plugin_id(&id) && !active.exists() && backup.join("manifest.json").is_file() {
-                fs::rename(&backup, &active)
-                    .map_err(|e| format!("could not recover interrupted plugin update: {e}"))?;
+                fs::rename(&backup, &active).map_err(|e| {
+                    CommandError::context("could not recover interrupted plugin update", e)
+                })?;
             }
         }
     }
@@ -111,7 +161,10 @@ fn recover_interrupted_commits(plugins: &Path) -> Result<(), String> {
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().to_string();
             if name.starts_with(".installing-") || name.starts_with(".failed-") {
-                let _ = fs::remove_dir_all(entry.path());
+                // Leftovers are retried on the next enumeration.
+                if let Err(error) = fs::remove_dir_all(entry.path()) {
+                    log::warn!("plugin install leftover {name} cleanup deferred: {error}");
+                }
             }
         }
     }
@@ -159,82 +212,91 @@ pub(crate) fn valid_plugin_id(id: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
+fn is_bundled(app: &tauri::AppHandle, id: &str) -> bool {
+    bundled_root(app).is_some_and(|root| root.plugin_dir(id).join("manifest.json").is_file())
+}
+
 #[tauri::command]
-pub fn plugins_list(app: tauri::AppHandle) -> Result<Vec<PluginEntry>, String> {
-    let mut entries: Vec<PluginEntry> = Vec::new();
-    let user_plugins = plugins_dir(&app)?;
-    recover_interrupted_commits(&user_plugins)?;
-    // Bundled first — a bundled id shadows any user-dir copy of the same id.
-    // A folder without a readable manifest is ignored, not an error — a
-    // half-copied plugin must not break enumeration for the others.
-    if let Some(root) = bundled_root(&app) {
-        for id in root.ids() {
-            if !valid_plugin_id(&id) || entries.iter().any(|e| e.id == id) {
-                continue;
+pub async fn plugins_list(app: tauri::AppHandle) -> Result<Vec<PluginEntry>, CommandError> {
+    blocking("plugins_list", move || {
+        let mut entries: Vec<PluginEntry> = Vec::new();
+        let user_plugins = plugins_dir(&app)?;
+        recover_interrupted_commits(&user_plugins)?;
+        // Bundled first — a bundled id shadows any user-dir copy of the same id.
+        // A folder without a readable manifest is ignored, not an error — a
+        // half-copied plugin must not break enumeration for the others.
+        if let Some(root) = bundled_root(&app) {
+            for id in root.ids() {
+                if !valid_plugin_id(&id) || entries.iter().any(|e| e.id == id) {
+                    continue;
+                }
+                let Ok(manifest) = fs::read_to_string(root.plugin_dir(&id).join("manifest.json"))
+                else {
+                    continue;
+                };
+                entries.push(PluginEntry {
+                    id,
+                    manifest,
+                    builtin: true,
+                });
             }
-            let Ok(manifest) = fs::read_to_string(root.plugin_dir(&id).join("manifest.json"))
-            else {
-                continue;
-            };
-            entries.push(PluginEntry {
-                id,
-                manifest,
-                builtin: true,
-            });
         }
-    }
-    list_plugin_dirs(&user_plugins, false, &mut entries);
-    entries.sort_by(|a, b| a.id.cmp(&b.id));
-    Ok(entries)
+        list_plugin_dirs(&user_plugins, false, &mut entries);
+        entries.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(entries)
+    })
+    .await
 }
 
 /// Copy a selected folder into an inert, versioned candidate directory. Nothing
 /// under the active `<plugins>/<id>` path is touched here.
 #[tauri::command]
-pub fn plugins_stage_dir(
+pub async fn plugins_stage_dir(
     app: tauri::AppHandle,
     src_dir: String,
-) -> Result<PluginCandidate, String> {
-    let src = PathBuf::from(&src_dir);
-    if !src.is_dir() {
-        return Err("the selected path is not a folder".into());
-    }
-    let manifest = fs::read_to_string(src.join("manifest.json"))
-        .map_err(|_| "manifest.json not found in the selected folder".to_string())?;
-    let id = manifest_id(&manifest)?;
-    let plugins = plugins_dir(&app)?;
-    let (token, temp, staged) = fresh_candidate_paths(&plugins)?;
-    let result = copy_dir(&src, &temp).and_then(|_| {
-        fs::rename(&temp, &staged).map_err(|e| format!("could not finalize plugin candidate: {e}"))
-    });
-    if let Err(error) = result {
-        let _ = fs::remove_dir_all(&temp);
-        return Err(error);
-    }
-    Ok(PluginCandidate {
-        token,
-        id,
-        manifest,
+) -> Result<PluginCandidate, CommandError> {
+    blocking("plugins_stage_dir", move || {
+        let src = PathBuf::from(&src_dir);
+        if !src.is_dir() {
+            return Err(invalid_package("the selected path is not a folder"));
+        }
+        let manifest = fs::read_to_string(src.join("manifest.json")).map_err(|error| {
+            CommandError::context_coded(
+                CODE_PLUGIN_INVALID_PACKAGE,
+                "manifest.json not found in the selected folder",
+                error,
+            )
+        })?;
+        let id = manifest_id(&manifest)?;
+        let plugins = plugins_dir(&app)?;
+        let (token, temp, staged) = fresh_candidate_paths(&plugins)?;
+        finalize_candidate(&temp, &staged, || copy_dir(&src, &temp))?;
+        Ok(PluginCandidate {
+            token,
+            id,
+            manifest,
+        })
     })
+    .await
 }
 
 /// Recursive copy of regular files and directories. Hidden entries (.git,
 /// .DS_Store) and symlinks are skipped — a plugin is plain files only.
-pub(crate) fn copy_dir(src: &Path, dest: &Path) -> Result<(), String> {
-    fs::create_dir_all(dest).map_err(|e| e.to_string())?;
-    for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
+pub(crate) fn copy_dir(src: &Path, dest: &Path) -> Result<(), CommandError> {
+    fs::create_dir_all(dest)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
         let name = entry.file_name();
         if name.to_string_lossy().starts_with('.') {
             continue;
         }
-        let file_type = entry.file_type().map_err(|e| e.to_string())?;
+        let file_type = entry.file_type()?;
         let from = entry.path();
         let to = dest.join(&name);
         if file_type.is_dir() {
             copy_dir(&from, &to)?;
         } else if file_type.is_file() {
-            fs::copy(&from, &to).map_err(|e| e.to_string())?;
+            fs::copy(&from, &to)?;
         }
     }
     Ok(())
@@ -248,110 +310,116 @@ pub struct PluginFile {
     pub encoding: Option<String>,
 }
 
+/// Strict positive validation: forward-slash-separated components of
+/// [A-Za-z0-9._-] only, never starting with a dot. This excludes absolute
+/// paths, `..`, backslashes, and Windows drive-relative forms (`C:x`) by
+/// construction rather than by enumerating bad shapes.
+fn valid_payload_path(path: &str) -> bool {
+    !path.is_empty()
+        && path.len() <= 256
+        && path.split('/').all(|part| {
+            !part.is_empty()
+                && !part.starts_with('.')
+                && part
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+        })
+}
+
 /// Marketplace staging: the webview fetches files (CSP owns network policy)
 /// and Rust writes them to an inert candidate directory.
 #[tauri::command]
-pub fn plugins_stage_files(
+pub async fn plugins_stage_files(
     app: tauri::AppHandle,
     id: String,
     files: Vec<PluginFile>,
-) -> Result<PluginCandidate, String> {
-    if !valid_plugin_id(&id) {
-        return Err("invalid plugin id".into());
-    }
-    let manifest = files
-        .iter()
-        .find(|file| file.path == "manifest.json")
-        .ok_or_else(|| "manifest.json missing".to_string())?
-        .content
-        .clone();
-    if manifest_id(&manifest)? != id {
-        return Err("manifest.id does not match the requested plugin id".into());
-    }
-
-    // Strict positive validation: forward-slash-separated components of
-    // [A-Za-z0-9._-] only, never starting with a dot. This excludes absolute
-    // paths, `..`, backslashes, and Windows drive-relative forms (`C:x`) by
-    // construction rather than by enumerating bad shapes.
-    fn valid_payload_path(path: &str) -> bool {
-        !path.is_empty()
-            && path.len() <= 256
-            && path.split('/').all(|part| {
-                !part.is_empty()
-                    && !part.starts_with('.')
-                    && part
-                        .chars()
-                        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
-            })
-    }
-    for file in &files {
-        if !valid_payload_path(&file.path) {
-            return Err(format!(
-                "invalid file path in plugin payload: {}",
-                file.path
+) -> Result<PluginCandidate, CommandError> {
+    blocking("plugins_stage_files", move || {
+        if !valid_plugin_id(&id) {
+            return Err(invalid_id());
+        }
+        let manifest = files
+            .iter()
+            .find(|file| file.path == "manifest.json")
+            .ok_or_else(|| invalid_package("manifest.json missing"))?
+            .content
+            .clone();
+        if manifest_id(&manifest)? != id {
+            return Err(invalid_package(
+                "manifest.id does not match the requested plugin id",
             ));
         }
-    }
-
-    let plugins = plugins_dir(&app)?;
-    let (token, temp, staged) = fresh_candidate_paths(&plugins)?;
-    let result = (|| -> Result<(), String> {
-        for file in &files {
-            let target = temp.join(&file.path);
-            if let Some(parent) = target.parent() {
-                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-            let bytes: Vec<u8> = if file.encoding.as_deref() == Some("base64") {
-                use base64::Engine as _;
-                base64::engine::general_purpose::STANDARD
-                    .decode(&file.content)
-                    .map_err(|e| format!("invalid base64 payload for {}: {e}", file.path))?
-            } else {
-                file.content.clone().into_bytes()
-            };
-            fs::write(&target, bytes).map_err(|e| e.to_string())?;
+        if let Some(file) = files.iter().find(|file| !valid_payload_path(&file.path)) {
+            return Err(invalid_package(format!(
+                "invalid file path in plugin payload: {}",
+                file.path
+            )));
         }
-        fs::rename(&temp, &staged)
-            .map_err(|e| format!("could not finalize plugin candidate: {e}"))?;
-        Ok(())
-    })();
-    if let Err(error) = result {
-        let _ = fs::remove_dir_all(&temp);
-        return Err(error);
-    }
-    Ok(PluginCandidate {
-        token,
-        id,
-        manifest,
+
+        let plugins = plugins_dir(&app)?;
+        let (token, temp, staged) = fresh_candidate_paths(&plugins)?;
+        finalize_candidate(&temp, &staged, || {
+            for file in &files {
+                let target = temp.join(&file.path);
+                if let Some(parent) = target.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                let bytes: Vec<u8> = if file.encoding.as_deref() == Some("base64") {
+                    use base64::Engine as _;
+                    base64::engine::general_purpose::STANDARD
+                        .decode(&file.content)
+                        .map_err(|e| {
+                            invalid_package(format!("invalid base64 payload for {}: {e}", file.path))
+                        })?
+                } else {
+                    file.content.clone().into_bytes()
+                };
+                fs::write(&target, bytes)?;
+            }
+            Ok(())
+        })?;
+        Ok(PluginCandidate {
+            token,
+            id,
+            manifest,
+        })
     })
+    .await
 }
 
-pub(crate) fn commit_candidate_at(plugins: &Path, token: &str) -> Result<PluginEntry, String> {
+pub(crate) fn commit_candidate_at(plugins: &Path, token: &str) -> Result<PluginEntry, CommandError> {
     let (candidate_path, candidate) = candidate_at(plugins, token)?;
     let active_path = plugins.join(&candidate.id);
     let rollback_root = rollback_dir(plugins);
     let rollback_path = rollback_root.join(&candidate.id);
     let installing_path = plugins.join(format!(".installing-{}", uuid::Uuid::new_v4()));
 
-    fs::create_dir_all(&rollback_root).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&rollback_root)?;
     if let Err(error) = copy_dir(&candidate_path, &installing_path) {
-        let _ = fs::remove_dir_all(&installing_path);
+        if let Err(cleanup) = fs::remove_dir_all(&installing_path) {
+            log::warn!("partial plugin install cleanup deferred to next launch: {cleanup}");
+        }
         return Err(error);
     }
     if rollback_path.exists() {
-        fs::remove_dir_all(&rollback_path).map_err(|e| e.to_string())?;
+        fs::remove_dir_all(&rollback_path)?;
     }
     let had_active = active_path.exists();
     if had_active {
         fs::rename(&active_path, &rollback_path)
-            .map_err(|e| format!("could not retain previous plugin version: {e}"))?;
+            .map_err(|e| CommandError::context("could not retain previous plugin version", e))?;
     }
     if let Err(error) = fs::rename(&installing_path, &active_path) {
-        let _ = fs::remove_dir_all(&installing_path);
-        if had_active {
-            let _ = fs::rename(&rollback_path, &active_path);
+        if let Err(cleanup) = fs::remove_dir_all(&installing_path) {
+            log::warn!("partial plugin install cleanup deferred to next launch: {cleanup}");
         }
-        return Err(format!("could not switch to plugin candidate: {error}"));
+        // Leaving it in .rollback is still recoverable at the next launch.
+        if had_active {
+            if let Err(restore) = fs::rename(&rollback_path, &active_path) {
+                log::error!("previous plugin version restore deferred to next launch: {restore}");
+            }
+        }
+        return Err(CommandError::context("could not switch to plugin candidate", error));
     }
     Ok(PluginEntry {
         id: candidate.id,
@@ -363,68 +431,84 @@ pub(crate) fn commit_candidate_at(plugins: &Path, token: &str) -> Result<PluginE
 /// Commit a health-checked candidate. The candidate directory stays until its
 /// live Worker stops, so lazy module imports keep resolving for that instance.
 #[tauri::command]
-pub fn plugins_commit_candidate(
+pub async fn plugins_commit_candidate(
     app: tauri::AppHandle,
     token: String,
     update_id: String,
-) -> Result<PluginEntry, String> {
-    let plugins = plugins_dir(&app)?;
-    let (_, candidate) = candidate_at(&plugins, &token)?;
-    if let Some(root) = bundled_root(&app) {
-        if root
-            .plugin_dir(&candidate.id)
-            .join("manifest.json")
-            .is_file()
+) -> Result<PluginEntry, CommandError> {
+    blocking("plugins_commit_candidate", move || {
+        let plugins = plugins_dir(&app)?;
+        let (_, candidate) = candidate_at(&plugins, &token)?;
+        if is_bundled(&app, &candidate.id) {
+            return Err(built_in(&candidate.id, "replaced"));
+        }
+        let db = app.state::<crate::storage::Db>();
+        let conn = db.0.lock()?;
+        let journal = crate::storage::read_plugin_update(&conn, &update_id)?.ok_or_else(|| {
+            CommandError::new(CODE_PLUGIN_CANDIDATE_STALE, "plugin update baseline is missing")
+        })?;
+        if journal.phase != "prepared"
+            || journal.plugin_id != candidate.id
+            || journal.candidate_token.as_deref() != Some(&token)
         {
-            return Err(format!(
-                "\"{}\" is a built-in plugin and cannot be replaced",
-                candidate.id
+            return Err(CommandError::new(
+                CODE_PLUGIN_CANDIDATE_STALE,
+                "plugin candidate does not match its durable update baseline",
             ));
         }
-    }
-    let db = app.state::<crate::storage::Db>();
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
-    let journal = crate::storage::read_plugin_update(&conn, &update_id).map_err(|e| e.to_string())?
-        .ok_or_else(|| "plugin update baseline is missing".to_string())?;
-    if journal.phase != "prepared" || journal.plugin_id != candidate.id || journal.candidate_token.as_deref() != Some(&token) {
-        return Err("plugin candidate does not match its durable update baseline".into());
-    }
-    commit_candidate_at(&plugins, &token)
+        commit_candidate_at(&plugins, &token)
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn plugins_discard_candidate(app: tauri::AppHandle, token: String) -> Result<(), String> {
-    let plugins = plugins_dir(&app)?;
-    let (candidate, _) = candidate_at(&plugins, &token)?;
-    fs::remove_dir_all(candidate).map_err(|e| e.to_string())
+pub async fn plugins_discard_candidate(
+    app: tauri::AppHandle,
+    token: String,
+) -> Result<(), CommandError> {
+    blocking("plugins_discard_candidate", move || {
+        let plugins = plugins_dir(&app)?;
+        let (candidate, _) = candidate_at(&plugins, &token)?;
+        Ok(fs::remove_dir_all(candidate)?)
+    })
+    .await
 }
 
-fn rollback_plugin_at(plugins: &Path, id: &str) -> Result<PluginEntry, String> {
+fn rollback_plugin_at(plugins: &Path, id: &str) -> Result<PluginEntry, CommandError> {
     if !valid_plugin_id(id) {
-        return Err("invalid plugin id".into());
+        return Err(invalid_id());
     }
     let active_path = plugins.join(id);
     let rollback_path = rollback_dir(plugins).join(id);
     if !rollback_path.join("manifest.json").is_file() {
-        return Err(format!("no previous version retained for \"{id}\""));
+        return Err(CommandError::new(
+            CODE_PLUGIN_NO_PREVIOUS_VERSION,
+            format!("no previous version retained for \"{id}\""),
+        ));
     }
     let failed_path = plugins.join(format!(".failed-{id}-{}", uuid::Uuid::new_v4()));
     let had_active = active_path.exists();
     if had_active {
         fs::rename(&active_path, &failed_path)
-            .map_err(|e| format!("could not move failed plugin version aside: {e}"))?;
+            .map_err(|e| CommandError::context("could not move failed plugin version aside", e))?;
     }
     if let Err(error) = fs::rename(&rollback_path, &active_path) {
         if had_active {
-            let _ = fs::rename(&failed_path, &active_path);
+            if let Err(restore) = fs::rename(&failed_path, &active_path) {
+                log::error!("plugin version restore after a failed rollback failed: {restore}");
+            }
         }
-        return Err(format!(
-            "could not restore previous plugin version: {error}"
+        return Err(CommandError::context(
+            "could not restore previous plugin version",
+            error,
         ));
     }
-    let _ = fs::remove_dir_all(&failed_path);
+    // `.failed-*` leftovers are swept again at the next enumeration.
+    if let Err(error) = fs::remove_dir_all(&failed_path) {
+        log::warn!("failed plugin version cleanup deferred: {error}");
+    }
     let manifest = fs::read_to_string(active_path.join("manifest.json"))
-        .map_err(|e| format!("restored plugin manifest is unreadable: {e}"))?;
+        .map_err(|e| CommandError::context("restored plugin manifest is unreadable", e))?;
     Ok(PluginEntry {
         id: id.to_string(),
         manifest,
@@ -433,51 +517,63 @@ fn rollback_plugin_at(plugins: &Path, id: &str) -> Result<PluginEntry, String> {
 }
 
 #[tauri::command]
-pub fn plugins_rollback(app: tauri::AppHandle, id: String) -> Result<PluginEntry, String> {
-    rollback_plugin_at(&plugins_dir(&app)?, &id)
+pub async fn plugins_rollback(app: tauri::AppHandle, id: String) -> Result<PluginEntry, CommandError> {
+    blocking("plugins_rollback", move || rollback_plugin_at(&plugins_dir(&app)?, &id)).await
 }
 
 #[tauri::command]
-pub fn plugins_uninstall(app: tauri::AppHandle, id: String) -> Result<(), crate::error::CommandError> {
-    let db = app.state::<crate::storage::Db>();
-    let conn = db.0.lock()?;
-    for journal in crate::storage::list_plugin_updates(&conn)?.into_iter().filter(|journal| journal.plugin_id == id) {
-        if journal.phase != "accepted" {
-            return Err(crate::error::CommandError::new("plugin/recovery-required", "Resolve the durable plugin update before removing its files"));
+pub async fn plugins_uninstall(app: tauri::AppHandle, id: String) -> Result<(), CommandError> {
+    blocking("plugins_uninstall", move || {
+        let plugins = plugins_dir(&app)?;
+        let db = app.state::<crate::storage::Db>();
+        let conn = db.0.lock()?;
+        for journal in crate::storage::list_plugin_updates(&conn)?
+            .into_iter()
+            .filter(|journal| journal.plugin_id == id)
+        {
+            if journal.phase != "accepted" {
+                return Err(CommandError::new(
+                    "plugin/recovery-required",
+                    "Resolve the durable plugin update before removing its files",
+                ));
+            }
+            crate::plugin_updates::finish_at(&conn, &plugins, &journal.update_id)?;
         }
-        crate::plugin_updates::finish_at(&conn, &plugins_dir(&app).map_err(crate::error::CommandError::internal)?, &journal.update_id)?;
-    }
-    uninstall_files_unchecked(app.clone(), id).map_err(crate::error::CommandError::internal)
+        uninstall_files_unchecked(&app, &plugins, &id)
+    })
+    .await
 }
 
-fn uninstall_files_unchecked(app: tauri::AppHandle, id: String) -> Result<(), String> {
-    if let Some(root) = bundled_root(&app) {
-        if root.plugin_dir(&id).join("manifest.json").is_file() {
-            return Err(format!(
-                "\"{id}\" is a built-in plugin and cannot be uninstalled"
-            ));
-        }
+fn uninstall_files_unchecked(
+    app: &tauri::AppHandle,
+    plugins: &Path,
+    id: &str,
+) -> Result<(), CommandError> {
+    if is_bundled(app, id) {
+        return Err(built_in(id, "uninstalled"));
     }
-    if !valid_plugin_id(&id) {
-        return Err("invalid plugin id".into());
+    if !valid_plugin_id(id) {
+        return Err(invalid_id());
     }
-    let dir = plugins_dir(&app)?.join(&id);
+    let dir = plugins.join(id);
     if dir.exists() {
-        fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
+        fs::remove_dir_all(&dir)?;
     }
-    let rollback = rollback_dir(&plugins_dir(&app)?).join(&id);
+    let rollback = rollback_dir(plugins).join(id);
     if rollback.exists() {
-        fs::remove_dir_all(rollback).map_err(|e| e.to_string())?;
+        fs::remove_dir_all(rollback)?;
     }
-    let candidates = candidates_dir(&plugins_dir(&app)?);
-    if let Ok(entries) = fs::read_dir(candidates) {
+    if let Ok(entries) = fs::read_dir(candidates_dir(plugins)) {
         for entry in entries.flatten() {
             let path = entry.path();
             let Ok(manifest) = fs::read_to_string(path.join("manifest.json")) else {
                 continue;
             };
-            if manifest_id(&manifest).ok().as_deref() == Some(id.as_str()) {
-                let _ = fs::remove_dir_all(path);
+            if manifest_id(&manifest).ok().as_deref() == Some(id) {
+                // A stale candidate is inert; the next uninstall retries it.
+                if let Err(error) = fs::remove_dir_all(&path) {
+                    log::warn!("candidate cleanup for uninstalled \"{id}\" deferred: {error}");
+                }
             }
         }
     }
@@ -596,18 +692,28 @@ pub fn serve_plugin_asset(
 
 // ─── Zip install ─────────────────────────────────────────────────────────────
 
+/// A zip failure is the package's fault unless the file itself was unreadable.
+fn zip_error(context: &str, error: zip::result::ZipError) -> CommandError {
+    match error {
+        zip::result::ZipError::Io(error) => CommandError::context(context, error),
+        other => invalid_package(format!("{context}: {other}")),
+    }
+}
+
 /// Find the archive's manifest: at the root, or exactly one folder deep
 /// (GitHub-style archives wrap everything in a single top directory). Returns
 /// the manifest text plus the entry-name prefix to strip when extracting.
-fn zip_manifest(path: &Path) -> Result<(String, String), String> {
+fn zip_manifest(path: &Path) -> Result<(String, String), CommandError> {
     use std::io::Read as _;
-    let file = fs::File::open(path).map_err(|e| format!("cannot open zip: {e}"))?;
+    let file = fs::File::open(path).map_err(|e| CommandError::context("cannot open zip", e))?;
     let mut archive =
-        zip::ZipArchive::new(file).map_err(|e| format!("not a valid zip archive: {e}"))?;
+        zip::ZipArchive::new(file).map_err(|e| zip_error("not a valid zip archive", e))?;
 
     let mut found: Option<String> = None;
     for index in 0..archive.len() {
-        let entry = archive.by_index(index).map_err(|e| e.to_string())?;
+        let entry = archive
+            .by_index(index)
+            .map_err(|e| zip_error("unreadable zip entry", e))?;
         let name = entry.name().replace('\\', "/");
         if name == "manifest.json" {
             found = Some(name);
@@ -615,75 +721,83 @@ fn zip_manifest(path: &Path) -> Result<(String, String), String> {
         }
         if name.ends_with("/manifest.json") && name.matches('/').count() == 1 {
             if found.is_some() {
-                return Err("the zip contains more than one plugin folder".into());
+                return Err(invalid_package("the zip contains more than one plugin folder"));
             }
             found = Some(name);
         }
     }
-    let entry_name = found.ok_or_else(|| "manifest.json not found in the zip".to_string())?;
+    let entry_name = found.ok_or_else(|| invalid_package("manifest.json not found in the zip"))?;
     let prefix = entry_name.trim_end_matches("manifest.json").to_string();
 
     let mut manifest = String::new();
     archive
         .by_name(&entry_name)
-        .map_err(|e| e.to_string())?
+        .map_err(|e| zip_error("unreadable zip manifest", e))?
         .read_to_string(&mut manifest)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            CommandError::context_coded(CODE_PLUGIN_INVALID_PACKAGE, "unreadable zip manifest", e)
+        })?;
     Ok((manifest, prefix))
 }
 
 /// Extract a zip into an inert candidate. Plain files only: hidden entries,
 /// __MACOSX, symlinks, and path-traversing names are skipped.
 #[tauri::command]
-pub fn plugins_stage_zip(
+pub async fn plugins_stage_zip(
     app: tauri::AppHandle,
     zip_path: String,
-) -> Result<PluginCandidate, String> {
-    let path = PathBuf::from(&zip_path);
-    let (manifest, prefix) = zip_manifest(&path)?;
-    let id = manifest_id(&manifest)?;
-    let plugins = plugins_dir(&app)?;
-    let (token, temp, staged) = fresh_candidate_paths(&plugins)?;
-    let result = (|| -> Result<(), String> {
-        fs::create_dir_all(&temp).map_err(|e| e.to_string())?;
-        let file = fs::File::open(&path).map_err(|e| e.to_string())?;
-        let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
-        for index in 0..archive.len() {
-            let mut entry = archive.by_index(index).map_err(|e| e.to_string())?;
-            if entry.is_dir() || entry.enclosed_name().is_none() {
-                continue;
+) -> Result<PluginCandidate, CommandError> {
+    blocking("plugins_stage_zip", move || {
+        let path = PathBuf::from(&zip_path);
+        let (manifest, prefix) = zip_manifest(&path)?;
+        let id = manifest_id(&manifest)?;
+        let plugins = plugins_dir(&app)?;
+        let (token, temp, staged) = fresh_candidate_paths(&plugins)?;
+        finalize_candidate(&temp, &staged, || {
+            fs::create_dir_all(&temp)?;
+            let file = fs::File::open(&path)?;
+            let mut archive =
+                zip::ZipArchive::new(file).map_err(|e| zip_error("not a valid zip archive", e))?;
+            for index in 0..archive.len() {
+                let mut entry = archive
+                    .by_index(index)
+                    .map_err(|e| zip_error("unreadable zip entry", e))?;
+                if entry.is_dir() || entry.enclosed_name().is_none() {
+                    continue;
+                }
+                let name = entry.name().replace('\\', "/");
+                let Some(relative) = name.strip_prefix(prefix.as_str()) else {
+                    continue;
+                };
+                if relative.is_empty()
+                    || relative
+                        .split('/')
+                        .any(|part| part.is_empty() || part.starts_with('.') || part == "__MACOSX")
+                {
+                    continue;
+                }
+                let target = temp.join(relative);
+                if let Some(parent) = target.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                let mut out = fs::File::create(&target)?;
+                std::io::copy(&mut entry, &mut out).map_err(|e| match e.kind() {
+                    // A corrupt stream is the package; a full disk is not.
+                    std::io::ErrorKind::InvalidData | std::io::ErrorKind::UnexpectedEof => {
+                        invalid_package(format!("zip entry could not be extracted: {e}"))
+                    }
+                    _ => CommandError::context("zip entry could not be extracted", e),
+                })?;
             }
-            let name = entry.name().replace('\\', "/");
-            let Some(relative) = name.strip_prefix(prefix.as_str()) else {
-                continue;
-            };
-            if relative.is_empty()
-                || relative
-                    .split('/')
-                    .any(|part| part.is_empty() || part.starts_with('.') || part == "__MACOSX")
-            {
-                continue;
-            }
-            let target = temp.join(relative);
-            if let Some(parent) = target.parent() {
-                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-            let mut out = fs::File::create(&target).map_err(|e| e.to_string())?;
-            std::io::copy(&mut entry, &mut out).map_err(|e| e.to_string())?;
-        }
-        fs::rename(&temp, &staged)
-            .map_err(|e| format!("could not finalize plugin candidate: {e}"))?;
-        Ok(())
-    })();
-    if let Err(error) = result {
-        let _ = fs::remove_dir_all(&temp);
-        return Err(error);
-    }
-    Ok(PluginCandidate {
-        token,
-        id,
-        manifest,
+            Ok(())
+        })?;
+        Ok(PluginCandidate {
+            token,
+            id,
+            manifest,
+        })
     })
+    .await
 }
 
 #[cfg(test)]

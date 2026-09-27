@@ -36,30 +36,36 @@ mod window_state;
 
 use tauri::Manager;
 
+use error::CommandError;
+use storage::{blocking, on_main_thread};
+
+/// Open a picked book through the fs plugin (Android `content://` URIs too).
+fn open_picked_book(app: &tauri::AppHandle, path: &str) -> Result<std::fs::File, CommandError> {
+    use tauri_plugin_fs::{FsExt, OpenOptions};
+    let file_path = path
+        .parse::<tauri_plugin_fs::FilePath>()
+        .map_err(|err| CommandError::internal(format!("Invalid file path {path}: {err}")))?;
+    let mut options = OpenOptions::new();
+    options.read(true);
+    app.fs()
+        .open(file_path, options)
+        .map_err(|err| CommandError::context(&format!("Failed to open {path}"), err))
+}
+
 /// Cheap descriptor for a picker result. The webview needs the size for
 /// duplicate detection and shelf metadata, but must not read the file to learn
 /// it. Routes through the fs plugin so Android `content://` picks resolve too
 /// (fstat on the provider's descriptor; pipe-backed providers report 0, which
 /// the shelf tolerates — Android normally supplies sizes from the picker).
 #[tauri::command]
-async fn book_file_size(app: tauri::AppHandle, path: String) -> Result<u64, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        use tauri_plugin_fs::{FsExt, OpenOptions};
-        let file_path = path
-            .parse::<tauri_plugin_fs::FilePath>()
-            .map_err(|err| format!("Invalid file path {path}: {err}"))?;
-        let mut options = OpenOptions::new();
-        options.read(true);
-        let file = app
-            .fs()
-            .open(file_path, options)
-            .map_err(|err| format!("Failed to open {path}: {err}"))?;
+async fn book_file_size(app: tauri::AppHandle, path: String) -> Result<u64, CommandError> {
+    blocking("book_file_size", move || {
+        let file = open_picked_book(&app, &path)?;
         file.metadata()
             .map(|metadata| metadata.len())
-            .map_err(|err| format!("Failed to inspect selected book {path}: {err}"))
+            .map_err(|err| CommandError::context(&format!("Failed to inspect selected book {path}"), err))
     })
     .await
-    .map_err(|err| format!("book_file_size task failed: {err}"))?
 }
 
 /// Maximum head window `read_book_head` serves — plenty for format sniffing.
@@ -69,30 +75,24 @@ const BOOK_HEAD_MAX_BYTES: usize = 1024 * 1024;
 /// name carries no usable extension. Streams through the fs plugin (no Seek),
 /// so pipe-backed content providers work too.
 #[tauri::command]
-fn read_book_head(
+async fn read_book_head(
     app: tauri::AppHandle,
     path: String,
     length: usize,
-) -> Result<tauri::ipc::Response, String> {
+) -> Result<tauri::ipc::Response, CommandError> {
     use std::io::Read;
-    use tauri_plugin_fs::{FsExt, OpenOptions};
-
-    let file_path = path
-        .parse::<tauri_plugin_fs::FilePath>()
-        .map_err(|err| format!("Invalid file path {path}: {err}"))?;
-    let mut options = OpenOptions::new();
-    options.read(true);
-    let file = app
-        .fs()
-        .open(file_path, options)
-        .map_err(|err| format!("Failed to open {path}: {err}"))?;
-    let capped = length.min(BOOK_HEAD_MAX_BYTES);
-    let mut bytes = Vec::with_capacity(capped);
-    file.take(capped as u64)
-        .read_to_end(&mut bytes)
-        .map_err(|err| format!("Failed to read {path}: {err}"))?;
-    Ok(tauri::ipc::Response::new(bytes))
+    blocking("read_book_head", move || {
+        let file = open_picked_book(&app, &path)?;
+        let capped = length.min(BOOK_HEAD_MAX_BYTES);
+        let mut bytes = Vec::with_capacity(capped);
+        file.take(capped as u64)
+            .read_to_end(&mut bytes)
+            .map_err(|err| CommandError::context(&format!("Failed to read {path}"), err))?;
+        Ok(tauri::ipc::Response::new(bytes))
+    })
+    .await
 }
+
 
 /// Write exported content to a path chosen by the user in the native save
 /// dialog. `base64: true` marks binary content that crossed the IPC encoded.
@@ -101,21 +101,20 @@ async fn write_export_file(
     path: String,
     content: String,
     base64: Option<bool>,
-) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
+) -> Result<(), CommandError> {
+    blocking("write_export_file", move || {
         let bytes: Vec<u8> = if base64.unwrap_or(false) {
             use base64::Engine as _;
             base64::engine::general_purpose::STANDARD
                 .decode(content.as_bytes())
-                .map_err(|err| format!("invalid base64 export payload: {err}"))?
+                .map_err(|err| CommandError::internal(format!("invalid base64 export payload: {err}")))?
         } else {
             content.into_bytes()
         };
         std::fs::write(&path, bytes)
-            .map_err(|err| format!("Failed to write exported file {path}: {err}"))
+            .map_err(|err| CommandError::context(&format!("Failed to write exported file {path}"), err))
     })
     .await
-    .map_err(|err| format!("write_export_file task failed: {err}"))?
 }
 
 #[cfg(target_os = "macos")]
@@ -158,8 +157,8 @@ fn inherit_system_proxy() {
 /// command still resolves for `generate_handler!`.
 #[cfg(target_os = "android")]
 #[tauri::command]
-fn set_status_bar_hidden(app: tauri::AppHandle, hidden: bool) -> Result<(), String> {
-    app.run_on_main_thread(move || {
+async fn set_status_bar_hidden(app: tauri::AppHandle, hidden: bool) -> Result<(), CommandError> {
+    on_main_thread(&app, move || {
         use tao::platform::android::prelude::main_android_context;
         let Some(ctx) = main_android_context() else {
             log::warn!("setStatusBarHidden: no android context yet");
@@ -182,7 +181,7 @@ fn set_status_bar_hidden(app: tauri::AppHandle, hidden: bool) -> Result<(), Stri
             let _ = env.exception_clear();
         }
     })
-    .map_err(|e| e.to_string())
+    .await
 }
 
 /// Ask `MainActivity` to re-dispatch the window insets, pushing the Android
@@ -194,8 +193,8 @@ fn set_status_bar_hidden(app: tauri::AppHandle, hidden: bool) -> Result<(), Stri
 /// Android it is a no-op so the command still resolves for `generate_handler!`.
 #[cfg(target_os = "android")]
 #[tauri::command]
-fn sync_safe_area(app: tauri::AppHandle) -> Result<(), String> {
-    app.run_on_main_thread(move || {
+async fn sync_safe_area(app: tauri::AppHandle) -> Result<(), CommandError> {
+    on_main_thread(&app, move || {
         use tao::platform::android::prelude::main_android_context;
         let Some(ctx) = main_android_context() else {
             log::warn!("syncSafeArea: no android context yet");
@@ -213,7 +212,7 @@ fn sync_safe_area(app: tauri::AppHandle) -> Result<(), String> {
             let _ = env.exception_clear();
         }
     })
-    .map_err(|e| e.to_string())
+    .await
 }
 
 #[cfg(not(target_os = "android"))]
@@ -227,8 +226,8 @@ fn sync_safe_area() {}
 /// for `generate_handler!` — iOS offers no public API for volume-key capture.
 #[cfg(target_os = "android")]
 #[tauri::command]
-fn set_volume_key_capture(app: tauri::AppHandle, captured: bool) -> Result<(), String> {
-    app.run_on_main_thread(move || {
+async fn set_volume_key_capture(app: tauri::AppHandle, captured: bool) -> Result<(), CommandError> {
+    on_main_thread(&app, move || {
         use tao::platform::android::prelude::main_android_context;
         let Some(ctx) = main_android_context() else {
             log::warn!("setVolumeKeyCapture: no android context yet");
@@ -251,7 +250,7 @@ fn set_volume_key_capture(app: tauri::AppHandle, captured: bool) -> Result<(), S
             let _ = env.exception_clear();
         }
     })
-    .map_err(|e| e.to_string())
+    .await
 }
 
 #[cfg(not(target_os = "android"))]
@@ -265,8 +264,8 @@ fn set_volume_key_capture(_captured: bool) {}
 /// process and turn every return into a cold start. No-op off Android.
 #[cfg(target_os = "android")]
 #[tauri::command]
-fn move_task_to_back(app: tauri::AppHandle) -> Result<(), String> {
-    app.run_on_main_thread(move || {
+async fn move_task_to_back(app: tauri::AppHandle) -> Result<(), CommandError> {
+    on_main_thread(&app, move || {
         use tao::platform::android::prelude::main_android_context;
         let Some(ctx) = main_android_context() else {
             log::warn!("moveTaskToBack: no android context yet");
@@ -284,7 +283,7 @@ fn move_task_to_back(app: tauri::AppHandle) -> Result<(), String> {
             let _ = env.exception_clear();
         }
     })
-    .map_err(|e| e.to_string())
+    .await
 }
 
 #[cfg(not(target_os = "android"))]
@@ -299,8 +298,8 @@ fn move_task_to_back() {}
 /// collects the outcome by polling `book_pick_poll`. No-op off Android.
 #[cfg(target_os = "android")]
 #[tauri::command]
-fn book_pick_start(app: tauri::AppHandle, generation: i32) -> Result<(), String> {
-    app.run_on_main_thread(move || {
+async fn book_pick_start(app: tauri::AppHandle, generation: i32) -> Result<(), CommandError> {
+    on_main_thread(&app, move || {
         use tao::platform::android::prelude::main_android_context;
         let Some(ctx) = main_android_context() else {
             log::warn!("bookPickStart: no android context yet");
@@ -323,7 +322,7 @@ fn book_pick_start(app: tauri::AppHandle, generation: i32) -> Result<(), String>
             let _ = env.exception_clear();
         }
     })
-    .map_err(|e| e.to_string())
+    .await
 }
 
 #[cfg(not(target_os = "android"))]
@@ -336,10 +335,9 @@ fn book_pick_start(_generation: i32) {}
 /// channel — so the result cannot be lost the way pushed responses are.
 #[cfg(target_os = "android")]
 #[tauri::command]
-fn book_pick_poll(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let (tx, rx) = std::sync::mpsc::channel::<Option<String>>();
-    app.run_on_main_thread(move || {
-        let result = (|| -> Option<String> {
+async fn book_pick_poll(app: tauri::AppHandle) -> Result<Option<String>, CommandError> {
+    on_main_thread(&app, move || {
+        (|| -> Option<String> {
             use tao::platform::android::prelude::main_android_context;
             let ctx = main_android_context()?;
             let vm = unsafe { jni::JavaVM::from_raw(ctx.java_vm.cast()) }.ok()?;
@@ -359,12 +357,9 @@ fn book_pick_poll(app: tauri::AppHandle) -> Result<Option<String>, String> {
             let jstr = jni::objects::JString::from(obj);
             let text = env.get_string(&jstr).ok()?;
             Some(text.into())
-        })();
-        let _ = tx.send(result);
+        })()
     })
-    .map_err(|e| e.to_string())?;
-    rx.recv_timeout(std::time::Duration::from_secs(2))
-        .map_err(|e| e.to_string())
+    .await
 }
 
 #[cfg(not(target_os = "android"))]
@@ -411,29 +406,36 @@ fn set_status_bar_hidden(_hidden: bool) {}
 /// it is a no-op so the command still resolves for `generate_handler!`.
 #[cfg(target_os = "macos")]
 #[tauri::command]
-fn set_traffic_lights_visible(window: tauri::WebviewWindow, visible: bool) {
-    use cocoa::appkit::{NSWindow, NSWindowButton};
-    use cocoa::base::{id, nil};
-    use objc::runtime::{BOOL, NO, YES};
-    use objc::{msg_send, sel, sel_impl};
+async fn set_traffic_lights_visible(
+    window: tauri::WebviewWindow,
+    visible: bool,
+) -> Result<(), CommandError> {
+    let app = window.app_handle().clone();
+    on_main_thread(&app, move || {
+        use cocoa::appkit::{NSWindow, NSWindowButton};
+        use cocoa::base::{id, nil};
+        use objc::runtime::{BOOL, NO, YES};
+        use objc::{msg_send, sel, sel_impl};
 
-    let Ok(ns_window) = window.ns_window() else {
-        return;
-    };
-    let ns_window = ns_window as id;
-    let hidden: BOOL = if visible { NO } else { YES };
-    unsafe {
-        for button in [
-            NSWindowButton::NSWindowCloseButton,
-            NSWindowButton::NSWindowMiniaturizeButton,
-            NSWindowButton::NSWindowZoomButton,
-        ] {
-            let btn: id = ns_window.standardWindowButton_(button);
-            if btn != nil {
-                let _: () = msg_send![btn, setHidden: hidden];
+        let Ok(ns_window) = window.ns_window() else {
+            return;
+        };
+        let ns_window = ns_window as id;
+        let hidden: BOOL = if visible { NO } else { YES };
+        unsafe {
+            for button in [
+                NSWindowButton::NSWindowCloseButton,
+                NSWindowButton::NSWindowMiniaturizeButton,
+                NSWindowButton::NSWindowZoomButton,
+            ] {
+                let btn: id = ns_window.standardWindowButton_(button);
+                if btn != nil {
+                    let _: () = msg_send![btn, setHidden: hidden];
+                }
             }
         }
-    }
+    })
+    .await
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -448,9 +450,28 @@ fn set_traffic_lights_visible(_visible: bool) {}
 /// excluded. Windows walks DirectWrite's system font collection; Linux asks
 /// fontconfig via `fc-list`. Anywhere else returns an empty list and the picker
 /// falls back to the built-in presets. The frontend dedupes and sorts.
-#[cfg(target_os = "macos")]
 #[tauri::command]
-fn list_system_fonts() -> Vec<String> {
+async fn list_system_fonts(app: tauri::AppHandle) -> Result<Vec<String>, CommandError> {
+    // NSFontManager is AppKit: main thread only.
+    #[cfg(target_os = "macos")]
+    let fonts = on_main_thread(&app, system_fonts).await?;
+    // DirectWrite enumeration and fc-list are blocking work.
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    let fonts = {
+        let _ = app;
+        blocking("list_system_fonts", || Ok(system_fonts())).await?
+    };
+    // Mobile: the picker offers its built-in presets.
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    let fonts = {
+        let _ = app;
+        Vec::new()
+    };
+    Ok(fonts)
+}
+
+#[cfg(target_os = "macos")]
+fn system_fonts() -> Vec<String> {
     use cocoa::base::{id, nil};
     use objc::{class, msg_send, sel, sel_impl};
 
@@ -488,8 +509,7 @@ fn list_system_fonts() -> Vec<String> {
 /// user's locale (a zh-CN system shows 中文 names, matching every native font
 /// menu), then "en-us", then the first localized name DirectWrite has.
 #[cfg(target_os = "windows")]
-#[tauri::command]
-fn list_system_fonts() -> Vec<String> {
+fn system_fonts() -> Vec<String> {
     use windows::core::{w, BOOL};
     use windows::Win32::Globalization::GetUserDefaultLocaleName;
     use windows::Win32::Graphics::DirectWrite::{
@@ -552,8 +572,7 @@ fn list_system_fonts() -> Vec<String> {
 /// Linux: fontconfig owns the installed set; `fc-list` ships with it. A
 /// missing binary (headless container) degrades to the built-in presets.
 #[cfg(target_os = "linux")]
-#[tauri::command]
-fn list_system_fonts() -> Vec<String> {
+fn system_fonts() -> Vec<String> {
     let Ok(output) = std::process::Command::new("fc-list")
         .args(["--format", "%{family[0]}\n"])
         .output()
@@ -569,12 +588,6 @@ fn list_system_fonts() -> Vec<String> {
         .filter(|line| !line.is_empty())
         .map(str::to_owned)
         .collect()
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-#[tauri::command]
-fn list_system_fonts() -> Vec<String> {
-    Vec::new()
 }
 
 /// Paper-tone window background (mirrors `--color-paper` in
@@ -869,7 +882,6 @@ pub fn run() {
                     let result = db
                         .0
                         .lock()
-                        .map_err(error::CommandError::from)
                         .and_then(|mut conn| storage::finalize_staged_events_inner(&mut conn, &data_dir.0));
                     match result {
                         Ok(Some(report)) => log::info!(

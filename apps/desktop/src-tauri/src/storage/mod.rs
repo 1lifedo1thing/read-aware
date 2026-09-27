@@ -18,7 +18,7 @@ mod connection;
 pub use connection::SharedConnection;
 mod reading_progress;
 mod execution;
-pub(crate) use execution::blocking;
+pub(crate) use execution::{blocking, on_main_thread};
 mod library;
 pub use library::*;
 mod library_cleanup;

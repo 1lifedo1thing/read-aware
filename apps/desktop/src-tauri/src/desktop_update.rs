@@ -14,9 +14,18 @@
 
 use serde::Serialize;
 
+use crate::error::{CommandError, CODE_UPDATE_UNAVAILABLE};
+#[cfg(desktop)]
+use crate::error::{
+    CODE_UPDATE_INSTALL_FAILED, CODE_UPDATE_INVALID_RELEASE, CODE_UPDATE_NETWORK,
+    CODE_UPDATE_NOT_READY,
+};
+
+/// The update found by the last check, parked for install. An async mutex:
+/// commands await it instead of blocking a runtime thread.
 #[derive(Default)]
 pub struct DesktopUpdateState(
-    #[cfg(desktop)] std::sync::Mutex<Option<tauri_plugin_updater::Update>>,
+    #[cfg(desktop)] tokio::sync::Mutex<Option<tauri_plugin_updater::Update>>,
 );
 
 #[derive(Debug, Serialize)]
@@ -48,8 +57,9 @@ fn is_release_manifest_path(path: &str, asset: &str) -> bool {
 /// Only manifests that live under our own repo's release assets are accepted
 /// as endpoint overrides: https://github.com/ahpxex/read-aware/releases/download/v…/latest.json
 #[cfg(desktop)]
-fn validate_manifest_url(raw: &str) -> Result<url::Url, String> {
-    let url = url::Url::parse(raw).map_err(|err| format!("Invalid manifest URL: {err}"))?;
+fn validate_manifest_url(raw: &str) -> Result<url::Url, CommandError> {
+    let invalid = |message: String| CommandError::new(CODE_UPDATE_INVALID_RELEASE, message);
+    let url = url::Url::parse(raw).map_err(|err| invalid(format!("Invalid manifest URL: {err}")))?;
     let path_ok = is_release_manifest_path(url.path(), "latest.json");
     if url.scheme() != "https"
         || url.host_str() != Some("github.com")
@@ -57,9 +67,33 @@ fn validate_manifest_url(raw: &str) -> Result<url::Url, String> {
         || url.query().is_some()
         || url.fragment().is_some()
     {
-        return Err("Manifest URL does not match the expected GitHub release asset".into());
+        return Err(invalid(
+            "Manifest URL does not match the expected GitHub release asset".into(),
+        ));
     }
     Ok(url)
+}
+
+/// Transport failures are worth retrying; anything the updater rejected about
+/// the release itself (manifest, platform entry, signature) is not.
+#[cfg(desktop)]
+fn updater_error(context: &str, fallback: &str, error: tauri_plugin_updater::Error) -> CommandError {
+    use tauri_plugin_updater::Error;
+    let code = match &error {
+        Error::Reqwest(_) | Error::Network(_) | Error::ReleaseNotFound => CODE_UPDATE_NETWORK,
+        Error::Serialization(_)
+        | Error::Semver(_)
+        | Error::TargetNotFound(_)
+        | Error::TargetsNotFound(_)
+        | Error::Minisign(_)
+        | Error::Base64(_)
+        | Error::SignatureUtf8(_)
+        | Error::InvalidUpdaterFormat
+        | Error::BinaryNotFoundInArchive => CODE_UPDATE_INVALID_RELEASE,
+        Error::Io(io) => return CommandError::context(context, std::io::Error::new(io.kind(), io.to_string())),
+        _ => fallback,
+    };
+    CommandError::new(code, format!("{context}: {error}"))
 }
 
 /// `endpoint: None` checks the config default (the newest STABLE release —
@@ -70,7 +104,7 @@ fn validate_manifest_url(raw: &str) -> Result<url::Url, String> {
 pub async fn desktop_update_check(
     app: tauri::AppHandle,
     endpoint: Option<String>,
-) -> Result<Option<AvailableDesktopUpdate>, String> {
+) -> Result<Option<AvailableDesktopUpdate>, CommandError> {
     use tauri::Manager;
     use tauri_plugin_updater::UpdaterExt;
 
@@ -83,22 +117,22 @@ pub async fn desktop_update_check(
         let url = validate_manifest_url(&raw)?;
         builder = builder
             .endpoints(vec![url])
-            .map_err(|err| format!("Could not set the update endpoint: {err}"))?;
+            .map_err(|err| updater_error("Could not set the update endpoint", CODE_UPDATE_INVALID_RELEASE, err))?;
     }
     let updater = builder
         .build()
-        .map_err(|err| format!("Could not start the update check: {err}"))?;
+        .map_err(|err| updater_error("Could not start the update check", CODE_UPDATE_UNAVAILABLE, err))?;
     let update = updater
         .check()
         .await
-        .map_err(|err| format!("Update check failed: {err}"))?;
+        .map_err(|err| updater_error("Update check failed", CODE_UPDATE_NETWORK, err))?;
 
     let state: tauri::State<'_, DesktopUpdateState> = app.state();
     let info = update.as_ref().map(|u| AvailableDesktopUpdate {
         current_version: u.current_version.clone(),
         version: u.version.clone(),
     });
-    *state.0.lock().expect("desktop update state poisoned") = update;
+    *state.0.lock().await = update;
     Ok(info)
 }
 
@@ -106,17 +140,22 @@ pub async fn desktop_update_check(
 /// webview as `ra-desktop-update-progress` events. The caller relaunches.
 #[cfg(desktop)]
 #[tauri::command]
-pub async fn desktop_update_install(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn desktop_update_install(app: tauri::AppHandle) -> Result<(), CommandError> {
     use tauri::{Emitter, Manager};
 
     if !crate::app_environment::can_update(&app.config().identifier) {
-        return Err("Software updates are unavailable for development installations.".into());
+        return Err(CommandError::new(
+            CODE_UPDATE_UNAVAILABLE,
+            "Software updates are unavailable for development installations.",
+        ));
     }
 
     let update = {
         let state: tauri::State<'_, DesktopUpdateState> = app.state();
-        let taken = state.0.lock().expect("desktop update state poisoned").take();
-        taken.ok_or_else(|| "No software update is ready to install.".to_string())?
+        let taken = state.0.lock().await.take();
+        taken.ok_or_else(|| {
+            CommandError::new(CODE_UPDATE_NOT_READY, "No software update is ready to install.")
+        })?
     };
 
     let progress_app = app.clone();
@@ -126,6 +165,7 @@ pub async fn desktop_update_install(app: tauri::AppHandle) -> Result<(), String>
         .download_and_install(
             move |chunk, total| {
                 downloaded += chunk as u64;
+                // Progress is advisory; a closed webview must not fail the install.
                 let _ = progress_app.emit(
                     "ra-desktop-update-progress",
                     DesktopUpdateProgress { downloaded, total, finished: false },
@@ -139,7 +179,7 @@ pub async fn desktop_update_install(app: tauri::AppHandle) -> Result<(), String>
             },
         )
         .await
-        .map_err(|err| format!("Update install failed: {err}"))
+        .map_err(|err| updater_error("Update install failed", CODE_UPDATE_INSTALL_FAILED, err))
 }
 
 // ── Mobile stubs: registered but never called (Android has android_update). ──
@@ -148,14 +188,17 @@ pub async fn desktop_update_install(app: tauri::AppHandle) -> Result<(), String>
 #[tauri::command]
 pub async fn desktop_update_check(
     _endpoint: Option<String>,
-) -> Result<Option<AvailableDesktopUpdate>, String> {
+) -> Result<Option<AvailableDesktopUpdate>, CommandError> {
     Ok(None)
 }
 
 #[cfg(not(desktop))]
 #[tauri::command]
-pub async fn desktop_update_install() -> Result<(), String> {
-    Err("Desktop updates are not available on this platform.".into())
+pub async fn desktop_update_install() -> Result<(), CommandError> {
+    Err(CommandError::new(
+        CODE_UPDATE_UNAVAILABLE,
+        "Desktop updates are not available on this platform.",
+    ))
 }
 
 #[cfg(all(test, desktop))]

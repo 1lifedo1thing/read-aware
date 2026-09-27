@@ -26,6 +26,22 @@ pub const CODE_FS_NOT_FOUND: &str = "fs/not-found";
 pub const CODE_FS_PERMISSION: &str = "fs/permission";
 pub const CODE_FS_NO_SPACE: &str = "fs/no-space";
 pub const CODE_SECRETS_UNAVAILABLE: &str = "secrets/unavailable";
+/// A plugin folder/zip/payload that is not a valid plugin package.
+pub const CODE_PLUGIN_INVALID_PACKAGE: &str = "plugin/invalid-package";
+pub const CODE_PLUGIN_INVALID_ARGUMENT: &str = "plugin/invalid-argument";
+/// Built-in plugins ship with the app: never replaced or uninstalled.
+pub const CODE_PLUGIN_BUILT_IN: &str = "plugin/built-in";
+/// A staged candidate that is gone or no longer matches its update baseline.
+pub const CODE_PLUGIN_CANDIDATE_STALE: &str = "plugin/candidate-stale";
+pub const CODE_PLUGIN_NO_PREVIOUS_VERSION: &str = "plugin/no-previous-version";
+/// Software updates: disabled for this installation or platform.
+pub const CODE_UPDATE_UNAVAILABLE: &str = "update/unavailable";
+/// Install requested without a checked, parked update.
+pub const CODE_UPDATE_NOT_READY: &str = "update/not-ready";
+pub const CODE_UPDATE_NETWORK: &str = "update/network";
+/// The release manifest or artifact failed validation or verification.
+pub const CODE_UPDATE_INVALID_RELEASE: &str = "update/invalid-release";
+pub const CODE_UPDATE_INSTALL_FAILED: &str = "update/install-failed";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct CommandError {
