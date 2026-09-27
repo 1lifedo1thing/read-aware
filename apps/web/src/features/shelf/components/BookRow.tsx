@@ -53,6 +53,7 @@ export function BookRow({
         className,
       )}
     >
+      {/* oxlint-disable-next-line react/forbid-elements -- book list row with drag and selection */}
       <button
         type="button"
         onClick={selecting ? onToggleSelect : onClick}

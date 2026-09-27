@@ -139,9 +139,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
               of wedged between the text and an inline button; the send button is
               overlaid at the bottom-right, kept clear of the scrollbar. */}
           <div className="relative">
+            {/* oxlint-disable-next-line react/forbid-elements -- hidden native file picker for image attachments */}
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" multiple hidden onChange={event => {
               const files = Array.from(event.target.files ?? []); event.target.value = ""; if (files.length) void imageInput.add(files);
             }} />
+            {/* oxlint-disable-next-line react/forbid-elements -- auto-growing composer with image paste and an overlaid send button */}
             <textarea
               ref={textareaRef}
               rows={1}

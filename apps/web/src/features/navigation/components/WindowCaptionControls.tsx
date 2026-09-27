@@ -11,7 +11,7 @@
  */
 import { CopySimple, Minus, Square, X } from "@phosphor-icons/react";
 import { useEffect } from "react";
-import { cn } from "@read-aware/ui/cn";
+import { IconButton } from "@read-aware/ui";
 import { useTranslation } from "../../../i18n";
 import {
   desktopChromeKind,
@@ -31,9 +31,6 @@ async function currentWindow() {
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
   return getCurrentWindow();
 }
-
-const buttonClass =
-  "flex h-full w-11 items-center justify-center text-fg-muted transition-colors hover:bg-fg/8 hover:text-fg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-fg";
 
 type WindowCaptionControlsProps = {
   /**
@@ -76,35 +73,28 @@ export function WindowCaptionControls({
 
   return (
     <div className="pointer-events-auto absolute inset-y-0 right-0 z-20 flex items-stretch">
-      <button
-        type="button"
-        aria-label={t("window.minimize")}
-        className={buttonClass}
+      <IconButton
+        size="caption"
+        label={t("window.minimize")}
         onClick={() => windowAction({ action: "minimize" })}
-      >
-        <Minus size={14} weight="regular" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        aria-label={maximized ? t("window.restore") : t("window.maximize")}
-        className={buttonClass}
+        icon={<Minus size={14} weight="regular" aria-hidden="true" />}
+      />
+      <IconButton
+        size="caption"
+        label={maximized ? t("window.restore") : t("window.maximize")}
         onMouseEnter={showSnapOverlay}
         onClick={() => windowAction({ action: maximized ? "restore" : "maximize" })}
-      >
-        {maximized ? (
-          <CopySimple size={14} weight="regular" aria-hidden="true" />
-        ) : (
-          <Square size={13} weight="regular" aria-hidden="true" />
-        )}
-      </button>
-      <button
-        type="button"
-        aria-label={t("window.close")}
-        className={cn(buttonClass, "hover:bg-red-600 hover:text-white")}
+        icon={maximized
+          ? <CopySimple size={14} weight="regular" aria-hidden="true" />
+          : <Square size={13} weight="regular" aria-hidden="true" />}
+      />
+      <IconButton
+        size="caption"
+        tone="close"
+        label={t("window.close")}
         onClick={() => void currentWindow().then((w) => w.close())}
-      >
-        <X size={15} weight="regular" aria-hidden="true" />
-      </button>
+        icon={<X size={15} weight="regular" aria-hidden="true" />}
+      />
     </div>
   );
 }

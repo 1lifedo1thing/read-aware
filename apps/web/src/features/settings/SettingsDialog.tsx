@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState } from "react";
 import {
   BookOpen,
   CaretLeft,
@@ -133,6 +133,9 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
     return true;
   });
 
+  // The opening actor is read when the dialog opens; a new source alone never resets it.
+  const resetPhoneNavigation = useEffectEvent(() =>
+    setPhoneSectionIndex(null, actorFromEvent(workspaceSources.settingsOpen)));
   useEffect(() => {
     if (closeTimerRef.current != null) {
       window.clearTimeout(closeTimerRef.current);
@@ -142,7 +145,7 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
     if (open) {
       setIsPresent(true);
       setIsClosing(false);
-      setPhoneSectionIndex(null, actorFromEvent(workspaceSources.settingsOpen));
+      resetPhoneNavigation();
       returnedFromPanelRef.current = false;
       return;
     }
@@ -163,19 +166,20 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
   // Declared AFTER the open-reset effect above so it runs later in the same
   // commit — the reset's `setPhoneSectionIndex(null)` cannot undo the drill-in.
   // One-shot: clearing the atom re-runs this effect, which bails immediately.
-  useEffect(() => {
-    if (!open || !sectionRequest) return;
+  // `entries` and the layout are read as of the request; only a new request
+  // (or opening with one pending) lands.
+  const landOnRequestedSection = useEffectEvent((request: string) => {
     const source = actorFromEvent(workspaceSources.sectionRequest);
-    const index = entries.findIndex((entry) => entryKey(entry) === sectionRequest);
+    const index = entries.findIndex((entry) => entryKey(entry) === request);
     if (index >= 0) {
       setActiveIndex(index, source);
       if (isPhone) setPhoneSectionIndex(index, source);
     }
     setSectionRequest(null, source);
-    // `entries` derives from render-time atoms; the closure sees the current
-    // render's list, and the effect re-runs per request — deps stay minimal.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, sectionRequest, isPhone, setSectionRequest]);
+  });
+  useEffect(() => {
+    if (open && sectionRequest) landOnRequestedSection(sectionRequest);
+  }, [open, sectionRequest]);
 
   useEffect(() => {
     return () => {
@@ -349,6 +353,7 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
                   const EntryIcon =
                     entry.kind === "core" ? entry.section.icon : PuzzlePiece;
                   return (
+                    // oxlint-disable-next-line react/forbid-elements -- full-width phone section row (icon, title, chevron); Button has no list-row form
                     <button
                       key={entryKey(entry)}
                       type="button"
@@ -438,6 +443,7 @@ export function SettingsDialog({ open, onClose, workspaceToken = 0 }: SettingsDi
                     className="mx-3 my-1.5 h-px shrink-0 bg-border/70"
                   />
                 )}
+                {/* oxlint-disable-next-line react/forbid-elements -- section nav rail item with roving focus refs and aria-current */}
                 <button
                   ref={(el) => {
                     itemRefs.current[index] = el;

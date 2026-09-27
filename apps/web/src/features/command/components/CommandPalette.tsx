@@ -146,6 +146,7 @@ export function CommandPalette({ isOpen, onClose, ctx, extraItems, workspaceToke
                   const index = runningIndex;
                   const selected = index === selectedIndex;
                   return (
+                    // oxlint-disable-next-line react/forbid-elements -- palette option with keyboard-driven selection state
                     <button
                       key={item.id}
                       type="button"

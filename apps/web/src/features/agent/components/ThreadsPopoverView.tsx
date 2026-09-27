@@ -109,6 +109,7 @@ function ThreadRow({
         active ? "bg-fill-strong" : "hover:bg-fill",
       )}
     >
+      {/* oxlint-disable-next-line react/forbid-elements -- thread list row sharing its hover surface with the row's actions */}
       <button
         type="button"
         aria-current={active ? "true" : undefined}

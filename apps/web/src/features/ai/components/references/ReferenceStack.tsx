@@ -69,6 +69,7 @@ function useStackCollapse(total: number): { visible: number; expander: ReactNode
   const collapsible = total > COLLAPSED_COUNT + 1;
   const visible = collapsible && !expanded ? COLLAPSED_COUNT : total;
   const expander = collapsible ? (
+    // oxlint-disable-next-line react/forbid-elements -- caption-sized disclosure inside the reference stack
     <button
       type="button"
       onClick={() => setExpanded((value) => !value)}

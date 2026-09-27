@@ -104,6 +104,7 @@ export function ReaderAnnotationMenu({
       >
         {COLOR_OPTIONS.map((color) => (
           <Tooltip key={color} content={t(`colors.${color}`)} side="top">
+            {/* oxlint-disable-next-line react/forbid-elements -- highlight color swatch action in the floating annotation menu */}
             <button
               type="button"
               aria-label={t("recolor", { color: t(`colors.${color}`) })}

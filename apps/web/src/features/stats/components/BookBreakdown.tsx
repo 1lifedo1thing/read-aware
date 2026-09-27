@@ -59,6 +59,7 @@ export function BookBreakdown({
       {ranked.map(({ book, window }, index) => {
         const counts = annotations.byBook.get(book.id);
         return (
+          // oxlint-disable-next-line react/forbid-elements -- clickable book row with cover and counts
           <button
             key={book.id}
             type="button"

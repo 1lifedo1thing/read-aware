@@ -1,5 +1,5 @@
 import { PencilSimple, Trash } from "@phosphor-icons/react";
-import { Body, Button, Dialog, Heading, IconButton, Tooltip } from "@read-aware/ui";
+import { Body, Button, Dialog, Heading, IconButton, TextField, Tooltip } from "@read-aware/ui";
 import { useLocalAtom } from "@read-aware/ui/state";
 import { Trans, useTranslation } from "../../../i18n";
 import type { Collection } from "../../library/lib/library-types";
@@ -33,7 +33,10 @@ export function CollectionHeader({ collection, count, onRename, onDelete }: Coll
     <div className="mb-8">
       <div className="flex items-center gap-2">
         {editing ? (
-          <input
+          <TextField
+            label={t("collection.nameLabel")}
+            hideLabel
+            textSize="display"
             autoFocus
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -45,8 +48,7 @@ export function CollectionHeader({ collection, count, onRename, onDelete }: Coll
                 setEditing(false);
               }
             }}
-            aria-label={t("collection.nameLabel")}
-            className="min-w-0 flex-1 border-b border-border-strong bg-transparent font-serif text-2xl text-fg outline-none"
+            className="min-w-0 flex-1"
           />
         ) : (
           <Heading size="2xl" className="min-w-0 truncate">

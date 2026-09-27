@@ -55,6 +55,7 @@ export function ReaderFootnotePopover({
 
   const content = (
     <div ref={containerRef} data-ui-portal={foreground || undefined} className={foreground ? "fixed inset-0 z-[90] overflow-hidden" : "absolute inset-0 z-30 overflow-hidden"}>
+      {/* oxlint-disable-next-line react/forbid-elements -- full-bleed dismiss scrim behind the footnote popover */}
       <button
         type="button"
         aria-label={t("dismissNote")}

@@ -65,6 +65,7 @@ export function BookReferenceCard({
   }
 
   return (
+    // oxlint-disable-next-line react/forbid-elements -- clickable book reference card
     <button
       type="button"
       onClick={() => dispatchOpen({ id: crypto.randomUUID(), bookId: reference.bookId })}

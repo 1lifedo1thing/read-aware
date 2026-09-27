@@ -320,7 +320,7 @@ export function ReaderShellOverlay({
       loadFailed={annotationsLoadFailed}
       loadErrorCode={annotationsLoadErrorCode}
       isLoading={annotationsLoading}
-      onRetryLoad={() => void refreshAnnotations()}
+      onRetryLoad={() => refreshAnnotations()}
       tocEntries={tocEntries}
       onNavigate={(cfiRange) => onAnnotationSelect?.(cfiRange)}
       onDelete={removeAnnotationReporting}
@@ -466,7 +466,7 @@ export function ReaderShellOverlay({
               loadFailed={annotationsLoadFailed}
               loadErrorCode={annotationsLoadErrorCode}
               isLoading={annotationsLoading}
-              onRetryLoad={() => void refreshAnnotations()}
+              onRetryLoad={() => refreshAnnotations()}
               tocEntries={tocEntries}
               onNavigate={(cfiRange) => {
                 onAnnotationSelect?.(cfiRange);
@@ -732,6 +732,7 @@ export function ReaderShellOverlay({
                 const isActive = index === activeTocIndex;
 
                 return (
+                  // oxlint-disable-next-line react/forbid-elements -- table-of-contents entry row with depth indentation and aria-current
                   <button
                     key={entry.id}
                     type="button"

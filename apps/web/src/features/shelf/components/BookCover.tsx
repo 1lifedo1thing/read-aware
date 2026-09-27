@@ -61,6 +61,7 @@ export function BookCover({
         className,
       )}
     >
+      {/* oxlint-disable-next-line react/forbid-elements -- book cover card with drag, context menu and selection */}
       <button
         type="button"
         onContextMenu={(event) => {

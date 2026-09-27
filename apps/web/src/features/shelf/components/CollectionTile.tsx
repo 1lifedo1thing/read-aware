@@ -90,6 +90,7 @@ export function CollectionTile({ data, layout, onOpen, onDropBooks }: Collection
   if (layout === "list") {
     return (
       <div className="flex min-w-0 items-center">
+        {/* oxlint-disable-next-line react/forbid-elements -- collection list row that is also a drop target */}
         <button
           type="button"
           onClick={onOpen}
@@ -117,6 +118,7 @@ export function CollectionTile({ data, layout, onOpen, onDropBooks }: Collection
 
   return (
     <div className="relative w-full max-w-32 justify-self-start sm:max-w-36 lg:max-w-44">
+      {/* oxlint-disable-next-line react/forbid-elements -- collection cover card that is also a drop target */}
       <button
         type="button"
         onClick={onOpen}

@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useCallback } from "react";
 import { ArrowCounterClockwise } from "@phosphor-icons/react";
 import { useAtomValue } from "jotai";
 import { Button, IconButton, InlineError, Kbd } from "@read-aware/ui";
@@ -28,6 +28,7 @@ import {
   pluginShortcutId,
   resolveBinding,
   resolvePluginBinding,
+  type KeyChord,
   type ShortcutCategory,
   type ShortcutId,
 } from "../lib/shortcuts";
@@ -69,7 +70,9 @@ export function ShortcutsPanel() {
   const rows = useAtomValue(shortcutRowsAtom);
   const lookupAvailable = selectionActions.some((action) => action.role === "lookup");
   const { busy, rebind, reset, resetAll } = useShortcutPreferences();
-  const { recordingId, startRecording, cancel } = useShortcutRecorder(rebind);
+  // Preference intents report their own failures (toast + log) and resolve to a flag.
+  const capture = useCallback((id: ShortcutId, chord: KeyChord) => { void rebind(id, chord); }, [rebind]);
+  const { recordingId, startRecording, cancel } = useShortcutRecorder(capture);
   const activePluginIds = new Set(pluginCommands.map(command => pluginShortcutId(command.key)));
   const dormant = Object.entries(bindings).filter(([id]) => id.startsWith("plugin:") && !activePluginIds.has(id as `plugin:${string}`));
 
@@ -161,6 +164,7 @@ export function ShortcutsPanel() {
                   description={conflictNotice(shortcut.id)}
                   control={
                     <span className="flex items-center gap-1.5">
+                      {/* oxlint-disable-next-line react/forbid-elements -- shortcut recorder keycap that captures the next chord */}
                       <button
                         type="button"
                         aria-label={t("shortcuts.rebind", { label })}
@@ -195,7 +199,7 @@ export function ShortcutsPanel() {
                         <IconButton
                           label={t("shortcuts.reset", { label })}
                           size="sm"
-                          onClick={() => reset(shortcut.id)}
+                          onClick={() => void reset(shortcut.id)}
                           disabled={busy}
                           icon={<ArrowCounterClockwise size={14} aria-hidden="true" />}
                         />
@@ -237,6 +241,7 @@ export function ShortcutsPanel() {
                 description={conflictNotice(id) ?? command.pluginName}
                 control={
                   <span className="flex items-center gap-1.5">
+                    {/* oxlint-disable-next-line react/forbid-elements -- shortcut recorder keycap that captures the next chord */}
                     <button
                       type="button"
                       aria-label={t("shortcuts.rebind", { label: contributionText(command.title) })}
@@ -275,7 +280,7 @@ export function ShortcutsPanel() {
                       <IconButton
                         label={t("shortcuts.reset", { label: contributionText(command.title) })}
                         size="sm"
-                        onClick={() => reset(id)}
+                        onClick={() => void reset(id)}
                         disabled={busy}
                         icon={<ArrowCounterClockwise size={14} aria-hidden="true" />}
                       />
@@ -295,7 +300,7 @@ export function ShortcutsPanel() {
               <span className="flex items-center gap-1.5">
                 {binding && <KeyTokens tokens={chordToTokens(binding)} />}
                 <IconButton label={t("shortcuts.reset", { label: id.slice(7) })} size="sm" disabled={busy}
-                  onClick={() => reset(id as ShortcutId)} icon={<ArrowCounterClockwise size={14} aria-hidden="true" />} />
+                  onClick={() => void reset(id as ShortcutId)} icon={<ArrowCounterClockwise size={14} aria-hidden="true" />} />
               </span>
             } />
           ))}
@@ -303,7 +308,7 @@ export function ShortcutsPanel() {
       )}
 
       {hasOverrides && (
-        <Button variant="link" disabled={busy} onClick={resetAll}>
+        <Button variant="link" disabled={busy} onClick={() => void resetAll()}>
           {t("shortcuts.resetAll")}
         </Button>
       )}

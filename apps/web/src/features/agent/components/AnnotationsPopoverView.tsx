@@ -100,6 +100,7 @@ export function AnnotationsPopoverView({
               };
               return (
                 <section key={bookId}>
+                  {/* oxlint-disable-next-line react/forbid-elements -- clickable serif book heading that opens the book; not a text action */}
                   <button
                     type="button"
                     onClick={openBook}

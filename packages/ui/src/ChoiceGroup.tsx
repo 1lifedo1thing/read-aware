@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from "react";
+import { Check } from "@phosphor-icons/react";
 import { cn } from "./lib/cn";
 
 type ChoiceOption<T extends string> = {
@@ -18,6 +19,9 @@ type ChoiceGroupProps<T extends string> = {
   onChange: (value: T) => void;
   className?: string;
   error?: string;
+  /** `inline` reads as a row of words; `list` stacks full-width rows and
+   * checks the active one, for longer option sets in narrow menus. */
+  layout?: "inline" | "list";
 };
 
 /**
@@ -34,6 +38,7 @@ export function ChoiceGroup<T extends string>({
   onChange,
   className,
   error,
+  layout = "inline",
 }: ChoiceGroupProps<T>) {
   const id = useId();
   return (
@@ -49,9 +54,31 @@ export function ChoiceGroup<T extends string>({
           {label}
         </legend>
       )}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className={layout === "list" ? "-mx-1.5 flex flex-col" : "flex flex-wrap items-center gap-x-6 gap-y-2"}>
         {options.map((option) => {
           const active = option.value === value;
+          if (layout === "list") return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(option.value)}
+              className={cn(
+                "flex items-center justify-between gap-2 rounded-md px-1.5 py-1.5 text-left font-sans text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-fg",
+                active ? "font-medium text-fg" : "text-fg-muted hover:bg-fg/5 hover:text-fg",
+              )}
+            >
+              <span className="flex items-center gap-1.5">
+                {option.icon && (
+                  <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center">
+                    {option.icon}
+                  </span>
+                )}
+                {option.label}
+              </span>
+              {active && <Check size={14} weight="bold" aria-hidden="true" className="text-fg-muted" />}
+            </button>
+          );
           return (
             <button
               key={option.value}

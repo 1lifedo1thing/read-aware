@@ -46,6 +46,16 @@ export const WithLeadingIcon: Story = {
   },
 };
 
+/** A title edited in place: the label stays for assistive technology only. */
+export const InlineTitle: Story = {
+  args: {
+    label: "Collection name",
+    hideLabel: true,
+    textSize: "display",
+    defaultValue: "Summer reading",
+  },
+};
+
 export const Outlined: Story = {
   args: {
     label: "Title",

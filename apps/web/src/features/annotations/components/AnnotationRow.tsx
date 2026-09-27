@@ -45,6 +45,7 @@ export function AnnotationRow({
   return (
     <div ref={rowRef} className="relative overflow-hidden rounded-md">
       {reveal.offset < 0 && (
+        // oxlint-disable-next-line react/forbid-elements -- swipe-revealed delete surface sized by the drag offset
         <button
           type="button"
           tabIndex={-1}
@@ -63,6 +64,7 @@ export function AnnotationRow({
           !reveal.dragging && "transition-[transform,background-color] duration-200 ease-out",
         )}
       >
+        {/* oxlint-disable-next-line react/forbid-elements -- annotation list row that navigates to its passage */}
         <button
           type="button"
           onClick={() => {

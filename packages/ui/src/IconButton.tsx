@@ -7,11 +7,16 @@ const sizeClasses = {
   // An equal-width slot of a phone toolbar: the whole slot is the target,
   // at least 44px tall (the platform's minimum touch target).
   toolbar: "h-11 w-full min-w-0 rounded-md",
+  // A frameless window's caption slot: the header's full height at the
+  // 44px width Windows uses, with the hover fill of native caption buttons.
+  caption: "h-full w-11 hover:bg-fg/8 focus-visible:ring-inset",
 } as const;
 
 const toneClasses = {
   default: "text-fg-muted hover:text-fg",
   danger: "text-red-800 hover:bg-red-50 hover:text-red-950 active:bg-red-100",
+  // The caption close button fills red on hover, the platform convention.
+  close: "text-fg-muted hover:bg-red-600 hover:text-white",
 } as const;
 
 /**

@@ -78,6 +78,7 @@ export function AddToCollectionDialog({
         {collections.length > 0 && (
           <div className="-mx-1 flex max-h-60 flex-col overflow-y-auto">
             {collections.map((collection) => (
+              // oxlint-disable-next-line react/forbid-elements -- collection picker list row
               <button
                 key={collection.id}
                 type="button"
@@ -91,6 +92,7 @@ export function AddToCollectionDialog({
         )}
 
         <div className="-mx-1 border-t border-border pt-2">
+          {/* oxlint-disable-next-line react/forbid-elements -- picker's trailing list row (remove from collection), aligned with the rows above */}
           <button
             type="button"
             onClick={() => assign(null)}

@@ -48,13 +48,9 @@ export function ShelfSelectionToolbar({
     <div className="fixed bottom-[calc(1.5rem+var(--ra-safe-bottom))] left-1/2 z-40 w-max max-w-[calc(100vw-1.5rem)] -translate-x-1/2">
       <div className="flex items-center gap-1 rounded-xl border border-border bg-[var(--ra-main-surface-color)] py-1.5 pl-4 pr-2 shadow-lg">
         <span className="text-sm font-medium text-fg tabular-nums">{t("toolbar.selected", { count })}</span>
-        <button
-          type="button"
-          onClick={allSelected ? onClear : onSelectAll}
-          className="ml-2 text-sm text-fg-muted transition-colors hover:text-fg"
-        >
+        <Button variant="link" size="sm" onClick={allSelected ? onClear : onSelectAll} className="ml-2">
           {allSelected ? t("toolbar.clear") : t("toolbar.selectAll")}
-        </button>
+        </Button>
 
         <span className="mx-1.5 h-5 w-px bg-border" aria-hidden="true" />
 

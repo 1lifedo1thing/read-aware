@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { X } from "@phosphor-icons/react";
+import { Minus, Square, X } from "@phosphor-icons/react";
 import { IconButton } from "./IconButton";
 
 const meta = {
   title: "Design System/Components/IconButton",
   component: IconButton,
   argTypes: {
-    size: { control: "select", options: ["sm", "md", "toolbar"] },
+    size: { control: "select", options: ["sm", "md", "toolbar", "caption"] },
+    tone: { control: "select", options: ["default", "danger", "close"] },
   },
 } satisfies Meta<typeof IconButton>;
 
@@ -19,6 +20,18 @@ export const Default: Story = {
 
 export const Small: Story = {
   args: { icon: <X size={16} weight="regular" />, label: "Close", size: "sm" },
+};
+
+/** Window caption controls: full-height slots flush with the header's corner. */
+export const CaptionSlots: Story = {
+  args: { icon: <X size={15} weight="regular" />, label: "Close", size: "caption", tone: "close" },
+  render: (args) => (
+    <div className="flex h-10 items-stretch justify-end border-b border-border">
+      <IconButton {...args} icon={<Minus size={14} weight="regular" />} label="Minimize" tone="default" />
+      <IconButton {...args} icon={<Square size={13} weight="regular" />} label="Maximize" tone="default" />
+      <IconButton {...args} />
+    </div>
+  ),
 };
 
 /** Toolbar slots: each button fills an equal share of a phone bottom toolbar. */

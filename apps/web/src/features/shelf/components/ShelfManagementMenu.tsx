@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Check, Rows, SlidersHorizontal, SquaresFour } from "@phosphor-icons/react";
-import { ChoiceGroup, Divider, Popover } from "@read-aware/ui";
-import { cn } from "@read-aware/ui/cn";
+import { Rows, SlidersHorizontal, SquaresFour } from "@phosphor-icons/react";
+import { Button, ChoiceGroup, Divider, Popover } from "@read-aware/ui";
 import { useAtom } from "jotai";
 import { useTranslation } from "../../../i18n";
 import { shelfViewAtom } from "../../../state/ui";
@@ -17,41 +16,6 @@ const GROUP_VALUES: ShelfGroup[] = ["none", "status", "author", "format"];
 const SORT_VALUES: ShelfSort[] = ["recent", "added", "title", "author", "progress"];
 
 const groupEyebrow = "mb-1.5 font-sans text-[13px] font-medium text-fg-muted";
-
-type OptionRowsProps<T extends string> = {
-  label: string;
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (value: T) => void;
-};
-
-function OptionRows<T extends string>({ label, value, options, onChange }: OptionRowsProps<T>) {
-  return (
-    <div>
-      <p className={groupEyebrow}>{label}</p>
-      <div className="-mx-1.5 flex flex-col">
-        {options.map((option) => {
-          const active = option.value === value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onChange(option.value)}
-              className={cn(
-                "flex items-center justify-between rounded-md px-1.5 py-1.5 text-left font-sans text-sm transition-colors",
-                active ? "font-medium text-fg" : "text-fg-muted hover:bg-fg/5 hover:text-fg",
-              )}
-            >
-              <span>{option.label}</span>
-              {active && <Check size={14} weight="bold" aria-hidden="true" className="text-fg-muted" />}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 /**
  * The shelf's management menu — layout, grouping, and sort controls today, and
@@ -89,14 +53,16 @@ export function ShelfManagementMenu() {
           onChange={(layout) => setView({ ...view, layout })}
         />
         <Divider className="-mx-4 my-3" />
-        <OptionRows
+        <ChoiceGroup
+          layout="list"
           label={t("manage.groupBy")}
           value={view.group}
           options={groupOptions}
           onChange={(group) => setView({ ...view, group })}
         />
         <Divider className="-mx-4 my-3" />
-        <OptionRows
+        <ChoiceGroup
+          layout="list"
           label={t("manage.sortBy")}
           value={view.sort}
           options={sortOptions}
@@ -105,18 +71,16 @@ export function ShelfManagementMenu() {
         <Divider className="-mx-4 my-3" />
         <div>
           <p className={groupEyebrow}>{t("manage.management")}</p>
-          <div className="-mx-1.5 flex flex-col">
-            <button
-              type="button"
-              onClick={() => {
-                enter();
-                setOpen(false);
-              }}
-              className="flex items-center rounded-md px-1.5 py-1.5 text-left font-sans text-sm text-fg-muted transition-colors hover:bg-fg/5 hover:text-fg"
-            >
-              {t("manage.selectBooks")}
-            </button>
-          </div>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => {
+              enter();
+              setOpen(false);
+            }}
+          >
+            {t("manage.selectBooks")}
+          </Button>
         </div>
       </div>
     </Popover>

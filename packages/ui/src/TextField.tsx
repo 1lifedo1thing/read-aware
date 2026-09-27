@@ -11,6 +11,10 @@ type TextFieldProps = {
   /** Interactive control rendered at the trailing edge of the field. */
   trailingAction?: ReactNode;
   variant?: "underline" | "outlined";
+  /** Keep the label for assistive technology only, e.g. when a heading is edited in place. */
+  hideLabel?: boolean;
+  /** `display` sets the value in the serif display face, for editing a title in place. */
+  textSize?: "body" | "display";
 } & Omit<InputHTMLAttributes<HTMLInputElement>, "id">;
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
@@ -23,6 +27,8 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
       trailingIcon,
       trailingAction,
       variant = "underline",
+      hideLabel = false,
+      textSize = "body",
       className,
       ...props
     },
@@ -39,6 +45,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             className={cn(
               "font-sans text-[13px] font-medium",
               hasError ? "text-red-700 dark:text-red-400" : "text-fg-muted",
+              hideLabel && "sr-only",
             )}
           >
             {label}
@@ -63,7 +70,8 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
               hasError ? `${id}-error` : helperText ? `${id}-helper` : undefined
             }
             className={cn(
-              "w-full bg-transparent font-sans text-base text-fg outline-none placeholder:text-fg-subtle",
+              "w-full bg-transparent text-fg outline-none placeholder:text-fg-subtle",
+              textSize === "display" ? "font-serif text-2xl" : "font-sans text-base",
               variant === "underline" &&
                 cn(
                   "border-b pt-2 pb-2",

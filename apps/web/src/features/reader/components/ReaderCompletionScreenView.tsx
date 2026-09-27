@@ -286,6 +286,7 @@ export function ReaderCompletionScreenView({
                   const note = "content" in entry ? entry.content : undefined;
                   return (
                     <li key={entry.id}>
+                      {/* oxlint-disable-next-line react/forbid-elements -- clickable quotation card themed by the reader palette */}
                       <button
                         type="button"
                         disabled={!anchor}
