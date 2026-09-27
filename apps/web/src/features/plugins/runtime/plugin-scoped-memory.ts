@@ -14,6 +14,7 @@ import type { ResourceAccess } from "../../../services/resource-access";
 import type { ResourceOwner } from "../../../services/resource-owner";
 import { pluginOperationSignal } from "./plugin-call-options";
 import type { PluginLifecycleController } from "./plugin-lifecycle";
+import { restricted, restrictSurface, type RestrictedPolicy } from "./plugin-restricted-surface";
 
 type PluginMemory = NonNullable<PluginContext["domains"]["memory"]>;
 
@@ -67,21 +68,21 @@ export function scopePluginMemory(memory: NonNullable<ActorDomainView["memory"]>
     } finally { if (!retained) access.dispose(); }
   }
 
-  const queries: PluginMemory["queries"] = {
-    profile: () => denied("profile"), profileContext: () => denied("profileContext"), entities: () => denied("entities"),
-    search(input) {
+  const queryPolicy: RestrictedPolicy<PluginMemory["queries"]> = {
+    profile: restricted.deny, profileContext: restricted.deny, entities: restricted.deny,
+    search: restricted.read(input => {
       const query = normalizeMemoryQuery(input), bookId = scopeBook(query.scopes);
       return run("search", bookId, async access => {
         const rows = await memory.queries.search(query); access.signal.throwIfAborted(); rows.forEach(checkRecord); return rows;
       });
-    },
-    page(input) {
+    }),
+    page: restricted.read(input => {
       const query = normalizeMemoryPageQuery(input), bookId = scopeBook(query.scopes);
       return run("page", bookId, async access => {
         const page = await memory.queries.page(query); access.signal.throwIfAborted(); page.items.forEach(checkRecord); return page;
       });
-    },
-    inspect(id) {
+    }),
+    inspect: restricted.read(id => {
       validateMemoryId(id);
       return run("inspect", undefined, async access => {
         const snapshot = await memory.queries.inspect(id, access.signal);
@@ -89,48 +90,50 @@ export function scopePluginMemory(memory: NonNullable<ActorDomainView["memory"]>
         if (snapshot) checkRecord(snapshot.memory);
         return snapshot;
       });
-    },
-    classification: bookId => run("classification", bookId, async access => {
+    }),
+    classification: restricted.read(bookId => run("classification", bookId, async access => {
       const snapshot = await memory.queries.classification(bookId, access.signal);
       access.signal.throwIfAborted();
       if (snapshot && snapshot.bookId !== bookId) denied("classification result");
       return snapshot;
-    }),
-    bookGraph(bookId, input) {
+    })),
+    bookGraph: restricted.read((bookId, input) => {
       const query = normalizeBookGraphQuery(input ?? {});
       return run("bookGraph", bookId, () => memory.queries.bookGraph(bookId, query));
-    },
-    getGraphTask: (bookId, taskId) => run("getGraphTask", bookId, async access => {
+    }),
+    getGraphTask: restricted.read((bookId, taskId) => run("getGraphTask", bookId, async access => {
       const task = await memory.queries.getGraphTask(bookId, taskId);
       access.signal.throwIfAborted();
       if (task.bookId !== bookId) denied("getGraphTask result");
       return task;
-    }),
-    listGraphTasks: bookId => run("listGraphTasks", bookId, async access => {
+    })),
+    listGraphTasks: restricted.read(bookId => run("listGraphTasks", bookId, async access => {
       const tasks = await memory.queries.listGraphTasks(bookId);
       access.signal.throwIfAborted();
       if (tasks.some(task => task.bookId !== bookId)) denied("listGraphTasks result");
       return tasks;
-    }),
+    })),
     context: {
-      history(input, options) {
+      history: restricted.read((input, options) => {
         const query = normalizeContextBundleHistoryQuery(input), bookId = recipeBook(query);
         return run("context.history", bookId, access => memory.queries.context.history(query, access.signal), options);
-      },
-      read(input, options) {
+      }),
+      read: restricted.read((input, options) => {
         const query = normalizeContextBundleReadQuery(input), bookId = recipeBook(query);
         return run("context.read", bookId, async access => {
           const bundle = await memory.queries.context.read(query, access.signal); access.signal.throwIfAborted(); checkBundle(bundle, query); return bundle;
         }, options);
-      },
-      export(input, options) {
+      }),
+      export: restricted.read((input, options) => {
         const query = normalizeContextBundleReadQuery(input), bookId = recipeBook(query);
         // ResourceOwner owns the fence after this call, for every book recipe.
         return run("context.export", bookId, access => memory.queries.context.export(query, resources, access.signal, access), options, "resource");
-      },
+      }),
     },
   };
+  // Observation polls go through the built surface, so they share its lifecycle rules.
   const readObservation = async (query: MemoryObservationQuery): Promise<MemoryObservationResult> => {
+    const queries = surface.queries;
     switch (query.kind) {
       case "profile": case "profileContext": return denied(query.kind);
       case "search": return { kind: query.kind, memories: await queries.search(query.query) };
@@ -142,39 +145,9 @@ export function scopePluginMemory(memory: NonNullable<ActorDomainView["memory"]>
       case "bookGraph": return { kind: query.kind, graph: await queries.bookGraph(query.bookId, query.query) };
     }
   };
-  const commands = memory.commands;
-  return { queries, events: {
-    observe(input, handler) {
-      const query = normalizeMemoryObservation(input);
-      if (query.kind === "profile" || query.kind === "profileContext") denied(query.kind);
-      if (typeof handler !== "function") throw new AppError("memory/invalid-query", "Expected an observation callback");
-      return lifecycle.stage(() => {
-        let pending: PluginBookAccessFence | undefined, disposed = false;
-        const stop = memory.events.observe(query, async event => {
-          try {
-            if (event.status === "ready") {
-              await pending?.assertUnchanged({ retain: true });
-              pending?.signal?.throwIfAborted();
-            }
-            if (!disposed) return await handler(event);
-          } finally { pending?.dispose(); pending = undefined; }
-        }, async input => {
-          // Keep the poll's authority until delivery, closing the microtask gap
-          // between a successful read and an asynchronous Worker callback.
-          const bookId = input.kind === "search" || input.kind === "page" ? scopeBook(input.query.scopes)
-            : "bookId" in input ? input.bookId : undefined;
-          pending?.dispose();
-          pending = await begin("observe", bookId);
-          if (disposed) { pending.dispose(); throw new AppError("memory/cancelled", "Memory observer retired"); }
-          try { return await readObservation(input); }
-          catch (error) { pending?.dispose(); pending = undefined; throw error; }
-        });
-        return { dispose: () => { disposed = true; stop(); pending?.dispose(); pending = undefined; } };
-      });
-    },
-  }, ...(commands ? { commands: {
-    updateProfile: () => denied("updateProfile"), completeOnboarding: () => denied("completeOnboarding"), decideEntity: () => denied("decideEntity"),
-    mutate(input) {
+  const commandPolicy = (commands: NonNullable<typeof memory.commands>): RestrictedPolicy<NonNullable<PluginMemory["commands"]>> => ({
+    updateProfile: restricted.deny, completeOnboarding: restricted.deny, decideEntity: restricted.deny,
+    mutate: restricted.command(input => {
       const change = normalizeMemoryMutation(input);
       return run("mutate", undefined, async access => {
         // Scope is immutable. Native CAS pins the authorized row through dispatch.
@@ -185,27 +158,62 @@ export function scopePluginMemory(memory: NonNullable<ActorDomainView["memory"]>
         access.signal.throwIfAborted();
         return commands.mutate(change, access.signal);
       }, undefined, "write");
-    },
-    classify(input) {
+    }),
+    classify: restricted.command(input => {
       const change = normalizeBookClassification(input);
       return run("classify", change.bookId, access => commands.classify(change, access.signal), undefined, "write");
-    },
-    context: { capture(input, options) {
+    }),
+    context: { capture: restricted.command((input, options) => {
       const selector = contextBundleSelector(input), bookId = recipeBook(selector);
       return run("context.capture", bookId, async access => {
         const receipt = await commands.context.capture(selector, access.signal); checkBundle(receipt.bundle, selector); return receipt;
       }, options, "write");
-    } },
-    startGraphTask(bookId, mode, input) {
+    }) },
+    startGraphTask: restricted.command((bookId, mode, input) => {
       if (!canGenerate) throw new AppError("memory/forbidden", "Graph generation requires service:llm");
       const options = normalizeBookGraphTaskOptions(input);
       return run("startGraphTask", bookId, access => commands.startGraphTask(bookId, mode, options, access), undefined, "task");
-    },
-    retryGraphTask(bookId, taskId, input) {
+    }),
+    retryGraphTask: restricted.command((bookId, taskId, input) => {
       if (!canGenerate) throw new AppError("memory/forbidden", "Graph generation requires service:llm");
       const options = input === undefined ? undefined : normalizeBookGraphTaskOptions(input);
       return run("retryGraphTask", bookId, access => commands.retryGraphTask(bookId, taskId, options, access), undefined, "task");
+    }),
+    cancelGraphTask: restricted.command((bookId, taskId) => run("cancelGraphTask", bookId, () => commands.cancelGraphTask(bookId, taskId), undefined, "write")),
+  });
+  const surface: PluginMemory = restrictSurface<PluginMemory>(lifecycle, "domains.memory", {
+    queries: queryPolicy,
+    events: {
+      observe: restricted.observe((input, handler) => {
+        const query = normalizeMemoryObservation(input);
+        if (query.kind === "profile" || query.kind === "profileContext") denied(query.kind);
+        if (typeof handler !== "function") throw new AppError("memory/invalid-query", "Expected an observation callback");
+        return () => {
+          let pending: PluginBookAccessFence | undefined, disposed = false;
+          const stop = memory.events.observe(query, async event => {
+            try {
+              if (event.status === "ready") {
+                await pending?.assertUnchanged({ retain: true });
+                pending?.signal?.throwIfAborted();
+              }
+              if (!disposed) return await handler(event);
+            } finally { pending?.dispose(); pending = undefined; }
+          }, async input => {
+            // Keep the poll's authority until delivery, closing the microtask gap
+            // between a successful read and an asynchronous Worker callback.
+            const bookId = input.kind === "search" || input.kind === "page" ? scopeBook(input.query.scopes)
+              : "bookId" in input ? input.bookId : undefined;
+            pending?.dispose();
+            pending = await begin("observe", bookId);
+            if (disposed) { pending.dispose(); throw new AppError("memory/cancelled", "Memory observer retired"); }
+            try { return await readObservation(input); }
+            catch (error) { pending?.dispose(); pending = undefined; throw error; }
+          });
+          return { dispose: () => { disposed = true; stop(); pending?.dispose(); pending = undefined; } };
+        };
+      }),
     },
-    cancelGraphTask: (bookId, taskId) => run("cancelGraphTask", bookId, () => commands.cancelGraphTask(bookId, taskId), undefined, "write"),
-  } satisfies NonNullable<PluginMemory["commands"]> } : {}) };
+    commands: memory.commands ? commandPolicy(memory.commands) : restricted.absent,
+  });
+  return surface;
 }
