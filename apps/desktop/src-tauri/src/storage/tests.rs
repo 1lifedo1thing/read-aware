@@ -13,6 +13,8 @@ mod context_bundle_tests;
 mod context_bundle_publication_tests;
 #[path = "conversation_insights_tests.rs"]
 mod conversation_insights_tests;
+#[path = "chat_tests.rs"]
+mod chat_tests;
 #[path = "book_context_tests.rs"]
 mod book_context_tests;
 #[path = "context_bundle_history_tests.rs"]
@@ -1438,63 +1440,6 @@ fn merged_remote_events_apply_but_never_enter_the_outbox() {
     let again = apply_remote_events_inner(&mut conn, &[imported("r1", 1_000, "b1", "沙丘")]).unwrap();
     assert_eq!(again.appended, 0);
     assert!(!again.replayed);
-}
-
-#[test]
-fn a_stale_save_neither_deletes_merged_peer_messages_nor_keeps_dead_error_stubs() {
-    let message = |id: &str, seq: i64, content: &str, error: Option<&str>| chat::AiMessage {
-        id: id.into(),
-        conversation_id: "b1".into(),
-        role: "user".into(),
-        seq,
-        content: content.into(),
-        created_at: format!("2026-08-20T00:00:0{seq}Z"),
-        attachments_json: None,
-        parts_json: None,
-        error: error.map(Into::into),
-    };
-    let mut conn = migrated_conn();
-    // 本机保存:一条正常消息 + 一条 error 存根(存根不进事件日志)。
-    chat::ai_chat_replace_inner(
-        &mut conn,
-        "b1",
-        &[message("m-a1", 0, "本机", None), message("m-err", 1, "", Some("boom"))],
-    )
-    .unwrap();
-    // 对端消息经同步合并写入投影——本 webview 的内存转录不知道它。
-    apply_remote_events_inner(&mut conn,
-        &[ev_on(
-            "device-b",
-            "r1",
-            2_000,
-            "aiMessage.appended",
-            serde_json::json!({
-                "messageId": "m-b1", "conversationId": "b1",
-                "role": "user", "seq": 0, "content": "对端",
-            }),
-        )],
-    )
-    .unwrap();
-    // 陈旧保存:重试后存根被替换,数组里只有本机视角的两条。
-    chat::ai_chat_replace_inner(
-        &mut conn,
-        "b1",
-        &[message("m-a1", 0, "本机", None), message("m-a2", 1, "重试成功", None)],
-    )
-    .unwrap();
-    let survivors: Vec<String> = {
-        let mut stmt = conn
-            .prepare("SELECT id FROM ai_messages WHERE conversation_id = 'b1' ORDER BY id")
-            .unwrap();
-        let rows: Vec<String> = stmt
-            .query_map([], |row| row.get(0))
-            .unwrap()
-            .map(|r| r.unwrap())
-            .collect();
-        rows
-    };
-    // 对端行幸存,error 存根被清扫,本机两条都在。
-    assert_eq!(survivors, vec!["m-a1", "m-a2", "m-b1"]);
 }
 
 #[test]

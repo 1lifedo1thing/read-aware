@@ -1113,6 +1113,7 @@ pub fn run() {
             storage::ai_chat_load_all,
             storage::ai_chat_list,
             storage::ai_chat_replace,
+            storage::ai_chat_commit,
             storage::ai_chat_clear,
             storage::plugin_storage_usage::plugin_storage_usage,
             storage::plugin_docs_put,

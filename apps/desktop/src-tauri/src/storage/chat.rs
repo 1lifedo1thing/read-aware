@@ -1,5 +1,8 @@
-//! Conversation transcripts: one row per message, upsert-on-save (facts are
-//! event-owned; see `ai_chat_replace`), tombstoned clear.
+//! Conversation transcripts: one row per message. The conversation facts
+//! (role/content/attachments, which messages exist) are event-owned and only
+//! `apply_event` writes them; a save commits its events and the
+//! presentation-only state in ONE transaction (`ai_chat_commit`). Clear is an
+//! `aiConversation.cleared` event that leaves a tombstone.
 //!
 //! Split out of `storage/mod.rs`; `use super::*` keeps the shared types in
 //! scope, so this is a move rather than a rewrite.
@@ -93,20 +96,16 @@ pub async fn ai_chat_load_all(
     .await
 }
 
-/// Persist the saving device's view of a transcript WITHOUT claiming to be the
-/// only writer. The conversation's facts (which messages exist) are owned by
-/// the event log: `aiMessage.appended` inserts, `aiMessage.removed` /
-/// `aiConversation.cleared` delete — including rows another device merged in
-/// through sync, which this webview may have never loaded. So this command
-/// only upserts the rows it was handed (renumbering `seq` from array order —
-/// a device-local display hint) and deletes nothing it doesn't know, with one
-/// exception: error stubs (`error IS NOT NULL`) are device-local presentation
-/// no event describes, so stale ones are swept here and live ones re-inserted
-/// from the payload.
+/// LEGACY MIGRATION ONLY — the one-time import of pre-SQLite transcripts from
+/// the app_kv JSON blob (`importKvConversationsIntoSqlite` in
+/// apps/web/src/platform/desktop-import.ts). It writes projection rows the log
+/// never described; genesis reconciliation (`event-genesis.ts`) then appends
+/// their creation events. Live saves use `ai_chat_commit`, which never writes
+/// an event-owned column itself.
 ///
-/// The pre-sync version of this command was DELETE-all-then-reinsert; after a
-/// merge wrote peer messages underneath a mounted conversation, the next save
-/// silently wiped them from the projection.
+/// It upserts only the rows it was handed and deletes nothing it doesn't know
+/// (peer rows merged through sync survive), except stale error stubs, which
+/// are device-local presentation no event describes.
 #[tauri::command]
 pub async fn ai_chat_replace(
     conversation_id: String,
@@ -167,6 +166,140 @@ pub(crate) fn ai_chat_replace_inner(
         ?;
     }
     Ok(tx.commit()?)
+}
+
+/// Presentation state of one event-backed message in the saved transcript.
+/// Only the columns `DIFF_SPECS` marks device-local for `ai_messages`:
+/// `parts_json` (the assistant's rendered structure) and `seq` (the saving
+/// device's display order).
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiMessagePresentation {
+    pub id: String,
+    pub seq: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parts_json: Option<String>,
+}
+
+/// The event types a conversation save may carry. A clear is its own
+/// `commit_events` write; everything else belongs to other aggregates.
+const SAVE_EVENT_TYPES: &[&str] = &["aiConversation.started", "aiMessage.appended", "aiMessage.removed"];
+
+/// Save one conversation: append + apply its events AND write the
+/// presentation-only state in ONE transaction, so the projection can never
+/// hold presentation that disagrees with the log.
+///
+/// Column ownership is strict:
+/// - Event-owned columns (role, content, created_at, attachments_json, which
+///   rows exist, the conversation's cleared_at) are written only by
+///   `apply_event`, through `commit_events_in_transaction`.
+/// - For event-backed rows this command writes only `parts_json` and `seq`,
+///   and only on rows that still exist — a message a peer removed through
+///   sync is not resurrected.
+/// - Error stubs (`error IS NOT NULL`) are device-local rows no event
+///   describes (`DIFF_SPECS` excludes them): stale ones are swept and the
+///   current ones re-inserted whole. A stub never overwrites an event-backed
+///   row with the same id.
+/// - `ai_conversations.updated_at` is bumped (device-local activity order).
+#[tauri::command]
+pub async fn ai_chat_commit(
+    conversation_id: String,
+    events: Vec<EventRow>,
+    presentation: Vec<AiMessagePresentation>,
+    error_stubs: Vec<AiMessage>,
+    app: tauri::AppHandle,
+) -> Result<CommitReport, CommandError> {
+    crate::storage::blocking("ai_chat_commit", move || {
+        let db = tauri::Manager::state::<Db>(&app);
+        let mut conn = db.0.lock()?;
+        ai_chat_commit_inner(&mut conn, &conversation_id, &events, &presentation, &error_stubs)
+    })
+    .await
+}
+
+fn validate_chat_commit(
+    conversation_id: &str,
+    events: &[EventRow],
+    presentation: &[AiMessagePresentation],
+    error_stubs: &[AiMessage],
+) -> Result<(), CommandError> {
+    // The web store composes these batches; a violation is a programming
+    // error, never user input, so it is reported as internal.
+    let invalid = |what: &str| CommandError::internal(format!("Invalid conversation save: {what}"));
+    if conversation_id.trim().is_empty() {
+        return Err(invalid("empty conversation id"));
+    }
+    for event in events {
+        if !SAVE_EVENT_TYPES.contains(&event.event_type.as_str()) {
+            return Err(invalid("event outside the conversation save vocabulary"));
+        }
+        if event.payload.get("conversationId").and_then(Value::as_str) != Some(conversation_id) {
+            return Err(invalid("event for another conversation"));
+        }
+    }
+    if presentation.iter().any(|row| row.id.is_empty()) {
+        return Err(invalid("presentation row without an id"));
+    }
+    for stub in error_stubs {
+        if stub.id.is_empty() || stub.conversation_id != conversation_id {
+            return Err(invalid("error stub for another conversation"));
+        }
+        // A row without `error` would be an event-free fact in the projection.
+        if !matches!(stub.error.as_deref(), Some(error) if !error.is_empty()) {
+            return Err(invalid("error stub without an error"));
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn ai_chat_commit_inner(
+    conn: &mut Connection,
+    conversation_id: &str,
+    events: &[EventRow],
+    presentation: &[AiMessagePresentation],
+    error_stubs: &[AiMessage],
+) -> Result<CommitReport, CommandError> {
+    validate_chat_commit(conversation_id, events, presentation, error_stubs)?;
+    let tx = conn.transaction()?;
+    let report = commit_events_in_transaction(&tx, events)?;
+    tx.execute(
+        "DELETE FROM ai_messages WHERE conversation_id = ?1 AND error IS NOT NULL",
+        params![conversation_id],
+    )?;
+    for row in presentation {
+        tx.execute(
+            "UPDATE ai_messages SET seq = ?3, parts_json = ?4
+             WHERE id = ?1 AND conversation_id = ?2 AND error IS NULL",
+            params![row.id, conversation_id, row.seq, row.parts_json],
+        )?;
+    }
+    for stub in error_stubs {
+        tx.execute(
+            "INSERT INTO ai_messages
+                (id, conversation_id, role, seq, content, created_at,
+                 attachments_json, parts_json, error)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
+             ON CONFLICT(id) DO NOTHING",
+            params![
+                stub.id,
+                conversation_id,
+                stub.role,
+                stub.seq,
+                stub.content,
+                stub.created_at,
+                stub.attachments_json,
+                stub.parts_json,
+                stub.error,
+            ],
+        )?;
+    }
+    tx.execute(
+        "UPDATE ai_conversations SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+         WHERE id = ?1",
+        params![conversation_id],
+    )?;
+    tx.commit()?;
+    Ok(report)
 }
 
 /// One row per non-empty conversation, newest-activity first: id, activity

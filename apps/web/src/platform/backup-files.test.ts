@@ -85,21 +85,21 @@ if (process.env.BACKUP_FILES_PROOF === "1") {
     await blobs.deleteDesktopBlob("bookfile:old"); expect(calls.at(-1)?.command).toBe("delete_blob");
   });
 
-  test("a chat save captures one candidate and drains presentation state after its events", async () => {
+  test("a chat save captures one candidate and drains its events with their presentation state", async () => {
     const conversationId = "thread-save-proof";
     const messages: import("../features/ai/lib/chat-types").ChatMessage[] = [{ id: "answer", role: "assistant", content: "accepted", createdAt: "2026-09-12T00:00:00Z", parts: [{ type: "text", text: "accepted" }] }];
-    holds.add("ai_chat_load"); holds.add("ai_chat_replace");
+    holds.add("ai_chat_load"); holds.add("ai_chat_commit");
     const write = saveConversation(conversationId, messages);
     messages[0]!.content = "later"; messages[0]!.parts = [{ type: "text", text: "later" }];
     let captured = false;
     const backup = withDomainBackup(async () => { captured = true; });
     await tick(); expect(captured).toBe(false); take("ai_chat_load").resolve([]);
     await tick(); expect(captured).toBe(false);
-    const replace = take("ai_chat_replace");
-    expect(replace.args.messages[0]).toMatchObject({ content: "accepted", partsJson: '[{"type":"text","text":"accepted"}]' });
-    const event = calls.filter(call => call.command === "commit_events").flatMap(call => call.args.events).find(event => event.type === "aiMessage.appended" && event.payload.messageId === "answer");
+    const commit = take("ai_chat_commit");
+    expect(commit.args.presentation[0]).toEqual({ id: "answer", seq: 0, partsJson: '[{"type":"text","text":"accepted"}]' });
+    const event = commit.args.events.find((event: any) => event.type === "aiMessage.appended" && event.payload.messageId === "answer");
     expect(event.payload.content).toBe("accepted");
-    replace.resolve(); await write; await backup; holds.clear();
+    commit.resolve({ appended: 2, applied: 2 }); await write; await backup; holds.clear();
     await withDomainBackup(async () => {
       const before = calls.length;
       // Existing IDs produce no new events: presentation-only saves still fence.

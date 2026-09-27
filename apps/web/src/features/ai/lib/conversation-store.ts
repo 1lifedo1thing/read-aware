@@ -2,7 +2,7 @@ import { actorFromEvent, actorOrigin, causalActor, stampEventCause, type DomainA
 import { runDomainWrite } from "../../../platform/domain-write-gate";
 import { invoke } from "../../../platform/ipc";
 import { isTauri } from "../../../platform/environment";
-import { broadcastDomainEventDrafts, commitDomainEvents, mintEventRows, type DomainEventDraft } from "../../../platform/domain-events";
+import { commitDomainEventBatch, type CommitReport, type DomainEventDraft } from "../../../platform/domain-events";
 import { createLogger } from "../../../platform/logger";
 import type { ChatAssistantPart, ChatAttachment, ChatMessage } from "./chat-types";
 
@@ -12,16 +12,18 @@ const log = createLogger("conversation-store");
  * Local persistence for the per-book conversation.
  *
  * Desktop (the product): SQLite `ai_conversations` / `ai_messages`
- * (storage.rs migration v6) — one row per message, upsert-on-save (a sync
- * merge may have written peer rows this webview never loaded; the save must
- * not clobber them — see `ai_chat_replace`), tombstoned clear.
- * Saves COMMIT the conversation domain events by diffing against the
+ * (storage.rs migration v6) — one row per message, tombstoned clear.
+ * This store is the ONE transcript writer: the chat surface saves through it,
+ * and the agent runtime only reads (ConversationPort in @read-aware/agent).
+ * Saves derive the conversation domain events by diffing against the
  * last-known persisted transcript: `aiConversation.started` on the empty →
  * non-empty transition, `aiMessage.appended` per committed message (origin
  * "user"/"agent" by role), `aiMessage.removed` per truncated one (without it,
- * replay would resurrect retried turns). The store applies those to the rows
- * as it appends. Error stubs and rendered `parts` stay projection-only —
- * transient UX, not conversation facts.
+ * replay would resurrect retried turns). `ai_chat_commit` appends and applies
+ * those events AND writes the presentation-only state — rendered `parts`, the
+ * display `seq`, device-local error stubs — in ONE native transaction. It never
+ * writes an event-owned column itself and never touches rows this webview
+ * doesn't know (a sync merge may have written peer rows it never loaded).
  *
  * Browser (dev / Storybook): a session-scoped in-memory map. Deliberately NOT
  * a persistence fallback — the browser build is a pure UI shell and the mock
@@ -88,6 +90,20 @@ function messageToRow(conversationId: string, message: ChatMessage, seq: number)
     partsJson: message.parts ? JSON.stringify(message.parts) : undefined,
     error: message.error,
   };
+}
+
+/** Presentation state for `ai_chat_commit`, numbered in transcript order:
+ *  event-backed messages contribute only `seq` + `partsJson`; error stubs are
+ *  device-local rows no event describes, so they travel whole. */
+function presentationRows(conversationId: string, messages: ChatMessage[]) {
+  const presentation: Array<Pick<AiMessageRow, "id" | "seq" | "partsJson">> = [];
+  const errorStubs: AiMessageRow[] = [];
+  messages.forEach((message, seq) => {
+    const row = messageToRow(conversationId, message, seq);
+    if (message.error) errorStubs.push(row);
+    else presentation.push({ id: row.id, seq, partsJson: row.partsJson });
+  });
+  return { presentation, errorStubs };
 }
 
 const memoryStore = new Map<string, ChatMessage[]>();
@@ -202,19 +218,15 @@ export async function saveConversation(
   const captured = structuredClone(messages);
   return runDomainWrite(async () => {
     try {
-      // The events carry the conversation facts (role/seq/content/attachments)
-      // and the store applies them to `ai_messages` as it appends. The upsert
-      // that follows re-states the same transcript plus the columns no event
-      // describes: `parts_json` (rendered structure) and `error` (a failed turn's
-      // stub, replaced on retry). Both are presentation state — see DIFF_SPECS in
-      // storage/apply.rs, which excludes them from the consistency check. Rows
-      // this webview doesn't know (merged from a peer device) are left alone.
+      // The events carry the conversation facts (role/seq/content/attachments);
+      // the presentation carries only what no event describes — exactly the
+      // columns DIFF_SPECS in storage/apply.rs excludes from the consistency
+      // check. Both land in one transaction or neither does.
       const drafts = (await conversationEventDrafts(conversationId, captured)).map(draft => source
         ? { ...draft, origin: actorFromEvent(source, actorOrigin(draft.origin ?? origin!)) } : draft);
-      if (drafts.length > 0) await commitDomainEvents(...drafts);
-      await invoke("ai_chat_replace", {
-        conversationId,
-        messages: captured.map((message, seq) => messageToRow(conversationId, message, seq)),
+      const { presentation, errorStubs } = presentationRows(conversationId, captured);
+      await commitDomainEventBatch(drafts, {
+        dispatch: events => invoke<CommitReport>("ai_chat_commit", { conversationId, events, presentation, errorStubs }),
       });
       knownEventIds.set(conversationId, new Set(eventable(captured).map((m) => m.id)));
     } catch (err) {
@@ -231,18 +243,12 @@ export async function clearConversation(conversationId: string, origin: DomainAc
     memoryStore.delete(conversationId);
     return;
   }
-  return runDomainWrite(async () => {
-    signal?.throwIfAborted();
-    const draft: DomainEventDraft = { type: "aiConversation.cleared", payload: { conversationId }, origin };
-    const events = await mintEventRows([draft]);
-    signal?.throwIfAborted();
-    // The event deletes every message (including local error stubs) and
-    // tombstones in the same transaction. No second projection write can
-    // overwrite the event timestamp or erase a subsequently appended turn.
-    await invoke("commit_events", { events });
-    broadcastDomainEventDrafts([draft]);
-    knownEventIds.set(conversationId, new Set());
-  });
+  // The event deletes every message (including local error stubs) and
+  // tombstones in the same transaction. No second projection write can
+  // overwrite the event timestamp or erase a subsequently appended turn.
+  const draft: DomainEventDraft = { type: "aiConversation.cleared", payload: { conversationId }, origin };
+  await commitDomainEventBatch([draft], { signal });
+  knownEventIds.set(conversationId, new Set());
 }
 
 /** 全局线程列表（非空会话，按最近活动排序）。 */

@@ -613,8 +613,12 @@ pub fn apply_event(tx: &Transaction<'_>, ev: &EventRow) -> Result<bool, CommandE
                 ],
             )
             ?;
+            // A message after a clear reactivates the conversation: the
+            // tombstone describes the cleared history, not the new one. (The
+            // save path used to reset this outside the log, so live and
+            // replayed projections disagreed.)
             tx.execute(
-                "UPDATE ai_conversations SET updated_at = ?2 WHERE id = ?1",
+                "UPDATE ai_conversations SET updated_at = ?2, cleared_at = NULL WHERE id = ?1",
                 params![conversation_id, at],
             )
             ?;
@@ -1152,8 +1156,9 @@ pub const DIFF_SPECS: &[DiffSpec] = &[
         // which the log records by role/content/attachments. `seq` is a
         // device-local display hint: events carry the saving device's array
         // index, but after a multi-device merge the next local save renumbers
-        // the interleaved transcript (`ai_chat_replace`), so live and replayed
-        // seq legitimately disagree.
+        // the interleaved transcript (`ai_chat_commit`), so live and replayed
+        // seq legitimately disagree. Those three are the only columns the save
+        // writes outside `apply_event`.
         local_columns: &["parts_json", "error", "seq"],
         // Error stubs are transient UX (a retry replaces them), never a
         // conversation fact, so they are not expected in a replay at all.

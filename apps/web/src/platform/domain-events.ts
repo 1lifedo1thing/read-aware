@@ -99,7 +99,7 @@ const AGGREGATE_ROUTES: Record<DomainEventType, { type: string; idKey: string } 
 };
 
 /** Wire shape of the Rust `EventRow` (camelCase serde). */
-type EventRowWire = {
+export type EventRowWire = {
   id: string;
   type: string;
   hlc: HlcStamp;
@@ -272,14 +272,50 @@ export async function commitDomainEvents(
     broadcastDomainEvents(drafts);
     return { appended: 0, applied: 0 };
   }
+  return commitDomainEventBatch(drafts);
+}
+
+/** How `commitDomainEventBatch` prepares and dispatches one batch. */
+export type DomainEventCommitOptions<R> = {
+  /** Checked before envelope preparation and again right before dispatch.
+   *  Once dispatched, cancellation cannot conceal a durable write: the batch
+   *  still resolves and broadcasts. */
+  signal?: AbortSignal;
+  /** The caller's last check between envelope preparation and dispatch (e.g.
+   *  re-validating a reader source); a throw aborts before anything is sent. */
+  beforeDispatch?: () => Promise<void>;
+  /** A specialized native committer that appends + applies `events` through
+   *  `commit_events_in_transaction` in the SAME transaction as its own writes
+   *  (e.g. `ai_chat_commit`). Defaults to plain `commit_events`. */
+  dispatch?: (events: EventRowWire[]) => Promise<R>;
+};
+
+/**
+ * The one mint → commit → broadcast sequence behind `commitDomainEvents`, for
+ * callers that need cancellation, a pre-dispatch check, or a specialized
+ * native committer. Desktop-only: callers handle the browser shell first.
+ *
+ * An empty batch is still dispatched: a specialized committer may carry writes
+ * of its own (a presentation-only conversation save) that must pass through
+ * the same write gate.
+ */
+export async function commitDomainEventBatch<R = CommitReport>(
+  drafts: DomainEventDraft[],
+  options: DomainEventCommitOptions<R> = {},
+): Promise<R> {
+  const { signal, beforeDispatch } = options;
+  const dispatch = options.dispatch
+    ?? ((events: EventRowWire[]) => invoke<CommitReport>("commit_events", { events }) as Promise<R>);
   return runDomainWrite(async () => {
-    const { deviceId } = await getDeviceInfo();
-    const events = drafts.map((draft) => toEventRow(draft, deviceId));
-    const report = await invoke<CommitReport>("commit_events", { events });
+    signal?.throwIfAborted();
+    const events = await mintEventRows(drafts);
+    await beforeDispatch?.();
+    signal?.throwIfAborted();
+    const result = await dispatch(events);
     // Broadcast only after the write succeeded — in-app observers must never see
     // a change the store rejected.
-    broadcastDomainEvents(drafts);
-    return report;
+    broadcastDomainEventDrafts(drafts);
+    return result;
   });
 }
 

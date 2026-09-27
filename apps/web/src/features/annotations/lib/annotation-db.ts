@@ -13,21 +13,14 @@ import { invoke } from "../../../platform/ipc";
 import { normalizeAnnotationPageQuery, type AnnotationPageQuery, type BookTextRange } from "@read-aware/core";
 import type { Annotation, AnnotationFilters, Ask, Highlight, Note } from "./annotation-types";
 import { isTauri } from "../../../platform/environment";
-import { commitDomainEvents, mintEventRows, broadcastDomainEventDrafts, type DomainEventDraft } from "../../../platform/domain-events";
+import { commitDomainEventBatch, commitDomainEvents, type DomainEventDraft } from "../../../platform/domain-events";
 
 type CreationSource = { range?: BookTextRange; signal?: AbortSignal; beforeDispatch?: () => Promise<void> };
 async function commitCreation(draft: DomainEventDraft, source?: CreationSource): Promise<void> {
   assertDesktop("Creating an annotation");
-  if (!source) { await commitDomainEvents(draft); return; }
-  await runDomainWrite(async () => {
-    source.signal?.throwIfAborted();
-    const events = await mintEventRows([draft]);
-    await source.beforeDispatch?.();
-    source.signal?.throwIfAborted();
-    await invoke("commit_events", { events });
-    // Cancellation after dispatch must not conceal a successful durable write.
-    broadcastDomainEventDrafts([draft]);
-  });
+  // Cancellation after dispatch must not conceal a successful durable write;
+  // the shared batch commit resolves and broadcasts once dispatched.
+  await commitDomainEventBatch([draft], { signal: source?.signal, beforeDispatch: source?.beforeDispatch });
 }
 
 function assertDesktop(what: string): never | void {

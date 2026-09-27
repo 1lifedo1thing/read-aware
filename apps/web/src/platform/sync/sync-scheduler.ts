@@ -261,9 +261,9 @@ async function runAcceptedCycle(origin: DomainActor): Promise<SyncCycleOutcome |
       // Merged events write projections straight through Rust — nothing else
       // tells the mounted UI. The shelf already reloads on this event.
       emitAppEvent("library-changed", {}, origin);
-      // Mounted conversations must re-read too: their save path upserts the
-      // in-memory transcript, and a stale one would keep hiding (though no
-      // longer deleting — see ai_chat_replace) freshly merged peer messages.
+      // Mounted conversations must re-read too: their save path diffs the
+      // in-memory transcript, and a stale one would keep hiding (though never
+      // deleting — see ai_chat_commit) freshly merged peer messages.
       emitAppEvent("conversations-changed", {}, origin);
       // Roamed preferences (theme, typography) follow the same wake-up:
       // re-overlay the projection onto KV and announce what moved.

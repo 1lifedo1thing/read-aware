@@ -166,6 +166,10 @@ const MEMORIES_DB = "read-aware-memories";
  * `ai_conversations` / `ai_messages` tables (migration v6). Takes the raw kv
  * value (the caller already holds the snapshot); the caller deletes the key
  * once this resolves, which is what makes it once-only.
+ *
+ * This is the only caller of `ai_chat_replace`, the legacy-migration
+ * projection write: these pre-event transcripts get their creation events from
+ * genesis reconciliation (event-genesis.ts). Live saves use `ai_chat_commit`.
  */
 export async function importKvConversationsIntoSqlite(raw: string): Promise<void> {
   return runDomainWrite(async () => {
