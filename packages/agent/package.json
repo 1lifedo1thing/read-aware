@@ -12,7 +12,7 @@
     "./testing/tool-refresh-probe": "./src/testing/tool-refresh-probe.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit && tsc --noEmit -p eval-viewer/server",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p eval-viewer && tsc --noEmit -p eval-viewer/server",
     "test": "bun test",
     "spike": "bun src/spike-run.ts",
     "demo": "bun src/demo-run.ts",

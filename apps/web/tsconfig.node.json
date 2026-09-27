@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
     "composite": true,
+    // Composite projects always write build info, even under --noEmit; keep it
+    // out of the source tree.
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",

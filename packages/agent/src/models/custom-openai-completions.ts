@@ -470,12 +470,27 @@ function withCompletionCompatibility(fetch: FetchFunction): FetchFunction {
   };
 
   return Object.assign(compatibleFetch, {
-    // Bun augments fetch with this optional optimization; browsers do not.
-    preconnect:
-      typeof fetch.preconnect === "function"
-        ? fetch.preconnect.bind(fetch)
-        : () => undefined,
+    preconnect: runtimePreconnect(fetch) ?? (() => undefined),
   });
+}
+
+type Preconnect = (
+  url: string | URL,
+  options?: { dns?: boolean; tcp?: boolean; http?: boolean; https?: boolean },
+) => void;
+
+/**
+ * Bun augments fetch with `preconnect`, an optional optimization browsers lack.
+ * Detect it at runtime rather than trusting the ambient fetch type, which only
+ * declares it where Bun's globals are loaded.
+ */
+function runtimePreconnect(fetch: FetchFunction): Preconnect | undefined {
+  if (!("preconnect" in fetch)) return undefined;
+  const preconnect: unknown = fetch.preconnect;
+  if (typeof preconnect !== "function") return undefined;
+  return (url, options) => {
+    preconnect.call(fetch, url, options);
+  };
 }
 
 function compatibleOptions(options?: StreamOptions): StreamOptions {
