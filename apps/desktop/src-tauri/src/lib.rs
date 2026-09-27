@@ -33,7 +33,6 @@ mod wheel_phase;
 #[cfg(desktop)]
 mod window_state;
 
-use std::sync::Mutex;
 
 use tauri::Manager;
 
@@ -853,7 +852,7 @@ pub fn run() {
                 log::error!("desktop preferences initialization failed: {error}");
                 error
             })?;
-            app.manage(storage::Db(Mutex::new(conn)));
+            app.manage(storage::Db::new(conn));
             app.manage(storage::DataDir(data_dir));
             app.manage(storage::ImportSession::default());
 

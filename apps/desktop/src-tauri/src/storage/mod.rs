@@ -14,6 +14,8 @@
 // there is no vector store in the default architecture.
 
 pub mod apply;
+mod connection;
+pub use connection::SharedConnection;
 mod reading_progress;
 mod execution;
 pub(crate) use execution::blocking;
@@ -168,7 +170,13 @@ pub struct EventRow {
 }
 
 /// Managed Tauri state: the single SQLite connection behind a mutex.
-pub struct Db(pub Mutex<Connection>);
+pub struct Db(pub SharedConnection);
+
+impl Db {
+    pub fn new(conn: Connection) -> Self {
+        Self(SharedConnection::new(conn))
+    }
+}
 
 /// Managed Tauri state: the app-data directory. Blob bytes live in
 /// `<data_dir>/blobs/`; `blob_objects.storage_uri` is relative to this root.

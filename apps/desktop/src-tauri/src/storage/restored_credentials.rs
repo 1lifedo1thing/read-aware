@@ -106,8 +106,9 @@ pub(crate) fn publish(
     let mut sources = BTreeMap::new();
     let mut payload_bytes = 0usize;
     for event in &mut events {
-        let key = event.aggregate_id.as_ref().unwrap();
-        let slot = key.strip_prefix("secret:").unwrap();
+        // Validated above: aggregate_id is the `secret:<slot>` key.
+        let key = event.aggregate_id.clone().ok_or_else(invalid)?;
+        let slot = key.strip_prefix("secret:").ok_or_else(invalid)?;
         let exists: bool = tx.query_row(
             "SELECT EXISTS(SELECT 1 FROM restored_credential_publications WHERE slot=?1)",
             [slot],

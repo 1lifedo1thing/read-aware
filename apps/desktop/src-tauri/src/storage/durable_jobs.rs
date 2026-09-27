@@ -39,8 +39,9 @@ pub(crate) fn validate_source(source: &Value) -> Result<(), CommandError> {
     for path in paths {
         let object = path.as_object().ok_or_else(|| invalid("Invalid job source branch"))?;
         let steps = path["steps"].as_array().ok_or_else(|| invalid("Invalid job source steps"))?;
-        if object.keys().any(|key| !["root","steps"].contains(&key.as_str())) || !text(&path["root"],128)
-            || !roots.insert(path["root"].as_str().unwrap()) || steps.len()>32 || steps.iter().any(|step| !text(step,512)) { return Err(invalid("Invalid job source branch")); }
+        let root = path["root"].as_str().filter(|_| text(&path["root"],128)).ok_or_else(|| invalid("Invalid job source branch"))?;
+        if object.keys().any(|key| !["root","steps"].contains(&key.as_str()))
+            || !roots.insert(root) || steps.len()>32 || steps.iter().any(|step| !text(step,512)) { return Err(invalid("Invalid job source branch")); }
     }
     Ok(())
 }
@@ -85,7 +86,7 @@ pub(crate) fn durable_job_checkpoint_inner(conn: &mut Connection, owner: &str, i
     let before = durable_job_get_inner(&tx, owner, id)?.ok_or_else(|| CommandError::new("jobs/not-found", "Job not found"))?;
     if before.revision != expected { return Err(CommandError::new("jobs/conflict", "Job checkpoint changed")); }
     if state.get("source") != before.state.get("source") { return Err(invalid("Job source is immutable")); }
-    let count = before.plan["steps"].as_array().unwrap().len();
+    let count = before.plan["steps"].as_array().ok_or_else(|| invalid("Stored job plan has no steps"))?.len();
     let next = state.get("nextStep").and_then(Value::as_u64).ok_or_else(|| invalid("Missing next step"))? as usize;
     let previous = before.state["nextStep"].as_u64().unwrap_or(0) as usize;
     let results = state.get("results").and_then(Value::as_array).ok_or_else(|| invalid("Missing step receipts"))?;

@@ -110,11 +110,12 @@ impl From<serde_json::Error> for CommandError {
     }
 }
 
-/// A poisoned Mutex means another thread panicked mid-write; the connection's
-/// state is suspect, which is a database-layer failure from the caller's view.
+/// A poisoned Mutex means another thread panicked mid-update of in-memory
+/// state (sessions, grants, queues). The SQLite connection does not surface
+/// this: `storage::SharedConnection` recovers its lock instead.
 impl<T> From<std::sync::PoisonError<T>> for CommandError {
     fn from(error: std::sync::PoisonError<T>) -> Self {
-        Self::new(CODE_DB_ERROR, format!("storage lock poisoned: {error}"))
+        Self::new(CODE_DB_ERROR, format!("state lock poisoned: {error}"))
     }
 }
 

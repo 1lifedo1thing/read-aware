@@ -26,7 +26,7 @@ fn restart_recovers_only_prior_uncommitted_imports_and_keeps_current_writer() {
         put_blob_inner(&conn,dir.path(),&format!("cover:{id}"),None,b"cover").unwrap();
     }
     book(&conn,&committed); assert!(!pending(&conn,&committed)); drop(conn);
-    let db = Db(std::sync::Mutex::new(open(&path)));
+    let db = Db::new(open(&path));
     recover_import_cleanup(&db,dir.path(),"new").unwrap();
     let conn = db.0.lock().unwrap();
     assert!(!pending(&conn,&abandoned)); assert!(pending(&conn,&current));
@@ -72,7 +72,7 @@ fn recovery_releases_owned_unregistered_files_and_temporary_copies_only() {
     for path in paths(dir.path(),&abandoned) { std::fs::write(path,b"interrupted copy").unwrap(); }
     let keep=paths(dir.path(),&unowned).remove(0); std::fs::write(&keep,b"retain").unwrap();
     assert!(begin_inner(&conn,dir.path(),&unowned,"new").is_err());
-    let db=Db(std::sync::Mutex::new(conn)); recover_import_cleanup(&db,dir.path(),"new").unwrap();
+    let db=Db::new(conn); recover_import_cleanup(&db,dir.path(),"new").unwrap();
     assert!(paths(dir.path(),&abandoned).iter().all(|p|!p.exists()));
     assert_eq!(std::fs::read(keep).unwrap(),b"retain");
 }

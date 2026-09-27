@@ -281,10 +281,10 @@ pub(super) fn prepare(
             }
         };
         let local_sealed = if let Some(value) = &plaintext {
-            if existing_key.is_none() && new_key.is_none() {
-                new_key = Some(crypto::generate_key());
-            }
-            let key = existing_key.as_ref().or(new_key.as_ref()).unwrap();
+            let key = match &existing_key {
+                Some(key) => key,
+                None => &*new_key.get_or_insert_with(crypto::generate_key),
+            };
             Some(crate::secrets::encrypt_with_key(key, value)?)
         } else {
             None

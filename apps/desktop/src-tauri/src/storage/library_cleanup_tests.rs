@@ -49,7 +49,7 @@ fn failed_cleanup_survives_reopen_and_boot_recovers_without_record_writes() {
     let conn = open(&path);
     assert_eq!(pending(&conn), ["a"]);
     conn.execute_batch("DROP TRIGGER reject_files;").unwrap();
-    let db = Db(std::sync::Mutex::new(conn));
+    let db = Db::new(conn);
     recover_book_removal_cleanup(&db, dir.path()).unwrap();
     let conn = db.0.lock().unwrap();
     assert!(pending(&conn).is_empty());
@@ -100,7 +100,7 @@ fn boot_does_not_starve_later_pages_when_one_intent_fails() {
     for index in 0..105 { book(&conn, &format!("b{index:03}")); }
     conn.execute_batch("DELETE FROM books; CREATE TRIGGER reject_intent BEFORE DELETE ON book_removal_cleanup
         WHEN old.book_id='b000' BEGIN SELECT RAISE(ABORT,'reject'); END;").unwrap();
-    let db = Db(std::sync::Mutex::new(conn));
+    let db = Db::new(conn);
     recover_book_removal_cleanup(&db, dir.path()).unwrap();
     assert_eq!(pending(&db.0.lock().unwrap()), ["b000"]);
 }

@@ -147,9 +147,9 @@ pub(super) fn extract(
         }
         file.sync_all()?;
     }
-    if manifest.is_none() || !remaining.is_empty() || long_path.is_some() {
+    let Some(manifest) = manifest.filter(|_| remaining.is_empty() && long_path.is_none()) else {
         return Err(invalid("backup is missing declared members"));
-    }
+    };
     // tar stops at its first zero header, before age's final authentication tag.
     // Drain through EOF, allowing only bounded tar padding. Never expose a prefix
     // of a truncated archive, or ignore a concatenated archive after tar EOF.
@@ -171,6 +171,6 @@ pub(super) fn extract(
     }
     Ok(AuthenticatedBackup {
         directory,
-        manifest: manifest.unwrap(),
+        manifest,
     })
 }

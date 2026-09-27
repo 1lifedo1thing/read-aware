@@ -155,7 +155,10 @@ pub(super) fn inspect(
         ] {
             let Some(tree) = tree else { continue };
             check()?;
-            let id = group.root.split_once('/').unwrap().1;
+            let (_, id) = group
+                .root
+                .split_once('/')
+                .ok_or_else(|| invalid("program root has no plugin id"))?;
             let file = plan
                 .matches
                 .get(&format!("{}/manifest.json", group.root))

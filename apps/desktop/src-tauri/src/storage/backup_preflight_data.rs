@@ -180,7 +180,9 @@ fn plugin_data(conn: &Connection, control: &Control) -> Result<(), CommandError>
     while let Some(row) = rows.next()? {
         control.check()?;
         let key: String = row.get(0)?;
-        let id = key.strip_prefix("read-aware-plugin-host.schema.").unwrap();
+        let id = key
+            .strip_prefix("read-aware-plugin-host.schema.")
+            .ok_or_else(|| invalid("invalid stored plugin schema key"))?;
         let value: Value = serde_json::from_str(&row.get::<_, String>(1)?)?;
         if !crate::plugins::valid_plugin_id(id)
             || !value
