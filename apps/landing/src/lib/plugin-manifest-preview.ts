@@ -54,6 +54,62 @@ export type PluginPermissionPreviewCopy = {
   familyLabels: Record<RequirementFamily, string>;
 };
 
+type CountMessage = "schedules" | "themes" | "fonts";
+type ValueMessage =
+  | "unknownRequirement"
+  | "incompatibleRequirement"
+  | "missingPermission"
+  | "unknownPermission"
+  | "missingField"
+  | "unknownSettingsOperation"
+  | "invalidSettingsGrant"
+  | "sectionGrantWarning";
+
+/**
+ * The preview copy as stored in a docs resource: permission keys spell `:` as
+ * `__`, and parameterized messages are still templates for the formatter.
+ */
+export type PluginPermissionPreviewResource = Omit<
+  PluginPermissionPreviewCopy,
+  CountMessage | ValueMessage | "permissionDescriptions"
+> & { permissionDescriptions: Record<string, string> };
+
+/** Interpolates (and pluralizes) one parameterized preview message. */
+export type PluginPermissionPreviewFormat = {
+  count: (key: CountMessage, count: number) => string;
+  value: (key: ValueMessage, value: string) => string;
+};
+
+export function pluginPermissionPreviewCopy(
+  resource: PluginPermissionPreviewResource,
+  format: PluginPermissionPreviewFormat,
+): PluginPermissionPreviewCopy {
+  const value = (key: ValueMessage) => (input: string) =>
+    format.value(key, input);
+  const count = (key: CountMessage) => (input: number) =>
+    format.count(key, input);
+  return {
+    ...resource,
+    permissionDescriptions: Object.fromEntries(
+      Object.entries(resource.permissionDescriptions).map(([key, text]) => [
+        key.replace("__", ":"),
+        text,
+      ]),
+    ) as PluginPermissionPreviewCopy["permissionDescriptions"],
+    schedules: count("schedules"),
+    themes: count("themes"),
+    fonts: count("fonts"),
+    unknownRequirement: value("unknownRequirement"),
+    incompatibleRequirement: value("incompatibleRequirement"),
+    missingPermission: value("missingPermission"),
+    unknownPermission: value("unknownPermission"),
+    missingField: value("missingField"),
+    unknownSettingsOperation: value("unknownSettingsOperation"),
+    invalidSettingsGrant: value("invalidSettingsGrant"),
+    sectionGrantWarning: value("sectionGrantWarning"),
+  };
+}
+
 export type ManifestPreview = {
   permissions: string[];
   grants: Array<{ operation: SettingsOperation; path: string }>;

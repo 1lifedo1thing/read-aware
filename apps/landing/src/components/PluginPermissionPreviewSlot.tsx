@@ -1,21 +1,8 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { DocsResource } from "../i18n";
-import {
-  PluginPermissionPreview,
-  type PluginPermissionPreviewCopy,
-} from "./PluginPermissionPreview";
-type PreviewResource = DocsResource["permissionPreview"];
-function permissionDescriptions(
-  descriptions: PreviewResource["permissionDescriptions"],
-): PluginPermissionPreviewCopy["permissionDescriptions"] {
-  return Object.fromEntries(
-    Object.entries(descriptions).map(([key, value]) => [
-      key.replace("__", ":"),
-      value,
-    ]),
-  ) as PluginPermissionPreviewCopy["permissionDescriptions"];
-}
+import { pluginPermissionPreviewCopy } from "../lib/plugin-manifest-preview";
+import { PluginPermissionPreview } from "./PluginPermissionPreview";
 
 export default function PermissionPreviewSlot({
   source,
@@ -30,32 +17,11 @@ export default function PermissionPreviewSlot({
       i18n.resolvedLanguage ?? i18n.language,
       "docs",
       "permissionPreview",
-    ) as PreviewResource;
-    return {
-      ...resource,
-      permissionDescriptions: permissionDescriptions(
-        resource.permissionDescriptions,
-      ),
-      schedules: (count: number) => t("permissionPreview.schedules", { count }),
-      themes: (count: number) => t("permissionPreview.themes", { count }),
-      fonts: (count: number) => t("permissionPreview.fonts", { count }),
-      unknownRequirement: (value: string) =>
-        t("permissionPreview.unknownRequirement", { value }),
-      incompatibleRequirement: (value: string) =>
-        t("permissionPreview.incompatibleRequirement", { value }),
-      missingPermission: (value: string) =>
-        t("permissionPreview.missingPermission", { value }),
-      unknownPermission: (value: string) =>
-        t("permissionPreview.unknownPermission", { value }),
-      missingField: (value: string) =>
-        t("permissionPreview.missingField", { value }),
-      unknownSettingsOperation: (value: string) =>
-        t("permissionPreview.unknownSettingsOperation", { value }),
-      invalidSettingsGrant: (value: string) =>
-        t("permissionPreview.invalidSettingsGrant", { value }),
-      sectionGrantWarning: (value: string) =>
-        t("permissionPreview.sectionGrantWarning", { value }),
-    } satisfies PluginPermissionPreviewCopy;
+    ) as DocsResource["permissionPreview"];
+    return pluginPermissionPreviewCopy(resource, {
+      count: (key, count) => t(`permissionPreview.${key}`, { count }),
+      value: (key, value) => t(`permissionPreview.${key}`, { value }),
+    });
   }, [i18n, t]);
 
   return (

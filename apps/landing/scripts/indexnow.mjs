@@ -6,7 +6,7 @@ import {
   ORIGIN,
   submissionUrls,
   validateManifest,
-} from "./search-manifest.mjs";
+} from "./search-manifest.ts";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function request(url, options = {}) {

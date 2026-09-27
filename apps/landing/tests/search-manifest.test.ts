@@ -5,18 +5,20 @@ import {
   INDEXNOW_KEY,
   submissionUrls,
   validateManifest,
-} from "../scripts/search-manifest.mjs";
+  type SearchManifest,
+  type SearchManifestPage,
+} from "../scripts/search-manifest.ts";
 
-const page = (path: string, hash = "a".repeat(64)) => ({
+const page = (path: string, hash = "a".repeat(64)): SearchManifestPage => ({
   url: `https://readaware.app${path}`,
   hash,
 });
 test("IndexNow notifies only added, changed and removed public URLs", () => {
-  const before = {
+  const before: SearchManifest = {
     version: 1,
     pages: [page("/"), page("/docs/"), page("/old/")],
   };
-  const after = {
+  const after: SearchManifest = {
     version: 1,
     pages: [page("/"), page("/docs/", "b".repeat(64)), page("/new/")],
   };
@@ -44,8 +46,8 @@ test("rejects private, duplicate, offsite and noncanonical URLs", () => {
   ).toThrow();
 });
 test("a failed notification is retried even when the next deploy has identical content", () => {
-  const acknowledged = { version: 1, pages: [page("/"), page("/removed/")] };
-  const deployed = {
+  const acknowledged: SearchManifest = { version: 1, pages: [page("/"), page("/removed/")] };
+  const deployed: SearchManifest = {
     version: 1,
     pages: [page("/", "b".repeat(64)), page("/new/")],
   };
@@ -67,8 +69,8 @@ test("content hashes ignore deployment-only bundle changes but catch content, li
     ["ReadAware", "Reader app"],
     ["/docs/", "/pricing/"],
     ["/reader.png", "/new.png"],
-  ]) {
-    expect(await contentHash(html.replace(a!, b!))).not.toBe(hash);
+  ] as const) {
+    expect(await contentHash(html.replace(a, b))).not.toBe(hash);
   }
   expect(
     (

@@ -13,7 +13,7 @@ import {
 } from "../src/lib/plugin-capabilities";
 import {
   inspectManifest,
-  type PluginPermissionPreviewCopy,
+  pluginPermissionPreviewCopy,
 } from "../src/lib/plugin-manifest-preview";
 import { docHeadings } from "../src/lib/doc-headings";
 import { LOCALES } from "../src/lib/i18n";
@@ -47,14 +47,10 @@ const links = (text: string) =>
 const placeholders = (text: string) =>
   text.match(/\{\{[^}]+\}\}/g)?.sort() ?? [];
 const sourceCopy = en.permissionPreview;
-const copy = Object.fromEntries(
-  Object.entries(sourceCopy).map(([key, value]) => [
-    key,
-    typeof value === "string" && value.includes("{{")
-      ? (input: string) => value.replace(/\{\{(?:value|count)\}\}/g, input)
-      : value,
-  ]),
-) as PluginPermissionPreviewCopy;
+const copy = pluginPermissionPreviewCopy(sourceCopy, {
+  count: (key, count) => sourceCopy[key].replace("{{count}}", String(count)),
+  value: (key, value) => sourceCopy[key].replace("{{value}}", value),
+});
 
 for (const locale of LOCALES) {
   test(`${locale} docs cover the English contract without changing code or destinations`, async () => {
@@ -107,7 +103,7 @@ for (const locale of LOCALES) {
 }
 
 test("method search and combined filters find current contracts and recover from unknown URLs", () => {
-  const search = (input: object) =>
+  const search = (input: Record<string, unknown>) =>
     filterCapabilities(
       validateExplorerSearch(input),
       descriptions,

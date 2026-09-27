@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { INDEXNOW_KEY } from "../scripts/search-manifest.mjs";
+import { INDEXNOW_KEY } from "../scripts/search-manifest.ts";
 
 const manifest = await Bun.file(
   new URL("../dist/search-manifest.json", import.meta.url),

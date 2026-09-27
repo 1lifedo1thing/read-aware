@@ -15,7 +15,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { contentHash, validateManifest } from "./search-manifest.mjs";
+import { contentHash, validateManifest } from "./search-manifest.ts";
 
 const appDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = join(appDir, "dist");

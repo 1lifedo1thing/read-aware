@@ -6,15 +6,13 @@ import {
   LOCALE_LANG,
 } from "../src/lib/i18n";
 import { DOWNLOADS } from "../src/lib/releases";
-import { validateManifest } from "../scripts/search-manifest.mjs";
+import { validateManifest } from "../scripts/search-manifest.ts";
 
 const dist = new URL("../dist/", import.meta.url);
 const manifest = validateManifest(
   await Bun.file(new URL("search-manifest.json", dist)).json(),
 );
-const urls = new Set<string>(
-  manifest.pages.map((page: { url: string }) => page.url),
-);
+const urls = new Set(manifest.pages.map((page) => page.url));
 
 test("every public page has a unique title, description, canonical and resolvable language alternates", async () => {
   const titles = new Set<string>();
@@ -111,9 +109,9 @@ test("Chinese platform pages have localized navigation, direct assets, FAQs and 
       })
       .transform(new Response(html))
       .text();
-    expect(primary[0]).toBe(
-      DOWNLOADS.find((p) => p.id === platform)?.primary?.url,
-    );
+    const download = DOWNLOADS.find((p) => p.id === platform)?.primary;
+    if (!download) throw new Error(`No primary ${platform} download`);
+    expect(primary[0]).toBe(download.url);
     expect(html).toContain('lang="zh-CN"');
     expect(html).toContain('href="/zh/pricing"');
     const faq = JSON.parse(schemas.join(""));

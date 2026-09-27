@@ -53,13 +53,13 @@ test.each(["android", "windows"] as const)(
   "%s topic has its own direct download in static HTML",
   async (platform) => {
     const page = await inspect(`/epub-reader-for-${platform}/`);
-    expect(page.primary[0]).toBe(
-      DOWNLOADS.find((entry) => entry.id === platform)?.primary?.url,
-    );
+    const download = DOWNLOADS.find((entry) => entry.id === platform)?.primary;
+    if (!download) throw new Error(`No primary ${platform} download`);
+    expect(page.primary[0]).toBe(download.url);
   },
 );
 
-test.each(LOCALES)("%s navigation stays localized and secondary links are crawlable", async (locale) => {
+test.each([...LOCALES])("%s navigation stays localized and secondary links are crawlable", async (locale) => {
   const page = await inspect(localizePath("/", locale));
   const home = localizePath("/", locale).replace(/\/$/, "") || "/";
   expect(page.header).toContain(home);

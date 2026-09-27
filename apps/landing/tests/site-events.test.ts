@@ -5,6 +5,7 @@ import {
   sourceFrom,
   validateEvent,
   type SiteEvent,
+  type Source,
 } from "../src/lib/site-events";
 import { resolveAttribution, SESSION_MS } from "../src/lib/site-attribution";
 import worker from "../src/worker";
@@ -27,7 +28,7 @@ const download = {
 const url = (path = "/") => new URL(`https://readaware.app${path}`);
 
 test("source categories strip all free-form referrer and campaign data", () => {
-  for (const [referrer, source] of [
+  const referrers: [referrer: string, source: Source][] = [
     ["https://www.google.com/search?q=private", "google"],
     ["https://chatgpt.com/c/private-id", "chatgpt"],
     ["https://www.bing.com/search?q=book", "bing"],
@@ -35,8 +36,9 @@ test("source categories strip all free-form referrer and campaign data", () => {
     ["https://google.com.evil.test/", "other"],
     ["https://secret.example/user/email", "other"],
     ["", "direct"],
-  ])
-    expect(sourceFrom(url(), referrer!)).toBe(source);
+  ];
+  for (const [referrer, source] of referrers)
+    expect(sourceFrom(url(), referrer)).toBe(source);
   expect(
     sourceFrom(url("/?utm_source=chatgpt.com&utm_campaign=secret"), ""),
   ).toBe("chatgpt");

@@ -1,6 +1,3 @@
-// Type context for editors and type-aware lint (`bun run lint` at the root). These
-// tests are not part of `typecheck` yet: bun:test table typing and the untyped
-// scripts/*.mjs imports still report errors under tsc.
 {
   "extends": "../tsconfig.json",
   "include": ["./**/*.ts", "../src/**/*.d.ts"]
